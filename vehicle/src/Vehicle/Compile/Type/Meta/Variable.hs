@@ -80,12 +80,12 @@ makeMetaType ::
   Provenance ->
   CheckedType ->
   CheckedType
-makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
+makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi :: (Maybe Name, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
     entryToPi (name, t, _) = do
       let n = fromMaybe "_" name
-      Pi ann (Binder ann (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case

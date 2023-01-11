@@ -134,7 +134,7 @@ mkNameWithIndices n index = n <> pack (show index)
 -- mconcat (n : [pack (show index) | index <- indices])
 
 mkDoubleExpr :: Provenance -> Double -> DBExpr
-mkDoubleExpr ann v = RatLiteral ann (toRational v)
+mkDoubleExpr p v = RatLiteral p (toRational v)
 
 mkIndexType :: Provenance -> Int -> DBExpr
 mkIndexType p n =
@@ -145,15 +145,15 @@ mkIndexType p n =
     ]
 
 mkIntExpr :: Provenance -> Int -> DBExpr
-mkIntExpr ann v
-  | v >= 0 = NatLiteral ann v
-  | otherwise = IntLiteral ann v
+mkIntExpr p v
+  | v >= 0 = NatLiteral p v
+  | otherwise = IntLiteral p v
 
 mkTensorDims ::
   Provenance ->
   [Int] ->
   [DBExpr]
-mkTensorDims ann = fmap (NatLiteral ann)
+mkTensorDims p = fmap (NatLiteral p)
 
 mkTensorType ::
   Provenance ->

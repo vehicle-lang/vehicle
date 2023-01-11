@@ -335,7 +335,7 @@ data IOVarState = IOVarState
   }
 
 pattern NetworkApp :: Provenance -> Identifier -> CheckedExpr -> CheckedExpr
-pattern NetworkApp ann ident inputs <- App ann (Var _ (Free ident)) [ExplicitArg _ inputs]
+pattern NetworkApp p ident inputs <- App p (Var _ (Free ident)) [ExplicitArg _ inputs]
 
 -- Takes in the expression to process and returns a function
 -- from the current binding depth to the altered expression.
@@ -344,7 +344,7 @@ replaceNetworkApplications ::
   IOVarState ->
   CheckedExpr ->
   m (CheckedExpr, [Assertion])
-replaceNetworkApplications IOVarState {..} (Let _ (NetworkApp ann ident inputExprs) _binder body) = do
+replaceNetworkApplications IOVarState {..} (Let _ (NetworkApp p ident inputExprs) _binder body) = do
   logDebug MaxDetail $ "Replacing application:" <+> pretty ident <+> prettySimple inputExprs
   incrCallDepth
   (networkCtx, _, _, _, _, _) <- ask
@@ -377,7 +377,7 @@ replaceNetworkApplications IOVarState {..} (Let _ (NetworkApp ann ident inputExp
         <> pretty (CLSTProblem variableNames inputVarEqualities)
         <> line
 
-  outputVarsExpr <- mkMagicVariableSeq ann outputType (dimensions outputs) outputVarIndices
+  outputVarsExpr <- mkMagicVariableSeq p outputType (dimensions outputs) outputVarIndices
   let newBody = outputVarsExpr `substDBInto` body
 
   (result, equalities) <-
@@ -418,7 +418,7 @@ mkMagicVariableSeq ::
   m CheckedExpr
 mkMagicVariableSeq p tElem = go
   where
-    baseElemType = reconstructNetworkBaseType p tElem
+    baseElemType = reconstructNetworkBaseType tElem p
 
     go :: MonadCompile m => [Int] -> [Int] -> m CheckedExpr
     go (_dim : dims) outputVarIndices = do
@@ -452,7 +452,7 @@ compileAssertions = \case
       LVec {} -> normalisationError currentPass "LVec"
       Builtin {} -> normalisationError currentPass "LVec"
       Var {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
-      Literal _ann l -> case l of
+      Literal _ l -> case l of
         LBool _ -> normalisationError currentPass "LBool"
         _ -> caseError currentPass "Literal" ["AndExpr"]
       AndExpr _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do

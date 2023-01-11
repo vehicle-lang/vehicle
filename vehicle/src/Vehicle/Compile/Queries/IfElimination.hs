@@ -30,11 +30,11 @@ currentPass = "if elimination"
 -- If operations
 
 liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftIf f (IfExpr ann _t [cond, e1, e2]) =
+liftIf f (IfExpr p _t [cond, e1, e2]) =
   IfExpr
-    ann
+    p
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-    (BoolType ann)
+    (BoolType p)
     [ cond,
       fmap (liftIf f) e1,
       fmap (liftIf f) e2
@@ -44,12 +44,12 @@ liftIf f e = f e
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: CheckedExpr -> CheckedExpr
-elimIf (IfExpr ann _ [cond, e1, e2]) =
-  OrExpr ann $
+elimIf (IfExpr p _ [cond, e1, e2]) =
+  OrExpr p $
     fmap
-      (ExplicitArg ann)
-      [ AndExpr ann [cond, fmap elimIf e1],
-        AndExpr ann [normaliseNotArg cond, fmap elimIf e2]
+      (ExplicitArg p)
+      [ AndExpr p [cond, fmap elimIf e1],
+        AndExpr p [normaliseNotArg cond, fmap elimIf e2]
       ]
 elimIf e = e
 
@@ -87,7 +87,7 @@ liftAndElimIf expr = case expr of
   Lam {} -> normalisationError currentPass "Non-quantified Lam"
 
 liftArg :: (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
-liftArg f (Arg ann v r e) = liftIf (f . Arg ann v r) e
+liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 liftSeq :: ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
 liftSeq f [] = f []

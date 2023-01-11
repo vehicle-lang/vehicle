@@ -195,9 +195,9 @@ pattern HasQuantifierInExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasQuantifierInExpr ann q tElem tCont <-
+pattern HasQuantifierInExpr p q tElem tCont <-
   BuiltinTypeClass
-    ann
+    p
     (HasQuantifierIn q)
     [ ExplicitArg _ tElem,
       ExplicitArg _ tCont
@@ -208,9 +208,9 @@ pattern HasNatLitsExpr ::
   Int ->
   Expr binder var ->
   Expr binder var
-pattern HasNatLitsExpr ann n t <-
+pattern HasNatLitsExpr p n t <-
   BuiltinTypeClass
-    ann
+    p
     (HasNatLits n)
     [ ExplicitArg _ t
       ]
@@ -219,9 +219,9 @@ pattern HasRatLitsExpr ::
   Provenance ->
   Expr binder var ->
   Expr binder var
-pattern HasRatLitsExpr ann t <-
+pattern HasRatLitsExpr p t <-
   BuiltinTypeClass
-    ann
+    p
     HasRatLits
     [ ExplicitArg _ t
       ]
@@ -233,9 +233,9 @@ pattern HasArithOp2Expr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasArithOp2Expr ann tc t1 t2 t3 <-
+pattern HasArithOp2Expr p tc t1 t2 t3 <-
   BuiltinTypeClass
-    ann
+    p
     tc
     [ ExplicitArg _ t1,
       ExplicitArg _ t2,
@@ -248,7 +248,7 @@ pattern HasAddExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasAddExpr ann t1 t2 t3 <- HasArithOp2Expr ann HasAdd t1 t2 t3
+pattern HasAddExpr p t1 t2 t3 <- HasArithOp2Expr p HasAdd t1 t2 t3
 
 pattern HasSubExpr ::
   Provenance ->
@@ -256,7 +256,7 @@ pattern HasSubExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasSubExpr ann t1 t2 t3 <- HasArithOp2Expr ann HasSub t1 t2 t3
+pattern HasSubExpr p t1 t2 t3 <- HasArithOp2Expr p HasSub t1 t2 t3
 
 pattern HasMulExpr ::
   Provenance ->
@@ -264,7 +264,7 @@ pattern HasMulExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasMulExpr ann t1 t2 t3 <- HasArithOp2Expr ann HasMul t1 t2 t3
+pattern HasMulExpr p t1 t2 t3 <- HasArithOp2Expr p HasMul t1 t2 t3
 
 pattern HasDivExpr ::
   Provenance ->
@@ -272,16 +272,16 @@ pattern HasDivExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasDivExpr ann t1 t2 t3 <- HasArithOp2Expr ann HasDiv t1 t2 t3
+pattern HasDivExpr p t1 t2 t3 <- HasArithOp2Expr p HasDiv t1 t2 t3
 
 pattern HasNegExpr ::
   Provenance ->
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern HasNegExpr ann argType resType <-
+pattern HasNegExpr p argType resType <-
   BuiltinTypeClass
-    ann
+    p
     HasNeg
     [ ExplicitArg _ argType,
       ExplicitArg _ resType
@@ -324,22 +324,22 @@ pattern HasEqExpr p eq arg1Type arg2Type resType <-
 --------------------------------------------------------------------------------
 
 pattern UnitLiteral :: Provenance -> Expr binder var
-pattern UnitLiteral ann = Literal ann LUnit
+pattern UnitLiteral p = Literal p LUnit
 
 pattern BoolLiteral :: Provenance -> Bool -> Expr binder var
-pattern BoolLiteral ann n = Literal ann (LBool n)
+pattern BoolLiteral p n = Literal p (LBool n)
 
 pattern IndexLiteral :: Provenance -> Int -> Int -> Expr binder var
-pattern IndexLiteral ann n x = Literal ann (LIndex n x)
+pattern IndexLiteral p n x = Literal p (LIndex n x)
 
 pattern NatLiteral :: Provenance -> Int -> Expr binder var
-pattern NatLiteral ann n = Literal ann (LNat n)
+pattern NatLiteral p n = Literal p (LNat n)
 
 pattern IntLiteral :: Provenance -> Int -> Expr binder var
-pattern IntLiteral ann n = Literal ann (LInt n)
+pattern IntLiteral p n = Literal p (LInt n)
 
 pattern RatLiteral :: Provenance -> Rational -> Expr binder var
-pattern RatLiteral ann n = Literal ann (LRat n)
+pattern RatLiteral p n = Literal p (LRat n)
 
 pattern VecLiteral ::
   Provenance ->
@@ -358,10 +358,10 @@ pattern AnnVecLiteral ::
 pattern AnnVecLiteral p tElem xs <- App p (LVec _ xs) (ImplicitArg _ tElem :| _)
 
 pattern TrueExpr :: Provenance -> Expr binder var
-pattern TrueExpr ann = BoolLiteral ann True
+pattern TrueExpr p = BoolLiteral p True
 
 pattern FalseExpr :: Provenance -> Expr binder var
-pattern FalseExpr ann = BoolLiteral ann False
+pattern FalseExpr p = BoolLiteral p False
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -473,8 +473,8 @@ pattern ForallInTCExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern ForallInTCExpr ann tCont binder body container <-
-  QuantifierInTCExpr Forall ann tCont binder body container
+pattern ForallInTCExpr p tCont binder body container <-
+  QuantifierInTCExpr Forall p tCont binder body container
 
 pattern ExistsInTCExpr ::
   Provenance ->
@@ -483,8 +483,8 @@ pattern ExistsInTCExpr ::
   Expr binder var ->
   Expr binder var ->
   Expr binder var
-pattern ExistsInTCExpr ann tCont binder body container <-
-  QuantifierInTCExpr Exists ann tCont binder body container
+pattern ExistsInTCExpr p tCont binder body container <-
+  QuantifierInTCExpr Exists p tCont binder body container
 
 --------------------------------------------------------------------------------
 -- IfExpr
@@ -628,7 +628,7 @@ pattern DivExpr p dom args = BuiltinExpr p (Div dom) args
 -- EqualityOp
 
 -- pattern BuiltinEquality :: Provenance -> EqualityOp -> Expr binder var
--- pattern BuiltinEquality ann eq = Builtin ann (EqualityOp eq)
+-- pattern BuiltinEquality p eq = Builtin p (EqualityOp eq)
 
 pattern EqualityTCExpr ::
   Provenance ->
@@ -664,7 +664,7 @@ pattern EqualityExpr p dom op args <- App p (Builtin _ (Equals dom op)) args
 -- OrderOp
 {-
 pattern BuiltinOrder :: Provenance -> OrderOp -> Expr binder var
-pattern BuiltinOrder ann order = Builtin ann (OrderOp order)
+pattern BuiltinOrder p order = Builtin p (OrderOp order)
 -}
 pattern OrderTCExpr ::
   Provenance ->
@@ -707,9 +707,9 @@ pattern ConsExpr ::
   Expr binder var ->
   [Arg binder var] ->
   Expr binder var
-pattern ConsExpr ann tElem explicitArgs <-
+pattern ConsExpr p tElem explicitArgs <-
   ConstructorExpr
-    ann
+    p
     Cons
     ( ImplicitArg _ tElem
         :| explicitArgs
@@ -756,9 +756,9 @@ pattern AtExpr ::
   Expr binder var ->
   [Arg binder var] ->
   Expr binder var
-pattern AtExpr ann tElem tDim explicitArgs <-
+pattern AtExpr p tElem tDim explicitArgs <-
   App
-    ann
+    p
     (Builtin _ At)
     ( ImplicitArg _ tElem
         :| ImplicitArg _ tDim

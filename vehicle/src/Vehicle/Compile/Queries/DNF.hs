@@ -70,7 +70,7 @@ dnf expr = do
   return result
 
 liftOr :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (fmap (liftOr f) <$> [e1, e2])
+liftOr f (OrExpr p [e1, e2]) = OrExpr p (fmap (liftOr f) <$> [e1, e2])
 liftOr f e = f e
 
 lowerNot :: CheckedExpr -> CheckedExpr
