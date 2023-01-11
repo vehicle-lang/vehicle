@@ -45,7 +45,7 @@ type PrettySimple a = PrettyWith ('Simple ('As 'Internal)) a
 
 type PrettyVerbose a = PrettyWith ('As 'Internal) a
 
-type PrettyFriendly a = PrettyWith ('Named ('As 'External)) a
+type PrettyFriendly a = PrettyWith ('Named ('Simple ('As 'External))) a
 
 -- | Prints to the internal language removing all implicit/instance arguments and
 --  automatically inserted code. Does not convert (Co)DeBruijn indices back to
@@ -61,7 +61,7 @@ prettyVerbose = prettyWith @('As 'Internal)
 -- | Prints to the external language for things that need to be displayed to
 --  the user. Must provide the context of the thing being printed.
 prettyFriendly :: PrettyFriendly a => a -> Doc b
-prettyFriendly = prettyWith @('Named ('As 'External))
+prettyFriendly = prettyWith @('Named ('Simple ('As 'External)))
 
 --------------------------------------------------------------------------------
 -- Printing strategies

@@ -70,10 +70,12 @@ instance Delaborate V.InputExpr B.Expr where
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
     V.Meta _ m -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
-    V.App _ (V.Builtin _ b) args -> delabBuiltin b (onlyExplicit args)
+    V.App _ (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
     V.App _ (V.Literal _ l) _args -> return $ delabLiteral l
     V.App _ fun@V.LVec {} _args -> delabM fun
-    V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (NonEmpty.toList args)
+    V.App _ fun args -> do
+      fun' <- delabM fun
+      delabApp fun' (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []
 
 instance Delaborate V.InputArg B.Arg where
@@ -153,8 +155,8 @@ delabSymbol = mkToken B.Name
 delabIdentifier :: V.Identifier -> B.Name
 delabIdentifier (V.Identifier _ n) = mkToken B.Name n
 
-delabApp :: B.Expr -> [B.Arg] -> B.Expr
-delabApp fun allArgs = go fun (reverse allArgs)
+delabApp :: MonadDelab m => B.Expr -> [V.InputArg] -> m B.Expr
+delabApp fun allArgs = go fun <$> traverse delabM (reverse allArgs)
   where
     go fn [] = fn
     go fn (arg : args) = B.App (go fn args) arg
@@ -165,17 +167,17 @@ delabUniverse = \case
   V.PolarityUniv -> cheatDelab "PolarityUniverse"
   V.LinearityUniv -> cheatDelab "LinearityUniverse"
 
-delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputExpr] -> m B.Expr
+delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputArg] -> m B.Expr
 delabBuiltin fun args = case fun of
-  V.Constructor c -> delabConstructor c <$> traverse delabM args
+  V.Constructor c -> delabConstructor c args
   V.And -> delabTypeClassOp V.AndTC args
   V.Or -> delabTypeClassOp V.OrTC args
   V.Implies -> delabTypeClassOp V.ImpliesTC args
   V.Not -> delabTypeClassOp V.NotTC args
-  V.If -> delabIf <$> traverse delabM args
-  V.FromNat {} -> delabM (head args)
-  V.FromRat {} -> delabM (head args)
-  V.FromVec {} -> delabM (head args)
+  V.If -> delabIf args
+  V.FromNat {} -> delabM (argExpr $ head args)
+  V.FromRat {} -> delabM (argExpr $ head args)
+  V.FromVec {} -> delabM (argExpr $ head args)
   V.Neg _ -> delabTypeClassOp V.NegTC args
   V.Add _ -> delabTypeClassOp V.AddTC args
   V.Sub _ -> delabTypeClassOp V.SubTC args
@@ -185,86 +187,77 @@ delabBuiltin fun args = case fun of
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
   V.Fold _ -> delabTypeClassOp V.FoldTC args
   V.Map _ -> delabTypeClassOp V.MapTC args
-  V.At -> delabInfixOp2 B.At tokAt <$> traverse delabM args
+  V.At -> delabInfixOp2 B.At tokAt args
   V.Foreach -> delabForeach args
   V.TypeClassOp tc -> delabTypeClassOp tc args
 
-delabConstructor :: V.BuiltinConstructor -> [B.Expr] -> B.Expr
+delabConstructor :: MonadDelab m => V.BuiltinConstructor -> [V.InputArg] -> m B.Expr
 delabConstructor fun args = case fun of
-  V.Unit -> B.Unit tokUnit
-  V.Bool -> B.Bool tokBool
-  V.Nat -> B.Nat tokNat
-  V.Int -> B.Int tokInt
-  V.Rat -> B.Rat tokRat
-  V.List -> delabApp (B.List tokList) (B.ExplicitArg <$> args)
-  V.Vector -> delabApp (B.Vector tokVector) (B.ExplicitArg <$> args)
-  V.Index -> delabApp (B.Index tokIndex) (B.ExplicitArg <$> args)
-  V.Polarity {} -> cheatDelab $ layoutAsText $ pretty fun
-  V.Linearity {} -> cheatDelab $ layoutAsText $ pretty fun
-  V.TypeClass tc -> case tc of
-    V.HasEq V.Eq -> delabApp (B.HasEq tokHasEq) (B.ExplicitArg <$> args)
-    V.HasAdd -> delabApp (B.HasAdd tokHasAdd) (B.ExplicitArg <$> args)
-    V.HasSub -> delabApp (B.HasSub tokHasSub) (B.ExplicitArg <$> args)
-    V.HasMul -> delabApp (B.HasMul tokHasMul) (B.ExplicitArg <$> args)
-    _ -> delabApp (B.Var (delabSymbol (layoutAsText $ pretty tc))) (B.ExplicitArg <$> args)
-  V.Nil -> B.Nil tokNil
   V.Cons -> delabInfixOp2 B.Cons tokCons args
+  V.Polarity {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
+  V.Linearity {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
+  V.Unit -> delabApp (B.Unit tokUnit) args
+  V.Bool -> delabApp (B.Bool tokBool) args
+  V.Nat -> delabApp (B.Nat tokNat) args
+  V.Int -> delabApp (B.Int tokInt) args
+  V.Rat -> delabApp (B.Rat tokRat) args
+  V.List -> delabApp (B.List tokList) args
+  V.Vector -> delabApp (B.Vector tokVector) args
+  V.Index -> delabApp (B.Index tokIndex) args
+  V.TypeClass tc -> case tc of
+    V.HasEq V.Eq -> delabApp (B.HasEq tokHasEq) args
+    V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
+    V.HasSub -> delabApp (B.HasSub tokHasSub) args
+    V.HasMul -> delabApp (B.HasMul tokHasMul) args
+    _ -> delabApp (B.Var (delabSymbol (layoutAsText $ pretty tc))) args
+  V.Nil -> delabApp (B.Nil tokNil) args
 
-delabTypeClassOp :: MonadDelab m => V.TypeClassOp -> [V.InputExpr] -> m B.Expr
+delabTypeClassOp :: MonadDelab m => V.TypeClassOp -> [V.InputArg] -> m B.Expr
 delabTypeClassOp op args = case op of
-  V.AndTC -> delabInfixOp2 B.And tokAnd <$> traverse delabM args
-  V.OrTC -> delabInfixOp2 B.Or tokOr <$> traverse delabM args
-  V.ImpliesTC -> delabInfixOp2 B.Impl tokImpl <$> traverse delabM args
-  V.NotTC -> delabOp1 B.Not tokNot <$> traverse delabM args
-  V.FromNatTC {} -> delabM $ head args
-  V.FromRatTC {} -> delabM $ head args
-  V.FromVecTC {} -> delabM $ head args
-  V.NegTC -> delabOp1 B.Neg tokSub <$> traverse delabM args
-  V.AddTC -> delabInfixOp2 B.Add tokAdd <$> traverse delabM args
-  V.SubTC -> delabInfixOp2 B.Sub tokSub <$> traverse delabM args
-  V.MulTC -> delabInfixOp2 B.Mul tokMul <$> traverse delabM args
-  V.DivTC -> delabInfixOp2 B.Div tokDiv <$> traverse delabM args
+  V.AndTC -> delabInfixOp2 B.And tokAnd args
+  V.OrTC -> delabInfixOp2 B.Or tokOr args
+  V.ImpliesTC -> delabInfixOp2 B.Impl tokImpl args
+  V.NotTC -> delabOp1 B.Not tokNot args
+  V.FromNatTC {} -> delabM $ argExpr $ head args
+  V.FromRatTC {} -> delabM $ argExpr $ head args
+  V.FromVecTC {} -> delabM $ argExpr $ head args
+  V.NegTC -> delabOp1 B.Neg tokSub args
+  V.AddTC -> delabInfixOp2 B.Add tokAdd args
+  V.SubTC -> delabInfixOp2 B.Sub tokSub args
+  V.MulTC -> delabInfixOp2 B.Mul tokMul args
+  V.DivTC -> delabInfixOp2 B.Div tokDiv args
   V.EqualsTC eq -> case eq of
-    V.Eq -> delabInfixOp2 B.Eq tokEq <$> traverse delabM args
-    V.Neq -> delabInfixOp2 B.Neq tokNeq <$> traverse delabM args
+    V.Eq -> delabInfixOp2 B.Eq tokEq args
+    V.Neq -> delabInfixOp2 B.Neq tokNeq args
   V.OrderTC ord -> case ord of
-    V.Le -> delabInfixOp2 B.Le tokLe <$> traverse delabM args
-    V.Lt -> delabInfixOp2 B.Lt tokLt <$> traverse delabM args
-    V.Ge -> delabInfixOp2 B.Ge tokGe <$> traverse delabM args
-    V.Gt -> delabInfixOp2 B.Gt tokGt <$> traverse delabM args
-  V.MapTC -> do
-    args' <- traverse delabM args
-    return $ delabApp (B.Map tokMap) (B.ExplicitArg <$> args')
-  V.FoldTC -> do
-    args' <- traverse delabM args
-    return $ delabApp (B.Fold tokFold) (B.ExplicitArg <$> args')
+    V.Le -> delabInfixOp2 B.Le tokLe args
+    V.Lt -> delabInfixOp2 B.Lt tokLt args
+    V.Ge -> delabInfixOp2 B.Ge tokGe args
+    V.Gt -> delabInfixOp2 B.Gt tokGt args
+  V.MapTC -> delabApp (B.Map tokMap) args
+  V.FoldTC -> delabApp (B.Fold tokFold) args
   V.QuantifierTC q -> delabQuantifier q args
   V.QuantifierInTC q -> delabQuantifierIn q args
 
-delabOp1 :: IsToken token => (token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
-delabOp1 op tk [arg] = op tk arg
-delabOp1 _ tk args = argsError (tkSymbol tk) 1 args
+delabOp1 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr) -> token -> [V.InputArg] -> m B.Expr
+delabOp1 op tk [arg]
+  | V.isExplicit arg = op tk <$> delabM (argExpr arg)
+delabOp1 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabOp2 :: IsToken token => (token -> B.Expr -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
-delabOp2 op tk = \case
-  [arg1, arg2] -> op tk arg1 arg2
-  args
-    | length args > 2 -> argsError (tkSymbol tk) 2 args
-    | otherwise -> delabPartialSection 2 args (delabOp2 op tk)
+delabOp2 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.InputArg] -> m B.Expr
+delabOp2 op tk args@[arg1, arg2]
+  | all V.isExplicit args = op tk <$> delabM (argExpr arg1) <*> delabM (argExpr arg2)
+delabOp2 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabOp3 :: IsToken token => (token -> B.Expr -> B.Expr -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
-delabOp3 op tk = \case
-  [arg1, arg2, arg3] -> op tk arg1 arg2 arg3
-  args
-    | length args > 3 -> argsError (tkSymbol tk) 3 args
-    | otherwise -> delabPartialSection 3 args (delabOp3 op tk)
+delabOp3 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.InputArg] -> m B.Expr
+delabOp3 op tk args@[arg1, arg2, arg3]
+  | all V.isExplicit args = op tk <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> delabM (argExpr arg3)
+delabOp3 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabInfixOp2 :: IsToken token => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [B.Expr] -> B.Expr
-delabInfixOp2 op tk = \case
-  [arg1, arg2] -> op arg1 tk arg2
-  args
-    | length args > 2 -> argsError (tkSymbol tk) 2 args
-    | otherwise -> delabPartialSection 2 args (delabInfixOp2 op tk)
+delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.InputArg] -> m B.Expr
+delabInfixOp2 op tk args@[arg1, arg2]
+  | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
+delabInfixOp2 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
 delabPartialSection :: Int -> [B.Expr] -> ([B.Expr] -> B.Expr) -> B.Expr
 delabPartialSection expectedArgs actualArgs mkOp = do
@@ -275,11 +268,16 @@ delabPartialSection expectedArgs actualArgs mkOp = do
   let missingBinders = fmap B.ExplicitNameBinder missingVarNames
   B.Lam tokLambda missingBinders tokArrow (mkOp (actualArgs <> missingVars))
 
-delabIf :: [B.Expr] -> B.Expr
-delabIf [arg1, arg2, arg3] = B.If tokIf arg1 tokThen arg2 tokElse arg3
-delabIf args = argsError "if" 3 args
+delabIf :: MonadDelab m => [V.InputArg] -> m B.Expr
+delabIf args@[arg1, arg2, arg3]
+  | all V.isExplicit args = do
+      e1 <- delabM (argExpr arg1)
+      e2 <- delabM (argExpr arg2)
+      e3 <- delabM (argExpr arg3)
+      return $ B.If tokIf e1 tokThen e2 tokElse e3
+delabIf args = delabApp (cheatDelab "if") args
 
-argsError :: Text -> Int -> [B.Expr] -> a
+argsError :: Text -> Int -> [B.Arg] -> a
 argsError s n args =
   developerError $
     "Expecting"
@@ -337,9 +335,9 @@ delabFun isProperty name typ expr = do
           then delabAnn propertyAnn [] : decl
           else decl
 
-delabQuantifier :: MonadDelab m => V.Quantifier -> [V.InputExpr] -> m B.Expr
-delabQuantifier q = \case
-  [V.Lam _ binder body] -> do
+delabQuantifier :: MonadDelab m => V.Quantifier -> [V.InputArg] -> m B.Expr
+delabQuantifier q args = case reverse args of
+  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantFold q) binder) body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
@@ -347,13 +345,13 @@ delabQuantifier q = \case
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
     return $ mkTk binders' tokDot body'
-  args -> do
+  _ -> do
     let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
     argsError sym 1 <$> traverse delabM args
 
-delabQuantifierIn :: MonadDelab m => V.Quantifier -> [V.InputExpr] -> m B.Expr
-delabQuantifierIn q = \case
-  [V.Lam _ binder body, cont] -> do
+delabQuantifierIn :: MonadDelab m => V.Quantifier -> [V.InputArg] -> m B.Expr
+delabQuantifierIn q args = case reverse args of
+  V.ExplicitArg _ cont : V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantInFold q) binder) body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     cont' <- delabM cont
@@ -362,18 +360,18 @@ delabQuantifierIn q = \case
           V.Forall -> B.ForallIn tokForall
           V.Exists -> B.ExistsIn tokExists
     return $ mkTk binders' cont' tokDot body'
-  args -> do
+  _ -> do
     let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
     argsError sym 2 <$> traverse delabM args
 
-delabForeach :: MonadDelab m => [V.InputExpr] -> m B.Expr
-delabForeach = \case
-  [V.Lam _ binder body] -> do
+delabForeach :: MonadDelab m => [V.InputArg] -> m B.Expr
+delabForeach args = case reverse args of
+  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder ForeachFold binder) body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
     return $ B.Foreach tokForeach binders' tokDot body'
-  args -> argsError (tkSymbol tokForeach) 1 <$> traverse delabM args
+  _ -> argsError (tkSymbol tokForeach) 1 <$> traverse delabM args
 
 delabAnn :: B.DeclAnnName -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
