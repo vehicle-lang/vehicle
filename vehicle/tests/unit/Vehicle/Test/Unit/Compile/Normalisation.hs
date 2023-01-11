@@ -86,4 +86,4 @@ p :: Provenance
 p = mempty
 
 binding :: CheckedType -> CheckedBinder
-binding = Binder p (BinderForm (OnlyName "x") False) Explicit Relevant ()
+binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()

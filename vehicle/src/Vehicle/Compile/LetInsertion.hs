@@ -272,8 +272,8 @@ letBindSubexpressions remainingSM subexprsToInsert expr
       let (bound, bvm1) = subexpr cs
       let exprType = Hole ann "?"
       let binding = CoDBBinding pt
-      let binderForm = BinderForm (OnlyName (layoutAsText $ "_l" <+> pretty bindingNumber)) False
-      let binder = Binder ann binderForm Explicit Relevant binding exprType
+      let binderDisplayForm = BinderDisplayForm (OnlyName (layoutAsText $ "_l" <+> pretty bindingNumber)) False
+      let binder = Binder ann binderDisplayForm Explicit Relevant binding exprType
       let bvm2 = mempty
       return (Let ann bound binder letBody, nodeBVM [bvm1, bvm2, bvm3'])
 

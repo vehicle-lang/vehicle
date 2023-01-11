@@ -14,7 +14,7 @@ import Vehicle.Syntax.AST.Visibility
 -- | An argument to a function, parameterised by the type of expression it
 -- stores.
 data GenericArg expr = Arg
-  { -- | Has the argument been auto-inserted by the type-checker?
+  { -- | The location of the arg in the source file.
     argProvenance :: Provenance,
     -- | The visibility of the argument
     argVisibility :: Visibility,
@@ -47,16 +47,19 @@ pattern ExplicitArg :: Provenance -> expr -> GenericArg expr
 pattern ExplicitArg p e = Arg p Explicit Relevant e
 
 pattern ImplicitArg :: Provenance -> expr -> GenericArg expr
-pattern ImplicitArg p e = Arg p Implicit Relevant e
+pattern ImplicitArg p e <- Arg p Implicit {} Relevant e
+  where
+    ImplicitArg p e = Arg p (Implicit True) Relevant e
 
 pattern IrrelevantImplicitArg :: Provenance -> expr -> GenericArg expr
-pattern IrrelevantImplicitArg p e = Arg p Implicit Irrelevant e
+pattern IrrelevantImplicitArg p e <- Arg p Implicit {} Irrelevant e
+  where
+    IrrelevantImplicitArg p e = Arg p (Implicit True) Irrelevant e
 
 pattern InstanceArg :: Provenance -> expr -> GenericArg expr
-pattern InstanceArg p e = Arg p Instance Relevant e
-
-pattern IrrelevantInstanceArg :: Provenance -> expr -> GenericArg expr
-pattern IrrelevantInstanceArg p e = Arg p Instance Irrelevant e
+pattern InstanceArg p e <- Arg p Instance {} Relevant e
+  where
+    InstanceArg p e = Arg p (Instance True) Relevant e
 
 --------------------------------------------------------------------------------
 -- Helper functions
@@ -80,4 +83,4 @@ traverseNonInstanceArgExpr f arg
   | otherwise = traverse f arg
 
 argFromBinder :: GenericBinder binder expr -> expr -> GenericArg expr
-argFromBinder (Binder p _ v r _ _) = Arg p v r
+argFromBinder (Binder p i v r _ _) = Arg p v r

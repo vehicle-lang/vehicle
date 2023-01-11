@@ -183,8 +183,8 @@ isMonomorphisationCandidate = \case
 
     isCandidateBinder :: CheckedBinder -> Bool
     isCandidateBinder binder = case (visibilityOf binder, binderType binder) of
-      (Implicit, TypeUniverse _ 0) -> True
-      (Instance, _) -> True
+      (Implicit {}, TypeUniverse _ 0) -> True
+      (Instance {}, _) -> True
       _ -> False
 
 --------------------------------------------------------------------------------

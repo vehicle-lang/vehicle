@@ -31,7 +31,7 @@ instance ToJSON Module
 instance Pretty Module where
   pretty = \case
     User -> "User"
-    StdLib -> "Stdlib"
+    StdLib -> "Standard library"
 
 --------------------------------------------------------------------------------
 -- Identifiers

@@ -15,6 +15,7 @@ import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
+import Vehicle.Syntax.BNFC.Utils
 import Vehicle.Syntax.Internal.Abs as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 import Vehicle.Syntax.Parse.Token (IsToken, Token (..), tkSymbol, toToken)
@@ -34,11 +35,6 @@ import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 --
 --   2) convert the builtin strings into `Builtin`s
 
-type MonadElab m =
-  ( MonadError ParseError m,
-    MonadReader Module m
-  )
-
 class Elab vf vc where
   elab :: MonadElab m => vf -> m vc
 
@@ -51,23 +47,23 @@ instance Elab B.Decl V.InputDecl where
     B.DeclData n t -> elabResource n t V.Dataset
     B.DeclParam n t -> elabResource n t V.Parameter
     B.DeclImplParam n t -> elabResource n t V.InferableParameter
-    B.DefFun n t e -> V.DefFunction (tkProvenance n) <$> elab n <*> pure False <*> elab t <*> elab e
-    B.DeclPost n t -> V.DefPostulate (tkProvenance n) <$> elab n <*> elab t
+    B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure False <*> elab t <*> elab e
+    B.DeclPost n t -> V.DefPostulate <$> mkProvenance n <*> elab n <*> elab t
 
 elabResource :: MonadElab m => NameToken -> B.Expr -> V.Resource -> m V.InputDecl
-elabResource n t r = V.DefResource (tkProvenance n) <$> elab n <*> pure r <*> elab t
+elabResource n t r = V.DefResource <$> mkProvenance n <*> elab n <*> pure r <*> elab t
 
 instance Elab B.Expr V.InputExpr where
   elab = \case
-    B.Type l -> return $ convType l
-    B.Hole name -> return $ V.Hole (tkProvenance name) (tkSymbol name)
+    B.Type l -> convType l
+    B.Hole name -> V.Hole <$> mkProvenance name <*> pure (tkSymbol name)
     B.Ann term typ -> op2 V.Ann <$> elab term <*> elab typ
     B.Pi binder expr -> op2 V.Pi <$> elab binder <*> elab expr
     B.Lam binder e -> op2 V.Lam <$> elab binder <*> elab e
     B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*> elab e2
     B.LVec es -> op1 V.LVec <$> traverse elab es
-    B.Builtin c -> V.Builtin (mkAnn c) <$> lookupBuiltin c
-    B.Var n -> return $ V.Var (mkAnn n) (tkSymbol n)
+    B.Builtin c -> V.Builtin <$> mkProvenance c <*> lookupBuiltin c
+    B.Var n -> V.Var <$> mkProvenance n <*> pure (tkSymbol n)
     B.Literal v -> V.Literal mempty <$> elab v
     B.App fun arg -> do
       fun' <- elab fun
@@ -78,25 +74,26 @@ instance Elab B.Expr V.InputExpr where
 instance Elab B.Binder V.InputBinder where
   elab = \case
     B.RelevantExplicitBinder n e -> mkBinder n Explicit Relevant e
-    B.RelevantImplicitBinder n e -> mkBinder n Implicit Relevant e
-    B.RelevantInstanceBinder n e -> mkBinder n Instance Relevant e
+    B.RelevantImplicitBinder n e -> mkBinder n (Implicit False) Relevant e
+    B.RelevantInstanceBinder n e -> mkBinder n (Instance False) Relevant e
     B.IrrelevantExplicitBinder n e -> mkBinder n Explicit Irrelevant e
-    B.IrrelevantImplicitBinder n e -> mkBinder n Implicit Irrelevant e
-    B.IrrelevantInstanceBinder n e -> mkBinder n Instance Irrelevant e
+    B.IrrelevantImplicitBinder n e -> mkBinder n (Implicit False) Irrelevant e
+    B.IrrelevantInstanceBinder n e -> mkBinder n (Instance False) Irrelevant e
     where
       mkBinder :: MonadElab m => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m V.InputBinder
       mkBinder n v r e = do
-        let form = V.BinderForm (V.NameAndType (tkSymbol n)) False
-        V.Binder (mkAnn n) form v r () <$> elab e
+        let form = V.BinderDisplayForm (V.NameAndType (tkSymbol n)) False
+        p <- mkProvenance n
+        V.Binder p form v r () <$> elab e
 
 instance Elab B.Arg V.InputArg where
   elab = \case
     B.RelevantExplicitArg e -> mkArg Explicit Relevant <$> elab e
-    B.RelevantImplicitArg e -> mkArg Implicit Relevant <$> elab e
-    B.RelevantInstanceArg e -> mkArg Instance Relevant <$> elab e
+    B.RelevantImplicitArg e -> mkArg (Implicit False) Relevant <$> elab e
+    B.RelevantInstanceArg e -> mkArg (Instance False) Relevant <$> elab e
     B.IrrelevantExplicitArg e -> mkArg Explicit Irrelevant <$> elab e
-    B.IrrelevantImplicitArg e -> mkArg Implicit Irrelevant <$> elab e
-    B.IrrelevantInstanceArg e -> mkArg Instance Irrelevant <$> elab e
+    B.IrrelevantImplicitArg e -> mkArg (Implicit False) Irrelevant <$> elab e
+    B.IrrelevantInstanceArg e -> mkArg (Instance False) Irrelevant <$> elab e
     where
       mkArg :: V.Visibility -> V.Relevance -> V.InputExpr -> V.InputArg
       mkArg v r e = V.Arg (expandByArgVisibility v (provenanceOf e)) v r e
@@ -118,10 +115,8 @@ lookupBuiltin (BuiltinToken tk) = case V.builtinFromSymbol (tkSymbol tk) of
   Just v -> return v
   Nothing -> do
     let token = toToken tk
-    throwError $ UnknownBuiltin (tkProvenance token) (tkSymbol token)
-
-mkAnn :: IsToken a => a -> V.Provenance
-mkAnn = tkProvenance
+    p <- mkProvenance token
+    throwError $ UnknownBuiltin p (tkSymbol token)
 
 op1 ::
   (V.HasProvenance a) =>
@@ -150,7 +145,9 @@ op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got
 -- the grammar wrong.
-convType :: TypeToken -> V.InputExpr
+convType :: MonadElab m => TypeToken -> m V.InputExpr
 convType tk = case Text.unpack (tkSymbol tk) of
-  ('T' : 'y' : 'p' : 'e' : l) -> V.Universe (mkAnn tk) (V.TypeUniv (read l))
+  ('T' : 'y' : 'p' : 'e' : l) -> do
+    p <- mkProvenance tk
+    return $ V.Universe p (V.TypeUniv (read l))
   t -> developerError $ "Malformed type token" <+> pretty t

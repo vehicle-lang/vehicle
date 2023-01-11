@@ -165,7 +165,7 @@ hasMapCandidates =
         candidateSolution = \p' -> VBuiltin p' (Map MapList) []
       },
     InstanceCandidate
-      { candidateTelescope = reverse [Binder p (BinderForm (OnlyName "n") True) Implicit Relevant () (NatType p)],
+      { candidateTelescope = reverse [Binder p (BinderDisplayForm (OnlyName "n") True) (Implicit False) Relevant () (NatType p)],
         candidateExpr =
           BuiltinTypeClass
             p
@@ -174,7 +174,7 @@ hasMapCandidates =
                 p
                 ( Lam
                     p
-                    (Binder p (BinderForm (OnlyName "A") True) Explicit Relevant () (TypeUniverse p 0))
+                    (Binder p (BinderDisplayForm (OnlyName "A") True) Explicit Relevant () (TypeUniverse p 0))
                     (VectorType p (BoundVar p 0) (BoundVar p 1))
                 )
             ],

@@ -403,7 +403,7 @@ evalMapVec p = \case
 
 evalFromVecToList :: Int -> EvalBuiltin
 evalFromVecToList n p args = return $ case args of
-  [tElem, ExplicitArg _ (VLVec _ xs _)] -> mkNList p (argExpr tElem) xs
+  [tElem, ExplicitArg _ (VLVec _ xs _)] -> mkVList p (argExpr tElem) xs
   _ -> VBuiltin p (FromVec n FromVecToList) args
 
 evalFromVecToVec :: Int -> EvalBuiltin

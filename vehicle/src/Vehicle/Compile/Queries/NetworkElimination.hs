@@ -424,8 +424,8 @@ mkMagicVariableSeq p tElem = go
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks
-      let elemType = TensorType p baseElemType (mkTensorDims p dims)
-      return (VecLiteral p elemType elems)
+      let elemType = mkTensorType p baseElemType (mkTensorDims p dims)
+      return (mkVec p elemType elems)
     go [] [outputVarIndex] =
       return $ BoundVar p $ DBIndex outputVarIndex
     go dims outputVarIndices =

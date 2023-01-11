@@ -112,8 +112,6 @@ pattern VPolarityExpr p l <- VConstructor p (Polarity l) []
 
 pattern VAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormType
 pattern VAnnBoolType p lin pol <- VConstructor p Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
-  where
-    VAnnBoolType p lin pol = VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]
 
 pattern VBoolType :: Provenance -> NormType
 pattern VBoolType p <- VConstructor p Bool []
@@ -122,8 +120,6 @@ pattern VBoolType p <- VConstructor p Bool []
 
 pattern VIndexType :: Provenance -> NormType -> NormType
 pattern VIndexType p size <- VConstructor p Index [ExplicitArg _ size]
-  where
-    VIndexType p size = VConstructor p Index [ExplicitArg p size]
 
 pattern VNatType :: Provenance -> NormType
 pattern VNatType p <- VConstructor p Nat []
@@ -137,8 +133,6 @@ pattern VIntType p <- VConstructor p Int []
 
 pattern VAnnRatType :: Provenance -> NormExpr -> NormType
 pattern VAnnRatType p lin <- VConstructor p Rat [IrrelevantImplicitArg _ lin]
-  where
-    VAnnRatType p lin = VConstructor p Rat [IrrelevantImplicitArg p lin]
 
 pattern VRatType :: Provenance -> NormType
 pattern VRatType p <- VConstructor p Rat []
@@ -147,21 +141,15 @@ pattern VRatType p <- VConstructor p Rat []
 
 pattern VListType :: Provenance -> NormType -> NormType
 pattern VListType p tElem <- VConstructor p List [ExplicitArg _ tElem]
-  where
-    VListType p tElem = VConstructor p List [ExplicitArg p tElem]
 
 pattern VVectorType :: Provenance -> NormType -> NormType -> NormType
 pattern VVectorType p tElem dim <- VConstructor p Vector [ExplicitArg _ tElem, ExplicitArg _ dim]
-  where
-    VVectorType p tElem dim = VConstructor p Vector [ExplicitArg p tElem, ExplicitArg p dim]
 
 pattern VTensorType :: Provenance -> NormType -> NormType -> NormType
 pattern VTensorType p tElem dims <- VFreeVar p TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
-  where
-    VTensorType p tElem dims = VFreeVar p TensorIdent [ExplicitArg p tElem, ExplicitArg p dims]
 
-mkNList :: Provenance -> NormType -> [NormExpr] -> NormExpr
-mkNList p tElem = foldr cons nil
+mkVList :: Provenance -> NormType -> [NormExpr] -> NormExpr
+mkVList p tElem = foldr cons nil
   where
     t = ImplicitArg p tElem
     nil = VConstructor p Nil [t]

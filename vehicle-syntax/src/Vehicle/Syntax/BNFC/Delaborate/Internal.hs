@@ -68,24 +68,24 @@ instance Delaborate V.InputExpr B.Expr where
 
 instance Delaborate V.InputArg B.Arg where
   delabM (V.Arg _ v r e) = case (v, r) of
-    (V.Explicit, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
-    (V.Implicit, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
-    (V.Instance, V.Relevant) -> B.RelevantInstanceArg <$> delabM e
-    (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitArg <$> delabM e
-    (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
-    (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
+    (V.Explicit {}, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
+    (V.Implicit {}, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
+    (V.Instance {}, V.Relevant) -> B.RelevantInstanceArg <$> delabM e
+    (V.Explicit {}, V.Irrelevant) -> B.IrrelevantExplicitArg <$> delabM e
+    (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
+    (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
 instance Delaborate V.InputBinder B.Binder where
   delabM binder = do
     t' <- delabM $ V.binderType binder
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
     return $ case (V.visibilityOf binder, V.relevanceOf binder) of
-      (V.Explicit, V.Relevant) -> B.RelevantExplicitBinder n' t'
-      (V.Implicit, V.Relevant) -> B.RelevantImplicitBinder n' t'
-      (V.Instance, V.Relevant) -> B.RelevantInstanceBinder n' t'
-      (V.Explicit, V.Irrelevant) -> B.IrrelevantExplicitBinder n' t'
-      (V.Implicit, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
-      (V.Instance, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
+      (V.Explicit {}, V.Relevant) -> B.RelevantExplicitBinder n' t'
+      (V.Implicit {}, V.Relevant) -> B.RelevantImplicitBinder n' t'
+      (V.Instance {}, V.Relevant) -> B.RelevantInstanceBinder n' t'
+      (V.Explicit {}, V.Irrelevant) -> B.IrrelevantExplicitBinder n' t'
+      (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
+      (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
 
 delabUniverse :: V.Universe -> B.Expr
 delabUniverse = \case

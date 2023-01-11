@@ -250,7 +250,7 @@ solveBoolQuantifier q c domainBinder body res = do
   -- If we're quantifying over a Bool then it itself is linear and unquantified
   let domainLin = VLinearityExpr p Constant
   let domainPol = VPolarityExpr p Unquantified
-  let domainBool = VAnnBoolType p domainLin domainPol
+  let domainBool = mkVAnnBoolType p domainLin domainPol
   let domainEq = unify c (typeOf domainBinder) domainBool
 
   -- The body is some unknown annotated boolean
@@ -314,7 +314,7 @@ solveRatQuantifier q c domainBinder body res = do
   -- The rational being quantified over is, by definition, linear
   let varName = getBinderName domainBinder
   let domainLin = VLinearityExpr p (Linear (QuantifiedVariableProvenance (provenanceOf domainBinder) varName))
-  let domainEq = unify c (typeOf domainBinder) (VAnnRatType p domainLin)
+  let domainEq = unify c (typeOf domainBinder) (mkVAnnRatType p domainLin)
 
   -- The body must be of some Bool type
   (bodyEq, bodyLin, bodyPol) <- unifyWithAnnBoolType c body
@@ -324,7 +324,7 @@ solveRatQuantifier q c domainBinder body res = do
   (_, polTC) <- createTC c (PolarityTypeClass (AddPolarity q)) [normalised bodyPol, normalised resPol]
 
   -- The result type is the Bool type with the same linearity as the body.
-  let resEq = unify c res (VAnnBoolType p (normalised bodyLin) (normalised resPol))
+  let resEq = unify c res (mkVAnnBoolType p (normalised bodyLin) (normalised resPol))
 
   let solution = case q of
         Forall -> PostulateForallRat
@@ -728,7 +728,7 @@ solveFromNatToRat :: HasFromNatSolver
 solveFromNatToRat c n arg = do
   let p = provenanceOf c
   let lin = VLinearityExpr (provenanceOf c) Constant
-  let ratEq = unify c arg (VAnnRatType p lin)
+  let ratEq = unify c arg (mkVAnnRatType p lin)
   let solution = VBuiltin p (FromNat n FromNatToRat) []
   return $ Right ([ratEq], solution)
 
@@ -753,7 +753,7 @@ solveFromRatToRat ::
 solveFromRatToRat ctx arg = do
   let p = provenanceOf ctx
   let lin = VLinearityExpr p Constant
-  let constraint = unify ctx arg (VAnnRatType p lin)
+  let constraint = unify ctx arg (mkVAnnRatType p lin)
   let solution = VBuiltin p (FromRat FromRatToRat) []
   return $ Right ([constraint], solution)
 
@@ -849,7 +849,7 @@ checkListSubtypes c targetType subTypes = do
   let p = provenanceOf c
   (targetEqConstraint, targetElemType) <- unifyWithListType c targetType
   (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithListType c)
-  let subElemTypeSeq = mkNList p (VTypeUniverse p 0) (fmap normalised subElemTypes)
+  let subElemTypeSeq = mkVList p (VTypeUniverse p 0) (fmap normalised subElemTypes)
   (_, recEq) <- createTC c AlmostEqualConstraint [normalised targetElemType, subElemTypeSeq]
   return (targetEqConstraint : recEq : subEqConstraints)
 
@@ -859,7 +859,7 @@ checkVectorSubtypes c targetType subTypes = do
   dim <- freshDimMeta c
   (targetEqConstraint, targetElemType) <- unifyWithVectorType c dim targetType
   (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithVectorType c dim)
-  let subElemTypeSeq = mkNList p (VTypeUniverse p 0) subElemTypes
+  let subElemTypeSeq = mkVList p (VTypeUniverse p 0) subElemTypes
   (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
   return (targetEqConstraint : recEq : subEqConstraints)
 
@@ -950,7 +950,7 @@ unifyWithAnnBoolType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
   pol <- freshPolarityMeta p
-  let eq = unify c t (VAnnBoolType p (normalised lin) (normalised pol))
+  let eq = unify c t (mkVAnnBoolType p (normalised lin) (normalised pol))
   return (eq, lin, pol)
 
 unifyWithIndexType ::
@@ -961,7 +961,7 @@ unifyWithIndexType ::
 unifyWithIndexType c t = do
   let p = provenanceOf c
   indexSize <- freshExprMeta p (NatType p) (boundContext c)
-  let eq = unify c t (VIndexType p (normalised indexSize))
+  let eq = unify c t (mkVIndexType p (normalised indexSize))
   return (eq, indexSize)
 
 unifyWithAnnRatType ::
@@ -972,7 +972,7 @@ unifyWithAnnRatType ::
 unifyWithAnnRatType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
-  let eq = unify c t (VAnnRatType p (normalised lin))
+  let eq = unify c t (mkVAnnRatType p (normalised lin))
   return (eq, lin)
 
 unifyWithListType ::
@@ -983,7 +983,7 @@ unifyWithListType ::
 unifyWithListType c t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
-  let eq = unify c t (VListType p (normalised elemType))
+  let eq = unify c t (mkVListType p (normalised elemType))
   return (eq, elemType)
 
 unifyWithVectorType ::
@@ -995,7 +995,7 @@ unifyWithVectorType ::
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
-  let eq = unify c t (VVectorType p (normalised elemType) (normalised dim))
+  let eq = unify c t (mkVVecType p (normalised elemType) (normalised dim))
   return (eq, normalised elemType)
 
 freshDimMeta :: TCM m => ConstraintContext -> m GluedExpr
@@ -1013,7 +1013,7 @@ solveSimpleComparisonOp ::
   m TypeClassProgress
 solveSimpleComparisonOp c arg1 arg2 res solution = do
   let p = provenanceOf c
-  let resEq = unify c res (VAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
+  let resEq = unify c res (mkVAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
   let argEq = unify c arg1 arg2
   return $ Right ([argEq, resEq], VBuiltin p solution [])
 
@@ -1029,7 +1029,7 @@ solveIndexComparisonOp c arg1 arg2 res solution = do
   let p = provenanceOf c
   (arg1Eq, _size1) <- unifyWithIndexType c arg1
   (arg2Eq, _size2) <- unifyWithIndexType c arg2
-  let resEq = unify c res (VAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
+  let resEq = unify c res (mkVAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
   return $ Right ([arg1Eq, arg2Eq, resEq], VBuiltin p solution [])
 
 solveRatComparisonOp ::

@@ -8,6 +8,11 @@ module Vehicle.Compile.Type.Constraint.Core
     InstanceSolver,
     TypeClassSolver,
     AuxiliaryTypeClassSolver,
+    mkVAnnBoolType,
+    mkVAnnRatType,
+    mkVIndexType,
+    mkVListType,
+    mkVVecType,
   )
 where
 
@@ -22,7 +27,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (TCM, solveMeta)
 import Vehicle.Compile.Type.Monad.Class (trackSolvedMetas)
-import Vehicle.Expr.Normalised (NormExpr, NormType, Spine)
+import Vehicle.Expr.Normalised (NormExpr, NormType, Spine, pattern VConstructor)
 
 -- | Function signature for constraints solved by instance search.
 type InstanceSolver =
@@ -106,3 +111,18 @@ solveTypeClassMeta ctx meta solution = do
   let dbLevel = contextDBLevel ctx
   quotedSolution <- quote dbLevel solution
   solveMeta meta quotedSolution dbLevel
+
+mkVAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormExpr
+mkVAnnBoolType p lin pol = VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]
+
+mkVAnnRatType :: Provenance -> NormExpr -> NormExpr
+mkVAnnRatType p lin = VConstructor p Rat [IrrelevantImplicitArg p lin]
+
+mkVIndexType :: Provenance -> NormExpr -> NormExpr
+mkVIndexType p size = VConstructor p Index [ExplicitArg p size]
+
+mkVListType :: Provenance -> NormType -> NormExpr
+mkVListType p tElem = VConstructor p List [ExplicitArg p tElem]
+
+mkVVecType :: Provenance -> NormType -> NormExpr -> NormExpr
+mkVVecType p tElem dim = VConstructor p Vector [ExplicitArg p tElem, ExplicitArg p dim]

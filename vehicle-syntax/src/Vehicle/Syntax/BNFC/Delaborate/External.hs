@@ -90,8 +90,8 @@ instance Delaborate V.InputBinder B.BasicBinder where
     t' <- delabM (V.binderType binder)
     return $ case V.visibilityOf binder of
       V.Explicit -> B.ExplicitBinder n' tokElemOf t'
-      V.Implicit -> B.ImplicitBinder n' tokElemOf t'
-      V.Instance -> B.InstanceBinder n' tokElemOf t'
+      V.Implicit {} -> B.ImplicitBinder n' tokElemOf t'
+      V.Instance {} -> B.InstanceBinder n' tokElemOf t'
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr
@@ -107,8 +107,8 @@ delabNameBinder b = case V.binderNamingForm b of
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
     V.Explicit -> B.ExplicitNameBinder (delabSymbol name)
-    V.Implicit -> B.ImplicitNameBinder (delabSymbol name)
-    V.Instance -> B.InstanceNameBinder (delabSymbol name)
+    V.Implicit {} -> B.ImplicitNameBinder (delabSymbol name)
+    V.Instance {} -> B.InstanceNameBinder (delabSymbol name)
 
 delabTypeBinder :: MonadDelab m => V.InputBinder -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
@@ -120,8 +120,8 @@ delabTypeBinder b = case V.binderNamingForm b of
   V.NameAndType {} -> B.BasicTypeBinder <$> delabM b
   V.OnlyType {} -> case V.visibilityOf b of
     V.Explicit -> B.ExplicitTypeBinder <$> delabM (V.binderType b)
-    V.Implicit -> B.ImplicitTypeBinder <$> delabM (V.binderType b)
-    V.Instance -> B.InstanceTypeBinder <$> delabM (V.binderType b)
+    V.Implicit {} -> B.ImplicitTypeBinder <$> delabM (V.binderType b)
+    V.Instance {} -> B.InstanceTypeBinder <$> delabM (V.binderType b)
 
 delabLetBinding :: MonadDelab m => (V.InputBinder, V.InputExpr) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabNameBinder binder <*> delabM bound
