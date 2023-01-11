@@ -81,3 +81,9 @@ expandByArgVisibility :: Visibility -> Provenance -> Provenance
 expandByArgVisibility Explicit {} = id
 expandByArgVisibility Implicit {} = expandProvenance (1, 1)
 expandByArgVisibility Instance {} = expandProvenance (2, 2)
+
+markInserted :: Visibility -> Visibility
+markInserted = \case
+  Explicit {} -> Explicit
+  Implicit {} -> Implicit True
+  Instance {} -> Instance True

@@ -41,7 +41,7 @@ instance Simplify (Arg binder var) where
   simplify = fmap simplify
 
 simplifyArgs :: NonEmpty (Arg binder var) -> [Arg binder var]
-simplifyArgs = NonEmpty.filter (not . wasInserted)
+simplifyArgs = fmap simplify . NonEmpty.filter (not . wasInserted)
 
 wasInserted :: Arg binder var -> Bool
 wasInserted arg = case visibilityOf arg of
