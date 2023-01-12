@@ -350,12 +350,14 @@ instance MeaningfulError CompileError where
                 <+> "or"
                 <+> pretty Vector <> "."
             (HasAdd, [t1, t2, t3]) ->
-              failedArithOp2Message (boundContextOf ctx) AddTC (argExpr t1) (argExpr t2) (argExpr t3)
+              failedOp2Message (boundContextOf ctx) AddTC (argExpr t1) (argExpr t2) (argExpr t3)
+            (HasEq Eq, [t1, t2, t3]) ->
+              failedOp2Message (boundContextOf ctx) (EqualsTC Eq) (argExpr t1) (argExpr t2) (argExpr t3)
             _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
           e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
 
-        failedArithOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
-        failedArithOp2Message boundCtx op t1 t2 t3 =
+        failedOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
+        failedOp2Message boundCtx op t1 t2 t3 =
           "cannot apply"
             <+> squotes (pretty op)
             <+> "to"
