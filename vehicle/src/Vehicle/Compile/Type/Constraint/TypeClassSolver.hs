@@ -40,7 +40,6 @@ solve :: TypeClass -> TypeClassSolver
 solve = \case
   HasEq eq -> solveHasEq eq
   HasOrd ord -> solveHasOrd ord
-  HasNot -> solveHasNot
   HasAnd -> solveHasAnd
   HasOr -> solveHasOr
   HasImplies -> solveHasImplies
@@ -171,23 +170,6 @@ solveHasOrd op c [arg1, arg2, res]
       tcArgError ctx arg1 (OrderTC op) allowedTypes 1 2
         <> tcArgError ctx arg2 (OrderTC op) allowedTypes 1 2
 solveHasOrd _ c _ = malformedConstraintError c
-
---------------------------------------------------------------------------------
--- HasNot
-
-solveHasNot :: TypeClassSolver
-solveHasNot c [arg, res] = do
-  let ctx = contextOf c
-  let p = provenanceOf ctx
-  (argEq, argLin, argPol) <- unifyWithAnnBoolType ctx arg
-  (resEq, resLin, resPol) <- unifyWithAnnBoolType ctx res
-
-  let linEq = unify ctx (normalised argLin) (normalised resLin)
-  (_, polTC) <- createTC ctx (PolarityTypeClass NegPolarity) [normalised argPol, normalised resPol]
-  let solution = VBuiltin p Not []
-
-  return $ Right ([argEq, resEq, linEq, polTC], solution)
-solveHasNot c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
 -- HasAndOr

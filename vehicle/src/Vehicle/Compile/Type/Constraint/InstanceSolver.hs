@@ -5,6 +5,7 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
+import Data.HashMap.Strict qualified as HashMap
 import Data.Maybe (catMaybes)
 import Prettyprinter (list)
 import Vehicle.Compile.Error (CompileError (..))
@@ -46,9 +47,8 @@ solveInstanceConstraint (WithContext constraint ctx) = do
   solve tc nConstraint
 
 solve :: TypeClass -> forall m. TCM m => WithContext TypeClassConstraint -> m ()
-solve = \case
-  HasMap -> solveInstanceGoal hasMapCandidates
-  HasAdd -> solveInstanceGoal hasAddCandidates
+solve tc = case HashMap.lookup tc declaredCandidates of
+  Just candidates -> solveInstanceGoal candidates
   _ -> solveTypeClassConstraint
 
 --------------------------------------------------------------------------------
@@ -108,16 +108,15 @@ findCandidatesInBoundCtx goal ctx = go ctx
       [] -> []
       (_, t, _) : localCtx -> do
         let candidates = findCandidatesInBoundCtx goal localCtx
-        case exprHead t of
-          Builtin _ (Constructor (TypeClass tc))
-            | tc == goalHead goal -> do
-                let candidate =
-                      InstanceCandidate
-                        { candidateContext = localCtx,
-                          candidateExpr = t,
-                          candidateSolution = BoundVar mempty (dbLevelToIndex (DBLevel $ length ctx) (DBLevel $ length localCtx))
-                        }
-                candidate : candidates
+        case findTypeClassOfCandidate t of
+          Just tc | tc == goalHead goal -> do
+            let candidate =
+                  InstanceCandidate
+                    { candidateContext = localCtx,
+                      candidateExpr = t,
+                      candidateSolution = BoundVar mempty (dbLevelToIndex (DBLevel $ length ctx) (DBLevel $ length localCtx))
+                    }
+            candidate : candidates
           _ -> candidates
 
 -- | Checks whether a candidate is a possibility for the instance goal.

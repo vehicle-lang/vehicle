@@ -11,6 +11,7 @@ module Vehicle.Expr.DSL
     forAll,
     forAllIrrelevant,
     forAllInstance,
+    forAllNat,
     forAllTypeTriples,
     forAllLinearityTriples,
     forAllPolarityTriples,
@@ -54,6 +55,7 @@ module Vehicle.Expr.DSL
     maxPolarity,
     impliesPolarity,
     negPolarity,
+    eqPolarity,
     natLit,
     tMax,
     tHole,
@@ -202,6 +204,9 @@ forAllIrrelevant name = pi (Just name) (Implicit False) Irrelevant
 
 forAllInstance :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
 forAllInstance name = pi (Just name) (Instance False) Relevant
+
+forAllNat :: (DSLExpr -> DSLExpr) -> DSLExpr
+forAllNat = forAll "n" tNat
 
 forAllTypeTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllTypeTriples f =
@@ -361,6 +366,9 @@ addPolarity q l1 l2 = polarityTypeClass (AddPolarity q) [l1, l2]
 
 maxPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]
+
+eqPolarity :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+eqPolarity eq p1 p2 p3 = polarityTypeClass (EqPolarity eq) [p1, p2, p3]
 
 impliesPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 impliesPolarity l1 l2 l3 = polarityTypeClass ImpliesPolarity [l1, l2, l3]
