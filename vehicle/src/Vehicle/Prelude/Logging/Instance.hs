@@ -8,6 +8,7 @@ module Vehicle.Prelude.Logging.Instance
     runImmediateLoggerT,
     runImmediateLogger,
     SilentLoggerT,
+    SilentLogger,
     runSilentLoggerT,
     runSilentLogger,
     DelayedLoggerT,

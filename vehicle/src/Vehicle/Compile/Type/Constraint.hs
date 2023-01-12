@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Constraint
     TypeClassConstraint (..),
     tcNormExpr,
     InstanceGoal (..),
+    goalExpr,
     InstanceCandidate (..),
     Constraint (..),
     extendConstraintBoundCtx,
@@ -79,7 +80,7 @@ isAuxiliaryTypeClass tc = do
 data ConstraintOrigin
   = CheckingExprType CheckedExpr CheckedType CheckedType
   | CheckingBinderType (Maybe Name) CheckedType CheckedType
-  | CheckingTypeClass CheckedExpr [UncheckedArg] TypeClass
+  | CheckingTypeClass CheckedExpr [UncheckedArg]
   | CheckingAuxiliary
   deriving (Show)
 
@@ -186,14 +187,18 @@ type instance
 
 data InstanceGoal = InstanceGoal
   { goalTelescope :: CheckedTelescope,
-    goalExpr :: NormExpr
+    goalHead :: TypeClass,
+    goalSpine :: Spine
   }
   deriving (Show)
 
+goalExpr :: InstanceGoal -> NormExpr
+goalExpr InstanceGoal {..} = VConstructor mempty (TypeClass goalHead) goalSpine
+
 data InstanceCandidate = InstanceCandidate
-  { candidateTelescope :: CheckedTelescope,
+  { candidateContext :: TypingBoundCtx,
     candidateExpr :: CheckedExpr,
-    candidateSolution :: Provenance -> NormExpr
+    candidateSolution :: CheckedExpr
   }
 
 --------------------------------------------------------------------------------

@@ -23,13 +23,12 @@ import Vehicle.Libraries.StandardLibrary.Names
 --------------------------------------------------------------------------------
 -- Solver
 
-solveTypeClassConstraint :: TCM m => ConstraintContext -> TypeClassConstraint -> m ()
-solveTypeClassConstraint ctx (Has m tc spine) = do
-  let normConstraint = WithContext (Has m tc spine) ctx
-  progress <- solve tc normConstraint (argExpr <$> spine)
+solveTypeClassConstraint :: TCM m => WithContext TypeClassConstraint -> m ()
+solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
+  progress <- solve tc constraint (argExpr <$> spine)
   case progress of
     Left metas -> do
-      let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint normConstraint) metas
+      let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
       let dbLevel = DBLevel $ length (boundContext ctx)
@@ -47,7 +46,6 @@ solve = \case
   HasImplies -> solveHasImplies
   HasQuantifier q -> solveHasQuantifier q
   HasNeg -> solveHasNeg
-  HasAdd -> solveHasAdd
   HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
@@ -384,80 +382,6 @@ solveNeg c arg res dom = do
   let eq = unify c res arg
   let solution = VBuiltin p (Neg dom) []
   return $ Right ([eq], solution)
-
---------------------------------------------------------------------------------
--- HasAdd
-
-solveHasAdd :: TypeClassSolver
-solveHasAdd c types@[arg1, arg2, res]
-  | allOf types isMeta = blockOnMetas types
-  | anyOf types isNatType = solveAddNat ctx arg1 arg2 res
-  | anyOf types isIntType = solveAddInt ctx arg1 arg2 res
-  | anyOf types isRatType = solveAddRat ctx arg1 arg2 res
-  | anyOf types isVectorType = solveAddVector ctx arg1 arg2 res
-  | otherwise = blockOrThrowErrors ctx types tcError
-  where
-    ctx = contextOf c
-    allowedTypes = fmap pretty [Nat, Int, Rat]
-    tcError =
-      tcArgError ctx arg1 AddTC allowedTypes 1 2
-        <> tcArgError ctx arg2 AddTC allowedTypes 2 2
-        <> tcResultError ctx res AddTC allowedTypes
-solveHasAdd c _ = malformedConstraintError c
-
-type HasAddSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
-  m TypeClassProgress
-
-solveAddNat :: HasAddSolver
-solveAddNat c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Add AddNat) []
-  return $ Right (constraints, solution)
-
-solveAddInt :: HasAddSolver
-solveAddInt c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Add AddInt) []
-  return $ Right (constraints, solution)
-
-solveAddRat :: HasAddSolver
-solveAddRat c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MaxLinearity
-  let solution = VBuiltin p (Add AddRat) []
-  return $ Right (constraints, solution)
-
-solveAddVector :: HasAddSolver
-solveAddVector c arg1 arg2 res = do
-  let p = provenanceOf c
-  dim <- freshDimMeta c
-
-  (arg1Eq, arg1Elem) <- unifyWithVectorType c dim arg1
-  (arg2Eq, arg2Elem) <- unifyWithVectorType c dim arg2
-  (resEq, resElem) <- unifyWithVectorType c dim res
-  (metaExpr, recTC) <- createTC c HasAdd [arg1Elem, arg2Elem, resElem]
-
-  let constraints = [arg1Eq, arg2Eq, resEq, recTC]
-  let solution =
-        VFreeVar
-          p
-          (identifierOf StdAddVector)
-          [ ImplicitArg p arg1Elem,
-            ImplicitArg p arg2Elem,
-            ImplicitArg p resElem,
-            ImplicitArg p (normalised dim),
-            InstanceArg p metaExpr
-          ]
-
-  return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------
 -- HasSub

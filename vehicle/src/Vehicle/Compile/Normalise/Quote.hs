@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise.Quote where
 
-import Control.Monad.Except (runExceptT)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (MonadCompile, runCompileMonadSilently)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -10,11 +9,7 @@ import Vehicle.Expr.Normalised
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
 unnormalise :: forall a b. Quote a b => DBLevel -> a -> b
-unnormalise level e = do
-  let r = runSilentLogger $ runExceptT (quote level e)
-  case r of
-    Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
-    Right v -> v
+unnormalise level e = runCompileMonadSilently "unquoting" (quote level e)
 
 -----------------------------------------------------------------------------
 -- Quoting

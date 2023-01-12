@@ -9,10 +9,12 @@ module Vehicle.Compile.Print
     PrettyFriendly,
     PrettyVerbose,
     PrettySimple,
+    PrettyExternal,
     Tags (..),
     prettySimple,
     prettyVerbose,
     prettyFriendly,
+    prettyExternal,
   )
 where
 
@@ -45,6 +47,8 @@ type PrettySimple a = PrettyWith ('Simple ('As 'Internal)) a
 
 type PrettyVerbose a = PrettyWith ('As 'Internal) a
 
+type PrettyExternal a = PrettyWith ('Named ('As 'External)) a
+
 type PrettyFriendly a = PrettyWith ('Named ('Simple ('As 'External))) a
 
 -- | Prints to the internal language removing all implicit/instance arguments and
@@ -57,6 +61,11 @@ prettySimple = prettyWith @('Simple ('As 'Internal))
 --  (Co)DeBruijn indices back to names. Useful for debugging.
 prettyVerbose :: PrettyVerbose a => a -> Doc b
 prettyVerbose = prettyWith @('As 'Internal)
+
+-- | Prints to the internal language in all it's gory detail. Does not convert
+--  (Co)DeBruijn indices back to names. Useful for debugging.
+prettyExternal :: PrettyExternal a => a -> Doc b
+prettyExternal = prettyWith @('Named ('As 'External))
 
 -- | Prints to the external language for things that need to be displayed to
 --  the user. Must provide the context of the thing being printed.

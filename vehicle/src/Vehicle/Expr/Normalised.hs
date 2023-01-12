@@ -230,6 +230,8 @@ instance FromJSON GluedExpr
 instance HasProvenance GluedExpr where
   provenanceOf = provenanceOf . unnormalised
 
+type GluedArg = GenericArg GluedExpr
+
 type GluedType = GluedExpr
 
 type GluedProg = GenericProg GluedExpr

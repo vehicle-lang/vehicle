@@ -261,9 +261,9 @@ elabExpr = \case
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
   B.HasEq tk -> builtin (V.Constructor $ V.TypeClass (V.HasEq (developerError "HasEq not supported"))) tk []
-  B.HasAdd tk -> builtin (V.TypeClassOp V.MapTC) tk []
-  B.HasSub tk -> builtin (V.TypeClassOp V.MapTC) tk []
-  B.HasMul tk -> builtin (V.TypeClassOp V.MapTC) tk []
+  B.HasAdd tk -> builtin (V.Constructor $ V.TypeClass V.HasAdd) tk []
+  B.HasSub tk -> builtin (V.Constructor $ V.TypeClass V.HasSub) tk []
+  B.HasMul tk -> builtin (V.Constructor $ V.TypeClass V.HasMul) tk []
 
 elabArg :: MonadElab m => B.Arg -> m V.InputArg
 elabArg = \case
