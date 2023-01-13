@@ -107,9 +107,9 @@ typeOfTypeClass tc = case tc of
   HasOr -> type0 ~> type0 ~> type0 ~> type0
   HasImplies -> type0 ~> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasAdd -> type0 .~~> type0 .~~> type0 ~> type0
-  HasSub -> type0 ~> type0 .~~> type0 .~~> type0
-  HasMul -> type0 ~> type0 .~~> type0 .~~> type0
+  HasAdd -> type0 ~> type0 ~> type0 ~> type0
+  HasSub -> type0 ~> type0 ~> type0 ~> type0
+  HasMul -> type0 ~> type0 ~> type0 ~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
   HasMap -> (type0 ~> type0) ~> type0

@@ -16,6 +16,7 @@ import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.BNFC.Utils
 import Vehicle.Syntax.External.Abs qualified as B
+import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Parse.Error
 import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Prelude
@@ -287,7 +288,7 @@ argsError s n args =
       <+> "but found"
       <+> pretty (length args)
       <+> "arguments:"
-      <+> squotes (pretty (show args))
+      <+> squotes (pretty (External.printTree args))
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: MonadDelab m => V.InputBinder -> V.InputExpr -> m B.Expr

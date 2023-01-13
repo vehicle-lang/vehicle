@@ -339,7 +339,7 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
-  let mkBinderForm name = mapBinderFormName (const name) (binderDisplayForm binder)
+  let mkBinderForm name = BinderDisplayForm (OnlyName name) True
   let mkBinder name = Binder p (mkBinderForm name) Explicit Relevant () tElem
   let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
@@ -488,7 +488,7 @@ showExit :: MonadNorm m => CheckedExpr -> m CheckedExpr -> m CheckedExpr
 showExit old mNew = do
   new <- mNew
   decrCallDepth
-  when (old /= new) $
+  when (old /= new) $ do
     logDebug MaxDetail ("normalising" <+> prettySimple old)
   logDebug MaxDetail ("norm-exit " <+> prettySimple new)
   return new

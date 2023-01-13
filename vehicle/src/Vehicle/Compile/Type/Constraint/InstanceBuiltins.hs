@@ -89,8 +89,8 @@ candidates =
                   app
                     (free (identifierOf StdEqualsVector))
                     [ (Implicit True, Relevant, t1),
-                      (Implicit True, Irrelevant, t2),
-                      (Implicit True, Irrelevant, t3),
+                      (Implicit True, Relevant, t2),
+                      (Implicit True, Relevant, t3),
                       (Implicit True, Relevant, n),
                       (Instance True, Relevant, eq)
                     ]
@@ -114,15 +114,16 @@ candidates =
           ( forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
               hasAdd t1 t2 t3
                 ~~~> hasAdd (tVector t1 n) (tVector t2 n) (tVector t3 n),
-            forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n -> forAllInstance "add" (hasAdd t1 t2 t3) $ \add ->
-              app
-                (free (identifierOf StdAddVector))
-                [ (Implicit True, Relevant, t1),
-                  (Implicit True, Relevant, t2),
-                  (Implicit True, Relevant, t3),
-                  (Implicit True, Relevant, n),
-                  (Instance True, Relevant, add)
-                ]
+            forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
+              forAllInstance "add" (hasAdd t1 t2 t3) $ \add ->
+                app
+                  (free (identifierOf StdAddVector))
+                  [ (Implicit True, Relevant, t1),
+                    (Implicit True, Relevant, t2),
+                    (Implicit True, Relevant, t3),
+                    (Implicit True, Relevant, n),
+                    (Instance True, Relevant, add)
+                  ]
           ),
           ------------
           -- HasNot --

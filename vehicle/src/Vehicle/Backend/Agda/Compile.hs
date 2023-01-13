@@ -496,6 +496,8 @@ compileStdLibFunction f allArgs = case embedStdLib f allArgs of
 
 isTypeClassInAgda :: TypeClassOp -> Bool
 isTypeClassInAgda = \case
+  AddTC {} -> True
+  SubTC {} -> True
   EqualsTC {} -> True
   OrderTC {} -> True
   QuantifierTC {} -> True
@@ -565,13 +567,13 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   EqualityTCExpr _ eq t1 _ _ _ args -> case eq of
     Eq -> compileEquality t1 =<< traverse compileArg args
     Neq -> compileInequality t1 =<< traverse compileArg args
+  AddTCExpr _ args -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊕" <$> traverse compileArg args
+  SubTCExpr _ args -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊖" <$> traverse compileArg args
   NilExpr _ _ -> return compileNil
   ConsExpr _ _ args -> compileCons <$> traverse compileArg args
   AtExpr _ _ _ [xs, i] -> compileAt (argExpr xs) (argExpr i)
   HasEqExpr _ _ t _ _ -> compileTypeClass "HasEq" t
   HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
-  HasAddExpr _ t _ _ -> compileTypeClass "HasAdd" t
-  HasMulExpr _ t _ _ -> compileTypeClass "HasMul" t
   HasSubExpr _ t _ _ -> compileTypeClass "HasSub" t
   HasDivExpr _ t _ _ -> compileTypeClass "HasDiv" t
   HasNegExpr _ t _ -> compileTypeClass "HasNeg" t

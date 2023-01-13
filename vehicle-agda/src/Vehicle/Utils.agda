@@ -34,11 +34,11 @@ x ≤ y = T (x ≤ᵇ y)
 _⊆_ : String → String → Bool
 s ⊆ t = does (infix? _≟_ (toList s) (toList t))
 
-
+infixl 6 _⊕_
 record HasAdd {a} (A : Set a) : Set a where
   constructor hasAdd
   field
-    add : A → A → A
+    _⊕_ : A → A → A
 
 open HasAdd {{...}} public
 
@@ -50,20 +50,21 @@ instance
   addRat = hasAdd ℚ._+_
 
   addVector : ∀ {a} {A : Set a} {{_ : HasAdd A}} {n} → HasAdd (Vector A n)
-  addVector = hasAdd (Vector.zipWith add)
+  addVector = hasAdd (Vector.zipWith _⊕_)
 
 
 
+infixl 6 _⊖_
 record HasSub {a} (A : Set a) : Set a where
   constructor hasSub
   field
-    sub : A → A → A
+    _⊖_ : A → A → A
 
 open HasSub {{...}} public
 
 instance
   subRat : HasSub ℚ
-  subRat = hasSub ℚ._+_
+  subRat = hasSub ℚ._-_
 
   subVector : ∀ {a} {A : Set a} {{_ : HasSub A}} {n} → HasSub (Vector A n)
-  subVector = hasSub (Vector.zipWith sub)
+  subVector = hasSub (Vector.zipWith _⊖_)

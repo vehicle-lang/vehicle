@@ -20,7 +20,7 @@ import Vehicle.Compile.Print
 eliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
 eliminateIfs e = logCompilerPass MinDetail currentPass $ do
   result <- liftAndElimIf e
-  logCompilerPassOutput (prettyVerbose result)
+  logCompilerPassOutput (prettyExternal (WithContext e emptyDBCtx))
   return result
 
 currentPass :: Doc a
