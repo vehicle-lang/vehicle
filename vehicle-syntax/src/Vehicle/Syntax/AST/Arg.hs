@@ -1,7 +1,8 @@
 module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Provenance
@@ -29,7 +30,7 @@ instance NFData expr => NFData (GenericArg expr)
 
 instance ToJSON expr => ToJSON (GenericArg expr)
 
-instance FromJSON expr => FromJSON (GenericArg expr)
+instance Serialize expr => Serialize (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where
   provenanceOf = argProvenance

@@ -93,7 +93,7 @@ verifySpecification verifier verifierExecutable queryFolder networkLocations spe
   results <- forM namedProperties $ \(name, property) -> do
     let property' = calculateFilePaths queryFolder name property
     result <- runReaderT (verifyProperty property') (verifier, verifierExecutable, networkLocations)
-    return (name, result)
+    return (nameOf name, result)
   return $ SpecificationStatus (Map.fromList results)
 
 verifyProperty ::

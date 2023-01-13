@@ -1,8 +1,10 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Aeson (FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
+import Data.Serialize.Text ()
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
@@ -24,9 +26,9 @@ instance NFData Module
 
 instance Hashable Module
 
-instance FromJSON Module
-
 instance ToJSON Module
+
+instance Serialize Module
 
 instance Pretty Module where
   pretty = \case
@@ -46,13 +48,11 @@ instance NFData Identifier
 
 instance Hashable Identifier
 
-instance FromJSON Identifier
-
 instance ToJSON Identifier
 
-instance FromJSONKey Identifier
-
 instance ToJSONKey Identifier
+
+instance Serialize Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier

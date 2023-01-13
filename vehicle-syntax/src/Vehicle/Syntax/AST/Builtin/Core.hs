@@ -18,8 +18,10 @@ module Vehicle.Syntax.AST.Builtin.Core
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
+import Data.Serialize.Text ()
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
@@ -39,7 +41,7 @@ instance Hashable FunctionPosition
 
 instance ToJSON FunctionPosition
 
-instance FromJSON FunctionPosition
+instance Serialize FunctionPosition
 
 instance Pretty FunctionPosition where
   pretty = \case
@@ -60,7 +62,7 @@ instance Hashable EqualityOp
 
 instance ToJSON EqualityOp
 
-instance FromJSON EqualityOp
+instance Serialize EqualityOp
 
 instance Pretty EqualityOp where
   pretty = \case
@@ -89,7 +91,7 @@ instance Hashable EqualityDomain
 
 instance ToJSON EqualityDomain
 
-instance FromJSON EqualityDomain
+instance Serialize EqualityDomain
 
 instance Pretty EqualityDomain where
   pretty = \case
@@ -114,7 +116,7 @@ instance Hashable OrderOp
 
 instance ToJSON OrderOp
 
-instance FromJSON OrderOp
+instance Serialize OrderOp
 
 instance Pretty OrderOp where
   pretty = \case
@@ -169,7 +171,7 @@ instance Hashable OrderDomain
 
 instance ToJSON OrderDomain
 
-instance FromJSON OrderDomain
+instance Serialize OrderDomain
 
 instance Pretty OrderDomain where
   pretty = \case
@@ -192,7 +194,7 @@ instance Hashable Quantifier
 
 instance ToJSON Quantifier
 
-instance FromJSON Quantifier
+instance Serialize Quantifier
 
 instance Pretty Quantifier where
   pretty = \case

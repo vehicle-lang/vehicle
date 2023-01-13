@@ -10,6 +10,7 @@ import Data.Aeson (FromJSON)
 import Data.Aeson.Types (ToJSON)
 import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
@@ -50,7 +51,7 @@ instance Hashable BuiltinConstructor
 
 instance ToJSON BuiltinConstructor
 
-instance FromJSON BuiltinConstructor
+instance Serialize BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
   pretty = \case
@@ -84,6 +85,8 @@ instance ToJSON NegDomain
 
 instance FromJSON NegDomain
 
+instance Serialize NegDomain
+
 instance Pretty NegDomain where
   pretty = \case
     NegInt -> "Int"
@@ -108,6 +111,8 @@ instance ToJSON AddDomain
 
 instance FromJSON AddDomain
 
+instance Serialize AddDomain
+
 instance Pretty AddDomain where
   pretty = \case
     AddNat -> "Nat"
@@ -126,6 +131,8 @@ instance Hashable SubDomain
 instance ToJSON SubDomain
 
 instance FromJSON SubDomain
+
+instance Serialize SubDomain
 
 instance Pretty SubDomain where
   pretty = \case
@@ -156,6 +163,8 @@ instance ToJSON MulDomain
 
 instance FromJSON MulDomain
 
+instance Serialize MulDomain
+
 instance Pretty MulDomain where
   pretty = \case
     MulNat -> "Nat"
@@ -173,6 +182,8 @@ instance Hashable DivDomain
 instance ToJSON DivDomain
 
 instance FromJSON DivDomain
+
+instance Serialize DivDomain
 
 instance Pretty DivDomain where
   pretty = \case
@@ -200,6 +211,8 @@ instance ToJSON FromNatDomain
 
 instance FromJSON FromNatDomain
 
+instance Serialize FromNatDomain
+
 data FromRatDomain
   = FromRatToRat
   deriving (Eq, Ord, Show, Generic)
@@ -215,6 +228,8 @@ instance Hashable FromRatDomain
 instance ToJSON FromRatDomain
 
 instance FromJSON FromRatDomain
+
+instance Serialize FromRatDomain
 
 data FromVecDomain
   = FromVecToVec
@@ -234,6 +249,8 @@ instance ToJSON FromVecDomain
 
 instance FromJSON FromVecDomain
 
+instance Serialize FromVecDomain
+
 data FoldDomain
   = FoldList
   | FoldVector
@@ -252,6 +269,8 @@ instance ToJSON FoldDomain
 
 instance FromJSON FoldDomain
 
+instance Serialize FoldDomain
+
 data MapDomain
   = MapList
   | MapVector
@@ -269,6 +288,8 @@ instance Hashable MapDomain
 instance ToJSON MapDomain
 
 instance FromJSON MapDomain
+
+instance Serialize MapDomain
 
 -- | Builtins in the Vehicle language
 data Builtin
@@ -306,7 +327,7 @@ instance Hashable Builtin
 
 instance ToJSON Builtin
 
-instance FromJSON Builtin
+instance Serialize Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.

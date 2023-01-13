@@ -13,12 +13,13 @@ module Vehicle.Syntax.AST.Provenance
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (maybeToList)
+import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic (..))
 import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
@@ -47,7 +48,7 @@ instance Pretty Position where
 
 instance ToJSON Position
 
-instance FromJSON Position
+instance Serialize Position
 
 -- | Get the starting position of a token.
 tkPosition :: IsToken a => a -> Position
@@ -80,6 +81,8 @@ instance Pretty Range where
           <+> "Columns"
           <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
       else pretty p1 <+> "-" <+> pretty p2
+
+instance Serialize Range
 
 -- Doesn't handle anything except inclusive ranges as that's all we use in our code
 -- at the moment.
@@ -119,6 +122,8 @@ instance Pretty Origin where
     FromParameter name -> "parameter" <+> squotes (pretty name)
     FromDataset name -> "in dataset" <+> squotes (pretty name)
 
+instance Serialize Origin
+
 --------------------------------------------------------------------------------
 -- Provenance
 
@@ -137,14 +142,13 @@ instance NFData Provenance where
 instance ToJSON Provenance where
   toJSON _ = toJSON ()
 
-instance FromJSON Provenance where
-  parseJSON _ = return mempty
-
 instance Eq Provenance where
   _x == _y = True
 
 instance Hashable Provenance where
   hashWithSalt s _p = s
+
+instance Serialize Provenance
 
 -- | Get the provenance for a single token.
 tkProvenance :: IsToken a => Module -> a -> Provenance

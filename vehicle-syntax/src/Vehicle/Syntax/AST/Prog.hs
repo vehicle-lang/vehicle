@@ -2,6 +2,7 @@ module Vehicle.Syntax.AST.Prog where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 
@@ -18,7 +19,7 @@ instance NFData expr => NFData (GenericProg expr)
 
 instance ToJSON expr => ToJSON (GenericProg expr)
 
-instance FromJSON expr => FromJSON (GenericProg expr)
+instance Serialize expr => Serialize (GenericProg expr)
 
 traverseDecls ::
   Monad m =>

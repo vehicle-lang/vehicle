@@ -1,14 +1,13 @@
 module Vehicle.Verify.Specification.Status where
 
 import Data.Aeson
-import Data.Bifunctor (Bifunctor (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (HasName (..), Identifier, Name)
+import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Specification
 
 class IsVerified a where
@@ -82,7 +81,7 @@ prettyNameAndStatus name verified = do
 --------------------------------------------------------------------------------
 -- Verification status of the specification
 
-newtype SpecificationStatus = SpecificationStatus (Map Identifier PropertyStatus)
+newtype SpecificationStatus = SpecificationStatus (Map Name PropertyStatus)
   deriving (Generic)
 
 instance FromJSON SpecificationStatus
@@ -96,7 +95,7 @@ instance IsVerified SpecificationStatus where
 instance Pretty SpecificationStatus where
   pretty spec@(SpecificationStatus properties) = do
     let result = "Result:" <> (if isVerified spec then "verified" else "unverified")
-    let propertiesByName = fmap (first nameOf) (Map.toList properties)
+    let propertiesByName = Map.toList properties
     result
       <> line
       <> indent 2 (vsep (fmap (uncurry prettyPropertyStatus) propertiesByName))
