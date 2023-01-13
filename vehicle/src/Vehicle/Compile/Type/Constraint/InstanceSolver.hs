@@ -8,11 +8,11 @@ import Control.Monad.Reader (ReaderT (..))
 import Data.HashMap.Strict qualified as HashMap
 import Data.Maybe (catMaybes)
 import Prettyprinter (list)
-import Vehicle.Compile.Error (CompileError (..))
+import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyVerbose)
+import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.InstanceBuiltins
@@ -43,7 +43,6 @@ solveInstanceConstraint :: TCM m => WithContext TypeClassConstraint -> m ()
 solveInstanceConstraint (WithContext constraint ctx) = do
   normConstraint@(Has _ tc _) <- substMetas constraint
   let nConstraint = WithContext normConstraint ctx
-  logDebug MaxDetail $ prettyVerbose nConstraint
   solve tc nConstraint
 
 solve :: TypeClass -> forall m. TCM m => WithContext TypeClassConstraint -> m ()
@@ -67,18 +66,18 @@ solveInstanceGoal builtinCandidates (WithContext tcConstraint@(Has meta tc spine
   let newCtx = extendConstraintBoundCtx (copyContext ctx) goalTelescope
 
   -- Compute the final list of candidates
-  let candidatesInBoundCtx = findCandidatesInBoundCtx goal (boundContext newCtx)
+  candidatesInBoundCtx <- findCandidatesInBoundCtx goal (boundContext newCtx)
   let allCandidates = builtinCandidates <> candidatesInBoundCtx
 
   logDebug MaxDetail $
     line
       <> "Builtin candidates:"
       <> line
-      <> indent 2 (list (fmap (prettyCandidate ctx) builtinCandidates))
+      <> indent 2 (list (fmap prettyCandidate builtinCandidates))
       <> line
       <> "Context candidates:"
       <> line
-      <> indent 2 (list (fmap (prettyCandidate ctx) candidatesInBoundCtx))
+      <> indent 2 (list (fmap prettyCandidate candidatesInBoundCtx))
       <> line
 
   -- Try all candidates
@@ -87,7 +86,7 @@ solveInstanceGoal builtinCandidates (WithContext tcConstraint@(Has meta tc spine
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
     [(candidate, typeCheckerState)] -> do
-      logDebug MaxDetail $ "Accepting only remaining candidate:" <+> squotes (prettyCandidate ctx candidate)
+      logDebug MaxDetail $ "Accepting only remaining candidate:" <+> squotes (prettyCandidate candidate)
       adoptHypotheticalState typeCheckerState
 
     -- If there are no valid candidates then we fail.
@@ -100,14 +99,14 @@ solveInstanceGoal builtinCandidates (WithContext tcConstraint@(Has meta tc spine
       addConstraints [blockedConstraint]
 
 -- | Locates any more candidates that are in the bound context of the constraint
-findCandidatesInBoundCtx :: InstanceGoal -> TypingBoundCtx -> [InstanceCandidate]
+findCandidatesInBoundCtx :: MonadCompile m => InstanceGoal -> TypingBoundCtx -> m [InstanceCandidate]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: TypingBoundCtx -> [InstanceCandidate]
+    go :: MonadCompile m => TypingBoundCtx -> m [InstanceCandidate]
     go = \case
-      [] -> []
-      (_, t, _) : localCtx -> do
-        let candidates = findCandidatesInBoundCtx goal localCtx
+      [] -> return []
+      ((_, t, _) : localCtx) -> do
+        candidates <- go localCtx
         case findTypeClassOfCandidate t of
           Just tc | tc == goalHead goal -> do
             let candidate =
@@ -116,8 +115,8 @@ findCandidatesInBoundCtx goal ctx = go ctx
                       candidateExpr = t,
                       candidateSolution = BoundVar mempty (dbLevelToIndex (DBLevel $ length ctx) (DBLevel $ length localCtx))
                     }
-            candidate : candidates
-          _ -> candidates
+            return $ candidate : candidates
+          _ -> return candidates
 
 -- | Checks whether a candidate is a possibility for the instance goal.
 -- Returns `Nothing` if it is definitely not a valid candidate and
@@ -130,7 +129,7 @@ checkCandidate ::
   InstanceCandidate ->
   m (Maybe (InstanceCandidate, TypeCheckerState))
 checkCandidate ctx meta goal candidate = do
-  let candidateDoc = squotes (prettyCandidate ctx candidate)
+  let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerHypothetically $ do
       -- Instantiate the candidate telescope with metas and subst into body.
@@ -143,7 +142,7 @@ checkCandidate ctx meta goal candidate = do
 
         -- Add the solution of the type-class as well (if we had first class records
         -- then we wouldn't need to do this manually).
-        solveTypeClassMeta ctx meta substCandidateSolution
+        solveMeta meta substCandidateSolution (contextDBLevel ctx)
 
       runUnificationSolver mempty
 
@@ -158,7 +157,7 @@ checkCandidate ctx meta goal candidate = do
 
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
-instantiateCandidateTelescope :: TCM m => ConstraintContext -> InstanceCandidate -> m (NormExpr, NormExpr)
+instantiateCandidateTelescope :: TCM m => ConstraintContext -> InstanceCandidate -> m (NormExpr, CheckedExpr)
 instantiateCandidateTelescope ctx InstanceCandidate {..} =
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
     let p = provenanceOf ctx
@@ -169,8 +168,7 @@ instantiateCandidateTelescope ctx InstanceCandidate {..} =
     metaCtx <- getMetaSubstitution
     let currentEnv = mkNoOpEnv (DBLevel $ length candidateContext)
     normCandidateBody <- runReaderT (eval currentEnv candidateBody) (declCtx, metaCtx)
-    normCandidateSol <- runReaderT (eval currentEnv candidateSol) (declCtx, metaCtx)
-    return (normCandidateBody, normCandidateSol)
+    return (normCandidateBody, candidateSol)
   where
     go :: TCM m => Provenance -> TypingBoundCtx -> (CheckedExpr, [CheckedArg]) -> (CheckedType, CheckedExpr) -> m (CheckedType, CheckedExpr)
     go p boundCtx origin = \case
@@ -181,8 +179,8 @@ instantiateCandidateTelescope ctx InstanceCandidate {..} =
         go p boundCtx origin (exprBodyResult, solutionBodyResult)
       body -> return body
 
-prettyCandidate :: ConstraintContext -> InstanceCandidate -> Doc a
-prettyCandidate ctx candidate = prettyExternal (WithContext (candidateExpr candidate) (boundContextOf ctx))
+prettyCandidate :: InstanceCandidate -> Doc a
+prettyCandidate candidate = prettyExternal (WithContext (candidateExpr candidate) (boundContextOf (candidateContext candidate)))
 
 getConstraintOrigin :: ConstraintContext -> (CheckedExpr, [CheckedArg])
 getConstraintOrigin ctx = case origin ctx of

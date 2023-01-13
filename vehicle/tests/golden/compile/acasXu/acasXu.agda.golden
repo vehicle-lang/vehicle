@@ -8,6 +8,7 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Utils
 open import Data.Product
 open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
@@ -81,12 +82,12 @@ MovingAway x = x intruderHeading ≡ ℤ.+ 0 ℚ./ 1 × (ℤ.+ 1000 ℚ./ 1 ℚ.
 postulate property4 : ∀ x → DirectlyAhead x × MovingAway x → ¬ Advises clearOfConflict x
 
 NearAndApproachingFromLeft : InputVector → Set
-NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 400 ℚ./ 1))))
+NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 400 ℚ./ 1))))
 
 postulate property5 : ∀ x → NearAndApproachingFromLeft x → Advises strongRight x
 
 IntruderFarAway : InputVector → Set
-IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 postulate property6 : ∀ x → IntruderFarAway x → Advises clearOfConflict x
 
@@ -101,11 +102,11 @@ LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distan
 postulate property8 : ∀ x → LargeVerticalSeparationAndPreviousWeakLeft x → Advises clearOfConflict x ⊎ Advises weakLeft x
 
 PreviousWeakRightAndNearbyIntruder : InputVector → Set
-PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 150 ℚ./ 1))))
+PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 150 ℚ./ 1))))
 
 postulate property9 : ∀ x → PreviousWeakRightAndNearbyIntruder x → Advises strongLeft x
 
 IntruderFarAway2 : InputVector → Set
-IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ℚ.+ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
 
 postulate property10 : ∀ x → IntruderFarAway2 x → Advises clearOfConflict x

@@ -8,6 +8,7 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Utils
 open import Data.Unit
 open import Data.Empty
 open import Data.Product
@@ -26,7 +27,7 @@ postulate e1 : let x = ⊤ in let y = ⊥ in x × y
 postulate e2 : let y = # 1 in y Fin.≥ # 2
 
 e3 : ℕ
-e3 = let y = 1 ℕ.+ 1 in y
+e3 = let y = 1 ⊕ 1 in y
 
 lamLet : ℕ → ℕ
 lamLet = λ (x : ℕ) → let y = x in y

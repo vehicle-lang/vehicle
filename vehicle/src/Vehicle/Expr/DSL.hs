@@ -304,17 +304,20 @@ hasImplies t1 t2 t3 = typeClass HasImplies [t1, t2, t3]
 hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr
 hasQuantifier q t1 t2 = typeClass (HasQuantifier q) [t1, t2]
 
+numOp2TypeClass :: TypeClass -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
+
 hasAdd :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasAdd t1 t2 t3 = typeClass HasAdd [t1, t2, t3]
+hasAdd = numOp2TypeClass HasAdd
 
 hasSub :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasSub t1 t2 t3 = typeClass HasSub [t1, t2, t3]
+hasSub = numOp2TypeClass HasSub
 
 hasMul :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasMul t1 t2 t3 = typeClass HasMul [t1, t2, t3]
+hasMul = numOp2TypeClass HasMul
 
 hasDiv :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasDiv t1 t2 t3 = typeClass HasDiv [t1, t2, t3]
+hasDiv = numOp2TypeClass HasDiv
 
 hasNeg :: DSLExpr -> DSLExpr -> DSLExpr
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]

@@ -33,13 +33,13 @@ lookup2D : ℚ
 lookup2D = twoD (# 0) (# 1)
 
 addition : Tensor ℚ (2 ∷ (2 ∷ []))
-addition = add twoD twoD
+addition = twoD ⊕ twoD
 
 subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
-subtraction = sub twoD twoD
+subtraction = twoD ⊖ twoD
 
 abstract
-  p : ∀ i → ∀ j → add (f subtraction) addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  p : ∀ i → ∀ j → f subtraction ⊕ addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
   p = checkSpecification record
     { proofCache   = "proofcache.vclp"
     }

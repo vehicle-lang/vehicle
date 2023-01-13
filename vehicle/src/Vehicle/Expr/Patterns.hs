@@ -603,12 +603,42 @@ pattern AddExpr ::
   Expr binder var
 pattern AddExpr p dom args = BuiltinExpr p (Add dom) args
 
+pattern AddTCExpr ::
+  Provenance ->
+  [Arg binder var] ->
+  Expr binder var
+pattern AddTCExpr p args <-
+  BuiltinExpr
+    p
+    (TypeClassOp AddTC)
+    ( ImplicitArg _ _
+        :| ImplicitArg _ _
+        : ImplicitArg _ _
+        : InstanceArg _ _
+        : args
+      )
+
 pattern SubExpr ::
   Provenance ->
   SubDomain ->
   NonEmpty (Arg binder var) ->
   Expr binder var
 pattern SubExpr p dom args = BuiltinExpr p (Sub dom) args
+
+pattern SubTCExpr ::
+  Provenance ->
+  [Arg binder var] ->
+  Expr binder var
+pattern SubTCExpr p args <-
+  BuiltinExpr
+    p
+    (TypeClassOp SubTC)
+    ( ImplicitArg _ _
+        :| ImplicitArg _ _
+        : ImplicitArg _ _
+        : InstanceArg _ _
+        : args
+      )
 
 pattern MulExpr ::
   Provenance ->
@@ -837,7 +867,9 @@ embedStdLib :: StdLibFunction -> NonEmpty (Arg binder var) -> Maybe (StdLibRep b
 embedStdLib f allArgs = case f of
   StdEqualsVector -> case allArgs of
     ( ImplicitArg _ tElem
-        :| ImplicitArg _ size
+        :| ImplicitArg _ _tElem2
+        : ImplicitArg _ _tElem3
+        : ImplicitArg _ size
         : InstanceArg _ recFn
         : args
       ) -> Just $ EqualsVector tElem size recFn args
