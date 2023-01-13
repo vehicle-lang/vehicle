@@ -1,6 +1,6 @@
 module Vehicle.Expr.Normalised where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude.Contexts (BoundCtx)
 import Vehicle.Expr.DeBruijn
@@ -26,9 +26,7 @@ data NormExpr
   | VBuiltin Provenance Builtin Spine
   deriving (Show, Generic)
 
-instance ToJSON NormExpr
-
-instance FromJSON NormExpr
+instance Serialize NormExpr
 
 instance HasProvenance NormExpr where
   provenanceOf = \case
@@ -223,9 +221,7 @@ data GluedExpr = Glued
   }
   deriving (Show, Generic)
 
-instance ToJSON GluedExpr
-
-instance FromJSON GluedExpr
+instance Serialize GluedExpr
 
 instance HasProvenance GluedExpr where
   provenanceOf = provenanceOf . unnormalised

@@ -1,8 +1,10 @@
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
+import Data.Serialize.Text ()
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
@@ -26,7 +28,7 @@ instance NFData BinderNamingForm
 
 instance ToJSON BinderNamingForm
 
-instance FromJSON BinderNamingForm
+instance Serialize BinderNamingForm
 
 instance Hashable BinderNamingForm where
   -- We deliberately ignore the binder naming form when hashing
@@ -65,12 +67,12 @@ instance NFData BinderDisplayForm
 
 instance ToJSON BinderDisplayForm
 
-instance FromJSON BinderDisplayForm
-
 instance Hashable BinderDisplayForm
 
 instance HasName BinderDisplayForm (Maybe Name) where
   nameOf = nameOf . namingForm
+
+instance Serialize BinderDisplayForm
 
 mapBinderFormName :: (Name -> Name) -> BinderDisplayForm -> BinderDisplayForm
 mapBinderFormName f binderDisplayForm =
@@ -108,7 +110,7 @@ instance (NFData binder, NFData expr) => NFData (GenericBinder binder expr)
 
 instance (ToJSON binder, ToJSON expr) => ToJSON (GenericBinder binder expr)
 
-instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
+instance (Serialize binder, Serialize expr) => Serialize (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
   provenanceOf = binderProvenance

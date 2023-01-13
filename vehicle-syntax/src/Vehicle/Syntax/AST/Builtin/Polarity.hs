@@ -1,8 +1,9 @@
 module Vehicle.Syntax.AST.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Builtin.Core
@@ -22,7 +23,7 @@ data PolarityProvenance
 
 instance ToJSON PolarityProvenance
 
-instance FromJSON PolarityProvenance
+instance Serialize PolarityProvenance
 
 instance Show PolarityProvenance where
   show _x = ""
@@ -56,7 +57,7 @@ instance Hashable Polarity
 
 instance ToJSON Polarity
 
-instance FromJSON Polarity
+instance Serialize Polarity
 
 instance Pretty Polarity where
   pretty = \case
@@ -89,7 +90,7 @@ data PolarityTypeClass
 
 instance ToJSON PolarityTypeClass
 
-instance FromJSON PolarityTypeClass
+instance Serialize PolarityTypeClass
 
 instance NFData PolarityTypeClass
 
