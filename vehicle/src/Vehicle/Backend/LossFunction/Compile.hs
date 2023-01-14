@@ -22,7 +22,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseProg)
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Print (prettySimple, prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
@@ -79,7 +79,6 @@ compileDecl logic d =
       logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
         let logicImplementation = implementationOf logic
         expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
-        logCompilerPassOutput ("loss-declaration " <> prettySimple expr)
         return (DefFunction (nameOf ident) expr')
 
 type MonadCompileLoss m =
@@ -243,7 +242,7 @@ normBuiltin b = case b of
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
-  logDebug MinDetail ("loss-entry " <> prettySimple e)
+  logDebug MinDetail ("loss-entry " <> prettyVerbose e)
   incrCallDepth
   return e
 

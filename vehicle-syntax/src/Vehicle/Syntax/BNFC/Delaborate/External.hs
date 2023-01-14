@@ -176,9 +176,9 @@ delabBuiltin fun args = case fun of
   V.Implies -> delabTypeClassOp V.ImpliesTC args
   V.Not -> delabTypeClassOp V.NotTC args
   V.If -> delabIf args
-  V.FromNat {} -> delabM (argExpr $ head args)
-  V.FromRat {} -> delabM (argExpr $ head args)
-  V.FromVec {} -> delabM (argExpr $ head args)
+  V.FromNat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
+  V.FromRat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
+  V.FromVec {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
   V.Neg _ -> delabTypeClassOp V.NegTC args
   V.Add _ -> delabTypeClassOp V.AddTC args
   V.Sub _ -> delabTypeClassOp V.SubTC args
@@ -219,9 +219,9 @@ delabTypeClassOp op args = case op of
   V.OrTC -> delabInfixOp2 B.Or tokOr args
   V.ImpliesTC -> delabInfixOp2 B.Impl tokImpl args
   V.NotTC -> delabOp1 B.Not tokNot args
-  V.FromNatTC {} -> delabM $ argExpr $ head args
-  V.FromRatTC {} -> delabM $ argExpr $ head args
-  V.FromVecTC {} -> delabM $ argExpr $ head args
+  V.FromNatTC {} -> delabApp (cheatDelab $ layoutAsText $ pretty op) args
+  V.FromRatTC {} -> delabApp (cheatDelab $ layoutAsText $ pretty op) args
+  V.FromVecTC {} -> delabApp (cheatDelab $ layoutAsText $ pretty op) args
   V.NegTC -> delabOp1 B.Neg tokSub args
   V.AddTC -> delabInfixOp2 B.Add tokAdd args
   V.SubTC -> delabInfixOp2 B.Sub tokSub args

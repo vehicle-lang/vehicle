@@ -51,7 +51,6 @@ solve = \case
   HasDiv -> solveHasDiv
   HasQuantifierIn q -> solveHasQuantifierIn q
   HasNatLits n -> solveHasNatLits n
-  HasRatLits -> solveHasRatLits
   HasVecLits n -> solveHasVecLits n
   AlmostEqualConstraint -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
@@ -574,31 +573,6 @@ solveFromNatToRat c n arg = do
   let ratEq = unify c arg (mkVAnnRatType p lin)
   let solution = VBuiltin p (FromNat n FromNatToRat) []
   return $ Right ([ratEq], solution)
-
---------------------------------------------------------------------------------
--- HasRatLits
-
-solveHasRatLits :: TypeClassSolver
-solveHasRatLits c [arg]
-  | isMeta arg = blockOnMetas [arg]
-  | isRatType arg = solveFromRatToRat ctx arg
-  | otherwise = blockOrThrowErrors ctx [arg] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedRatLitConstraint ctx arg
-solveHasRatLits c _ = malformedConstraintError c
-
-solveFromRatToRat ::
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  m TypeClassProgress
-solveFromRatToRat ctx arg = do
-  let p = provenanceOf ctx
-  let lin = VLinearityExpr p Constant
-  let constraint = unify ctx arg (mkVAnnRatType p lin)
-  let solution = VBuiltin p (FromRat FromRatToRat) []
-  return $ Right ([constraint], solution)
 
 --------------------------------------------------------------------------------
 -- HasConLits

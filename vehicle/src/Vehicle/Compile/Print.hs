@@ -8,10 +8,8 @@ module Vehicle.Compile.Print
     PrettyWith,
     PrettyFriendly,
     PrettyVerbose,
-    PrettySimple,
     PrettyExternal,
     Tags (..),
-    prettySimple,
     prettyVerbose,
     prettyFriendly,
     prettyExternal,
@@ -43,19 +41,11 @@ import Vehicle.Syntax.Print
 -- Public methods
 --------------------------------------------------------------------------------
 
-type PrettySimple a = PrettyWith ('Simple ('As 'Internal)) a
-
 type PrettyVerbose a = PrettyWith ('As 'Internal) a
 
 type PrettyExternal a = PrettyWith ('Named ('As 'External)) a
 
 type PrettyFriendly a = PrettyWith ('Named ('Simple ('As 'External))) a
-
--- | Prints to the internal language removing all implicit/instance arguments and
---  automatically inserted code. Does not convert (Co)DeBruijn indices back to
---  names.
-prettySimple :: PrettySimple a => a -> Doc b
-prettySimple = prettyWith @('Simple ('As 'Internal))
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.

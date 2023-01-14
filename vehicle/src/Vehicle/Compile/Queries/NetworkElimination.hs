@@ -25,7 +25,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.LetInsertion (insertLets)
 import Vehicle.Compile.Normalise
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettySimple)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Queries.GaussianElimination
   ( gaussianElimination,
@@ -345,7 +345,7 @@ replaceNetworkApplications ::
   CheckedExpr ->
   m (CheckedExpr, [Assertion])
 replaceNetworkApplications IOVarState {..} (Let _ (NetworkApp p ident inputExprs) _binder body) = do
-  logDebug MaxDetail $ "Replacing application:" <+> pretty ident <+> prettySimple inputExprs
+  logDebug MaxDetail $ "Replacing application:" <+> pretty ident <+> prettyVerbose inputExprs
   incrCallDepth
   (networkCtx, _, _, _, _, _) <- ask
 
@@ -407,7 +407,7 @@ createInputVarEqualities dims d xs =
     "apparently miscalculated number of magic input variables:"
       <+> pretty dims
       <+> pretty d
-      <+> prettySimple xs
+      <+> prettyVerbose xs
 
 mkMagicVariableSeq ::
   MonadCompile m =>
@@ -474,7 +474,7 @@ compileAssertions = \case
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
           return [assertion]
-      App {} -> unexpectedExprError currentPass (prettySimple expr)
+      App {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 compileAssertion ::
   MonadSMT m =>
@@ -522,7 +522,7 @@ compileLinearExpr expr = do
             compilerDeveloperError $
               "Unexpected non-linear constraint that should have been caught by the"
                 <+> "linearity analysis during type-checking."
-      ex -> unexpectedExprError currentPass $ prettySimple ex
+      ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
 --------------------------------------------------------------------------------
 -- Step 6: quantification over magic variables

@@ -40,14 +40,13 @@ findTypeClassOfCandidate = \case
 candidates :: [InstanceCandidate]
 candidates =
   mkCandidate
-    <$> [ {-
+    <$> [
           ----------------
           -- HasRatLits --
           ----------------
-          ( forAll "l" tLin $ \l -> hasRatLits (tAnnRat l),
-            forAll "l" tLin $ \_l -> builtin (FromRat FromRatToRat)
+          ( hasRatLits (tAnnRat constant),
+            builtin (FromRat FromRatToRat)
           ),
-          -}
           ------------
           -- HasEq --
           ------------

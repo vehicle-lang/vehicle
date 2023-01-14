@@ -218,5 +218,5 @@ typingError :: MonadCompile m => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) =
   compilerDeveloperError $
     "Invalid parameter type"
-      <+> squotes (prettySimple (unnormalised expectedDatasetType))
+      <+> squotes (prettyVerbose (unnormalised expectedDatasetType))
       <+> "should have been caught during type-checking"
