@@ -46,7 +46,6 @@ solve = \case
   HasIf -> solveHasIf
   HasQuantifier q -> solveHasQuantifier q
   HasNeg -> solveHasNeg
-  HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
   HasQuantifierIn q -> solveHasQuantifierIn q
@@ -342,72 +341,6 @@ solveNeg c arg res dom = do
   let eq = unify c res arg
   let solution = VBuiltin p (Neg dom) []
   return $ Right ([eq], solution)
-
---------------------------------------------------------------------------------
--- HasSub
-
-solveHasSub :: TypeClassSolver
-solveHasSub c types@[arg1, arg2, res]
-  | allOf types isMeta = blockOnMetas types
-  | anyOf types isIntType = solveSubInt ctx arg1 arg2 res
-  | anyOf types isRatType = solveSubRat ctx arg1 arg2 res
-  | anyOf types isVectorType = solveSubVector ctx arg1 arg2 res
-  | otherwise = blockOrThrowErrors ctx types tcError
-  where
-    ctx = contextOf c
-    allowedTypes = fmap pretty [Int, Rat]
-    tcError =
-      tcArgError ctx arg1 SubTC allowedTypes 1 2
-        <> tcArgError ctx arg2 SubTC allowedTypes 2 2
-        <> tcResultError ctx res SubTC allowedTypes
-solveHasSub c _ = malformedConstraintError c
-
-type HasSubSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
-  m TypeClassProgress
-
-solveSubInt :: HasSubSolver
-solveSubInt c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Sub SubInt) []
-  return $ Right (constraints, solution)
-
-solveSubRat :: HasSubSolver
-solveSubRat c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MaxLinearity
-  let solution = VBuiltin p (Sub SubRat) []
-  return $ Right (constraints, solution)
-
-solveSubVector :: HasSubSolver
-solveSubVector c arg1 arg2 res = do
-  let p = provenanceOf c
-  dim <- freshDimMeta c
-
-  (arg1Eq, arg1Elem) <- unifyWithVectorType c dim arg1
-  (arg2Eq, arg2Elem) <- unifyWithVectorType c dim arg2
-  (resEq, resElem) <- unifyWithVectorType c dim res
-  (metaExpr, recTC) <- createTC c HasSub [arg1Elem, arg2Elem, resElem]
-
-  let constraints = [arg1Eq, arg2Eq, resEq, recTC]
-  let solution =
-        VFreeVar
-          p
-          (identifierOf StdSubVector)
-          [ ImplicitArg p arg1Elem,
-            ImplicitArg p arg2Elem,
-            ImplicitArg p resElem,
-            ImplicitArg p (normalised dim),
-            InstanceArg p metaExpr
-          ]
-
-  return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------
 -- HasMul

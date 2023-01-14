@@ -351,6 +351,8 @@ instance MeaningfulError CompileError where
                 <+> pretty Vector <> "."
             (HasAdd, [t1, t2, t3]) ->
               failedOp2Message (boundContextOf ctx) AddTC (argExpr t1) (argExpr t2) (argExpr t3)
+            (HasSub, [t1, t2, t3]) ->
+              failedOp2Message (boundContextOf ctx) SubTC (argExpr t1) (argExpr t2) (argExpr t3)
             (HasEq Eq, [t1, t2, t3]) ->
               failedOp2Message (boundContextOf ctx) (EqualsTC Eq) (argExpr t1) (argExpr t2) (argExpr t3)
             _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc

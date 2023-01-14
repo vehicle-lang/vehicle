@@ -102,6 +102,20 @@ candidates =
                     ]
           ),
           ------------
+          -- HasNot --
+          ------------
+          ( forAllIrrelevant "l" tLin $ \l ->
+              forAllIrrelevant "p1" tPol $ \p1 ->
+                forAllIrrelevant "p2" tPol $ \p2 ->
+                  negPolarity p1 p2
+                    .~~~> hasNot (tAnnBool l p1) (tAnnBool l p2),
+            forAllIrrelevant "l" tLin $ \_l ->
+              forAllIrrelevant "p1" tPol $ \p1 ->
+                forAllIrrelevant "p2" tPol $ \p2 ->
+                  negPolarity p1 p2
+                    .~~~> builtin Not
+          ),
+          ------------
           -- HasAdd --
           ------------
           ( hasAdd tNat tNat tNat,
@@ -132,19 +146,31 @@ candidates =
                   ]
           ),
           ------------
-          -- HasNot --
+          -- HasSub --
           ------------
-
-          ( forAllIrrelevant "l" tLin $ \l ->
-              forAllIrrelevant "p1" tPol $ \p1 ->
-                forAllIrrelevant "p2" tPol $ \p2 ->
-                  negPolarity p1 p2
-                    .~~~> hasNot (tAnnBool l p1) (tAnnBool l p2),
-            forAllIrrelevant "l" tLin $ \_l ->
-              forAllIrrelevant "p1" tPol $ \p1 ->
-                forAllIrrelevant "p2" tPol $ \p2 ->
-                  negPolarity p1 p2
-                    .~~~> builtin Not
+          ( hasSub tInt tInt tInt,
+            builtin (Sub SubInt)
+          ),
+          ( forAllLinearityTriples $ \l1 l2 l3 ->
+              maxLinearity l1 l2 l3
+                .~~~> hasSub (tAnnRat l1) (tAnnRat l2) (tAnnRat l3),
+            forAllLinearityTriples $ \l1 l2 l3 ->
+              maxLinearity l1 l2 l3
+                .~~~> builtin (Sub SubRat)
+          ),
+          ( forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
+              hasSub t1 t2 t3
+                ~~~> hasSub (tVector t1 n) (tVector t2 n) (tVector t3 n),
+            forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
+              forAllInstance "sub" (hasSub t1 t2 t3) $ \sub ->
+                app
+                  (free (identifierOf StdSubVector))
+                  [ (Implicit True, Relevant, t1),
+                    (Implicit True, Relevant, t2),
+                    (Implicit True, Relevant, t3),
+                    (Implicit True, Relevant, n),
+                    (Instance True, Relevant, sub)
+                  ]
           ),
           ------------
           -- HasMap --
