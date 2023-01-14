@@ -60,7 +60,7 @@ typeOfBuiltin p b = fromDSL p $ case b of
   Order dom op -> typeOfOrder dom op
   -- Conversion functions
   FromNat n dom -> case dom of
-    FromNatToIndex -> forAll "n" tNat $ \s -> typeOfFromNat n (tIndex s)
+    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat n (tIndex s)
     FromNatToNat -> typeOfFromNat n tNat
     FromNatToInt -> typeOfFromNat n tInt
     FromNatToRat -> typeOfFromNat n (tAnnRat constant)
@@ -72,13 +72,10 @@ typeOfBuiltin p b = fromDSL p $ case b of
   -- Container functions
   Map dom -> case dom of
     MapList -> typeOfMap tListRaw
-    MapVector -> forAll "n" tNat $ \n -> typeOfMap (lam "n" Explicit Relevant type0 (`tVector` n))
+    MapVector -> forAllNat $ \n -> typeOfMap (lam "n" Explicit Relevant type0 (`tVector` n))
   Fold dom -> case dom of
-    FoldList -> forAll "A" type0 $ \tElem ->
-      typeOfFold tElem (tList tElem)
-    FoldVector -> forAll "A" type0 $ \tElem ->
-      forAll "n" tNat $ \dim ->
-        typeOfFold tElem (tVector tElem dim)
+    FoldList -> typeOfFold tListRaw
+    FoldVector -> forAllNat $ \n -> typeOfFold (lam "n" Explicit Relevant type0 (`tVector` n))
   At -> typeOfAt
   Foreach -> typeOfForeach
 
@@ -143,8 +140,8 @@ typeOfTypeClassOp b = case b of
     forAll "A" type0 $ \t ->
       forAll "B" type0 $ \e ->
         hasVecLits n e t ~~~> tVector e (natLit n) ~> t
-  MapTC -> forAll "f" (type0 ~> type0) $ \c -> hasMap c ~~~> typeOfMap c
-  FoldTC -> typeOfFoldTC
+  MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
+  FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
   QuantifierTC q -> typeOfQuantifier q
   QuantifierInTC q -> typeOfQuantifierIn q
 
@@ -257,28 +254,16 @@ typeOfAt =
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
 typeOfMap :: DSLExpr -> DSLExpr
-typeOfMap tCont =
-  forAll "A" type0 $ \tFrom ->
-    forAll "B" type0 $ \tTo ->
-      (tFrom ~> tTo)
-        ~> app tCont [(Explicit, Relevant, tFrom)]
-        ~> app tCont [(Explicit, Relevant, tTo)]
+typeOfMap f =
+  forAll "A" type0 $ \a ->
+    forAll "B" type0 $ \b ->
+      (a ~> b) ~> f @@ [a] ~> f @@ [b]
 
-typeOfFoldTC :: DSLExpr
-typeOfFoldTC =
-  forAll "A" type0 $ \tElem ->
-    forAll "B" type0 $ \tCont ->
-      hasFold tElem tCont
-        ~~~> typeOfFold tElem tCont
-
-typeOfFold :: DSLExpr -> DSLExpr -> DSLExpr
-typeOfFold tElem tCont =
-  forAll
-    "A"
-    type0
-    ( \tRes ->
-        (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
-    )
+typeOfFold :: DSLExpr -> DSLExpr
+typeOfFold f =
+  forAll "A" type0 $ \a ->
+    forAll "B" type0 $ \b ->
+      (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
 
 typeOfQuantifier :: Quantifier -> DSLExpr
 typeOfQuantifier q =

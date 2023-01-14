@@ -138,7 +138,8 @@ checkCandidate ctx meta goal candidate = do
       logCompilerSection MaxDetail "hypothetically accepting candidate" $ do
         -- Unify the goal and candidate bodies
         let bodiesEqual = Unify (goalExpr goal) substCandidateExpr
-        addUnificationConstraints [WithContext bodiesEqual ctx]
+        let unificationConstraint = WithContext bodiesEqual ctx
+        addUnificationConstraints [unificationConstraint]
 
         -- Add the solution of the type-class as well (if we had first class records
         -- then we wouldn't need to do this manually).

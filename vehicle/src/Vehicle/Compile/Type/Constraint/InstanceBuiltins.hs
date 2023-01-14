@@ -40,7 +40,14 @@ findTypeClassOfCandidate = \case
 candidates :: [InstanceCandidate]
 candidates =
   mkCandidate
-    <$> [
+    <$> [ {-
+          ----------------
+          -- HasRatLits --
+          ----------------
+          ( forAll "l" tLin $ \l -> hasRatLits (tAnnRat l),
+            forAll "l" tLin $ \_l -> builtin (FromRat FromRatToRat)
+          ),
+          -}
           ------------
           -- HasEq --
           ------------
@@ -148,6 +155,15 @@ candidates =
           ),
           ( forAllNat $ \n -> hasMap (lam "A" Explicit Relevant type0 (\a -> tVector a n)),
             forAllNat $ \n -> app (builtin (Map MapVector)) [(Implicit True, Relevant, n)]
+          ),
+          ------------
+          -- HasFold --
+          ------------
+          ( hasFold tListRaw,
+            builtin (Fold FoldList)
+          ),
+          ( forAllNat $ \n -> hasFold (lam "A" Explicit Relevant type0 (\a -> tVector a n)),
+            forAllNat $ \n -> app (builtin (Fold FoldVector)) [(Implicit True, Relevant, n)]
           )
         ]
 

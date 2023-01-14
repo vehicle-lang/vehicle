@@ -43,14 +43,13 @@ solve = \case
   HasAnd -> solveHasAnd
   HasOr -> solveHasOr
   HasImplies -> solveHasImplies
+  HasIf -> solveHasIf
   HasQuantifier q -> solveHasQuantifier q
   HasNeg -> solveHasNeg
   HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
-  HasFold -> solveHasFold
   HasQuantifierIn q -> solveHasQuantifierIn q
-  HasIf -> solveHasIf
   HasNatLits n -> solveHasNatLits n
   HasRatLits -> solveHasRatLits
   HasVecLits n -> solveHasVecLits n
@@ -109,26 +108,6 @@ solveBoolEquals c arg1 arg2 res op = do
   constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity (EqPolarity op)
   let solution = VFreeVar p (identifierOf StdEqualsBool) []
   return $ Right (constraints, solution)
-
-{-
-solveListEquals :: TCM m
-                => EqualityOp
-                -> Constraint
-                -> NormType
-                -> NormType
-                -> NormType
-                -> m TypeClassProgress
-solveListEquals op c arg1 arg2 res = do
-  let p = provenanceOf c
-  (arg1Eq, tElem1) <- unifyWithListType c arg1
-  (arg2Eq, tElem2) <- unifyWithListType c arg2
-
-  -- Recursively check that the element types have equality.
-  (meta, recEq) <- createTC c (HasEq op) [tElem1, tElem2, res]
-  let solution = FreeVar p StdEqualsBool
-
-  return $ Right ([arg1Eq, arg2Eq, recEq], solution)
--}
 
 solveVectorEquals :: HasEqSolver
 solveVectorEquals c arg1 arg2 res op = do
@@ -508,48 +487,6 @@ solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
   let solution = VBuiltin (provenanceOf c) (Div DivRat) []
   return $ Right (constraints, solution)
-
---------------------------------------------------------------------------------
--- HasFold
-
-solveHasFold :: TypeClassSolver
-solveHasFold c [tElem, tCont] = case tCont of
-  (getMeta -> Just {}) -> blockOnMetas [tCont]
-  VListType _ tListElem -> solveFoldList ctx tElem tListElem
-  VVectorType _ tVecElem dim -> solveFoldVec dim ctx tElem tVecElem
-  _ -> blockOrThrowErrors ctx [tCont] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedFoldConstraintContainer ctx tCont
-solveHasFold c _ = malformedConstraintError c
-
-type HasFoldSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  m TypeClassProgress
-
-solveFoldList :: HasFoldSolver
-solveFoldList c tElem tListElem = do
-  let p = provenanceOf c
-  let constraint = unify c tElem tListElem
-  let solution = VBuiltin (provenanceOf c) (Fold FoldList) [ImplicitArg p tListElem]
-  return $ Right ([constraint], solution)
-
-solveFoldVec :: NormExpr -> HasFoldSolver
-solveFoldVec dim c tElem tVecElem = do
-  let p = provenanceOf c
-  let constraint = unify c tElem tVecElem
-  let solution =
-        VBuiltin
-          (provenanceOf c)
-          (Fold FoldVector)
-          [ ImplicitArg p tVecElem,
-            ImplicitArg p dim
-          ]
-  return $ Right ([constraint], solution)
 
 --------------------------------------------------------------------------------
 -- HasQuantifierIn

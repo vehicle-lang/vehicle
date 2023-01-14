@@ -8,6 +8,7 @@ module Vehicle.Expr.DSL
     (.~~>),
     (~~~>),
     (.~~~>),
+    (@@),
     forAll,
     forAllIrrelevant,
     forAllInstance,
@@ -161,7 +162,7 @@ constructor = builtin . Constructor
 --------------------------------------------------------------------------------
 -- Types
 
-infix 4 @@
+infix 6 @@
 
 (@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
 (@@) f args = app f (fmap (Explicit,Relevant,) args)
@@ -325,8 +326,8 @@ hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 hasMap :: DSLExpr -> DSLExpr
 hasMap tCont = typeClass HasMap [tCont]
 
-hasFold :: DSLExpr -> DSLExpr -> DSLExpr
-hasFold tCont tElem = typeClass HasFold [tCont, tElem]
+hasFold :: DSLExpr -> DSLExpr
+hasFold tCont = typeClass HasFold [tCont]
 
 hasIf :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasIf tCond tArg1 tArg2 tRes = typeClass HasIf [tCond, tArg1, tArg2, tRes]
