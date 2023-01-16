@@ -428,7 +428,7 @@ solveMeta m solution currentLevel = do
     "solved"
       <+> pretty m
       <+> "as"
-      <+> prettyVerbose abstractedSolution
+      <+> prettyExternal (WithContext abstractedSolution (boundContextOf ctx))
   -- "as" <+> prettyFriendly (WithContext abstractedSolution (boundContextOf ctx))
 
   metaSubst <- getMetaSubstitution

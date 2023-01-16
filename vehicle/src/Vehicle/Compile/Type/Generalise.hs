@@ -77,7 +77,7 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass
-  logCompilerPass MaxDetail ("generalisation over" <+> prettySimple substTypeClass) $
+  logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $
     prependBinderAndSolveMeta meta (BinderDisplayForm OnlyType True) (Instance True) relevancy substTypeClass decl
 
 --------------------------------------------------------------------------------

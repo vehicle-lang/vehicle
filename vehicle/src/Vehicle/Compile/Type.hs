@@ -91,7 +91,7 @@ typeCheckDecl uncheckedDecl =
 
     checkAllUnknownsSolved
     finalDecl <- substMetas gluedDecl
-    logCompilerPassOutput $ prettySimple (fmap unnormalised finalDecl)
+    logCompilerPassOutput $ prettyExternal (fmap unnormalised finalDecl)
 
     return $ fmap TypedExpr finalDecl
 

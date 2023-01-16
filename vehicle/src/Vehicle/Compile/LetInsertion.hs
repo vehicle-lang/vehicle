@@ -226,14 +226,14 @@ letBindSubexpressions remainingSM subexprsToInsert expr
       logDebug MaxDetail $ "inserting" <+> prettyEntry body cs
       incrCallDepth
 
-      logDebug MaxDetail $ "body-before:" <+> prettySimple (fromCoDB body)
+      logDebug MaxDetail $ "body-before:" <+> prettyVerbose (fromCoDB body)
       -- Everywhere the position tree points to, substitute a variable through
       -- which refers to the let binding that is about to be inserted.
       let coDBVar = (Var p CoDBBound, leafBVM 0)
       let substBody = substPos coDBVar (Just (positions cs)) (lowerFreeCoDBIndices body)
       -- Wrap the substituted body in a let binding
       updatedBody <- prependLet p cs substBody
-      logDebug MaxDetail $ "body-after: " <+> prettySimple (fromCoDB updatedBody)
+      logDebug MaxDetail $ "body-after: " <+> prettyVerbose (fromCoDB updatedBody)
 
       -- Update the remaining subexpressions that are not going to be inserted here,
       -- to take into account the updated form of the body.
@@ -315,7 +315,7 @@ duplicateError e maps _ _ =
 
 showIdentEntry :: MonadLetInsert m => CoDBExpr -> m ()
 showIdentEntry e = do
-  logDebug MaxDetail ("letInsert-entry " <> align (prettySimple (fromCoDB e)))
+  logDebug MaxDetail ("letInsert-entry " <> align (prettyVerbose (fromCoDB e)))
   incrCallDepth
 
 showIdentExit :: MonadLetInsert m => CoDBExpr -> SubexpressionMap -> m ()
@@ -326,7 +326,7 @@ showIdentExit expr sm = do
     MaxDetail
     ( "letInsert-exit "
         <+> align
-          ( prettySimple (fromCoDB expr)
+          ( prettyVerbose (fromCoDB expr)
               <+> " |="
                 <> softline
                 <> prettySM expr subexprFilter sm
@@ -338,7 +338,7 @@ prettyEntry ::
   Subexpression ->
   Doc a
 prettyEntry expr item =
-  prettySimple (fromCoDB (subexpr item)) <+> "->" <+> prettySimple (PositionsInExpr expr (positions item))
+  prettyVerbose (fromCoDB (subexpr item)) <+> "->" <+> prettyVerbose (PositionsInExpr expr (positions item))
 
 prettyItem ::
   CoDBExpr ->

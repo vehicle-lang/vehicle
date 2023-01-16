@@ -13,13 +13,13 @@ class Simplify a where
   --   and therefore the resulting code is not guaranteed to be well-typed.
   simplify :: a -> a
 
-instance Simplify expr => Simplify (GenericProg expr) where
+instance Simplify InputProg where
   simplify = fmap simplify
 
-instance Simplify expr => Simplify (GenericDecl expr) where
+instance Simplify InputDecl where
   simplify = fmap simplify
 
-instance Simplify (Expr binder var) where
+instance Simplify InputExpr where
   simplify expr = case expr of
     Universe {} -> expr
     Hole {} -> expr
@@ -27,24 +27,40 @@ instance Simplify (Expr binder var) where
     Builtin {} -> expr
     Literal {} -> expr
     Var {} -> expr
-    App p fun args -> normAppList p (simplify fun) (simplifyArgs args)
     LVec p xs -> LVec p (fmap simplify xs)
     Ann p e t -> Ann p (simplify e) (simplify t)
     Pi p binder result -> Pi p (simplify binder) (simplify result)
     Let p bound binder body -> Let p (simplify bound) (simplify binder) (simplify body)
     Lam p binder body -> Lam p (simplify binder) (simplify body)
+    App p fun args -> do
+      let fun' = simplify fun
+      let args' = simplifyArgs args
+      -- Remove automatically inserted cast functions
+      if isLiteralCast fun' && not (null args')
+        then argExpr $ last args'
+        else normAppList p fun' args'
 
-instance Simplify (Binder binder var) where
+instance Simplify InputBinder where
   simplify = fmap simplify
 
-instance Simplify (Arg binder var) where
+instance Simplify InputArg where
   simplify = fmap simplify
 
-simplifyArgs :: NonEmpty (Arg binder var) -> [Arg binder var]
+simplifyArgs :: NonEmpty InputArg -> [InputArg]
 simplifyArgs = fmap simplify . NonEmpty.filter (not . wasInserted)
 
 wasInserted :: Arg binder var -> Bool
 wasInserted arg = case visibilityOf arg of
   Implicit True -> True
   Instance True -> True
+  _ -> False
+
+isLiteralCast :: Expr binder var -> Bool
+isLiteralCast = \case
+  Builtin _ FromNat {} -> True
+  Builtin _ FromRat {} -> True
+  Builtin _ FromVec {} -> True
+  Builtin _ (TypeClassOp FromNatTC {}) -> True
+  Builtin _ (TypeClassOp FromRatTC {}) -> True
+  Builtin _ (TypeClassOp FromVecTC {}) -> True
   _ -> False

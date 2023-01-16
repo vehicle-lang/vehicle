@@ -43,16 +43,13 @@ solve = \case
   HasAnd -> solveHasAnd
   HasOr -> solveHasOr
   HasImplies -> solveHasImplies
+  HasIf -> solveHasIf
   HasQuantifier q -> solveHasQuantifier q
   HasNeg -> solveHasNeg
-  HasSub -> solveHasSub
   HasMul -> solveHasMul
   HasDiv -> solveHasDiv
-  HasFold -> solveHasFold
   HasQuantifierIn q -> solveHasQuantifierIn q
-  HasIf -> solveHasIf
   HasNatLits n -> solveHasNatLits n
-  HasRatLits -> solveHasRatLits
   HasVecLits n -> solveHasVecLits n
   AlmostEqualConstraint -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
@@ -109,26 +106,6 @@ solveBoolEquals c arg1 arg2 res op = do
   constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity (EqPolarity op)
   let solution = VFreeVar p (identifierOf StdEqualsBool) []
   return $ Right (constraints, solution)
-
-{-
-solveListEquals :: TCM m
-                => EqualityOp
-                -> Constraint
-                -> NormType
-                -> NormType
-                -> NormType
-                -> m TypeClassProgress
-solveListEquals op c arg1 arg2 res = do
-  let p = provenanceOf c
-  (arg1Eq, tElem1) <- unifyWithListType c arg1
-  (arg2Eq, tElem2) <- unifyWithListType c arg2
-
-  -- Recursively check that the element types have equality.
-  (meta, recEq) <- createTC c (HasEq op) [tElem1, tElem2, res]
-  let solution = FreeVar p StdEqualsBool
-
-  return $ Right ([arg1Eq, arg2Eq, recEq], solution)
--}
 
 solveVectorEquals :: HasEqSolver
 solveVectorEquals c arg1 arg2 res op = do
@@ -366,72 +343,6 @@ solveNeg c arg res dom = do
   return $ Right ([eq], solution)
 
 --------------------------------------------------------------------------------
--- HasSub
-
-solveHasSub :: TypeClassSolver
-solveHasSub c types@[arg1, arg2, res]
-  | allOf types isMeta = blockOnMetas types
-  | anyOf types isIntType = solveSubInt ctx arg1 arg2 res
-  | anyOf types isRatType = solveSubRat ctx arg1 arg2 res
-  | anyOf types isVectorType = solveSubVector ctx arg1 arg2 res
-  | otherwise = blockOrThrowErrors ctx types tcError
-  where
-    ctx = contextOf c
-    allowedTypes = fmap pretty [Int, Rat]
-    tcError =
-      tcArgError ctx arg1 SubTC allowedTypes 1 2
-        <> tcArgError ctx arg2 SubTC allowedTypes 2 2
-        <> tcResultError ctx res SubTC allowedTypes
-solveHasSub c _ = malformedConstraintError c
-
-type HasSubSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
-  m TypeClassProgress
-
-solveSubInt :: HasSubSolver
-solveSubInt c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Sub SubInt) []
-  return $ Right (constraints, solution)
-
-solveSubRat :: HasSubSolver
-solveSubRat c arg1 arg2 res = do
-  let p = provenanceOf c
-  constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MaxLinearity
-  let solution = VBuiltin p (Sub SubRat) []
-  return $ Right (constraints, solution)
-
-solveSubVector :: HasSubSolver
-solveSubVector c arg1 arg2 res = do
-  let p = provenanceOf c
-  dim <- freshDimMeta c
-
-  (arg1Eq, arg1Elem) <- unifyWithVectorType c dim arg1
-  (arg2Eq, arg2Elem) <- unifyWithVectorType c dim arg2
-  (resEq, resElem) <- unifyWithVectorType c dim res
-  (metaExpr, recTC) <- createTC c HasSub [arg1Elem, arg2Elem, resElem]
-
-  let constraints = [arg1Eq, arg2Eq, resEq, recTC]
-  let solution =
-        VFreeVar
-          p
-          (identifierOf StdSubVector)
-          [ ImplicitArg p arg1Elem,
-            ImplicitArg p arg2Elem,
-            ImplicitArg p resElem,
-            ImplicitArg p (normalised dim),
-            InstanceArg p metaExpr
-          ]
-
-  return $ Right (constraints, solution)
-
---------------------------------------------------------------------------------
 -- HasMul
 
 solveHasMul :: TypeClassSolver
@@ -508,48 +419,6 @@ solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
   let solution = VBuiltin (provenanceOf c) (Div DivRat) []
   return $ Right (constraints, solution)
-
---------------------------------------------------------------------------------
--- HasFold
-
-solveHasFold :: TypeClassSolver
-solveHasFold c [tElem, tCont] = case tCont of
-  (getMeta -> Just {}) -> blockOnMetas [tCont]
-  VListType _ tListElem -> solveFoldList ctx tElem tListElem
-  VVectorType _ tVecElem dim -> solveFoldVec dim ctx tElem tVecElem
-  _ -> blockOrThrowErrors ctx [tCont] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedFoldConstraintContainer ctx tCont
-solveHasFold c _ = malformedConstraintError c
-
-type HasFoldSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  m TypeClassProgress
-
-solveFoldList :: HasFoldSolver
-solveFoldList c tElem tListElem = do
-  let p = provenanceOf c
-  let constraint = unify c tElem tListElem
-  let solution = VBuiltin (provenanceOf c) (Fold FoldList) [ImplicitArg p tListElem]
-  return $ Right ([constraint], solution)
-
-solveFoldVec :: NormExpr -> HasFoldSolver
-solveFoldVec dim c tElem tVecElem = do
-  let p = provenanceOf c
-  let constraint = unify c tElem tVecElem
-  let solution =
-        VBuiltin
-          (provenanceOf c)
-          (Fold FoldVector)
-          [ ImplicitArg p tVecElem,
-            ImplicitArg p dim
-          ]
-  return $ Right ([constraint], solution)
 
 --------------------------------------------------------------------------------
 -- HasQuantifierIn
@@ -637,31 +506,6 @@ solveFromNatToRat c n arg = do
   let ratEq = unify c arg (mkVAnnRatType p lin)
   let solution = VBuiltin p (FromNat n FromNatToRat) []
   return $ Right ([ratEq], solution)
-
---------------------------------------------------------------------------------
--- HasRatLits
-
-solveHasRatLits :: TypeClassSolver
-solveHasRatLits c [arg]
-  | isMeta arg = blockOnMetas [arg]
-  | isRatType arg = solveFromRatToRat ctx arg
-  | otherwise = blockOrThrowErrors ctx [arg] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedRatLitConstraint ctx arg
-solveHasRatLits c _ = malformedConstraintError c
-
-solveFromRatToRat ::
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  m TypeClassProgress
-solveFromRatToRat ctx arg = do
-  let p = provenanceOf ctx
-  let lin = VLinearityExpr p Constant
-  let constraint = unify ctx arg (mkVAnnRatType p lin)
-  let solution = VBuiltin p (FromRat FromRatToRat) []
-  return $ Right ([constraint], solution)
 
 --------------------------------------------------------------------------------
 -- HasConLits

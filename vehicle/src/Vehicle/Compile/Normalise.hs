@@ -480,7 +480,7 @@ currentPass = "normalisation"
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
-  logDebug MaxDetail ("norm-entry " <> prettySimple e)
+  logDebug MaxDetail ("norm-entry " <> prettyVerbose e)
   incrCallDepth
   return e
 
@@ -489,6 +489,6 @@ showExit old mNew = do
   new <- mNew
   decrCallDepth
   when (old /= new) $ do
-    logDebug MaxDetail ("normalising" <+> prettySimple old)
-  logDebug MaxDetail ("norm-exit " <+> prettySimple new)
+    logDebug MaxDetail ("normalising" <+> prettyVerbose old)
+  logDebug MaxDetail ("norm-exit " <+> prettyVerbose new)
   return new
