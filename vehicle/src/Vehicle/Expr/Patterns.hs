@@ -856,8 +856,6 @@ data StdLibRep binder var where
   ForallVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
   EqualsBool :: [Arg binder var] -> StdLibRep binder var
   NotEqualsBool :: [Arg binder var] -> StdLibRep binder var
-  ExistsBool :: Binder binder var -> Expr binder var -> StdLibRep binder var
-  ForallBool :: Binder binder var -> Expr binder var -> StdLibRep binder var
 
 embedStdLib :: StdLibFunction -> NonEmpty (Arg binder var) -> Maybe (StdLibRep binder var)
 embedStdLib f allArgs = case f of
@@ -893,14 +891,6 @@ embedStdLib f allArgs = case f of
     _ -> Nothing
   StdEqualsBool -> Just $ EqualsBool (toList allArgs)
   StdNotEqualsBool -> Just $ NotEqualsBool (toList allArgs)
-  StdExistsBool -> case allArgs of
-    [ ExplicitArg _ (Lam _ binder body)
-      ] -> Just $ ExistsBool binder body
-    _ -> Nothing
-  StdForallBool -> case allArgs of
-    [ ExplicitArg _ (Lam _ binder body)
-      ] -> Just $ ForallBool binder body
-    _ -> Nothing
   StdExistsIndex -> Nothing
   StdForallIndex -> Nothing
   StdAddVector -> Nothing

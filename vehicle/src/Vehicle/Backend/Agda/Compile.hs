@@ -484,8 +484,6 @@ compileStdLibFunction f allArgs = case embedStdLib f allArgs of
     NotEqualsBool {} -> eqError
     ExistsVector {} -> quantError
     ForallVector {} -> quantError
-    ExistsBool {} -> quantError
-    ForallBool {} -> quantError
     where
       quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
       eqError = compilerDeveloperError "Equality type-class ops should not have been normalised out."

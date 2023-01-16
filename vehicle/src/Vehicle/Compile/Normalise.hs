@@ -186,8 +186,6 @@ nfStdLibFn p f allArgs = do
     Just res -> case res of
       EqualsBool args -> fmap return (nfEqualsBool Eq p args)
       NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
-      ExistsBool {} -> Nothing
-      ForallBool {} -> Nothing
       EqualsVector tElem size recFn args -> nfEqualsVector Eq p tElem size recFn args
       NotEqualsVector tElem size recFn args -> nfEqualsVector Neq p tElem size recFn args
       ForallVector tElem s recFn binder body -> case s of
