@@ -197,13 +197,28 @@ instance MeaningfulError CompileError where
     -------------
     -- Scoping --
     -------------
-
+    InvalidPrunedName name ->
+      UError $
+        UserError
+          { provenance = mempty,
+            -- TODO can use Levenschtein distance to search contexts/builtins
+            problem =
+              "Was asked to compile declaration"
+                <+> quotePretty name
+                <+> "but no declaration exists with that name in the specification.",
+            fix =
+              Just $
+                "check the spelling of"
+                  <+> quotePretty name
+                  <+> "or that the"
+                  <+> "right specification is being used."
+          }
     UnboundName p name ->
       UError $
         UserError
           { provenance = p,
             -- TODO can use Levenschtein distance to search contexts/builtins
-            problem = "The name" <+> squotes (pretty name) <+> "is not in scope",
+            problem = "The name" <+> quotePretty name <+> "is not in scope",
             fix = Nothing
           }
     DuplicateName p name _matching ->

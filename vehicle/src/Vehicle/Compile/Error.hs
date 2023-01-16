@@ -40,29 +40,26 @@ data CompileError
   = DevError (Doc ())
   | -- Parse errors
     ParseError ParseError
+  | -- Command line option errors
+    InvalidPrunedName Name
   | -- Errors thrown by scope checking.
     UnboundName Provenance Name
   | DuplicateName Provenance Name Identifier
   | -- Errors thrown while type checking
-    UnresolvedHole
-      Provenance -- The location of the hole
-      Name -- The name of the hole
+    UnresolvedHole Provenance Name
   | FunTypeMismatch
       Provenance -- The location of the mismatch.
       BoundDBCtx -- The context at the time of the failure
       CheckedExpr -- The function being typed
       CheckedType -- The possible inferred types.
       CheckedType -- The expected type.
-  | UnsolvedConstraints
-      (NonEmpty (WithContext Constraint))
-  | UnsolvedMetas
-      (NonEmpty (MetaID, Provenance))
+  | UnsolvedConstraints (NonEmpty (WithContext Constraint))
+  | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
       UncheckedArg -- The non-explicit argument
       CheckedType -- Expected type of the argument
-  | FailedUnificationConstraints
-      (NonEmpty (WithContext UnificationConstraint))
+  | FailedUnificationConstraints (NonEmpty (WithContext UnificationConstraint))
   | FailedEqConstraint ConstraintContext NormType NormType EqualityOp
   | FailedOrdConstraint ConstraintContext NormType NormType OrderOp
   | FailedBuiltinConstraintArgument ConstraintContext Builtin NormType [UnAnnDoc] Int Int
