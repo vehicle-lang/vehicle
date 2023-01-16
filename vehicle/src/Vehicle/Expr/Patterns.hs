@@ -852,16 +852,12 @@ pattern LinearityExpr p lin = Builtin p (Constructor (Linearity lin))
 data StdLibRep binder var where
   EqualsVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
   NotEqualsVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
-  AddVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
-  SubVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
   ExistsVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
   ForallVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
   EqualsBool :: [Arg binder var] -> StdLibRep binder var
   NotEqualsBool :: [Arg binder var] -> StdLibRep binder var
   ExistsBool :: Binder binder var -> Expr binder var -> StdLibRep binder var
   ForallBool :: Binder binder var -> Expr binder var -> StdLibRep binder var
-  ExistsIndex :: Int -> Expr binder var -> StdLibRep binder var
-  ForallIndex :: Int -> Expr binder var -> StdLibRep binder var
 
 embedStdLib :: StdLibFunction -> NonEmpty (Arg binder var) -> Maybe (StdLibRep binder var)
 embedStdLib f allArgs = case f of
@@ -880,24 +876,6 @@ embedStdLib f allArgs = case f of
         : InstanceArg _ recFn
         : args
       ) -> Just $ NotEqualsVector tElem size recFn args
-    _ -> Nothing
-  StdAddVector -> case allArgs of
-    ( ImplicitArg _ tElem1
-        :| ImplicitArg _ _tElem2
-        : ImplicitArg _ _tElem3
-        : ImplicitArg _ size
-        : InstanceArg _ recFn
-        : args
-      ) -> Just $ AddVector tElem1 size recFn args
-    _ -> Nothing
-  StdSubVector -> case allArgs of
-    ( ImplicitArg _ tElem1
-        :| ImplicitArg _ _tElem2
-        : ImplicitArg _ _tElem3
-        : ImplicitArg _ size
-        : InstanceArg _ recFn
-        : args
-      ) -> Just $ SubVector tElem1 size recFn args
     _ -> Nothing
   StdExistsVector -> case allArgs of
     [ ImplicitArg _ tElem,
@@ -923,16 +901,10 @@ embedStdLib f allArgs = case f of
     [ ExplicitArg _ (Lam _ binder body)
       ] -> Just $ ForallBool binder body
     _ -> Nothing
-  StdExistsIndex -> case allArgs of
-    [ ImplicitArg _ (NatLiteral _ size),
-      ExplicitArg _ lam
-      ] -> Just $ ExistsIndex size lam
-    _ -> Nothing
-  StdForallIndex -> case allArgs of
-    [ ImplicitArg _ (NatLiteral _ size),
-      ExplicitArg _ lam
-      ] -> Just $ ForallIndex size lam
-    _ -> Nothing
+  StdExistsIndex -> Nothing
+  StdForallIndex -> Nothing
+  StdAddVector -> Nothing
+  StdSubVector -> Nothing
   StdForallInList -> Nothing
   StdExistsInList -> Nothing
   StdForallInVector -> Nothing

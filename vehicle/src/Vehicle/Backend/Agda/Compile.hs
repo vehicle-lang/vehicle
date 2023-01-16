@@ -478,8 +478,6 @@ compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty Output
 compileStdLibFunction f allArgs = case embedStdLib f allArgs of
   Nothing -> compilerDeveloperError $ "Compilation of stdlib function" <+> quotePretty f <+> "not yet supported"
   Just v -> case v of
-    AddVector _ _ _ args -> annotateApp [VehicleUtils] "add" <$> traverse (compileExpr . argExpr) args
-    SubVector _ _ _ args -> annotateApp [VehicleUtils] "sub" <$> traverse (compileExpr . argExpr) args
     EqualsVector {} -> eqError
     NotEqualsVector {} -> eqError
     EqualsBool {} -> eqError
@@ -488,8 +486,6 @@ compileStdLibFunction f allArgs = case embedStdLib f allArgs of
     ForallVector {} -> quantError
     ExistsBool {} -> quantError
     ForallBool {} -> quantError
-    ExistsIndex {} -> quantError
-    ForallIndex {} -> quantError
     where
       quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
       eqError = compilerDeveloperError "Equality type-class ops should not have been normalised out."

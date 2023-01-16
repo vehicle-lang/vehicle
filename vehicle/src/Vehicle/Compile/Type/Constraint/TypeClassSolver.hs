@@ -15,7 +15,6 @@ import Vehicle.Compile.Type.Constraint.LinearitySolver
 import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
@@ -31,9 +30,8 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
       let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
-      let dbLevel = DBLevel $ length (boundContext ctx)
-      solution1 <- quote dbLevel solution
-      solveMeta m solution1 dbLevel
+      solution1 <- quote (contextDBLevel ctx) solution
+      solveMeta m solution1 (boundContext ctx)
       addConstraints newConstraints
 
 solve :: TypeClass -> TypeClassSolver

@@ -171,10 +171,10 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
-  metaCtxSize <- getMetaCtxSize meta
+  metaCtx <- getMetaCtx meta
   let p = provenanceOf prependedDecl
-  let solution = Var p (Bound (DBIndex $ metaCtxSize - 1))
-  solveMeta meta solution (DBLevel metaCtxSize)
+  let solution = Var p (Bound (DBIndex $ length metaCtx - 1))
+  solveMeta meta solution metaCtx
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
 

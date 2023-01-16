@@ -30,7 +30,7 @@ runTypeCheckerHypothetically ::
 runTypeCheckerHypothetically e = do
   callDepth <- getCallDepth
   declCtx <- getDeclContext
-  state <- getMetaCtx
+  state <- getMetaState
   result <- runExceptT $ runTypeCheckerT declCtx state e
   case result of
     Right value -> return $ Right value
