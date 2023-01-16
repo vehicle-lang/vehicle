@@ -186,20 +186,14 @@ nfStdLibFn p f allArgs = do
     Just res -> case res of
       EqualsBool args -> fmap return (nfEqualsBool Eq p args)
       NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
-      ExistsBool {} -> Nothing
-      ForallBool {} -> Nothing
       EqualsVector tElem size recFn args -> nfEqualsVector Eq p tElem size recFn args
       NotEqualsVector tElem size recFn args -> nfEqualsVector Neq p tElem size recFn args
-      AddVector tElem size recFn args -> nfAddVector p tElem size recFn args
-      SubVector tElem size recFn args -> nfSubVector p tElem size recFn args
       ForallVector tElem s recFn binder body -> case s of
         NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
         _ -> Nothing
       ExistsVector tElem s recFn binder body -> case s of
         NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
         _ -> Nothing
-      ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
-      ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -213,8 +207,7 @@ nfBuiltin p (TypeClassOp op) args = do
     Nothing -> return originalExpr
     Just res -> do
       (fn, newArgs) <- res
-      nfNewArgs <- traverse nf newArgs
-      nfApp p fn nfNewArgs
+      nf (normApp p fn newArgs)
 nfBuiltin p b args = do
   let e = App p (Builtin p b) args
   fromMaybe (return e) $ case e of
@@ -346,36 +339,6 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Generate a expression prepended with `tensorSize` quantifiers
   return $ foldl mkQuantifier body2 allNames
 
-nfQuantifierIndex ::
-  MonadNorm m =>
-  Provenance ->
-  Quantifier ->
-  Int ->
-  CheckedExpr ->
-  m CheckedExpr
-nfQuantifierIndex p q size lam = do
-  let indexType = mkIndexType p size
-  let cont = mkVec p indexType (fmap (IndexLiteral p size) [0 .. size - 1])
-  nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
-
--- | Elaborate quantification over the members of a container type.
--- Expands e.g. `forAll x in vector . y` to `fold and true (map (\x -> y) vector)`
-nfQuantifierInVector ::
-  MonadNorm m =>
-  Provenance ->
-  Quantifier ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  m CheckedExpr
-nfQuantifierInVector p q tElem size lam container = do
-  let tTo = BoolType p
-  let mappedContainer = mkMapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
-
-  let ident = Identifier StdLib $ if q == Forall then "bigAnd" else "bigOr"
-  nf $ bigOp p ident size mappedContainer
-
 nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
 nfEqualsBool op p args@[arg1, arg2] = case op of
   Neq -> nfNot p . ExplicitArg p <$> nfEqualsBool Neq p args
@@ -399,32 +362,6 @@ nfEqualsVector op p tElem size recFn args = case args of
     equalitiesSeq <- nf $ zipWithVector p tElem tElem (BoolType p) size recFn xs ys
     let ident = Identifier StdLib $ if op == Eq then "bigAnd" else "bigOr"
     nf $ bigOp p ident size equalitiesSeq
-  _ -> Nothing
-
-nfAddVector ::
-  MonadNorm m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfAddVector p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
-    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
-  _ -> Nothing
-
-nfSubVector ::
-  MonadNorm m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfSubVector p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
-    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
   _ -> Nothing
 
 nfMapVector ::

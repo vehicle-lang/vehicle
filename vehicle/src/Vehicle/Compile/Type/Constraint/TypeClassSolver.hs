@@ -15,7 +15,6 @@ import Vehicle.Compile.Type.Constraint.LinearitySolver
 import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
@@ -31,9 +30,8 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
       let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
-      let dbLevel = DBLevel $ length (boundContext ctx)
-      solution1 <- quote dbLevel solution
-      solveMeta m solution1 dbLevel
+      solution1 <- quote (contextDBLevel ctx) solution
+      solveMeta m solution1 (boundContext ctx)
       addConstraints newConstraints
 
 solve :: TypeClass -> TypeClassSolver
@@ -177,7 +175,6 @@ solveHasQuantifier _ _ [lamType, _]
   | isMeta lamType = blockOnMetas [lamType]
 solveHasQuantifier q c [VPi _ binder body, res]
   | isMeta domain = blockOnMetas [domain]
-  | isBoolType domain = solveBoolQuantifier q ctx binder body res
   | isIndexType domain = solveIndexQuantifier q ctx binder body res
   | isNatType domain = solveNatQuantifier q ctx binder body res
   | isIntType domain = solveIntQuantifier q ctx binder body res
@@ -199,28 +196,6 @@ type HasQuantifierSolver =
   NormType ->
   NormType ->
   m TypeClassProgress
-
-solveBoolQuantifier :: HasQuantifierSolver
-solveBoolQuantifier q c domainBinder body res = do
-  let p = provenanceOf c
-
-  -- If we're quantifying over a Bool then it itself is linear and unquantified
-  let domainLin = VLinearityExpr p Constant
-  let domainPol = VPolarityExpr p Unquantified
-  let domainBool = mkVAnnBoolType p domainLin domainPol
-  let domainEq = unify c (typeOf domainBinder) domainBool
-
-  -- The body is some unknown annotated boolean
-  (bodyEq, _, _) <- unifyWithAnnBoolType c body
-
-  -- The result is equal to the body
-  let resEq = unify c res body
-
-  let solution = identifierOf $ case q of
-        Forall -> StdForallBool
-        Exists -> StdExistsBool
-
-  return $ Right ([domainEq, bodyEq, resEq], VFreeVar p solution [])
 
 solveIndexQuantifier :: HasQuantifierSolver
 solveIndexQuantifier q c domainBinder body res = do

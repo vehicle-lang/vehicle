@@ -13,7 +13,7 @@ stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0, 5]
+stdlibVersion = [0, 6]
 
 standardLibrary :: Library
 standardLibrary =
@@ -43,6 +43,19 @@ content =
   \\n\
   \addVector : {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n\n\
   \addVector = zipWith (\\x y -> x + y)\n\
+  \\n\
+  \subVector : {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n\n\
+  \subVector = zipWith (\\x y -> x - y)\n\
+  \\n\
+  \-----------\n\
+  \-- Index --\n\
+  \-----------\n\
+  \\n\
+  \existsIndex : (Index n -> Bool) -> Bool\n\
+  \existsIndex f = bigOr (foreach i . f i)\n\
+  \\n\
+  \forallIndex : (Index n -> Bool) -> Bool\n\
+  \forallIndex f = bigAnd (foreach i . f i)\n\
   \\n\
   \------------\n\
   \-- Tensor --\n\

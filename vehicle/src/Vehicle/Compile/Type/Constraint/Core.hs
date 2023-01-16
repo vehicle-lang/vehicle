@@ -108,9 +108,8 @@ unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext
 
 solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> NormExpr -> m ()
 solveTypeClassMeta ctx meta solution = do
-  let dbLevel = contextDBLevel ctx
-  quotedSolution <- quote dbLevel solution
-  solveMeta meta quotedSolution dbLevel
+  quotedSolution <- quote (contextDBLevel ctx) solution
+  solveMeta meta quotedSolution (boundContext ctx)
 
 mkVAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormExpr
 mkVAnnBoolType p lin pol = VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]

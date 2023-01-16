@@ -143,7 +143,7 @@ checkCandidate ctx meta goal candidate = do
 
         -- Add the solution of the type-class as well (if we had first class records
         -- then we wouldn't need to do this manually).
-        solveMeta meta substCandidateSolution (contextDBLevel ctx)
+        solveMeta meta substCandidateSolution (boundContext ctx)
 
       runUnificationSolver mempty
 
