@@ -108,7 +108,7 @@ findCandidatesInBoundCtx goal ctx = go ctx
       ((_, t, _) : localCtx) -> do
         candidates <- go localCtx
         case findTypeClassOfCandidate t of
-          Just tc | tc == goalHead goal -> do
+          Right tc | tc == goalHead goal -> do
             let candidate =
                   InstanceCandidate
                     { candidateContext = localCtx,

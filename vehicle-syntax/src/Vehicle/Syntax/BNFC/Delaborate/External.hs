@@ -206,7 +206,9 @@ delabConstructor fun args = case fun of
   V.Vector -> delabApp (B.Vector tokVector) args
   V.Index -> delabApp (B.Index tokIndex) args
   V.TypeClass tc -> case tc of
-    V.HasEq V.Eq -> delabApp (B.HasEq tokHasEq) args
+    V.HasEq eq -> case eq of
+      V.Eq -> delabApp (B.HasEq tokHasEq) args
+      V.Neq -> delabApp (B.HasNotEq tokHasNotEq) args
     V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
     V.HasSub -> delabApp (B.HasSub tokHasSub) args
     V.HasMul -> delabApp (B.HasMul tokHasMul) args

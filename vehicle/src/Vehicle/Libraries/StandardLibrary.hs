@@ -13,7 +13,7 @@ stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0, 6]
+stdlibVersion = [0, 7]
 
 standardLibrary :: Library
 standardLibrary =
@@ -46,6 +46,12 @@ content =
   \\n\
   \subVector : {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n\n\
   \subVector = zipWith (\\x y -> x - y)\n\
+  \\n\
+  \equalsVector : {{HasEq A B}} -> Vector A n -> Vector B n -> Bool\n\
+  \equalsVector xs ys = bigAnd (zipWith (\\x y -> x == y) xs ys)\n\
+  \\n\
+  \notEqualsVector : {{HasNotEq A B}} -> Vector A n -> Vector B n -> Bool\n\
+  \notEqualsVector xs ys = bigOr (zipWith (\\x y -> x != y) xs ys)\n\
   \\n\
   \-----------\n\
   \-- Index --\n\

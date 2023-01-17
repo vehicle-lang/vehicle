@@ -1,6 +1,6 @@
 module Vehicle.Expr.Patterns where
 
-import Data.List.NonEmpty (NonEmpty (..), toList)
+import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
@@ -665,17 +665,15 @@ pattern EqualityTCExpr ::
   EqualityOp ->
   Type binder var ->
   Type binder var ->
-  Type binder var ->
   Expr binder var ->
   [Arg binder var] ->
   Expr binder var
-pattern EqualityTCExpr p op t1 t2 t3 solution explicitArgs <-
+pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
   App
     p
     (Builtin _ (TypeClassOp (EqualsTC op)))
     ( ImplicitArg _ t1
         :| ImplicitArg _ t2
-        : ImplicitArg _ t3
         : InstanceArg _ solution
         : explicitArgs
       )
@@ -850,31 +848,11 @@ pattern LinearityExpr p lin = Builtin p (Constructor (Linearity lin))
 --------------------------------------------------------------------------------
 
 data StdLibRep binder var where
-  EqualsVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
-  NotEqualsVector :: Type binder var -> Expr binder var -> Expr binder var -> [Arg binder var] -> StdLibRep binder var
   ExistsVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
   ForallVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
-  EqualsBool :: [Arg binder var] -> StdLibRep binder var
-  NotEqualsBool :: [Arg binder var] -> StdLibRep binder var
 
 embedStdLib :: StdLibFunction -> NonEmpty (Arg binder var) -> Maybe (StdLibRep binder var)
 embedStdLib f allArgs = case f of
-  StdEqualsVector -> case allArgs of
-    ( ImplicitArg _ tElem
-        :| ImplicitArg _ _tElem2
-        : ImplicitArg _ _tElem3
-        : ImplicitArg _ size
-        : InstanceArg _ recFn
-        : args
-      ) -> Just $ EqualsVector tElem size recFn args
-    _ -> Nothing
-  StdNotEqualsVector -> case allArgs of
-    ( ImplicitArg _ tElem
-        :| ImplicitArg _ size
-        : InstanceArg _ recFn
-        : args
-      ) -> Just $ NotEqualsVector tElem size recFn args
-    _ -> Nothing
   StdExistsVector -> case allArgs of
     [ ImplicitArg _ tElem,
       ImplicitArg _ size,
@@ -889,8 +867,10 @@ embedStdLib f allArgs = case f of
       ExplicitArg _ (Lam _ binder body)
       ] -> Just $ ForallVector tElem size recFn binder body
     _ -> Nothing
-  StdEqualsBool -> Just $ EqualsBool (toList allArgs)
-  StdNotEqualsBool -> Just $ NotEqualsBool (toList allArgs)
+  StdEqualsBool -> Nothing
+  StdNotEqualsBool -> Nothing
+  StdEqualsVector -> Nothing
+  StdNotEqualsVector -> Nothing
   StdExistsIndex -> Nothing
   StdForallIndex -> Nothing
   StdAddVector -> Nothing

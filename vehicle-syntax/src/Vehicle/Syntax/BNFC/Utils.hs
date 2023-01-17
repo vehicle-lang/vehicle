@@ -119,3 +119,5 @@ tokHasSub = mkToken B.TokHasSub "HasFold"
 tokHasMul = mkToken B.TokHasMul "HasMul"
 
 tokHasEq = mkToken B.TokHasEq "HasEq"
+
+tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"

@@ -16,7 +16,6 @@ import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Libraries.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
@@ -36,7 +35,6 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
 
 solve :: TypeClass -> TypeClassSolver
 solve = \case
-  HasEq eq -> solveHasEq eq
   HasOrd ord -> solveHasOrd ord
   HasAnd -> solveHasAnd
   HasOr -> solveHasOr
@@ -65,66 +63,6 @@ castProgress :: Provenance -> ConstraintProgress -> TypeClassProgress
 castProgress c = \case
   Stuck metas -> Left metas
   Progress newConstraints -> irrelevant c newConstraints
-
---------------------------------------------------------------------------------
--- HasEq
-
-solveHasEq :: EqualityOp -> TypeClassSolver
-solveHasEq op c [arg1, arg2, res]
-  | allOf args isMeta = blockOnMetas args
-  | anyOf args isIndexType = solveIndexComparisonOp ctx arg1 arg2 res (Equals EqIndex op)
-  | anyOf args isNatType = solveSimpleComparisonOp ctx arg1 arg2 res (Equals EqNat op)
-  | anyOf args isIntType = solveSimpleComparisonOp ctx arg1 arg2 res (Equals EqInt op)
-  | anyOf args isRatType = solveRatComparisonOp ctx arg1 arg2 res (Equals EqRat op)
-  | anyOf args isBoolType = solveBoolEquals ctx arg1 arg2 res op
-  | anyOf args isVectorType = solveVectorEquals ctx arg1 arg2 res op
-  | otherwise = blockOrThrowErrors ctx args tcError
-  where
-    ctx = contextOf c
-    args = [arg1, arg2]
-    allowedTypes = map pretty [Bool, Index, Nat, Int, Rat, List, Vector] <> [pretty $ identifierName TensorIdent]
-    tcError =
-      tcArgError ctx arg1 (EqualsTC op) allowedTypes 1 2
-        <> tcArgError ctx arg2 (EqualsTC op) allowedTypes 2 2
-solveHasEq _ c _ = malformedConstraintError c
-
-type HasEqSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
-  EqualityOp ->
-  m TypeClassProgress
-
-solveBoolEquals :: HasEqSolver
-solveBoolEquals c arg1 arg2 res op = do
-  let p = provenanceOf c
-  constraints <- checkBoolTypesEqualUpTo c res [arg1, arg2] MaxLinearity (EqPolarity op)
-  let solution = VFreeVar p (identifierOf StdEqualsBool) []
-  return $ Right (constraints, solution)
-
-solveVectorEquals :: HasEqSolver
-solveVectorEquals c arg1 arg2 res op = do
-  dim <- freshDimMeta c
-  (arg1Eq, tElem1) <- unifyWithVectorType c dim arg1
-  (arg2Eq, tElem2) <- unifyWithVectorType c dim arg2
-
-  -- Recursively check that the element types have equality.
-  (metaExpr, recEq) <- createTC c (HasEq op) [tElem1, tElem2, res]
-
-  let p = provenanceOf c
-  let solution =
-        VFreeVar
-          p
-          (identifierOf StdEqualsVector)
-          [ ImplicitArg p tElem1,
-            ImplicitArg p (normalised dim),
-            InstanceArg p metaExpr
-          ]
-
-  return $ Right ([arg1Eq, arg2Eq, recEq], solution)
 
 --------------------------------------------------------------------------------
 -- HasOrd

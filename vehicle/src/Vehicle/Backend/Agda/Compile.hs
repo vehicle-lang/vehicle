@@ -478,15 +478,10 @@ compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty Output
 compileStdLibFunction f allArgs = case embedStdLib f allArgs of
   Nothing -> compilerDeveloperError $ "Compilation of stdlib function" <+> quotePretty f <+> "not yet supported"
   Just v -> case v of
-    EqualsVector {} -> eqError
-    NotEqualsVector {} -> eqError
-    EqualsBool {} -> eqError
-    NotEqualsBool {} -> eqError
     ExistsVector {} -> quantError
     ForallVector {} -> quantError
     where
       quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
-      eqError = compilerDeveloperError "Equality type-class ops should not have been normalised out."
 
 isTypeClassInAgda :: TypeClassOp -> Bool
 isTypeClassInAgda = \case
@@ -558,7 +553,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   ForallInTCExpr p tCont binder body cont -> compileQuantIn Forall tCont (Lam p binder body) cont
   ExistsInTCExpr p tCont binder body cont -> compileQuantIn Exists tCont (Lam p binder body) cont
   OrderTCExpr _ ord t1 _ _ _ args -> compileOrder ord t1 =<< traverse compileArg args
-  EqualityTCExpr _ eq t1 _ _ _ args -> case eq of
+  EqualityTCExpr _ eq t1 _ _ args -> case eq of
     Eq -> compileEquality t1 =<< traverse compileArg args
     Neq -> compileInequality t1 =<< traverse compileArg args
   AddTCExpr _ args -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊕" <$> traverse compileArg args
