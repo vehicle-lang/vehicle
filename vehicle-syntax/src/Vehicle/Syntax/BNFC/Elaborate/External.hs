@@ -139,6 +139,9 @@ elabDeclGroup dx = case dx of
     r <- elabParameterOptions opts
     d' <- elabResource n t r
     return (d', ds)
+  (B.DefAnn B.Postulate {} opts :| B.DefFunType n _ t : ds) -> do
+    d' <- elabPostulate n t
+    return (d', ds)
   (B.DefAnn a _ :| _) -> do
     p <- annotationProvenance a
     throwError $ AnnotationWithNoDeclaration p (annotationSymbol a)
@@ -167,6 +170,7 @@ annotationSymbol = \case
   B.Dataset tk -> tkSymbol tk
   B.Parameter tk -> tkSymbol tk
   B.Property tk -> tkSymbol tk
+  B.Postulate tk -> tkSymbol tk
 
 annotationProvenance :: MonadElab m => B.DeclAnnName -> m V.Provenance
 annotationProvenance = \case
@@ -174,6 +178,7 @@ annotationProvenance = \case
   B.Dataset tk -> mkProvenance tk
   B.Parameter tk -> mkProvenance tk
   B.Property tk -> mkProvenance tk
+  B.Postulate tk -> mkProvenance tk
 
 checkNoAnnotationOptions :: MonadElab m => B.DeclAnnName -> B.DeclAnnOpts -> m ()
 checkNoAnnotationOptions annName = \case
@@ -186,6 +191,9 @@ checkNoAnnotationOptions annName = \case
 
 elabResource :: MonadElab m => B.Name -> B.Expr -> V.Resource -> m (V.GenericDecl UnparsedExpr)
 elabResource n t r = V.DefResource <$> mkProvenance n <*> elabName n <*> pure r <*> pure (UnparsedExpr t)
+
+elabPostulate :: MonadElab m => B.Name -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabPostulate n t = V.DefPostulate <$> mkProvenance n <*> elabName n <*> pure (UnparsedExpr t)
 
 elabTypeDef :: MonadElab m => B.Name -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
 elabTypeDef n binders e = do
