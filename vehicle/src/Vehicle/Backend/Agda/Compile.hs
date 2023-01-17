@@ -478,15 +478,10 @@ compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty Output
 compileStdLibFunction f allArgs = case embedStdLib f allArgs of
   Nothing -> compilerDeveloperError $ "Compilation of stdlib function" <+> quotePretty f <+> "not yet supported"
   Just v -> case v of
-    EqualsVector {} -> eqError
-    NotEqualsVector {} -> eqError
-    EqualsBool {} -> eqError
-    NotEqualsBool {} -> eqError
     ExistsVector {} -> quantError
     ForallVector {} -> quantError
     where
       quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
-      eqError = compilerDeveloperError "Equality type-class ops should not have been normalised out."
 
 isTypeClassInAgda :: TypeClassOp -> Bool
 isTypeClassInAgda = \case

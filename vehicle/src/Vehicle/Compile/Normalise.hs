@@ -184,10 +184,6 @@ nfStdLibFn p f allArgs = do
   fromMaybe (return e) $ case embedStdLib f allArgs of
     Nothing -> Nothing
     Just res -> case res of
-      EqualsBool args -> fmap return (nfEqualsBool Eq p args)
-      NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
-      EqualsVector tElem size recFn args -> nfEqualsVector Eq p tElem size recFn args
-      NotEqualsVector tElem size recFn args -> nfEqualsVector Neq p tElem size recFn args
       ForallVector tElem s recFn binder body -> case s of
         NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
         _ -> Nothing
@@ -338,31 +334,6 @@ nfQuantifierVector p tElem size binder body recFn = do
 
   -- Generate a expression prepended with `tensorSize` quantifiers
   return $ foldl mkQuantifier body2 allNames
-
-nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
-nfEqualsBool op p args@[arg1, arg2] = case op of
-  Neq -> nfNot p . ExplicitArg p <$> nfEqualsBool Neq p args
-  Eq -> do
-    let bothTrue = AndExpr p [arg1, arg2]
-    let bothFalse = AndExpr p (ExplicitArg p . nfNot p <$> [arg1, arg2])
-    Just $ OrExpr p (ExplicitArg p <$> [bothTrue, bothFalse])
-nfEqualsBool _ _ _ = Nothing
-
-nfEqualsVector ::
-  MonadNorm m =>
-  EqualityOp ->
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfEqualsVector op p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> Just $ do
-    equalitiesSeq <- nf $ zipWithVector p tElem tElem (BoolType p) size recFn xs ys
-    let ident = Identifier StdLib $ if op == Eq then "bigAnd" else "bigOr"
-    nf $ bigOp p ident size equalitiesSeq
-  _ -> Nothing
 
 nfMapVector ::
   MonadNorm m =>
