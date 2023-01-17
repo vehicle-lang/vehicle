@@ -56,8 +56,10 @@ instance Delaborate V.InputDecl [B.Decl] where
       return [defAnn, defFun]
     V.DefFunction _ n isProperty t e ->
       delabFun isProperty n t e
-    V.DefPostulate {} ->
-      error "Should not be delaborating postulates"
+    V.DefPostulate _ n t -> do
+      defPost <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
+      let defAnn = delabAnn postulateAnn []
+      return [defAnn, defPost]
 
 instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of

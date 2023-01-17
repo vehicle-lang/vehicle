@@ -27,6 +27,8 @@ parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
 
 propertyAnn = B.Property $ mkToken B.TokProperty "@property"
 
+postulateAnn = B.Dataset $ mkToken B.TokDataset "@postulate"
+
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
 
