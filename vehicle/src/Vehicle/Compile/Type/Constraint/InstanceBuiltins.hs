@@ -21,12 +21,12 @@ declaredCandidates = do
   let tcAndCandidates = fmap (second (: []) . processCandidate) candidates
   HashMap.fromListWith (<>) tcAndCandidates
 
-findTypeClassOfCandidate :: CheckedExpr -> Maybe TypeClass
+findTypeClassOfCandidate :: CheckedExpr -> Either CheckedExpr TypeClass
 findTypeClassOfCandidate = \case
   Pi _ binder body
     | not (isExplicit binder) -> findTypeClassOfCandidate body
-  App _ (Builtin _ (Constructor (TypeClass tc))) _ -> Just tc
-  _ -> Nothing
+  App _ (Builtin _ (Constructor (TypeClass tc))) _ -> Right tc
+  expr -> Left expr
 
 --------------------------------------------------------------------------------
 -- Builtin instances
@@ -50,56 +50,74 @@ candidates =
           ------------
           -- HasEq --
           ------------
-          ( forAllNat $ \n1 ->
-              forAllNat $ \n2 ->
-                hasEq Eq (tIndex n1) (tIndex n2) (tAnnBool constant unquantified),
-            forAllNat $ \n1 ->
-              forAllNat $ \n2 ->
-                app
-                  (builtin (Equals EqIndex Eq))
-                  [ (Implicit True, Relevant, n1),
-                    (Implicit True, Relevant, n2)
-                  ]
+          ( forAll "n1" tNat $ \n1 ->
+              forAll "n2" tNat $ \n2 ->
+                hasEq Eq constant (tIndex n1) (tIndex n2),
+            forAll "n1" tNat $ \n1 ->
+              forAll "n2" tNat $ \n2 ->
+                builtin (Equals EqIndex Eq) @@@ [n1, n2]
           ),
-          ( hasEq Eq tNat tNat (tAnnBool constant unquantified),
+          ( hasEq Eq constant tNat tNat,
             builtin (Equals EqNat Eq)
           ),
-          ( hasEq Eq tInt tInt (tAnnBool constant unquantified),
+          ( hasEq Eq constant tInt tInt,
             builtin (Equals EqInt Eq)
           ),
           ( forAllLinearityTriples $ \l1 l2 l3 ->
               maxLinearity l1 l2 l3
-                .~~~> hasEq Eq (tAnnRat l1) (tAnnRat l2) (tAnnBool l3 unquantified),
+                .~~~> hasEq Eq l3 (tAnnRat l1) (tAnnRat l2),
             forAllLinearityTriples $ \l1 l2 l3 ->
               maxLinearity l1 l2 l3
                 .~~~> builtin (Equals EqRat Eq)
           ),
-          ( forAllLinearityTriples $ \l1 l2 l3 ->
-              forAllPolarityTriples $ \p1 p2 p3 ->
-                maxLinearity l1 l2 l3
-                  .~~~> eqPolarity Eq p1 p2 p3
-                  .~~~> hasEq Eq (tAnnBool l1 p1) (tAnnBool l2 p2) (tAnnBool l3 p3),
-            forAllLinearityTriples $ \l1 l2 l3 ->
-              forAllPolarityTriples $ \p1 p2 p3 ->
-                maxLinearity l1 l2 l3
-                  .~~~> eqPolarity Eq p1 p2 p3
-                  .~~~> free (identifierOf StdEqualsBool)
+          ( forAll "t1" type0 $ \t1 ->
+              forAll "t2" type0 $ \t2 ->
+                forAll "l" tLin $ \l ->
+                  forAllNat $ \n ->
+                    hasEq Eq l t1 t2
+                      ~~~> hasEq Eq l (tVector t1 n) (tVector t2 n),
+            forAll "t1" type0 $ \t1 ->
+              forAll "t2" type0 $ \t2 ->
+                forAll "l" tLin $ \l ->
+                  forAllNat $ \n ->
+                    forAllInstance "eq" (hasEq Eq l t1 t2) $ \eq ->
+                      free (identifierOf StdEqualsVector) @@@ [t1, t2] .@@@ [l] @@@ [n] @@@@ [eq]
           ),
-          ( forAllTypeTriples $ \t1 t2 t3 ->
-              forAllNat $ \n ->
-                hasEq Eq t1 t2 t3
-                  ~~~> hasEq Eq (tVector t1 n) (tVector t2 n) t3,
-            forAllTypeTriples $ \t1 t2 t3 ->
-              forAllNat $ \n ->
-                forAllInstance "eq" (hasEq Eq t1 t2 t3) $ \eq ->
-                  app
-                    (free (identifierOf StdEqualsVector))
-                    [ (Implicit True, Relevant, t1),
-                      (Implicit True, Relevant, t2),
-                      (Implicit True, Relevant, t3),
-                      (Implicit True, Relevant, n),
-                      (Instance True, Relevant, eq)
-                    ]
+          ------------
+          -- HasNotEq --
+          ------------
+          ( forAll "n1" tNat $ \n1 ->
+              forAll "n2" tNat $ \n2 ->
+                hasEq Neq constant (tIndex n1) (tIndex n2),
+            forAll "n1" tNat $ \n1 ->
+              forAll "n2" tNat $ \n2 ->
+                builtin (Equals EqIndex Neq) @@@ [n1, n2]
+          ),
+          ( hasEq Neq constant tNat tNat,
+            builtin (Equals EqNat Neq)
+          ),
+          ( hasEq Neq constant tInt tInt,
+            builtin (Equals EqInt Neq)
+          ),
+          ( forAllLinearityTriples $ \l1 l2 l3 ->
+              maxLinearity l1 l2 l3
+                .~~~> hasEq Neq l3 (tAnnRat l1) (tAnnRat l2),
+            forAllLinearityTriples $ \l1 l2 l3 ->
+              maxLinearity l1 l2 l3
+                .~~~> builtin (Equals EqRat Neq)
+          ),
+          ( forAll "t1" type0 $ \t1 ->
+              forAll "t2" type0 $ \t2 ->
+                forAll "l" tLin $ \l ->
+                  forAllNat $ \n ->
+                    hasEq Neq l t1 t2
+                      ~~~> hasEq Neq l (tVector t1 n) (tVector t2 n),
+            forAll "t1" type0 $ \t1 ->
+              forAll "t2" type0 $ \t2 ->
+                forAll "l" tLin $ \l ->
+                  forAllNat $ \n ->
+                    forAllInstance "eq" (hasEq Neq l t1 t2) $ \eq ->
+                      free (identifierOf StdNotEqualsVector) .@@@ [l] @@@ [t1, t2, n] @@@@ [eq]
           ),
           ------------
           -- HasNot --
@@ -200,5 +218,13 @@ mkCandidate (expr, solution) = do
 
 processCandidate :: InstanceCandidate -> (TypeClass, InstanceCandidate)
 processCandidate candidate = case findTypeClassOfCandidate (candidateExpr candidate) of
-  Nothing -> developerError $ "Invalid builtin instance candidate" <+> prettyVerbose (candidateExpr candidate)
-  Just tc -> (tc, candidate)
+  Right tc -> (tc, candidate)
+  Left expr -> do
+    let candidateDoc = prettyVerbose (candidateExpr candidate)
+    let problemDoc = prettyVerbose expr
+    developerError $
+      "Invalid builtin instance candidate:"
+        <+> candidateDoc
+          <> line
+          <> "Problematic expr:"
+        <+> problemDoc

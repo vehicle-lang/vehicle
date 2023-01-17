@@ -665,17 +665,15 @@ pattern EqualityTCExpr ::
   EqualityOp ->
   Type binder var ->
   Type binder var ->
-  Type binder var ->
   Expr binder var ->
   [Arg binder var] ->
   Expr binder var
-pattern EqualityTCExpr p op t1 t2 t3 solution explicitArgs <-
+pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
   App
     p
     (Builtin _ (TypeClassOp (EqualsTC op)))
     ( ImplicitArg _ t1
         :| ImplicitArg _ t2
-        : ImplicitArg _ t3
         : InstanceArg _ solution
         : explicitArgs
       )

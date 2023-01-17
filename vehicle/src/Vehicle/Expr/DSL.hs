@@ -9,6 +9,10 @@ module Vehicle.Expr.DSL
     (~~~>),
     (.~~~>),
     (@@),
+    (@@@),
+    (.@@@),
+    (@@@@),
+    (.@@@@),
     forAll,
     forAllIrrelevant,
     forAllInstance,
@@ -126,7 +130,7 @@ instance DSL DSLExpr where
   app fun args = DSL $ \p i ->
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
-     in App p fun' args'
+     in normApp p fun' args'
 
   lseq tElem args = DSL $ \p i ->
     App
@@ -162,10 +166,30 @@ constructor = builtin . Constructor
 --------------------------------------------------------------------------------
 -- Types
 
-infix 6 @@
+infixl 6 @@
 
 (@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
 (@@) f args = app f (fmap (Explicit,Relevant,) args)
+
+infixl 6 @@@
+
+(@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(@@@) f args = app f (fmap (Implicit True,Relevant,) args)
+
+infixl 6 .@@@
+
+(.@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(.@@@) f args = app f (fmap (Implicit True,Irrelevant,) args)
+
+infixl 6 @@@@
+
+(@@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(@@@@) f args = app f (fmap (Instance True,Relevant,) args)
+
+infixl 6 .@@@@
+
+(.@@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(.@@@@) f args = app f (fmap (Instance True,Irrelevant,) args)
 
 -- | Explicit function type
 infixr 4 ~>
@@ -285,10 +309,10 @@ typeClass :: TypeClass -> NonEmpty DSLExpr -> DSLExpr
 typeClass tc args = constructor (TypeClass tc) @@ args
 
 hasEq :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq eq t1 t2 t3 = typeClass (HasEq eq) [t1, t2, t3]
+hasEq eq l t1 t2 = constructor (TypeClass $ HasEq eq) .@@@ [l] @@ [t1, t2]
 
 hasOrd :: OrderOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd ord t1 t2 t3 = typeClass (HasOrd ord) [t1, t2, t3]
+hasOrd ord t1 t2 l = typeClass (HasOrd ord) [t1, t2] .@@@ [l]
 
 hasNot :: DSLExpr -> DSLExpr -> DSLExpr
 hasNot t1 t2 = typeClass HasNot [t1, t2]

@@ -11,7 +11,7 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (head, toList)
+import Data.List.NonEmpty qualified as NonEmpty (head, reverse, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -214,7 +214,7 @@ nfBuiltin p b args = do
     -- Types
     TensorType _ tElem dims -> Just $ return $ nfTensor p tElem dims
     -- Binary relations
-    EqualityExpr _ dom op [arg1, arg2] -> Just $ return $ nfEq p dom op arg1 arg2
+    EqualityExpr _ dom op (NonEmpty.reverse -> arg2 :| arg1 : _) -> Just $ return $ nfEq p dom op arg1 arg2
     OrderExpr _ dom op [arg1, arg2] -> Just $ return $ nfOrder p dom op arg1 arg2
     -- Boolean operations
     NotExpr _ [arg] -> Just $ return $ nfNot p arg

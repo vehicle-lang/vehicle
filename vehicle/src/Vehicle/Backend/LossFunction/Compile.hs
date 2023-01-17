@@ -121,7 +121,7 @@ compileExpr t e = showExit $ do
     V.MulExpr _ _ [e1, e2] -> Multiplication <$> compileArg t e1 <*> compileArg t e2
     V.DivExpr _ _ [e1, e2] -> Division <$> compileArg t e1 <*> compileArg t e2
     V.NegExpr _ _ [e1] -> Negation <$> compileArg t e1
-    V.EqualityTCExpr _ op _ _ _ _ [e1, e2] -> case op of
+    V.EqualityTCExpr _ op _ _ _ [e1, e2] -> case op of
       V.Neq -> compileNeq t <$> compileArg t e1 <*> compileArg t e2
       V.Eq -> compileEq t <$> (Max (Constant 0) <$> (Subtraction <$> compileArg t e1 <*> compileArg t e2)) <*> (Max (Constant 0) <$> (Subtraction <$> compileArg t e2 <*> compileArg t e1))
     V.OrderTCExpr _ order _ _ _ _ [e1, e2] ->
