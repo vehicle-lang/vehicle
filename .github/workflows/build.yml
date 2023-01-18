@@ -45,22 +45,16 @@ jobs:
             ghc-version: "9.2.4"
             cabal-version: "3.8"
             cabal-extra-args: "-fnothunks"
-        #
-        # NOTE: These tests are disabled because running with -fghc-debug
-        #       requires at least two threads (one for ghc-debug, and one
-        #       for the main process).
-        #       These tests should be re-enabled after #342 is fixed.
-        #
-        #   # Build with -fghc-debug and -fnothunks:
-        #   - os_and_name: [ubuntu-latest, Linux]
-        #     ghc-version: "9.2.4"
-        #     cabal-version: "3.8"
-        #     cabal-extra-args: "-fghc-debug -fnothunks"
-        #   # Build with -fghc-debug:
-        #   - os_and_name: [ubuntu-latest, Linux]
-        #     ghc-version: "9.2.4"
-        #     cabal-version: "3.8"
-        #     cabal-extra-args: "-fghc-debug"
+          # Build with -fghc-debug and -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug -fnothunks"
+          # Build with -fghc-debug:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fghc-debug"
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
