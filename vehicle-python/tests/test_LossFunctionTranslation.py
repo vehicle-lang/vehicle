@@ -1,7 +1,4 @@
-import inspect
 import json
-import os
-import sys
 import unittest
 from pathlib import Path
 
@@ -9,10 +6,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
-from vehicle.__init__ import generate_loss_function
+from vehicle import generate_loss_function
 
 
 class TestLossFunctionTranslation(unittest.TestCase):

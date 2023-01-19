@@ -11,7 +11,7 @@ def generate_loss_function(
     specification: str,
     function_name: str,
     resources: Dict[str, Any],
-    quantifier_sampling: Dict[str, Callable[..., Any]] = None,
+    quantifier_sampling: Dict[str, Callable[..., Any]] = {},
 ) -> Callable[..., Any]:
     """
     specification: path to the vehicle spec .vcl file
@@ -21,8 +21,6 @@ def generate_loss_function(
     """
     json_dict = call_vehicle_to_generate_loss_json(specification, function_name)
     empty_context: List = []
-    if quantifier_sampling is None:
-        quantifier_sampling = {}
     loss_metadata = LossMetadata(resources, quantifier_sampling)
     loss = LossFunctionTranslation().to_loss_function(loss_metadata, json_dict)
 
@@ -312,8 +310,7 @@ class LossFunctionTranslation:
     def _translate_let(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
-
-        pass
+        raise NotImplementedError(f"Let bindings are unsupported")
 
     def _translate_domain(
         self, contents: Dict[Any, Any], metadata: LossMetadata

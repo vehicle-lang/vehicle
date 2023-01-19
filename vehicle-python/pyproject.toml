@@ -23,7 +23,7 @@ test = []
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^0.971"
-tox = "^3.25.1"
+tox = "^4.3.5"
 black = "^22.8.0"
 isort = "^5.10.1"
 flake8 = "^5.0.4"
@@ -43,8 +43,6 @@ namespace_packages = false
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-requires =
-  tox-poetry
 envlist = py38,py39,py310
 isolated_build = True
 skip_missing_interpreters = True
@@ -60,7 +58,8 @@ extras =
 commands =
   {envpython} -m unittest tests/test_LossFunctionTranslation.py
 passenv =
-  APPDATA HOME
+  APPDATA
+  HOME
 """
 # The environment variables above are passed because they are needed
 # to install the Vehicle standard library.
