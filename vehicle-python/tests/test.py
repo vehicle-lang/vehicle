@@ -1,3 +1,4 @@
+import pathlib
 import random
 
 import numpy as np
@@ -78,7 +79,7 @@ def train(
 
 
 if __name__ == "__main__":
-    path_to_spec = "./bounded.vcl"
+    path_to_spec = str(pathlib.Path(__file__).parent / "bounded.vcl")
     function_name = "bounded"
     model = keras.Sequential(
         [
