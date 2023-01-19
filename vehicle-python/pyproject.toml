@@ -38,6 +38,7 @@ python_version = 3.8
 ignore_missing_imports = true
 no_implicit_optional = false
 plugins = "numpy.typing.mypy_plugin"
+explicit_package_bases = true
 
 [tool.tox]
 legacy_tox_ini = """
