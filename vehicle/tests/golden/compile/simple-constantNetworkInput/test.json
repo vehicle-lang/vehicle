@@ -6,8 +6,8 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-constantNetworkInput.vcl -t Marabou -o simple-constantNetworkInput.inputquery/",
+    "run": "vehicle compile -s simple-constantNetworkInput.vcl -t Marabou -o simple-constantNetworkInput.inputquery/ --network f:NO_FILE",
     "needs": ["simple-constantNetworkInput.vcl"],
-    "produces": ["simple-constantNetworkInput.inputquery/*.txt"]
+    "produces": ["simple-constantNetworkInput.inputquery/*.txt", "simple-constantNetworkInput.inputquery/verification-plan.vcle"]
   }
 ]

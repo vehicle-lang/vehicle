@@ -1,5 +1,5 @@
 module Vehicle.Compile.ExpandResources.Network
-  ( getNetworkType,
+  ( checkNetwork,
   )
 where
 
@@ -15,6 +15,20 @@ import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Network typing
+
+checkNetwork ::
+  forall m.
+  MonadExpandResources m =>
+  NetworkLocations ->
+  DeclProvenance ->
+  GluedType ->
+  m (FilePath, NetworkType)
+checkNetwork networkLocations decl@(ident, _) networkType = do
+  case Map.lookup (identifierName ident) networkLocations of
+    Nothing -> throwError $ ResourceNotProvided decl Network
+    Just location -> do
+      typ <- getNetworkType decl networkType
+      return (location, typ)
 
 -- | Decomposes the Pi types in a network type signature, checking that the
 --  binders are explicit and their types are equal.

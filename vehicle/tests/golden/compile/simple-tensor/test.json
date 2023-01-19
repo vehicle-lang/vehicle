@@ -6,9 +6,9 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-tensor.vcl -t Marabou -o simple-tensor.inputquery/",
+    "run": "vehicle compile -s simple-tensor.vcl -t Marabou -o simple-tensor.inputquery/ --network f:NO_FILE",
     "needs": ["simple-tensor.vcl"],
-    "produces": ["simple-tensor.inputquery/*.txt"]
+    "produces": ["simple-tensor.inputquery/*.txt", "simple-tensor.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",

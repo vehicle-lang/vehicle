@@ -1,0 +1,120 @@
+[
+  [
+    [
+      "User",
+      "p"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Query",
+        "contents": [
+          false,
+          {
+            "tag": "Trivial",
+            "contents": true
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "multiProperty"
+    ],
+    {
+      "tag": "MultiProperty",
+      "contents": [
+        {
+          "tag": "MultiProperty",
+          "contents": [
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            },
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            },
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "tag": "MultiProperty",
+          "contents": [
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": false
+                  }
+                ]
+              }
+            },
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            },
+            {
+              "tag": "SingleProperty",
+              "contents": {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+]

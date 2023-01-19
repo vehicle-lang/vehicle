@@ -21,11 +21,13 @@ module Vehicle.Compile.Queries.LinearExpr
   )
 where
 
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
+import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.Variable
 
@@ -36,7 +38,11 @@ data Relation
   = Equal
   | LessThan
   | LessThanOrEqualTo
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Relation
+
+instance FromJSON Relation
 
 instance Pretty Relation where
   pretty = \case
@@ -56,7 +62,11 @@ type LinearVar = Int
 newtype LinearExpr = LinearExpr
   { unLinearExpr :: Vector Coefficient
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON LinearExpr
+
+instance FromJSON LinearExpr
 
 evaluateExpr :: LinearExpr -> Vector Double -> Double
 evaluateExpr (LinearExpr e) values = Vector.sum (Vector.zipWith (*) e values)
@@ -113,7 +123,11 @@ data Assertion = Assertion
     assertionRel :: Relation,
     assertionExpr :: LinearExpr
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON Assertion
+
+instance FromJSON Assertion
 
 isEquality :: Assertion -> Bool
 isEquality a = assertionRel a == Equal

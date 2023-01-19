@@ -72,7 +72,7 @@ letInsertionTest (InsertionTestSpec testName subexprFilter input expected) =
   unitTestCase testName $ do
     inputExpr <- normTypeClasses =<< parseAndTypeCheckExpr input
     expectedExpr <- normTypeClasses =<< parseAndTypeCheckExpr expected
-    result <- insertLets subexprFilter True inputExpr
+    result <- insertLets subexprFilter True 0 inputExpr
 
     -- Need to re-typecheck the result as let-insertion puts a Hole on
     -- each binder type.

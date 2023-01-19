@@ -4,7 +4,7 @@ module Vehicle.Compile.Queries.NetworkElimination
   )
 where
 
-import Control.Monad (zipWithM)
+import Control.Monad (forM, zipWithM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
@@ -38,6 +38,7 @@ import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Expr.CoDeBruijn (CoDBExpr, CoDBVar (..))
 import Vehicle.Expr.DeBruijn
+import Vehicle.Libraries.StandardLibrary.Names (pattern PostulateExistsRat)
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface
 
@@ -109,10 +110,10 @@ normUserVariables ::
 normUserVariables ident verifier networkCtx expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
     -- Let-lift all the network applications to avoid duplicates.
-    liftedNetworkAppExpr <- liftNetworkApplications networkCtx expr
+    liftedNetworkAppExpr <- liftNetworkApplications networkCtx 0 expr
 
     -- We can now calculate the meta-network and the network variables.
-    let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
+    metaNetwork <- generateMetaNetwork networkCtx liftedNetworkAppExpr
     typedMetaNetwork <- getTypedMetaNetwork networkCtx metaNetwork
     let networkVariables = getNetworkVariables typedMetaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
@@ -232,17 +233,17 @@ type MonadSMT m =
       m
   )
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
-getNetworkDetailsFromCtx networkCtx name = do
+getNetworkTypeFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
+getNetworkTypeFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
-    Just details -> return details
+    Just (_, networkType) -> return networkType
     Nothing ->
       compilerDeveloperError $
-        "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
+        "Either" <+> quotePretty name <+> "is not a network or it is not in scope"
 
 getTypedMetaNetwork :: MonadCompile m => NetworkContext -> MetaNetwork -> m [(Name, NetworkType)]
-getTypedMetaNetwork ctx = traverse $ \name -> do
-  networkType <- getNetworkDetailsFromCtx ctx name
+getTypedMetaNetwork ctx = traverse $ \(name, _) -> do
+  networkType <- getNetworkTypeFromCtx ctx name
   return (name, networkType)
 
 getBoundContext :: MonadSMT m => m BoundDBCtx
@@ -260,7 +261,7 @@ getNumberOfUserVariables = do
 getMetaNetworkType :: MonadSMT m => m [NetworkType]
 getMetaNetworkType = do
   (networkCtx, _, metaNetwork, _, _, _) <- ask
-  traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
+  traverse (getNetworkTypeFromCtx networkCtx) (fmap fst metaNetwork)
 
 getNumberOfMagicVariables :: MonadSMT m => m Int
 getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkType
@@ -306,7 +307,7 @@ removeUserQuantifiers _ e = return (e, [])
 -- | We lift all network applications regardless if they are duplicated or not to
 -- ensure that they are at the top-level underneath a quantifier and hence have
 -- a body with the type `Bool`.
-liftNetworkApplications :: MonadCompile m => NetworkContext -> CheckedExpr -> m CheckedExpr
+liftNetworkApplications :: MonadCompile m => NetworkContext -> DBLevel -> CheckedExpr -> m CheckedExpr
 liftNetworkApplications networks = insertLets isNetworkApplication False
   where
     isNetworkApplication :: CoDBExpr -> Int -> Bool
@@ -319,10 +320,20 @@ liftNetworkApplications networks = insertLets isNetworkApplication False
 
 -- | As we've normalised out all function applications and dataset declarations,
 --  the only free names left should be network applications.
-generateMetaNetwork :: NetworkContext -> CheckedExpr -> MetaNetwork
-generateMetaNetwork ctx e =
-  let freeNames = fmap nameOf (freeNamesIn e)
-   in filter (`Map.member` ctx) freeNames
+generateMetaNetwork :: MonadCompile m => NetworkContext -> CheckedExpr -> m MetaNetwork
+generateMetaNetwork ctx e = do
+  -- TODO this filter is a hack, really we should have removed these by now.
+  let freeNames = filter (/= identifierName PostulateExistsRat) $ fmap identifierName (freeNamesIn e)
+  logDebug MaxDetail (prettyMap ctx)
+  forM freeNames $ \name ->
+    case Map.lookup name ctx of
+      Just (filepath, _) -> return (name, filepath)
+      Nothing ->
+        compilerDeveloperError $
+          "Network"
+            <+> quotePretty name
+            <+> "not in context,"
+            <+> "this should have been caught at the expand resources phase."
 
 --------------------------------------------------------------------------------
 -- Steps 3 & 4: replace network applications
@@ -349,7 +360,7 @@ replaceNetworkApplications IOVarState {..} (Let _ (NetworkApp p ident inputExprs
   incrCallDepth
   (networkCtx, _, _, _, _, _) <- ask
 
-  NetworkType inputs outputs <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
+  NetworkType inputs outputs <- getNetworkTypeFromCtx networkCtx (nameOf ident)
   let inputSize = tensorSize inputs
   let outputSize = tensorSize outputs
   let outputType = baseType outputs
@@ -554,7 +565,7 @@ getNetworkVariables metaNetworkDetails = do
 
       (newApplicationsSoFar, result <> inputNames <> outputNames)
 
-countNetworkApplications :: MetaNetwork -> Applications
+countNetworkApplications :: [Name] -> Applications
 countNetworkApplications = foldr (\n m -> Map.insertWith (+) n 1 m) mempty
 
 currentPass :: Doc a

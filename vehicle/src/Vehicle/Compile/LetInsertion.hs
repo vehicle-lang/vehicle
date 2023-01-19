@@ -20,6 +20,7 @@ import Vehicle.Expr.AlphaEquivalence
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.CoDeBruijn.PositionTree
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 
 -- | Let-lifts any sub-expressions that matches the provided filter
 -- to the highest possible level. Filter takes in the expression
@@ -28,11 +29,12 @@ insertLets ::
   MonadLogger m =>
   (CoDBExpr -> Int -> Bool) ->
   Bool ->
+  DBLevel ->
   CheckedExpr ->
   m CheckedExpr
-insertLets subexprFilter liftOverBinders expr =
+insertLets subexprFilter liftOverBinders level expr =
   logCompilerPass MinDetail "let insertion" $ do
-    result <- evalStateT (runReaderT applyInsert (subexprFilter, liftOverBinders)) 0
+    result <- evalStateT (runReaderT applyInsert (subexprFilter, liftOverBinders)) level
     logCompilerPassOutput (prettyFriendly (WithContext result emptyDBCtx))
     return result
   where
@@ -86,7 +88,7 @@ type SubexpressionMap = LinkedHashMap Int Subexpression
 type MonadLetInsert m =
   ( MonadLogger m,
     MonadReader (CoDBExpr -> Int -> Bool, Bool) m,
-    MonadState Int m
+    MonadState DBLevel m
   )
 
 letInsert :: MonadLetInsert m => CoDBExpr -> m (CoDBExpr, SubexpressionMap)

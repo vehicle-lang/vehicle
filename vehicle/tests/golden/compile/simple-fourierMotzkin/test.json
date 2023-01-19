@@ -6,13 +6,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t Marabou -o simple-fourierMotzkin.inputquery/",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t Marabou -o simple-fourierMotzkin.inputquery/ --network f:NO_FILE --network g:NO_FILE",
     "needs": ["simple-fourierMotzkin.vcl"],
-    "produces": ["simple-fourierMotzkin.inputquery/*.txt"]
+    "produces": ["simple-fourierMotzkin.inputquery/*.txt", "simple-fourierMotzkin.inputquery/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction -o simple-fourierMotzkin.loss.json",
+    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction -o simple-fourierMotzkin.loss.json --network f:NO_FILE --network g:NO_FILE",
     "needs": ["simple-fourierMotzkin.vcl"],
     "produces": ["simple-fourierMotzkin.loss.json"]
   }

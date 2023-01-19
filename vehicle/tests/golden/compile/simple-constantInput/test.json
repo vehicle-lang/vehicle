@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-constantInput.vcl -t Marabou -o simple-constantInput.inputquery/",
+    "run": "vehicle compile -s simple-constantInput.vcl -t Marabou -o simple-constantInput.inputquery/ --network f:NO_FILE",
     "needs": ["simple-constantInput.vcl"],
-    "produces": ["simple-constantInput.inputquery/*.txt"]
+    "produces": ["simple-constantInput.inputquery/*.txt","simple-constantInput.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-constantInput.vcl -t Agda -o simple-constantInput.agda",
+    "run": "vehicle compile -s simple-constantInput.vcl -t Agda -o simple-constantInput.agda --network f:NO_FILE",
     "needs": ["simple-constantInput.vcl"],
     "produces": ["simple-constantInput.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction -o simple-constantInput.loss.json",
+    "run": "vehicle compile -s simple-constantInput.vcl -t LossFunction -o simple-constantInput.loss.json --network f:NO_FILE",
     "needs": ["simple-constantInput.vcl"],
     "produces": ["simple-constantInput.loss.json"]
   }
