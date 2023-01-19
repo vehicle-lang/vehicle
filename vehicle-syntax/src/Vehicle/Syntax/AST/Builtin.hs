@@ -1,17 +1,19 @@
 -- | This module exports the datatype representations of the builtin symbols.
-
 module Vehicle.Syntax.AST.Builtin
-  ( module Vehicle.Syntax.AST.Builtin
-  , module X
-  ) where
+  ( module Vehicle.Syntax.AST.Builtin,
+    module X,
+  )
+where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (FromJSON)
+import Data.Aeson.Types (ToJSON)
 import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
-
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.Linearity as X
@@ -24,12 +26,11 @@ import Vehicle.Syntax.AST.Builtin.TypeClass as X
 -- | Constructors for types in the language. The types and type-classes
 -- are viewed as constructors for `Type`.
 data BuiltinConstructor
-  -- Annotations - these should not be shown to the user.
-  = Polarity  Polarity
+  = -- Annotations - these should not be shown to the user.
+    Polarity Polarity
   | Linearity Linearity
-
-  -- Types
-  | Unit
+  | -- Types
+    Unit
   | Bool
   | Index
   | Nat
@@ -37,36 +38,36 @@ data BuiltinConstructor
   | Rat
   | List
   | Vector
-
-  -- Type classes
-  | TypeClass   TypeClass
-
-  -- Container expressions
-  | Nil
+  | -- Type classes
+    TypeClass TypeClass
+  | -- Container expressions
+    Nil
   | Cons
   deriving (Eq, Show, Generic)
 
-instance NFData   BuiltinConstructor
+instance NFData BuiltinConstructor
+
 instance Hashable BuiltinConstructor
+
+instance ToJSON BuiltinConstructor
+
+instance Serialize BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
   pretty = \case
-    Unit           -> "Unit"
-    Bool           -> "Bool"
-    Index          -> "Index"
-    Nat            -> "Nat"
-    Int            -> "Int"
-    Rat            -> "Rat"
-    List           -> "List"
-    Vector         -> "Vector"
-
-    TypeClass   tc -> pretty tc
-
-    Polarity  pol  -> pretty pol
-    Linearity lin  -> pretty lin
-
-    Nil            -> "nil"
-    Cons           -> "::"
+    Unit -> "Unit"
+    Bool -> "Bool"
+    Index -> "Index"
+    Nat -> "Nat"
+    Int -> "Int"
+    Rat -> "Rat"
+    List -> "List"
+    Vector -> "Vector"
+    TypeClass tc -> pretty tc
+    Polarity pol -> pretty pol
+    Linearity lin -> pretty lin
+    Nil -> "nil"
+    Cons -> "::"
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -76,8 +77,15 @@ data NegDomain
   | NegRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   NegDomain
+instance NFData NegDomain
+
 instance Hashable NegDomain
+
+instance ToJSON NegDomain
+
+instance FromJSON NegDomain
+
+instance Serialize NegDomain
 
 instance Pretty NegDomain where
   pretty = \case
@@ -95,8 +103,15 @@ data AddDomain
   | AddRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   AddDomain
+instance NFData AddDomain
+
 instance Hashable AddDomain
+
+instance ToJSON AddDomain
+
+instance FromJSON AddDomain
+
+instance Serialize AddDomain
 
 instance Pretty AddDomain where
   pretty = \case
@@ -109,8 +124,15 @@ data SubDomain
   | SubRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   SubDomain
+instance NFData SubDomain
+
 instance Hashable SubDomain
+
+instance ToJSON SubDomain
+
+instance FromJSON SubDomain
+
+instance Serialize SubDomain
 
 instance Pretty SubDomain where
   pretty = \case
@@ -133,8 +155,15 @@ data MulDomain
   | MulRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   MulDomain
+instance NFData MulDomain
+
 instance Hashable MulDomain
+
+instance ToJSON MulDomain
+
+instance FromJSON MulDomain
+
+instance Serialize MulDomain
 
 instance Pretty MulDomain where
   pretty = \case
@@ -146,8 +175,15 @@ data DivDomain
   = DivRat
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData   DivDomain
+instance NFData DivDomain
+
 instance Hashable DivDomain
+
+instance ToJSON DivDomain
+
+instance FromJSON DivDomain
+
+instance Serialize DivDomain
 
 instance Pretty DivDomain where
   pretty = \case
@@ -163,12 +199,19 @@ data FromNatDomain
 instance Pretty FromNatDomain where
   pretty = \case
     FromNatToIndex -> "Index"
-    FromNatToNat   -> "Nat"
-    FromNatToInt   -> "Int"
-    FromNatToRat   -> "Rat"
+    FromNatToNat -> "Nat"
+    FromNatToInt -> "Int"
+    FromNatToRat -> "Rat"
 
-instance NFData   FromNatDomain
+instance NFData FromNatDomain
+
 instance Hashable FromNatDomain
+
+instance ToJSON FromNatDomain
+
+instance FromJSON FromNatDomain
+
+instance Serialize FromNatDomain
 
 data FromRatDomain
   = FromRatToRat
@@ -178,8 +221,15 @@ instance Pretty FromRatDomain where
   pretty = \case
     FromRatToRat -> "Rat"
 
-instance NFData   FromRatDomain
+instance NFData FromRatDomain
+
 instance Hashable FromRatDomain
+
+instance ToJSON FromRatDomain
+
+instance FromJSON FromRatDomain
+
+instance Serialize FromRatDomain
 
 data FromVecDomain
   = FromVecToVec
@@ -188,11 +238,18 @@ data FromVecDomain
 
 instance Pretty FromVecDomain where
   pretty = \case
-    FromVecToVec  -> "Vector"
+    FromVecToVec -> "Vector"
     FromVecToList -> "List"
 
-instance NFData   FromVecDomain
+instance NFData FromVecDomain
+
 instance Hashable FromVecDomain
+
+instance ToJSON FromVecDomain
+
+instance FromJSON FromVecDomain
+
+instance Serialize FromVecDomain
 
 data FoldDomain
   = FoldList
@@ -201,11 +258,18 @@ data FoldDomain
 
 instance Pretty FoldDomain where
   pretty = \case
-    FoldList   -> "List"
+    FoldList -> "List"
     FoldVector -> "Vector"
 
-instance NFData   FoldDomain
+instance NFData FoldDomain
+
 instance Hashable FoldDomain
+
+instance ToJSON FoldDomain
+
+instance FromJSON FoldDomain
+
+instance Serialize FoldDomain
 
 data MapDomain
   = MapList
@@ -214,85 +278,82 @@ data MapDomain
 
 instance Pretty MapDomain where
   pretty = \case
-    MapList   -> "List"
+    MapList -> "List"
     MapVector -> "Vector"
 
-instance NFData   MapDomain
+instance NFData MapDomain
+
 instance Hashable MapDomain
 
+instance ToJSON MapDomain
 
--- |Builtins in the Vehicle language
+instance FromJSON MapDomain
+
+instance Serialize MapDomain
+
+-- | Builtins in the Vehicle language
 data Builtin
   = Constructor BuiltinConstructor
-
-  -- Boolean expressions
-  | Not
+  | -- Boolean expressions
+    Not
   | And
   | Or
   | Implies
   | If
-
-  -- Numeric conversion
-  | FromNat Int FromNatDomain
+  | -- Numeric conversion
+    FromNat Int FromNatDomain
   | FromRat FromRatDomain
   | FromVec Int FromVecDomain
-
-  -- Numeric operations
-  | Neg NegDomain
+  | -- Numeric operations
+    Neg NegDomain
   | Add AddDomain
   | Sub SubDomain
   | Mul MulDomain
   | Div DivDomain
-
-  -- Comparison expressions
-  | Equals EqualityDomain EqualityOp
-  | Order  OrderDomain OrderOp
-
+  | -- Comparison expressions
+    Equals EqualityDomain EqualityOp
+  | Order OrderDomain OrderOp
   | At
-  | Map  MapDomain
-
-  -- Derived
-  | Tensor
-  | TypeClassOp TypeClassOp
+  | Map MapDomain
+  | -- Derived
+    TypeClassOp TypeClassOp
   | Fold FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
 
-instance NFData   Builtin
+instance NFData Builtin
+
 instance Hashable Builtin
+
+instance ToJSON Builtin
+
+instance Serialize Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
 instance Pretty Builtin where
   pretty = \case
-    Constructor c    -> pretty c
-
+    Constructor c -> pretty c
     TypeClassOp tcOp -> pretty tcOp
-
-    Not              -> "notBool"
-    And              -> "andBool"
-    Or               -> "orBool"
-    Implies          -> "impliesBool"
-    If               -> "if"
-
-    Neg dom          -> "neg" <> pretty dom
-    Add dom          -> "add" <> pretty dom
-    Sub dom          -> "sub" <> pretty dom
-    Mul dom          -> "mul" <> pretty dom
-    Div dom          -> "div" <> pretty dom
-
-    FromNat n dom    -> "fromNat[" <> pretty n <> "]To" <> pretty dom
-    FromRat dom      -> "fromRatTo" <> pretty dom
-    FromVec n dom    -> "fromVec[" <> pretty n <> "]To" <> pretty dom
-
-    Equals dom op    -> equalityOpName op <> pretty dom
-    Order  dom op    -> orderOpName op <> pretty dom
-
-    Tensor           -> "Tensor"
-    Foreach          -> "foreach"
-    Fold dom         -> "fold" <> pretty dom
-    Map dom          -> "map" <> pretty dom
-    At               -> "!"
+    Not -> "notBool"
+    And -> "andBool"
+    Or -> "orBool"
+    Implies -> "impliesBool"
+    If -> "if"
+    Neg dom -> "neg" <> pretty dom
+    Add dom -> "add" <> pretty dom
+    Sub dom -> "sub" <> pretty dom
+    Mul dom -> "mul" <> pretty dom
+    Div dom -> "div" <> pretty dom
+    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
+    FromRat dom -> "fromRatTo" <> pretty dom
+    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
+    Equals dom op -> equalityOpName op <> pretty dom
+    Order dom op -> orderOpName op <> pretty dom
+    Foreach -> "foreach"
+    Fold dom -> "fold" <> pretty dom
+    Map dom -> "map" <> pretty dom
+    At -> "!"
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = mempty

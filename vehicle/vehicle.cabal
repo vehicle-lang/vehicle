@@ -24,6 +24,16 @@ source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
 
+flag ghc-debug
+  description: Add ghc-debug instrumentation
+  manual:      True
+  default:     False
+
+flag nothunks
+  description: Add NoThunks instrumentation
+  manual:      True
+  default:     False
+
 common common-language
   default-language:   Haskell2010
   default-extensions:
@@ -58,8 +68,32 @@ common common-language
     UndecidableInstances
     ViewPatterns
 
+  ghc-options:        -Werror -Wall -fprint-potential-instances
+
+common common-library
+  import: common-language
+
+  if flag(ghc-debug)
+    build-depends: ghc-debug-stub >=0.3 && <0.4
+    cpp-options:   -DghcDebug
+
+  if flag(nothunks)
+    build-depends: nothunks >=0.1.3 && <0.2
+    cpp-options:   -Dnothunks
+
+common common-executable
+  import:      common-language
+  ghc-options: -threaded
+
+  if flag(ghc-debug)
+    ghc-options: -rtsopts -with-rtsopts=-N
+
+common common-test
+  import:      common-language
+  ghc-options: -threaded -with-rtsopts=-N
+
 library
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  src
   exposed-modules:
     Vehicle
@@ -97,7 +131,6 @@ library
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
-    Vehicle.Compile.SupplyNames
     Vehicle.Compile.Type
     Vehicle.Export
     Vehicle.Expr.AlphaEquivalence
@@ -108,8 +141,9 @@ library
     Vehicle.Expr.DSL
     Vehicle.Expr.Normalised
     Vehicle.Expr.Patterns
-    Vehicle.Language.StandardLibrary
-    Vehicle.Language.StandardLibrary.Names
+    Vehicle.Libraries
+    Vehicle.Libraries.StandardLibrary
+    Vehicle.Libraries.StandardLibrary.Names
     Vehicle.Prelude
     Vehicle.Resource
     Vehicle.Verify
@@ -132,6 +166,7 @@ library
     Vehicle.Compile.Dependency.Graph
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.Monomorphisation
+    Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.QuantifierAnalysis
@@ -140,12 +175,14 @@ library
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Builtin
     Vehicle.Compile.Type.Constraint
-    Vehicle.Compile.Type.ConstraintSolver.Core
-    Vehicle.Compile.Type.ConstraintSolver.Linearity
-    Vehicle.Compile.Type.ConstraintSolver.Polarity
-    Vehicle.Compile.Type.ConstraintSolver.TypeClass
-    Vehicle.Compile.Type.ConstraintSolver.TypeClassDefaults
-    Vehicle.Compile.Type.ConstraintSolver.Unification
+    Vehicle.Compile.Type.Constraint.Core
+    Vehicle.Compile.Type.Constraint.InstanceBuiltins
+    Vehicle.Compile.Type.Constraint.InstanceSolver
+    Vehicle.Compile.Type.Constraint.LinearitySolver
+    Vehicle.Compile.Type.Constraint.PolaritySolver
+    Vehicle.Compile.Type.Constraint.TypeClassDefaults
+    Vehicle.Compile.Type.Constraint.TypeClassSolver
+    Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Generalise
     Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
@@ -158,8 +195,12 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Resource
     Vehicle.Compile.Type.VariableContext
+    Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
+    Vehicle.Prelude.Logging.Backend
+    Vehicle.Prelude.Logging.Class
+    Vehicle.Prelude.Logging.Instance
     Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
@@ -172,6 +213,7 @@ library
     , ansi-terminal         >=0.6     && <1
     , base                  >=4.13    && <5
     , bytestring            >=0.10.12 && <0.12
+    , cereal                >=0.5     && <1
     , containers            >=0.5     && <1
     , data-default          >=0.7     && <1
     , data-default-class    >=0.1.2   && <0.2
@@ -195,10 +237,8 @@ library
     , vector                >=0.12.3  && <0.13
     , vehicle-syntax
 
-  ghc-options:     -Werror -Wall -fprint-potential-instances
-
 executable vehicle
-  import:         common-language
+  import:         common-library
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
@@ -211,7 +251,7 @@ executable vehicle
 -----------------
 
 library vehicle-golden-tests-common
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  tests/golden
   exposed-modules:
     Vehicle.Test.Golden
@@ -245,7 +285,7 @@ library vehicle-golden-tests-common
     , vehicle
 
 test-suite vehicle-golden-tests
-  import:             common-language
+  import:             common-test
   type:               exitcode-stdio-1.0
   main-is:            tests/golden/Tests.hs
   build-depends:
@@ -258,19 +298,16 @@ test-suite vehicle-golden-tests
     , vehicle:vehicle-golden-tests-common
 
   build-tool-depends: vehicle:vehicle
-  ghc-options:        -threaded -rtsopts -with-rtsopts=-N -O0
 
 executable vehicle-new-golden-test
-  import:        common-language
+  import:        common-executable
   main-is:       tests/golden/NewTest.hs
   build-depends:
     , base                                 >=4.13 && <5
     , vehicle:vehicle-golden-tests-common
 
-  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -O0
-
 library vehicle-unit-tests-common
-  import:          common-language
+  import:          common-library
   hs-source-dirs:  tests/unit
   exposed-modules:
     Vehicle.Test.Unit.Common
@@ -299,7 +336,7 @@ library vehicle-unit-tests-common
     , vehicle-syntax
 
 test-suite vehicle-unit-tests
-  import:        common-language
+  import:        common-test
   type:          exitcode-stdio-1.0
   main-is:       tests/unit/Tests.hs
   build-depends:

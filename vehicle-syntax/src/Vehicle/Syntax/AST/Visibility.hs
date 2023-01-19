@@ -1,37 +1,61 @@
 module Vehicle.Syntax.AST.Visibility where
 
 import Control.DeepSeq (NFData)
-import Data.Hashable (Hashable)
+import Data.Aeson (ToJSON)
+import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-
 import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
 -- Definitions
 
+-- | Whether the visible object was inserted by the
+type InsertedByCompiler = Bool
+
 -- | Visibility of function arguments.
 data Visibility
-  = Explicit
-  -- ^ Always have to be given explicitly
-  | Implicit
-  -- ^ Inferred via unification
-  | Instance
-  -- ^ Inferred via instance search/type class resolution
-  deriving (Eq, Ord, Show, Generic)
+  = -- | Always have to be given explicitly
+    Explicit
+  | -- | Inferred via unification
+    Implicit InsertedByCompiler
+  | -- | Inferred via instance search/type class resolution
+    Instance InsertedByCompiler
+  deriving (Show, Generic)
+
+instance Eq Visibility where
+  Explicit {} == Explicit {} = True
+  Implicit {} == Implicit {} = True
+  Instance {} == Instance {} = True
+  _ == _ = False
+
+instance Ord Visibility where
+  Explicit {} <= _ = True
+  Implicit {} <= Implicit {} = True
+  Implicit {} <= Instance {} = True
+  Instance {} <= Instance {} = True
+  _ <= _ = False
 
 instance NFData Visibility
-instance Hashable Visibility
+
+instance Hashable Visibility where
+  hashWithSalt s = \case
+    Explicit {} -> s + 1
+    Implicit {} -> s + 2
+    Instance {} -> s + 3
+
+instance ToJSON Visibility
+
+instance Serialize Visibility
 
 instance Pretty Visibility where
   pretty = \case
-    Explicit   -> "Explicit"
-    Implicit   -> "Implicit"
-    Instance{} -> "Instance"
-
+    Explicit -> "Explicit"
+    Implicit {} -> "Implicit"
+    Instance {} -> "Instance"
 
 -- | Type class for types which have provenance information
-
 class HasVisibility a where
   visibilityOf :: a -> Visibility
 
@@ -42,17 +66,25 @@ isExplicit :: HasVisibility a => a -> Bool
 isExplicit x = visibilityOf x == Explicit
 
 isImplicit :: HasVisibility a => a -> Bool
-isImplicit x = visibilityOf x == Implicit
+isImplicit x = case visibilityOf x of
+  Implicit {} -> True
+  _ -> False
 
 isInstance :: HasVisibility a => a -> Bool
 isInstance x = case visibilityOf x of
-  Instance{} -> True
-  _          -> False
+  Instance {} -> True
+  _ -> False
 
 visibilityMatches :: (HasVisibility a, HasVisibility b) => a -> b -> Bool
 visibilityMatches x y = visibilityOf x == visibilityOf y
 
 expandByArgVisibility :: Visibility -> Provenance -> Provenance
-expandByArgVisibility Explicit{} = id
-expandByArgVisibility Implicit{} = expandProvenance (1,1)
-expandByArgVisibility Instance{} = expandProvenance (2,2)
+expandByArgVisibility Explicit {} = id
+expandByArgVisibility Implicit {} = expandProvenance (1, 1)
+expandByArgVisibility Instance {} = expandProvenance (2, 2)
+
+markInserted :: Visibility -> Visibility
+markInserted = \case
+  Explicit {} -> Explicit
+  Implicit {} -> Implicit True
+  Instance {} -> Instance True

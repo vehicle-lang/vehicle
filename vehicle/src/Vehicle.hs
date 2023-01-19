@@ -1,10 +1,11 @@
 module Vehicle
-  ( run
-  , Options(..)
-  , GlobalOptions(..)
-  , defaultGlobalOptions
-  , ModeOptions(..)
-  ) where
+  ( run,
+    Options (..),
+    GlobalOptions (..),
+    defaultGlobalOptions,
+    ModeOptions (..),
+  )
+where
 
 import Control.Exception (bracket)
 import Control.Monad (when)
@@ -12,7 +13,6 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitSuccess)
 import System.FilePath (takeDirectory)
 import System.IO
-
 import Vehicle.Check (CheckOptions (..), check)
 import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Export (ExportOptions, export)
@@ -23,90 +23,76 @@ import Vehicle.Verify (VerifyOptions (..), verify)
 -- Main command
 
 data Options = Options
-  { globalOptions :: GlobalOptions
-  , modeOptions   :: Maybe ModeOptions
-  } deriving (Eq, Show)
+  { globalOptions :: GlobalOptions,
+    modeOptions :: Maybe ModeOptions
+  }
+  deriving (Eq, Show)
 
 data GlobalOptions = GlobalOptions
-  { version      :: Bool
-  , outFile      :: Maybe FilePath
-  , errFile      :: Maybe FilePath
-  , logFile      :: Maybe FilePath
-  , loggingLevel :: LoggingLevel
-  } deriving (Eq, Show)
+  { version :: Bool,
+    logFile :: Maybe FilePath,
+    loggingLevel :: LoggingLevel
+  }
+  deriving (Eq, Show)
 
 defaultGlobalOptions :: GlobalOptions
-defaultGlobalOptions = GlobalOptions
-  { version      = False
-  , outFile      = Nothing
-  , errFile      = Nothing
-  , logFile      = Nothing
-  , loggingLevel = defaultLoggingLevel
-  }
+defaultGlobalOptions =
+  GlobalOptions
+    { version = False,
+      logFile = Nothing,
+      loggingLevel = defaultLoggingLevel
+    }
 
 data ModeOptions
   = Compile CompileOptions
-  | Verify  VerifyOptions
-  | Check   CheckOptions
-  | Export  ExportOptions
-   deriving (Eq, Show)
+  | Verify VerifyOptions
+  | Check CheckOptions
+  | Export ExportOptions
+  deriving (Eq, Show)
 
 run :: Options -> IO ()
-run Options{..} = do
-  let GlobalOptions{..} = globalOptions
+run Options {..} = do
+  let GlobalOptions {..} = globalOptions
   when version $ do
     print vehicleVersion
     exitSuccess
 
-  let acquireOutputHandles = openHandles  (outFile, errFile, logFile, loggingLevel)
-  let releaseOutputHandles = closeHandles (outFile, errFile, logFile)
+  let acquireHandles = createLoggingSettings (logFile, loggingLevel)
+  let releaseHandles = destroyLoggingSettings logFile
 
-  bracket acquireOutputHandles releaseOutputHandles $ \ioSettings ->
+  bracket acquireHandles releaseHandles $ \ioSettings ->
     case modeOptions of
-      Nothing   -> outputErrorAndQuit ioSettings "No mode provided. Please use one of 'compile', 'verify', 'check', 'export'"
+      Nothing ->
+        fatalError
+          "No mode provided. Please use one of 'compile', 'verify', 'check', 'export'"
       Just mode -> case mode of
         Compile options -> compile ioSettings options
-        Verify  options -> verify  ioSettings options
-        Check   options -> check   ioSettings options
-        Export  options -> export  ioSettings options
+        Verify options -> verify ioSettings options
+        Check options -> check ioSettings options
+        Export options -> export ioSettings options
 
-openHandles :: (Maybe FilePath, Maybe FilePath, Maybe FilePath, LoggingLevel)
-            -> IO VehicleIOSettings
-openHandles (outFile, errFile, logFile, logLevel) = do
-  outputHandle <- case outFile of
-    Nothing   -> return stdout
-    Just file -> openHandle file
-
-  errorHandle <- case errFile of
-    Nothing   -> return stderr
-    Just file -> openHandle file
-
+createLoggingSettings ::
+  (Maybe FilePath, LoggingLevel) ->
+  IO LoggingSettings
+createLoggingSettings (logFile, logLevel) = do
   logHandle <- case logFile of
-    Nothing   -> return stdout
+    Nothing -> return stdout
     Just file -> openHandle file
 
-  return VehicleIOSettings
-    { errorHandle  = errorHandle
-    , outputHandle = outputHandle
-    , logHandle    = logHandle
-    , loggingLevel = logLevel
-    }
+  return
+    LoggingSettings
+      { logHandle = logHandle,
+        loggingLevel = logLevel
+      }
 
-closeHandles :: (Maybe FilePath, Maybe FilePath, Maybe FilePath)
-             -> VehicleIOSettings
-             -> IO ()
-closeHandles (outFile, errFile, logFile) VehicleIOSettings{..} = do
-  case outFile of
-    Nothing -> return ()
-    Just _  -> hClose outputHandle
-
-  case errFile of
-    Nothing -> return ()
-    Just _  -> hClose errorHandle
-
+destroyLoggingSettings ::
+  Maybe FilePath ->
+  LoggingSettings ->
+  IO ()
+destroyLoggingSettings logFile LoggingSettings {..} = do
   case logFile of
     Nothing -> return ()
-    Just _  -> hClose logHandle
+    Just _ -> hClose logHandle
 
 openHandle :: FilePath -> IO Handle
 openHandle file = do

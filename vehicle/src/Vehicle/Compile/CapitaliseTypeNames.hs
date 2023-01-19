@@ -1,11 +1,11 @@
 module Vehicle.Compile.CapitaliseTypeNames
-  ( capitaliseTypeNames
-  ) where
+  ( capitaliseTypeNames,
+  )
+where
 
 import Control.Monad.State (MonadState (..), evalState, modify, when)
 import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
-
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 
@@ -25,12 +25,12 @@ isTypeDef t = case t of
   -- We don't capitalise things of type `Bool` because they will be lifted
   -- to the type level, only things of type `X -> Bool`.
   Pi _ _ result -> go result
-  _             -> False
+  _ -> False
   where
     go :: CheckedExpr -> Bool
     go (BoolType _) = True
     go (Pi _ _ res) = go res
-    go _            = False
+    go _ = False
 
 class CapitaliseTypes a where
   cap :: MonadState (Set Identifier) m => a -> m a
@@ -40,36 +40,36 @@ instance CapitaliseTypes CheckedProg where
 
 instance CapitaliseTypes CheckedDecl where
   cap d = case d of
-    DefResource p r ident t ->
-      DefResource p r <$> cap ident <*> cap t
-
-    DefFunction p ident t e -> do
+    DefResource p ident r t ->
+      DefResource p <$> cap ident <*> pure r <*> cap t
+    DefFunction p ident isProperty t e -> do
       when (isTypeDef t) $
         modify (insert ident)
-      DefFunction p <$> cap ident <*> cap t <*> cap e
-
+      DefFunction p <$> cap ident <*> pure isProperty <*> cap t <*> cap e
     DefPostulate p ident t ->
       DefPostulate p <$> cap ident <*> cap t
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case
-    UniverseF ann l                 -> return $ Universe ann l
-    HoleF     ann n                 -> return $ Hole ann n
-    MetaF     ann m                 -> return $ Meta ann m
-    LiteralF  ann l                 -> return $ Literal ann l
-    BuiltinF  ann op                -> return $ Builtin ann op
-    AnnF      ann e t               -> Ann ann <$> e <*> t
-    AppF      ann fun args          -> App ann <$> fun <*> traverse sequenceA args --traverse cap args
-    PiF       ann binder result     -> Pi  ann <$> sequenceA binder <*> result
-    LetF      ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
-    LamF      ann binder body       -> Lam ann <$> sequenceA binder <*> body
-    LVecF     ann xs                -> LVec ann <$> sequence xs
-    VarF      ann v@(Bound _)       -> return $ Var ann v
-    VarF      ann (Free ident)      -> Var ann . Free <$> cap ident
+    UniverseF p l -> return $ Universe p l
+    HoleF p n -> return $ Hole p n
+    MetaF p m -> return $ Meta p m
+    LiteralF p l -> return $ Literal p l
+    BuiltinF p op -> return $ Builtin p op
+    AnnF p e t -> Ann p <$> e <*> t
+    AppF p fun args -> App p <$> fun <*> traverse sequenceA args -- traverse cap args
+    PiF p binder result -> Pi p <$> sequenceA binder <*> result
+    LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
+    LamF p binder body -> Lam p <$> sequenceA binder <*> body
+    LVecF p xs -> LVec p <$> sequence xs
+    VarF p v@(Bound _) -> return $ Var p v
+    VarF p (Free ident) -> Var p . Free <$> cap ident
 
 instance CapitaliseTypes Identifier where
-  cap ident@(Identifier s) = do
+  cap ident@(Identifier m s) = do
     typeIdentifiers <- get
-    return $ Identifier $ if member ident typeIdentifiers
-      then capitaliseFirstLetter s
-      else s
+    return $
+      Identifier m $
+        if member ident typeIdentifiers
+          then capitaliseFirstLetter s
+          else s

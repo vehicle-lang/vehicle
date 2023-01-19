@@ -1,0 +1,92 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'hyperfine' is on the PATH:
+HYPERFINE=$(which hyperfine || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The benchmark script requires 'hyperfine' to run benchmarks."
+    echo
+    echo "See: https://github.com/sharkdp/hyperfine"
+    exit 1
+fi
+
+# Check if 'jq' is on the PATH:
+JQ=$(which jq || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The benchmark script requires 'jq' to merge benchmark reports."
+    echo
+    echo "See: https://stedolan.github.io/jq/"
+    exit 1
+fi
+
+# build all tests
+cabal build all --enable-tests || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# get the current commit hash
+COMMIT_HASH=$(git rev-parse --short HEAD || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# get the current GHC version
+GHC_VERSION=$(ghc --numeric-version || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# get the current operating system
+SYSTEM=$(uname -s | cut -d- -f1 || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+if [ "$SYSTEM" = "CYGWIN_NT" \
+  -o "$SYSTEM" = "MINGW32_NT" \
+  -o "$SYSTEM" = "MINGW64_NT" \
+  -o "$SYSTEM" = "MSYS_NT" ]; then
+  PLATFORM="Windows"
+elif [ "$SYSTEM" = "Darwin" ]; then
+  PLATFORM="macOS"
+elif [ "$SYSTEM" = "Linux" ]; then
+  PLATFORM="Linux"
+else
+  echo "Unsupported system '$SYSTEM'"
+  rm "$fail" && exit 1
+fi
+
+# set the benchmark name & create output files and directories
+BENCHMARK_NAME="vehicle-$COMMIT_HASH-$PLATFORM-ghc-$GHC_VERSION"
+BENCHMARK_DIR=".benchmarks"
+BENCHMARK_FILE="$BENCHMARK_DIR/$BENCHMARK_NAME.json"
+
+# Ensure BENCHMARK_DIR exists
+mkdir -p "$BENCHMARK_DIR" || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# Ensure BENCHMARK_DATABASE exists
+BENCHMARK_DATABASE="benchmarks.json"
+[ -f "$BENCHMARK_DATABASE" ] || echo "[]" > "$BENCHMARK_DATABASE" || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# Run the benchmark
+$HYPERFINE \
+  --command-name "$BENCHMARK_NAME" \
+  --warmup 3 \
+  --runs 10 \
+  --export-json "$BENCHMARK_FILE" \
+  'cabal test all' \
+  || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# Backup old BENCHMARK_DATABASE
+cp "$BENCHMARK_DATABASE" "$BENCHMARK_DATABASE.bak" || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# Merge new benchmark into BENCHMARK_DATABASE
+$JQ -s '.[0] + [.[1]]' "$BENCHMARK_DATABASE.bak" "$BENCHMARK_FILE" > "$BENCHMARK_DATABASE" || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+# Remove backup of old BENCHMARK_DATABASE
+rm -f "$BENCHMARK_DATABASE.bak" || echo > "$fail"
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)

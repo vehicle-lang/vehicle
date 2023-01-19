@@ -1,23 +1,23 @@
 module Vehicle.Compile
-  ( CompileOptions(..)
-  , compile
-  , compileToAgda
-  , compileToVerifier
-  , typeCheck
-  , typeCheckExpr
-  , parseAndTypeCheckExpr
-  , readSpecification
-  ) where
+  ( CompileOptions (..),
+    compile,
+    compileToAgda,
+    compileToVerifier,
+    typeCheckUserProg,
+    typeCheckExpr,
+    parseAndTypeCheckExpr,
+    readSpecification,
+    runCompileMonad,
+    loadLibrary,
+  )
+where
 
 import Control.Exception (IOException, catch)
+import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Set (Set)
 import Data.Text as T (Text)
 import Data.Text.IO qualified as TIO
-import System.Exit (exitFailure)
-import System.IO (hPutStrLn)
-
-import Control.Monad.Except (MonadError (..), runExcept)
+import System.FilePath (takeExtension)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -25,147 +25,211 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency.Analysis
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
-import Vehicle.Compile.ExpandResources
+import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries (QueryData, compileToQueries)
-import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
-import Vehicle.Expr.Normalised
+import Vehicle.Libraries
+  ( Library,
+    findLibraryContentFile,
+    libraryInfo,
+    libraryName,
+  )
+import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
-import Vehicle.Verify.Verifier.Interface
 
 data CompileOptions = CompileOptions
-  { target                :: Backend
-  , specification         :: FilePath
-  , declarationsToCompile :: DeclarationNames
-  , networkLocations      :: NetworkLocations
-  , datasetLocations      :: DatasetLocations
-  , parameterValues       :: ParameterValues
-  , outputFile            :: Maybe FilePath
-  , moduleName            :: Maybe String
-  , proofCache            :: Maybe FilePath
-  } deriving (Eq, Show)
+  { target :: Backend,
+    specification :: FilePath,
+    declarationsToCompile :: DeclarationNames,
+    networkLocations :: NetworkLocations,
+    datasetLocations :: DatasetLocations,
+    parameterValues :: ParameterValues,
+    outputFile :: Maybe FilePath,
+    moduleName :: Maybe String,
+    proofCache :: Maybe FilePath,
+    noStdlib :: Bool
+  }
+  deriving (Eq, Show)
 
-compile :: VehicleIOSettings -> CompileOptions -> IO ()
-compile loggingOptions CompileOptions{..} = do
+compile :: LoggingSettings -> CompileOptions -> IO ()
+compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
+  typeCheckingResult <- typeCheckUserProg specification declarationsToCompile noStdlib
   let resources = Resources networkLocations datasetLocations parameterValues
-  spec <- readSpecification loggingOptions specification
   case target of
-    TypeCheck -> do
-      _ <- fromLoggedEitherIO loggingOptions $ typeCheckProg spec declarationsToCompile
-      return ()
-
+    TypeCheck -> return ()
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
-      agdaCode <- compileToAgda loggingOptions agdaOptions spec declarationsToCompile resources
-      writeAgdaFile outputFile agdaCode
-
+      compileToAgda agdaOptions typeCheckingResult outputFile
     VerifierBackend verifierIdentifier -> do
-      let verifier = verifiers verifierIdentifier
-      compiledSpecification <- compileToVerifier loggingOptions spec declarationsToCompile resources verifier
-      case outputFile of
-        Nothing     -> outputSpecification loggingOptions compiledSpecification
-        Just folder -> writeSpecificationFiles verifier folder compiledSpecification
-
+      _ <- compileToVerifier typeCheckingResult resources verifierIdentifier outputFile
+      return ()
     LossFunction differentiableLogic -> do
-      lossFunction <- compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic
-      writeLossFunctionFiles outputFile differentiableLogic lossFunction
-
+      _ <- compileToLossFunction typeCheckingResult resources differentiableLogic outputFile
+      return ()
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
-compileToVerifier :: VehicleIOSettings
-                  -> SpecificationText
-                  -> PropertyNames
-                  -> Resources
-                  -> Verifier
-                  -> IO (Specification QueryData)
-compileToVerifier loggingOptions spec properties resources verifier =
-  fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec properties resources
-    compileToQueries verifier prog propertyCtx networkCtx
+compileToVerifier ::
+  (MonadCompile m, MonadIO m) =>
+  (ImportedModules, TypedProg) ->
+  Resources ->
+  VerifierIdentifier ->
+  Maybe FilePath ->
+  m (Specification QueryData)
+compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile = do
+  let mergedProg = mergeImports imports typedProg
+  let verifier = verifiers verifierIdentifier
+  compiledSpecification <- compileToQueries verifier mergedProg resources
+  case outputFile of
+    Nothing -> outputSpecification compiledSpecification
+    Just folder -> writeSpecificationFiles verifier folder compiledSpecification
+  return compiledSpecification
 
+compileToLossFunction ::
+  (MonadCompile m, MonadIO m) =>
+  (ImportedModules, TypedProg) ->
+  Resources ->
+  DifferentiableLogic ->
+  Maybe FilePath ->
+  m [LDecl]
+compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = do
+  lossFunction <- LossFunction.compile resources differentiableLogic typedProg
+  writeLossFunctionFiles outputFile differentiableLogic lossFunction
+  return lossFunction
 
-compileToLossFunction :: VehicleIOSettings
-                      -> SpecificationText
-                      -> DeclarationNames
-                      -> Resources
-                      -> DifferentiableLogic
-                      -> IO [LDecl]
-compileToLossFunction loggingOptions spec declarationsToCompile resources differentiableLogic = do
-  fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, networkCtx, _) <- typeCheckProgAndLoadResources spec declarationsToCompile resources
-    LossFunction.compile differentiableLogic prog propertyCtx networkCtx
-
-compileToAgda :: VehicleIOSettings
-              -> AgdaOptions
-              -> SpecificationText
-              -> PropertyNames
-              -> Resources
-              -> IO (Doc a)
-compileToAgda loggingOptions agdaOptions spec properties _resources =
-  fromLoggedEitherIO loggingOptions $ do
-    (prog, propertyCtx, _) <- typeCheckProg spec properties
-    compileProgToAgda (fmap unnormalised prog) propertyCtx agdaOptions
+compileToAgda ::
+  (MonadCompile m, MonadIO m) =>
+  AgdaOptions ->
+  (ImportedModules, TypedProg) ->
+  Maybe FilePath ->
+  m ()
+compileToAgda agdaOptions (_, typedProg) outputFile = do
+  agdaCode <- compileProgToAgda typedProg agdaOptions
+  writeAgdaFile outputFile agdaCode
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply multiple compiler passes
 
-readSpecification :: MonadIO m => VehicleIOSettings -> FilePath -> m SpecificationText
-readSpecification VehicleIOSettings{..} inputFile = do
-  liftIO $ TIO.readFile inputFile `catch` \ (e :: IOException) -> do
-    hPutStrLn errorHandle $
-      "Error occured while reading input file: \n  " <> show e
-    exitFailure
+readSpecification :: MonadIO m => FilePath -> m SpecificationText
+readSpecification inputFile
+  | takeExtension inputFile /= vehicleFileExtension = do
+      fatalError $
+        "Specification"
+          <+> quotePretty inputFile
+          <+> "has unsupported"
+          <+> "extension"
+          <+> quotePretty (takeExtension inputFile) <> "."
+          <+> "Only files with a"
+          <+> quotePretty vehicleFileExtension
+          <+> "extension are supported."
+  | otherwise =
+      liftIO $
+        TIO.readFile inputFile `catch` \(e :: IOException) -> do
+          fatalError $
+            "Error occured while reading specification"
+              <+> quotePretty inputFile
+                <> ":"
+                <> line
+                <> indent 2 (pretty (show e))
 
-parseAndTypeCheckExpr :: MonadCompile m => Text -> m CheckedExpr
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
+  standardLibraryProg <- loadLibrary standardLibrary
+  let imports = [standardLibraryProg]
   vehicleExpr <- parseExprText expr
-  scopedExpr  <- scopeCheckClosedExpr vehicleExpr
-  typedExpr   <- typeCheckExpr scopedExpr
+  scopedExpr <- scopeCheckClosedExpr vehicleExpr
+  typedExpr <- typeCheckExpr imports scopedExpr
   return typedExpr
-
--- | Parses and type-checks the program but does
--- not load networks and datasets from disk.
-typeCheckProg :: MonadCompile m
-              => SpecificationText
-              -> DeclarationNames
-              -> m (GluedProg, PropertyContext, DependencyGraph)
-typeCheckProg spec declarationsToCompile = do
-  (vehicleProg, uncheckedPropertyCtx) <- parseProgText spec
-  (scopedProg, dependencyGraph) <- scopeCheck vehicleProg
-  prunedProg <- analyseDependenciesAndPrune scopedProg uncheckedPropertyCtx dependencyGraph declarationsToCompile
-  (typedProg, propertyContext) <- typeCheck prunedProg uncheckedPropertyCtx
-  return (typedProg, propertyContext, dependencyGraph)
-
--- | Parses, expands parameters and datasets, type-checks and then
--- checks the network types from disk. Used during compilation to
--- verification queries.
-typeCheckProgAndLoadResources :: (MonadIO m, MonadCompile m)
-                              => SpecificationText
-                              -> DeclarationNames
-                              -> Resources
-                              -> m (CheckedProg, PropertyContext, NetworkContext, DependencyGraph)
-typeCheckProgAndLoadResources spec declarationsToCompile resources = do
-  (typedProg, propertyCtx, depGraph) <- typeCheckProg spec declarationsToCompile
-  (networkCtx, finalProg) <- expandResources resources True typedProg
-  return (finalProg, propertyCtx, networkCtx, depGraph)
 
 parseExprText :: MonadCompile m => Text -> m InputExpr
 parseExprText txt =
-  case runExcept (parseExpr =<< readExpr txt) of
-    Left  err  -> throwError $ ParseError err
+  case runExcept (parseExpr User =<< readExpr txt) of
+    Left err -> throwError $ ParseError err
     Right expr -> return expr
 
-parseProgText :: MonadCompile m => Text -> m (InputProg, Set Identifier)
-parseProgText txt = do
-  case runExcept (readAndParseProg txt) of
-    Left err                 -> throwError $ ParseError err
-    Right (prog, properties) -> case traverse parseExpr prog of
-      Left err    -> throwError $ ParseError err
-      Right prog' -> return (prog', properties)
+typeCheckUserProg ::
+  (MonadIO m, MonadCompile m) =>
+  FilePath ->
+  DeclarationNames ->
+  Bool ->
+  m (ImportedModules, TypedProg)
+typeCheckUserProg spec declarationsToCompile noStdlib = do
+  imports <-
+    if noStdlib
+      then return []
+      else (: []) <$> loadLibrary standardLibrary
+  typedProg <- typeCheckOrLoadProg User imports spec declarationsToCompile
+  return (imports, typedProg)
+
+-- | Parses and type-checks the program but does
+-- not load networks and datasets from disk.
+typeCheckProg ::
+  (MonadIO m, MonadCompile m) =>
+  Module ->
+  ImportedModules ->
+  SpecificationText ->
+  DeclarationNames ->
+  m TypedProg
+typeCheckProg modul imports spec declarationsToCompile = do
+  vehicleProg <- parseProgText modul spec
+  (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
+  prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
+  typedProg <- typeCheck imports prunedProg
+  return typedProg
+
+mergeImports :: ImportedModules -> TypedProg -> TypedProg
+mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
+
+-- | Parses and type-checks the program but does
+-- not load networks and datasets from disk.
+typeCheckOrLoadProg ::
+  (MonadIO m, MonadCompile m) =>
+  Module ->
+  ImportedModules ->
+  FilePath ->
+  DeclarationNames ->
+  m TypedProg
+typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
+  spec <- readSpecification specificationFile
+  interfaceFileResult <- readObjectFile specificationFile spec
+  case interfaceFileResult of
+    Just result -> return result
+    Nothing -> do
+      result <- typeCheckProg modul imports spec declarationsToCompile
+      writeObjectFile specificationFile spec result
+      return result
+
+parseProgText :: MonadCompile m => Module -> Text -> m InputProg
+parseProgText modul txt = do
+  case runExcept (readAndParseProg modul txt) of
+    Left err -> throwError $ ParseError err
+    Right prog -> case traverseDecls (parseDecl modul) prog of
+      Left err -> throwError $ ParseError err
+      Right prog' -> return prog'
+
+loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
+loadLibrary library = do
+  let libname = libraryName $ libraryInfo library
+  logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
+    libraryFile <- findLibraryContentFile library
+    typeCheckOrLoadProg StdLib mempty libraryFile mempty
+
+runCompileMonad ::
+  MonadIO m =>
+  LoggingSettings ->
+  ExceptT CompileError (ImmediateLoggerT m) a ->
+  m a
+runCompileMonad loggingSettings x =
+  fromEitherIO =<< runImmediateLogger loggingSettings (logCompileError x)
+
+fromEitherIO :: MonadIO m => Either CompileError a -> m a
+fromEitherIO = \case
+  Left err -> fatalError $ pretty $ details err
+  Right val -> return val

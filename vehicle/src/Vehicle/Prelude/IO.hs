@@ -1,57 +1,41 @@
 module Vehicle.Prelude.IO
-  ( VehicleIOSettings(..)
-  , fromLoggedIO
-  , fromLoggerTIO
-  , outputErrorAndQuit
-  , removeFileIfExists
-  , fatalError
-  , programOutput
-  ) where
+  ( vehicleFileExtension,
+    vehicleObjectFileExtension,
+    vehicleProofCacheFileExtension,
+    vehicleLibraryExtension,
+    removeFileIfExists,
+    fatalError,
+    programOutput,
+    getVehiclePath,
+  )
+where
 
 import Control.Exception (catch, throwIO)
-import Control.Monad (forM_)
+-- import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Text.IO as T (hPutStrLn)
 import Prettyprinter (Doc)
-import System.Directory (removeFile)
+import System.Directory (createDirectoryIfMissing, removeFile)
+import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
-import System.IO (Handle, hPrint)
+import System.FilePath ((</>))
+import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
-import Vehicle.Prelude.Logging (LoggerT, LoggingLevel, Message,
-                                MonadLogger (logMessage), runLoggerT)
-import Vehicle.Syntax.Prelude (layoutAsText)
+import System.Info (os)
 
-data VehicleIOSettings = VehicleIOSettings
-  { errorHandle  :: Handle
-  , outputHandle :: Handle
-  , logHandle    :: Handle
-  , loggingLevel :: LoggingLevel
-  }
+--------------------------------------------------------------------------------
+-- Files
 
-fromLoggedIO :: MonadIO m => VehicleIOSettings -> LoggerT m a -> m a
-fromLoggedIO VehicleIOSettings{..} = flushLogger loggingLevel logHandle
+vehicleFileExtension :: String
+vehicleFileExtension = ".vcl"
 
-fromLoggerTIO :: VehicleIOSettings -> LoggerT IO a -> IO a
-fromLoggerTIO options@VehicleIOSettings{..} logger = do
-  (v, messages) <- runLoggerT loggingLevel logger
-  fromLoggedIO options $ do
-    forM_ messages logMessage
-    return v
+vehicleObjectFileExtension :: String
+vehicleObjectFileExtension = vehicleFileExtension <> "o"
 
-outputErrorAndQuit :: VehicleIOSettings -> Doc b -> IO a
-outputErrorAndQuit VehicleIOSettings{..} message= do
-  T.hPutStrLn errorHandle $ layoutAsText message
-  exitFailure
+vehicleProofCacheFileExtension :: String
+vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
 
-flushLogger :: MonadIO m => LoggingLevel -> Handle -> LoggerT m a -> m a
-flushLogger debugLevel logHandle logger = do
-  (v, messages) <- runLoggerT debugLevel logger
-  flushLogs logHandle messages
-  return v
-
-flushLogs :: MonadIO m => Handle -> [Message] -> m ()
-flushLogs logHandle messages = liftIO $ mapM_ (hPrint logHandle) messages
-
+vehicleLibraryExtension :: String
+vehicleLibraryExtension = vehicleFileExtension <> "lib"
 
 --------------------------------------------------------------------------------
 -- IO operations
@@ -63,10 +47,43 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: MonadIO m => VehicleIOSettings -> Doc a -> m b
-fatalError VehicleIOSettings{..} message = liftIO $ do
-  hPrint errorHandle message
+fatalError :: MonadIO m => Doc a -> m b
+fatalError message = liftIO $ do
+  hPrint stderr message
   exitFailure
 
-programOutput :: MonadIO m => VehicleIOSettings -> Doc a -> m ()
-programOutput VehicleIOSettings{..} message = liftIO $ hPrint outputHandle message
+programOutput :: MonadIO m => Doc a -> m ()
+programOutput message = liftIO $ print message
+
+--------------------------------------------------------------------------------
+-- Library utilities
+
+vehiclePathVariable :: String
+vehiclePathVariable = "VEHICLE_PATH"
+
+fallbackVehiclePathVariable :: String
+fallbackVehiclePathVariable = case os of
+  -- Windows
+  "mingw32" -> "APPDATA"
+  -- All other systems
+  _ -> "HOME"
+
+getVehiclePath :: MonadIO m => m FilePath
+getVehiclePath = do
+  vehiclePathVar <- liftIO $ lookupEnv vehiclePathVariable
+  vehiclePath <- case vehiclePathVar of
+    Just dir -> return dir
+    Nothing -> do
+      homeDir <- liftIO $ lookupEnv fallbackVehiclePathVariable
+      case homeDir of
+        Just dir -> return (dir </> ".vehicle")
+        Nothing -> do
+          env <- liftIO getEnvironment
+          error $
+            "Could not find home directory via path variable "
+              <> fallbackVehiclePathVariable
+              <> ". But could find environment "
+              <> "variables: "
+              <> show env
+  liftIO $ createDirectoryIfMissing False vehiclePath
+  return vehiclePath

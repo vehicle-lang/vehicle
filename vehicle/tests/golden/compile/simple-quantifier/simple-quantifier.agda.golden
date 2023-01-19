@@ -22,8 +22,8 @@ unused = ∀ (x : ℤ) → ⊤
 
 postulate f : Vector ℚ 1 → Vector ℚ 1
 
-postulate expandedExpr : ∀ (x : Vector ℚ 1) → x (# 0) ℚ.≥ f x (# 0)
+postulate expandedExpr : ∀ x → x (# 0) ℚ.≥ f x (# 0)
 
-postulate sequential : ∀ (x : Vector ℚ 1) → ∀ (y : Vector ℚ 1) → f x (# 0) ℚ.≥ f y (# 0)
+postulate sequential : ∀ x → ∀ y → f x (# 0) ℚ.≥ f y (# 0)
 
-postulate parallel : ∀ (x : Vector ℚ 1) → f x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1 × ∃ λ (x : Vector ℚ 1) → f x (# 0) ℚ.≥ ℤ.+ 5 ℚ./ 1
+postulate parallel : ∀ x → f x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1 × ∃ λ x → f x (# 0) ℚ.≥ ℤ.+ 5 ℚ./ 1

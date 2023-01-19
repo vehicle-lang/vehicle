@@ -16,7 +16,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
 tensorflow = "^2.10" # TODO: lowest possible tensorflow bound?
-numpy = "^1.19" # TODO: lowest possible numpy bound?
+numpy = "^1.24" # TODO: lowest possible numpy bound?
 
 [tool.poetry.extras]
 test = []
@@ -27,11 +27,6 @@ tox = "^3.25.1"
 black = "^22.8.0"
 isort = "^5.10.1"
 flake8 = "^5.0.4"
-
-[tool.poetry.group.ci.dependencies]
-tox = "^3.27"
-tox-gh-actions = "^2.11"
-tox-poetry = "^0.4"
 
 [tool.pytest.ini_options]
 enable_assertion_pass_hook = true
@@ -49,13 +44,12 @@ legacy_tox_ini = """
 [tox]
 requires =
   tox-poetry
-envlist = py37,py38,py39,py310
+envlist = py38,py39,py310
 isolated_build = True
 skip_missing_interpreters = True
 
 [gh-actions]
 python =
-  3.7: py37
   3.8: py38
   3.9: py39
   3.10: py310
@@ -64,4 +58,8 @@ extras =
   test
 commands =
   {envpython} -m unittest tests/test_LossFunctionTranslation.py
+passenv =
+  APPDATA HOME
 """
+# The environment variables above are passed because they are needed
+# to install the Vehicle standard library.

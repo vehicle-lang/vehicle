@@ -13,7 +13,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.3.0
+    rev: v4.4.0
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -34,16 +34,16 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/ikamensh/flynt/
-    rev: "0.76"
+    rev: "0.77"
     hooks:
       - id: flynt
   - repo: https://github.com/pycqa/isort
-    rev: "5.10.1"
+    rev: "5.11.4"
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/psf/black
-    rev: "22.10.0"
+    rev: "22.12.0"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -61,16 +61,16 @@ repos:
         types: [file, text]
         files: ^.*\.cabal$
         args: [--check, --inplace]
-      - id: stylish-haskell
-        name: "format haskell with stylish-haskell"
-        entry: ./scripts/stylish-haskell
+      - id: ormolu
+        name: "format haskell with ormolu"
+        entry: ./scripts/ormolu
         language: script
         types: [haskell]
-        args: [--inplace]
+        args: [--mode inplace, --check-idempotence]
 
 # Do not run local hooks on pre-commit CI:
 ci:
-  skip: [cabal-fmt, stylish-haskell]
+  skip: [cabal-fmt, ormolu]
 
 # Exclude golden standard generated JSON files:
 exclude: ^.*\.golden$|^docs/.*$

@@ -1,113 +1,102 @@
-module Vehicle.Syntax.Sugar where
+module Vehicle.Syntax.Sugar
+  ( BinderFoldTarget (..),
+    FoldableBinderType (..),
+    foldBinders,
+    foldLetBinders,
+    LetBinder,
+  )
+where
 
-import Data.Bifunctor (first)
-
+import Data.Bifunctor (Bifunctor (..))
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
 import Vehicle.Syntax.AST
-
---------------------------------------------------------------------------------
--- General definitions
 
 -- This module deals with all the unfolding and folding of syntactic
 -- sugar in the external language. The unfolding is designed so that it should
 -- be 100% reversible.
 
-type BindersAndBody     binder var = ([Binder binder var], Expr binder var)
-type LetBinder          binder var = (Binder binder var, Expr binder var)
-type LetBindingsAndBody binder var = ([LetBinder binder var], Expr binder var)
-
-unfoldBinders :: ann
-              -> (ann -> Binder binder var -> Expr binder var -> Expr binder var)
-              -> BindersAndBody binder var
-              -> Expr binder var
-unfoldBinders ann fn (binders, body) = foldr (fn ann) body binders
-
 --------------------------------------------------------------------------------
 -- Pi/Fun/Forall declarations
 
--- | Unfolads a list of binders into a consecutative forall expressions
-unfoldForall :: Provenance -> BindersAndBody binder var -> Expr binder var
-unfoldForall ann = unfoldBinders ann Pi
+data FoldableBinderType
+  = PiFold
+  | LamFold
+  | ForeachFold
+  | QuantFold Quantifier
+  | QuantInFold Quantifier
+  deriving (Eq)
 
--- | Collapses pi expressions into either a sequence of forall bindings or a
--- a function input/output type pair.
-foldPi :: Provenance -> Binder binder var -> Expr binder var ->
-          Either (BindersAndBody binder var) (Expr binder var, Expr binder var)
-foldPi ann binder result = if isFunBinder binder
-  then Right (binderType binder, result)
-  else Left  (foldForall (Pi ann binder result))
+data BinderFoldTarget binder var
+  = FoldableBinder FoldableBinderType (Binder binder var)
+  | FunFold
 
--- | Folds consecutative forall expressions into a list of binders
-foldForall :: Expr binder var -> BindersAndBody binder var
-foldForall expr = first reverse (decomposeForall ([], expr))
+pattern ForeachExpr p binder body <-
+  App p (Builtin _ Foreach) (ExplicitArg _ (Lam _ binder body) :| [])
+
+pattern QuantifierExpr p binder body q <-
+  App p (Builtin _ (TypeClassOp (QuantifierTC q))) (ExplicitArg _ (Lam _ binder body) :| [])
+
+pattern QuantifierInExpr p binder body q cont <-
+  App
+    p
+    (Builtin _ (TypeClassOp (QuantifierInTC q)))
+    (ExplicitArg _ (Lam _ binder body) :| [ExplicitArg _ cont])
+
+foldBinders ::
+  forall binder var.
+  Show (Binder binder var) =>
+  BinderFoldTarget binder var ->
+  Expr binder var ->
+  ([Binder binder var], Expr binder var)
+foldBinders foldTarget = go
   where
-    decomposeForall :: BindersAndBody binder var -> BindersAndBody binder var
-    decomposeForall (bs, Pi _ b body) = decomposeForall (b : bs, body)
-    decomposeForall result            = result
+    go :: Expr binder var -> ([Binder binder var], Expr binder var)
+    go expr = do
+      let result = case expr of
+            Pi p binder body -> processBinder binder body PiFold
+            Lam p binder body -> processBinder binder body LamFold
+            ForeachExpr p binder body -> processBinder binder body ForeachFold
+            QuantifierExpr p binder body q -> processBinder binder body (QuantFold q)
+            QuantifierInExpr p binder body q _ -> processBinder binder body (QuantInFold q)
+            expr -> Nothing
 
--- | Tests if a binder is from a forall or a function.
-isFunBinder :: Binder binder var -> Bool
-isFunBinder binder = visibilityOf binder == Explicit
+      case result of
+        Nothing -> ([], expr)
+        Just (binder, body) -> first (binder :) (go body)
 
---------------------------------------------------------------------------------
--- Lambdas
+    processBinder ::
+      Binder binder var ->
+      Expr binder var ->
+      FoldableBinderType ->
+      Maybe (Binder binder var, Expr binder var)
+    processBinder binder body candidateBinderType
+      | shouldFold binder candidateBinderType = Just (binder, body)
+      | otherwise = Nothing
 
-unfoldLam :: Provenance -> BindersAndBody binder var -> Expr binder var
-unfoldLam ann = unfoldBinders ann Lam
+    shouldFold :: Binder binder var -> FoldableBinderType -> Bool
+    shouldFold binder candidateType = case foldTarget of
+      FoldableBinder targetType targetBinder ->
+        targetType == candidateType
+          && canFold binder targetBinder
+          && wantsToFold binder
+      FunFold -> case candidateType of
+        LamFold -> wantsToFold binder
+        _ -> False
 
--- | Collapses consecutative lambda expressions into a list of binders
-foldLam :: Expr binder var -> BindersAndBody binder var
-foldLam expr = first reverse (decomposeLam ([], expr))
-  where
-    decomposeLam :: BindersAndBody binder var -> BindersAndBody binder var
-    decomposeLam (bs, Lam _ b body) = decomposeLam (b : bs, body)
-    decomposeLam result             = result
-
---------------------------------------------------------------------------------
--- Quantifiers
-
-unfoldQuantifier :: Provenance
-                 -> Builtin
-                 -> BindersAndBody binder var
-                 -> Expr binder var
-unfoldQuantifier ann q = unfoldBinders ann (\ann1 binder body ->
-  normAppList ann1 (Builtin ann1 q)
-    [ExplicitArg ann1 (Lam ann1 binder body)])
-
-unfoldQuantifierIn :: Provenance
-                   -> Quantifier
-                   -> Expr binder var
-                   -> BindersAndBody binder var
-                   -> Expr binder var
-unfoldQuantifierIn ann q container = unfoldBinders ann (\ann1 binder body ->
-  normAppList ann1 (Builtin ann1 (TypeClassOp $ QuantifierInTC q))
-    [ ExplicitArg ann1 (Lam ann1 binder body)
-    , ExplicitArg ann1 container
-    ])
+    canFold :: Binder binder var -> Binder binder var -> Bool
+    canFold leadBinder binder =
+      visibilityMatches leadBinder binder
+        && binderNamingForm leadBinder == binderNamingForm binder
 
 --------------------------------------------------------------------------------
 -- Let declarations
 
-unfoldLet :: Provenance -> LetBindingsAndBody binder var -> Expr binder var
-unfoldLet ann (binders, body) = foldr insertLet body binders
-  where
-    insertLet :: LetBinder binder var -> Expr binder var -> Expr binder var
-    insertLet (binder, bound) = Let ann bound binder
+type LetBinder binder var = (Binder binder var, Expr binder var)
 
 -- | Collapses consecutative let expressions into a list of let declarations
-foldLet :: Expr binder var -> LetBindingsAndBody binder var
-foldLet expr = first reverse (decomposeLet ([], expr))
-  where
-    decomposeLet :: LetBindingsAndBody binder var -> LetBindingsAndBody binder var
-    decomposeLet (bs, Let _ bound binder body) = decomposeLet ((binder, bound) : bs, body)
-    decomposeLet result                        = result
-
---------------------------------------------------------------------------------
--- Function and type declarations
-
-foldDefFun :: Expr binder var -> Expr binder var ->
-              Either
-                (Expr binder var, ([Binder binder var], Expr binder var))
-                ([Binder binder var], Expr binder var)
-foldDefFun t e = if isTypeSynonym t
-  then Right (foldLam e)
-  else Left  (t, foldLam e)
+foldLetBinders :: Expr binder var -> ([LetBinder binder var], Expr binder var)
+foldLetBinders = \case
+  Let _ bound binder body
+    | wantsToFold binder -> first ((binder, bound) :) (foldLetBinders body)
+  expr -> ([], expr)

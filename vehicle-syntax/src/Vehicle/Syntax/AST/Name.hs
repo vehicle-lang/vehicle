@@ -1,7 +1,10 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
+import Data.Serialize.Text ()
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
@@ -11,23 +14,54 @@ import Prettyprinter (Pretty (..))
 
 type Name = Text
 
--- | Bindings when using the named representation of the AST.
-type NamedBinding = Name
+--------------------------------------------------------------------------------
+-- Module system
+
+data Module
+  = User
+  | StdLib
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Module
+
+instance Hashable Module
+
+instance ToJSON Module
+
+instance Serialize Module
+
+instance Pretty Module where
+  pretty = \case
+    User -> "User"
+    StdLib -> "Standard library"
 
 --------------------------------------------------------------------------------
 -- Identifiers
 
-newtype Identifier = Identifier Name
+data Identifier = Identifier Module Name
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty Identifier where
-  pretty (Identifier s) = pretty s
+  pretty (Identifier m s) = pretty m <> "." <> pretty s
 
-instance NFData   Identifier
+instance NFData Identifier
+
 instance Hashable Identifier
+
+instance ToJSON Identifier
+
+instance ToJSONKey Identifier
+
+instance Serialize Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier
+
+moduleOf :: Identifier -> Module
+moduleOf (Identifier m _) = m
+
+identifierName :: Identifier -> Name
+identifierName (Identifier _ n) = n
 
 --------------------------------------------------------------------------------
 -- Names
@@ -36,4 +70,4 @@ class HasName a name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where
-  nameOf (Identifier name) = name
+  nameOf (Identifier mod name) = name

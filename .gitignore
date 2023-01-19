@@ -6,18 +6,19 @@
 *.chs.h
 *.dyn_o
 *.dyn_hi
-*.prof
-*.prof.html
-*.profiterole.html
-*.profiterole.txt
 *.aux
-*.hp
-*.eventlog
 /dist
 /dist-newstyle
 /.stack-work
 cabal.project.local
 cabal.project.local~
+*.hp
+*.eventlog
+*.prof
+*.prof.html
+*.profiterole.html
+*.profiterole.txt
+/.profiling
 
 # Sphinx & ReadTheDocs
 /docs-doctrees
@@ -44,4 +45,9 @@ __pycache__/
 
 # Examples folder
 examples/**/*.vclp
+examples/**/*.vclo
 examples/windController/agdaProof/WindControllerSpec.agda
+
+# Benchmarks
+.benchmarks/
+benchmarks.json

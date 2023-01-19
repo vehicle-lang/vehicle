@@ -1,11 +1,11 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Test.Unit.Common where
 
 import Control.Monad.Except (ExceptT)
-import Control.Monad.Reader.Class (MonadReader (ask))
 import Data.Data (Proxy (Proxy))
 import Data.Functor.Foldable (Recursive (cata))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Proxy (Proxy)
 import Data.Tagged (Tagged (Tagged))
 import Debug.Trace (trace)
 import Test.Tasty (TestTree, askOption, includingOptions)
@@ -14,14 +14,28 @@ import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError, MonadCompile)
-import Vehicle.Compile.Error.Message (MeaningfulError (details),
-                                      logCompileError)
+import Vehicle.Compile.Error.Message
+  ( MeaningfulError (details),
+    logCompileError,
+  )
 import Vehicle.Compile.Normalise (nfTypeClassOp)
-import Vehicle.Compile.Prelude (Builtin (TypeClassOp), CheckedExpr, Expr (..),
-                                ExprF (..), LoggingLevel, normApp)
-import Vehicle.Prelude (Logger, LoggingLevel (..), Pretty (pretty),
-                        defaultLoggingLevel, developerError, loggingLevelHelp,
-                        runLogger, showMessages)
+import Vehicle.Compile.Prelude
+  ( Builtin (TypeClassOp),
+    CheckedExpr,
+    Expr (..),
+    ExprF (..),
+    LoggingLevel,
+    normApp,
+  )
+import Vehicle.Prelude
+  ( DelayedLoggerT,
+    Pretty (pretty),
+    defaultLoggingLevel,
+    developerError,
+    loggingLevelHelp,
+    runDelayedLoggerT,
+    showMessages,
+  )
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =
@@ -43,41 +57,39 @@ instance IsOption LoggingLevel where
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError Logger Assertion -> TestTree
-unitTestCase testName e =
-  askOption $ \logLevel -> testCase testName (traceLogs logLevel e)
+unitTestCase :: String -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> TestTree
+unitTestCase testName errorOrAssertionWithLogs =
+  askOption $ \logLevel -> testCase testName (traceLogs logLevel errorOrAssertionWithLogs)
   where
-    traceLogs :: LoggingLevel -> ExceptT CompileError Logger a -> a
+    traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
     traceLogs logLevel e = do
       let e' = logCompileError e
-      let (v, logs) = runLogger logLevel e'
+      (v, logs) <- runDelayedLoggerT logLevel e'
       let result = if null logs then v else trace (showMessages logs) v
       case result of
-        Left  x -> developerError $ pretty $ details x
+        Left x -> developerError $ pretty $ details x
         Right y -> y
 
 normTypeClasses :: MonadCompile m => CheckedExpr -> m CheckedExpr
 normTypeClasses = cata $ \case
-  AppF ann fun args -> do
-    fun'  <- fun
+  AppF p fun args -> do
+    fun' <- fun
     args' <- traverse sequenceA args
     case fun' of
-      Builtin p (TypeClassOp op) -> case nfTypeClassOp p op (NonEmpty.toList args') of
-        Nothing  -> error "No metas should be present"
+      Builtin p' (TypeClassOp op) -> case nfTypeClassOp p' op (NonEmpty.toList args') of
+        Nothing -> error "No metas should be present"
         Just res -> do
           (fn, newArgs) <- res
           return $ normApp p fn newArgs
-
-      _ -> return $ App ann fun' args'
-
-  UniverseF ann l                 -> return $ Universe ann l
-  HoleF     ann n                 -> return $ Hole ann n
-  MetaF     ann m                 -> return $ Meta ann m
-  LiteralF  ann l                 -> return $ Literal ann l
-  BuiltinF  ann op                -> return $ Builtin ann op
-  AnnF      ann e t               -> Ann ann <$> e <*> t
-  PiF       ann binder result     -> Pi  ann <$> sequenceA binder <*> result
-  LetF      ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
-  LamF      ann binder body       -> Lam ann <$> sequenceA binder <*> body
-  LVecF     ann xs                -> LVec ann <$> sequence xs
-  VarF      ann v                 -> return $ Var ann v
+      _ -> return $ App p fun' args'
+  UniverseF p l -> return $ Universe p l
+  HoleF p n -> return $ Hole p n
+  MetaF p m -> return $ Meta p m
+  LiteralF p l -> return $ Literal p l
+  BuiltinF p op -> return $ Builtin p op
+  AnnF p e t -> Ann p <$> e <*> t
+  PiF p binder result -> Pi p <$> sequenceA binder <*> result
+  LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
+  LamF p binder body -> Lam p <$> sequenceA binder <*> body
+  LVecF p xs -> LVec p <$> sequence xs
+  VarF p v -> return $ Var p v

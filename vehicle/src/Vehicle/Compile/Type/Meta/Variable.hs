@@ -1,26 +1,29 @@
 module Vehicle.Compile.Type.Meta.Variable
-  ( MetaInfo(..)
-  , increaseMetaCtxSize
-  , makeMetaType
-  , makeMetaExpr
-  , getMetaDependencies
-  , getNormMetaDependencies
-  , HasMetas(..)
-  ) where
-
-import Data.List.NonEmpty qualified as NonEmpty
+  ( MetaInfo (..),
+    MetaCtxSize,
+    extendMetaCtx,
+    makeMetaType,
+    makeMetaExpr,
+    getMetaDependencies,
+    getNormMetaDependencies,
+    HasMetas (..),
+  )
+where
 
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint (Constraint (..),
-                                        TypeClassConstraint (..),
-                                        UnificationConstraint (..))
-import Vehicle.Compile.Type.Meta.Map (MetaMap)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
+import Vehicle.Compile.Type.Constraint
+  ( Constraint (..),
+    TypeClassConstraint (..),
+    UnificationConstraint (..),
+  )
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
-import Vehicle.Compile.Type.VariableContext (TypingBoundCtx)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.VariableContext (TypingBoundCtx, mkTypingBoundCtxEntry)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -30,107 +33,107 @@ import Vehicle.Expr.Normalised
 --------------------------------------------------------------------------------
 -- Meta information
 
+-- | The size of a meta-variable's context (i.e. how many bound variables it
+-- can depend on.) In theory this should be identical to the current `DBLevel`
+-- but in practice, linearity/polarity/type-class insertion meta-variables
+-- have a context of zero size as they cannot depend on the context.
+type MetaCtxSize = Int
+
 -- | The information stored about each meta-variable.
 data MetaInfo = MetaInfo
-  { metaProvenance :: Provenance
-  -- ^ Location in the source file the meta-variable was generated
-  , metaType       :: CheckedType
-  -- ^ The type of the meta-variable
-  , metaCtxSize    :: Int
-  -- ^ The number of bound variables in scope when the meta-variable was created.
+  { -- | Location in the source file the meta-variable was generated
+    metaProvenance :: Provenance,
+    -- | The type of the meta-variable
+    metaType :: CheckedType,
+    -- | The number of bound variables in scope when the meta-variable was created.
+    metaCtx :: TypingBoundCtx
   }
 
-increaseMetaCtxSize :: MetaInfo -> MetaInfo
-increaseMetaCtxSize (MetaInfo p t size) = MetaInfo p t (size+1)
+extendMetaCtx :: CheckedBinder -> MetaInfo -> MetaInfo
+extendMetaCtx binder MetaInfo {..} =
+  MetaInfo
+    { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
+      ..
+    }
 
--- |Creates an expression that abstracts over all bound variables
-makeMetaExpr :: Provenance
-             -> MetaID
-             -> Int
-             -> GluedExpr
-makeMetaExpr p metaID boundCtxSize = do
+-- | Creates an expression that abstracts over all bound variables
+makeMetaExpr ::
+  Provenance ->
+  MetaID ->
+  TypingBoundCtx ->
+  GluedExpr
+makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
-  let ann = inserted p
-  let deps = reverse [0..boundCtxSize - 1]
-  let unnormBoundEnv = [ ExplicitArg ann (Var ann (Bound i)) | i <- deps ]
-  let normBoundEnv = [ ExplicitArg ann (VVar ann (Bound i) []) | i <- deps ]
+  let dependencyLevels = [0 .. (length boundCtx - 1)]
+  let unnormBoundEnv = [ExplicitArg p (Var p (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
+  let normBoundEnv = [ExplicitArg p (VBoundVar p (DBLevel i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
-    { unnormalised = normAppList ann (Meta ann metaID) unnormBoundEnv
-    , normalised   = VMeta ann metaID normBoundEnv
+    { unnormalised = normAppList p (Meta p metaID) unnormBoundEnv,
+      normalised = VMeta p metaID normBoundEnv
     }
 
--- |Creates a Pi type that abstracts over all bound variables
-makeMetaType :: TypingBoundCtx
-             -> Provenance
-             -> CheckedType
-             -> CheckedType
-makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
+-- | Creates a Pi type that abstracts over all bound variables
+makeMetaType ::
+  TypingBoundCtx ->
+  Provenance ->
+  CheckedType ->
+  CheckedType
+makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (DBBinding, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
-    entryToPi (name, t, _) = Pi ann (ExplicitBinder ann name t)
+    entryToPi :: (Maybe Name, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
+    entryToPi (name, t, _) = do
+      let n = fromMaybe "_" name
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
-  _                                        -> []
-
-getNormMetaDependencies :: [NormArg] -> [DBIndex]
-getNormMetaDependencies = \case
-  (ExplicitArg _ (VVar _ (Bound i) [])) : args -> i : getNormMetaDependencies args
   _ -> []
 
+getNormMetaDependencies :: [NormArg] -> ([DBLevel], Spine)
+getNormMetaDependencies = \case
+  (ExplicitArg _ (VBoundVar _ i [])) : args -> first (i :) $ getNormMetaDependencies args
+  spine -> ([], spine)
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
 
 class HasMetas a where
-  findMetas :: (MonadCompile m, MonadWriter (MetaMap [DBIndex]) m) => a -> m ()
-
-  metasInWithDependencies :: MonadCompile m => a -> m (MetaMap [DBIndex])
-  metasInWithDependencies e = execWriterT (findMetas e)
+  findMetas :: (MonadCompile m, MonadWriter MetaSet m) => a -> m ()
 
   metasIn :: MonadCompile m => a -> m MetaSet
-  metasIn e = MetaMap.keys <$> metasInWithDependencies e
+  metasIn e = execWriterT (findMetas e)
 
 instance HasMetas CheckedExpr where
   findMetas expr = case expr of
-    Meta _ m -> do
-      tell (MetaMap.singleton m [])
-
-    App _ (Meta _ m) args    -> do
-      let deps = getMetaDependencies (NonEmpty.toList args)
-      tell (MetaMap.singleton m deps)
-      findMetas args
-
-    Universe{}               -> return ()
-    Hole{}                   -> return ()
-    Literal{}                -> return ()
-    Builtin{}                -> return ()
-    Var {}                   -> return ()
-
-    LVec _ xs                -> findMetas xs
-    Ann  _ e t               -> do findMetas e; findMetas t
-    Pi   _ binder result     -> do findMetas binder; findMetas result
-    Let  _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
-    Lam  _ binder body       -> do findMetas binder; findMetas body
-    App  _ fun args          -> do findMetas fun; findMetas args
+    Meta _ m -> tell (MetaSet.singleton m)
+    Universe {} -> return ()
+    Hole {} -> return ()
+    Literal {} -> return ()
+    Builtin {} -> return ()
+    Var {} -> return ()
+    LVec _ xs -> findMetas xs
+    Ann _ e t -> do findMetas e; findMetas t
+    Pi _ binder result -> do findMetas binder; findMetas result
+    Let _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
+    Lam _ binder body -> do findMetas binder; findMetas body
+    App _ fun args -> do findMetas fun; findMetas args
 
 instance HasMetas NormExpr where
   findMetas expr = case expr of
-    VMeta _ m args -> do
-      let deps = getNormMetaDependencies args
-      tell (MetaMap.singleton m deps)
-
-    VUniverse{}               -> return ()
-    VLiteral{}                -> return ()
-
-    VBuiltin _ _ spine        -> findMetas spine
-    VVar _ _ spine            -> findMetas spine
-    VLVec _ xs spine          -> do findMetas xs; findMetas spine
-    VPi   _ binder result     -> do findMetas binder; findMetas result
-    VLam{}                    -> developerError "Finding metas in normalised lambda not yet supported"
+    VMeta _ m spine -> do
+      tell (MetaSet.singleton m)
+      findMetas spine
+    VUniverse {} -> return ()
+    VLiteral {} -> return ()
+    VBuiltin _ _ spine -> findMetas spine
+    VFreeVar _ _ spine -> findMetas spine
+    VBoundVar _ _ spine -> findMetas spine
+    VLVec _ xs spine -> do findMetas xs; findMetas spine
+    VPi _ binder result -> do findMetas binder; findMetas result
+    VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
 
 instance HasMetas expr => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas
@@ -153,4 +156,4 @@ instance HasMetas UnificationConstraint where
 instance HasMetas Constraint where
   findMetas = \case
     UnificationConstraint c -> findMetas c
-    TypeClassConstraint   c -> findMetas c
+    TypeClassConstraint c -> findMetas c

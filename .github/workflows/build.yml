@@ -10,25 +10,61 @@ on:
       - synchronize
 
 jobs:
+  ormolu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mrkkrp/ormolu-action@v9
+
   build-vehicle:
-    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }}
+    name: ${{ matrix.os_and_name[1] }} / GHC ${{ matrix.ghc-version }} ${{ matrix.cabal-extra-args }}
+    needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
       ghc-version: ${{ matrix.ghc-version }}
       cabal-version: ${{ matrix.cabal-version }}
+      cabal-extra-args: ${{ matrix.cabal-extra-args }}
     strategy:
       matrix:
         os_and_name:
-          - [ubuntu-latest, Linux]
+          # NOTE: build-vehicle-python for Python 3.8.0 runs on Ubuntu 20.04,
+          #       because setup-python does not support Python 3.8.0 on 22.04.
+          #       The vehicle executable built here will be dependent on libc,
+          #       which is generally forwards but not backwards compatible.
+          #       Therefore, we must build vehicle on Ubuntu 20.04.
+          - [ubuntu-20.04, Linux]
           - [macos-latest, macOS]
           - [windows-latest, Windows]
         ghc-version: ["8.10.7", "9.0.2", "9.2.4", "9.4.2"]
         cabal-version: ["3.8"]
+        cabal-extra-args: [""]
+        include:
+          # Build with -fnothunks:
+          - os_and_name: [ubuntu-latest, Linux]
+            ghc-version: "9.2.4"
+            cabal-version: "3.8"
+            cabal-extra-args: "-fnothunks"
+        #
+        # NOTE: These tests are disabled because running with -fghc-debug
+        #       requires at least two threads (one for ghc-debug, and one
+        #       for the main process).
+        #       These tests should be re-enabled after #342 is fixed.
+        #
+        #   # Build with -fghc-debug and -fnothunks:
+        #   - os_and_name: [ubuntu-latest, Linux]
+        #     ghc-version: "9.2.4"
+        #     cabal-version: "3.8"
+        #     cabal-extra-args: "-fghc-debug -fnothunks"
+        #   # Build with -fghc-debug:
+        #   - os_and_name: [ubuntu-latest, Linux]
+        #     ghc-version: "9.2.4"
+        #     cabal-version: "3.8"
+        #     cabal-extra-args: "-fghc-debug"
 
   build-vehicle-python:
     name: ${{ matrix.os_and_name[1] }} / Python ${{ matrix.python-version }}
-    needs: [build-vehicle]
+    needs: [ormolu, build-vehicle]
     uses: ./.github/workflows/build-vehicle-python.yml
     with:
       runs-on: ${{ matrix.os_and_name[0] }}
@@ -42,5 +78,5 @@ jobs:
         python-version: ["3.8", "3.9", "3.10"]
         include:
           - # Earliest supported version:
-            os_and_name: [ubuntu-latest, Linux]
+            os_and_name: [ubuntu-20.04, Linux]
             python-version: "3.8.0"

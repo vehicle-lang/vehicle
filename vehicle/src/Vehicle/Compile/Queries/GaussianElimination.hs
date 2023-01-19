@@ -1,29 +1,30 @@
-
 module Vehicle.Compile.Queries.GaussianElimination
-  ( GaussianVariableSolution
-  , gaussianElimination
-  , reconstructGaussianVariableValue
-  , solutionEquality
-  ) where
-
-import Data.Maybe (fromMaybe)
-import Data.Vector.Unboxed qualified as V
+  ( GaussianVariableSolution,
+    gaussianElimination,
+    reconstructGaussianVariableValue,
+    solutionEquality,
+  )
+where
 
 import Control.Monad (foldM, unless)
 import Data.Bifunctor
+import Data.Maybe (fromMaybe)
+import Data.Vector.Unboxed qualified as V
 import Vehicle.Compile.Error
-import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 
 type Row = V.Vector Coefficient
+
 type Solution = (LinearVar, Row)
 
-gaussianElimination :: MonadCompile m
-                    => [Variable]
-                    -> [LinearExpr]
-                    -> Int
-                    -> m ([(LinearVar, GaussianVariableSolution)], [LinearExpr])
+gaussianElimination ::
+  MonadCompile m =>
+  [Variable] ->
+  [LinearExpr] ->
+  Int ->
+  m ([(LinearVar, GaussianVariableSolution)], [LinearExpr])
 gaussianElimination varNames exprs numberOfRowsToReduce =
   logCompilerPass MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExprs varNames exprs
@@ -41,7 +42,6 @@ gaussianElimination varNames exprs numberOfRowsToReduce =
 
     return (solvedExprs, unusedExprs)
 
-
 prettyExprs :: [Variable] -> [LinearExpr] -> Doc a
 prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
 
@@ -53,11 +53,12 @@ prettySolutions varNames solutions = prettyRows varNames (fmap snd solutions)
 
 -- | Tries to reduce the provided row in the matrix.
 -- If unable to reduce it, then it returns the matrix unchanged.
-reduceRow :: MonadCompile m
-          => [Variable]
-          -> ([Solution], [Row])
-          -> LinearVar
-          -> m ([Solution], [Row])
+reduceRow ::
+  MonadCompile m =>
+  [Variable] ->
+  ([Solution], [Row]) ->
+  LinearVar ->
+  m ([Solution], [Row])
 reduceRow varNames (solvedVars, rows) var = do
   let result = fromMaybe (solvedVars, rows) $ do
         (row, remainingRows) <- removeFirstNonZeroRow var rows
@@ -71,25 +72,30 @@ reduceRow varNames (solvedVars, rows) var = do
         return (newSolvedVars, newRows)
 
   logDebug MaxDetail $
-    line <> "After iteration" <+> pretty (var + 1) <> ":" <> line <>
-    indent 2 (
-      "Solutions:" <>
-      prettySolutions varNames (fst result) <> line <>
-      "Equations:" <>
-      prettyRows varNames (snd result)
-    )
+    line <> "After iteration"
+      <+> pretty (var + 1)
+        <> ":"
+        <> line
+        <> indent
+          2
+          ( "Solutions:"
+              <> prettySolutions varNames (fst result)
+              <> line
+              <> "Equations:"
+              <> prettyRows varNames (snd result)
+          )
   return result
 
 eliminateVarFromRow :: LinearVar -> Row -> Row -> Row
 eliminateVarFromRow var normRow row =
-  let coefficient = row V.! var in
-  V.zipWith (\a b -> a - coefficient*b) row normRow
+  let coefficient = row V.! var
+   in V.zipWith (\a b -> a - coefficient * b) row normRow
 
 removeFirstNonZeroRow :: LinearVar -> [Row] -> Maybe (Row, [Row])
-removeFirstNonZeroRow _   [] = Nothing
+removeFirstNonZeroRow _ [] = Nothing
 removeFirstNonZeroRow var (x : xs)
   | x V.! var /= 0 = Just (x, xs)
-  | otherwise      = second (x :) <$> removeFirstNonZeroRow var xs
+  | otherwise = second (x :) <$> removeFirstNonZeroRow var xs
 
 -- | A FM solution for a variable is two lists of constraints. The variable value
 -- must be greater than the set of assertions, and less than the first is that
@@ -100,9 +106,10 @@ solutionEquality (GaussianVariableSolution eq) = eq
 
 -- | Tries to reconstruct the value of the variable that is
 -- consistent with the current assignment of variables.
-reconstructGaussianVariableValue :: VariableAssignment
-                                 -> GaussianVariableSolution
-                                 -> Maybe Double
+reconstructGaussianVariableValue ::
+  VariableAssignment ->
+  GaussianVariableSolution ->
+  Maybe Double
 reconstructGaussianVariableValue assignment solution =
   Just $ evaluateExpr (solutionEquality solution) assignment
 

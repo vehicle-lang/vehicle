@@ -1,13 +1,12 @@
-
 module Vehicle.Syntax.Print
-  ( Printable(printInternal, printExternal)
-  ) where
+  ( Printable (printInternal, printExternal),
+  )
+where
 
 import Control.Monad.Identity (Identity (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Prettyprinter (Doc, Pretty (..))
-
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Delaborate.External as External (Delaborate, delab)
 import Vehicle.Syntax.BNFC.Delaborate.Internal as Internal (delab)
@@ -25,29 +24,29 @@ class Printable a where
 
   -- | Prints to a Lisp-like language for debugging
   printInternal :: a -> Doc b
-  printInternal = pretty .  bnfcPrintHack . printInternal'
+  printInternal = pretty . bnfcPrintHack . printInternal'
 
   -- | Prints to the user surface syntax.
   printExternal :: a -> Doc b
-  printExternal = pretty .  bnfcPrintHack . printExternal'
+  printExternal = pretty . bnfcPrintHack . printExternal'
 
-instance Printable NamedArg where
+instance Printable InputArg where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedBinder where
+instance Printable InputBinder where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedExpr where
+instance Printable InputExpr where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedDecl where
+instance Printable InputDecl where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable NamedProg where
+instance Printable InputProg where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
@@ -55,10 +54,10 @@ instance Printable NamedProg where
 -- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
 bnfcPrintHack =
-  Text.replace "{{ " "{{" .
-  Text.replace "{  " "{" .
-  Text.replace "\n{" " {" .
-  Text.replace "{\n" "{" .
-  Text.replace "\n}" "}" .
-  Text.replace "}\n" "} " .
-  Text.pack
+  Text.replace "{{ " "{{"
+    . Text.replace "{  " "{"
+    . Text.replace "\n{" " {"
+    . Text.replace "{\n" "{"
+    . Text.replace "\n}" "}"
+    . Text.replace "}\n" "} "
+    . Text.pack

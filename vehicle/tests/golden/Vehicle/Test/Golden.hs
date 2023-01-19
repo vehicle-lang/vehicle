@@ -1,38 +1,57 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Monad law, left identity" #-}
 module Vehicle.Test.Golden
-  ( makeTestTreesFromFile
-  , makeTestTreeFromDirectoryRecursive
+  ( makeTestTreesFromFile,
+    makeTestTreeFromDirectoryRecursive,
   )
-  where
+where
+
 import Control.Monad (filterM, forM, forM_)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
-import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
-                         listDirectory)
-import System.FilePath (makeRelative, takeBaseName, takeDirectory,
-                        takeExtension, takeFileName, (</>))
+import System.Directory
+  ( copyFile,
+    doesDirectoryExist,
+    doesFileExist,
+    listDirectory,
+  )
+import System.FilePath
+  ( makeRelative,
+    takeDirectory,
+    takeExtension,
+    takeFileName,
+    (</>),
+  )
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Text.Printf (printf)
-import Vehicle.Test.Golden.Extra (SomeOption, createDirectoryRecursive,
-                                  listFilesRecursive, someLocalOptions)
-import Vehicle.Test.Golden.TestSpec (TestOutput (..), TestSpec,
-                                     TestSpecs (TestSpecs), readGoldenFiles,
-                                     readTestSpecsFile, testSpecDiffTestOutput,
-                                     testSpecIsEnabled, testSpecName,
-                                     testSpecNeeds, testSpecOptions,
-                                     testSpecRun, writeGoldenFiles)
+import Vehicle.Prelude (vehicleObjectFileExtension)
+import Vehicle.Test.Golden.Extra
+  ( SomeOption,
+    createDirectoryRecursive,
+    listFilesRecursive,
+    someLocalOptions,
+  )
+import Vehicle.Test.Golden.TestSpec
+  ( TestOutput (..),
+    TestSpec,
+    TestSpecs (TestSpecs),
+    readGoldenFiles,
+    readTestSpecsFile,
+    testSpecDiffTestOutput,
+    testSpecIsEnabled,
+    testSpecName,
+    testSpecNeeds,
+    testSpecOptions,
+    testSpecRun,
+    writeGoldenFiles,
+  )
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree
@@ -42,24 +61,25 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
 
   -- Construct test trees for each .test.json file in the current directory:
   testTreesFromHere <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications
-      >>= filterM (isTestSpecFile . (testDirectory </>))
+    -- Filter directory entries to only test specifications
+    filterM (isTestSpecFile . (testDirectory </>)) testDirectoryEntries
       -- Make test trees
-      >>= traverse (\testSpecFileName ->
-            let testSpecFile = testDirectory </> testSpecFileName in
-                makeTestTreesFromFile (testDirectory </> testSpecFileName))
+      >>= traverse
+        ( \testSpecFileName ->
+            makeTestTreesFromFile (testDirectory </> testSpecFileName)
+        )
       <&> concat
 
   -- Construct test trees for all subdirectories:
   testTreesFromFurther <-
-    return testDirectoryEntries
-      -- Filter directory entries to only test specifications:
-      >>= filterM (doesDirectoryExist . (testDirectory </>))
+    -- Filter directory entries to only test specifications:
+    filterM (doesDirectoryExist . (testDirectory </>)) testDirectoryEntries
       -- Make test trees for each subdirectory:
-      >>= traverse (\subDirectoryName ->
-            let testSubDirectory = testDirectory </> subDirectoryName in
-              makeTestTreeFromDirectoryRecursive subDirectoryName testSubDirectory)
+      >>= traverse
+        ( \subDirectoryName ->
+            let testSubDirectory = testDirectory </> subDirectoryName
+             in makeTestTreeFromDirectoryRecursive subDirectoryName testSubDirectory
+        )
 
   -- Combine all test trees:
   return $ testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
@@ -88,11 +108,11 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
     testTree :: TestTree
     testTree = goldenTest testName readGolden runTest compareTestOuput updateGolden
       where
-        testName         = testSpecName testSpec
-        readGolden       = readGoldenFiles testDirectory testSpec
+        testName = testSpecName testSpec
+        readGolden = readGoldenFiles testDirectory testSpec
         compareTestOuput = testSpecDiffTestOutput testSpec
-        updateGolden     = writeGoldenFiles testDirectory testSpec
-        runTest          = do
+        updateGolden = writeGoldenFiles testDirectory testSpec
+        runTest = do
           -- Create a temporary directory:
           let tempDirectoryNameTemplate = printf "vehicle-test-%s" (testSpecName testSpec)
           withSystemTempDirectory tempDirectoryNameTemplate $ \tempDirectory -> do
@@ -108,7 +128,7 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
             let testOutputStdout = Text.pack stdoutString
             let testOutputStderr = Text.pack stderrString
             testOutputFiles <- HashMap.fromList <$> getTestOutputFiles neededFiles tempDirectory
-            return TestOutput{..}
+            return TestOutput {..}
 
 getTestOutputFiles :: Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoredFiles tempDirectory = do
@@ -121,6 +141,11 @@ getTestOutputFiles ignoredFiles tempDirectory = do
 
 isOutputFile :: Set FilePath -> FilePath -> Bool
 isOutputFile inputFiles file =
-  file `Set.notMember` inputFiles &&
-  -- Don't include profiling files
-  takeExtension file /= ".prof"
+  let extension = takeExtension file
+   in file `Set.notMember` inputFiles
+        &&
+        -- Exclude profiling files
+        extension /= ".prof"
+        &&
+        -- Exclude interface files
+        extension /= vehicleObjectFileExtension

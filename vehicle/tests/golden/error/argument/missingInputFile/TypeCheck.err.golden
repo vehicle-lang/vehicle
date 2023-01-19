@@ -1,2 +1,2 @@
-Error occured while reading input file: 
+Error occured while reading specification 'missingInputFile.vcl':
   missingInputFile.vcl: openFile: does not exist (No such file or directory)

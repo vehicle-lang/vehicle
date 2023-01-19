@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'ormolu' is on the PATH:
+ormolu=$(which ormolu || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The pre-commit hook requires 'ormolu' to format Haskell code."
+    echo "You can install 'ormolu' by running:"
+    echo
+    echo "  cabal v2-install ormolu --ignore-project --overwrite-policy=always"
+    echo
+    echo "See: https://github.com/tweag/ormolu#readme"
+    echo
+    echo "If you want to skip this pre-commit hook, commit with:"
+    echo
+    echo "  SKIP=ormolu git commit -m \"...\""
+    echo
+    echo "If you want to skip all pre-commit hooks, commit with:"
+    echo
+    echo "  git commit -m \"...\" --no-verify"
+    echo
+    exit 1
+fi
+
+# Run 'ormolu':
+($ormolu $@ || echo > "$fail")
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]; then
+    rm "$fail"
+    exit 1
+else
+    rm "$fail"
+    exit 0
+fi

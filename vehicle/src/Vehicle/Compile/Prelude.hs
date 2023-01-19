@@ -1,19 +1,20 @@
 module Vehicle.Compile.Prelude
-  ( module X
-  , module Vehicle.Compile.Prelude
-  ) where
+  ( module X,
+    module Vehicle.Compile.Prelude,
+  )
+where
 
 import Control.DeepSeq (NFData)
-import Data.Map (Map)
-import Data.Set (Set)
+import Data.Aeson (ToJSON)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-
 import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised (GluedExpr)
 import Vehicle.Expr.Patterns as X
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
@@ -22,85 +23,86 @@ import Vehicle.Syntax.AST as X
 --------------------------------------------------------------------------------
 -- Type synonyms
 
-
 -- * Types pre type-checking
 
 type UncheckedBinding = DBBinding
-type UncheckedVar     = DBVar
+
+type UncheckedVar = DBIndexVar
 
 type UncheckedBinder = DBBinder
-type UncheckedArg    = DBArg
-type UncheckedExpr   = DBExpr
-type UncheckedDecl   = DBDecl
-type UncheckedProg   = DBProg
+
+type UncheckedArg = DBArg
+
+type UncheckedExpr = DBExpr
+
+type UncheckedType = DBExpr
+
+type UncheckedDecl = DBDecl
+
+type UncheckedProg = DBProg
 
 -- * Types post type-checking
 
 type CheckedBinding = DBBinding
-type CheckedVar     = DBVar
+
+type CheckedVar = DBIndexVar
 
 type CheckedBinder = DBBinder
-type CheckedArg    = DBArg
-type CheckedExpr   = DBExpr
-type CheckedType   = CheckedExpr
-type CheckedDecl   = DBDecl
-type CheckedProg   = DBProg
 
-type CheckedCoDBExpr   = CoDBExpr
-type CheckedCoDBArg    = CoDBArg
-type CheckedCoDBBinder = CoDBBinder
+type CheckedArg = DBArg
+
+type CheckedExpr = DBExpr
+
+type CheckedType = CheckedExpr
+
+type CheckedDecl = DBDecl
+
+type CheckedProg = DBProg
+
+type CheckedTelescope = [CheckedBinder]
 
 -- * Type of annotations attached to the AST that are output by the compiler
-type OutputBinding = NamedBinding
-type OutputVar     = Name
+
+type OutputBinding = ()
+
+type OutputVar = Name
 
 type OutputBinder = Binder OutputBinding OutputVar
-type OutputArg    = Arg    OutputBinding OutputVar
-type OutputExpr   = Expr   OutputBinding OutputVar
-type OutputDecl   = Decl   OutputBinding OutputVar
-type OutputProg   = Prog   OutputBinding OutputVar
 
--- | De Bruijn expressions that have had the missing names supplied.
-type SuppliedDBExpr   = Expr   NamedBinding DBVar
-type SuppliedDBArg    = Arg    NamedBinding DBVar
-type SuppliedDBBinder = Binder NamedBinding DBVar
-type SuppliedDBProg   = Prog   NamedBinding DBVar
-type SuppliedDBDecl   = Decl   NamedBinding DBVar
+type OutputArg = Arg OutputBinding OutputVar
+
+type OutputExpr = Expr OutputBinding OutputVar
+
+type OutputDecl = Decl OutputBinding OutputVar
+
+type OutputProg = Prog OutputBinding OutputVar
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
-data PositionsInExpr = PositionsInExpr CheckedCoDBExpr PositionTree
-  deriving Show
+data PositionsInExpr = PositionsInExpr CoDBExpr PositionTree
+  deriving (Show)
 
 type DeclProvenance = (Identifier, Provenance)
 
 --------------------------------------------------------------------------------
--- Logging
+-- Typed expressions
 
-logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
-logCompilerPass level passName performPass = do
-  logDebug level $ "Starting" <+> passName
-  incrCallDepth
-  result <- performPass
-  decrCallDepth
-  logDebug level $ "Finished" <+> passName <> line
-  return result
+type ImportedModules = [TypedProg]
 
-logCompilerSection :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
-logCompilerSection level sectionName performPass = do
-  logDebug level sectionName
-  incrCallDepth
-  result <- performPass
-  decrCallDepth
-  logDebug level ""
-  return result
+-- | A typed-expression. Outside of the type-checker, the contents of this
+-- should not be inspected directly but instead use
+newtype TypedExpr = TypedExpr
+  { glued :: GluedExpr
+  }
+  -- \|^ Stores the both the unnormalised and normalised expression, WITH
+  -- auxiliary annotations.
+  deriving (Generic)
 
-logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
-logCompilerPassOutput result = do
-  logDebug MidDetail "Result:"
-  incrCallDepth
-  logDebug MidDetail result
-  decrCallDepth
+instance Serialize TypedExpr
+
+type TypedDecl = GenericDecl TypedExpr
+
+type TypedProg = GenericProg TypedExpr
 
 --------------------------------------------------------------------------------
 -- Property annotations
@@ -114,22 +116,21 @@ data PropertyInfo
 
 instance NFData PropertyInfo
 
+instance ToJSON PropertyInfo
+
 instance Pretty PropertyInfo where
   pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol
 
 --------------------------------------------------------------------------------
 -- Other
 
-type UncheckedPropertyContext = Set Identifier
-type PropertyContext = Map Identifier PropertyInfo
-
 data Contextualised object context = WithContext
-  { objectIn  :: object
-  , contextOf :: context
-  } deriving (Show)
+  { objectIn :: object,
+    contextOf :: context
+  }
+  deriving (Show)
 
 type family WithContext a
-
 
 class HasType expr typ | expr -> typ where
   typeOf :: expr -> typ
@@ -140,5 +141,8 @@ instance HasType (GenericBinder binder expr) expr where
 instance HasType (GenericDecl expr) expr where
   typeOf = \case
     DefResource _ _ _ t -> t
-    DefFunction _ _ t _ -> t
-    DefPostulate _ _ t  -> t
+    DefFunction _ _ _ t _ -> t
+    DefPostulate _ _ t -> t
+
+mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
+mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}

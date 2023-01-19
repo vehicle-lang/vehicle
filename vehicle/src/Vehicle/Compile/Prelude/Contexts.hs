@@ -1,10 +1,10 @@
-
 module Vehicle.Compile.Prelude.Contexts where
 
 import Control.Monad.Reader (MonadReader (..))
+import Data.Coerce (coerce)
 import Data.Map (Map)
-
 import Vehicle.Expr.DeBruijn
+import Vehicle.Prelude ((!!?))
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -12,14 +12,17 @@ import Vehicle.Syntax.AST
 
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
-type BoundCtx a    = [a]
-type BoundDBCtx    = BoundCtx DBBinding
-type NamedBoundCtx = BoundCtx NamedBinding
+type BoundCtx a = [a]
+
+type BoundDBCtx = BoundCtx (Maybe Name)
+
+emptyDBCtx :: BoundDBCtx
+emptyDBCtx = mempty
 
 class HasBoundCtx a where
-  boundContextOf :: a -> [DBBinding]
+  boundContextOf :: a -> BoundDBCtx
 
-instance HasBoundCtx (BoundCtx DBBinding) where
+instance HasBoundCtx (BoundCtx (Maybe Name)) where
   boundContextOf = id
 
 instance HasBoundCtx (BoundCtx Name) where
@@ -30,6 +33,9 @@ addToBoundCtx v = local (v :)
 
 getBoundCtx :: MonadReader (BoundCtx b) m => m (BoundCtx b)
 getBoundCtx = ask
+
+lookupVar :: BoundCtx b -> DBIndex -> Maybe b
+lookupVar ctx i = ctx !!? coerce i
 
 --------------------------------------------------------------------------------
 -- Declaration contexts

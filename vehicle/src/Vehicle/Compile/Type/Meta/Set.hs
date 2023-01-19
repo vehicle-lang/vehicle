@@ -1,27 +1,27 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Compile.Type.Meta.Set
-  ( MetaSet
-  , toList
-  , fromList
-  , fromIntSet
-  , singleton
-  , member
-  , insert
-  , difference
-  , null
-  , disjoint
-  , unions
-  , isSubsetOf
-  ) where
+  ( MetaSet,
+    toList,
+    fromList,
+    fromIntSet,
+    singleton,
+    member,
+    insert,
+    difference,
+    null,
+    disjoint,
+    unions,
+    isSubsetOf,
+  )
+where
 
 import Data.Coerce (coerce)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
-import Prelude hiding (null)
-
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
+import Prelude hiding (null)
 
 newtype MetaSet = MetaSet IntSet
   deriving (Show, Eq, Semigroup, Monoid)

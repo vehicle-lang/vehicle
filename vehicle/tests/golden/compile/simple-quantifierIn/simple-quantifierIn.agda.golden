@@ -19,10 +19,10 @@ module simple-quantifierIn where
 emptyList : List ℤ
 emptyList = []
 
-postulate empty : List.All (λ (x : ℤ) → ⊤) emptyList
+postulate empty : List.All (λ x → ⊤) emptyList
 
-postulate double : List.All (λ (x : ℤ) → List.All (λ (y : ℤ) → x ≡ y) emptyList) emptyList
+postulate double : List.All (λ x → List.All (λ y → x ≡ y) emptyList) emptyList
 
-postulate forallForallIn : ∀ (x : ℤ) → List.All (λ (y : ℤ) → x ≡ y) emptyList
+postulate forallForallIn : ∀ x → List.All (λ y → x ≡ y) emptyList
 
-postulate forallInForall : List.All (λ (x : ℤ) → ∀ (y : ℤ) → x ≡ y) emptyList
+postulate forallInForall : List.All (λ x → ∀ y → x ≡ y) emptyList
