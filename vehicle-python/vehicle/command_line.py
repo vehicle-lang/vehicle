@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
@@ -7,13 +8,12 @@ from typing import Any, Dict, List
 # Function that calls vehicle - it takes the options
 # TODO: check if it's None or else
 def call_vehicle(args: List[str]) -> None:
-    command = ["vehicle"] + args
-    # print(' '.join(command))
-    result = subprocess.run(command, capture_output=True)
+    vehicle = shutil.which("vehicle")
+    if vehicle is None:
+        raise Exception(f"Could not find vehicle on PATH; is vehicle installed?")
+    result = subprocess.run([vehicle] + args, capture_output=True)
     if result.returncode != 0:
-        raise Exception(
-            "Error during specification compilation: " + result.stderr.decode("UTF-8")
-        )
+        raise Exception(f"Error during compilation: {result.stderr.decode('UTF-8')}")
 
 
 def load_json(path_to_json: str) -> Dict[Any, Any]:

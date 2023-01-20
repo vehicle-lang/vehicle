@@ -1,2 +1,2 @@
 maximum : Bool
-maximum = True or False
+maximum = 5 <= 1
