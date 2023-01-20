@@ -3,7 +3,6 @@ module Vehicle.Compile.Normalise.Core where
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.AlphaEquivalence (alphaEq)
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 
 --------------------------------------------------------------------------------
@@ -21,7 +20,6 @@ nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
   (EqNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
-  (_, e1', e2') | alphaEq e1' e2' -> BoolLiteral p (eq == Eq)
   _ -> EqualityExpr p dom eq [e1, e2]
 
 --------------------------------------------------------------------------------
@@ -52,7 +50,6 @@ nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (OrderIndex, IndexLiteral _ _ x, IndexLiteral _ _ y) -> BoolLiteral p (orderOp ord x y)
   (OrderInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (orderOp ord x y)
   (OrderRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (orderOp ord x y)
-  (_, e1, e2) | alphaEq e1 e2 -> BoolLiteral p (not (isStrict ord))
   _ -> OrderExpr p dom ord [arg1, arg2]
 
 --------------------------------------------------------------------------------
@@ -72,7 +69,6 @@ nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> FalseExpr p
   (_, TrueExpr _) -> argExpr arg1
   (_, FalseExpr _) -> FalseExpr p
-  (e1, e2) | alphaEq e1 e2 -> e1
   _ -> AndExpr p [arg1, arg2]
 
 nfOr :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
@@ -81,7 +77,6 @@ nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> argExpr arg2
   (_, TrueExpr _) -> TrueExpr p
   (_, FalseExpr _) -> argExpr arg1
-  (e1, e2) | alphaEq e1 e2 -> e1
   _ -> OrExpr p [arg1, arg2]
 
 nfImplies :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
@@ -90,7 +85,6 @@ nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> TrueExpr p
   (_, TrueExpr _) -> TrueExpr p
   (_, FalseExpr _) -> NotExpr p [arg2]
-  (e1, e2) | alphaEq e1 e2 -> TrueExpr p
   _ -> ImpliesExpr p [arg1, arg2]
 
 nfIf :: Provenance -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
