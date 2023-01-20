@@ -19,7 +19,7 @@ import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
 import Vehicle.Compile.Queries.NetworkElimination
-import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
+import Vehicle.Compile.Queries.QuantifierLifting (liftAndRemoveQuantifiers)
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getPropertyInfo, getUnnormalised)
@@ -174,11 +174,11 @@ compileSingleQuery expr = do
   (verifier, ident, networkCtx) <- ask
 
   logCompilerPass MinDetail ("query" <+> pretty (queryID :: QueryID)) $ do
-    -- First lift all the quantifiers to the top-level
-    quantLiftedExpr <- liftQuantifiers expr
+    -- First lift all the quantifiers to the top-level and remove them.
+    (quantLiftedExpr, userVariables) <- liftAndRemoveQuantifiers expr
 
     -- Convert all user variables and applications of networks into magic I/O variables
-    clstQuery <- normUserVariables ident verifier networkCtx quantLiftedExpr
+    clstQuery <- normUserVariables ident verifier networkCtx userVariables quantLiftedExpr
 
     flip traverseQuery clstQuery $ \(clstProblem, u, v) -> do
       queryDoc <- compileQuery verifier clstProblem

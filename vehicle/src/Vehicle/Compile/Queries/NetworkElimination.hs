@@ -104,21 +104,20 @@ normUserVariables ::
   Identifier ->
   Verifier ->
   NetworkContext ->
+  [UserVariable] ->
   CheckedExpr ->
   m (Query (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
-normUserVariables ident verifier networkCtx expr =
+normUserVariables ident verifier networkCtx userVariables expr =
   logCompilerPass MinDetail "input/output variable insertion" $ do
     -- Let-lift all the network applications to avoid duplicates.
-    liftedNetworkAppExpr <- liftNetworkApplications networkCtx expr
+    let dbLevel = DBLevel $ length userVariables
+    liftedNetworkAppExpr <- liftNetworkApplications networkCtx dbLevel expr
 
     -- We can now calculate the meta-network and the network variables.
     let metaNetwork = generateMetaNetwork networkCtx liftedNetworkAppExpr
     typedMetaNetwork <- getTypedMetaNetwork networkCtx metaNetwork
     let networkVariables = getNetworkVariables typedMetaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty metaNetwork <> line
-
-    -- Next remove all the user quantifiers which we must now be at the top-level.
-    (quantifierlessExpr, userVariables) <- removeUserQuantifiers ident liftedNetworkAppExpr
 
     -- Generate the SMT problem
     let problemState =
@@ -130,7 +129,7 @@ normUserVariables ident verifier networkCtx expr =
             networkVariables
           )
 
-    runReaderT (generateCLSTProblem quantifierlessExpr) problemState
+    runReaderT (generateCLSTProblem liftedNetworkAppExpr) problemState
 
 generateCLSTProblem ::
   MonadSMT m =>
@@ -291,22 +290,10 @@ getExprConstantIndex =
 --------------------------------------------------------------------------------
 -- Remove user quantifiers
 
--- | Strip off user quantifiers
-removeUserQuantifiers ::
-  MonadCompile m =>
-  Identifier ->
-  CheckedExpr ->
-  m (CheckedExpr, [UserVariable])
-removeUserQuantifiers ident (ExistsRatExpr _ binder body) = do
-  let n = getBinderName binder
-  (result, binders) <- removeUserQuantifiers ident body
-  return (result, UserVariable n : binders)
-removeUserQuantifiers _ e = return (e, [])
-
 -- | We lift all network applications regardless if they are duplicated or not to
 -- ensure that they are at the top-level underneath a quantifier and hence have
 -- a body with the type `Bool`.
-liftNetworkApplications :: MonadCompile m => NetworkContext -> CheckedExpr -> m CheckedExpr
+liftNetworkApplications :: MonadCompile m => NetworkContext -> DBLevel -> CheckedExpr -> m CheckedExpr
 liftNetworkApplications networks = insertLets isNetworkApplication False
   where
     isNetworkApplication :: CoDBExpr -> Int -> Bool
