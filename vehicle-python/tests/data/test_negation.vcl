@@ -1,2 +1,2 @@
-negation : Bool
-negation = not True
+negation : Int
+negation = -5
