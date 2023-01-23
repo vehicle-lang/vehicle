@@ -18,6 +18,7 @@ module Vehicle.Compile.Queries.LinearExpr
     hasUserVariables,
     removeUserVariables,
     substitute,
+    checkTriviality,
   )
 where
 
@@ -164,6 +165,19 @@ hasUserVariables numberOfUserVariables (Assertion _ (LinearExpr e)) =
 removeUserVariables :: Int -> Assertion -> Assertion
 removeUserVariables numberOfUserVariables (Assertion rel (LinearExpr e)) =
   Assertion rel (LinearExpr (Vector.drop numberOfUserVariables e))
+
+-- | Checks whether an assertion is trivial or not. Returns `Nothing` if
+-- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
+-- if it is trivial.
+checkTriviality :: Assertion -> Maybe Bool
+checkTriviality (Assertion rel linExpr) = do
+  let (cs, c) = splitOutConstant linExpr
+  if not $ Vector.all (== 0.0) cs
+    then Nothing
+    else Just $ case rel of
+      Equal -> c == 0.0
+      LessThan -> c < 0.0
+      LessThanOrEqualTo -> c <= 0.0
 
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem

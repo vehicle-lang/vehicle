@@ -58,21 +58,25 @@ generateCLSTProblem state inputEqualities queryExpr = flip runReaderT state $ do
 
   result <- compileAssertions queryExpr
 
-  flip traverseQuery result $ \userAssertions -> do
-    let assertions = inputEqualityAssertions <> userAssertions
-    let clst = CLSTProblem variables assertions
+  case result of
+    Trivial p -> return $ Trivial p
+    NonTrivial userAssertions -> do
+      let assertions = inputEqualityAssertions <> userAssertions
+      let clst = CLSTProblem variables assertions
 
-    (solvedCLST, userVarReconstruction) <-
-      solveForUserVariables (length userVariables) clst
+      networkVarQuery <-
+        solveForUserVariables (length userVariables) clst
 
-    logCompilerPassOutput $ pretty solvedCLST
-    return (solvedCLST, metaNetwork, userVarReconstruction)
+      let finalQuery = flip fmap networkVarQuery $
+            \(solvedCLST, varReconst) -> (solvedCLST, metaNetwork, varReconst)
+
+      return finalQuery
 
 solveForUserVariables ::
   MonadCompile m =>
   Int ->
   CLSTProblem Variable ->
-  m (CLSTProblem NetworkVariable, UserVarReconstructionInfo)
+  m (Query (CLSTProblem NetworkVariable, UserVarReconstructionInfo))
 solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
   logCompilerPass MinDetail "elimination of user variables" $ do
     let allUserVars = Set.fromList [0 .. numberOfUserVars - 1]
@@ -114,10 +118,19 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
 
     -- Remove all user variables
     let networkVariables = mapMaybe getNetworkVariable variables
-    let finalAssertions = fmap (removeUserVariables numberOfUserVars) resultingAssertions
+    let networkAssertions = fmap (removeUserVariables numberOfUserVars) resultingAssertions
 
-    -- Return the problem
-    return (CLSTProblem networkVariables finalAssertions, varSolutions)
+    -- Check for trivial assertions
+    let maybeAssertions = filterTrivialAssertions networkAssertions
+
+    return $ case maybeAssertions of
+      Nothing -> Trivial False
+      Just [] -> Trivial True
+      Just finalAssertions -> do
+        let clstProblem = CLSTProblem networkVariables finalAssertions
+        NonTrivial (clstProblem, varSolutions)
+
+-- Return the problem
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -275,6 +288,18 @@ compileLinearExpr expr = do
               "Unexpected non-linear constraint that should have been caught by the"
                 <+> "linearity analysis during type-checking."
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
+
+filterTrivialAssertions :: [Assertion] -> Maybe [Assertion]
+filterTrivialAssertions = go
+  where
+    go :: [Assertion] -> Maybe [Assertion]
+    go [] = Just []
+    go (a : as) = case go as of
+      Nothing -> Nothing
+      Just as' -> case checkTriviality a of
+        Nothing -> Just $ a : as'
+        Just True -> Just as'
+        Just False -> Nothing
 
 currentPass :: Doc a
 currentPass = "linear satisfaction problem compilation"

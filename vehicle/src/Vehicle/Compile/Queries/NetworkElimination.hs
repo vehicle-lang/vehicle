@@ -23,6 +23,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
+import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn
 import Vehicle.Verify.Specification (MetaNetwork)
 

@@ -111,7 +111,6 @@ library
     Vehicle.Compile.ExpandResources.Dataset
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
-    Vehicle.Compile.LetInsertion
     Vehicle.Compile.Normalise
     Vehicle.Compile.Normalise.Core
     Vehicle.Compile.Normalise.NBE
@@ -317,7 +316,6 @@ library vehicle-unit-tests-common
     Vehicle.Test.Unit.Compile.CommandLine
     Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.IfElimination
-    Vehicle.Test.Unit.Compile.LetInsertion
     Vehicle.Test.Unit.Compile.Normalisation
     Vehicle.Test.Unit.Compile.PositionTree
     Vehicle.Test.Unit.Compile.QuantifierLifting
