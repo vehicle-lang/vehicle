@@ -123,6 +123,7 @@ library
     Vehicle.Compile.Queries.GaussianElimination
     Vehicle.Compile.Queries.IfElimination
     Vehicle.Compile.Queries.LinearExpr
+    Vehicle.Compile.Queries.LinearSatisfactionProblem
     Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.NetworkElimination
     Vehicle.Compile.Queries.QuantifierLifting

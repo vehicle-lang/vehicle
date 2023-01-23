@@ -14,7 +14,9 @@ class Pretty variable => IsVariable variable
 -- User variables
 
 -- | Variables entered by the user
-newtype UserVariable = UserVariable Name
+newtype UserVariable = UserVariable
+  { userVarName :: Name
+  }
 
 instance Pretty UserVariable where
   pretty (UserVariable name) = "user" <> brackets (pretty name)
