@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s reachability.vcl -t Marabou -o reachability.inputquery/",
+    "run": "vehicle compile -s reachability.vcl -t Marabou -o reachability.inputquery/ --network f:NO_FILE",
     "needs": ["reachability.vcl"],
-    "produces": ["reachability.inputquery/*.txt"]
+    "produces": ["reachability.inputquery/*.txt", "reachability.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp",
+    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp --network f:NO_FILE",
     "needs": ["reachability.vcl"],
     "produces": ["reachability.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json",
+    "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json --network f:NO_FILE",
     "needs": ["reachability.vcl"],
     "produces": ["reachability.loss.json"]
   }

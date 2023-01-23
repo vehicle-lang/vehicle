@@ -5,8 +5,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
-import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status (SatisfiabilityStatus)
 
 -- | The type of methods that compile queries for a verifier
@@ -21,7 +21,6 @@ type VerifierInvocation =
   forall m.
   MonadIO m =>
   VerifierExecutable ->
-  NetworkLocations ->
   MetaNetwork ->
   UserVarReconstructionInfo ->
   QueryFile ->

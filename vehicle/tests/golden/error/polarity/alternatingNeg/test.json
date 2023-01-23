@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s alternatingNeg.vcl -t Marabou",
+  "run": "vehicle compile -s alternatingNeg.vcl -t Marabou --network f:NO_FILE",
   "needs": ["alternatingNeg.vcl"]
 }

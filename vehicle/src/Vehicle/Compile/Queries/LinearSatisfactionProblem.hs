@@ -138,7 +138,7 @@ type MonadSMT m =
 getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
-    Just details -> return details
+    Just (_file, typ) -> return typ
     Nothing ->
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
@@ -158,7 +158,7 @@ getNumberOfUserVariables = do
 getMetaNetworkType :: MonadSMT m => m [NetworkType]
 getMetaNetworkType = do
   (networkCtx, _, metaNetwork, _, _) <- ask
-  traverse (getNetworkDetailsFromCtx networkCtx) metaNetwork
+  traverse (getNetworkDetailsFromCtx networkCtx . fst) metaNetwork
 
 getNumberOfMagicVariables :: MonadSMT m => m Int
 getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkType

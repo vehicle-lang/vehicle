@@ -71,7 +71,7 @@ addDataset ident value ResourceContext {..} =
       ..
     }
 
-addNetworkType :: Identifier -> NetworkType -> ResourceContext -> ResourceContext
+addNetworkType :: Identifier -> (FilePath, NetworkType) -> ResourceContext -> ResourceContext
 addNetworkType ident details ResourceContext {..} =
   ResourceContext
     { networkContext = Map.insert (nameOf ident) details networkContext,

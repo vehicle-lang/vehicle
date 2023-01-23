@@ -6,9 +6,11 @@ module Vehicle.Compile.Queries.FourierMotzkinElimination
 where
 
 import Control.Monad (foldM)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
 import Data.Vector.Unboxed as Vector (map, (!))
+import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
@@ -40,6 +42,11 @@ data FourierMotzkinVariableSolution = FMSolution
   { lowerBounds :: [Assertion],
     upperBounds :: [Assertion]
   }
+  deriving (Generic)
+
+instance ToJSON FourierMotzkinVariableSolution
+
+instance FromJSON FourierMotzkinVariableSolution
 
 solveVar ::
   MonadCompile m =>

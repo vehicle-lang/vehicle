@@ -6,9 +6,9 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s acasXu.vcl -t Marabou -o acasXu.inputquery/",
+    "run": "vehicle compile -s acasXu.vcl -t Marabou -o acasXu.inputquery/ --network acasXu:NO_FILE",
     "needs": ["acasXu.vcl"],
-    "produces": ["acasXu.inputquery/*.txt"]
+    "produces": ["acasXu.inputquery/*.txt", "acasXu.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",

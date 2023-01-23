@@ -1,0 +1,250 @@
+[
+  [
+    [
+      "User",
+      "expandedExpr"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "Trivial",
+                "contents": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "sequential"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            1,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ],
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "Trivial",
+                "contents": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "parallel"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  true,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [
+                        [
+                          0,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                1,
+                                -1,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ]
+                      ],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Query",
+                "contents": [
+                  true,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Disjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [
+                        [
+                          0,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                1,
+                                -1,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ]
+                      ],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

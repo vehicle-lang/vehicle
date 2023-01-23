@@ -1,0 +1,85 @@
+[
+  [
+    [
+      "User",
+      "index"
+    ],
+    {
+      "tag": "MultiProperty",
+      "contents": [
+        {
+          "tag": "SingleProperty",
+          "contents": {
+            "tag": "Disjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": false
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "tag": "SingleProperty",
+          "contents": {
+            "tag": "Disjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Query",
+                "contents": [
+                  false,
+                  {
+                    "tag": "Trivial",
+                    "contents": false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+]

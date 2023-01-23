@@ -1,7 +1,7 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSONKey, ToJSON, ToJSONKey)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
@@ -28,6 +28,8 @@ instance Hashable Module
 
 instance ToJSON Module
 
+instance FromJSON Module
+
 instance Serialize Module
 
 instance Pretty Module where
@@ -49,6 +51,8 @@ instance NFData Identifier
 instance Hashable Identifier
 
 instance ToJSON Identifier
+
+instance FromJSON Identifier
 
 instance ToJSONKey Identifier
 

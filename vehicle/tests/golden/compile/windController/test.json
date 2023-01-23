@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s windController.vcl -t Marabou -o windController.inputquery/",
+    "run": "vehicle compile -s windController.vcl -t Marabou -o windController.inputquery/ --network controller:controller.onnx",
     "needs": ["windController.vcl"],
-    "produces": ["windController.inputquery/*.txt"]
+    "produces": ["windController.inputquery/*.txt", "windController.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
+    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda --network controller:controller.onnx",
     "needs": ["windController.vcl"],
     "produces": ["windController.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
+    "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json --network controller:controller.onnx",
     "needs": ["windController.vcl"],
     "produces": ["windController.loss.json"],
     "enabled": false

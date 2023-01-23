@@ -11,9 +11,12 @@ def call_vehicle(args: List[str]) -> None:
     vehicle = shutil.which("vehicle")
     if vehicle is None:
         raise Exception(f"Could not find vehicle on PATH; is vehicle installed?")
-    result = subprocess.run([vehicle] + args, capture_output=True)
+    command = [vehicle] + args
+    result = subprocess.run(command, capture_output=True)
     if result.returncode != 0:
-        raise Exception(f"Error during compilation: {result.stderr.decode('UTF-8')}")
+        errorMessage = f"Problem during compilation: {result.stderr.decode('UTF-8')}"
+        commandMessage = f"Command was: {' '.join(command)}"
+        raise Exception(errorMessage + commandMessage)
 
 
 def load_json(path_to_json: str) -> Dict[Any, Any]:
@@ -23,7 +26,11 @@ def load_json(path_to_json: str) -> Dict[Any, Any]:
 
 
 def call_vehicle_to_generate_loss_json(
-    specification: str, function_name: str
+    specification: str,
+    networks: Dict[str, Any],
+    datasets: Dict[str, Any],
+    parameters: Dict[str, Any],
+    function_name: str,
 ) -> Dict[Any, Any]:
     with TemporaryDirectory() as path_to_json_directory:
         path_to_json = path_to_json_directory + "loss_function.json"
@@ -36,6 +43,9 @@ def call_vehicle_to_generate_loss_json(
             "--outputFile",
             path_to_json,
         ]
+        args += make_resource_arguments(networks, "network")
+        args += make_resource_arguments(datasets, "dataset")
+        args += make_resource_arguments(parameters, "parameter")
         #'--property', function_name]
         call_vehicle(args)
         loss_function_json = load_json(path_to_json)
@@ -63,4 +73,3 @@ def call_vehicle_to_verify_specification(
     args = ["verify", "--specification", specification, "--verifier", verifier]
     args = args + network_list + dataset_list + parameter_list
     call_vehicle(args)
-    return

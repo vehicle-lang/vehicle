@@ -7,9 +7,11 @@ module Vehicle.Compile.Queries.GaussianElimination
 where
 
 import Control.Monad (foldM, unless)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor
 import Data.Maybe (fromMaybe)
 import Data.Vector.Unboxed qualified as V
+import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
@@ -100,6 +102,11 @@ removeFirstNonZeroRow var (x : xs)
 -- | A FM solution for a variable is two lists of constraints. The variable value
 -- must be greater than the set of assertions, and less than the first is that
 newtype GaussianVariableSolution = GaussianVariableSolution LinearExpr
+  deriving (Generic)
+
+instance ToJSON GaussianVariableSolution
+
+instance FromJSON GaussianVariableSolution
 
 solutionEquality :: GaussianVariableSolution -> LinearExpr
 solutionEquality (GaussianVariableSolution eq) = eq

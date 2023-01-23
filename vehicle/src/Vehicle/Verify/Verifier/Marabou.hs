@@ -6,7 +6,6 @@ where
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
-import Data.Map qualified as Map (lookup)
 import Data.Text (Text, pack)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Text.IO (hPutStrLn)
@@ -19,8 +18,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
-import Vehicle.Compile.Resource
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification (MetaNetwork)
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
 
@@ -97,24 +96,15 @@ compileVar _ (coefficient, var) = pretty coefficient <> pretty var
 -- Invoking Marabou
 
 invokeMarabou :: VerifierInvocation
-invokeMarabou marabouExecutable metaNetwork networkLocations varReconstruction queryFile =
+invokeMarabou marabouExecutable networkLocations varReconstruction queryFile =
   liftIO $ do
-    networkArg <- prepareNetworkArg metaNetwork networkLocations
+    networkArg <- prepareNetworkArg networkLocations
     marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
     parseMarabouOutput varReconstruction marabouOutput
 
-prepareNetworkArg :: NetworkLocations -> MetaNetwork -> IO String
-prepareNetworkArg networkLocations [name] =
-  case Map.lookup name networkLocations of
-    Just path -> return path
-    _ -> do
-      hPutStrLn stderr $
-        "No file provided for neural network '"
-          <> name
-          <> "'. "
-          <> "Please provide it via the '--network' command line option."
-      exitFailure
-prepareNetworkArg _ _ = do
+prepareNetworkArg :: MetaNetwork -> IO String
+prepareNetworkArg [(_name, file)] = return file
+prepareNetworkArg _ = do
   hPutStrLn stderr $
     "Marabou currently doesn't support properties that involve"
       <> "multiple neural networks or multiple applications of the same network."

@@ -24,6 +24,7 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
 import Vehicle.Expr.DeBruijn
+import Vehicle.Verify.Specification (MetaNetwork)
 
 -- Pairs of (input variable == expression)
 type InputEqualities = [(Int, CheckedExpr)]
@@ -120,7 +121,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
     case HashMap.lookup (ident, inputVector) applicationCache of
       Just result -> return result
       Nothing -> do
-        NetworkType inputs outputs <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
+        (networkFile, NetworkType inputs outputs) <- getNetworkDetailsFromCtx networkCtx (nameOf ident)
         let inputSize = tensorSize inputs
         let outputSize = tensorSize outputs
         let outputType = baseType outputs
@@ -146,7 +147,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
           IOVarState
             { applicationCache = HashMap.insert (ident, inputVector) outputVarsExpr applicationCache,
               inputEqualities = inputVarEqualities : inputEqualities,
-              metaNetwork = identifierName ident : metaNetwork,
+              metaNetwork = (identifierName ident, networkFile) : metaNetwork,
               magicInputVarCount = magicInputVarCount + inputSize,
               magicOutputVarCount = magicInputVarCount + outputSize
             }
@@ -195,8 +196,8 @@ type Applications = Map Name Int
 
 getNetworkVariables :: MonadCompile m => NetworkContext -> MetaNetwork -> m [NetworkVariable]
 getNetworkVariables networkCtx metaNetwork = do
+  let applicationCounts = countNetworkApplications metaNetwork
   metaNetworkDetails <- getTypedMetaNetwork networkCtx metaNetwork
-  let applicationCounts = countNetworkApplications (fmap fst metaNetworkDetails)
   let (_, result) = foldr (forNetwork applicationCounts) (mempty, mempty) metaNetworkDetails
   return result
   where
@@ -219,7 +220,7 @@ getNetworkVariables networkCtx metaNetwork = do
 
       (newApplicationsSoFar, result <> inputNames <> outputNames)
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
+getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m (FilePath, NetworkType)
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just details -> return details
@@ -228,12 +229,12 @@ getNetworkDetailsFromCtx networkCtx name = do
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
 getTypedMetaNetwork :: MonadCompile m => NetworkContext -> MetaNetwork -> m [(Name, NetworkType)]
-getTypedMetaNetwork ctx = traverse $ \name -> do
-  networkType <- getNetworkDetailsFromCtx ctx name
+getTypedMetaNetwork ctx = traverse $ \(name, _file) -> do
+  (_file, networkType) <- getNetworkDetailsFromCtx ctx name
   return (name, networkType)
 
 countNetworkApplications :: MetaNetwork -> Applications
-countNetworkApplications = foldr (\n m -> Map.insertWith (+) n 1 m) mempty
+countNetworkApplications = foldr (\(n, _f) m -> Map.insertWith (+) n 1 m) mempty
 
 currentPass :: Doc a
 currentPass = "insertion of magic network variables"

@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Marabou -o simple-triviallyTrue.inputquery/",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Marabou -o simple-triviallyTrue.inputquery/ --network f:NO_FILE",
     "needs": ["simple-triviallyTrue.vcl"],
-    "produces": ["simple-triviallyTrue.inputquery/*.txt"]
+    "produces": ["simple-triviallyTrue.inputquery/*.txt", "simple-triviallyTrue.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda -c proofcache.vclp",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda -c proofcache.vclp --network f:NO_FILE",
     "needs": ["simple-triviallyTrue.vcl"],
     "produces": ["simple-triviallyTrue.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction -o simple-triviallyTrue.loss.json",
+    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction -o simple-triviallyTrue.loss.json --network f:NO_FILE",
     "needs": ["simple-triviallyTrue.vcl"],
     "produces": ["simple-triviallyTrue.loss.json"]
   }

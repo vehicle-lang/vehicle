@@ -6,19 +6,19 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda -c proofcache.vclp",
+    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda -c proofcache.vclp --network andGate:NO_FILE",
     "needs": ["andGate.vcl"],
     "produces": ["andGate.agda"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery/",
+    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery/ --network andGate:NO_FILE",
     "needs": ["andGate.vcl"],
-    "produces": ["andGate.inputquery/*.txt"]
+    "produces": ["andGate.inputquery/*.txt", "andGate.inputquery/verification-plan.vcle"]
  },
  {
    "name": "LossFunction",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json",
+   "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json --network andGate:NO_FILE",
    "needs": ["andGate.vcl"],
    "produces": ["andGate.loss.json"]
  }

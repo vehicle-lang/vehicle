@@ -6,9 +6,9 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s increasing.vcl -t Marabou -o increasing.inputquery/",
+    "run": "vehicle compile -s increasing.vcl -t Marabou -o increasing.inputquery/ --network f:NO_FILE",
     "needs": ["increasing.vcl"],
-    "produces": ["increasing.inputquery/*.txt"]
+    "produces": ["increasing.inputquery/*.txt", "increasing.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",

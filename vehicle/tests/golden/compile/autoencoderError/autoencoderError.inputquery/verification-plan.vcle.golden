@@ -1,0 +1,1801 @@
+[
+  [
+    [
+      "User",
+      "identity"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      4,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      3,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      2,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      1,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "encode",
+                      "NO_FILE"
+                    ],
+                    [
+                      "decode",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  true,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [
+                        [
+                          4,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                0,
+                                0,
+                                0,
+                                0,
+                                1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                -1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ],
+                        [
+                          3,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                0,
+                                0,
+                                0,
+                                1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                -1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ],
+                        [
+                          2,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                0,
+                                0,
+                                1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                -1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ],
+                        [
+                          1,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                0,
+                                1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                -1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ],
+                        [
+                          0,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                -1,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ]
+                      ],
+                      "metaNetwork": [
+                        [
+                          "encode",
+                          "NO_FILE"
+                        ],
+                        [
+                          "decode",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Conjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      true,
+                      {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "userVar": [
+                            [
+                              4,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "unLinearExpr": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    -1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              }
+                            ],
+                            [
+                              3,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "unLinearExpr": [
+                                    0,
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    -1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              }
+                            ],
+                            [
+                              2,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "unLinearExpr": [
+                                    0,
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    -1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              }
+                            ],
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "unLinearExpr": [
+                                    0,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    -1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "unLinearExpr": [
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    -1,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              }
+                            ]
+                          ],
+                          "metaNetwork": [
+                            [
+                              "encode",
+                              "NO_FILE"
+                            ],
+                            [
+                              "decode",
+                              "NO_FILE"
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Conjunct",
+                    "contents": [
+                      {
+                        "tag": "Query",
+                        "contents": [
+                          true,
+                          {
+                            "tag": "NonTrivial",
+                            "contents": {
+                              "userVar": [
+                                [
+                                  4,
+                                  {
+                                    "tag": "GaussianSolution",
+                                    "contents": {
+                                      "unLinearExpr": [
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        -1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                      ]
+                                    }
+                                  }
+                                ],
+                                [
+                                  3,
+                                  {
+                                    "tag": "GaussianSolution",
+                                    "contents": {
+                                      "unLinearExpr": [
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        -1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                      ]
+                                    }
+                                  }
+                                ],
+                                [
+                                  2,
+                                  {
+                                    "tag": "GaussianSolution",
+                                    "contents": {
+                                      "unLinearExpr": [
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        -1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                      ]
+                                    }
+                                  }
+                                ],
+                                [
+                                  1,
+                                  {
+                                    "tag": "GaussianSolution",
+                                    "contents": {
+                                      "unLinearExpr": [
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        -1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                      ]
+                                    }
+                                  }
+                                ],
+                                [
+                                  0,
+                                  {
+                                    "tag": "GaussianSolution",
+                                    "contents": {
+                                      "unLinearExpr": [
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        -1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                      ]
+                                    }
+                                  }
+                                ]
+                              ],
+                              "metaNetwork": [
+                                [
+                                  "encode",
+                                  "NO_FILE"
+                                ],
+                                [
+                                  "decode",
+                                  "NO_FILE"
+                                ]
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Conjunct",
+                        "contents": [
+                          {
+                            "tag": "Query",
+                            "contents": [
+                              true,
+                              {
+                                "tag": "NonTrivial",
+                                "contents": {
+                                  "userVar": [
+                                    [
+                                      4,
+                                      {
+                                        "tag": "GaussianSolution",
+                                        "contents": {
+                                          "unLinearExpr": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                          ]
+                                        }
+                                      }
+                                    ],
+                                    [
+                                      3,
+                                      {
+                                        "tag": "GaussianSolution",
+                                        "contents": {
+                                          "unLinearExpr": [
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                          ]
+                                        }
+                                      }
+                                    ],
+                                    [
+                                      2,
+                                      {
+                                        "tag": "GaussianSolution",
+                                        "contents": {
+                                          "unLinearExpr": [
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                          ]
+                                        }
+                                      }
+                                    ],
+                                    [
+                                      1,
+                                      {
+                                        "tag": "GaussianSolution",
+                                        "contents": {
+                                          "unLinearExpr": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                          ]
+                                        }
+                                      }
+                                    ],
+                                    [
+                                      0,
+                                      {
+                                        "tag": "GaussianSolution",
+                                        "contents": {
+                                          "unLinearExpr": [
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  ],
+                                  "metaNetwork": [
+                                    [
+                                      "encode",
+                                      "NO_FILE"
+                                    ],
+                                    [
+                                      "decode",
+                                      "NO_FILE"
+                                    ]
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "Conjunct",
+                            "contents": [
+                              {
+                                "tag": "Query",
+                                "contents": [
+                                  true,
+                                  {
+                                    "tag": "NonTrivial",
+                                    "contents": {
+                                      "userVar": [
+                                        [
+                                          4,
+                                          {
+                                            "tag": "GaussianSolution",
+                                            "contents": {
+                                              "unLinearExpr": [
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0
+                                              ]
+                                            }
+                                          }
+                                        ],
+                                        [
+                                          3,
+                                          {
+                                            "tag": "GaussianSolution",
+                                            "contents": {
+                                              "unLinearExpr": [
+                                                0,
+                                                0,
+                                                0,
+                                                1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0
+                                              ]
+                                            }
+                                          }
+                                        ],
+                                        [
+                                          2,
+                                          {
+                                            "tag": "GaussianSolution",
+                                            "contents": {
+                                              "unLinearExpr": [
+                                                0,
+                                                0,
+                                                1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0
+                                              ]
+                                            }
+                                          }
+                                        ],
+                                        [
+                                          1,
+                                          {
+                                            "tag": "GaussianSolution",
+                                            "contents": {
+                                              "unLinearExpr": [
+                                                0,
+                                                1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0
+                                              ]
+                                            }
+                                          }
+                                        ],
+                                        [
+                                          0,
+                                          {
+                                            "tag": "GaussianSolution",
+                                            "contents": {
+                                              "unLinearExpr": [
+                                                1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      ],
+                                      "metaNetwork": [
+                                        [
+                                          "encode",
+                                          "NO_FILE"
+                                        ],
+                                        [
+                                          "decode",
+                                          "NO_FILE"
+                                        ]
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "Conjunct",
+                                "contents": [
+                                  {
+                                    "tag": "Query",
+                                    "contents": [
+                                      true,
+                                      {
+                                        "tag": "NonTrivial",
+                                        "contents": {
+                                          "userVar": [
+                                            [
+                                              4,
+                                              {
+                                                "tag": "GaussianSolution",
+                                                "contents": {
+                                                  "unLinearExpr": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                  ]
+                                                }
+                                              }
+                                            ],
+                                            [
+                                              3,
+                                              {
+                                                "tag": "GaussianSolution",
+                                                "contents": {
+                                                  "unLinearExpr": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                  ]
+                                                }
+                                              }
+                                            ],
+                                            [
+                                              2,
+                                              {
+                                                "tag": "GaussianSolution",
+                                                "contents": {
+                                                  "unLinearExpr": [
+                                                    0,
+                                                    0,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                  ]
+                                                }
+                                              }
+                                            ],
+                                            [
+                                              1,
+                                              {
+                                                "tag": "GaussianSolution",
+                                                "contents": {
+                                                  "unLinearExpr": [
+                                                    0,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                  ]
+                                                }
+                                              }
+                                            ],
+                                            [
+                                              0,
+                                              {
+                                                "tag": "GaussianSolution",
+                                                "contents": {
+                                                  "unLinearExpr": [
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          ],
+                                          "metaNetwork": [
+                                            [
+                                              "encode",
+                                              "NO_FILE"
+                                            ],
+                                            [
+                                              "decode",
+                                              "NO_FILE"
+                                            ]
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "Conjunct",
+                                    "contents": [
+                                      {
+                                        "tag": "Query",
+                                        "contents": [
+                                          true,
+                                          {
+                                            "tag": "NonTrivial",
+                                            "contents": {
+                                              "userVar": [
+                                                [
+                                                  4,
+                                                  {
+                                                    "tag": "GaussianSolution",
+                                                    "contents": {
+                                                      "unLinearExpr": [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        -1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                      ]
+                                                    }
+                                                  }
+                                                ],
+                                                [
+                                                  3,
+                                                  {
+                                                    "tag": "GaussianSolution",
+                                                    "contents": {
+                                                      "unLinearExpr": [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        -1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                      ]
+                                                    }
+                                                  }
+                                                ],
+                                                [
+                                                  2,
+                                                  {
+                                                    "tag": "GaussianSolution",
+                                                    "contents": {
+                                                      "unLinearExpr": [
+                                                        0,
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        -1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                      ]
+                                                    }
+                                                  }
+                                                ],
+                                                [
+                                                  1,
+                                                  {
+                                                    "tag": "GaussianSolution",
+                                                    "contents": {
+                                                      "unLinearExpr": [
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        -1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                      ]
+                                                    }
+                                                  }
+                                                ],
+                                                [
+                                                  0,
+                                                  {
+                                                    "tag": "GaussianSolution",
+                                                    "contents": {
+                                                      "unLinearExpr": [
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        -1,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                      ]
+                                                    }
+                                                  }
+                                                ]
+                                              ],
+                                              "metaNetwork": [
+                                                [
+                                                  "encode",
+                                                  "NO_FILE"
+                                                ],
+                                                [
+                                                  "decode",
+                                                  "NO_FILE"
+                                                ]
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "tag": "Conjunct",
+                                        "contents": [
+                                          {
+                                            "tag": "Query",
+                                            "contents": [
+                                              true,
+                                              {
+                                                "tag": "NonTrivial",
+                                                "contents": {
+                                                  "userVar": [
+                                                    [
+                                                      4,
+                                                      {
+                                                        "tag": "GaussianSolution",
+                                                        "contents": {
+                                                          "unLinearExpr": [
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            -1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0
+                                                          ]
+                                                        }
+                                                      }
+                                                    ],
+                                                    [
+                                                      3,
+                                                      {
+                                                        "tag": "GaussianSolution",
+                                                        "contents": {
+                                                          "unLinearExpr": [
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            -1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0
+                                                          ]
+                                                        }
+                                                      }
+                                                    ],
+                                                    [
+                                                      2,
+                                                      {
+                                                        "tag": "GaussianSolution",
+                                                        "contents": {
+                                                          "unLinearExpr": [
+                                                            0,
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            -1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0
+                                                          ]
+                                                        }
+                                                      }
+                                                    ],
+                                                    [
+                                                      1,
+                                                      {
+                                                        "tag": "GaussianSolution",
+                                                        "contents": {
+                                                          "unLinearExpr": [
+                                                            0,
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            -1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0
+                                                          ]
+                                                        }
+                                                      }
+                                                    ],
+                                                    [
+                                                      0,
+                                                      {
+                                                        "tag": "GaussianSolution",
+                                                        "contents": {
+                                                          "unLinearExpr": [
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            -1,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0,
+                                                            0
+                                                          ]
+                                                        }
+                                                      }
+                                                    ]
+                                                  ],
+                                                  "metaNetwork": [
+                                                    [
+                                                      "encode",
+                                                      "NO_FILE"
+                                                    ],
+                                                    [
+                                                      "decode",
+                                                      "NO_FILE"
+                                                    ]
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "tag": "Conjunct",
+                                            "contents": [
+                                              {
+                                                "tag": "Query",
+                                                "contents": [
+                                                  true,
+                                                  {
+                                                    "tag": "NonTrivial",
+                                                    "contents": {
+                                                      "userVar": [
+                                                        [
+                                                          4,
+                                                          {
+                                                            "tag": "GaussianSolution",
+                                                            "contents": {
+                                                              "unLinearExpr": [
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                -1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0
+                                                              ]
+                                                            }
+                                                          }
+                                                        ],
+                                                        [
+                                                          3,
+                                                          {
+                                                            "tag": "GaussianSolution",
+                                                            "contents": {
+                                                              "unLinearExpr": [
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                -1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0
+                                                              ]
+                                                            }
+                                                          }
+                                                        ],
+                                                        [
+                                                          2,
+                                                          {
+                                                            "tag": "GaussianSolution",
+                                                            "contents": {
+                                                              "unLinearExpr": [
+                                                                0,
+                                                                0,
+                                                                1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                -1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0
+                                                              ]
+                                                            }
+                                                          }
+                                                        ],
+                                                        [
+                                                          1,
+                                                          {
+                                                            "tag": "GaussianSolution",
+                                                            "contents": {
+                                                              "unLinearExpr": [
+                                                                0,
+                                                                1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                -1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0
+                                                              ]
+                                                            }
+                                                          }
+                                                        ],
+                                                        [
+                                                          0,
+                                                          {
+                                                            "tag": "GaussianSolution",
+                                                            "contents": {
+                                                              "unLinearExpr": [
+                                                                1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                -1,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0
+                                                              ]
+                                                            }
+                                                          }
+                                                        ]
+                                                      ],
+                                                      "metaNetwork": [
+                                                        [
+                                                          "encode",
+                                                          "NO_FILE"
+                                                        ],
+                                                        [
+                                                          "decode",
+                                                          "NO_FILE"
+                                                        ]
+                                                      ]
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "tag": "Query",
+                                                "contents": [
+                                                  true,
+                                                  {
+                                                    "tag": "Trivial",
+                                                    "contents": true
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

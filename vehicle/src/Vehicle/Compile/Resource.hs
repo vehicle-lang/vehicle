@@ -43,6 +43,4 @@ instance Pretty NetworkBaseType where
 reconstructNetworkBaseType :: NetworkBaseType -> Provenance -> CheckedType
 reconstructNetworkBaseType NetworkRatType = RatType
 
-type NetworkContext = Map Name NetworkType
-
-type MetaNetwork = [Name]
+type NetworkContext = Map Name (FilePath, NetworkType)

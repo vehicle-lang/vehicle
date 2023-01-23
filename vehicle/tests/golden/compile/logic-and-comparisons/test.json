@@ -6,31 +6,31 @@
     },
     {
       "name": "LossFunction-DL2",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons-DL2.loss.json",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons-DL2.loss.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["logic-and-comparisons.vcl"],
       "produces": ["logic-and-comparisons-DL2.loss.json"]
     },
     {
       "name": "LossFunction-Godel",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Godel -o logic-and-comparisons-Godel.loss.json",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Godel -o logic-and-comparisons-Godel.loss.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["logic-and-comparisons.vcl"],
       "produces": ["logic-and-comparisons-Godel.loss.json"]
     },
     {
       "name": "LossFunction-Lukasiewicz",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Lukasiewicz -o logic-and-comparisons-Lukasiewicz.loss.json",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Lukasiewicz -o logic-and-comparisons-Lukasiewicz.loss.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["logic-and-comparisons.vcl"],
       "produces": ["logic-and-comparisons-Lukasiewicz.loss.json"]
     },
     {
       "name": "LossFunction-Yager",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Yager -o logic-and-comparisons-Yager.loss.json",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Yager -o logic-and-comparisons-Yager.loss.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["logic-and-comparisons.vcl"],
       "produces": ["logic-and-comparisons-Yager.loss.json"]
     },
     {
       "name": "LossFunction-Product",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Product -o logic-and-comparisons-Product.loss.json",
+      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Product -o logic-and-comparisons-Product.loss.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["logic-and-comparisons.vcl"],
       "produces": ["logic-and-comparisons-Product.loss.json"]
     }
