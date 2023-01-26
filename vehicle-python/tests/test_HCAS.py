@@ -10,7 +10,7 @@ import h5py
 #from not_init import generate_loss_function
 from vehicle import generate_loss_function
 
-trainingDataFiles = "vehicle-python/tests/TrainingData/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
+trainingDataFiles = "vehicle-python/tests/TrainingDataHCAS/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
 
 
 def train(
