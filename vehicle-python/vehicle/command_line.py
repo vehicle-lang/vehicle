@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 def call_vehicle(args: List[str]) -> None:
     command = ["vehicle"] + args
     # print(' '.join(command))
-    result = subprocess.run(command, capture_output=True)
+    result = subprocess.run(command, capture_output=True, shell=True)
     if result.returncode != 0:
         raise Exception(
             "Error during specification compilation: " + result.stderr.decode("UTF-8")
