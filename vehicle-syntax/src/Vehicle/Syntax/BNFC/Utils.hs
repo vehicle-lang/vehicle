@@ -1,8 +1,23 @@
 module Vehicle.Syntax.BNFC.Utils where
 
+import Control.Monad.Except (MonadError)
+import Control.Monad.Reader (MonadReader (..))
 import Data.Text (pack)
+import Vehicle.Syntax.AST.Name (Module)
+import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.External.Abs qualified as B
-import Vehicle.Syntax.Parse.Token (mkToken)
+import Vehicle.Syntax.Parse.Error (ParseError (..))
+import Vehicle.Syntax.Parse.Token (IsToken, mkToken)
+
+type MonadElab m =
+  ( MonadError ParseError m,
+    MonadReader Module m
+  )
+
+mkProvenance :: (MonadElab m, IsToken tk) => tk -> m Provenance
+mkProvenance tk = do
+  mod <- ask
+  return $ tkProvenance mod tk
 
 networkAnn = B.Network $ mkToken B.TokNetwork "@network"
 
@@ -11,6 +26,8 @@ datasetAnn = B.Dataset $ mkToken B.TokDataset "@dataset"
 parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
 
 propertyAnn = B.Property $ mkToken B.TokProperty "@property"
+
+postulateAnn = B.Dataset $ mkToken B.TokDataset "@postulate"
 
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
@@ -104,3 +121,5 @@ tokHasSub = mkToken B.TokHasSub "HasFold"
 tokHasMul = mkToken B.TokHasMul "HasMul"
 
 tokHasEq = mkToken B.TokHasEq "HasEq"
+
+tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"

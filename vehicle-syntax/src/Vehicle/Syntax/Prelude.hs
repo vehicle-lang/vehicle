@@ -1,6 +1,11 @@
 module Vehicle.Syntax.Prelude where
 
 import Control.Exception (Exception, throw)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Serialize (Get, Putter, Serialize (..))
+import Data.Serialize.Get (getListOf)
+import Data.Serialize.Put (putListOf)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Stack (HasCallStack)
@@ -52,3 +57,20 @@ readRat :: Text -> Prelude.Rational
 readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _ -> developerError "Invalid number"
+
+--------------------------------------------------------------------------------
+-- Serialization instances missing from Cereal
+
+instance Serialize a => Serialize (NonEmpty a) where
+  put = putNonEmptyListOf put
+  get = getNonEmptyListOf get
+
+getNonEmptyListOf :: Get a -> Get (NonEmpty a)
+getNonEmptyListOf m = do
+  list <- getListOf m
+  case NonEmpty.nonEmpty list of
+    Nothing -> fail "getNonEmptyListOf: empty list"
+    Just neList -> pure neList
+
+putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
+putNonEmptyListOf pa = putListOf pa . NonEmpty.toList

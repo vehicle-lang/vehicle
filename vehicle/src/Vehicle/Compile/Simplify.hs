@@ -1,134 +1,66 @@
 module Vehicle.Compile.Simplify
   ( Simplify (..),
-    SimplifyOptions (..),
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), runReader)
-import Data.Default (Default (..))
-import Data.IntMap (IntMap)
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Maybe (catMaybes)
-import Data.Text (Text)
+import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta.Map
-import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
-
-data SimplifyOptions = SimplifyOptions
-  { removeImplicits :: Bool,
-    removeInstances :: Bool,
-    removeNonUserCode :: Bool
-  }
-
-instance Default SimplifyOptions where
-  def =
-    SimplifyOptions
-      { removeImplicits = True,
-        removeInstances = True,
-        removeNonUserCode = False
-      }
-
-type MonadSimplify m = MonadReader SimplifyOptions m
 
 class Simplify a where
-  -- | Simplifies the code with the default options.
-  simplify :: Simplify a => a -> a
-  simplify = simplifyWith def
-
   -- | Simplifies the code according to the options provided.
   --   Note that this can be seen as undoing parts of the type-checking,
   --   and therefore the resulting code is not guaranteed to be well-typed.
-  simplifyWith :: Simplify a => SimplifyOptions -> a -> a
-  simplifyWith options x = runReader (simplifyReader x) options
+  simplify :: a -> a
 
-  simplifyReader :: MonadSimplify m => a -> m a
+instance Simplify InputProg where
+  simplify = fmap simplify
 
-instance Simplify expr => Simplify (GenericProg expr) where
-  simplifyReader = traverse simplifyReader
+instance Simplify InputDecl where
+  simplify = fmap simplify
 
-instance Simplify expr => Simplify (GenericDecl expr) where
-  simplifyReader = traverse simplifyReader
+instance Simplify InputExpr where
+  simplify expr = case expr of
+    Universe {} -> expr
+    Hole {} -> expr
+    Meta {} -> expr
+    Builtin {} -> expr
+    Literal {} -> expr
+    Var {} -> expr
+    LVec p xs -> LVec p (fmap simplify xs)
+    Ann p e t -> Ann p (simplify e) (simplify t)
+    Pi p binder result -> Pi p (simplify binder) (simplify result)
+    Let p bound binder body -> Let p (simplify bound) (simplify binder) (simplify body)
+    Lam p binder body -> Lam p (simplify binder) (simplify body)
+    App p fun args -> do
+      let fun' = simplify fun
+      let args' = simplifyArgs args
+      -- Remove automatically inserted cast functions
+      if isLiteralCast fun' && not (null args')
+        then argExpr $ last args'
+        else normAppList p fun' args'
 
-instance Simplify (Expr binder var) where
-  simplifyReader expr = case expr of
-    Universe {} -> return expr
-    Hole {} -> return expr
-    Meta {} -> return expr
-    Builtin {} -> return expr
-    Literal {} -> return expr
-    Var {} -> return expr
-    App ann fun args -> normAppList ann <$> simplifyReader fun <*> simplifyReaderArgs args
-    LVec ann xs -> LVec ann <$> traverse simplifyReader xs
-    Ann ann e t -> Ann ann <$> simplifyReader e <*> simplifyReader t
-    Pi ann binder result -> Pi ann <$> simplifyReader binder <*> simplifyReader result
-    Let ann bound binder body -> Let ann <$> simplifyReader bound <*> simplifyReader binder <*> simplifyReader body
-    Lam ann binder body -> Lam ann <$> simplifyReader binder <*> simplifyReader body
+instance Simplify InputBinder where
+  simplify = fmap simplify
 
-instance Simplify (Binder binder var) where
-  simplifyReader = traverse simplifyReader
+instance Simplify InputArg where
+  simplify = fmap simplify
 
-instance Simplify (Arg binder var) where
-  simplifyReader = traverse simplifyReader
+simplifyArgs :: NonEmpty InputArg -> [InputArg]
+simplifyArgs = fmap simplify . NonEmpty.filter (not . wasInserted)
 
-simplifyReaderArgs ::
-  MonadSimplify m =>
-  NonEmpty (Arg binder var) ->
-  m [Arg binder var]
-simplifyReaderArgs args = catMaybes <$> traverse prettyArg (NonEmpty.toList args)
-  where
-    prettyArg ::
-      MonadSimplify m =>
-      Arg binder var ->
-      m (Maybe (Arg binder var))
-    prettyArg arg = do
-      SimplifyOptions {..} <- ask
+wasInserted :: Arg binder var -> Bool
+wasInserted arg = case visibilityOf arg of
+  Implicit True -> True
+  Instance True -> True
+  _ -> False
 
-      let removeArg =
-            (removeNonUserCode && wasInsertedByCompiler arg)
-              || (visibilityOf arg == Implicit && removeImplicits)
-              || (visibilityOf arg == Instance && removeInstances)
-
-      if removeArg
-        then return Nothing
-        else Just <$> simplifyReader arg
-
---------------------------------------------------------------------------------
--- Other instances
-
-instance Simplify a => Simplify [a] where
-  simplifyReader = traverse simplifyReader
-
-instance (Simplify a, Simplify b) => Simplify (a, b) where
-  simplifyReader (x, y) = do
-    x' <- simplifyReader x
-    y' <- simplifyReader y
-    return (x', y')
-
-instance (Simplify a, Simplify b, Simplify c) => Simplify (a, b, c) where
-  simplifyReader (x, y, z) = do
-    x' <- simplifyReader x
-    y' <- simplifyReader y
-    z' <- simplifyReader z
-    return (x', y', z')
-
-instance Simplify a => Simplify (IntMap a) where
-  simplifyReader = traverse simplifyReader
-
-instance Simplify PositionTree where
-  simplifyReader = return
-
-instance Simplify PositionsInExpr where
-  simplifyReader (PositionsInExpr e t) = return $ PositionsInExpr e t
-
-instance Simplify Text where
-  simplifyReader = return
-
-instance Simplify Int where
-  simplifyReader = return
-
-instance Simplify a => Simplify (Contextualised a b) where
-  simplifyReader (WithContext a ctx) = WithContext <$> simplifyReader a <*> pure ctx
-
-instance Simplify a => Simplify (MetaMap a) where
-  simplifyReader (MetaMap m) = MetaMap <$> traverse simplifyReader m
+isLiteralCast :: Expr binder var -> Bool
+isLiteralCast = \case
+  Builtin _ FromNat {} -> True
+  Builtin _ FromRat {} -> True
+  Builtin _ FromVec {} -> True
+  Builtin _ (TypeClassOp FromNatTC {}) -> True
+  Builtin _ (TypeClassOp FromRatTC {}) -> True
+  Builtin _ (TypeClassOp FromVecTC {}) -> True
+  _ -> False

@@ -6,13 +6,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s bounded.vcl -t Marabou -o bounded.inputquery/",
+    "run": "vehicle compile -s bounded.vcl -t Marabou -o bounded.inputquery/ --network f:NO_FILE",
     "needs": ["bounded.vcl"],
-    "produces": ["bounded.inputquery/*.txt"]
+    "produces": ["bounded.inputquery/*.txt", "bounded.inputquery/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json",
+    "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json --network f:NO_FILE",
     "needs": ["bounded.vcl"],
     "produces": ["bounded.loss.json"]
   }

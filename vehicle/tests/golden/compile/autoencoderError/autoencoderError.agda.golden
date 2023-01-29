@@ -24,4 +24,4 @@ postulate decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 epsilon : Tensor ℚ (5 ∷ [])
 epsilon = λ i → ℤ.+ 1 ℚ./ 10
 
-postulate identity : ∀ x → ∀ i → sub x epsilon i ℚ.≤ decode (encode x) i × decode (encode x) i ℚ.≤ add x epsilon i
+postulate identity : ∀ x → ∀ i → x ⊖ epsilon i ℚ.≤ decode (encode x) i × decode (encode x) i ℚ.≤ x ⊕ epsilon i

@@ -6,13 +6,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-gaussianElim.vcl -t Marabou -o simple-gaussianElim.inputquery/",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t Marabou -o simple-gaussianElim.inputquery/ --network f:NO_FILE --network g:NO_FILE",
     "needs": ["simple-gaussianElim.vcl"],
-    "produces": ["simple-gaussianElim.inputquery/*.txt"]
+    "produces": ["simple-gaussianElim.inputquery/*.txt", "simple-gaussianElim.inputquery/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction -o simple-gaussianElim.loss.json",
+    "run": "vehicle compile -s simple-gaussianElim.vcl -t LossFunction -o simple-gaussianElim.loss.json --network f:NO_FILE --network g:NO_FILE",
     "needs": ["simple-gaussianElim.vcl"],
     "produces": ["simple-gaussianElim.loss.json"]
   }

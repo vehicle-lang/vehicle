@@ -70,7 +70,7 @@ dnf expr = do
   return result
 
 liftOr :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftOr f (OrExpr ann [e1, e2]) = OrExpr ann (fmap (liftOr f) <$> [e1, e2])
+liftOr f (OrExpr p [e1, e2]) = OrExpr p (fmap (liftOr f) <$> [e1, e2])
 liftOr f e = f e
 
 lowerNot :: CheckedExpr -> CheckedExpr
@@ -99,10 +99,10 @@ currentPass = "conversion to DNF"
 
 showEntry :: MonadLogger m => CheckedExpr -> m ()
 showEntry e = do
-  logDebug MaxDetail $ "dnf-entry" <+> prettySimple e
+  logDebug MaxDetail $ "dnf-entry" <+> prettyVerbose e
   incrCallDepth
 
 showExit :: MonadLogger m => CheckedExpr -> m ()
 showExit e = do
   decrCallDepth
-  logDebug MaxDetail $ "dnf-exit " <+> prettySimple e
+  logDebug MaxDetail $ "dnf-exit " <+> prettyVerbose e

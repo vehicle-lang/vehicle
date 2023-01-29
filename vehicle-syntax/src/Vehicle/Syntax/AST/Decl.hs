@@ -2,6 +2,7 @@ module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
@@ -34,7 +35,7 @@ instance NFData expr => NFData (GenericDecl expr)
 
 instance ToJSON expr => ToJSON (GenericDecl expr)
 
-instance FromJSON expr => FromJSON (GenericDecl expr)
+instance Serialize expr => Serialize (GenericDecl expr)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
@@ -107,6 +108,8 @@ instance NFData Resource
 instance ToJSON Resource
 
 instance FromJSON Resource
+
+instance Serialize Resource
 
 instance Pretty Resource where
   pretty = \case

@@ -8,10 +8,19 @@ module Vehicle.Expr.DSL
     (.~~>),
     (~~~>),
     (.~~~>),
+    (@@),
+    (@@@),
+    (.@@@),
+    (@@@@),
+    (.@@@@),
     forAll,
     forAllIrrelevant,
+    forAllInstance,
+    forAllNat,
+    forAllTypeTriples,
     forAllLinearityTriples,
     forAllPolarityTriples,
+    builtin,
     tUnit,
     tBool,
     tNat,
@@ -51,6 +60,7 @@ module Vehicle.Expr.DSL
     maxPolarity,
     impliesPolarity,
     negPolarity,
+    eqPolarity,
     natLit,
     tMax,
     tHole,
@@ -80,6 +90,7 @@ class DSL expr where
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lseq :: expr -> [expr] -> expr
+  free :: Identifier -> expr
 
 newtype DSLExpr = DSL
   { unDSL :: Provenance -> DBLevel -> DBExpr
@@ -91,11 +102,11 @@ fromDSL p e = unDSL e p 0
 boundVar :: DBLevel -> DSLExpr
 boundVar i = DSL $ \p j -> Var p (Bound (dbLevelToIndex j i))
 
-approxPiForm :: Maybe Name -> Visibility -> BinderForm
+approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
 approxPiForm name = \case
-  Explicit -> BinderForm OnlyType False
-  Implicit -> BinderForm (OnlyName $ fromMaybe "_" name) True
-  Instance -> BinderForm OnlyType False
+  Explicit {} -> BinderDisplayForm OnlyType False
+  Implicit {} -> BinderDisplayForm (OnlyName $ fromMaybe "_" name) True
+  Instance {} -> BinderDisplayForm OnlyType False
 
 instance DSL DSLExpr where
   hole = DSL $ \p _i ->
@@ -112,14 +123,14 @@ instance DSL DSLExpr where
   lam name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        binder = Binder p (BinderForm (OnlyName name) True) v r () varType
+        binder = Binder p (BinderDisplayForm (OnlyName name) True) v r () varType
         body = unDSL (bodyFn var) p (i + 1)
      in Lam p binder body
 
   app fun args = DSL $ \p i ->
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
-     in App p fun' args'
+     in normApp p fun' args'
 
   lseq tElem args = DSL $ \p i ->
     App
@@ -127,6 +138,9 @@ instance DSL DSLExpr where
       (LVec p (fmap (\e -> unDSL e p i) args))
       [ ImplicitArg p (unDSL tElem p i)
       ]
+
+  free ident = DSL $ \p _i ->
+    FreeVar p ident
 
 piType :: DBExpr -> DBExpr -> DBExpr
 piType t1 t2 = t1 `tMax` t2
@@ -144,7 +158,7 @@ tMax :: DBExpr -> DBExpr -> DBExpr
 tMax t1 t2 = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 builtin :: Builtin -> DSLExpr
-builtin b = DSL $ \ann _ -> Builtin ann b
+builtin b = DSL $ \p _ -> Builtin p b
 
 constructor :: BuiltinConstructor -> DSLExpr
 constructor = builtin . Constructor
@@ -152,10 +166,30 @@ constructor = builtin . Constructor
 --------------------------------------------------------------------------------
 -- Types
 
-infix 4 @@
+infixl 6 @@
 
 (@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
 (@@) f args = app f (fmap (Explicit,Relevant,) args)
+
+infixl 6 @@@
+
+(@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(@@@) f args = app f (fmap (Implicit True,Relevant,) args)
+
+infixl 6 .@@@
+
+(.@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(.@@@) f args = app f (fmap (Implicit True,Irrelevant,) args)
+
+infixl 6 @@@@
+
+(@@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(@@@@) f args = app f (fmap (Instance True,Relevant,) args)
+
+infixl 6 .@@@@
+
+(.@@@@) :: DSLExpr -> NonEmpty DSLExpr -> DSLExpr
+(.@@@@) f args = app f (fmap (Instance True,Irrelevant,) args)
 
 -- | Explicit function type
 infixr 4 ~>
@@ -167,31 +201,43 @@ x ~> y = pi Nothing Explicit Relevant x (const y)
 infixr 4 ~~>
 
 (~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~> y = pi Nothing Implicit Relevant x (const y)
+x ~~> y = pi Nothing (Implicit False) Relevant x (const y)
 
 -- | Irrelevant implicit function type
 infixr 4 .~~>
 
 (.~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~> y = pi Nothing Implicit Irrelevant x (const y)
+x .~~> y = pi Nothing (Implicit False) Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>
 
 (~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x ~~~> y = pi Nothing Instance Relevant x (const y)
+x ~~~> y = pi Nothing (Instance False) Relevant x (const y)
 
 -- | Irrelevant instance function type
 infixr 4 .~~~>
 
 (.~~~>) :: DSLExpr -> DSLExpr -> DSLExpr
-x .~~~> y = pi Nothing Instance Irrelevant x (const y)
+x .~~~> y = pi Nothing (Instance False) Irrelevant x (const y)
 
 forAll :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAll name = pi (Just name) Implicit Relevant
+forAll name = pi (Just name) (Implicit False) Relevant
 
 forAllIrrelevant :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
-forAllIrrelevant name = pi (Just name) Implicit Irrelevant
+forAllIrrelevant name = pi (Just name) (Implicit False) Irrelevant
+
+forAllInstance :: Name -> DSLExpr -> (DSLExpr -> DSLExpr) -> DSLExpr
+forAllInstance name = pi (Just name) (Instance False) Relevant
+
+forAllNat :: (DSLExpr -> DSLExpr) -> DSLExpr
+forAllNat = forAll "n" tNat
+
+forAllTypeTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+forAllTypeTriples f =
+  forAllIrrelevant "t1" type0 $ \t1 ->
+    forAllIrrelevant "t2" type0 $ \t2 ->
+      forAllIrrelevant "t3" type0 $ \t3 -> f t1 t2 t3
 
 forAllLinearityTriples :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 forAllLinearityTriples f =
@@ -206,7 +252,7 @@ forAllPolarityTriples f =
       forAllIrrelevant "p3" tPol $ \l3 -> f l1 l2 l3
 
 universe :: Universe -> DSLExpr
-universe u = DSL $ \ann _ -> Universe ann u
+universe u = DSL $ \p _ -> Universe p u
 
 type0 :: DSLExpr
 type0 = universe $ TypeUniv 0
@@ -230,15 +276,15 @@ tAnnRat :: DSLExpr -> DSLExpr
 tAnnRat linearity =
   app
     tRat
-    [ (Implicit, Irrelevant, linearity)
+    [ (Implicit True, Irrelevant, linearity)
     ]
 
 tAnnBool :: DSLExpr -> DSLExpr -> DSLExpr
 tAnnBool linearity polarity =
   app
     tBool
-    [ (Implicit, Irrelevant, linearity),
-      (Implicit, Irrelevant, polarity)
+    [ (Implicit True, Irrelevant, linearity),
+      (Implicit True, Irrelevant, polarity)
     ]
 
 tVector :: DSLExpr -> DSLExpr -> DSLExpr
@@ -254,7 +300,7 @@ tIndex :: DSLExpr -> DSLExpr
 tIndex n = constructor Index @@ [n]
 
 tHole :: Name -> DSLExpr
-tHole name = DSL $ \ann _ -> Hole ann name
+tHole name = DSL $ \p _ -> Hole p name
 
 --------------------------------------------------------------------------------
 -- TypeClass
@@ -263,10 +309,10 @@ typeClass :: TypeClass -> NonEmpty DSLExpr -> DSLExpr
 typeClass tc args = constructor (TypeClass tc) @@ args
 
 hasEq :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasEq eq t1 t2 t3 = typeClass (HasEq eq) [t1, t2, t3]
+hasEq eq l t1 t2 = constructor (TypeClass $ HasEq eq) .@@@ [l] @@ [t1, t2]
 
 hasOrd :: OrderOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasOrd ord t1 t2 t3 = typeClass (HasOrd ord) [t1, t2, t3]
+hasOrd ord t1 t2 l = typeClass (HasOrd ord) [t1, t2] .@@@ [l]
 
 hasNot :: DSLExpr -> DSLExpr -> DSLExpr
 hasNot t1 t2 = typeClass HasNot [t1, t2]
@@ -283,17 +329,20 @@ hasImplies t1 t2 t3 = typeClass HasImplies [t1, t2, t3]
 hasQuantifier :: Quantifier -> DSLExpr -> DSLExpr -> DSLExpr
 hasQuantifier q t1 t2 = typeClass (HasQuantifier q) [t1, t2]
 
+numOp2TypeClass :: TypeClass -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
+
 hasAdd :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasAdd t1 t2 t3 = typeClass HasAdd [t1, t2, t3]
+hasAdd = numOp2TypeClass HasAdd
 
 hasSub :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasSub t1 t2 t3 = typeClass HasSub [t1, t2, t3]
+hasSub = numOp2TypeClass HasSub
 
 hasMul :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasMul t1 t2 t3 = typeClass HasMul [t1, t2, t3]
+hasMul = numOp2TypeClass HasMul
 
 hasDiv :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-hasDiv t1 t2 t3 = typeClass HasDiv [t1, t2, t3]
+hasDiv = numOp2TypeClass HasDiv
 
 hasNeg :: DSLExpr -> DSLExpr -> DSLExpr
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
@@ -301,8 +350,8 @@ hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 hasMap :: DSLExpr -> DSLExpr
 hasMap tCont = typeClass HasMap [tCont]
 
-hasFold :: DSLExpr -> DSLExpr -> DSLExpr
-hasFold tCont tElem = typeClass HasFold [tCont, tElem]
+hasFold :: DSLExpr -> DSLExpr
+hasFold tCont = typeClass HasFold [tCont]
 
 hasIf :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 hasIf tCond tArg1 tArg2 tRes = typeClass HasIf [tCond, tArg1, tArg2, tRes]
@@ -326,7 +375,7 @@ linearityTypeClass :: LinearityTypeClass -> NonEmpty DSLExpr -> DSLExpr
 linearityTypeClass tc = typeClass (LinearityTypeClass tc)
 
 maxLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
-maxLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]
+maxLinearity l1 l2 l3 = linearityTypeClass MaxLinearity [l1, l2, l3]
 
 mulLinearity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 mulLinearity l1 l2 l3 = linearityTypeClass MulLinearity [l1, l2, l3]
@@ -346,6 +395,9 @@ addPolarity q l1 l2 = polarityTypeClass (AddPolarity q) [l1, l2]
 maxPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]
 
+eqPolarity :: EqualityOp -> DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+eqPolarity eq p1 p2 p3 = polarityTypeClass (EqPolarity eq) [p1, p2, p3]
+
 impliesPolarity :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 impliesPolarity l1 l2 l3 = polarityTypeClass ImpliesPolarity [l1, l2, l3]
 
@@ -362,7 +414,7 @@ cons :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
 cons tElem x xs =
   app
     (constructor Cons)
-    [ (Implicit, Relevant, tElem),
+    [ (Implicit True, Relevant, tElem),
       (Explicit, Relevant, x),
       (Explicit, Relevant, xs)
     ]

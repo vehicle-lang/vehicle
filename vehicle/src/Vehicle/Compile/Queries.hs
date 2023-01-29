@@ -1,6 +1,5 @@
 module Vehicle.Compile.Queries
   ( compileToQueries,
-    QueryData (..),
   )
 where
 
@@ -9,6 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Foldable (for_)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
@@ -18,20 +18,15 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.QuantifierAnalysis (checkQuantifiersAndNegateIfNecessary)
 import Vehicle.Compile.Queries.DNF (convertToDNF)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs)
+import Vehicle.Compile.Queries.LinearSatisfactionProblem (generateCLSTProblem)
 import Vehicle.Compile.Queries.NetworkElimination
-import Vehicle.Compile.Queries.QuantifierLifting (liftQuantifiers)
-import Vehicle.Compile.Queries.VariableReconstruction
+import Vehicle.Compile.Queries.QuantifierLifting (liftAndRemoveQuantifiers)
+import Vehicle.Compile.Queries.Variable (UserVariable (..))
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getPropertyInfo, getUnnormalised)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Interface (Verifier (..))
-
-data QueryData = QueryData
-  { queryText :: Doc (),
-    metaNetwork :: MetaNetwork,
-    userVar :: UserVarReconstructionInfo
-  }
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -43,7 +38,7 @@ compileToQueries ::
   Verifier ->
   TypedProg ->
   Resources ->
-  m (Specification QueryData)
+  m (VerificationPlan, VerificationQueries)
 compileToQueries verifier@Verifier {..} typedProg resources =
   logCompilerPass MinDetail currentPass $ do
     (networkCtx, finalProg) <- expandResources resources typedProg
@@ -63,7 +58,7 @@ compileToQueries verifier@Verifier {..} typedProg resources =
             property <- runSupplyT (runReaderT (compileProperty expr) propertyCtx) [1 :: Int ..]
             return (name, property)
 
-        return $ Specification xs
+        return $ NonEmpty.unzip $ Specification xs
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -121,7 +116,7 @@ type MonadCompileProperty m =
     MonadReader (Verifier, Identifier, NetworkContext) m
   )
 
-compileProperty :: MonadCompileProperty m => CheckedExpr -> m (Property QueryData)
+compileProperty :: MonadCompileProperty m => CheckedExpr -> m (Property (QueryMetaData, QueryText))
 compileProperty = \case
   VecLiteral _ _ es -> MultiProperty <$> traverse compileProperty es
   expr -> SingleProperty <$> compileTopLevelPropertyStructure expr
@@ -129,7 +124,7 @@ compileProperty = \case
 compileTopLevelPropertyStructure ::
   MonadCompileProperty m =>
   CheckedExpr ->
-  m (PropertyExpr QueryData)
+  m (PropertyExpr (QueryMetaData, QueryText))
 compileTopLevelPropertyStructure = \case
   AppliedAndExpr _ x y ->
     Conjunct <$> compileTopLevelPropertyStructure x <*> compileTopLevelPropertyStructure y
@@ -141,7 +136,7 @@ compileTopLevelPropertyStructure = \case
 compileQuantifiedExpr ::
   MonadCompileProperty m =>
   CheckedExpr ->
-  m (PropertyExpr QueryData)
+  m (PropertyExpr (QueryMetaData, QueryText))
 compileQuantifiedExpr expr = do
   (verifier, ident, _) <- ask
 
@@ -168,22 +163,37 @@ compileQuantifiedExpr expr = do
 
   return combinedQueries
 
-compileSingleQuery :: MonadCompileProperty m => CheckedExpr -> m (Query QueryData)
+compileSingleQuery :: MonadCompileProperty m => CheckedExpr -> m (Query (QueryMetaData, QueryText))
 compileSingleQuery expr = do
   queryID <- demand
   (verifier, ident, networkCtx) <- ask
 
   logCompilerPass MinDetail ("query" <+> pretty (queryID :: QueryID)) $ do
-    -- First lift all the quantifiers to the top-level
-    quantLiftedExpr <- liftQuantifiers expr
+    -- First lift all the quantifiers to the top-level and remove them.
+    (quantLiftedExpr, userVariables) <- liftAndRemoveQuantifiers expr
+
+    -- Substitute through the let-bound applications.
+    let boundCtx = fmap (Just . userVarName) userVariables
 
     -- Convert all user variables and applications of networks into magic I/O variables
-    clstQuery <- normUserVariables ident verifier networkCtx quantLiftedExpr
+    (metaNetwork, networkVariables, inputEqualities, queryExpr) <-
+      replaceNetworkApplications networkCtx boundCtx quantLiftedExpr
 
+    -- Convert it into a linear satisfaction problem in the user variables
+    let state =
+          ( networkCtx,
+            ident,
+            metaNetwork,
+            userVariables,
+            networkVariables
+          )
+    clstQuery <- generateCLSTProblem state inputEqualities queryExpr
+
+    -- Compile the query to the specific verifiers.
     flip traverseQuery clstQuery $ \(clstProblem, u, v) -> do
-      queryDoc <- compileQuery verifier clstProblem
-      logCompilerPassOutput queryDoc
-      return (QueryData queryDoc u v)
+      queryText <- compileQuery verifier clstProblem
+      logCompilerPassOutput queryText
+      return (QueryData u v, queryText)
 
 splitDisjunctions :: Expr binder var -> [Expr binder var]
 splitDisjunctions (OrExpr _ann [e1, e2]) =

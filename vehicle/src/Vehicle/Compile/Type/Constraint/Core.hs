@@ -8,6 +8,11 @@ module Vehicle.Compile.Type.Constraint.Core
     InstanceSolver,
     TypeClassSolver,
     AuxiliaryTypeClassSolver,
+    mkVAnnBoolType,
+    mkVAnnRatType,
+    mkVIndexType,
+    mkVListType,
+    mkVVecType,
   )
 where
 
@@ -16,13 +21,13 @@ import Data.List (partition)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (TCM, solveMeta)
 import Vehicle.Compile.Type.Monad.Class (trackSolvedMetas)
-import Vehicle.Expr.Normalised (NormExpr, NormType, Spine)
+import Vehicle.Expr.Normalised (NormExpr, NormType, Spine, pattern VConstructor)
 
 -- | Function signature for constraints solved by instance search.
 type InstanceSolver =
@@ -58,7 +63,7 @@ type AuxiliaryTypeClassSolver =
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
   forall m constraint.
-  (TCM m, PrettyFriendly (Contextualised constraint ConstraintContext)) =>
+  (TCM m, PrettyExternal (Contextualised constraint ConstraintContext)) =>
   m [Contextualised constraint ConstraintContext] ->
   ([Contextualised constraint ConstraintContext] -> m ()) ->
   (Contextualised constraint ConstraintContext -> m ()) ->
@@ -84,7 +89,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
 
               solvedMetas <- trackSolvedMetas $ do
                 forM_ unblockedConstraints $ \constraint -> do
-                  logCompilerSection MaxDetail ("trying:" <+> prettyFriendly constraint) $ do
+                  logCompilerSection MaxDetail ("trying:" <+> prettyExternal constraint) $ do
                     attemptToSolveConstraint constraint
 
               loop (loopNumber + 1) solvedMetas
@@ -103,6 +108,20 @@ unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext
 
 solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> NormExpr -> m ()
 solveTypeClassMeta ctx meta solution = do
-  let dbLevel = contextDBLevel ctx
-  quotedSolution <- quote dbLevel solution
-  solveMeta meta quotedSolution dbLevel
+  quotedSolution <- quote (contextDBLevel ctx) solution
+  solveMeta meta quotedSolution (boundContext ctx)
+
+mkVAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormExpr
+mkVAnnBoolType p lin pol = VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]
+
+mkVAnnRatType :: Provenance -> NormExpr -> NormExpr
+mkVAnnRatType p lin = VConstructor p Rat [IrrelevantImplicitArg p lin]
+
+mkVIndexType :: Provenance -> NormExpr -> NormExpr
+mkVIndexType p size = VConstructor p Index [ExplicitArg p size]
+
+mkVListType :: Provenance -> NormType -> NormExpr
+mkVListType p tElem = VConstructor p List [ExplicitArg p tElem]
+
+mkVVecType :: Provenance -> NormType -> NormExpr -> NormExpr
+mkVVecType p tElem dim = VConstructor p Vector [ExplicitArg p tElem, ExplicitArg p dim]

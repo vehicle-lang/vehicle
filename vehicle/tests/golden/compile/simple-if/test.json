@@ -6,13 +6,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-if.vcl -t Marabou -o simple-if.inputquery/",
+    "run": "vehicle compile -s simple-if.vcl -t Marabou -o simple-if.inputquery/ --network f:NO_FILE",
     "needs": ["simple-if.vcl"],
-    "produces": ["simple-if.inputquery/*.txt"]
+    "produces": ["simple-if.inputquery/*.txt", "simple-if.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-if.vcl -t Agda -o simple-if.agda",
+    "run": "vehicle compile -s simple-if.vcl -t Agda -o simple-if.agda --network f:NO_FILE",
     "needs": ["simple-if.vcl"],
     "produces": ["simple-if.agda"]
   }

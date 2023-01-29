@@ -68,18 +68,19 @@ readResourcesInDecl decl = case decl of
       InferableParameter ->
         modify (noteInferableParameter ident)
       Parameter -> do
-        resources <- ask
-        normParameterExpr <- parseParameterValue (parameters resources) (ident, p) gluedDeclType
+        parameterValues <- asks parameters
+        normParameterExpr <- parseParameterValue parameterValues (ident, p) gluedDeclType
         let parameterExpr = mkTyped normParameterExpr
         modify (addParameter ident parameterExpr)
       Dataset -> do
-        resources <- ask
-        normDatasetExpr <- parseDataset (datasets resources) (ident, p) gluedDeclType
+        datasetLocations <- asks datasets
+        normDatasetExpr <- parseDataset datasetLocations (ident, p) gluedDeclType
         let datasetExpr = mkTyped normDatasetExpr
         modify (addDataset ident datasetExpr)
       Network -> do
-        networkType <- getNetworkType (ident, p) gluedDeclType
-        modify (addNetworkType ident networkType)
+        networkLocations <- asks networks
+        networkDetails <- checkNetwork networkLocations (ident, p) gluedDeclType
+        modify (addNetworkType ident networkDetails)
 
 mkTyped :: NormExpr -> TypedExpr
 mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)

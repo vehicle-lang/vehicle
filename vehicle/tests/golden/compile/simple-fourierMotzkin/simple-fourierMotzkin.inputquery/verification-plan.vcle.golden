@@ -1,0 +1,378 @@
+[
+  [
+    [
+      "User",
+      "unusedVar"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [],
+                          "lowerBounds": []
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "underConstrainedVar1"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  1,
+                                  -1,
+                                  0,
+                                  1
+                                ]
+                              }
+                            }
+                          ],
+                          "lowerBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  -1,
+                                  0,
+                                  0,
+                                  2
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "underConstrainedVar2"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  1,
+                                  -1,
+                                  0,
+                                  2
+                                ]
+                              }
+                            }
+                          ],
+                          "lowerBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  -1,
+                                  0,
+                                  0,
+                                  1
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0.5,
+                            -0.5,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "underConstrainedVars"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      3,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [],
+                          "lowerBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  0,
+                                  0,
+                                  -1,
+                                  0,
+                                  0,
+                                  2
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      2,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [],
+                          "lowerBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  0,
+                                  0,
+                                  -1,
+                                  -1,
+                                  0,
+                                  0,
+                                  1
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      1,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [],
+                          "lowerBounds": []
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            1,
+                            0,
+                            0,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

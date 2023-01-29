@@ -22,7 +22,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseProg)
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Print (prettySimple, prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
@@ -79,7 +79,6 @@ compileDecl logic d =
       logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
         let logicImplementation = implementationOf logic
         expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
-        logCompilerPassOutput ("loss-declaration " <> prettySimple expr)
         return (DefFunction (nameOf ident) expr')
 
 type MonadCompileLoss m =
@@ -122,7 +121,7 @@ compileExpr t e = showExit $ do
     V.MulExpr _ _ [e1, e2] -> Multiplication <$> compileArg t e1 <*> compileArg t e2
     V.DivExpr _ _ [e1, e2] -> Division <$> compileArg t e1 <*> compileArg t e2
     V.NegExpr _ _ [e1] -> Negation <$> compileArg t e1
-    V.EqualityTCExpr _ op _ _ _ _ [e1, e2] -> case op of
+    V.EqualityTCExpr _ op _ _ _ [e1, e2] -> case op of
       V.Neq -> compileNeq t <$> compileArg t e1 <*> compileArg t e2
       V.Eq -> compileEq t <$> (Max (Constant 0) <$> (Subtraction <$> compileArg t e1 <*> compileArg t e2)) <*> (Max (Constant 0) <$> (Subtraction <$> compileArg t e2 <*> compileArg t e1))
     V.OrderTCExpr _ order _ _ _ _ [e1, e2] ->
@@ -174,8 +173,8 @@ lowerNot arg = case arg of
   V.EqualityExpr p dom eq args -> return $ V.EqualityExpr p dom (neg eq) args
   -- Order and equality expressions (note that we don't push these through the type-class
   -- solution as these will never be compiled.)
-  V.OrderTCExpr p ord t1 t2 t3 s args -> return $ V.OrderTCExpr p (neg ord) t1 t2 t3 s args
-  V.EqualityTCExpr p eq t1 t2 t3 s args -> return $ V.EqualityTCExpr p (neg eq) t1 t2 t3 s args
+  V.BuiltinExpr p (V.TypeClassOp (V.OrderTC ord)) args -> return $ V.BuiltinExpr p (V.TypeClassOp $ V.OrderTC $ neg ord) args
+  V.BuiltinExpr p (V.TypeClassOp (V.EqualsTC eq)) args -> return $ V.BuiltinExpr p (V.TypeClassOp $ V.EqualsTC $ neg eq) args
   -- Double negation
   V.NotExpr _ [e] -> return $ argExpr e
   ---------------------
@@ -243,7 +242,7 @@ normBuiltin b = case b of
 
 showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
 showEntry e = do
-  logDebug MinDetail ("loss-entry " <> prettySimple e)
+  logDebug MinDetail ("loss-entry " <> prettyVerbose e)
   incrCallDepth
   return e
 

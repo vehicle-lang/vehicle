@@ -1,2 +1,2 @@
-indicator : Rat -> Rat -> Bool
-indicator = lam x y . x == y
+indicator : Bool
+indicator = 1 != 1

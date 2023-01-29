@@ -1,8 +1,10 @@
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
+import Data.Serialize.Text ()
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
@@ -26,7 +28,7 @@ instance NFData BinderNamingForm
 
 instance ToJSON BinderNamingForm
 
-instance FromJSON BinderNamingForm
+instance Serialize BinderNamingForm
 
 instance Hashable BinderNamingForm where
   -- We deliberately ignore the binder naming form when hashing
@@ -55,28 +57,28 @@ type BinderFoldingForm = Bool
 --------------------------------------------------------------------------------
 -- Binder form
 
-data BinderForm = BinderForm
+data BinderDisplayForm = BinderDisplayForm
   { namingForm :: BinderNamingForm,
     foldingForm :: BinderFoldingForm
   }
   deriving (Eq, Show, Generic)
 
-instance NFData BinderForm
+instance NFData BinderDisplayForm
 
-instance ToJSON BinderForm
+instance ToJSON BinderDisplayForm
 
-instance FromJSON BinderForm
+instance Hashable BinderDisplayForm
 
-instance Hashable BinderForm
-
-instance HasName BinderForm (Maybe Name) where
+instance HasName BinderDisplayForm (Maybe Name) where
   nameOf = nameOf . namingForm
 
-mapBinderFormName :: (Name -> Name) -> BinderForm -> BinderForm
-mapBinderFormName f binderForm =
-  BinderForm
-    { namingForm = mapBindingNamingFormName f $ namingForm binderForm,
-      foldingForm = foldingForm binderForm
+instance Serialize BinderDisplayForm
+
+mapBinderFormName :: (Name -> Name) -> BinderDisplayForm -> BinderDisplayForm
+mapBinderFormName f binderDisplayForm =
+  BinderDisplayForm
+    { namingForm = mapBindingNamingFormName f $ namingForm binderDisplayForm,
+      foldingForm = foldingForm binderDisplayForm
     }
 
 --------------------------------------------------------------------------------
@@ -89,8 +91,10 @@ mapBinderFormName f binderForm =
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
 data GenericBinder binder expr = Binder
-  { binderProvenance :: Provenance,
-    binderForm :: BinderForm,
+  { -- | Location of the binder in the source file
+    binderProvenance :: Provenance,
+    -- | What form the binder should take when displayed
+    binderDisplayForm :: BinderDisplayForm,
     -- | The visibility of the binder
     binderVisibility :: Visibility,
     -- | The relevancy of the binder
@@ -106,7 +110,7 @@ instance (NFData binder, NFData expr) => NFData (GenericBinder binder expr)
 
 instance (ToJSON binder, ToJSON expr) => ToJSON (GenericBinder binder expr)
 
-instance (FromJSON binder, FromJSON expr) => FromJSON (GenericBinder binder expr)
+instance (Serialize binder, Serialize expr) => Serialize (GenericBinder binder expr)
 
 instance HasProvenance (GenericBinder binder expr) where
   provenanceOf = binderProvenance
@@ -127,13 +131,13 @@ pattern ExplicitBinder :: Provenance -> binder -> expr -> GenericBinder binder e
 pattern ExplicitBinder p n t <- Binder p _ Explicit Relevant n t
 
 pattern ImplicitBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
-pattern ImplicitBinder p n t <- Binder p _ Implicit Relevant n t
+pattern ImplicitBinder p n t <- Binder p _ Implicit {} Relevant n t
 
 pattern InstanceBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
-pattern InstanceBinder p n t <- Binder p _ Instance Relevant n t
+pattern InstanceBinder p n t <- Binder p _ Instance {} Relevant n t
 
 pattern IrrelevantInstanceBinder :: Provenance -> binder -> expr -> GenericBinder binder expr
-pattern IrrelevantInstanceBinder p n t <- Binder p _ Instance Irrelevant n t
+pattern IrrelevantInstanceBinder p n t <- Binder p _ Instance {} Irrelevant n t
 
 --------------------------------------------------------------------------------
 -- Helper functions
@@ -151,7 +155,7 @@ mapBinderRep :: (a -> b) -> GenericBinder a e -> GenericBinder b e
 mapBinderRep f (Binder p u v r b t) = Binder p u v r (f b) t
 
 replaceBinderRep :: b -> GenericBinder a e -> GenericBinder b e
-replaceBinderRep b' (Binder p u v r _b t) = Binder p u v r b' t
+replaceBinderRep b' = mapBinderRep (const b')
 
 replaceBinderType ::
   expr1 ->
@@ -160,7 +164,7 @@ replaceBinderType ::
 replaceBinderType e = fmap (const e)
 
 wantsToFold :: GenericBinder binder expr -> Bool
-wantsToFold = foldingForm . binderForm
+wantsToFold = foldingForm . binderDisplayForm
 
 binderNamingForm :: GenericBinder binder expr -> BinderNamingForm
-binderNamingForm = namingForm . binderForm
+binderNamingForm = namingForm . binderDisplayForm

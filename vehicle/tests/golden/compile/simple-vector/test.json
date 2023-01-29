@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-vector.vcl -t Marabou -o simple-vector.inputquery/",
+    "run": "vehicle compile -s simple-vector.vcl -t Marabou -o simple-vector.inputquery/ --network f:NO_FILE",
     "needs": ["simple-vector.vcl"],
-    "produces": ["simple-vector.inputquery/*.txt"]
+    "produces": ["simple-vector.inputquery/*.txt", "simple-vector.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-vector.vcl -t Agda -o simple-vector.agda",
+    "run": "vehicle compile -s simple-vector.vcl -t Agda -o simple-vector.agda --network f:NO_FILE",
     "needs": ["simple-vector.vcl"],
     "produces": ["simple-vector.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-vector.vcl -t LossFunction -o simple-vector.loss.json",
+    "run": "vehicle compile -s simple-vector.vcl -t LossFunction -o simple-vector.loss.json --network f:NO_FILE",
     "needs": ["simple-vector.vcl"],
     "produces": ["simple-vector.loss.json"]
   }

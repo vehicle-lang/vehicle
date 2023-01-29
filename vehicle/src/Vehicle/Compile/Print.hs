@@ -8,11 +8,11 @@ module Vehicle.Compile.Print
     PrettyWith,
     PrettyFriendly,
     PrettyVerbose,
-    PrettySimple,
+    PrettyExternal,
     Tags (..),
-    prettySimple,
     prettyVerbose,
     prettyFriendly,
+    prettyExternal,
   )
 where
 
@@ -41,27 +41,26 @@ import Vehicle.Syntax.Print
 -- Public methods
 --------------------------------------------------------------------------------
 
-type PrettySimple a = PrettyWith ('Simple ('As 'Internal)) a
-
 type PrettyVerbose a = PrettyWith ('As 'Internal) a
 
-type PrettyFriendly a = PrettyWith ('Named ('As 'External)) a
+type PrettyExternal a = PrettyWith ('Named ('As 'External)) a
 
--- | Prints to the internal language removing all implicit/instance arguments and
---  automatically inserted code. Does not convert (Co)DeBruijn indices back to
---  names.
-prettySimple :: PrettySimple a => a -> Doc b
-prettySimple = prettyWith @('Simple ('As 'Internal))
+type PrettyFriendly a = PrettyWith ('Named ('Simple ('As 'External))) a
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.
 prettyVerbose :: PrettyVerbose a => a -> Doc b
 prettyVerbose = prettyWith @('As 'Internal)
 
+-- | Prints to the internal language in all it's gory detail. Does not convert
+--  (Co)DeBruijn indices back to names. Useful for debugging.
+prettyExternal :: PrettyExternal a => a -> Doc b
+prettyExternal = prettyWith @('Named ('As 'External))
+
 -- | Prints to the external language for things that need to be displayed to
 --  the user. Must provide the context of the thing being printed.
 prettyFriendly :: PrettyFriendly a => a -> Doc b
-prettyFriendly = prettyWith @('Named ('As 'External))
+prettyFriendly = prettyWith @('Named ('Simple ('As 'External)))
 
 --------------------------------------------------------------------------------
 -- Printing strategies
@@ -87,8 +86,7 @@ data Strategy
   | Denormalise Strategy
   | DiscardConstraintCtx Strategy
   | KeepConstraintCtx Strategy
-  | SimplifyWithOptions Strategy
-  | SimplifyDefault Strategy
+  | Simplify Strategy
   | MapList Strategy
   | MapMaybe Strategy
   | MapIntMap Strategy
@@ -155,8 +153,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
   -- Simplification
-  StrategyFor ('Simple tags) (SimplifyOptions, a) = 'SimplifyWithOptions (StrategyFor tags a)
-  StrategyFor ('Simple tags) a = 'SimplifyDefault (StrategyFor tags a)
+  StrategyFor ('Simple tags) a = 'Simplify (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
   StrategyFor tags (Maybe a) = 'MapMaybe (StrategyFor tags a)
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
@@ -339,13 +336,7 @@ instance PrettyUsing rest DBBinder
 
 instance
   (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('SimplifyWithOptions rest) (SimplifyOptions, a)
-  where
-  prettyUsing (options, e) = prettyUsing @rest (simplifyWith options e)
-
-instance
-  (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('SimplifyDefault rest) a
+  PrettyUsing ('Simplify rest) a
   where
   prettyUsing e = prettyUsing @rest (simplify e)
 

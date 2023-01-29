@@ -1,0 +1,97 @@
+[
+  [
+    [
+      "User",
+      "bounded"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              true,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Query",
+                "contents": [
+                  true,
+                  {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "userVar": [
+                        [
+                          0,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                1,
+                                -1,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ]
+                      ],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "Query",
+                "contents": [
+                  true,
+                  {
+                    "tag": "Trivial",
+                    "contents": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

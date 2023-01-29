@@ -26,9 +26,10 @@ where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..), local, runReader)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
@@ -48,7 +49,7 @@ instance Hashable a => Hashable (LocallyNamelessVar a)
 
 instance ToJSON a => ToJSON (LocallyNamelessVar a)
 
-instance FromJSON a => FromJSON (LocallyNamelessVar a)
+instance Serialize a => Serialize (LocallyNamelessVar a)
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the variable position upwards.
@@ -63,7 +64,7 @@ instance Hashable DBIndex
 
 instance ToJSON DBIndex
 
-instance FromJSON DBIndex
+instance Serialize DBIndex
 
 instance Pretty DBIndex where
   pretty i = "𝓲" <> pretty (unIndex i)
@@ -83,7 +84,7 @@ instance Hashable DBLevel
 
 instance ToJSON DBLevel
 
-instance FromJSON DBLevel
+instance Serialize DBLevel
 
 instance Pretty DBLevel where
   pretty l = "𝓵" <> pretty (unLevel l)

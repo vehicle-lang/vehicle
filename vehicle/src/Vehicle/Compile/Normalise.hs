@@ -11,7 +11,7 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (head, toList)
+import Data.List.NonEmpty qualified as NonEmpty (head, reverse, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -184,22 +184,12 @@ nfStdLibFn p f allArgs = do
   fromMaybe (return e) $ case embedStdLib f allArgs of
     Nothing -> Nothing
     Just res -> case res of
-      EqualsBool args -> fmap return (nfEqualsBool Eq p args)
-      NotEqualsBool args -> fmap return (nfEqualsBool Neq p args)
-      ExistsBool {} -> Nothing
-      ForallBool {} -> Nothing
-      EqualsVector tElem size recFn args -> nfEqualsVector Eq p tElem size recFn args
-      NotEqualsVector tElem size recFn args -> nfEqualsVector Neq p tElem size recFn args
-      AddVector tElem size recFn args -> nfAddVector p tElem size recFn args
-      SubVector tElem size recFn args -> nfSubVector p tElem size recFn args
       ForallVector tElem s recFn binder body -> case s of
         NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
         _ -> Nothing
       ExistsVector tElem s recFn binder body -> case s of
         NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
         _ -> Nothing
-      ExistsIndex size lam -> Just $ nfQuantifierIndex p Exists size lam
-      ForallIndex size lam -> Just $ nfQuantifierIndex p Forall size lam
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -213,15 +203,14 @@ nfBuiltin p (TypeClassOp op) args = do
     Nothing -> return originalExpr
     Just res -> do
       (fn, newArgs) <- res
-      nfNewArgs <- traverse nf newArgs
-      nfApp p fn nfNewArgs
+      nf (normApp p fn newArgs)
 nfBuiltin p b args = do
   let e = App p (Builtin p b) args
   fromMaybe (return e) $ case e of
     -- Types
     TensorType _ tElem dims -> Just $ return $ nfTensor p tElem dims
     -- Binary relations
-    EqualityExpr _ dom op [arg1, arg2] -> Just $ return $ nfEq p dom op arg1 arg2
+    EqualityExpr _ dom op (NonEmpty.reverse -> arg2 :| arg1 : _) -> Just $ return $ nfEq p dom op arg1 arg2
     OrderExpr _ dom op [arg1, arg2] -> Just $ return $ nfOrder p dom op arg1 arg2
     -- Boolean operations
     NotExpr _ [arg] -> Just $ return $ nfNot p arg
@@ -282,7 +271,7 @@ nfForeach ::
   m CheckedExpr
 nfForeach p resultType size lambda = do
   let fn i = nfAppLam p lambda [ExplicitArg p (IndexLiteral p size i)]
-  VecLiteral p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
+  mkVec p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
 
 nfFoldVector ::
   MonadNorm m =>
@@ -298,7 +287,16 @@ nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
   AnnVecLiteral _ _ xs -> do
     let combine x body = normApp p (argExpr foldOp) (ExplicitArg p <$> [x, body])
     nf $ foldr combine (argExpr unit) xs
-  _ -> return $ FoldVectorExpr p tElem size tRes [foldOp, unit, vector]
+  _ ->
+    return $
+      App
+        p
+        (Builtin p (Fold FoldVector))
+        ( ImplicitArg p tElem
+            :| ImplicitArg p size
+            : ImplicitArg p tRes
+            : [foldOp, unit, vector]
+        )
 
 -----------------------------------------------------------------------------
 -- Normalising quantifiers
@@ -324,99 +322,18 @@ nfQuantifierVector p tElem size binder body recFn = do
   -- Generate a list of variables, one for each index
   let allExprs = map (\i -> Var p (Bound (DBIndex i))) (reverse allIndices)
   -- Construct the corresponding nested tensor expression
-  let tensor = VecLiteral p tElem allExprs
+  let tensor = mkVec p tElem allExprs
   -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
   let body1 = liftDBIndices (DBLevel size) body
   -- Substitute throught the tensor expression for the old top-level binder
   body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
 
-  let mkBinderForm name = mapBinderFormName (const name) (binderForm binder)
+  let mkBinderForm name = BinderDisplayForm (OnlyName name) True
   let mkBinder name = Binder p (mkBinderForm name) Explicit Relevant () tElem
   let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
 
   -- Generate a expression prepended with `tensorSize` quantifiers
   return $ foldl mkQuantifier body2 allNames
-
-nfQuantifierIndex ::
-  MonadNorm m =>
-  Provenance ->
-  Quantifier ->
-  Int ->
-  CheckedExpr ->
-  m CheckedExpr
-nfQuantifierIndex p q size lam = do
-  let indexType = ConcreteIndexType p size
-  let cont = VecLiteral p indexType (fmap (IndexLiteral p size) [0 .. size - 1])
-  nfQuantifierInVector p q indexType (NatLiteral p size) lam cont
-
--- | Elaborate quantification over the members of a container type.
--- Expands e.g. `forAll x in vector . y` to `fold and true (map (\x -> y) vector)`
-nfQuantifierInVector ::
-  MonadNorm m =>
-  Provenance ->
-  Quantifier ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  m CheckedExpr
-nfQuantifierInVector p q tElem size lam container = do
-  let tTo = BoolType p
-  let mappedContainer = MapVectorExpr p tElem tTo size (ExplicitArg p <$> [lam, container])
-
-  let ident = Identifier StdLib $ if q == Forall then "bigAnd" else "bigOr"
-  nf $ bigOp p ident size mappedContainer
-
-nfEqualsBool :: EqualityOp -> Provenance -> [CheckedArg] -> Maybe CheckedExpr
-nfEqualsBool op p args@[arg1, arg2] = case op of
-  Neq -> nfNot p . ExplicitArg p <$> nfEqualsBool Neq p args
-  Eq -> do
-    let bothTrue = AndExpr p [arg1, arg2]
-    let bothFalse = AndExpr p (ExplicitArg p . nfNot p <$> [arg1, arg2])
-    Just $ OrExpr p (ExplicitArg p <$> [bothTrue, bothFalse])
-nfEqualsBool _ _ _ = Nothing
-
-nfEqualsVector ::
-  MonadNorm m =>
-  EqualityOp ->
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfEqualsVector op p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> Just $ do
-    equalitiesSeq <- nf $ zipWithVector p tElem tElem (BoolType p) size recFn xs ys
-    let ident = Identifier StdLib $ if op == Eq then "bigAnd" else "bigOr"
-    nf $ bigOp p ident size equalitiesSeq
-  _ -> Nothing
-
-nfAddVector ::
-  MonadNorm m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfAddVector p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
-    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
-  _ -> Nothing
-
-nfSubVector ::
-  MonadNorm m =>
-  Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  [CheckedArg] ->
-  Maybe (m CheckedExpr)
-nfSubVector p tElem size recFn args = case args of
-  [ExplicitArg _ xs, ExplicitArg _ ys] -> do
-    Just $ nf $ zipWithVector p tElem tElem tElem size recFn xs ys
-  _ -> Nothing
 
 nfMapVector ::
   MonadNorm m =>
@@ -431,8 +348,8 @@ nfMapVector p tFrom tTo size fun vector =
   case argExpr vector of
     AnnVecLiteral _ _ xs -> do
       let appFun x = App p (argExpr fun) [ExplicitArg p x]
-      return $ VecLiteral p tTo (fmap appFun xs)
-    _ -> return $ MapVectorExpr p tFrom tTo size [fun, vector]
+      return $ mkVec p tTo (fmap appFun xs)
+    _ -> return $ mkMapVectorExpr p tFrom tTo size [fun, vector]
 
 nfFromNat ::
   MonadNorm m =>
@@ -452,6 +369,17 @@ nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
   (FromNatToInt, _) -> return $ IntLiteral p x
   (FromNatToRat, _) -> return $ RatLiteral p (fromIntegral x)
 
+mkMapVectorExpr :: Provenance -> CheckedType -> CheckedType -> CheckedExpr -> [CheckedArg] -> CheckedExpr
+mkMapVectorExpr p tTo tFrom size explicitArgs =
+  BuiltinExpr
+    p
+    (Map MapVector)
+    ( ImplicitArg p tTo
+        :| ImplicitArg p tFrom
+        : ImplicitArg p size
+        : explicitArgs
+    )
+
 --------------------------------------------------------------------------------
 -- Debug functions
 
@@ -460,7 +388,7 @@ currentPass = "normalisation"
 
 showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
 showEntry e = do
-  logDebug MaxDetail ("norm-entry " <> prettySimple e)
+  logDebug MaxDetail ("norm-entry " <> prettyVerbose e)
   incrCallDepth
   return e
 
@@ -468,7 +396,7 @@ showExit :: MonadNorm m => CheckedExpr -> m CheckedExpr -> m CheckedExpr
 showExit old mNew = do
   new <- mNew
   decrCallDepth
-  when (old /= new) $
-    logDebug MaxDetail ("normalising" <+> prettySimple old)
-  logDebug MaxDetail ("norm-exit " <+> prettySimple new)
+  when (old /= new) $ do
+    logDebug MaxDetail ("normalising" <+> prettyVerbose old)
+  logDebug MaxDetail ("norm-exit " <+> prettyVerbose new)
   return new

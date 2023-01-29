@@ -6,9 +6,9 @@ where
 
 import Control.Exception
 import Control.Monad.IO.Class
-import Data.Aeson (FromJSON, ToJSON (..), decode, encode)
-import Data.ByteString.Lazy qualified as BIO
+import Data.ByteString qualified as BIO
 import Data.Hashable (Hashable (..))
+import Data.Serialize (Serialize, decode, encode)
 import GHC.Generics (Generic)
 import System.FilePath (dropExtension)
 import Vehicle.Compile.Prelude
@@ -19,9 +19,7 @@ data ObjectFileContents = ObjectFileContents
   }
   deriving (Generic)
 
-instance ToJSON ObjectFileContents
-
-instance FromJSON ObjectFileContents
+instance Serialize ObjectFileContents
 
 getObjectFileFromSpecificationFile :: FilePath -> FilePath
 getObjectFileFromSpecificationFile specFile =
@@ -42,10 +40,10 @@ readObjectFile specificationFile spec = do
       logDebug MinDetail $ "No interface file found for" <+> quotePretty specificationFile
       return Nothing
     Right contents -> case decode contents of
-      Nothing -> do
+      Left _ -> do
         logDebug MinDetail $ "Unable to restore found interface file for" <+> quotePretty specificationFile
         return Nothing
-      Just (ObjectFileContents specHash result)
+      Right (ObjectFileContents specHash result)
         | specHash /= hash spec -> do
             logDebug MinDetail $ "Outdated interface file found for" <+> quotePretty specificationFile
             return Nothing

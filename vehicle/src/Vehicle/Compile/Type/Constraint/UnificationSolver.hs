@@ -230,7 +230,6 @@ solveFlexRigidWithRenaming ctx (meta, spine) renaming e2 = do
 
   let (deps, _) = getNormMetaDependencies spine
 
-  let constraintLevel = DBLevel $ length (boundContext ctx)
   -- Restrict any arguments to each sub-meta on the RHS to those of i.
   for_ (MetaMap.toList metasInE2) $ \(j, jSpine) -> do
     jOrigin <- getMetaProvenance j
@@ -241,12 +240,12 @@ solveFlexRigidWithRenaming ctx (meta, spine) renaming e2 = do
       then return False
       else do
         newMeta <- createMetaWithRestrictedDependencies ctx jOrigin jType sharedDependencies
-        solveMeta j newMeta constraintLevel
+        solveMeta j newMeta (boundContext ctx)
         return True
 
-  unnormSolution <- quote constraintLevel e2
+  unnormSolution <- quote (contextDBLevel ctx) e2
   let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` renaming) unnormSolution
-  solveMeta meta substSolution constraintLevel
+  solveMeta meta substSolution (boundContext ctx)
   return $ Success mempty
 
 createMetaWithRestrictedDependencies ::

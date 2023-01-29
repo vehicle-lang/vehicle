@@ -56,11 +56,34 @@ typeOfBuiltin p b = fromDSL p $ case b of
         ~> tAnnRat l2
         ~> tAnnRat l3
   -- Comparisons
-  Equals dom op -> typeOfEquals dom op
+  Equals dom _op -> case dom of
+    EqIndex {} ->
+      forAll "n1" tNat $ \n1 ->
+        forAll "n2" tNat $ \n2 ->
+          typeOfComparisonOp constant (tIndex n1) (tIndex n2)
+    EqNat {} -> typeOfComparisonOp constant tNat tNat
+    EqInt {} -> typeOfComparisonOp constant tInt tInt
+    EqRat {} ->
+      forAllLinearityTriples $ \l1 l2 l3 ->
+        maxLinearity l1 l2 l3
+          .~~~> typeOfComparisonOp l3 (tAnnRat l1) (tAnnRat l2)
   Order dom op -> typeOfOrder dom op
+  {-
+    OrderIndex {} ->
+      forAll "n1" tNat $ \n1 ->
+        forAll "n2" tNat $ \n2 ->
+          typeOfComparisonOp (tIndex n1) (tIndex n2) constant
+    OrderNat {} -> typeOfComparisonOp tNat tNat constant
+    OrderInt {} -> typeOfComparisonOp tInt tInt constant
+    OrderRat {} ->
+      forAllLinearityTriples $ \l1 l2 l3 ->
+        maxLinearity l1 l2 l3 .~~~>
+          typeOfComparisonOp (tAnnRat l1) (tAnnRat l2) l3
+          -}
+
   -- Conversion functions
   FromNat n dom -> case dom of
-    FromNatToIndex -> forAll "n" tNat $ \s -> typeOfFromNat n (tIndex s)
+    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat n (tIndex s)
     FromNatToNat -> typeOfFromNat n tNat
     FromNatToInt -> typeOfFromNat n tInt
     FromNatToRat -> typeOfFromNat n (tAnnRat constant)
@@ -72,13 +95,10 @@ typeOfBuiltin p b = fromDSL p $ case b of
   -- Container functions
   Map dom -> case dom of
     MapList -> typeOfMap tListRaw
-    MapVector -> forAll "n" tNat $ \n -> typeOfMap (lam "n" Explicit Relevant type0 (`tVector` n))
+    MapVector -> forAllNat $ \n -> typeOfMap (lam "n" Explicit Relevant type0 (`tVector` n))
   Fold dom -> case dom of
-    FoldList -> forAll "A" type0 $ \tElem ->
-      typeOfFold tElem (tList tElem)
-    FoldVector -> forAll "A" type0 $ \tElem ->
-      forAll "n" tNat $ \dim ->
-        typeOfFold tElem (tVector tElem dim)
+    FoldList -> typeOfFold tListRaw
+    FoldVector -> forAllNat $ \n -> typeOfFold (lam "n" Explicit Relevant type0 (`tVector` n))
   At -> typeOfAt
   Foreach -> typeOfForeach
 
@@ -100,16 +120,16 @@ typeOfConstructor = \case
 
 typeOfTypeClass :: TypeClass -> DSLExpr
 typeOfTypeClass tc = case tc of
-  HasEq {} -> type0 ~> type0 ~> type0 ~> type0
+  HasEq {} -> type0 .~~> type0 ~> type0 ~> type0
   HasOrd {} -> type0 ~> type0 .~~> type0 .~~> type0
   HasNot -> type0 ~> type0 ~> type0
   HasAnd -> type0 ~> type0 ~> type0 ~> type0
   HasOr -> type0 ~> type0 ~> type0 ~> type0
   HasImplies -> type0 ~> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasAdd -> type0 ~> type0 .~~> type0 .~~> type0
-  HasSub -> type0 ~> type0 .~~> type0 .~~> type0
-  HasMul -> type0 ~> type0 .~~> type0 .~~> type0
+  HasAdd -> type0 ~> type0 ~> type0 ~> type0
+  HasSub -> type0 ~> type0 ~> type0 ~> type0
+  HasMul -> type0 ~> type0 ~> type0 ~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
   HasMap -> (type0 ~> type0) ~> type0
@@ -135,16 +155,16 @@ typeOfTypeClassOp b = case b of
   SubTC -> typeOfTCOp2 hasSub
   MulTC -> typeOfTCOp2 hasMul
   DivTC -> typeOfTCOp2 hasDiv
-  EqualsTC op -> typeOfTCOp2 $ hasEq op
-  OrderTC op -> typeOfTCOp2 $ hasOrd op
+  EqualsTC op -> typeOfTCComparisonOp $ hasEq op
+  OrderTC op -> typeOfTCOp2 $ hasOrd op -- typeOfTCComparisonOp $ hasOrd op
   FromNatTC n -> forAll "A" type0 $ \t -> hasNatLits n t ~~~> typeOfFromNat n t
   FromRatTC -> forAll "A" type0 $ \t -> hasRatLits t ~~~> typeOfFromRat t
   FromVecTC n ->
     forAll "A" type0 $ \t ->
       forAll "B" type0 $ \e ->
         hasVecLits n e t ~~~> tVector e (natLit n) ~> t
-  MapTC -> forAll "f" (type0 ~> type0) $ \c -> hasMap c ~~~> typeOfMap c
-  FoldTC -> typeOfFoldTC
+  MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
+  FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
   QuantifierTC q -> typeOfQuantifier q
   QuantifierInTC q -> typeOfQuantifierIn q
 
@@ -190,37 +210,6 @@ typeOfIf =
             ~> tArg2
             ~> tRes
 
-typeOfEquals :: EqualityDomain -> EqualityOp -> DSLExpr
-typeOfEquals domain _op = case domain of
-  EqIndex {} ->
-    forAll "n1" tNat $ \n1 ->
-      forAll "n2" tNat $ \n2 ->
-        tIndex n1 ~> tIndex n2 ~> tAnnBool constant unquantified
-  EqNat {} ->
-    tNat ~> tNat ~> tAnnBool constant unquantified
-  EqInt {} ->
-    tInt ~> tInt ~> tAnnBool constant unquantified
-  EqRat {} ->
-    forAllLinearityTriples $ \l1 l2 l3 ->
-      maxLinearity l1 l2 l3
-        .~~~> tAnnRat l1
-        ~> tAnnRat l2
-        ~> tAnnBool l3 unquantified
-
-typeOfOrder :: OrderDomain -> OrderOp -> DSLExpr
-typeOfOrder domain _op = case domain of
-  OrderIndex {} ->
-    forAll "n1" tNat $ \n1 ->
-      forAll "n2" tNat $ \n2 ->
-        tIndex n1 ~> tIndex n2 ~> tAnnBool constant unquantified
-  OrderNat {} ->
-    tNat ~> tNat ~> tAnnBool constant unquantified
-  OrderInt {} ->
-    tInt ~> tInt ~> tAnnBool constant unquantified
-  OrderRat {} ->
-    forAllLinearityTriples $ \l1 l2 l3 ->
-      maxLinearity l1 l2 l3 .~~~> tAnnRat l1 ~> tAnnRat l2 ~> tAnnBool l3 unquantified
-
 typeOfTCOp1 :: (DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
 typeOfTCOp1 constraint =
   forAll "A" type0 $ \t1 ->
@@ -233,6 +222,17 @@ typeOfTCOp2 constraint =
     forAll "B" type0 $ \t2 ->
       forAll "C" type0 $ \t3 ->
         constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3
+
+typeOfTCComparisonOp :: (DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr) -> DSLExpr
+typeOfTCComparisonOp constraint =
+  forAllIrrelevant "l" tLin $ \l ->
+    forAll "A" type0 $ \t1 ->
+      forAll "B" type0 $ \t2 ->
+        constraint l t1 t2 ~~~> typeOfComparisonOp l t1 t2
+
+typeOfComparisonOp :: DSLExpr -> DSLExpr -> DSLExpr -> DSLExpr
+typeOfComparisonOp l t1 t2 =
+  t1 ~> t2 ~> tAnnBool l unquantified
 
 typeOfForeach :: DSLExpr
 typeOfForeach =
@@ -257,28 +257,16 @@ typeOfAt =
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
 typeOfMap :: DSLExpr -> DSLExpr
-typeOfMap tCont =
-  forAll "A" type0 $ \tFrom ->
-    forAll "B" type0 $ \tTo ->
-      (tFrom ~> tTo)
-        ~> app tCont [(Explicit, Relevant, tFrom)]
-        ~> app tCont [(Explicit, Relevant, tTo)]
+typeOfMap f =
+  forAll "A" type0 $ \a ->
+    forAll "B" type0 $ \b ->
+      (a ~> b) ~> f @@ [a] ~> f @@ [b]
 
-typeOfFoldTC :: DSLExpr
-typeOfFoldTC =
-  forAll "A" type0 $ \tElem ->
-    forAll "B" type0 $ \tCont ->
-      hasFold tElem tCont
-        ~~~> typeOfFold tElem tCont
-
-typeOfFold :: DSLExpr -> DSLExpr -> DSLExpr
-typeOfFold tElem tCont =
-  forAll
-    "A"
-    type0
-    ( \tRes ->
-        (tElem ~> tRes ~> tRes) ~> tRes ~> tCont ~> tRes
-    )
+typeOfFold :: DSLExpr -> DSLExpr
+typeOfFold f =
+  forAll "A" type0 $ \a ->
+    forAll "B" type0 $ \b ->
+      (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
 
 typeOfQuantifier :: Quantifier -> DSLExpr
 typeOfQuantifier q =
@@ -298,3 +286,17 @@ typeOfFromNat n t = natInDomainConstraint n t .~~~> tNat ~> t
 
 typeOfFromRat :: DSLExpr -> DSLExpr
 typeOfFromRat t = tAnnRat constant ~> t
+
+typeOfOrder :: OrderDomain -> OrderOp -> DSLExpr
+typeOfOrder domain _op = case domain of
+  OrderIndex {} ->
+    forAll "n1" tNat $ \n1 ->
+      forAll "n2" tNat $ \n2 ->
+        tIndex n1 ~> tIndex n2 ~> tAnnBool constant unquantified
+  OrderNat {} ->
+    tNat ~> tNat ~> tAnnBool constant unquantified
+  OrderInt {} ->
+    tInt ~> tInt ~> tAnnBool constant unquantified
+  OrderRat {} ->
+    forAllLinearityTriples $ \l1 l2 l3 ->
+      maxLinearity l1 l2 l3 .~~~> tAnnRat l1 ~> tAnnRat l2 ~> tAnnBool l3 unquantified

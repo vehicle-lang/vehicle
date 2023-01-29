@@ -1,2 +1,2 @@
 minimum : Bool
-minimum = True and False
+minimum = 1 <= 3

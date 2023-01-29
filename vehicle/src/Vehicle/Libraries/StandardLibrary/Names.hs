@@ -7,9 +7,7 @@ import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
 data StdLibFunction
-  = StdExistsBool
-  | StdForallBool
-  | StdExistsIndex
+  = StdExistsIndex
   | StdForallIndex
   | StdExistsVector
   | StdForallVector
@@ -27,10 +25,10 @@ data StdLibFunction
 
 instance Show StdLibFunction where
   show = \case
-    StdExistsBool -> "existsBool"
-    StdForallBool -> "forallBool"
     StdExistsIndex -> "existsIndex"
     StdForallIndex -> "forallIndex"
+    StdAddVector -> "addVector"
+    StdSubVector -> "subVector"
     StdExistsVector -> "existsVector"
     StdForallVector -> "forallVector"
     StdExistsInList -> "existsInList"
@@ -41,8 +39,6 @@ instance Show StdLibFunction where
     StdNotEqualsBool -> "notEqualsBool"
     StdEqualsVector -> "equalsVector"
     StdNotEqualsVector -> "notEqualsVector"
-    StdAddVector -> "addVector"
-    StdSubVector -> "subVector"
 
 instance Pretty StdLibFunction where
   pretty = pretty . show

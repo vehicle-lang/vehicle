@@ -14,6 +14,7 @@ position token TokNetwork   {"@network"};
 position token TokDataset   {"@dataset"};
 position token TokParameter {"@parameter"};
 position token TokProperty  {"@property"};
+position token TokPostulate {"@postulate"};
 
 position token TokArrow     {"->"};
 position token TokForallT   {"forallT"};
@@ -62,6 +63,7 @@ position token TokMap       {"map"};
 position token TokFold      {"fold"};
 
 position token TokHasEq     {"HasEq"};
+position token TokHasNotEq  {"HasNotEq"};
 position token TokHasAdd    {"HasAdd"};
 position token TokHasSub    {"HasSub"};
 position token TokHasMul    {"HasMul"};
@@ -187,10 +189,11 @@ Vector.  Expr14 ::= TokVector;
 Index.   Expr14 ::= TokIndex;
 
 -- Type classes.
-HasEq.  Expr15 ::= TokHasEq;
-HasAdd. Expr15 ::= TokHasAdd;
-HasSub. Expr15 ::= TokHasSub;
-HasMul. Expr15 ::= TokHasMul;
+HasEq.    Expr15 ::= TokHasEq;
+HasNotEq. Expr15 ::= TokHasNotEq;
+HasAdd.   Expr15 ::= TokHasAdd;
+HasSub.   Expr15 ::= TokHasSub;
+HasMul.   Expr15 ::= TokHasMul;
 
 coercions Expr 15;
 separator Expr ",";
@@ -201,6 +204,7 @@ Network.   DeclAnnName ::= TokNetwork;
 Dataset.   DeclAnnName ::= TokDataset;
 Parameter. DeclAnnName ::= TokParameter;
 Property.  DeclAnnName ::= TokProperty;
+Postulate. DeclAnnName ::= TokPostulate;
 
 -- * Annotation options
 

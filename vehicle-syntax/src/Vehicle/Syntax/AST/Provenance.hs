@@ -1,32 +1,29 @@
 module Vehicle.Syntax.AST.Provenance
   ( Provenance,
     tkProvenance,
-    datasetProvenance,
-    parameterProvenance,
-    inserted,
     HasProvenance (..),
     expandProvenance,
     fillInProvenance,
-    wasInsertedByCompiler,
 
     -- * Exported for 'Vehicle.Syntax.AST.Instances.NoThunks'
     Position,
     Range,
-    Owner,
     Origin,
   )
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (maybeToList)
+import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic (..))
 import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
+import Vehicle.Syntax.AST.Name (Module (..))
 import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------
@@ -51,7 +48,7 @@ instance Pretty Position where
 
 instance ToJSON Position
 
-instance FromJSON Position
+instance Serialize Position
 
 -- | Get the starting position of a token.
 tkPosition :: IsToken a => a -> Position
@@ -85,6 +82,8 @@ instance Pretty Range where
           <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
       else pretty p1 <+> "-" <+> pretty p2
 
+instance Serialize Range
+
 -- Doesn't handle anything except inclusive ranges as that's all we use in our code
 -- at the moment.
 mergeRangePair :: Range -> Range -> Range
@@ -93,25 +92,6 @@ mergeRangePair (Range b1 _) (Range _ b2) = Range b1 b2
 expandRange :: (Int, Int) -> Range -> Range
 expandRange (l, r) (Range start end) =
   Range (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)
-
---------------------------------------------------------------------------------
--- Owner
-
-data Owner
-  = TheMachine
-  | TheUser
-  deriving (Show, Eq, Ord, Generic)
-
-instance Semigroup Owner where
-  TheUser <> _ = TheUser
-  TheMachine <> r = r
-
-instance Monoid Owner where
-  mempty = TheMachine
-
-instance ToJSON Owner
-
-instance FromJSON Owner
 
 --------------------------------------------------------------------------------
 -- Origin
@@ -142,12 +122,14 @@ instance Pretty Origin where
     FromParameter name -> "parameter" <+> squotes (pretty name)
     FromDataset name -> "in dataset" <+> squotes (pretty name)
 
+instance Serialize Origin
+
 --------------------------------------------------------------------------------
 -- Provenance
 
 data Provenance = Provenance
   { origin :: Origin,
-    owner :: Owner
+    modul :: Module
   }
   deriving (Generic)
 
@@ -160,38 +142,27 @@ instance NFData Provenance where
 instance ToJSON Provenance where
   toJSON _ = toJSON ()
 
-instance FromJSON Provenance where
-  parseJSON _ = return mempty
-
 instance Eq Provenance where
   _x == _y = True
 
 instance Hashable Provenance where
   hashWithSalt s _p = s
 
+instance Serialize Provenance
+
 -- | Get the provenance for a single token.
-tkProvenance :: IsToken a => a -> Provenance
-tkProvenance tk = Provenance (FromSource (Range start end)) TheUser
+tkProvenance :: IsToken a => Module -> a -> Provenance
+tkProvenance mod tk = Provenance (FromSource (Range start end)) mod
   where
     start = tkPosition tk
     end = Position (posLine start) (posColumn start + tkLength tk)
-
-datasetProvenance :: Text -> Provenance
-datasetProvenance name = Provenance (FromDataset name) TheUser
-
-parameterProvenance :: Text -> Provenance
-parameterProvenance name = Provenance (FromParameter name) TheUser
-
--- | Marks the provenance as inserted by the compiler.
-inserted :: Provenance -> Provenance
-inserted (Provenance origin _owner) = Provenance origin TheMachine
 
 fillInProvenance :: NonEmpty Provenance -> Provenance
 fillInProvenance provenances = do
   let (starts, ends) = NonEmpty.unzip (fmap getPositions provenances)
   let start = minimum starts
   let end = maximum ends
-  Provenance (FromSource (Range start end)) TheUser
+  Provenance (FromSource (Range start end)) (modul $ NonEmpty.head provenances)
   where
     getPositions :: Provenance -> (Position, Position)
     getPositions (Provenance origin _) = case origin of
@@ -205,14 +176,16 @@ expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expa
 expandProvenance _ p = p
 
 instance Pretty Provenance where
-  pretty (Provenance origin _) = pretty origin
+  pretty (Provenance origin mod) = case mod of
+    User -> pretty origin
+    StdLib -> pretty mod <> "," <+> pretty origin
 
 instance Semigroup Provenance where
   Provenance origin1 owner1 <> Provenance origin2 owner2 =
-    Provenance (origin1 <> origin2) (owner1 <> owner2)
+    Provenance (origin1 <> origin2) owner1
 
 instance Monoid Provenance where
-  mempty = Provenance mempty mempty
+  mempty = Provenance mempty User
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -232,6 +205,3 @@ instance HasProvenance a => HasProvenance (NonEmpty a) where
 
 instance HasProvenance a => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst
-
-wasInsertedByCompiler :: HasProvenance a => a -> Bool
-wasInsertedByCompiler x = owner (provenanceOf x) == TheMachine

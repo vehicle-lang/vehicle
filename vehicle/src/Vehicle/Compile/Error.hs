@@ -1,7 +1,8 @@
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Except (MonadError, runExceptT, throwError)
+import Control.Monad.Trans.Except (ExceptT)
 import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
@@ -25,6 +26,13 @@ type MonadCompile m =
     MonadError CompileError m
   )
 
+runCompileMonadSilently :: Doc x -> ExceptT CompileError SilentLogger a -> a
+runCompileMonadSilently action v = do
+  let r = runSilentLogger $ runExceptT v
+  case r of
+    Left err -> developerError $ "Error thrown while" <+> action <> ":" <+> pretty (show err)
+    Right s -> s
+
 --------------------------------------------------------------------------------
 -- Compilation errors
 
@@ -32,28 +40,26 @@ data CompileError
   = DevError (Doc ())
   | -- Parse errors
     ParseError ParseError
+  | -- Command line option errors
+    InvalidPrunedName Name
   | -- Errors thrown by scope checking.
     UnboundName Provenance Name
   | DuplicateName Provenance Name Identifier
   | -- Errors thrown while type checking
-    UnresolvedHole
-      Provenance -- The location of the hole
-      Name -- The name of the hole
-  | TypeMismatch
+    UnresolvedHole Provenance Name
+  | FunTypeMismatch
       Provenance -- The location of the mismatch.
       BoundDBCtx -- The context at the time of the failure
+      CheckedExpr -- The function being typed
       CheckedType -- The possible inferred types.
       CheckedType -- The expected type.
-  | UnsolvedConstraints
-      (NonEmpty (WithContext Constraint))
-  | UnsolvedMetas
-      (NonEmpty (MetaID, Provenance))
+  | UnsolvedConstraints (NonEmpty (WithContext Constraint))
+  | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
       UncheckedArg -- The non-explicit argument
       CheckedType -- Expected type of the argument
-  | FailedUnificationConstraints
-      (NonEmpty (WithContext UnificationConstraint))
+  | FailedUnificationConstraints (NonEmpty (WithContext UnificationConstraint))
   | FailedEqConstraint ConstraintContext NormType NormType EqualityOp
   | FailedOrdConstraint ConstraintContext NormType NormType OrderOp
   | FailedBuiltinConstraintArgument ConstraintContext Builtin NormType [UnAnnDoc] Int Int

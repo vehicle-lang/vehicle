@@ -6,6 +6,7 @@ module Vehicle.Prelude.Misc where
 
 import Control.Monad (when)
 import Control.Monad.Identity (Identity (..))
+import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
@@ -149,3 +150,12 @@ whenM :: Monad m => m Bool -> m () -> m ()
 whenM cond action = do
   c <- cond
   when c action
+
+prettyJSONConfig :: Config
+prettyJSONConfig =
+  Config
+    { confIndent = Spaces 2,
+      confCompare = \t1 t2 -> compare t2 t1,
+      confNumFormat = Generic,
+      confTrailingNewline = False
+    }

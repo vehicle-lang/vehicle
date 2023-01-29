@@ -6,13 +6,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-foreach.vcl -t Marabou -o simple-foreach.inputquery/",
+    "run": "vehicle compile -s simple-foreach.vcl -t Marabou -o simple-foreach.inputquery/ --network f:NO_FILE",
     "needs": ["simple-foreach.vcl"],
-    "produces": ["simple-foreach.inputquery/*.txt"]
+    "produces": ["simple-foreach.inputquery/*.txt", "simple-foreach.inputquery/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction -o simple-foreach.loss.json",
+    "run": "vehicle compile -s simple-foreach.vcl -t LossFunction -o simple-foreach.loss.json --network f:NO_FILE",
     "needs": ["simple-foreach.vcl"],
     "produces": ["simple-foreach.loss.json"]
   }

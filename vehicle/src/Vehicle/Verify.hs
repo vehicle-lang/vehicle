@@ -12,6 +12,7 @@ import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 import System.IO.Temp (withSystemTempDirectory)
+import Vehicle.Backend.Prelude (Backend (..))
 import Vehicle.Compile
 import Vehicle.Prelude
 import Vehicle.Resource
@@ -37,18 +38,26 @@ verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings VerifyOptions {..} = do
   let verifierImpl = verifiers verifier
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
-
   let resources = Resources networkLocations datasetLocations parameterValues
 
   specificationHash <- hash <$> readSpecification specification
 
-  status <-
-    withSystemTempDirectory "specification" $ \tempDir -> do
-      runCompileMonad loggingSettings $ do
-        -- TODO go via the main compile method instead.
-        typeCheckingResult <- typeCheckUserProg specification properties False
-        compiledSpecification <- compileToVerifier typeCheckingResult resources verifier (Just tempDir)
-        verifySpecification verifierImpl verifierExecutable tempDir networkLocations compiledSpecification
+  status <- withSystemTempDirectory "specification" $ \tempDir -> do
+    compile loggingSettings $
+      CompileOptions
+        { target = VerifierBackend verifier,
+          specification = specification,
+          declarationsToCompile = properties,
+          networkLocations = networks resources,
+          datasetLocations = datasets resources,
+          parameterValues = parameters resources,
+          outputFile = Just tempDir,
+          moduleName = Nothing,
+          proofCache = Nothing,
+          noStdlib = False
+        }
+
+    verifySpecification verifierImpl verifierExecutable tempDir
 
   programOutput $ pretty status
 

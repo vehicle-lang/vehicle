@@ -1,8 +1,9 @@
 module Vehicle.Compile.Normalise.Core where
 
+import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.AlphaEquivalence (alphaEq)
+import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 
 --------------------------------------------------------------------------------
 -- Normalising equality
@@ -19,7 +20,6 @@ nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
   (EqNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
-  (_, e1', e2') | alphaEq e1' e2' -> BoolLiteral p (eq == Eq)
   _ -> EqualityExpr p dom eq [e1, e2]
 
 --------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ nfTensor ::
 nfTensor p tElem dims = case dims of
   NilExpr {} -> tElem
   AppConsExpr _ _ d ds -> VectorType p (nfTensor p tElem ds) d
-  _ -> TensorType p tElem dims
+  _ -> App p (FreeVar p TensorIdent) (ExplicitArg p <$> [tElem, dims])
 
 --------------------------------------------------------------------------------
 -- Normalising orders
@@ -50,14 +50,13 @@ nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (OrderIndex, IndexLiteral _ _ x, IndexLiteral _ _ y) -> BoolLiteral p (orderOp ord x y)
   (OrderInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (orderOp ord x y)
   (OrderRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (orderOp ord x y)
-  (_, e1, e2) | alphaEq e1 e2 -> BoolLiteral p (not (isStrict ord))
   _ -> OrderExpr p dom ord [arg1, arg2]
 
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
 
 normaliseNotArg :: CheckedArg -> CheckedArg
-normaliseNotArg x = ExplicitArg (provenanceOf x) $ nfNot (provenanceOf x) x
+normaliseNotArg x = Arg (provenanceOf x) Explicit Relevant $ nfNot (provenanceOf x) x
 
 nfNot :: Provenance -> CheckedArg -> CheckedExpr
 nfNot p arg = case argExpr arg of
@@ -70,7 +69,6 @@ nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> FalseExpr p
   (_, TrueExpr _) -> argExpr arg1
   (_, FalseExpr _) -> FalseExpr p
-  (e1, e2) | alphaEq e1 e2 -> e1
   _ -> AndExpr p [arg1, arg2]
 
 nfOr :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
@@ -79,7 +77,6 @@ nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> argExpr arg2
   (_, TrueExpr _) -> TrueExpr p
   (_, FalseExpr _) -> argExpr arg1
-  (e1, e2) | alphaEq e1 e2 -> e1
   _ -> OrExpr p [arg1, arg2]
 
 nfImplies :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
@@ -88,7 +85,6 @@ nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (FalseExpr _, _) -> TrueExpr p
   (_, TrueExpr _) -> TrueExpr p
   (_, FalseExpr _) -> NotExpr p [arg2]
-  (e1, e2) | alphaEq e1 e2 -> TrueExpr p
   _ -> ImpliesExpr p [arg1, arg2]
 
 nfIf :: Provenance -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
@@ -154,22 +150,14 @@ nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
 nfAt :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedExpr
 nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
   (AnnVecLiteral _ _ es, IndexLiteral _ _ i) -> es !! fromIntegral i
-  _ -> AtExpr p tElem tDim [vector, index]
-
-{-
-nfFoldList :: MonadNorm m
-           => Provenance
-           -> CheckedArg
-           -> CheckedArg
-           -> CheckedArg
-           -> Maybe (m CheckedExpr)
-nfFoldList ann foldOp unit container = case argExpr container of
-  NilExpr  _ _    -> Just $ return $ NilExpr _ _
-  ConsExpr _ _ xs -> do
-    let combine x body = normApp ann (argExpr foldOp) [ExplicitArg ann x, ExplicitArg ann body]
-    Just $ nf $ foldr combine (argExpr unit) xs
-  _ -> Nothing
--}
+  _ ->
+    App
+      p
+      (Builtin p At)
+      ( ImplicitArg p tElem
+          :| ImplicitArg p tDim
+          : [vector, index]
+      )
 
 zipWithVector ::
   Provenance ->
@@ -207,19 +195,3 @@ bigOp p identifier size xs =
     [ ImplicitArg p size,
       ExplicitArg p xs
     ]
-
-{-
-nfMapList :: MonadNorm m
-          => CheckedType
-          -> CheckedType
-          -> CheckedExpr
-          -> CheckedExpr
-          -> Maybe (m CheckedExpr)
-nfMapList tFrom tTo fun container = case container of
-  NilExpr p _          -> Just $ return $ NilExpr p tTo
-  AppConsExpr p _ x xs -> do
-    let fx = nf $ normApp p fun [ExplicitArg p x]
-    fxs <- nfMapList tFrom tTo fun xs
-    return $ AppConsExpr p tTo <$> fx <*> fxs
-  _ -> Nothing
--}

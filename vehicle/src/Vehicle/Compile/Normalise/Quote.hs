@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise.Quote where
 
-import Control.Monad.Except (runExceptT)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (MonadCompile, runCompileMonadSilently)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -10,11 +9,7 @@ import Vehicle.Expr.Normalised
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
 unnormalise :: forall a b. Quote a b => DBLevel -> a -> b
-unnormalise level e = do
-  let r = runSilentLogger $ runExceptT (quote level e)
-  case r of
-    Left err -> developerError $ "Error thrown while unquoting" <+> pretty (show err)
-    Right v -> v
+unnormalise level e = runCompileMonadSilently "unquoting" (quote level e)
 
 -----------------------------------------------------------------------------
 -- Quoting
@@ -39,8 +34,9 @@ instance Quote NormExpr CheckedExpr where
       Pi p <$> quote level binder <*> quote (level + 1) body
     VLam p binder env body -> do
       quotedBinder <- quote level binder
-      quotedEnv <- traverse (quote (level + 1)) (liftEnvOverBinder p env)
-      let quotedBody = substituteDB 0 (envSubst quotedEnv) body
+      quotedEnv <- traverse (quote (level + 1)) env
+      let liftedEnv = BoundVar p 0 : quotedEnv
+      let quotedBody = substituteDB 0 (envSubst liftedEnv) body
       -- Here we deliberately avoid using the standard `quote . eval` approach below
       -- on the body of the lambda, in order to avoid the dependency cycles that
       -- prevent us from printing during NBE.

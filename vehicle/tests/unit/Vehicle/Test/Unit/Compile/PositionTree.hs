@@ -8,7 +8,7 @@ import Data.Text (Text)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, testCase)
 import Vehicle.Compile (parseAndTypeCheckExpr)
-import Vehicle.Compile.Print (prettySimple)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.CoDeBruijn (substPos)
 import Vehicle.Expr.CoDeBruijn.Conversion (toCoDBExpr)
 import Vehicle.Expr.CoDeBruijn.PositionTree
@@ -154,14 +154,14 @@ substPosTest (SubstPosTestCase testName valueText positions exprText expectedRes
                 <> line
                 <> "into"
                 <> line
-                <> indent 2 (squotes (prettySimple expr))
+                <> indent 2 (squotes (prettyVerbose expr))
                 <> line
                 <> "to be"
                 <> line
-                <> indent 2 (squotes (prettySimple expected))
+                <> indent 2 (squotes (prettyVerbose expected))
                 <> line
                 <> "but found"
                 <> line
-                <> indent 2 (squotes (prettySimple result))
+                <> indent 2 (squotes (prettyVerbose result))
 
     return $ assertBool errorMessage (result == expected)

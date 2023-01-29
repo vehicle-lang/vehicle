@@ -4,10 +4,11 @@
 module Vehicle.Syntax.AST.Expr where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
@@ -18,6 +19,7 @@ import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.Prelude
 
 --------------------------------------------------------------------------------
 -- Universes
@@ -36,7 +38,7 @@ instance Hashable Universe
 
 instance ToJSON Universe
 
-instance FromJSON Universe
+instance Serialize Universe
 
 instance Pretty Universe where
   pretty = \case
@@ -65,7 +67,7 @@ instance Hashable Literal
 
 instance ToJSON Literal
 
-instance FromJSON Literal
+instance Serialize Literal
 
 instance Pretty Literal where
   pretty = \case
@@ -155,7 +157,7 @@ instance (NFData binder, NFData var) => NFData (Expr binder var)
 
 instance (ToJSON binder, ToJSON var) => ToJSON (Expr binder var)
 
-instance (FromJSON binder, FromJSON var) => FromJSON (Expr binder var)
+instance (Serialize binder, Serialize var) => Serialize (Expr binder var)
 
 type Type = Expr
 
@@ -222,10 +224,10 @@ normApp p fun args = do
 
 normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder var
 normAppList _ fun [] = fun
-normAppList ann fun (arg : args) = normApp ann fun (arg :| args)
+normAppList p fun (arg : args) = normApp p fun (arg :| args)
 
 mkHole :: Provenance -> Name -> Expr binder var
-mkHole ann name = Hole ann ("_" <> name)
+mkHole p name = Hole p ("_" <> name)
 
 isTypeSynonym :: Expr binder var -> Bool
 isTypeSynonym = \case

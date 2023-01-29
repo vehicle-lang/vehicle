@@ -5,7 +5,8 @@ module Vehicle.Compile.Prelude
 where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
@@ -97,9 +98,7 @@ newtype TypedExpr = TypedExpr
   -- auxiliary annotations.
   deriving (Generic)
 
-instance ToJSON TypedExpr
-
-instance FromJSON TypedExpr
+instance Serialize TypedExpr
 
 type TypedDecl = GenericDecl TypedExpr
 
@@ -118,8 +117,6 @@ data PropertyInfo
 instance NFData PropertyInfo
 
 instance ToJSON PropertyInfo
-
-instance FromJSON PropertyInfo
 
 instance Pretty PropertyInfo where
   pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol

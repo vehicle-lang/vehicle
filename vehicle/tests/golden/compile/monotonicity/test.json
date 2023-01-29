@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s monotonicity.vcl -t Marabou -o monotonicity.inputquery/",
+    "run": "vehicle compile -s monotonicity.vcl -t Marabou -o monotonicity.inputquery/ --network f:NO_FILE",
     "needs": ["monotonicity.vcl"],
-    "produces": ["monotonicity.inputquery/*.txt"]
+    "produces": ["monotonicity.inputquery/*.txt", "monotonicity.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda",
+    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda --network f:NO_FILE",
     "needs": ["monotonicity.vcl"],
     "produces": ["monotonicity.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s monotonicity.vcl -t LossFunction -o monotonicity.loss.json",
+    "run": "vehicle compile -s monotonicity.vcl -t LossFunction -o monotonicity.loss.json --network f:NO_FILE",
     "needs": ["monotonicity.vcl"],
     "produces": ["monotonicity.loss.json"]
   }

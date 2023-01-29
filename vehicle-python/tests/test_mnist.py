@@ -21,20 +21,27 @@ def train(
     alfa,
     beta,
     path_to_spec,
-    functionName,
-    resources,
+    function_name,
+    networks,
+    datasets,
+    parameters,
     quantifier_sampling,
 ):
     optimizer = keras.optimizers.Adam()
-    ce_batch_loss = keras.losses.CategoricalCrossentropy()
+    ce_batch_loss = keras.losses.BinaryCrossentropy()
     vehicle_batch_loss = generate_loss_function(
-        path_to_spec, functionName, resources, quantifier_sampling
+        specification=path_to_spec,
+        function_name=function_name,
+        networks=networks,
+        datasets=datasets,
+        parameters=parameters,
+        quantifier_sampling=quantifier_sampling,
     )
 
-    train_acc_metric = keras.metrics.CategoricalCrossentropy()
-    test_acc_metric = keras.metrics.CategoricalCrossentropy()
-    train_loss_metric = keras.metrics.CategoricalCrossentropy()
-    test_loss_metric = keras.metrics.CategoricalCrossentropy()
+    train_acc_metric = keras.metrics.BinaryCrossentropy()
+    test_acc_metric = keras.metrics.BinaryCrossentropy()
+    train_loss_metric = keras.metrics.BinaryCrossentropy()
+    test_loss_metric = keras.metrics.BinaryCrossentropy()
 
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}")
@@ -47,7 +54,7 @@ def train(
                     x_batch_train, training=True
                 )  # Outputs for this minibatch
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                vehicle_loss = vehicle_batch_loss(1)
+                vehicle_loss = vehicle_batch_loss()
                 total_loss = ce_loss_value * alfa + vehicle_loss * beta
             # Use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
             grads = tape.gradient(total_loss, model.trainable_weights)
@@ -93,7 +100,7 @@ if __name__ == "__main__":
             keras.layers.Dense(5),
         ]
     )
-    resources = {"mnist": model}
+    networks = {"mnist": model}
 
     quantifier_sampling = {"x": lambda: random.uniform(0.5, 0.5)}
 
@@ -120,6 +127,8 @@ if __name__ == "__main__":
         beta,
         path_to_spec,
         function_name,
-        resources,
+        networks,
+        {},
+        {},
         quantifier_sampling,
     )

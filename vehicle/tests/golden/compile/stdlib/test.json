@@ -1,7 +1,0 @@
-[
-  {
-    "name": "TypeCheck",
-    "run": "vehicle compile -s stdlib.vcl -t TypeCheck",
-    "needs": ["stdlib.vcl"]
-  }
-]

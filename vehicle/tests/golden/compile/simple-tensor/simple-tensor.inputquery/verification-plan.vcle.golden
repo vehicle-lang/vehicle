@@ -1,0 +1,158 @@
+[
+  [
+    [
+      "User",
+      "p"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Conjunct",
+        "contents": [
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Disjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "userVar": [],
+                          "metaNetwork": [
+                            [
+                              "f",
+                              "NO_FILE"
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "Trivial",
+                        "contents": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "Disjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "userVar": [],
+                          "metaNetwork": [
+                            [
+                              "f",
+                              "NO_FILE"
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "Trivial",
+                        "contents": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Disjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "userVar": [],
+                          "metaNetwork": [
+                            [
+                              "f",
+                              "NO_FILE"
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "Trivial",
+                        "contents": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "Disjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "userVar": [],
+                          "metaNetwork": [
+                            [
+                              "f",
+                              "NO_FILE"
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": [
+                      false,
+                      {
+                        "tag": "Trivial",
+                        "contents": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

@@ -37,17 +37,17 @@ instance TraverseAuxiliaryArguments UncheckedExpr where
     BoolType p -> do
       lin <- f p Lin Nothing
       pol <- f p Pol Nothing
-      return $ AnnBoolType p lin pol
+      return $ mkAnnBoolType p lin pol
     AnnBoolType p lin pol -> do
       lin' <- f p Lin (Just lin)
       pol' <- f p Pol (Just pol)
-      return $ AnnBoolType p lin' pol'
+      return $ mkAnnBoolType p lin' pol'
     RatType p -> do
       lin <- f p Lin Nothing
-      return $ AnnRatType p lin
+      return $ mkAnnRatType p lin
     AnnRatType p lin -> do
       lin' <- f p Lin (Just lin)
-      return $ AnnRatType p lin'
+      return $ mkAnnRatType p lin'
     FreeVar p ident ->
       traverseFreeVariable f p ident []
     App p (FreeVar _ ident) args -> do
@@ -76,6 +76,18 @@ instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments (NonEmpty a)
 
 instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments [a] where
   traverseAux f = traverse (traverseAux f)
+
+mkAnnBoolType :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnnBoolType p lin pol =
+  ConstructorExpr
+    p
+    Bool
+    [ IrrelevantImplicitArg p lin,
+      IrrelevantImplicitArg p pol
+    ]
+
+mkAnnRatType :: Provenance -> CheckedExpr -> CheckedExpr
+mkAnnRatType p lin = ConstructorExpr p Rat [IrrelevantImplicitArg p lin]
 
 traverseFreeVariable :: TCM m => AuxArgUpdate m -> Provenance -> Identifier -> [CheckedArg] -> m CheckedExpr
 traverseFreeVariable f p ident args = do
@@ -110,7 +122,7 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
             else return arg
     return (arg' : args')
   (Pi _ binder res, [])
-    | visibilityOf binder == Implicit && isAuxiliaryUniverse (typeOf binder) -> do
+    | isImplicit binder && isAuxiliaryUniverse (typeOf binder) -> do
         xs <- traverseAuxFreeVarArgs f p res []
         meta <- case binderType binder of
           LinearityUniverse {} -> f p Lin Nothing
@@ -235,6 +247,6 @@ addFunctionConstraint mkTC createNewMeta (declProv, position) existingExpr = do
           FunctionOutput {} -> [existingExpr, newExpr]
   let tcExpr = BuiltinTypeClass declProv (mkTC position) constraintArgs
 
-  _ <- createFreshTypeClassConstraint mempty existingExpr mempty tcExpr
+  _ <- createFreshTypeClassConstraint mempty (existingExpr, mempty) tcExpr
 
   return newExpr

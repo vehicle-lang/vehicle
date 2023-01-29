@@ -1,8 +1,9 @@
 module Vehicle.Syntax.AST.Relevance where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Builtin
 
@@ -17,7 +18,7 @@ instance Hashable Relevance
 
 instance ToJSON Relevance
 
-instance FromJSON Relevance
+instance Serialize Relevance
 
 class HasRelevance a where
   relevanceOf :: a -> Relevance

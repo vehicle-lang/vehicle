@@ -1,3 +1,4 @@
+import pathlib
 import random
 
 import numpy as np
@@ -15,14 +16,21 @@ def train(
     alfa,
     beta,
     path_to_spec,
-    functionName,
-    resources,
+    function_name,
+    networks,
+    datasets,
+    parameters,
     quantifier_sampling,
 ):
     optimizer = keras.optimizers.Adam()
     ce_batch_loss = keras.losses.BinaryCrossentropy()
     vehicle_batch_loss = generate_loss_function(
-        path_to_spec, functionName, resources, quantifier_sampling
+        specification=path_to_spec,
+        function_name=function_name,
+        networks=networks,
+        datasets=datasets,
+        parameters=parameters,
+        quantifier_sampling=quantifier_sampling,
     )
 
     train_acc_metric = keras.metrics.BinaryCrossentropy()
@@ -78,7 +86,7 @@ def train(
 
 
 if __name__ == "__main__":
-    path_to_spec = "./bounded.vcl"
+    path_to_spec = str(pathlib.Path(__file__).parent / "bounded.vcl")
     function_name = "bounded"
     model = keras.Sequential(
         [
@@ -86,7 +94,7 @@ if __name__ == "__main__":
             keras.layers.Dense(units=1),
         ]
     )
-    resources = {"f": model}
+    networks = {"f": model}
 
     quantifier_sampling = {"x": lambda: random.uniform(0.5, 0.5)}
 
@@ -115,6 +123,8 @@ if __name__ == "__main__":
         beta,
         path_to_spec,
         function_name,
-        resources,
+        networks,
+        {},
+        {},
         quantifier_sampling,
     )

@@ -136,7 +136,7 @@ parseList ctx@(decl, _, _, _, _) expectedElemType actualDims actualElems =
     d : ds -> do
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      return $ mkNList (snd decl) expectedElemType exprs
+      return $ mkVList (snd decl) expectedElemType exprs
 
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -204,7 +204,7 @@ partitionData dim dims content = do
   return $ Vector.slice (i * entrySize) entrySize content
 
 freshProvenance :: DeclProvenance -> Provenance
-freshProvenance (ident, _) = datasetProvenance (nameOf ident)
+freshProvenance (_ident, p) = p
 
 variableSizeError :: MonadCompile m => ParseContext m a -> NormExpr -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
@@ -218,5 +218,5 @@ typingError :: MonadCompile m => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) =
   compilerDeveloperError $
     "Invalid parameter type"
-      <+> squotes (prettySimple (unnormalised expectedDatasetType))
+      <+> squotes (prettyVerbose (unnormalised expectedDatasetType))
       <+> "should have been caught during type-checking"

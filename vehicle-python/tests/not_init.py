@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -10,20 +10,31 @@ from utils import internal_error_msg
 def generate_loss_function(
     specification: str,
     function_name: str,
-    resources: Dict[str, Any],
-    quantifier_sampling: Dict[str, Callable[..., Any]] = None,
+    networks: Dict[str, Any],
+    datasets: Optional[Dict[str, Any]] = None,
+    parameters: Optional[Dict[str, Any]] = None,
+    quantifier_sampling: Optional[Dict[str, Callable[..., Any]]] = None,
 ) -> Callable[..., Any]:
     """
     specification: path to the vehicle spec .vcl file
     function_name: name of the function for which we want to create the loss function
-    resources: dictionary mapping from the name of the resources declared in the spec to the python implementation
+    networks: dictionary mapping from the name of the networks declared in the spec to the python implementation
+    datasets: dictionary mapping from the name of the datasets declared in the spec to the python implementation
+    parameters: dictionary mapping from the name of the parameters declared in the spec to the python value
     quantifier_sampling: dictionary with the name and function for sampling
     """
-    json_dict = call_vehicle_to_generate_loss_json(specification, function_name)
-    empty_context: List = []
+    if datasets is None:
+        datasets = {}
+    if parameters is None:
+        parameters = {}
     if quantifier_sampling is None:
         quantifier_sampling = {}
-    loss_metadata = LossMetadata(resources, quantifier_sampling)
+
+    json_dict = call_vehicle_to_generate_loss_json(
+        specification, networks, datasets, parameters, function_name
+    )
+    empty_context: List = []
+    loss_metadata = LossMetadata(networks, datasets, parameters, quantifier_sampling)
     loss = LossFunctionTranslation().to_loss_function(loss_metadata, json_dict)
 
     return loss(empty_context)
@@ -31,9 +42,15 @@ def generate_loss_function(
 
 class LossMetadata:
     def __init__(
-        self, resources: Dict[str, Any], quantifier_sampling: Dict[str, Callable]
+        self,
+        networks: Dict[str, Any],
+        datasets: Dict[str, Any],
+        parameters: Dict[str, Any],
+        quantifier_sampling: Dict[str, Callable],
     ) -> None:
-        self.resources = resources
+        self.networks = networks
+        self.datasets = datasets
+        self.parameters = parameters
         self.quantifier_sampling = quantifier_sampling
 
 
@@ -91,6 +108,8 @@ class LossFunctionTranslation:
             return self._translate_multiplication(contents, metadata)
         elif tag == "Division":
             return self._translate_division(contents, metadata)
+        elif tag == "Power":
+            return self._translate_power(contents, metadata)
         elif tag == "IndicatorFunction":
             return self._translate_indicator(contents, metadata)
         elif tag == "At":
@@ -101,6 +120,8 @@ class LossFunctionTranslation:
             return self._translate_quantifier(contents, metadata)
         elif tag == "Lambda":
             return self._translate_lambda(contents, metadata)
+        elif tag == "Let":
+            return self._translate_let(contents, metadata)
         elif tag == "Domain":
             return self._translate_domain(contents, metadata)
         else:
@@ -157,7 +178,7 @@ class LossFunctionTranslation:
         loss_2 = self._translate_expression(metadata, contents[1])
 
         def result_func(context: Any) -> Any:
-            return max(loss_1(context), loss_2(context))           
+            return max(loss_1(context), loss_2(context))
 
         return result_func
 
@@ -205,6 +226,17 @@ class LossFunctionTranslation:
 
         return result_func
 
+    def _translate_power(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
+        loss_1 = self._translate_expression(metadata, contents[0])
+        loss_2 = self._translate_expression(metadata, contents[1])
+
+        def result_func(context: Any) -> Any:
+            return loss_1(context) ^ loss_2(context)
+
+        return result_func
+
     def _translate_indicator(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
@@ -232,7 +264,7 @@ class LossFunctionTranslation:
     def _translate_network(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
-        model = metadata.resources[contents[0]]
+        model = metadata.networks[contents[0]]
         input_losses = [self._translate_expression(metadata, c) for c in contents[1]]
 
         def result_func(context: Any) -> Any:
@@ -254,7 +286,6 @@ class LossFunctionTranslation:
 
         if variable_name in metadata.quantifier_sampling:
             generate_sample = metadata.quantifier_sampling[variable_name]
-            print(variable_name)
         else:
             raise Exception(
                 "No sampling method provided for variable " + variable_name + "."
@@ -294,6 +325,11 @@ class LossFunctionTranslation:
             return body_loss(context)
 
         return lambda context: lambda v: result_func(context, v)
+
+    def _translate_let(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
+        raise NotImplementedError(f"Let bindings are unsupported")
 
     def _translate_domain(
         self, contents: Dict[Any, Any], metadata: LossMetadata

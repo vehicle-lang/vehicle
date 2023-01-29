@@ -40,9 +40,7 @@ instance Pretty NetworkBaseType where
   pretty = \case
     NetworkRatType -> pretty Rat
 
-reconstructNetworkBaseType :: Provenance -> NetworkBaseType -> CheckedType
-reconstructNetworkBaseType ann NetworkRatType = RatType ann
+reconstructNetworkBaseType :: NetworkBaseType -> Provenance -> CheckedType
+reconstructNetworkBaseType NetworkRatType = RatType
 
-type NetworkContext = Map Name NetworkType
-
-type MetaNetwork = [Name]
+type NetworkContext = Map Name (FilePath, NetworkType)

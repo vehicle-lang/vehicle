@@ -51,19 +51,19 @@ instance CapitaliseTypes CheckedDecl where
 
 instance CapitaliseTypes CheckedExpr where
   cap = cata $ \case
-    UniverseF ann l -> return $ Universe ann l
-    HoleF ann n -> return $ Hole ann n
-    MetaF ann m -> return $ Meta ann m
-    LiteralF ann l -> return $ Literal ann l
-    BuiltinF ann op -> return $ Builtin ann op
-    AnnF ann e t -> Ann ann <$> e <*> t
-    AppF ann fun args -> App ann <$> fun <*> traverse sequenceA args -- traverse cap args
-    PiF ann binder result -> Pi ann <$> sequenceA binder <*> result
-    LetF ann bound binder body -> Let ann <$> bound <*> sequenceA binder <*> body
-    LamF ann binder body -> Lam ann <$> sequenceA binder <*> body
-    LVecF ann xs -> LVec ann <$> sequence xs
-    VarF ann v@(Bound _) -> return $ Var ann v
-    VarF ann (Free ident) -> Var ann . Free <$> cap ident
+    UniverseF p l -> return $ Universe p l
+    HoleF p n -> return $ Hole p n
+    MetaF p m -> return $ Meta p m
+    LiteralF p l -> return $ Literal p l
+    BuiltinF p op -> return $ Builtin p op
+    AnnF p e t -> Ann p <$> e <*> t
+    AppF p fun args -> App p <$> fun <*> traverse sequenceA args -- traverse cap args
+    PiF p binder result -> Pi p <$> sequenceA binder <*> result
+    LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
+    LamF p binder body -> Lam p <$> sequenceA binder <*> body
+    LVecF p xs -> LVec p <$> sequence xs
+    VarF p v@(Bound _) -> return $ Var p v
+    VarF p (Free ident) -> Var p . Free <$> cap ident
 
 instance CapitaliseTypes Identifier where
   cap ident@(Identifier m s) = do

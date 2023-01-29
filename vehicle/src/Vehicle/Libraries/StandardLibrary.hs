@@ -13,7 +13,7 @@ stdlibName :: LibraryName
 stdlibName = "stdlib"
 
 stdlibVersion :: Version
-stdlibVersion = [0, 4]
+stdlibVersion = [0, 7]
 
 standardLibrary :: Library
 standardLibrary =
@@ -28,7 +28,10 @@ standardLibrary =
 
 content :: Text
 content =
-  "\
+  "------------\n\
+  \-- Vector --\n\
+  \------------\n\
+  \\n\
   \zipWith : (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n\n\
   \zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)\n\
   \\n\
@@ -37,6 +40,32 @@ content =
   \\n\
   \bigOr : Vector Bool n -> Bool\n\
   \bigOr = fold (\\x y -> x or y) False\n\
+  \\n\
+  \addVector : {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n\n\
+  \addVector = zipWith (\\x y -> x + y)\n\
+  \\n\
+  \subVector : {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n\n\
+  \subVector = zipWith (\\x y -> x - y)\n\
+  \\n\
+  \equalsVector : {{HasEq A B}} -> Vector A n -> Vector B n -> Bool\n\
+  \equalsVector xs ys = bigAnd (zipWith (\\x y -> x == y) xs ys)\n\
+  \\n\
+  \notEqualsVector : {{HasNotEq A B}} -> Vector A n -> Vector B n -> Bool\n\
+  \notEqualsVector xs ys = bigOr (zipWith (\\x y -> x != y) xs ys)\n\
+  \\n\
+  \-----------\n\
+  \-- Index --\n\
+  \-----------\n\
+  \\n\
+  \existsIndex : (Index n -> Bool) -> Bool\n\
+  \existsIndex f = bigOr (foreach i . f i)\n\
+  \\n\
+  \forallIndex : (Index n -> Bool) -> Bool\n\
+  \forallIndex f = bigAnd (foreach i . f i)\n\
+  \\n\
+  \------------\n\
+  \-- Tensor --\n\
+  \------------\n\
   \\n\
   \Tensor : Type -> List Nat -> Type\n\
   \Tensor A ds = fold (\\d t -> Vector t d) A ds\n\

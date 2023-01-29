@@ -63,20 +63,20 @@ instance MetaSubstitutable CheckedExpr where
   subst expr =
     -- logCompilerPass MaxDetail (prettyVerbose ex) $
     case expr of
-      e@(Meta ann _) -> substApp ann (e, [])
-      e@(App ann _ _) -> substApp ann (toHead e)
+      e@(Meta p _) -> substApp p (e, [])
+      e@(App p _ _) -> substApp p (toHead e)
       Universe {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
       Literal {} -> return expr
       Var {} -> return expr
-      LVec ann es -> LVec ann <$> traverse subst es
-      Ann ann term typ -> Ann ann <$> subst term <*> subst typ
+      LVec p es -> LVec p <$> traverse subst es
+      Ann p term typ -> Ann p <$> subst term <*> subst typ
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
-      Pi ann binder res -> Pi ann <$> subst binder <*> subst res
-      Let ann e1 binder e2 -> Let ann <$> subst e1 <*> subst binder <*> subst e2
-      Lam ann binder e -> Lam ann <$> subst binder <*> subst e
+      Pi p binder res -> Pi p <$> subst binder <*> subst res
+      Let p e1 binder e2 -> Let p <$> subst e1 <*> subst binder <*> subst e2
+      Lam p binder e -> Lam p <$> subst binder <*> subst e
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -87,17 +87,17 @@ substApp ::
   Provenance ->
   (CheckedExpr, [CheckedArg]) ->
   m CheckedExpr
-substApp ann (fun@(Meta _ m), mArgs) = do
+substApp p (fun@(Meta _ m), mArgs) = do
   (metaSubst, _declCtx) <- ask
   case MetaMap.lookup m metaSubst of
     Just value -> subst =<< substArgs (unnormalised value) mArgs
-    Nothing -> normAppList ann fun <$> subst mArgs
+    Nothing -> normAppList p fun <$> subst mArgs
   where
     substArgs :: CheckedExpr -> [CheckedArg] -> m CheckedExpr
     substArgs (Lam _ _ body) (arg : args) = do
       substArgs (argExpr arg `substDBInto` body) args
-    substArgs e args = return $ normAppList ann e args
-substApp ann (fun, args) = normAppList ann <$> subst fun <*> subst args
+    substArgs e args = return $ normAppList p e args
+substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
 instance MetaSubstitutable NormExpr where
   subst expr = case expr of

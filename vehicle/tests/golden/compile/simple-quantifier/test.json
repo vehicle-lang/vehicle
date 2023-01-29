@@ -6,19 +6,19 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-quantifier.vcl -t Marabou -o simple-quantifier.inputquery/",
+    "run": "vehicle compile -s simple-quantifier.vcl -t Marabou -o simple-quantifier.inputquery/ --network f:NO_FILE",
     "needs": ["simple-quantifier.vcl"],
-    "produces": ["simple-quantifier.inputquery/*.txt"]
+    "produces": ["simple-quantifier.inputquery/*.txt", "simple-quantifier.inputquery/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-quantifier.vcl -t Agda -o simple-quantifier.agda",
+    "run": "vehicle compile -s simple-quantifier.vcl -t Agda -o simple-quantifier.agda --network f:NO_FILE",
     "needs": ["simple-quantifier.vcl"],
     "produces": ["simple-quantifier.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json",
+    "run": "vehicle compile -s simple-quantifier.vcl -t LossFunction -o simple-quantifier.loss.json --network f:NO_FILE",
     "needs": ["simple-quantifier.vcl"],
     "produces": ["simple-quantifier.loss.json"]
   }

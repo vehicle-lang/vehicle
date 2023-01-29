@@ -1,0 +1,134 @@
+[
+  [
+    [
+      "User",
+      "test1"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            2
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "test2"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Disjunct",
+        "contents": [
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "NonTrivial",
+                "contents": {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            1,
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0,
+                            -2,
+                            1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "g",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tag": "Query",
+            "contents": [
+              false,
+              {
+                "tag": "Trivial",
+                "contents": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+]

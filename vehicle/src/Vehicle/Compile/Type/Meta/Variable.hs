@@ -64,15 +64,14 @@ makeMetaExpr ::
   GluedExpr
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
-  let ann = inserted p
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [ExplicitArg ann (Var ann (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
-  let normBoundEnv = [ExplicitArg ann (VBoundVar ann (DBLevel i) []) | i <- dependencyLevels]
+  let unnormBoundEnv = [ExplicitArg p (Var p (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
+  let normBoundEnv = [ExplicitArg p (VBoundVar p (DBLevel i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
-    { unnormalised = normAppList ann (Meta ann metaID) unnormBoundEnv,
-      normalised = VMeta ann metaID normBoundEnv
+    { unnormalised = normAppList p (Meta p metaID) unnormBoundEnv,
+      normalised = VMeta p metaID normBoundEnv
     }
 
 -- | Creates a Pi type that abstracts over all bound variables
@@ -81,12 +80,12 @@ makeMetaType ::
   Provenance ->
   CheckedType ->
   CheckedType
-makeMetaType boundCtx ann resultType = foldr entryToPi resultType (reverse boundCtx)
+makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi :: (Maybe Name, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
     entryToPi (name, t, _) = do
       let n = fromMaybe "_" name
-      Pi ann (Binder ann (BinderForm (OnlyName n) True) Explicit Relevant () t)
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
 getMetaDependencies :: [CheckedArg] -> [DBIndex]
 getMetaDependencies = \case

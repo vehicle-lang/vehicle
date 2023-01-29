@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s variableDimensions.vcl -t Marabou -d trainingDataset:dataset-nat-4.idx",
+  "run": "vehicle compile -s variableDimensions.vcl -t Marabou -d trainingDataset:dataset-nat-4.idx --network f:NO_FILE",
   "needs": ["variableDimensions.vcl", "dataset-nat-4.idx"]
 }
