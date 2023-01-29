@@ -22,7 +22,7 @@ import Vehicle.Compile.Queries.LinearExpr
 data VariableSolution
   = GaussianSolution GaussianVariableSolution
   | FourierMotzkinSolution FourierMotzkinVariableSolution
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON VariableSolution
 

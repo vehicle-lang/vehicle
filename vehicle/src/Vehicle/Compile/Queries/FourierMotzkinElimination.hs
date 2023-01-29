@@ -42,7 +42,7 @@ data FourierMotzkinVariableSolution = FMSolution
   { lowerBounds :: [Assertion],
     upperBounds :: [Assertion]
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON FourierMotzkinVariableSolution
 

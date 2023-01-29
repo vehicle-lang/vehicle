@@ -14,7 +14,7 @@ type VerifierCompile =
   forall m.
   MonadLogger m =>
   CLSTProblem NetworkVariable ->
-  m (Doc ())
+  m QueryText
 
 -- | The type of methods to call a verifier on a query
 type VerifierInvocation =

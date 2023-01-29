@@ -7,12 +7,54 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Query",
+        "tag": "Disjunct",
         "contents": [
-          false,
           {
-            "tag": "Trivial",
-            "contents": true
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    {
+                      "userVar": [
+                        [
+                          0,
+                          {
+                            "tag": "GaussianSolution",
+                            "contents": {
+                              "unLinearExpr": [
+                                1,
+                                -1,
+                                0,
+                                0
+                              ]
+                            }
+                          }
+                        ]
+                      ],
+                      "metaNetwork": [
+                        [
+                          "f",
+                          "NO_FILE"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              },
+              "negated": true
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "Trivial",
+                "contents": true
+              },
+              "negated": false
+            }
           }
         ]
       }
@@ -33,39 +75,39 @@
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": true
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             },
             {
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": true
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             },
             {
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": true
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             }
           ]
@@ -77,39 +119,39 @@
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": false
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             },
             {
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": true
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             },
             {
               "tag": "SingleProperty",
               "contents": {
                 "tag": "Query",
-                "contents": [
-                  false,
-                  {
+                "contents": {
+                  "queries": {
                     "tag": "Trivial",
                     "contents": false
-                  }
-                ]
+                  },
+                  "negated": false
+                }
               }
             }
           ]

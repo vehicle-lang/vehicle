@@ -9,6 +9,7 @@ import Control.Exception (IOException, catch)
 import Control.Monad (forM, forM_)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Trans (MonadTrans (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Bifunctor (Bifunctor (..))
@@ -65,8 +66,8 @@ outputVerificationQueries ::
 outputVerificationQueries verifier maybeOutputLocation (plan, queries) =
   case maybeOutputLocation of
     Nothing -> do
-      programOutput (prettySpecification pretty plan)
-      programOutput (prettySpecification id queries)
+      programOutput (pretty plan)
+      programOutput (pretty queries)
     Just outputLocation -> do
       liftIO $ createDirectoryIfMissing True outputLocation
 
@@ -126,8 +127,8 @@ writeVerificationQueries Verifier {..} folder (Specification properties) = do
   let backend = VerifierBackend verifierIdentifier
   forM_ properties $ \(ident, property) -> do
     let property' = calculateFilePaths folder ident property
-    _ <- flip traverseProperty property' $ \(queryFilePath, queryText) -> do
-      liftIO $ writeResultToFile backend (Just queryFilePath) queryText
+    _ <- flip traverseProperty property' $ \(queryFilePath, queryText) ->
+      liftIO $ writeResultToFile backend (Just queryFilePath) (pretty queryText)
 
     return ()
 
@@ -155,7 +156,7 @@ verifyProperty ::
   Property (QueryFile, QueryMetaData) ->
   m PropertyStatus
 verifyProperty = \case
-  SingleProperty p -> SinglePropertyStatus <$> foldMPropertyExpr verifyQuery isVerified p
+  SingleProperty p -> SinglePropertyStatus <$> evaluateBoolPropertyM verifyQuery isVerified p
   MultiProperty ps -> MultiPropertyStatus <$> traverse verifyProperty ps
 
 verifyQuery ::
@@ -185,8 +186,8 @@ calculateFilePaths directory propertyIdentifier = goProperty []
       SingleProperty propertyExpr ->
         SingleProperty $ goQuery propertyIndices propertyExpr
 
-    goQuery :: [MultiPropertyIndex] -> PropertyExpr a -> PropertyExpr (FilePath, a)
-    goQuery propertyIndices = fmapNumberedPropertyExpr $ first $ \queryID ->
+    goQuery :: [MultiPropertyIndex] -> BoolProperty a -> BoolProperty (FilePath, a)
+    goQuery propertyIndices = fmapNumberedBoolProperty $ first $ \queryID ->
       directory
         </> unpack (nameOf propertyIdentifier)
           <> propertyStr
@@ -197,3 +198,16 @@ calculateFilePaths directory propertyIdentifier = goProperty []
           if null propertyIndices
             then ""
             else concatMap (\v -> "!" <> show v) (reverse propertyIndices)
+
+fmapNumberedBoolProperty ::
+  forall a b.
+  ((QueryID, a) -> b) ->
+  BoolProperty a ->
+  BoolProperty b
+fmapNumberedBoolProperty f s =
+  runSupply (traverseBoolProperty f' s) [1 ..]
+  where
+    f' :: a -> Supply Int b
+    f' x = do
+      queryID <- demand
+      lift $ return $ f (queryID, x)

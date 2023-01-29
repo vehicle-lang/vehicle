@@ -50,11 +50,15 @@ solveMaxLinearity ::
   m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (getMeta -> Just m1, _) -> blockOn [m1]
-    (_, getMeta -> Just m2) -> blockOn [m2]
     (VLinearityExpr p l1, VLinearityExpr _ l2) -> do
       let linRes = VLinearityExpr p $ maxLinearity l1 l2
       return $ Progress [unify (contextOf c) res linRes]
+    (_, VLinearityExpr _ Constant) ->
+      return $ Progress [unify (contextOf c) lin1 res]
+    (VLinearityExpr _ Constant, _) ->
+      return $ Progress [unify (contextOf c) lin2 res]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
     _ -> malformedConstraintError c
 solveMaxLinearity c _ = malformedConstraintError c
 
@@ -65,13 +69,17 @@ solveMulLinearity ::
   m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (getMeta -> Just m1, _) -> blockOn [m1]
-    (_, getMeta -> Just m2) -> blockOn [m2]
     (VLinearityExpr _ l1, VLinearityExpr _ l2) -> do
       let ctx = contextOf c
       let p = originalProvenance ctx
       let linRes = VLinearityExpr p $ mulLinearity p l1 l2
       return $ Progress [unify ctx res linRes]
+    (_, VLinearityExpr _ Constant) ->
+      return $ Progress [unify (contextOf c) lin1 res]
+    (VLinearityExpr _ Constant, _) ->
+      return $ Progress [unify (contextOf c) lin2 res]
+    (getMeta -> Just m1, _) -> blockOn [m1]
+    (_, getMeta -> Just m2) -> blockOn [m2]
     _ -> malformedConstraintError c
 solveMulLinearity c _ = malformedConstraintError c
 

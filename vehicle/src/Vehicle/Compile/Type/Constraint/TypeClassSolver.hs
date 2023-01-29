@@ -158,24 +158,16 @@ solveNatQuantifier q c _domainBinder body res = do
   let p = provenanceOf c
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
-
-  let solution = case q of
-        Forall -> PostulateForallNat
-        Exists -> PostulateExistsNat
-
-  return $ Right ([bodyEq, resEq], VFreeVar p solution [])
+  let solution = VBuiltin p (Quantifier q QuantNat) []
+  return $ Right ([bodyEq, resEq], solution)
 
 solveIntQuantifier :: HasQuantifierSolver
 solveIntQuantifier q c _domainBinder body res = do
   let p = provenanceOf c
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
-
-  let solution = case q of
-        Forall -> PostulateForallInt
-        Exists -> PostulateForallInt
-
-  return $ Right ([bodyEq, resEq], VFreeVar p solution [])
+  let solution = VBuiltin p (Quantifier q QuantInt) []
+  return $ Right ([bodyEq, resEq], solution)
 
 solveRatQuantifier :: HasQuantifierSolver
 solveRatQuantifier q c domainBinder body res = do
@@ -196,11 +188,8 @@ solveRatQuantifier q c domainBinder body res = do
   -- The result type is the Bool type with the same linearity as the body.
   let resEq = unify c res (mkVAnnBoolType p (normalised bodyLin) (normalised resPol))
 
-  let solution = case q of
-        Forall -> PostulateForallRat
-        Exists -> PostulateExistsRat
-
-  return $ Right ([domainEq, polTC, bodyEq, resEq], VFreeVar p solution [])
+  let solution = VBuiltin p (Quantifier q QuantRat) []
+  return $ Right ([domainEq, polTC, bodyEq, resEq], solution)
 
 solveVectorQuantifier :: HasQuantifierSolver
 solveVectorQuantifier q c domainBinder body res = do
@@ -212,11 +201,10 @@ solveVectorQuantifier q c domainBinder body res = do
   let elemDomainBinder = replaceBinderType vecElem domainBinder
   (metaExpr, recTC) <- createTC c (HasQuantifier q) [VPi p elemDomainBinder body, res]
 
-  let method = if q == Forall then StdForallVector else StdExistsVector
   let solution =
-        VFreeVar
+        VBuiltin
           p
-          (identifierOf method)
+          (Quantifier q QuantVec)
           [ ImplicitArg p vecElem,
             ImplicitArg p (normalised dim),
             InstanceArg p metaExpr

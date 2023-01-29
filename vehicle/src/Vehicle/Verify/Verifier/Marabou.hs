@@ -19,7 +19,7 @@ import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification (MetaNetwork)
+import Vehicle.Verify.Specification (MetaNetwork, QueryText)
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Interface
 
@@ -41,11 +41,11 @@ marabouVerifier =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m (Doc ())
+compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m QueryText
 compileMarabouQuery (CLSTProblem varNames assertions) = do
   assertionDocs <- forM assertions (compileAssertion varNames)
   let assertionsDoc = vsep assertionDocs
-  return assertionsDoc
+  return $ layoutAsText assertionsDoc
 
 compileAssertion ::
   MonadLogger m =>

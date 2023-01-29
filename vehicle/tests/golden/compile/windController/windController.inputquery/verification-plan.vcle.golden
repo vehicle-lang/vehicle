@@ -7,15 +7,55 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              true,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      1,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            0,
+                            1,
+                            0,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ],
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            0,
+                            -1,
+                            0,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "controller",
+                      "controller.onnx"
+                    ]
+                  ]
+                },
+                {
                   "userVar": [
                     [
                       1,
@@ -57,76 +97,11 @@
                     ]
                   ]
                 }
-              }
-            ]
+              ]
+            }
           },
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "userVar": [
-                        [
-                          1,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "unLinearExpr": [
-                                0,
-                                1,
-                                0,
-                                -1,
-                                0,
-                                0
-                              ]
-                            }
-                          }
-                        ],
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "unLinearExpr": [
-                                1,
-                                0,
-                                -1,
-                                0,
-                                0,
-                                0
-                              ]
-                            }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "controller",
-                          "controller.onnx"
-                        ]
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "Trivial",
-                    "contents": true
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+          "negated": true
+        }
       }
     }
   ]
