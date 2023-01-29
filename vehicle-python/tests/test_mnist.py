@@ -8,7 +8,8 @@ import tensorflow.keras as keras
 import h5py
 from keras.datasets import mnist
 
-from not_init import generate_loss_function
+from vehicle import generate_loss_function
+#from not_init import generate_loss_function
 
 #trainingDataFiles = "vehicle-python/tests/experiments_loss/TrainingData/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
 
