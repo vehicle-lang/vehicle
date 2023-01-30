@@ -23,7 +23,7 @@ test = []
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^0.971"
-tox = "^4.3.5"
+tox = "^4.4.2"
 black = "^22.8.0"
 isort = "^5.10.1"
 flake8 = "^5.0.4"
