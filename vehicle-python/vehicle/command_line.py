@@ -11,8 +11,8 @@ def call_vehicle(args: List[str]) -> None:
     vehicle = shutil.which("vehicle")
     if vehicle is None:
         raise Exception(f"Could not find vehicle on PATH; is vehicle installed?")
-    command = " ".join([vehicle] + args)
-    result = subprocess.run(command, capture_output=True, shell=True)
+    command = " ".join([vehicle] + args) #passed as string due to shell=True
+    result = subprocess.run(command, capture_output=True, shell=True) #shell = True is needed for Windows
     if result.returncode != 0:
         errorMessage = f"Problem during compilation: {result.stderr.decode('UTF-8')}"
         commandMessage = f"Command was: {command}"
