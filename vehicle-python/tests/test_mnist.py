@@ -5,13 +5,11 @@ import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
-import h5py
 from keras.datasets import mnist
 
-from vehicle import generate_loss_function
-#from not_init import generate_loss_function
+#from vehicle import generate_loss_function
+from not_init import generate_loss_function
 
-#trainingDataFiles = "vehicle-python/tests/experiments_loss/TrainingData/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
 
 
 def train(
@@ -85,25 +83,42 @@ def train(
 
 
 if __name__ == "__main__":
+    print("Starting")
     path_to_spec = "vehicle-python/tests/mnist.vcl"
     function_name = "robust1"
     model = keras.Sequential(
         [
-            keras.layers.Input(shape=(5,)),
-            keras.layers.Dense(10),
-            keras.layers.Dense(5),
+        keras.Input(shape=(28, 28, 1)),
+        keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+        keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+        keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        keras.layers.Flatten(),
+        keras.layers.Dropout(0.5),
+        keras.layers.Dense(10, activation="softmax"),
         ]
     )
     resources = {"mnist": model}
 
-    quantifier_sampling = {"x": lambda: random.uniform(0.5, 0.5)}
+    quantifier_sampling = {"x": lambda: random.uniform(0.5, 0.5), "j": range(0,27), "i": range(0,27)}
 
     batch_size = 1
     epochs = 4
     alfa = 0
     beta = 1
 
+
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
+
+    # Scale images to the [0, 1] range
+    X_train = X_train.astype("float32") / 255
+    X_test = X_test.astype("float32") / 255
+    # Make sure images have shape (28, 28, 1)
+    X_train = np.expand_dims(X_train, -1)
+    X_test = np.expand_dims(X_test, -1)
+
+    y_train = keras.utils.to_categorical(y_train, 10)
+    y_test = keras.utils.to_categorical(y_test, 10)
 
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
