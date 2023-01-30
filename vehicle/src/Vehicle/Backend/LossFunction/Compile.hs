@@ -88,6 +88,16 @@ type MonadCompileLoss m =
     MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
   )
 
+flattenAnds :: V.CheckedExpr -> [V.CheckedExpr]
+flattenAnds arg = case arg of
+  V.AndExpr _ [e1, e2] -> flattenAnds (argExpr e1) <> flattenAnds (argExpr e2)
+  _ -> [arg]
+
+flattenOrs :: V.CheckedExpr -> [V.CheckedExpr]
+flattenOrs arg = case arg of
+  V.OrExpr _ [e1, e2] -> flattenOrs (argExpr e1) <> flattenOrs (argExpr e2)
+  _ -> [arg]
+
 compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
@@ -114,8 +124,12 @@ compileExpr t e = showExit $ do
         (_, logic, declProv) <- ask
         ne1 <- runReaderT (lowerNot (argExpr e1)) (logic, declProv, p)
         compileExpr t ne1
-    V.AndExpr _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
-    V.OrExpr _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
+    V.AndExpr _ [e1, e2] -> case compileAnd t of
+      Left binaryAnd -> binaryAnd <$> compileArg t e1 <*> compileArg t e2
+      Right naryAnd -> naryAnd <$> traverse (compileExpr t) (flattenAnds e')
+    V.OrExpr _ [e1, e2] -> case compileOr t of
+      Left binaryOr -> binaryOr <$> compileArg t e1 <*> compileArg t e2
+      Right naryOr -> naryOr <$> traverse (compileExpr t) (flattenOrs e')
     V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
     -- arithmetic operations
     V.AddTCExpr _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
