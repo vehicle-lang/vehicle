@@ -116,8 +116,8 @@ compileExpr t e = showExit $ do
     V.OrExpr _ [e1, e2] -> compileOr t <$> compileArg t e1 <*> compileArg t e2
     V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
     -- arithmetic operations
-    V.AddExpr _ _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
-    V.SubExpr _ _ [e1, e2] -> Subtraction <$> compileArg t e1 <*> compileArg t e2
+    V.AddTCExpr _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
+    V.SubTCExpr _ [e1, e2] -> Subtraction <$> compileArg t e1 <*> compileArg t e2
     V.MulExpr _ _ [e1, e2] -> Multiplication <$> compileArg t e1 <*> compileArg t e2
     V.DivExpr _ _ [e1, e2] -> Division <$> compileArg t e1 <*> compileArg t e2
     V.NegExpr _ _ [e1] -> Negation <$> compileArg t e1
@@ -226,8 +226,6 @@ normBuiltin b = case b of
     V.ImpliesTC -> True
     V.MapTC -> True
     V.NegTC -> True
-    V.AddTC -> True
-    V.SubTC -> True
     V.MulTC -> True
     V.DivTC -> True
     _ -> False
