@@ -19,6 +19,7 @@ data DifferentiableLogic
   | Lukasiewicz
   | Product
   | Yager
+  | STL
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty DifferentiableLogic where
@@ -62,6 +63,9 @@ pattern LossFunctionProduct = LossFunction Product
 pattern LossFunctionYager :: Backend
 pattern LossFunctionYager = LossFunction Yager
 
+pattern LossFunctionSTL :: Backend
+pattern LossFunctionSTL = LossFunction STL
+
 instance Pretty Backend where
   pretty = \case
     ITP x -> pretty $ show x
@@ -79,6 +83,7 @@ instance Read Backend where
     "LossFunction-Lukasiewicz" -> [(LossFunctionLukasiewicz, [])]
     "LossFunction-Product" -> [(LossFunctionProduct, [])]
     "LossFunction-Yager" -> [(LossFunctionYager, [])]
+    "LossFunction-STL" -> [(LossFunctionSTL, [])]
     "Agda" -> [(AgdaBackend, [])]
     "TypeCheck" -> [(TypeCheck, [])]
     _ -> []
