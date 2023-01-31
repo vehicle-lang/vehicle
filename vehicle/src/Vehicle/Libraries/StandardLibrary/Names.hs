@@ -9,8 +9,6 @@ import Vehicle.Syntax.AST
 data StdLibFunction
   = StdExistsIndex
   | StdForallIndex
-  | StdExistsVector
-  | StdForallVector
   | StdExistsInList
   | StdForallInList
   | StdExistsInVector
@@ -29,8 +27,6 @@ instance Show StdLibFunction where
     StdForallIndex -> "forallIndex"
     StdAddVector -> "addVector"
     StdSubVector -> "subVector"
-    StdExistsVector -> "existsVector"
-    StdForallVector -> "forallVector"
     StdExistsInList -> "existsInList"
     StdForallInList -> "forallInList"
     StdExistsInVector -> "existsInVector"
@@ -51,15 +47,3 @@ stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. ma
 
 findStdLibFunction :: Name -> Maybe StdLibFunction
 findStdLibFunction name = Map.lookup name stdLibFunctions
-
-pattern PostulateExistsNat, PostulateForallNat :: Identifier
-pattern PostulateExistsNat = Identifier StdLib "existsNat"
-pattern PostulateForallNat = Identifier StdLib "forallNat"
-
-pattern PostulateExistsInt, PostulateForallInt :: Identifier
-pattern PostulateExistsInt = Identifier StdLib "existsInt"
-pattern PostulateForallInt = Identifier StdLib "forallInt"
-
-pattern PostulateExistsRat, PostulateForallRat :: Identifier
-pattern PostulateExistsRat = Identifier StdLib "existsRat"
-pattern PostulateForallRat = Identifier StdLib "forallRat"

@@ -11,7 +11,7 @@ where
 
 import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Reader (ReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT)
 import Control.Monad.State (MonadState (..), StateT, evalStateT)
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer (WriterT)
@@ -54,3 +54,7 @@ instance MonadSupply t m => MonadSupply t (ExceptT e m) where
 instance MonadError e m => MonadError e (SupplyT s m) where
   throwError = lift . throwError
   catchError m f = SupplyT (catchError (unsupplyT m) (unsupplyT . f))
+
+instance MonadReader e m => MonadReader e (SupplyT s m) where
+  ask = lift ask
+  local f x = SupplyT $ local f $ unsupplyT x

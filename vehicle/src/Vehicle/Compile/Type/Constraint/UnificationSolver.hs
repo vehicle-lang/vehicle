@@ -17,7 +17,7 @@ import Data.IntSet qualified as IntSet
 import Data.List (intersect)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalApp)
+import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)

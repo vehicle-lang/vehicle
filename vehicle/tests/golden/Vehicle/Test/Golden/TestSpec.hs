@@ -229,11 +229,11 @@ testSpecDiffTestOutput testSpec golden actual = do
   -- Combine all messages:
   let messages =
         join
-          [ missingOutputFileErrors,
-            extraOutputFileErrors,
-            maybeToList differentStdoutError,
+          [ maybeToList differentStdoutError,
             maybeToList differentStderrError,
-            differentOutputFileErrors
+            differentOutputFileErrors,
+            missingOutputFileErrors,
+            extraOutputFileErrors
           ]
   return $ boolToMaybe (not $ null messages) (unlines messages)
 

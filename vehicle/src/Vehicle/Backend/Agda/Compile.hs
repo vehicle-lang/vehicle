@@ -29,10 +29,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
-import Vehicle.Libraries.StandardLibrary.Names
-  ( StdLibFunction,
-    findStdLibFunction,
-  )
 import Vehicle.Syntax.Sugar
 
 --------------------------------------------------------------------------------
@@ -406,9 +402,6 @@ compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
 compileApp fun args = do
   specialResult <- case fun of
     Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
-    Var _ i -> case findStdLibFunction i of
-      Nothing -> return Nothing
-      Just f -> Just <$> compileStdLibFunction f args
     _ -> return Nothing
 
   case specialResult of
@@ -473,15 +466,6 @@ compileBinder binder = do
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
-
-compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty OutputArg -> m Code
-compileStdLibFunction f allArgs = case embedStdLib f allArgs of
-  Nothing -> compilerDeveloperError $ "Compilation of stdlib function" <+> quotePretty f <+> "not yet supported"
-  Just v -> case v of
-    ExistsVector {} -> quantError
-    ForallVector {} -> quantError
-    where
-      quantError = compilerDeveloperError "Quantifier type-class ops should not have been normalised out."
 
 isTypeClassInAgda :: TypeClassOp -> Bool
 isTypeClassInAgda = \case

@@ -21,6 +21,7 @@ typeOfBuiltin p b = fromDSL p $ case b of
   Implies -> typeOfBoolOp2 maxLinearity impliesPolarity
   And -> typeOfBoolOp2 maxLinearity maxPolarity
   Or -> typeOfBoolOp2 maxLinearity maxPolarity
+  Quantifier {} -> developerError "types for base quantifiers not yet implemented"
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of
@@ -200,9 +201,9 @@ typeOfBoolOp2 linearityConstraint polarityConstraint =
 
 typeOfIf :: DSLExpr
 typeOfIf =
-  forAll "A" type0 $ \tCond ->
-    forAll "B" type0 $ \tArg1 ->
-      forAll "C" type0 $ \tArg2 ->
+  forAllIrrelevant "A" type0 $ \tCond ->
+    forAllIrrelevant "B" type0 $ \tArg1 ->
+      forAllIrrelevant "C" type0 $ \tArg2 ->
         forAll "D" type0 $ \tRes ->
           hasIf tCond tArg1 tArg2 tRes
             .~~~> tCond

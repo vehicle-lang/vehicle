@@ -116,7 +116,7 @@ data CompileError
   | UnsupportedPolymorphicEquality Backend Provenance Name
   | UnsupportedNonMagicVariable Backend Provenance Name
   | NoNetworkUsedInProperty Backend Provenance Identifier
-  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name CheckedType [Builtin]
+  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name NormType NormType [Builtin]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | UnsupportedNegatedOperation DifferentiableLogic DeclProvenance Provenance CheckedExpr

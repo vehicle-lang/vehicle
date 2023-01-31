@@ -164,7 +164,10 @@ typeCheckFunction p ident isProperty typ body = do
       return gluedDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
-      checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+      checkedDecl1 <-
+        if moduleOf ident == User
+          then addFunctionAuxiliaryInputOutputConstraints substDecl
+          else return substDecl
       logUnsolvedUnknowns (Just substDecl) Nothing
 
       checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1

@@ -18,6 +18,7 @@ where
 
 import Control.Exception (assert)
 import Data.Bifunctor (bimap)
+import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
 import Data.Text (Text)
@@ -30,6 +31,7 @@ import Vehicle.Compile.Prelude hiding (MapList)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Expr.Boolean
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.CoDeBruijn.PositionTree
@@ -115,6 +117,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To convert a NormExpr convert the `DBLevel`s naively.
   StrategyFor ('As lang) NormExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
   StrategyFor ('As lang) NormArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
+  StrategyFor ('As lang) NormBinder = 'DescopeNaively (StrategyFor ('As lang) InputBinder)
   -- To convert an expression using a named representation to a named representation is a no-op.
   StrategyFor ('Named tags) InputProg = StrategyFor tags InputProg
   StrategyFor ('Named tags) InputDecl = StrategyFor tags InputDecl
@@ -160,6 +163,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags [a] = 'MapList (StrategyFor tags a)
   StrategyFor tags (a, b) = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
   StrategyFor tags (a, b, c) = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
+  StrategyFor tags (BooleanExpr a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags (ConjunctAll a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags (DisjunctAll a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags (MaybeTrivial a) = 'Opaque (StrategyFor tags a)
+  -- StrategyFor tags (Contextualised (ConjunctAll a) BoundDBCtx) = StrategyFor tags (ConjunctAll (Contextualised a BoundDBCtx))
+  -- StrategyFor tags (Contextualised (DisjunctAll a) BoundDBCtx) = StrategyFor tags (DisjunctAll (Contextualised a BoundDBCtx))
+  -- StrategyFor tags (Contextualised (MaybeTrivial a) BoundDBCtx) = StrategyFor tags (MaybeTrivial (Contextualised a BoundDBCtx))
   -- Otherwise if we cannot compute an error then throw an informative error
   -- at type-checking time.
   StrategyFor tags a =
@@ -251,6 +261,9 @@ instance PrettyUsing rest InputExpr => PrettyUsing ('DescopeNaively rest) NormEx
   prettyUsing = prettyUsing @rest . descopeNaive
 
 instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) NormArg where
+  prettyUsing = prettyUsing @rest . descopeNaive
+
+instance PrettyUsing rest InputBinder => PrettyUsing ('DescopeNaively rest) NormBinder where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
@@ -463,3 +476,25 @@ instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) PositionsI
   prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))
     where
       hole = (Hole mempty $ Text.pack "@", mempty)
+
+instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (ConjunctAll a) where
+  prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> "and" <> y) docs
+    where
+      docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
+
+instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (DisjunctAll a) where
+  prettyUsing (DisjunctAll cs) = concatWith (\x y -> x <> line <> "or" <> y) docs
+    where
+      docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
+
+instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MaybeTrivial a) where
+  prettyUsing = \case
+    Trivial True -> "True"
+    Trivial False -> "False"
+    NonTrivial x -> prettyUsing @rest x
+
+instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (BooleanExpr a) where
+  prettyUsing = \case
+    Query x -> prettyUsing @rest x
+    Disjunct x y -> prettyUsing @('Opaque rest) x <+> "or" <+> prettyUsing @('Opaque rest) y
+    Conjunct x y -> prettyUsing @('Opaque rest) x <+> "and" <+> prettyUsing @('Opaque rest) y

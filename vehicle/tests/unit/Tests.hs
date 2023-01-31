@@ -12,7 +12,6 @@ import Vehicle.Test.Unit.Compile.AlphaEquivalence (alphaEquivalenceTests)
 import Vehicle.Test.Unit.Compile.CoDeBruijn (coDeBruijnTests)
 import Vehicle.Test.Unit.Compile.CommandLine (commandLineParserTests)
 import Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests)
-import Vehicle.Test.Unit.Compile.IfElimination (ifEliminationTests)
 import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 import Vehicle.Test.Unit.Compile.PositionTree (positionTreeTests)
 
@@ -25,7 +24,6 @@ main = do
       "Tests"
       [ deBruijnTests,
         normalisationTests,
-        ifEliminationTests,
         alphaEquivalenceTests,
         coDeBruijnTests,
         positionTreeTests,

@@ -291,6 +291,30 @@ instance FromJSON MapDomain
 
 instance Serialize MapDomain
 
+data QuantifierDomain
+  = QuantNat
+  | QuantInt
+  | QuantRat
+  | QuantVec
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData QuantifierDomain
+
+instance Hashable QuantifierDomain
+
+instance ToJSON QuantifierDomain
+
+instance FromJSON QuantifierDomain
+
+instance Serialize QuantifierDomain
+
+instance Pretty QuantifierDomain where
+  pretty = \case
+    QuantNat -> "Nat"
+    QuantInt -> "Int"
+    QuantRat -> "Rat"
+    QuantVec -> "Vec"
+
 -- | Builtins in the Vehicle language
 data Builtin
   = Constructor BuiltinConstructor
@@ -299,6 +323,7 @@ data Builtin
   | And
   | Or
   | Implies
+  | Quantifier Quantifier QuantifierDomain
   | If
   | -- Numeric conversion
     FromNat Int FromNatDomain
@@ -339,6 +364,7 @@ instance Pretty Builtin where
     And -> "andBool"
     Or -> "orBool"
     Implies -> "impliesBool"
+    Quantifier q dom -> pretty q <> pretty dom
     If -> "if"
     Neg dom -> "neg" <> pretty dom
     Add dom -> "add" <> pretty dom

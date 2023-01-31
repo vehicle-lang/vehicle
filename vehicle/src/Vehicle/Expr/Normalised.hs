@@ -24,7 +24,7 @@ data NormExpr
   | VFreeVar Provenance Identifier Spine
   | VBoundVar Provenance DBLevel Spine
   | VBuiltin Provenance Builtin Spine
-  deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
 
 instance Serialize NormExpr
 
