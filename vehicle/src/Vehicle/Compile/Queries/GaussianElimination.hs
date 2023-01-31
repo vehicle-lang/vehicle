@@ -102,7 +102,7 @@ removeFirstNonZeroRow var (x : xs)
 -- | A FM solution for a variable is two lists of constraints. The variable value
 -- must be greater than the set of assertions, and less than the first is that
 newtype GaussianVariableSolution = GaussianVariableSolution LinearExpr
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON GaussianVariableSolution
 

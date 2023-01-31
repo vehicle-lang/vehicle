@@ -3,7 +3,6 @@ module Vehicle.Expr.Patterns where
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
-import Vehicle.Libraries.StandardLibrary.Names
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -399,49 +398,50 @@ pattern ExistsTCExpr ::
   Expr binder var
 pattern ExistsTCExpr p binder body <- QuantifierTCExpr p Exists binder body
 
-pattern PostulatedQuantifierExpr ::
+pattern QuantifierExpr ::
   Provenance ->
-  Identifier ->
+  Quantifier ->
+  QuantifierDomain ->
   DBBinder ->
   DBExpr ->
   DBExpr
-pattern PostulatedQuantifierExpr p ident binder body <-
-  App
+pattern QuantifierExpr p q dom binder body <-
+  BuiltinExpr
     p
-    (FreeVar _ ident)
+    (Quantifier q dom)
     [ ExplicitArg _ (Lam _ binder body)
       ]
   where
-    PostulatedQuantifierExpr p ident binder body =
-      App
+    QuantifierExpr p q dom binder body =
+      BuiltinExpr
         p
-        (FreeVar p ident)
+        (Quantifier q dom)
         [ ExplicitArg p (Lam p binder body)
         ]
 
 pattern ExistsNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ExistsNatExpr p binder body =
-  PostulatedQuantifierExpr p PostulateExistsNat binder body
+  QuantifierExpr p Exists QuantNat binder body
 
 pattern ForallNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ForallNatExpr p binder body =
-  PostulatedQuantifierExpr p PostulateForallNat binder body
+  QuantifierExpr p Forall QuantNat binder body
 
 pattern ExistsIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ExistsIntExpr p binder body =
-  PostulatedQuantifierExpr p PostulateExistsInt binder body
+  QuantifierExpr p Exists QuantInt binder body
 
 pattern ForallIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ForallIntExpr p binder body =
-  PostulatedQuantifierExpr p PostulateForallInt binder body
+  QuantifierExpr p Forall QuantInt binder body
 
 pattern ExistsRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ExistsRatExpr p binder body =
-  PostulatedQuantifierExpr p PostulateExistsRat binder body
+  QuantifierExpr p Exists QuantRat binder body
 
 pattern ForallRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
 pattern ForallRatExpr p binder body =
-  PostulatedQuantifierExpr p PostulateForallRat binder body
+  QuantifierExpr p Forall QuantRat binder body
 
 --------------------------------------------------------------------------------
 -- QuantifierIn
@@ -498,22 +498,16 @@ pattern IfExpr p tRes args <-
   App
     p
     (Builtin _ If)
-    ( ImplicitArg _ BoolType {}
-        :| ImplicitArg _ _
-        : ImplicitArg _ _
-        : ImplicitArg _ tRes
-        : args
+    ( ImplicitArg _ tRes
+        :| args
       )
   where
     IfExpr p tRes args =
       App
         p
         (Builtin p If)
-        ( ImplicitArg p (BoolType p)
-            :| ImplicitArg p tRes
-            : ImplicitArg p tRes
-            : ImplicitArg p tRes
-            : args
+        ( ImplicitArg p tRes
+            :| args
         )
 
 --------------------------------------------------------------------------------
@@ -842,40 +836,3 @@ pattern PolarityExpr p pol = Builtin p (Constructor (Polarity pol))
 
 pattern LinearityExpr :: Provenance -> Linearity -> Expr binder var
 pattern LinearityExpr p lin = Builtin p (Constructor (Linearity lin))
-
---------------------------------------------------------------------------------
--- Stdlib expressions
---------------------------------------------------------------------------------
-
-data StdLibRep binder var where
-  ExistsVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
-  ForallVector :: Type binder var -> Expr binder var -> Expr binder var -> Binder binder var -> Expr binder var -> StdLibRep binder var
-
-embedStdLib :: StdLibFunction -> NonEmpty (Arg binder var) -> Maybe (StdLibRep binder var)
-embedStdLib f allArgs = case f of
-  StdExistsVector -> case allArgs of
-    [ ImplicitArg _ tElem,
-      ImplicitArg _ size,
-      InstanceArg _ recFn,
-      ExplicitArg _ (Lam _ binder body)
-      ] -> Just $ ExistsVector tElem size recFn binder body
-    _ -> Nothing
-  StdForallVector -> case allArgs of
-    [ ImplicitArg _ tElem,
-      ImplicitArg _ size,
-      InstanceArg _ recFn,
-      ExplicitArg _ (Lam _ binder body)
-      ] -> Just $ ForallVector tElem size recFn binder body
-    _ -> Nothing
-  StdEqualsBool -> Nothing
-  StdNotEqualsBool -> Nothing
-  StdEqualsVector -> Nothing
-  StdNotEqualsVector -> Nothing
-  StdExistsIndex -> Nothing
-  StdForallIndex -> Nothing
-  StdAddVector -> Nothing
-  StdSubVector -> Nothing
-  StdForallInList -> Nothing
-  StdExistsInList -> Nothing
-  StdForallInVector -> Nothing
-  StdExistsInVector -> Nothing

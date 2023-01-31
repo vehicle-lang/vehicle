@@ -9,7 +9,6 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -18,9 +17,9 @@ removeIrrelevantCode ::
   (MonadCompile m, RemoveIrrelevantCode a) =>
   a ->
   m a
-removeIrrelevantCode x =
-  logCompilerPass MinDetail "removal of irrelevant code" $
-    remove x
+removeIrrelevantCode x = do
+  -- logCompilerPass MinDetail "removal of irrelevant code" $
+  remove x
 
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
@@ -44,11 +43,11 @@ instance RemoveIrrelevantCode CheckedExpr where
     result <- case expr of
       App p fun args -> do
         normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
-      Pi p binder res -> do
+      Pi p binder res ->
         if isIrrelevant binder
           then remove $ UnitLiteral p `substDBInto` res
           else Pi p <$> remove binder <*> remove res
-      Lam p binder body -> do
+      Lam p binder body ->
         if isIrrelevant binder
           then remove $ UnitLiteral p `substDBInto` body
           else Lam p <$> remove binder <*> remove body
@@ -79,8 +78,11 @@ instance RemoveIrrelevantCode NormExpr where
       -- However, passing in the empty decl context here does feel like a bug...
       -- But don't have access to it here. Tried adding it to the `Env` type, but then
       -- every lambda stores an independent copy.
-      | isIrrelevant binder -> runReaderT (eval (VUnitLiteral p : env) body) mempty
-      | otherwise -> VLam p <$> remove binder <*> remove env <*> remove body
+      | isIrrelevant binder -> do
+          newExpr <- runReaderT (eval (VUnitLiteral p : env) body) (mempty, mempty)
+          remove newExpr
+      | otherwise -> do
+          VLam p <$> remove binder <*> remove env <*> remove body
     VLVec p xs spine -> VLVec p <$> traverse remove xs <*> removeArgs spine
     VFreeVar p v spine -> VFreeVar p v <$> removeArgs spine
     VBoundVar p v spine -> VBoundVar p v <$> removeArgs spine
@@ -109,11 +111,12 @@ removeArgs = traverse remove . filter isRelevant
 -- Debug functions
 
 showRemoveEntry :: MonadRemove m => CheckedExpr -> m ()
-showRemoveEntry e = do
-  logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
+showRemoveEntry _e = do
+  -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
 showRemoveExit :: MonadRemove m => CheckedExpr -> m ()
-showRemoveExit e = do
+showRemoveExit _e = do
   decrCallDepth
-  logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)
+
+-- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)

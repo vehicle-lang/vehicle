@@ -7,15 +7,13 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              true,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
                   "userVar": [
                     [
                       1,
@@ -57,20 +55,11 @@
                     ]
                   ]
                 }
-              }
-            ]
+              ]
+            }
           },
-          {
-            "tag": "Query",
-            "contents": [
-              true,
-              {
-                "tag": "Trivial",
-                "contents": true
-              }
-            ]
-          }
-        ]
+          "negated": true
+        }
       }
     }
   ]

@@ -11,6 +11,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (partition)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
   ( lookup,
@@ -34,7 +35,9 @@ import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
+import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised (NormExpr (..))
 import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
@@ -42,9 +45,9 @@ generateCLSTProblem ::
   MonadCompile m =>
   LCSState ->
   InputEqualities ->
-  CheckedExpr ->
-  m (Query (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
-generateCLSTProblem state inputEqualities queryExpr = flip runReaderT state $ do
+  ConjunctAll NormExpr ->
+  m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
+generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   (_, _, metaNetwork, userVariables, _) <- ask
   variables <- getVariables
 
@@ -52,31 +55,33 @@ generateCLSTProblem state inputEqualities queryExpr = flip runReaderT state $ do
     -- Create linear expression equating the magic variable `x_i`
     -- with the expression `e` in the relevant point = xs_i`
     exprSize <- getExprSize
-    let lhs = linearExprFromMap exprSize (Map.singleton i 1)
+    let lhs = linearExprFromMap exprSize (Map.singleton (unLevel i) 1)
     rhs <- compileLinearExpr expr
     return $ constructAssertion (lhs, Equal, rhs)
 
-  result <- compileAssertions queryExpr
+  userAssertions <- NonEmpty.toList . unConjunctAll <$> traverse compileAssertions conjuncts
 
+  {-
   case result of
     Trivial p -> return $ Trivial p
     NonTrivial userAssertions -> do
-      let assertions = inputEqualityAssertions <> userAssertions
-      let clst = CLSTProblem variables assertions
+      -}
+  let assertions = inputEqualityAssertions <> userAssertions
+  let clst = CLSTProblem variables assertions
 
-      networkVarQuery <-
-        solveForUserVariables (length userVariables) clst
+  networkVarQuery <-
+    solveForUserVariables (length userVariables) clst
 
-      let finalQuery = flip fmap networkVarQuery $
-            \(solvedCLST, varReconst) -> (solvedCLST, metaNetwork, varReconst)
+  let finalQuery = flip fmap networkVarQuery $
+        \(solvedCLST, varReconst) -> (solvedCLST, metaNetwork, varReconst)
 
-      return finalQuery
+  return finalQuery
 
 solveForUserVariables ::
   MonadCompile m =>
   Int ->
   CLSTProblem Variable ->
-  m (Query (CLSTProblem NetworkVariable, UserVarReconstructionInfo))
+  m (MaybeTrivial (CLSTProblem NetworkVariable, UserVarReconstructionInfo))
 solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
   logCompilerPass MinDetail "elimination of user variables" $ do
     let allUserVars = Set.fromList [0 .. numberOfUserVars - 1]
@@ -192,95 +197,82 @@ getVariables = do
   (_, _, _, userVariables, networkVariables) <- ask
   return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
 
-getExprConstantIndex :: MonadSMT m => m Int
+getExprConstantIndex :: MonadSMT m => m DBLevel
 getExprConstantIndex =
-  -- The contant in the linear expression is stored in the last index.
-  getTotalNumberOfVariables
+  -- The constant in the linear expression is stored in the last index.
+  DBLevel <$> getTotalNumberOfVariables
 
 --------------------------------------------------------------------------------
--- Steps 3 & 4: replace network applications
+-- Compilation of assertions
 
-compileAssertions :: MonadSMT m => CheckedExpr -> m (Query [Assertion])
-compileAssertions = \case
-  BoolLiteral _ b -> return $ Trivial b
-  e -> NonTrivial <$> go e
+compileAssertions :: MonadSMT m => NormExpr -> m Assertion
+compileAssertions = go
   where
-    go :: MonadSMT m => CheckedExpr -> m [Assertion]
+    go :: MonadSMT m => NormExpr -> m Assertion
     go expr = case expr of
-      Universe {} -> unexpectedTypeInExprError currentPass "Universe"
-      Pi {} -> unexpectedTypeInExprError currentPass "Pi"
-      Hole {} -> resolutionError currentPass "Hole"
-      Meta {} -> resolutionError currentPass "Meta"
-      Ann {} -> normalisationError currentPass "Ann"
-      Lam {} -> normalisationError currentPass "Lam"
-      Let {} -> normalisationError currentPass "Let"
-      LVec {} -> normalisationError currentPass "LVec"
-      Builtin {} -> normalisationError currentPass "LVec"
-      Var {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
-      Literal _ l -> case l of
+      VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
+      VPi {} -> unexpectedTypeInExprError currentPass "Pi"
+      VMeta {} -> resolutionError currentPass "Meta"
+      VLam {} -> normalisationError currentPass "Lam"
+      VLVec {} -> normalisationError currentPass "LVec"
+      VBoundVar {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
+      VFreeVar {} -> normalisationError currentPass "VFreeVar"
+      VLiteral _ l -> case l of
         LBool _ -> normalisationError currentPass "LBool"
         _ -> caseError currentPass "Literal" ["AndExpr"]
-      AndExpr _ [ExplicitArg _ e1, ExplicitArg _ e2] -> do
-        as1 <- go e1
-        as2 <- go e2
-        return (as1 <> as2)
-      OrderExpr _ OrderRat ord [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltin _ (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan, e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
               Gt -> (LessThan, e2, e1)
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
-        return [assertion]
-      EqualityExpr p EqRat eq [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+        return assertion
+      VBuiltin p (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
           throwError $ UnsupportedInequality MarabouBackend ident p
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
-          return [assertion]
-      App {} -> unexpectedExprError currentPass (prettyVerbose expr)
+          return assertion
+      _ -> unexpectedExprError currentPass (prettyVerbose expr)
 
 compileAssertion ::
   MonadSMT m =>
   Relation ->
-  CheckedExpr ->
-  CheckedExpr ->
+  NormExpr ->
+  NormExpr ->
   m Assertion
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => CheckedExpr -> m LinearExpr
+compileLinearExpr :: MonadSMT m => NormExpr -> m LinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   linearExpr <- go lnfExpr
   exprSize <- getExprSize
   return $ linearExprFromMap exprSize linearExpr
   where
-    singletonVar :: MonadSMT m => DBIndexVar -> Coefficient -> m (Map Int Coefficient)
-    singletonVar Free {} _ = normalisationError currentPass "FreeVar"
-    singletonVar (Bound (DBIndex v)) c = do
-      numberOfUserVariables <- getNumberOfUserVariables
-      let i = if v < numberOfUserVariables then numberOfUserVariables - v - 1 else v
-      return $ Map.singleton i c
+    singletonVar :: DBLevel -> Coefficient -> Map Int Coefficient
+    singletonVar v = Map.singleton (unLevel v)
 
-    go :: MonadSMT m => CheckedExpr -> m (Map Int Coefficient)
+    go :: MonadSMT m => NormExpr -> m (Map Int Coefficient)
     go e = case e of
-      Var _ v ->
-        singletonVar v 1
-      NegExpr _ NegRat [ExplicitArg _ (Var _ v)] ->
-        singletonVar v (-1)
-      RatLiteral _ l -> do
-        constIndex <- getExprConstantIndex
-        singletonVar (Bound (DBIndex constIndex)) (fromRational l)
-      AddExpr _ AddRat [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBoundVar _ v [] ->
+        return $ singletonVar v 1
+      VBuiltin _ (Neg NegRat) [ExplicitArg _ (VBoundVar _ v [])] ->
+        return $ singletonVar v (-1)
+      VLiteral _ (LRat l) -> do
+        constLevel <- getExprConstantIndex
+        return $ singletonVar constLevel (fromRational l)
+      VBuiltin _ (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         Map.unionWith (+) <$> go e1 <*> go e2
-      MulExpr _ MulRat [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltin _ (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
         case (e1, e2) of
-          (RatLiteral _ l, Var _ v) -> singletonVar v (fromRational l)
-          (Var _ v, RatLiteral _ l) -> singletonVar v (fromRational l)
+          (VLiteral _ (LRat l), VBoundVar _ v []) -> return $ singletonVar v (fromRational l)
+          (VBoundVar _ v [], VLiteral _ (LRat l)) -> return $ singletonVar v (fromRational l)
           _ -> do
             (_, _ident, _, _, _) <- ask
             _ctx <- getBoundContext

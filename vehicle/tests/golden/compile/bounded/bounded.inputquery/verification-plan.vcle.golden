@@ -7,15 +7,37 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              true,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
                   "userVar": [
                     [
                       0,
@@ -39,58 +61,11 @@
                     ]
                   ]
                 }
-              }
-            ]
+              ]
+            }
           },
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "unLinearExpr": [
-                                1,
-                                -1,
-                                0,
-                                0
-                              ]
-                            }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "Trivial",
-                    "contents": true
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+          "negated": true
+        }
       }
     }
   ]
