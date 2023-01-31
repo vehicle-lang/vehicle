@@ -143,7 +143,7 @@
                           "tag": "Addition",
                           "contents": [
                             {
-                              "tag": "NetworkApplication",
+                              "tag": "FreeVariable",
                               "contents": [
                                 "truthy",
                                 [
@@ -155,7 +155,7 @@
                               ]
                             },
                             {
-                              "tag": "NetworkApplication",
+                              "tag": "FreeVariable",
                               "contents": [
                                 "truthy",
                                 [
@@ -171,7 +171,7 @@
                       }
                     },
                     {
-                      "tag": "NetworkApplication",
+                      "tag": "FreeVariable",
                       "contents": [
                         "truthy",
                         [
@@ -224,7 +224,7 @@
                               "tag": "Addition",
                               "contents": [
                                 {
-                                  "tag": "NetworkApplication",
+                                  "tag": "FreeVariable",
                                   "contents": [
                                     "truthy",
                                     [
@@ -236,7 +236,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "NetworkApplication",
+                                  "tag": "FreeVariable",
                                   "contents": [
                                     "falsey",
                                     [
@@ -252,7 +252,7 @@
                           }
                         },
                         {
-                          "tag": "NetworkApplication",
+                          "tag": "FreeVariable",
                           "contents": [
                             "falsey",
                             [
@@ -305,7 +305,7 @@
                                   "tag": "Addition",
                                   "contents": [
                                     {
-                                      "tag": "NetworkApplication",
+                                      "tag": "FreeVariable",
                                       "contents": [
                                         "falsey",
                                         [
@@ -317,7 +317,7 @@
                                       ]
                                     },
                                     {
-                                      "tag": "NetworkApplication",
+                                      "tag": "FreeVariable",
                                       "contents": [
                                         "truthy",
                                         [
@@ -333,7 +333,7 @@
                               }
                             },
                             {
-                              "tag": "NetworkApplication",
+                              "tag": "FreeVariable",
                               "contents": [
                                 "falsey",
                                 [
@@ -383,7 +383,7 @@
                                   "tag": "Addition",
                                   "contents": [
                                     {
-                                      "tag": "NetworkApplication",
+                                      "tag": "FreeVariable",
                                       "contents": [
                                         "falsey",
                                         [
@@ -395,7 +395,7 @@
                                       ]
                                     },
                                     {
-                                      "tag": "NetworkApplication",
+                                      "tag": "FreeVariable",
                                       "contents": [
                                         "falsey",
                                         [
@@ -411,7 +411,7 @@
                               }
                             },
                             {
-                              "tag": "NetworkApplication",
+                              "tag": "FreeVariable",
                               "contents": [
                                 "falsey",
                                 [
@@ -486,7 +486,7 @@
                       "tag": "Addition",
                       "contents": [
                         {
-                          "tag": "NetworkApplication",
+                          "tag": "FreeVariable",
                           "contents": [
                             "validInput",
                             [
@@ -498,7 +498,7 @@
                           ]
                         },
                         {
-                          "tag": "NetworkApplication",
+                          "tag": "FreeVariable",
                           "contents": [
                             "validInput",
                             [
@@ -514,7 +514,7 @@
                   }
                 },
                 {
-                  "tag": "NetworkApplication",
+                  "tag": "FreeVariable",
                   "contents": [
                     "correctOutput",
                     [
