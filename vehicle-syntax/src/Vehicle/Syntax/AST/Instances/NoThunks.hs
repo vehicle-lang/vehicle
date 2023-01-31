@@ -63,6 +63,7 @@ instance NoThunks FromRatDomain
 instance NoThunks FromVecDomain
 instance NoThunks FoldDomain
 instance NoThunks MapDomain
+instance NoThunks QuantifierDomain
 instance NoThunks Builtin
 instance NoThunks Resource
 
