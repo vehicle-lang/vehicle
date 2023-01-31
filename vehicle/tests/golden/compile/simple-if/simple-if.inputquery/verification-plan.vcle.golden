@@ -7,15 +7,37 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              true,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
                   "userVar": [
                     [
                       0,
@@ -39,58 +61,11 @@
                     ]
                   ]
                 }
-              }
-            ]
+              ]
+            }
           },
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "unLinearExpr": [
-                                1,
-                                -1,
-                                0,
-                                0
-                              ]
-                            }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "tag": "Query",
-                "contents": [
-                  true,
-                  {
-                    "tag": "Trivial",
-                    "contents": true
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+          "negated": true
+        }
       }
     }
   ],
@@ -102,15 +77,13 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Disjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              false,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
                   "userVar": [
                     [
                       0,
@@ -133,67 +106,44 @@
                       "NO_FILE"
                     ]
                   ]
-                }
-              }
-            ]
-          },
-          {
-            "tag": "Disjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": [
-                  false,
-                  {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "FourierMotzkinSolution",
-                            "contents": {
-                              "upperBounds": [
-                                {
-                                  "assertionRel": "LessThanOrEqualTo",
-                                  "assertionExpr": {
-                                    "unLinearExpr": [
-                                      1,
-                                      0,
-                                      0,
-                                      0
-                                    ]
-                                  }
-                                }
-                              ],
-                              "lowerBounds": []
+                },
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "unLinearExpr": [
+                                  1,
+                                  0,
+                                  0,
+                                  0
+                                ]
+                              }
                             }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "tag": "Query",
-                "contents": [
-                  false,
-                  {
-                    "tag": "Trivial",
-                    "contents": false
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+                          ],
+                          "lowerBounds": []
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              ]
+            }
+          },
+          "negated": false
+        }
       }
     }
   ],
@@ -205,15 +155,37 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Disjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": [
-              false,
-              {
-                "tag": "NonTrivial",
-                "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "unLinearExpr": [
+                            1,
+                            -1,
+                            0,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
                   "userVar": [
                     [
                       0,
@@ -237,58 +209,11 @@
                     ]
                   ]
                 }
-              }
-            ]
+              ]
+            }
           },
-          {
-            "tag": "Disjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": [
-                  false,
-                  {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "unLinearExpr": [
-                                1,
-                                -1,
-                                0,
-                                0
-                              ]
-                            }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "tag": "Query",
-                "contents": [
-                  false,
-                  {
-                    "tag": "Trivial",
-                    "contents": false
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+          "negated": false
+        }
       }
     }
   ]

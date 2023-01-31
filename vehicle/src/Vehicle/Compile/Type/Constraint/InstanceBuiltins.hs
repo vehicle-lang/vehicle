@@ -81,7 +81,7 @@ candidates =
                 forAll "l" tLin $ \l ->
                   forAllNat $ \n ->
                     forAllInstance "eq" (hasEq Eq l t1 t2) $ \eq ->
-                      free (identifierOf StdEqualsVector) @@@ [t1, t2] .@@@ [l] @@@ [n] @@@@ [eq]
+                      free (identifierOf StdEqualsVector) @@@ [t1, t2] @@@ [n] @@@@ [eq]
           ),
           ------------
           -- HasNotEq --
@@ -117,7 +117,7 @@ candidates =
                 forAll "l" tLin $ \l ->
                   forAllNat $ \n ->
                     forAllInstance "eq" (hasEq Neq l t1 t2) $ \eq ->
-                      free (identifierOf StdNotEqualsVector) .@@@ [l] @@@ [t1, t2, n] @@@@ [eq]
+                      free (identifierOf StdNotEqualsVector) @@@ [t1, t2, n] @@@@ [eq]
           ),
           ------------
           -- HasNot --

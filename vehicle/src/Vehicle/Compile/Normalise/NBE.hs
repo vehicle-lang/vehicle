@@ -5,15 +5,16 @@
 
 module Vehicle.Compile.Normalise.NBE
   ( whnf,
-    evalBuiltin,
-    evalApp,
     eval,
+    evalApp,
+    evalBuiltin,
     liftEnvOverBinder,
     forceExpr,
+    reeval,
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map qualified as Map (lookup)
@@ -27,7 +28,13 @@ import Vehicle.Compile.Type.VariableContext (DeclSubstitution, MetaSubstitution)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
-whnf :: MonadCompile m => DBLevel -> DeclSubstitution -> MetaSubstitution -> CheckedExpr -> m NormExpr
+whnf ::
+  MonadCompile m =>
+  DBLevel ->
+  DeclSubstitution ->
+  MetaSubstitution ->
+  CheckedExpr ->
+  m NormExpr
 whnf dbLevel declCtx metaSubst e = do
   let env = mkNoOpEnv dbLevel
   runReaderT (eval env e) (declCtx, metaSubst)
@@ -58,17 +65,10 @@ eval env expr = do
     Pi p binder body ->
       VPi p <$> evalBinder env binder <*> eval (liftEnvOverBinder p env) body
     Var p v -> case v of
-      Bound i -> case lookupVar env i of
-        Just value -> return value
-        Nothing ->
-          compilerDeveloperError $
-            "Environment of size"
-              <+> pretty (length env)
-              <+> "in which NBE is being performed"
-              <+> "is smaller than the found DB index"
-              <+> pretty i
+      Bound i -> i `lookupIn` env
       Free ident -> do
-        declExpr <- asks (Map.lookup ident . fst)
+        (declCtx, _) <- ask
+        let declExpr = Map.lookup ident declCtx
         return $ case declExpr of
           Just x -> x
           Nothing -> VFreeVar p ident []
@@ -86,7 +86,7 @@ eval env expr = do
 evalBinder :: MonadNorm m => Env -> CheckedBinder -> m NormBinder
 evalBinder env = traverse (eval env)
 
-evalApp :: MonadNorm m => NormExpr -> [GenericArg NormExpr] -> m NormExpr
+evalApp :: MonadNorm m => NormExpr -> Spine -> m NormExpr
 evalApp fun [] = return fun
 evalApp fun (arg : args) = case fun of
   VMeta p v spine -> return $ VMeta p v (spine <> (arg : args))
@@ -103,73 +103,101 @@ evalApp fun (arg : args) = case fun of
   VPi {} -> unexpectedExprError currentPass "VPi"
   VLiteral {} -> unexpectedExprError currentPass "VLiteral"
 
--- Separate builtins from syntactic sugar
+lookupIn :: MonadCompile m => DBIndex -> Env -> m NormExpr
+lookupIn i env = case lookupVar env i of
+  Just value -> return value
+  Nothing ->
+    compilerDeveloperError $
+      "Environment of size"
+        <+> pretty (length env)
+        <+> "in which NBE is being performed"
+        <+> "is smaller than the found DB index"
+        <+> pretty i
+
+-----------------------------------------------------------------------------
+-- Full evaluation of builtins
+
+-- TODO Separate builtins from syntactic sugar
 --
--- Pass in the right number of arguments ensuring all literals
+-- TODO Pass in the right number of arguments ensuring all literals
+evalBuiltin :: MonadNorm m => Provenance -> Builtin -> Spine -> m NormExpr
+evalBuiltin p b args
+  | isDerived b = evalDerivedBuiltin p b args
+  | otherwise = do
+      let relevantArgs = filter isRelevant args
 
-evalBuiltin ::
-  MonadNorm m =>
-  Provenance ->
-  Builtin ->
-  [GenericArg NormExpr] ->
-  m NormExpr
-evalBuiltin p b args = case b of
-  -- TODO rearrange builtin constructors so we don't have to do this.
-  Constructor {} -> return $ VBuiltin p b args
-  Not -> evalNot p args
-  And -> evalAnd p args
-  Or -> evalOr p args
-  FromNat v dom -> case dom of
-    FromNatToIndex -> evalFromNatToIndex v p args
-    FromNatToNat -> evalFromNatToNat v p args
-    FromNatToInt -> evalFromNatToInt v p args
-    FromNatToRat -> evalFromNatToRat v p args
-  FromRat dom -> case dom of
-    FromRatToRat -> evalFromRatToRat p args
-  Neg dom -> case dom of
-    NegInt -> evalNegInt p args
-    NegRat -> evalNegRat p args
-  Add dom -> case dom of
-    AddNat -> evalAddNat p args
-    AddInt -> evalAddInt p args
-    AddRat -> evalAddRat p args
-  Sub dom -> case dom of
-    SubInt -> evalSubInt p args
-    SubRat -> evalSubRat p args
-  Mul dom -> case dom of
-    MulNat -> evalMulNat p args
-    MulInt -> evalMulInt p args
-    MulRat -> evalMulRat p args
-  Div dom -> case dom of
-    DivRat -> evalDivRat p args
-  Equals dom op -> case dom of
-    EqIndex -> evalEqualityIndex op p args
-    EqNat -> evalEqualityNat op p args
-    EqInt -> evalEqualityInt op p args
-    EqRat -> evalEqualityRat op p args
-  Order dom op -> case dom of
-    OrderIndex -> evalOrderIndex op p args
-    OrderNat -> evalOrderNat op p args
-    OrderInt -> evalOrderInt op p args
-    OrderRat -> evalOrderRat op p args
-  If -> evalIf p args
-  At -> evalAt p args
-  Fold dom -> case dom of
-    FoldList -> evalFoldList p args
-    FoldVector -> evalFoldVector p args
-  -- Derived
-  TypeClassOp op -> evalTypeClassOp p op args
+      let result = case b of
+            Constructor {} -> Nothing
+            Quantifier {} -> Nothing
+            Not -> evalNot p relevantArgs
+            And -> evalAnd p relevantArgs
+            Or -> evalOr p relevantArgs
+            Neg dom -> evalNeg dom p relevantArgs
+            Add dom -> evalAdd dom p relevantArgs
+            Sub dom -> evalSub dom p relevantArgs
+            Mul dom -> evalMul dom p relevantArgs
+            Div dom -> evalDiv dom p relevantArgs
+            Equals dom op -> evalEquals dom op p relevantArgs
+            Order dom op -> evalOrder dom op p relevantArgs
+            If -> evalIf p relevantArgs
+            At -> evalAt p relevantArgs
+            Fold dom -> evalFold dom p relevantArgs
+            Foreach -> evalForeach p relevantArgs
+            FromNat _ dom -> evalFromNat dom p relevantArgs
+            FromRat dom -> evalFromRat dom p relevantArgs
+            FromVec _n dom -> evalFromVec dom p relevantArgs
+            TypeClassOp {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+            Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+            Map {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+
+      -- when (b == And) $ do
+      --   logDebug MaxDetail $ prettyVerbose (VBuiltin p b args)
+      --   case result of
+      --     Nothing -> logDebug MaxDetail "not normalised"
+      --     Just x -> do
+      --       x' <- x
+      --       logDebug MaxDetail (prettyVerbose x')
+
+      case result of
+        Nothing -> return $ VBuiltin p b args
+        Just r -> r
+
+isDerived :: Builtin -> Bool
+isDerived = \case
+  TypeClassOp {} -> True
+  Implies {} -> True
+  Map {} -> True
+  _ -> False
+
+evalDerivedBuiltin :: MonadNorm m => Provenance -> Builtin -> Spine -> m NormExpr
+evalDerivedBuiltin p b args = case b of
+  TypeClassOp op -> evalTypeClassOp op p args
   Implies -> evalImplies p args
-  Map dom -> case dom of
-    MapList -> evalMapList p args
-    MapVector -> evalMapVec p args
-  FromVec n dom -> case dom of
-    FromVecToVec -> evalFromVecToVec n p args
-    FromVecToList -> evalFromVecToList n p args
-  Foreach ->
-    evalForeach p args
+  Map dom -> evalMap dom p args
+  _ -> compilerDeveloperError $ "Invalid derived builtin" <+> quotePretty b
 
-type EvalBuiltin = forall m. MonadNorm m => Provenance -> [GenericArg NormExpr] -> m NormExpr
+-----------------------------------------------------------------------------
+-- Reevaluation
+
+reeval :: MonadNorm m => NormExpr -> m NormExpr
+reeval expr = case expr of
+  VUniverse {} -> return expr
+  VLiteral {} -> return expr
+  VLam {} -> return expr
+  VPi {} -> return expr
+  VLVec p xs spine -> VLVec p <$> traverse reeval xs <*> reevalSpine spine
+  VMeta p m spine -> VMeta p m <$> reevalSpine spine
+  VFreeVar p v spine -> VFreeVar p v <$> reevalSpine spine
+  VBoundVar p v spine -> VBoundVar p v <$> reevalSpine spine
+  VBuiltin p b spine -> evalApp (VBuiltin p b []) =<< reevalSpine spine
+
+reevalSpine :: MonadNorm m => Spine -> m Spine
+reevalSpine = traverse (traverse reeval)
+
+-----------------------------------------------------------------------------
+-- Indvidual builtins
+
+type EvalBuiltin = forall m. MonadNorm m => Provenance -> Spine -> Maybe (m NormExpr)
 
 pattern VBool :: Bool -> GenericArg NormExpr
 pattern VBool x <- ExplicitArg _ (VLiteral _ (LBool x))
@@ -190,201 +218,273 @@ pattern VRat x <- ExplicitArg _ (VLiteral _ (LRat x))
 -- derived builtins we should be able to
 
 evalNot :: EvalBuiltin
-evalNot p = \case
-  [VBool x] -> return $ VLiteral p (LBool (not x))
-  args -> return $ VBuiltin p Not args
+evalNot p e = case e of
+  [VBool x] -> Just $ return $ VLiteral p (LBool (not x))
+  _ -> Nothing
 
 evalAnd :: EvalBuiltin
 evalAnd p = \case
-  [VBool x, VBool y] -> return $ VLiteral p (LBool (x && y))
-  args -> return $ VBuiltin p And args
+  [VBool x, VBool y] -> Just $ return $ VLiteral p (LBool (x && y))
+  _ -> Nothing
 
 evalOr :: EvalBuiltin
 evalOr p = \case
-  [VBool x, VBool y] -> return $ VLiteral p (LBool (x && y))
-  args -> return $ VBuiltin p Or args
+  [VBool x, VBool y] -> Just $ return $ VLiteral p (LBool (x && y))
+  _ -> Nothing
+
+evalNeg :: NegDomain -> EvalBuiltin
+evalNeg = \case
+  NegInt -> evalNegInt
+  NegRat -> evalNegRat
 
 evalNegInt :: EvalBuiltin
 evalNegInt p = \case
-  [VInt x] -> return $ VLiteral p (LInt (-x))
-  args -> return $ VBuiltin p (Neg NegInt) args
+  [VInt x] -> Just $ return $ VLiteral p (LInt (-x))
+  _ -> Nothing
 
 evalNegRat :: EvalBuiltin
 evalNegRat p = \case
-  [VRat x] -> return $ VLiteral p (LRat (-x))
-  args -> return $ VBuiltin p (Neg NegRat) args
+  [VRat x] -> Just $ return $ VLiteral p (LRat (-x))
+  _ -> Nothing
+
+evalAdd :: AddDomain -> EvalBuiltin
+evalAdd = \case
+  AddNat -> evalAddNat
+  AddInt -> evalAddInt
+  AddRat -> evalAddRat
 
 evalAddNat :: EvalBuiltin
 evalAddNat p = \case
-  [VNat x, VNat y] -> return $ VLiteral p (LNat (x + y))
-  args -> return $ VBuiltin p (Add AddNat) args
+  [VNat x, VNat y] -> Just $ return $ VLiteral p (LNat (x + y))
+  _ -> Nothing
 
 evalAddInt :: EvalBuiltin
 evalAddInt p = \case
-  [VInt x, VInt y] -> return $ VLiteral p (LInt (x + y))
-  args -> return $ VBuiltin p (Add AddInt) args
+  [VInt x, VInt y] -> Just $ return $ VLiteral p (LInt (x + y))
+  _ -> Nothing
 
 evalAddRat :: EvalBuiltin
 evalAddRat p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LRat (x + y))
-  args -> return $ VBuiltin p (Add AddRat) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LRat (x + y))
+  _ -> Nothing
+
+evalSub :: SubDomain -> EvalBuiltin
+evalSub = \case
+  SubInt -> evalSubInt
+  SubRat -> evalSubRat
 
 evalSubInt :: EvalBuiltin
 evalSubInt p = \case
-  [VInt x, VInt y] -> return $ VLiteral p (LInt (x - y))
-  args -> return $ VBuiltin p (Sub SubInt) args
+  [VInt x, VInt y] -> Just $ return $ VLiteral p (LInt (x - y))
+  _ -> Nothing
 
 evalSubRat :: EvalBuiltin
 evalSubRat p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LRat (x - y))
-  args -> return $ VBuiltin p (Sub SubRat) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LRat (x - y))
+  _ -> Nothing
+
+evalMul :: MulDomain -> EvalBuiltin
+evalMul = \case
+  MulNat -> evalMulNat
+  MulInt -> evalMulInt
+  MulRat -> evalMulRat
 
 evalMulNat :: EvalBuiltin
 evalMulNat p = \case
-  [VNat x, VNat y] -> return $ VLiteral p (LNat (x * y))
-  args -> return $ VBuiltin p (Mul MulNat) args
+  [VNat x, VNat y] -> Just $ return $ VLiteral p (LNat (x * y))
+  _ -> Nothing
 
 evalMulInt :: EvalBuiltin
 evalMulInt p = \case
-  [VInt x, VInt y] -> return $ VLiteral p (LInt (x * y))
-  args -> return $ VBuiltin p (Mul MulInt) args
+  [VInt x, VInt y] -> Just $ return $ VLiteral p (LInt (x * y))
+  _ -> Nothing
 
 evalMulRat :: EvalBuiltin
 evalMulRat p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LRat (x * y))
-  args -> return $ VBuiltin p (Mul MulRat) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LRat (x * y))
+  _ -> Nothing
+
+evalDiv :: DivDomain -> EvalBuiltin
+evalDiv = \case
+  DivRat -> evalDivRat
 
 evalDivRat :: EvalBuiltin
 evalDivRat p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LRat (x * y))
-  args -> return $ VBuiltin p (Div DivRat) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LRat (x * y))
+  _ -> Nothing
+
+evalOrder :: OrderDomain -> OrderOp -> EvalBuiltin
+evalOrder = \case
+  OrderIndex -> evalOrderIndex
+  OrderNat -> evalOrderNat
+  OrderInt -> evalOrderInt
+  OrderRat -> evalOrderRat
 
 evalOrderIndex :: OrderOp -> EvalBuiltin
 evalOrderIndex op p = \case
-  [VIndex x, VIndex y] -> return $ VLiteral p (LBool (orderOp op x y))
-  args -> return $ VBuiltin p (Order OrderIndex op) args
+  [VIndex x, VIndex y] -> Just $ return $ VLiteral p (LBool (orderOp op x y))
+  _ -> Nothing
 
 evalOrderNat :: OrderOp -> EvalBuiltin
 evalOrderNat op p = \case
-  [VNat x, VNat y] -> return $ VLiteral p (LBool (orderOp op x y))
-  args -> return $ VBuiltin p (Order OrderNat op) args
+  [VNat x, VNat y] -> Just $ return $ VLiteral p (LBool (orderOp op x y))
+  _ -> Nothing
 
 evalOrderInt :: OrderOp -> EvalBuiltin
 evalOrderInt op p = \case
-  [VInt x, VInt y] -> return $ VLiteral p (LBool (orderOp op x y))
-  args -> return $ VBuiltin p (Order OrderInt op) args
+  [VInt x, VInt y] -> Just $ return $ VLiteral p (LBool (orderOp op x y))
+  _ -> Nothing
 
 evalOrderRat :: OrderOp -> EvalBuiltin
 evalOrderRat op p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LBool (orderOp op x y))
-  args -> return $ VBuiltin p (Order OrderRat op) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LBool (orderOp op x y))
+  _ -> Nothing
+
+evalEquals :: EqualityDomain -> EqualityOp -> EvalBuiltin
+evalEquals = \case
+  EqIndex -> evalEqualityIndex
+  EqNat -> evalEqualityNat
+  EqInt -> evalEqualityInt
+  EqRat -> evalEqualityRat
 
 evalEqualityIndex :: EqualityOp -> EvalBuiltin
 evalEqualityIndex op p = \case
-  [VIndex x, VIndex y] -> return $ VLiteral p (LBool (equalityOp op x y))
-  args -> return $ VBuiltin p (Equals EqIndex op) args
+  [_, _, VIndex x, VIndex y] -> Just $ return $ VLiteral p (LBool (equalityOp op x y))
+  _ -> Nothing
 
 evalEqualityNat :: EqualityOp -> EvalBuiltin
 evalEqualityNat op p = \case
-  [VNat x, VNat y] -> return $ VLiteral p (LBool (equalityOp op x y))
-  args -> return $ VBuiltin p (Equals EqNat op) args
+  [VNat x, VNat y] -> Just $ return $ VLiteral p (LBool (equalityOp op x y))
+  _ -> Nothing
 
 evalEqualityInt :: EqualityOp -> EvalBuiltin
 evalEqualityInt op p = \case
-  [VInt x, VInt y] -> return $ VLiteral p (LBool (equalityOp op x y))
-  args -> return $ VBuiltin p (Equals EqInt op) args
+  [VInt x, VInt y] -> Just $ return $ VLiteral p (LBool (equalityOp op x y))
+  _ -> Nothing
 
 evalEqualityRat :: EqualityOp -> EvalBuiltin
 evalEqualityRat op p = \case
-  [VRat x, VRat y] -> return $ VLiteral p (LBool (equalityOp op x y))
-  args -> return $ VBuiltin p (Equals EqRat op) args
+  [VRat x, VRat y] -> Just $ return $ VLiteral p (LBool (equalityOp op x y))
+  _ -> Nothing
 
-evalFromNatToIndex :: Int -> EvalBuiltin
-evalFromNatToIndex v p = \case
-  [_, VNat n, VNat x] -> return $ VLiteral p $ LIndex n x
-  args -> return $ VBuiltin p (FromNat v FromNatToIndex) args
+evalFromNat :: FromNatDomain -> EvalBuiltin
+evalFromNat = \case
+  FromNatToIndex -> evalFromNatToIndex
+  FromNatToNat -> evalFromNatToNat
+  FromNatToInt -> evalFromNatToInt
+  FromNatToRat -> evalFromNatToRat
 
-evalFromNatToNat :: Int -> EvalBuiltin
-evalFromNatToNat v p = \case
-  [_, ExplicitArg _ x] -> return x
-  args -> return $ VBuiltin p (FromNat v FromNatToNat) args
+evalFromNatToIndex :: EvalBuiltin
+evalFromNatToIndex p = \case
+  [ImplicitArg _ (VLiteral _ (LNat n)), VNat x] -> Just $ return $ VLiteral p $ LIndex n x
+  _ -> Nothing
 
-evalFromNatToInt :: Int -> EvalBuiltin
-evalFromNatToInt v p = \case
-  [_, VNat x] -> return $ VLiteral p $ LInt x
-  args -> return $ VBuiltin p (FromNat v FromNatToInt) args
+evalFromNatToNat :: EvalBuiltin
+evalFromNatToNat _p = \case
+  [ExplicitArg _ x] -> Just $ return x
+  _ -> Nothing
 
-evalFromNatToRat :: Int -> EvalBuiltin
-evalFromNatToRat v p = \case
-  [_, VNat x] -> return $ VLiteral p $ LRat (fromIntegral x)
-  args -> return $ VBuiltin p (FromNat v FromNatToRat) args
+evalFromNatToInt :: EvalBuiltin
+evalFromNatToInt p = \case
+  [VNat x] -> Just $ return $ VLiteral p $ LInt x
+  _ -> Nothing
+
+evalFromNatToRat :: EvalBuiltin
+evalFromNatToRat p = \case
+  [VNat x] -> Just $ return $ VLiteral p $ LRat (fromIntegral x)
+  _ -> Nothing
+
+evalFromRat :: FromRatDomain -> EvalBuiltin
+evalFromRat = \case
+  FromRatToRat -> evalFromRatToRat
 
 evalFromRatToRat :: EvalBuiltin
-evalFromRatToRat p = \case
-  [ExplicitArg _ x] -> return x
-  args -> return $ VBuiltin p (FromRat FromRatToRat) args
+evalFromRatToRat _ = \case
+  [ExplicitArg _ x] -> Just $ return x
+  _ -> Nothing
 
 evalIf :: EvalBuiltin
-evalIf p = \case
-  [_, VBool True, e1, _e2] -> return $ argExpr e1
-  [_, VBool False, _e1, e2] -> return $ argExpr e2
-  args -> return $ VBuiltin p If args
+evalIf _p = \case
+  [_, VBool True, e1, _e2] -> Just $ return $ argExpr e1
+  [_, VBool False, _e1, e2] -> Just $ return $ argExpr e2
+  _ -> Nothing
 
 evalAt :: EvalBuiltin
-evalAt p = \case
-  [_, _, ExplicitArg _ (VLVec _ es _), VIndex i] -> return $ es !! fromIntegral i
-  args -> return $ VBuiltin p At args
+evalAt _p = \case
+  [_, _, ExplicitArg _ (VLVec _ es _), VIndex i] -> Just $ return $ es !! fromIntegral i
+  _ -> Nothing
+
+evalFold :: FoldDomain -> EvalBuiltin
+evalFold = \case
+  FoldList -> evalFoldList
+  FoldVector -> evalFoldVector
 
 evalFoldList :: EvalBuiltin
 evalFoldList p = \case
-  [_, _, _f, e, ExplicitArg _ (VConstructor _ Nil [_])] -> do
-    return $ argExpr e
-  [toT, fromT, f, e, ExplicitArg _ (VConstructor _ Cons [_, x, xs'])] -> do
-    r <- evalFoldList p [toT, fromT, f, e, xs']
+  [_, _, _f, e, ExplicitArg _ (VConstructor _ Nil [_])] ->
+    Just $ return $ argExpr e
+  [toT, fromT, f, e, ExplicitArg _ (VConstructor _ Cons [_, x, xs'])] -> Just $ do
+    r <- evalBuiltin p (Fold FoldList) [toT, fromT, f, e, xs']
     evalApp (argExpr f) [x, ExplicitArg p r]
-  args -> do
-    return $ VBuiltin p (Fold FoldList) args
+  _ -> Nothing
 
 evalFoldVector :: EvalBuiltin
 evalFoldVector p = \case
-  [f, e, ExplicitArg _ (VLVec _ v _)] ->
-    foldrM f' (argExpr e) v
+  [_, _, _, f, e, ExplicitArg _ (VLVec _ v _)] ->
+    Just $
+      foldrM f' (argExpr e) v
     where
       f' x r = evalApp (argExpr f) [ExplicitArg p x, ExplicitArg p r]
-  args ->
-    return $ VBuiltin p (Fold FoldVector) args
+  _ -> Nothing
 
 evalForeach :: EvalBuiltin
 evalForeach p = \case
-  [tRes, VNat n, ExplicitArg _ f] -> do
+  [tRes, ImplicitArg _ (VLiteral _ (LNat n)), ExplicitArg _ f] -> Just $ do
     let fn i = evalApp f [ExplicitArg p (VLiteral p (LIndex n i))]
     xs <- traverse fn [0 .. (n - 1 :: Int)]
     return $ mkVLVec p xs (argExpr tRes)
-  args -> return $ VBuiltin p Foreach args
+  _ -> Nothing
 
-evalTypeClassOp ::
-  MonadNorm m =>
-  Provenance ->
-  TypeClassOp ->
-  [GenericArg NormExpr] ->
-  m NormExpr
-evalTypeClassOp _p _op args = do
-  let (inst, remainingArgs) = findInstanceArg args
-  evalApp inst remainingArgs
+evalFromVec :: FromVecDomain -> EvalBuiltin
+evalFromVec = \case
+  FromVecToVec -> evalFromVecToVec
+  FromVecToList -> evalFromVecToList
+
+evalFromVecToList :: EvalBuiltin
+evalFromVecToList p args = case args of
+  [tElem, ExplicitArg _ (VLVec _ xs _)] -> Just $ return $ mkVList p (argExpr tElem) xs
+  _ -> Nothing
+
+evalFromVecToVec :: EvalBuiltin
+evalFromVecToVec _p = \case
+  [_, ExplicitArg _ e] -> Just $ return e
+  _ -> Nothing
 
 -----------------------------------------------------------------------------
 -- Derived
 
+type EvalDerived = forall m. MonadNorm m => Provenance -> Spine -> m NormExpr
+
 -- TODO define in terms of language
 
-evalImplies :: EvalBuiltin
+evalTypeClassOp :: TypeClassOp -> EvalDerived
+evalTypeClassOp _p _op args = do
+  let (inst, remainingArgs) = findInstanceArg args
+  evalApp inst remainingArgs
+
+evalImplies :: EvalDerived
 evalImplies p = \case
   [e1, e2] -> do
-    ne1 <- ExplicitArg p <$> evalNot p [e1]
-    evalOr p [ne1, e2]
+    ne1 <- ExplicitArg p <$> evalBuiltin p Not [e1]
+    evalBuiltin p Or [ne1, e2]
   args -> return $ VBuiltin p Implies args
 
-evalMapList :: EvalBuiltin
+evalMap :: MapDomain -> EvalDerived
+evalMap = \case
+  MapList -> evalMapList
+  MapVector -> evalMapVec
+
+evalMapList :: EvalDerived
 evalMapList p = \case
   [_, tTo, _f, ExplicitArg _ (VConstructor _ Nil _)] ->
     return $ VConstructor p Nil [tTo]
@@ -394,22 +494,12 @@ evalMapList p = \case
     return $ VConstructor p Cons [tTo, x', xs']
   args -> return $ VBuiltin p (Map MapList) args
 
-evalMapVec :: EvalBuiltin
+evalMapVec :: EvalDerived
 evalMapVec p = \case
   [_n, _t1, t2, ExplicitArg _ f, ExplicitArg _ (VLVec _ xs _)] -> do
     xs' <- traverse (\x -> evalApp f [ExplicitArg p x]) xs
     return $ mkVLVec p xs' (argExpr t2)
   args -> return $ VBuiltin p (Map MapVector) args
-
-evalFromVecToList :: Int -> EvalBuiltin
-evalFromVecToList n p args = return $ case args of
-  [tElem, ExplicitArg _ (VLVec _ xs _)] -> mkVList p (argExpr tElem) xs
-  _ -> VBuiltin p (FromVec n FromVecToList) args
-
-evalFromVecToVec :: Int -> EvalBuiltin
-evalFromVecToVec n p = \case
-  [ExplicitArg _ e] -> return e
-  args -> return $ VBuiltin p (FromVec n FromVecToVec) args
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
@@ -427,7 +517,7 @@ forceExpr = go
 
     goMeta :: MetaID -> Spine -> m (Maybe NormExpr, MetaSet)
     goMeta m spine = do
-      metaSubst <- asks snd
+      (_, metaSubst) <- ask
       case MetaMap.lookup m metaSubst of
         Just solution -> do
           normMetaExpr <- evalApp (normalised solution) spine
@@ -463,6 +553,38 @@ forceExpr = go
           let reduced = isJust maybeResult
           return (result, reduced, blockingMetas)
 
+{-
+-----------------------------------------------------------------------------
+-- Blocking
+
+-- | A generic scheme for evaluating builtins.
+type EvaluationBlocker = NormExpr -> Bool
+
+-- | A manually blocked expression. This is a massive hack that relies on us
+-- constructing a lambda expression that can never be written by the user,
+-- and therefore never generated by user code. We may eventually need to
+-- break this out into its own constructor somehow.
+pattern BlockedExpr :: Provenance -> Env -> DBExpr -> NormExpr
+pattern BlockedExpr p env expr = VLam p BlockingBinder env expr
+
+pattern BlockingBinder :: NormBinder
+pattern BlockingBinder <- Binder _ BlockingBinderDisplayFrom Explicit Relevant () (VLiteral _ LUnit)
+  where BlockingBinder = Binder mempty BlockingBinderDisplayFrom Explicit Relevant () (VLiteral mempty LUnit)
+
+pattern BlockingBinderDisplayFrom :: BinderDisplayForm
+pattern BlockingBinderDisplayFrom = BinderDisplayForm (OnlyName "@BLOCKED@") True
+
+noBlocking :: EvaluationBlocker
+noBlocking = const False
+
+blockOnBooleanPropositions :: EvaluationBlocker
+blockOnBooleanPropositions = \case
+  VBuiltin _ b _ -> case b of
+    Equals{} -> True
+    Order{} -> True
+    _ -> False
+  _ -> False
+-}
 -----------------------------------------------------------------------------
 -- Other
 

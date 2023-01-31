@@ -1181,7 +1181,7 @@ instance MeaningfulError CompileError where
                 "try avoiding it, otherwise please open an issue on the"
                   <+> "Vehicle issue tracker."
           }
-    UnsupportedVariableType target ident p name t supportedTypes ->
+    UnsupportedVariableType target ident p name problemType baseType supportedTypes ->
       UError $
         UserError
           { provenance = p,
@@ -1191,10 +1191,18 @@ instance MeaningfulError CompileError where
                 <+> "contains a quantified variable"
                 <+> quotePretty name
                 <+> "of type"
-                <+> squotes (prettyFriendly (WithContext t emptyDBCtx))
+                <+> squotes (prettyFriendly (WithContext baseType emptyDBCtx))
                 <+> "which is not currently supported"
                 <+> "by"
-                <+> pretty target <> ".",
+                <+> pretty target
+                  <> "."
+                  <> ( if baseType == problemType
+                         then ""
+                         else
+                           " In particular the element type"
+                             <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
+                             <+> "is not supported."
+                     ),
             fix =
               Just $
                 "try switching the variable to one of the following supported types:"

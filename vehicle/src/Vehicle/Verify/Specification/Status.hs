@@ -6,6 +6,7 @@ import Data.Map qualified as Map
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
+import Vehicle.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Specification
@@ -30,7 +31,7 @@ instance IsVerified SatisfiabilityStatus where
     SAT {} -> True
     UnSAT -> False
 
-instance IsVerified (NegationStatus, Query SatisfiabilityStatus) where
+instance IsVerified (NegationStatus, MaybeTrivial SatisfiabilityStatus) where
   isVerified (negated, sat) = evaluateQuery negated isVerified sat
 
 --------------------------------------------------------------------------------
@@ -38,7 +39,7 @@ instance IsVerified (NegationStatus, Query SatisfiabilityStatus) where
 
 data PropertyStatus
   = MultiPropertyStatus [PropertyStatus]
-  | SinglePropertyStatus (NegationStatus, Query SatisfiabilityStatus)
+  | SinglePropertyStatus (NegationStatus, MaybeTrivial SatisfiabilityStatus)
   deriving (Generic)
 
 instance FromJSON PropertyStatus

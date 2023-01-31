@@ -9,11 +9,18 @@ import Data.Hashable (Hashable (..))
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 
 instance Hashable DBArg
 
 instance Hashable DBExpr where
   hashWithSalt s e = hashWithSalt s (toCoDBExpr e)
+
+instance Hashable NormArg
+
+instance Hashable NormBinder
+
+instance Hashable NormExpr
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool

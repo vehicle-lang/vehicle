@@ -117,7 +117,6 @@ library
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
-    Vehicle.Compile.Queries.DNF
     Vehicle.Compile.Queries.FourierMotzkinElimination
     Vehicle.Compile.Queries.GaussianElimination
     Vehicle.Compile.Queries.IfElimination
@@ -125,7 +124,6 @@ library
     Vehicle.Compile.Queries.LinearSatisfactionProblem
     Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.NetworkElimination
-    Vehicle.Compile.Queries.QuantifierLifting
     Vehicle.Compile.Queries.Variable
     Vehicle.Compile.Queries.VariableReconstruction
     Vehicle.Compile.Resource
@@ -134,6 +132,7 @@ library
     Vehicle.Compile.Type
     Vehicle.Export
     Vehicle.Expr.AlphaEquivalence
+    Vehicle.Expr.Boolean
     Vehicle.Expr.CoDeBruijn
     Vehicle.Expr.CoDeBruijn.Conversion
     Vehicle.Expr.CoDeBruijn.PositionTree
@@ -169,7 +168,6 @@ library
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.Utils
-    Vehicle.Compile.QuantifierAnalysis
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Auxiliary
     Vehicle.Compile.Type.Bidirectional
@@ -315,10 +313,8 @@ library vehicle-unit-tests-common
     Vehicle.Test.Unit.Compile.CoDeBruijn
     Vehicle.Test.Unit.Compile.CommandLine
     Vehicle.Test.Unit.Compile.DeBruijn
-    Vehicle.Test.Unit.Compile.IfElimination
     Vehicle.Test.Unit.Compile.Normalisation
     Vehicle.Test.Unit.Compile.PositionTree
-    Vehicle.Test.Unit.Compile.QuantifierLifting
 
   build-depends:
     , base                  >=4.13 && <5
