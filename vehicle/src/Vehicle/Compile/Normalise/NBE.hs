@@ -120,49 +120,61 @@ lookupIn i env = case lookupVar env i of
 -- TODO Separate builtins from syntactic sugar
 --
 -- TODO Pass in the right number of arguments ensuring all literals
-
 evalBuiltin :: MonadNorm m => Provenance -> Builtin -> Spine -> m NormExpr
-evalBuiltin p b args = case b of
-  -- TODO rearrange builtin constructors so we don't have to do this.
+evalBuiltin p b args
+  | isDerived b = evalDerivedBuiltin p b args
+  | otherwise = do
+      let relevantArgs = filter isRelevant args
 
-  -- Derived
+      let result = case b of
+            Constructor {} -> Nothing
+            Quantifier {} -> Nothing
+            Not -> evalNot p relevantArgs
+            And -> evalAnd p relevantArgs
+            Or -> evalOr p relevantArgs
+            Neg dom -> evalNeg dom p relevantArgs
+            Add dom -> evalAdd dom p relevantArgs
+            Sub dom -> evalSub dom p relevantArgs
+            Mul dom -> evalMul dom p relevantArgs
+            Div dom -> evalDiv dom p relevantArgs
+            Equals dom op -> evalEquals dom op p relevantArgs
+            Order dom op -> evalOrder dom op p relevantArgs
+            If -> evalIf p relevantArgs
+            At -> evalAt p relevantArgs
+            Fold dom -> evalFold dom p relevantArgs
+            Foreach -> evalForeach p relevantArgs
+            FromNat _ dom -> evalFromNat dom p relevantArgs
+            FromRat dom -> evalFromRat dom p relevantArgs
+            FromVec _n dom -> evalFromVec dom p relevantArgs
+            TypeClassOp {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+            Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+            Map {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
+
+      -- when (b == And) $ do
+      --   logDebug MaxDetail $ prettyVerbose (VBuiltin p b args)
+      --   case result of
+      --     Nothing -> logDebug MaxDetail "not normalised"
+      --     Just x -> do
+      --       x' <- x
+      --       logDebug MaxDetail (prettyVerbose x')
+
+      case result of
+        Nothing -> return $ VBuiltin p b args
+        Just r -> r
+
+isDerived :: Builtin -> Bool
+isDerived = \case
+  TypeClassOp {} -> True
+  Implies {} -> True
+  Map {} -> True
+  _ -> False
+
+evalDerivedBuiltin :: MonadNorm m => Provenance -> Builtin -> Spine -> m NormExpr
+evalDerivedBuiltin p b args = case b of
   TypeClassOp op -> evalTypeClassOp op p args
   Implies -> evalImplies p args
   Map dom -> evalMap dom p args
-  _ -> do
-    let relevantArgs = filter isRelevant args
-    let result = case b of
-          Constructor {} -> Nothing
-          Quantifier {} -> Nothing
-          Not -> evalNot p relevantArgs
-          And -> evalAnd p relevantArgs
-          Or -> evalOr p relevantArgs
-          Neg dom -> evalNeg dom p relevantArgs
-          Add dom -> evalAdd dom p relevantArgs
-          Sub dom -> evalSub dom p relevantArgs
-          Mul dom -> evalMul dom p relevantArgs
-          Div dom -> evalDiv dom p relevantArgs
-          Equals dom op -> evalEquals dom op p relevantArgs
-          Order dom op -> evalOrder dom op p relevantArgs
-          If -> evalIf p relevantArgs
-          At -> evalAt p relevantArgs
-          Fold dom -> evalFold dom p relevantArgs
-          Foreach -> evalForeach p relevantArgs
-          FromNat _ dom -> evalFromNat dom p relevantArgs
-          FromRat dom -> evalFromRat dom p relevantArgs
-          FromVec _n dom -> evalFromVec dom p relevantArgs
-
-    -- when (b == And) $ do
-    --   logDebug MaxDetail $ prettyVerbose (VBuiltin p b args)
-    --   case result of
-    --     Nothing -> logDebug MaxDetail "not normalised"
-    --     Just x -> do
-    --       x' <- x
-    --       logDebug MaxDetail (prettyVerbose x')
-
-    case result of
-      Nothing -> return $ VBuiltin p b args
-      Just r -> r
+  _ -> compilerDeveloperError $ "Invalid derived builtin" <+> quotePretty b
 
 -----------------------------------------------------------------------------
 -- Reevaluation
