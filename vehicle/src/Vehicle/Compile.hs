@@ -27,7 +27,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Queries (QueryData, compileToQueries)
+import Vehicle.Compile.Queries (compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
 import Vehicle.Libraries
@@ -197,7 +197,7 @@ typeCheckOrLoadProg ::
   DeclarationNames ->
   m TypedProg
 typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
-  spec <- readSpecification specificationFile
+  spec <- Vehicle.Verify.Specification.IO.readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
