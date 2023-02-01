@@ -46,9 +46,10 @@ def call_vehicle_to_generate_loss_json(
         args += make_resource_arguments(networks, "network")
         args += make_resource_arguments(datasets, "dataset")
         args += make_resource_arguments(parameters, "parameter")
-        #'--property', function_name]
+        args += ["--declaration", function_name]
         call_vehicle(args)
         loss_function_json = load_json(path_to_json)
+
     return loss_function_json
 
 

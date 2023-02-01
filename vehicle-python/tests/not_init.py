@@ -35,7 +35,9 @@ def generate_loss_function(
     )
     empty_context: List = []
     loss_metadata = LossMetadata(networks, datasets, parameters, quantifier_sampling)
-    loss = LossFunctionTranslation().to_loss_function(loss_metadata, json_dict)
+    loss = LossFunctionTranslation().to_loss_function(
+        function_name, loss_metadata, json_dict
+    )
 
     return loss(empty_context)
 
@@ -52,34 +54,28 @@ class LossMetadata:
         self.datasets = datasets
         self.parameters = parameters
         self.quantifier_sampling = quantifier_sampling
+        self.declaration_context: Dict[Any, Any] = {}
 
 
 class LossFunctionTranslation:
     def to_loss_function(
-        self, metadata: LossMetadata, json_dict: Dict[Any, Any]
+        self, function_name: str, metadata: LossMetadata, json_dict: Dict[Any, Any]
     ) -> Callable[..., Any]:
-        declaration_context: Dict[Any, Any] = {}
-        # For now we only translate one function, but we'll need to handle a list of functions:
-        # [
-        #   [name, {json}],
-        #   ...,
-        #   [name, {json}]
-        # ]
-        # for _ in json_dict:
-        # declaration_loss = self._translate_expression(resources, json_dict)
-        json_dict = json_dict[0]
-        if json_dict[1]["tag"] == "Lambda":
-            declaration_loss = self._translate_expression(metadata, json_dict[1])
-        else:
-            # If the expression that we are translating is not a function in vehicle specification, then translaiting
-            # naively will result in a constant being returned.
-            # This is a problem because, implicitly, the expression is a function in terms of the networks
-            # passed in via the metadata and therefore should still change if the network changes.
-            # To fix this we therefore wrap it in a lambda with no arguments to delay evaluation.
-            declaration_loss = lambda context: lambda: self._translate_expression(
-                metadata, json_dict[1]
-            )(context)
-        return declaration_loss
+        for [ident, decl] in json_dict:
+            if decl["tag"] == "Lambda":
+                declaration_loss = self._translate_expression(metadata, decl)
+            else:
+                # If the expression that we are translating is not a function in vehicle specification, then translating
+                # naively will result in a constant being returned.
+                # This is a problem because, implicitly, the expression is a function in terms of the networks
+                # passed in via the metadata and therefore should still change if the network changes.
+                # To fix this we therefore wrap it in a lambda with no arguments to delay evaluation.
+                declaration_loss = lambda context: lambda: self._translate_expression(
+                    metadata, decl
+                )(context)
+
+            metadata.declaration_context[ident] = declaration_loss
+        return metadata.declaration_context[function_name]
 
     def _translate_expression(
         self, metadata: LossMetadata, json_dict: Dict[Any, Any]
@@ -116,6 +112,8 @@ class LossFunctionTranslation:
             return self._translate_at(contents, metadata)
         elif tag == "NetworkApplication":
             return self._translate_network(contents, metadata)
+        elif tag == "FreeVariable":
+            return self._translate_free_variable(contents, metadata)
         elif tag == "Quantifier":
             return self._translate_quantifier(contents, metadata)
         elif tag == "Lambda":
@@ -124,12 +122,19 @@ class LossFunctionTranslation:
             return self._translate_let(contents, metadata)
         elif tag == "Domain":
             return self._translate_domain(contents, metadata)
+        elif tag == "ExponentialAnd":
+            return self._translate_exponential_and(contents, metadata)
         else:
             raise TypeError(f'Unknown tag "{tag}"')
 
     def _translate_exponential_and(self, contents: Dict[Any, Any]) -> Callable[..., Any]:
         def result_func(context: Any) -> Any:
-            min_val = min(contents)
+            for i in range (context.len):
+                loss[i] = self._translate_expression(metadata, contents[i])
+            min_val = min(loss)
+        def result_func(context: Any) -> Any:
+            return loss_1(context) + loss_2(context)
+            
 
         return result_func
 
@@ -280,6 +285,19 @@ class LossFunctionTranslation:
 
         return result_func
 
+    def _translate_free_variable(
+        self, contents: Dict[Any, Any], metadata: LossMetadata
+    ) -> Callable[..., Any]:
+        model = metadata.declaration_context[contents[0]]
+        input_losses = [self._translate_expression(metadata, c) for c in contents[1]]
+
+        def result_func(context: Any) -> Any:
+            inputs = [l(context) for l in input_losses]
+            output = model(inputs)
+            return output
+
+        return result_func
+
     def _translate_quantifier(
         self, contents: Dict[Any, Any], metadata: LossMetadata
     ) -> Callable[..., Any]:
@@ -287,7 +305,6 @@ class LossFunctionTranslation:
         variable_name = contents[1]
         domain = contents[2]
         body = contents[3]
-
         body_loss = self._translate_expression(metadata, body)
 
         if variable_name in metadata.quantifier_sampling:
@@ -306,6 +323,7 @@ class LossFunctionTranslation:
                 context.insert(0, sample)
                 if contents[0] == "All":
                     max_loss = max(max_loss, body_loss(context))
+                    
                 elif contents[0] == "Any":
                     min_loss = min(min_loss, body_loss(context))
                 context.pop(0)

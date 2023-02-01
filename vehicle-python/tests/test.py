@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from vehicle import generate_loss_function
+from not_init import generate_loss_function
 
 
 def train(
