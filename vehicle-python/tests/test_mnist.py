@@ -6,8 +6,8 @@ from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
 from keras.datasets import mnist
 
-#from vehicle import generate_loss_function
-from not_init import generate_loss_function
+from vehicle import generate_loss_function
+#from not_init import generate_loss_function
 
 
 
