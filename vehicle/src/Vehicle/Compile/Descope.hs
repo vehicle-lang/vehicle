@@ -32,13 +32,13 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed DBProg InputProg where
+instance DescopeNamed (DBProg builtin) (Prog InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed DBDecl InputDecl where
+instance DescopeNamed (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised DBExpr BoundDBCtx) InputExpr where
+instance DescopeNamed (Contextualised (DBExpr builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
@@ -61,13 +61,13 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive DBProg InputProg where
+instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive DBDecl InputDecl where
+instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive DBExpr InputExpr where
+instance DescopeNaive (Expr DBBinding DBIndexVar builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -82,7 +82,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive NormExpr InputExpr where
+instance DescopeNaive (NormExpr builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `NormExpr`s in a readable form.
-descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr -> InputExpr
+descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr builtin -> Expr InputBinding InputVar builtin
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VLiteral l -> Literal p l
@@ -183,14 +183,14 @@ descopeNormExpr f e = case e of
 
 descopeSpine ::
   (Provenance -> DBLevel -> Name) ->
-  Spine ->
-  [InputArg]
+  Spine builtin ->
+  [Arg InputBinding InputVar builtin]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> DBLevel -> Name) ->
-  NormBinder ->
-  InputBinder
+  NormBinder builtin ->
+  Binder InputBinding InputVar builtin
 descopeNormBinder f = fmap (descopeNormExpr f)
 
 descopeDBIndexVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name

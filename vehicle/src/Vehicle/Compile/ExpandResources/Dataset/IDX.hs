@@ -31,7 +31,7 @@ readIDX ::
   FilePath ->
   DeclProvenance ->
   GluedType ->
-  m NormExpr
+  m BasicNormExpr
 readIDX file decl expectedType = do
   contents <- readIDXFile decl file
   case contents of
@@ -70,7 +70,7 @@ parseIDX ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   Vector a ->
-  m NormExpr
+  m BasicNormExpr
 parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems = do
   parseContainer ctx True actualDatasetDims elems (normalised expectedDatasetType)
 
@@ -80,8 +80,8 @@ parseContainer ::
   Bool ->
   [Int] ->
   Vector a ->
-  NormType ->
-  m NormExpr
+  BasicNormType ->
+  m BasicNormExpr
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
   VListType expectedElemType -> parseList ctx expectedElemType actualDims elems
   VVectorType expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
@@ -95,9 +95,9 @@ parseVector ::
   ParseContext m a ->
   [Int] ->
   Vector a ->
-  NormType ->
-  NormExpr ->
-  m NormExpr
+  BasicNormType ->
+  BasicNormExpr ->
+  m BasicNormExpr
 parseVector ctx [] _ _ _ = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
@@ -126,10 +126,10 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  NormType ->
+  BasicNormType ->
   [Int] ->
   Vector a ->
-  m NormExpr
+  m BasicNormExpr
 parseList ctx expectedElemType actualDims actualElems =
   case actualDims of
     [] -> dimensionMismatchError ctx
@@ -143,8 +143,8 @@ parseElement ::
   ParseContext m a ->
   [Int] ->
   Vector a ->
-  NormType ->
-  m NormExpr
+  BasicNormType ->
+  m BasicNormExpr
 parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
   | not (null dims) = dimensionMismatchError ctx
   | Vector.length elems /= 1 = compilerDeveloperError "Malformed IDX file: mismatch between dimensions and acutal data"
@@ -158,7 +158,7 @@ type ParseContext m a =
     ElemParser m a
   )
 
-type ElemParser m a = a -> NormType -> m NormExpr
+type ElemParser m a = a -> BasicNormType -> m BasicNormExpr
 
 doubleElemParser ::
   MonadExpandResources m =>
@@ -199,7 +199,7 @@ partitionData dim dims content = do
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
 
-variableSizeError :: MonadCompile m => ParseContext m a -> NormExpr -> m b
+variableSizeError :: MonadCompile m => ParseContext m a -> BasicNormExpr -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
   throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 

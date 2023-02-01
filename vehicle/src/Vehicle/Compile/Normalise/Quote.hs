@@ -19,7 +19,7 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 class Quote a b where
   quote :: MonadCompile m => Provenance -> DBLevel -> a -> m b
 
-instance Quote NormExpr CheckedExpr where
+instance Quote (NormExpr builtin) (DBExpr builtin) where
   quote p level = \case
     VUniverse u -> return $ Universe p u
     VLiteral l -> return $ Literal p l
@@ -45,18 +45,18 @@ instance Quote NormExpr CheckedExpr where
       -- quotedBody <- quote (level + 1) normBody
       return $ Lam mempty quotedBinder quotedBody
 
-instance Quote NormBinder CheckedBinder where
+instance Quote (NormBinder builtin) (DBBinder builtin) where
   quote p level = traverse (quote p level)
 
-instance Quote NormArg CheckedArg where
+instance Quote (NormArg builtin) (DBArg builtin) where
   quote p level = traverse (quote p level)
 
-quoteSpine :: MonadCompile m => DBLevel -> Provenance -> CheckedExpr -> Spine -> m CheckedExpr
+quoteSpine :: MonadCompile m => DBLevel -> Provenance -> DBExpr builtin -> Spine builtin -> m (DBExpr builtin)
 quoteSpine l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
-envSubst :: BoundCtx CheckedExpr -> Substitution DBExpr
+envSubst :: BoundCtx (DBExpr builtin) -> Substitution (DBExpr builtin)
 envSubst env i = case lookupVar env i of
   Just v -> Right v
   Nothing ->
     developerError $
-      "Mis-sized environment" <+> pretty (show env) <+> "when quoting variable" <+> pretty i
+      "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i

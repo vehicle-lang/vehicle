@@ -9,7 +9,7 @@ import Vehicle.Compile.Print
 import Vehicle.Expr.Normalised
 
 -- | Converts an arithmetic expression to linear normal form.
-convertToLNF :: MonadCompile m => NormExpr -> m NormExpr
+convertToLNF :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 convertToLNF expr =
   logCompilerPass MinDetail "conversion to linear normal form" $ do
     result <- lnf expr
@@ -19,7 +19,7 @@ convertToLNF expr =
 --------------------------------------------------------------------------------
 -- PNF
 
-lnf :: MonadCompile m => NormExpr -> m NormExpr
+lnf :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 lnf expr = case expr of
   VLVec {} -> normalisationError currentPass "LVec"
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -57,7 +57,7 @@ lnf expr = case expr of
   where
     p = mempty
 
-lowerNeg :: NegDomain -> NormExpr -> NormExpr
+lowerNeg :: NegDomain -> BasicNormExpr -> BasicNormExpr
 lowerNeg dom = \case
   -- Base cases
   VBuiltinFunction (Neg _) [e] -> argExpr e

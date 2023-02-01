@@ -23,7 +23,7 @@ parseParameterValue ::
   ParameterValues ->
   DeclProvenance ->
   GluedType ->
-  m NormExpr
+  m BasicNormExpr
 parseParameterValue parameterValues decl@(ident, _) parameterType = do
   implicitParams <- gets inferableParameterContext
 
@@ -53,29 +53,29 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     Nothing -> throwError $ ResourceNotProvided decl Parameter
     Just value -> parser decl value
 
-parseBool :: MonadCompile m => DeclProvenance -> String -> m NormExpr
+parseBool :: MonadCompile m => DeclProvenance -> String -> m BasicNormExpr
 parseBool decl value = case readMaybe value of
   Just v -> return $ VBoolLiteral v
   Nothing -> throwError $ ParameterValueUnparsable decl value Bool
 
-parseNat :: MonadCompile m => DeclProvenance -> String -> m NormExpr
+parseNat :: MonadCompile m => DeclProvenance -> String -> m BasicNormExpr
 parseNat decl value = case readMaybe value of
   Just v
     | v >= 0 -> return $ VNatLiteral v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
-parseInt :: MonadCompile m => DeclProvenance -> String -> m NormExpr
+parseInt :: MonadCompile m => DeclProvenance -> String -> m BasicNormExpr
 parseInt decl value = case readMaybe value of
   Just v -> return $ VIntLiteral v
   Nothing -> throwError $ ParameterValueUnparsable decl value Int
 
-parseRat :: MonadCompile m => DeclProvenance -> String -> m NormExpr
+parseRat :: MonadCompile m => DeclProvenance -> String -> m BasicNormExpr
 parseRat decl value = case rational (pack value) of
   Left _err -> throwError $ ParameterValueUnparsable decl value Rat
   Right (v, _) -> return $ VRatLiteral v
 
-parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m NormExpr
+parseIndex :: MonadCompile m => Int -> DeclProvenance -> String -> m BasicNormExpr
 parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v ->

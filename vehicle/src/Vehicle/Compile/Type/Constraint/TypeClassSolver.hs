@@ -129,9 +129,9 @@ type HasQuantifierSolver =
   TCM m =>
   Quantifier ->
   ConstraintContext ->
-  NormBinder ->
-  NormType ->
-  NormType ->
+  BasicNormBinder ->
+  BasicNormType ->
+  BasicNormType ->
   m TypeClassProgress
 
 solveIndexQuantifier :: HasQuantifierSolver
@@ -228,8 +228,8 @@ solveHasNeg c _ = malformedConstraintError c
 solveNeg ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
   NegDomain ->
   m TypeClassProgress
 solveNeg c arg res dom = do
@@ -260,9 +260,9 @@ type HasMulSolver =
   forall m.
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   m TypeClassProgress
 
 solveMulNat :: HasMulSolver
@@ -305,9 +305,9 @@ solveHasDiv c _ = malformedConstraintError c
 solveRatDiv ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   m TypeClassProgress
 solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
@@ -377,7 +377,7 @@ type HasFromNatSolver =
   TCM m =>
   ConstraintContext ->
   Int ->
-  NormType ->
+  BasicNormType ->
   m TypeClassProgress
 
 solveSimpleFromNat :: FromNatDomain -> HasFromNatSolver
@@ -462,8 +462,8 @@ solveInDomain _ c _ = malformedConstraintError c
 type SubtypingCheck m =
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  [NormType] ->
+  BasicNormType ->
+  [BasicNormType] ->
   m [WithContext Constraint]
 
 checkSubtypes :: SubtypingCheck m
@@ -514,8 +514,8 @@ checkSimpleSubtypes c targetType subTypes = do
 checkBoolTypesEqualUpTo ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  [NormType] ->
+  BasicNormType ->
+  [BasicNormType] ->
   LinearityTypeClass ->
   PolarityTypeClass ->
   m [WithContext Constraint]
@@ -536,8 +536,8 @@ checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
 checkRatTypesEqualUpTo ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  [NormType] ->
+  BasicNormType ->
+  [BasicNormType] ->
   LinearityTypeClass ->
   m [WithContext Constraint]
 checkRatTypesEqualUpTo c targetType subTypes linTC = do
@@ -555,9 +555,9 @@ checkRatTypesEqualUpTo c targetType subTypes linTC = do
 checkOp2SimpleTypesEqual ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   m [WithContext Constraint]
 checkOp2SimpleTypesEqual c arg1 arg2 res = do
   let argsEq = unify c arg1 arg2
@@ -568,8 +568,8 @@ createTC ::
   TCM m =>
   ConstraintContext ->
   TypeClass ->
-  [NormType] ->
-  m (NormExpr, WithContext Constraint)
+  [BasicNormType] ->
+  m (BasicNormExpr, WithContext Constraint)
 createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext c
@@ -584,7 +584,7 @@ createTC c tc argExprs = do
 unifyWithAnnBoolType ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   m (WithContext Constraint, GluedExpr, GluedExpr)
 unifyWithAnnBoolType c t = do
   let p = provenanceOf c
@@ -596,7 +596,7 @@ unifyWithAnnBoolType c t = do
 unifyWithIndexType ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   m (WithContext Constraint, GluedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
@@ -607,7 +607,7 @@ unifyWithIndexType c t = do
 unifyWithAnnRatType ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   m (WithContext Constraint, GluedExpr)
 unifyWithAnnRatType c t = do
   let p = provenanceOf c
@@ -618,7 +618,7 @@ unifyWithAnnRatType c t = do
 unifyWithListType ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   m (WithContext Constraint, GluedType)
 unifyWithListType c t = do
   let p = provenanceOf c
@@ -630,8 +630,8 @@ unifyWithVectorType ::
   TCM m =>
   ConstraintContext ->
   GluedExpr ->
-  NormType ->
-  m (WithContext Constraint, NormType)
+  BasicNormType ->
+  m (WithContext Constraint, BasicNormType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
@@ -646,9 +646,9 @@ freshDimMeta c = do
 solveSimpleComparisonOp ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveSimpleComparisonOp c arg1 arg2 res solution = do
@@ -659,9 +659,9 @@ solveSimpleComparisonOp c arg1 arg2 res solution = do
 solveIndexComparisonOp ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveIndexComparisonOp c arg1 arg2 res solution = do
@@ -673,9 +673,9 @@ solveIndexComparisonOp c arg1 arg2 res solution = do
 solveRatComparisonOp ::
   TCM m =>
   ConstraintContext ->
-  NormType ->
-  NormType ->
-  NormType ->
+  BasicNormType ->
+  BasicNormType ->
+  BasicNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveRatComparisonOp c arg1 arg2 res op = do
@@ -701,7 +701,7 @@ combineAuxiliaryConstraints ::
   BuiltinConstructor ->
   (Provenance -> m GluedExpr) ->
   ConstraintContext ->
-  NormExpr ->
+  BasicNormExpr ->
   [GluedExpr] ->
   m [WithContext Constraint]
 combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
@@ -724,7 +724,7 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
 irrelevant :: [WithContext Constraint] -> TypeClassProgress
 irrelevant newConstraints = Right (newConstraints, VUnitLiteral)
 
-blockOnMetas :: TCM m => [NormExpr] -> m TypeClassProgress
+blockOnMetas :: TCM m => [BasicNormExpr] -> m TypeClassProgress
 blockOnMetas args = do
   let metas = mapMaybe getMeta args
   progress <- blockOn metas
@@ -733,7 +733,7 @@ blockOnMetas args = do
 blockOrThrowErrors ::
   TCM m =>
   ConstraintContext ->
-  [NormExpr] ->
+  [BasicNormExpr] ->
   [CompileError] ->
   m TypeClassProgress
 blockOrThrowErrors _ args err = do
@@ -752,7 +752,7 @@ allOf = flip all
 unless2 :: MonadPlus m => Bool -> a -> m a
 unless2 p a = if not p then return a else mzero
 
-getConcreteList :: NormExpr -> [NormExpr]
+getConcreteList :: BasicNormExpr -> [BasicNormExpr]
 getConcreteList = \case
   VBuiltin (Constructor Nil) _ -> []
   VBuiltin (Constructor Cons) [_, x, xs] -> argExpr x : getConcreteList (argExpr xs)
@@ -760,7 +760,7 @@ getConcreteList = \case
 
 tcArgError ::
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   TypeClassOp ->
   [UnAnnDoc] ->
   Int ->
@@ -773,7 +773,7 @@ tcArgError c arg op allowedTypes argIndex numberOfArgs =
 
 tcResultError ::
   ConstraintContext ->
-  NormType ->
+  BasicNormType ->
   TypeClassOp ->
   [UnAnnDoc] ->
   [CompileError]

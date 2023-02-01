@@ -354,7 +354,7 @@ instance MeaningfulError CompileError where
             fix = Nothing
           }
       where
-        getMessage :: NormExpr -> Doc a
+        getMessage :: BasicNormExpr -> Doc a
         getMessage = \case
           VConstructor (TypeClass tc) args -> case (tc, args) of
             (HasMap, _) ->
@@ -373,7 +373,7 @@ instance MeaningfulError CompileError where
             _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
           e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
 
-        failedOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
+        failedOp2Message :: BoundDBCtx -> TypeClassOp -> BasicNormExpr -> BasicNormExpr -> BasicNormExpr -> Doc a
         failedOp2Message boundCtx op t1 t2 t3 =
           "cannot apply"
             <+> squotes (pretty op)
@@ -859,7 +859,7 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: NormType -> Int
+        dimensionsOf :: BasicNormType -> Int
         dimensionsOf = \case
           VListType t -> 1 + dimensionsOf t
           VVectorType t _ -> 1 + dimensionsOf t

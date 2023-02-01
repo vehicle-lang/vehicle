@@ -29,17 +29,17 @@ type UncheckedBinding = DBBinding
 
 type UncheckedVar = DBIndexVar
 
-type UncheckedBinder = DBBinder
+type UncheckedBinder = DBBinder Builtin
 
-type UncheckedArg = DBArg
+type UncheckedArg = DBArg Builtin
 
-type UncheckedExpr = DBExpr
+type UncheckedExpr = DBExpr Builtin
 
-type UncheckedType = DBExpr
+type UncheckedType = DBExpr Builtin
 
-type UncheckedDecl = DBDecl
+type UncheckedDecl = DBDecl Builtin
 
-type UncheckedProg = DBProg
+type UncheckedProg = DBProg Builtin
 
 -- * Types post type-checking
 
@@ -47,17 +47,17 @@ type CheckedBinding = DBBinding
 
 type CheckedVar = DBIndexVar
 
-type CheckedBinder = DBBinder
+type CheckedBinder = DBBinder Builtin
 
-type CheckedArg = DBArg
+type CheckedArg = DBArg Builtin
 
-type CheckedExpr = DBExpr
+type CheckedExpr = DBExpr Builtin
 
 type CheckedType = CheckedExpr
 
-type CheckedDecl = DBDecl
+type CheckedDecl = DBDecl Builtin
 
-type CheckedProg = DBProg
+type CheckedProg = DBProg Builtin
 
 type CheckedTelescope = [CheckedBinder]
 

@@ -41,7 +41,7 @@ sameFamily PolarityFamily {} PolarityFamily {} = True
 sameFamily LinearityFamily {} LinearityFamily {} = True
 sameFamily _ _ = False
 
-data Candidate = Candidate MetaID TypeClass NormExpr ConstraintContext
+data Candidate = Candidate MetaID TypeClass BasicNormExpr ConstraintContext
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
@@ -141,7 +141,7 @@ defaultSolution ::
   Provenance ->
   ConstraintContext ->
   TypeClass ->
-  m NormExpr
+  m BasicNormExpr
 defaultSolution p ctx = \case
   HasEq {} -> return VNatType
   HasOrd {} -> return VNatType
@@ -167,18 +167,18 @@ defaultSolution p ctx = \case
   PolarityTypeClass {} -> auxiliaryTCError
   AlmostEqualConstraint {} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m NormType
+createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m BasicNormType
 createDefaultListType p ctx = do
   tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
   return $ mkVListType tElem
 
-createDefaultBoolType :: TCM m => Provenance -> m NormType
+createDefaultBoolType :: TCM m => Provenance -> m BasicNormType
 createDefaultBoolType p = do
   lin <- normalised <$> freshLinearityMeta p
   pol <- normalised <$> freshPolarityMeta p
   return $ mkVAnnBoolType lin pol
 
-createDefaultRatType :: TCM m => Provenance -> m NormType
+createDefaultRatType :: TCM m => Provenance -> m BasicNormType
 createDefaultRatType p = do
   lin <- normalised <$> freshLinearityMeta p
   return $ mkVAnnRatType lin
@@ -203,7 +203,7 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
       _ -> []
     _ -> []
 
-getCandidatesFromArgs :: ConstraintContext -> [NormArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: ConstraintContext -> [BasicNormArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
   case getMeta (argExpr t) of

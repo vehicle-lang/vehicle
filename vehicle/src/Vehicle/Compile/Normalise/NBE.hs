@@ -34,7 +34,7 @@ whnf ::
   DeclSubstitution ->
   MetaSubstitution ->
   CheckedExpr ->
-  m NormExpr
+  m BasicNormExpr
 whnf dbLevel declCtx metaSubst e = do
   let env = mkNoOpEnv dbLevel
   runReaderT (eval env e) (declCtx, metaSubst)
@@ -48,7 +48,7 @@ type MonadNorm m =
   )
 
 -- TODO change to return a tuple of NF and WHNF?
-eval :: MonadNorm m => Env -> CheckedExpr -> m NormExpr
+eval :: MonadNorm m => Env Builtin -> CheckedExpr -> m BasicNormExpr
 eval env expr = do
   showEntry env expr
   result <- case expr of
@@ -83,10 +83,10 @@ eval env expr = do
   showExit result
   return result
 
-evalBinder :: MonadNorm m => Env -> CheckedBinder -> m NormBinder
+evalBinder :: MonadNorm m => Env Builtin -> CheckedBinder -> m BasicNormBinder
 evalBinder env = traverse (eval env)
 
-evalApp :: MonadNorm m => NormExpr -> Spine -> m NormExpr
+evalApp :: MonadNorm m => BasicNormExpr -> BasicSpine -> m BasicNormExpr
 evalApp fun [] = return fun
 evalApp fun (arg : args) = case fun of
   VMeta v spine -> return $ VMeta v (spine <> (arg : args))
@@ -103,7 +103,7 @@ evalApp fun (arg : args) = case fun of
   VPi {} -> unexpectedExprError currentPass "VPi"
   VLiteral {} -> unexpectedExprError currentPass "VLiteral"
 
-lookupIn :: MonadCompile m => DBIndex -> Env -> m NormExpr
+lookupIn :: MonadCompile m => DBIndex -> BasicEnv -> m BasicNormExpr
 lookupIn i env = case lookupVar env i of
   Just value -> return value
   Nothing ->
@@ -120,13 +120,13 @@ lookupIn i env = case lookupVar env i of
 -- TODO Separate builtins from syntactic sugar
 --
 -- TODO Pass in the right number of arguments ensuring all literals
-evalBuiltin :: MonadNorm m => Builtin -> Spine -> m NormExpr
+evalBuiltin :: MonadNorm m => Builtin -> BasicSpine -> m BasicNormExpr
 evalBuiltin b args = case b of
   Constructor {} -> return $ VBuiltin b args
   TypeClassOp op -> evalTypeClassOp op args
   BuiltinFunction f -> evalBuiltinFunction f args
 
-evalBuiltinFunction :: MonadNorm m => BuiltinFunction -> Spine -> m NormExpr
+evalBuiltinFunction :: MonadNorm m => BuiltinFunction -> BasicSpine -> m BasicNormExpr
 evalBuiltinFunction b args
   | isDerived b = evalDerivedBuiltin b args
   | otherwise = do
@@ -172,7 +172,7 @@ isDerived = \case
   Map {} -> True
   _ -> False
 
-evalDerivedBuiltin :: MonadNorm m => BuiltinFunction -> Spine -> m NormExpr
+evalDerivedBuiltin :: MonadNorm m => BuiltinFunction -> BasicSpine -> m BasicNormExpr
 evalDerivedBuiltin b args = case b of
   Implies -> evalImplies args
   Map dom -> evalMap dom args
@@ -181,7 +181,7 @@ evalDerivedBuiltin b args = case b of
 -----------------------------------------------------------------------------
 -- Reevaluation
 
-reeval :: MonadNorm m => NormExpr -> m NormExpr
+reeval :: MonadNorm m => BasicNormExpr -> m BasicNormExpr
 reeval expr = case expr of
   VUniverse {} -> return expr
   VLiteral {} -> return expr
@@ -193,27 +193,27 @@ reeval expr = case expr of
   VBoundVar v spine -> VBoundVar v <$> reevalSpine spine
   VBuiltin b spine -> evalApp (VBuiltin b []) =<< reevalSpine spine
 
-reevalSpine :: MonadNorm m => Spine -> m Spine
+reevalSpine :: MonadNorm m => BasicSpine -> m BasicSpine
 reevalSpine = traverse (traverse reeval)
 
 -----------------------------------------------------------------------------
 -- Indvidual builtins
 
-type EvalBuiltin = forall m. MonadNorm m => Spine -> Maybe (m NormExpr)
+type EvalBuiltin = forall m. MonadNorm m => BasicSpine -> Maybe (m BasicNormExpr)
 
-pattern VBool :: Bool -> GenericArg NormExpr
+pattern VBool :: Bool -> BasicNormArg
 pattern VBool x <- ExplicitArg _ (VLiteral (LBool x))
 
-pattern VIndex :: Int -> GenericArg NormExpr
+pattern VIndex :: Int -> BasicNormArg
 pattern VIndex x <- ExplicitArg _ (VLiteral (LIndex _ x))
 
-pattern VNat :: Int -> GenericArg NormExpr
+pattern VNat :: Int -> BasicNormArg
 pattern VNat x <- ExplicitArg _ (VLiteral (LNat x))
 
-pattern VInt :: Int -> GenericArg NormExpr
+pattern VInt :: Int -> BasicNormArg
 pattern VInt x <- ExplicitArg _ (VLiteral (LInt x))
 
-pattern VRat :: Rational -> GenericArg NormExpr
+pattern VRat :: Rational -> BasicNormArg
 pattern VRat x <- ExplicitArg _ (VLiteral (LRat x))
 
 -- TODO a lot of duplication in the below. Once we have separated out the
@@ -465,7 +465,7 @@ evalFromVecToVec = \case
 -----------------------------------------------------------------------------
 -- Derived
 
-type EvalDerived = forall m. MonadNorm m => Spine -> m NormExpr
+type EvalDerived = forall m. MonadNorm m => BasicSpine -> m BasicNormExpr
 
 -- TODO define in terms of language
 
@@ -508,16 +508,16 @@ evalMapVec = \case
 
 -- | Recursively forces the evaluation of any meta-variables that are blocking
 -- evaluation.
-forceExpr :: forall m. MonadNorm m => NormExpr -> m (Maybe NormExpr, MetaSet)
+forceExpr :: forall m. MonadNorm m => BasicNormExpr -> m (Maybe BasicNormExpr, MetaSet)
 forceExpr = go
   where
-    go :: NormExpr -> m (Maybe NormExpr, MetaSet)
+    go :: BasicNormExpr -> m (Maybe BasicNormExpr, MetaSet)
     go = \case
       VMeta m spine -> goMeta m spine
       VBuiltin b spine -> goBuiltin b spine
       _ -> return (Nothing, mempty)
 
-    goMeta :: MetaID -> Spine -> m (Maybe NormExpr, MetaSet)
+    goMeta :: MetaID -> BasicSpine -> m (Maybe BasicNormExpr, MetaSet)
     goMeta m spine = do
       (_, metaSubst) <- ask
       case MetaMap.lookup m metaSubst of
@@ -528,7 +528,7 @@ forceExpr = go
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
-    goBuiltin :: Builtin -> Spine -> m (Maybe NormExpr, MetaSet)
+    goBuiltin :: Builtin -> BasicSpine -> m (Maybe BasicNormExpr, MetaSet)
     goBuiltin b spine = case b of
       Constructor {} -> return (Nothing, mempty)
       BuiltinFunction Foreach -> return (Nothing, mempty)
@@ -544,7 +544,7 @@ forceExpr = go
               Just <$> evalBuiltin b argResults
         return (result, blockingMetas)
 
-    goBuiltinArg :: NormArg -> m (NormArg, Bool, MetaSet)
+    goBuiltinArg :: BasicNormArg -> m (BasicNormArg, Bool, MetaSet)
     goBuiltinArg arg
       -- We assume that non-explicit args aren't depended on computationally
       -- (this may not hold in future.)
@@ -593,12 +593,12 @@ blockOnBooleanPropositions = \case
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: MonadNorm m => Env -> CheckedExpr -> m ()
+showEntry :: MonadNorm m => Env builtin -> CheckedExpr -> m ()
 showEntry _env _expr = do
   -- logDebug MaxDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}")
   incrCallDepth
 
-showExit :: MonadNorm m => NormExpr -> m ()
+showExit :: MonadNorm m => NormExpr builtin -> m ()
 showExit _result = do
   decrCallDepth
 

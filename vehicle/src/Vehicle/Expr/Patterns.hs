@@ -22,10 +22,10 @@ pattern PolarityUniverse p = Universe p PolarityUniv
 -- Variables
 --------------------------------------------------------------------------------
 
-pattern FreeVar :: Provenance -> Identifier -> Expr binder DBIndexVar Builtin
+pattern FreeVar :: Provenance -> Identifier -> Expr binder DBIndexVar builtin
 pattern FreeVar p ident = Var p (Free ident)
 
-pattern BoundVar :: Provenance -> DBIndex -> Expr binder DBIndexVar Builtin
+pattern BoundVar :: Provenance -> DBIndex -> Expr binder DBIndexVar builtin
 pattern BoundVar p index = Var p (Bound index)
 
 --------------------------------------------------------------------------------
@@ -409,9 +409,9 @@ pattern QuantifierExpr ::
   Provenance ->
   Quantifier ->
   QuantifierDomain ->
-  DBBinder ->
-  DBExpr ->
-  DBExpr
+  DBBinder Builtin ->
+  DBExpr Builtin ->
+  DBExpr Builtin
 pattern QuantifierExpr p q dom binder body <-
   BuiltinFunctionExpr
     p
@@ -426,27 +426,27 @@ pattern QuantifierExpr p q dom binder body <-
         [ ExplicitArg p (Lam p binder body)
         ]
 
-pattern ExistsNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsNatExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ExistsNatExpr p binder body =
   QuantifierExpr p Exists QuantNat binder body
 
-pattern ForallNatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallNatExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ForallNatExpr p binder body =
   QuantifierExpr p Forall QuantNat binder body
 
-pattern ExistsIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsIntExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ExistsIntExpr p binder body =
   QuantifierExpr p Exists QuantInt binder body
 
-pattern ForallIntExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallIntExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ForallIntExpr p binder body =
   QuantifierExpr p Forall QuantInt binder body
 
-pattern ExistsRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ExistsRatExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ExistsRatExpr p binder body =
   QuantifierExpr p Exists QuantRat binder body
 
-pattern ForallRatExpr :: Provenance -> DBBinder -> DBExpr -> DBExpr
+pattern ForallRatExpr :: Provenance -> DBBinder Builtin -> DBExpr Builtin -> DBExpr Builtin
 pattern ForallRatExpr p binder body =
   QuantifierExpr p Forall QuantRat binder body
 

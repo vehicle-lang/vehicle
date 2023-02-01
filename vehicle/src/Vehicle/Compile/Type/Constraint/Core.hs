@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (TCM, solveMeta)
 import Vehicle.Compile.Type.Monad.Class (trackSolvedMetas)
-import Vehicle.Expr.Normalised (NormExpr, NormType, Spine, pattern VConstructor)
+import Vehicle.Expr.Normalised
 
 -- | Function signature for constraints solved by instance search.
 type InstanceSolver =
@@ -35,10 +35,10 @@ type InstanceSolver =
   TCM m =>
   ConstraintContext ->
   MetaID ->
-  Spine ->
+  BasicSpine ->
   m ()
 
-type TypeClassProgress = Either MetaSet ([WithContext Constraint], NormExpr)
+type TypeClassProgress = Either MetaSet ([WithContext Constraint], BasicNormExpr)
 
 -- | Function signature for constraints solved by type class resolution.
 -- This should eventually be refactored out so all are solved by instance
@@ -47,7 +47,7 @@ type TypeClassSolver =
   forall m.
   TCM m =>
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m TypeClassProgress
 
 -- | Function signature for auxiliary constraints solved by type class resolution.
@@ -55,7 +55,7 @@ type AuxiliaryTypeClassSolver =
   forall m.
   TCM m =>
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -103,25 +103,25 @@ malformedConstraintError :: MonadCompile m => WithContext TypeClassConstraint ->
 malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
-unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext Constraint
+unify :: ConstraintContext -> BasicNormExpr -> BasicNormExpr -> WithContext Constraint
 unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext ctx)
 
-solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> NormExpr -> m ()
+solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> BasicNormExpr -> m ()
 solveTypeClassMeta ctx meta solution = do
   quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)
 
-mkVAnnBoolType :: NormExpr -> NormExpr -> NormExpr
+mkVAnnBoolType :: BasicNormExpr -> BasicNormExpr -> BasicNormExpr
 mkVAnnBoolType lin pol = VConstructor Bool [IrrelevantImplicitArg mempty lin, IrrelevantImplicitArg mempty pol]
 
-mkVAnnRatType :: NormExpr -> NormExpr
+mkVAnnRatType :: BasicNormExpr -> BasicNormExpr
 mkVAnnRatType lin = VConstructor Rat [IrrelevantImplicitArg mempty lin]
 
-mkVIndexType :: NormExpr -> NormExpr
+mkVIndexType :: BasicNormExpr -> BasicNormExpr
 mkVIndexType size = VConstructor Index [ExplicitArg mempty size]
 
-mkVListType :: NormType -> NormExpr
+mkVListType :: BasicNormType -> BasicNormExpr
 mkVListType tElem = VConstructor List [ExplicitArg mempty tElem]
 
-mkVVecType :: NormType -> NormExpr -> NormExpr
+mkVVecType :: BasicNormType -> BasicNormExpr -> BasicNormExpr
 mkVVecType tElem dim = VConstructor Vector [ExplicitArg mempty tElem, ExplicitArg mempty dim]

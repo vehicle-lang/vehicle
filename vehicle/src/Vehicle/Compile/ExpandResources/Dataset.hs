@@ -20,7 +20,7 @@ parseDataset ::
   DatasetLocations ->
   DeclProvenance ->
   GluedType ->
-  m NormExpr
+  m BasicNormExpr
 parseDataset datasetLocations decl@(ident, _) expectedType =
   case Map.lookup (nameOf ident) datasetLocations of
     Just file -> do

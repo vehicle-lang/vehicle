@@ -162,7 +162,7 @@ contextDBLevel = DBLevel . length . boundContext
 -- Unification constraints
 
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint = Unify NormExpr NormExpr
+data UnificationConstraint = Unify BasicNormExpr BasicNormExpr
   deriving (Show)
 
 type instance
@@ -172,10 +172,10 @@ type instance
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has MetaID TypeClass Spine
+data TypeClassConstraint = Has MetaID TypeClass BasicSpine
   deriving (Show)
 
-tcNormExpr :: TypeClassConstraint -> NormExpr
+tcNormExpr :: TypeClassConstraint -> BasicNormExpr
 tcNormExpr (Has _ tc spine) = VConstructor (TypeClass tc) spine
 
 type instance
@@ -188,11 +188,11 @@ type instance
 data InstanceGoal = InstanceGoal
   { goalTelescope :: CheckedTelescope,
     goalHead :: TypeClass,
-    goalSpine :: Spine
+    goalSpine :: BasicSpine
   }
   deriving (Show)
 
-goalExpr :: InstanceGoal -> NormExpr
+goalExpr :: InstanceGoal -> BasicNormExpr
 goalExpr InstanceGoal {..} = VConstructor (TypeClass goalHead) goalSpine
 
 data InstanceCandidate = InstanceCandidate

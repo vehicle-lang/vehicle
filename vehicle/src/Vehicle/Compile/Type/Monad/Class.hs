@@ -614,7 +614,7 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
 
 -- | Recursively forces the evaluation of any meta-variables at the head
 -- of the expresson.
-forceHead :: forall m. MonadTypeChecker m => NormExpr -> m (NormExpr, MetaSet)
+forceHead :: forall m. MonadTypeChecker m => BasicNormExpr -> m (BasicNormExpr, MetaSet)
 forceHead expr = do
   declSubst <- getDeclSubstitution
   metaSubst <- getMetaSubstitution
@@ -646,7 +646,7 @@ getBinderNameOrFreshName piName typ = case piName of
   Just x -> return x
   Nothing -> getFreshName typ
 
-whnfNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m NormExpr
+whnfNBE :: MonadTypeChecker m => DBLevel -> CheckedExpr -> m BasicNormExpr
 whnfNBE boundCtxSize e = do
   declSubst <- getDeclSubstitution
   metaSubst <- getMetaSubstitution

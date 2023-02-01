@@ -29,11 +29,11 @@ isLinearityUniverse _ = False
 isAuxiliaryUniverse :: Expr binder var Builtin -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
-isBoundVar :: DBExpr -> Bool
+isBoundVar :: DBExpr Builtin -> Bool
 isBoundVar BoundVar {} = True
 isBoundVar _ = False
 
-isAnnBoolType :: DBExpr -> Bool
+isAnnBoolType :: DBExpr Builtin -> Bool
 isAnnBoolType AnnBoolType {} = True
 isAnnBoolType _ = False
 
@@ -77,7 +77,7 @@ getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getFreeVar :: DBExpr -> Maybe Identifier
+getFreeVar :: DBExpr Builtin -> Maybe Identifier
 getFreeVar = \case
   FreeVar _ ident -> Just ident
   _ -> Nothing
@@ -88,7 +88,7 @@ getBinderName binder = case binderNamingForm binder of
   OnlyName name -> name
   OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
 
-getContainerElem :: DBExpr -> Maybe DBExpr
+getContainerElem :: DBExpr Builtin -> Maybe (DBExpr Builtin)
 getContainerElem (ListType _ t) = Just t
 getContainerElem (TensorType p t dims) = case getDimensions dims of
   Just [_] -> Just t
@@ -96,11 +96,11 @@ getContainerElem (TensorType p t dims) = case getDimensions dims of
   _ -> Nothing
 getContainerElem _ = Nothing
 
-getDimension :: DBExpr -> Maybe Int
+getDimension :: DBExpr Builtin -> Maybe Int
 getDimension (NatLiteral _ n) = return n
 getDimension _ = Nothing
 
-getDimensions :: DBExpr -> Maybe [Int]
+getDimensions :: DBExpr Builtin -> Maybe [Int]
 getDimensions NilExpr {} = Just []
 getDimensions (ConsExpr _ _ [x, xs]) = do
   d <- getDimension (argExpr x)
@@ -133,10 +133,10 @@ mkNameWithIndices n index = n <> pack (show index)
 
 -- mconcat (n : [pack (show index) | index <- indices])
 
-mkDoubleExpr :: Provenance -> Double -> DBExpr
+mkDoubleExpr :: Provenance -> Double -> DBExpr Builtin
 mkDoubleExpr p v = RatLiteral p (toRational v)
 
-mkIndexType :: Provenance -> Int -> DBExpr
+mkIndexType :: Provenance -> Int -> DBExpr Builtin
 mkIndexType p n =
   ConstructorExpr
     p
@@ -144,7 +144,7 @@ mkIndexType p n =
     [ ExplicitArg p (NatLiteral p n)
     ]
 
-mkIntExpr :: Provenance -> Int -> DBExpr
+mkIntExpr :: Provenance -> Int -> DBExpr Builtin
 mkIntExpr p v
   | v >= 0 = NatLiteral p v
   | otherwise = IntLiteral p v
@@ -152,14 +152,14 @@ mkIntExpr p v
 mkTensorDims ::
   Provenance ->
   [Int] ->
-  [DBExpr]
+  [DBExpr Builtin]
 mkTensorDims p = fmap (NatLiteral p)
 
 mkTensorType ::
   Provenance ->
-  DBExpr ->
-  [DBExpr] ->
-  DBExpr
+  DBExpr Builtin ->
+  [DBExpr Builtin] ->
+  DBExpr Builtin
 mkTensorType _ tElem [] = tElem
 mkTensorType p tElem dims =
   let dimList = mkList p (NatType p) dims
