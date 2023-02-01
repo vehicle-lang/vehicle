@@ -94,14 +94,14 @@ newtype Ctx = Ctx BoundDBCtx
 runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: Binder InputBinding var -> Ctx -> Ctx
+addBinderToCtx :: Binder InputBinding var builtin -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping ::
   Show var =>
   (Provenance -> var -> Reader Ctx Name) ->
-  Contextualised (Expr DBBinding var) BoundDBCtx ->
-  InputExpr
+  Contextualised (Expr DBBinding var builtin) BoundDBCtx ->
+  Expr InputBinding InputVar builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) (Ctx ctx)
 
@@ -110,8 +110,8 @@ type MonadDescope m = MonadReader Ctx m
 descopeExpr ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
-  Expr DBBinding var ->
-  m InputExpr
+  Expr DBBinding var builtin ->
+  m (Expr InputBinding InputVar builtin)
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
   Hole p name -> return $ Hole p name
@@ -139,15 +139,15 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Binder DBBinding var ->
-  f InputBinder
+  Binder DBBinding var builtin ->
+  f (Binder InputBinding InputVar builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Arg DBBinding var ->
-  f InputArg
+  Arg DBBinding var builtin ->
+  f (Arg InputBinding InputVar builtin)
 descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
@@ -219,11 +219,11 @@ descopeCoDBVarNaive _ = \case
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: Show var => Expr DBBinding var -> Expr DBBinding var
+showScopeEntry :: Show var => Expr DBBinding var builtin -> Expr DBBinding var builtin
 showScopeEntry e =
   e
 
-showScopeExit :: MonadDescope m => m InputExpr -> m InputExpr
+showScopeExit :: MonadDescope m => m (Expr InputBinding InputVar builtin) -> m (Expr InputBinding InputVar builtin)
 showScopeExit m = do
   e <- m
   return e

@@ -110,15 +110,15 @@ shiftDBIndex i l = DBIndex (unIndex i + unLevel l)
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder = Binder DBBinding DBIndexVar
+type DBBinder = Binder DBBinding DBIndexVar Builtin
 
-type DBArg = Arg DBBinding DBIndexVar
+type DBArg = Arg DBBinding DBIndexVar Builtin
 
-type DBExpr = Expr DBBinding DBIndexVar
+type DBExpr = Expr DBBinding DBIndexVar Builtin
 
-type DBDecl = Decl DBBinding DBIndexVar
+type DBDecl = Decl DBBinding DBIndexVar Builtin
 
-type DBProg = Prog DBBinding DBIndexVar
+type DBProg = Prog DBBinding DBIndexVar Builtin
 
 --------------------------------------------------------------------------------
 -- Substitution

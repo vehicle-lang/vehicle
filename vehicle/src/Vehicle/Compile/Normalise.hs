@@ -224,8 +224,8 @@ nfTypeClassOp ::
   MonadCompile m =>
   Provenance ->
   TypeClassOp ->
-  [Arg binder var] ->
-  Maybe (m (Expr binder var, NonEmpty (Arg binder var)))
+  [Arg binder var Builtin] ->
+  Maybe (m (Expr binder var Builtin, NonEmpty (Arg binder var Builtin)))
 nfTypeClassOp _p op args = do
   let (inst, remainingArgs) = findInstanceArg args
   case (inst, remainingArgs) of

@@ -49,13 +49,13 @@ instance Simplify InputArg where
 simplifyArgs :: NonEmpty InputArg -> [InputArg]
 simplifyArgs = fmap simplify . NonEmpty.filter (not . wasInserted)
 
-wasInserted :: Arg binder var -> Bool
+wasInserted :: Arg binder var builtin -> Bool
 wasInserted arg = case visibilityOf arg of
   Implicit True -> True
   Instance True -> True
   _ -> False
 
-isLiteralCast :: Expr binder var -> Bool
+isLiteralCast :: Expr binder var Builtin -> Bool
 isLiteralCast = \case
   Builtin _ FromNat {} -> True
   Builtin _ FromRat {} -> True

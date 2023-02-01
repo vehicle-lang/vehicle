@@ -14,19 +14,19 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isTypeUniverse :: Expr binder var -> Bool
+isTypeUniverse :: Expr binder var Builtin -> Bool
 isTypeUniverse TypeUniverse {} = True
 isTypeUniverse _ = False
 
-isPolarityUniverse :: Expr binder var -> Bool
+isPolarityUniverse :: Expr binder var Builtin -> Bool
 isPolarityUniverse PolarityUniverse {} = True
 isPolarityUniverse _ = False
 
-isLinearityUniverse :: Expr binder var -> Bool
+isLinearityUniverse :: Expr binder var Builtin -> Bool
 isLinearityUniverse LinearityUniverse {} = True
 isLinearityUniverse _ = False
 
-isAuxiliaryUniverse :: Expr binder var -> Bool
+isAuxiliaryUniverse :: Expr binder var Builtin -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
 isBoundVar :: DBExpr -> Bool
@@ -40,7 +40,7 @@ isAnnBoolType _ = False
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNamesIn :: Expr binder DBIndexVar -> [Identifier]
+freeNamesIn :: Expr binder DBIndexVar builtin -> [Identifier]
 freeNamesIn = cata $ \case
   VarF _ (Free ident) -> [ident]
   VarF _ (Bound _) -> []
@@ -59,11 +59,11 @@ freeNamesIn = cata $ \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr binder var -> (Expr binder var, [Arg binder var])
+toHead :: Expr binder var builtin -> (Expr binder var builtin, [Arg binder var builtin])
 toHead (App _ fun args) = (fun, NonEmpty.toList args)
 toHead e = (e, [])
 
-exprHead :: Expr binder var -> Expr binder var
+exprHead :: Expr binder var builtin -> Expr binder var builtin
 exprHead = fst . toHead
 
 onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
@@ -72,7 +72,7 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 --------------------------------------------------------------------------------
 -- Views
 
-getMetaID :: Expr binder var -> Maybe MetaID
+getMetaID :: Expr binder var builtin -> Maybe MetaID
 getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
@@ -108,15 +108,15 @@ getDimensions (ConsExpr _ _ [x, xs]) = do
   return $ d : ds
 getDimensions _ = Nothing
 
-getExplicitArg :: Arg binder var -> Maybe (Expr binder var)
+getExplicitArg :: Arg binder var builtin -> Maybe (Expr binder var builtin)
 getExplicitArg (ExplicitArg _ arg) = Just arg
 getExplicitArg _ = Nothing
 
-getImplicitArg :: Arg binder var -> Maybe (Expr binder var)
+getImplicitArg :: Arg binder var builtin -> Maybe (Expr binder var builtin)
 getImplicitArg (ImplicitArg _ arg) = Just arg
 getImplicitArg _ = Nothing
 
-filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
+filterOutNonExplicitArgs :: NonEmpty (Arg binder var builtin) -> [Expr binder var builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
 
 findInstanceArg :: [GenericArg a] -> (a, [GenericArg a])
@@ -167,9 +167,9 @@ mkTensorType p tElem dims =
 
 mkList ::
   Provenance ->
-  Expr var binder ->
-  [Expr var binder] ->
-  Expr var binder
+  Expr var binder Builtin ->
+  [Expr var binder Builtin] ->
+  Expr var binder Builtin
 mkList p elemType = foldr cons nil
   where
     nil = ConstructorExpr p Nil [ImplicitArg p elemType]
@@ -185,9 +185,9 @@ mkList p elemType = foldr cons nil
 
 mkVec ::
   Provenance ->
-  Expr var binder ->
-  [Expr var binder] ->
-  Expr var binder
+  Expr var binder builtin ->
+  [Expr var binder builtin] ->
+  Expr var binder builtin
 mkVec p tElem xs =
   App
     p

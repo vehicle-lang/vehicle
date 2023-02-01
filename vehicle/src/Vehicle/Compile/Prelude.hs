@@ -67,15 +67,15 @@ type OutputBinding = ()
 
 type OutputVar = Name
 
-type OutputBinder = Binder OutputBinding OutputVar
+type OutputBinder = Binder OutputBinding OutputVar Builtin
 
-type OutputArg = Arg OutputBinding OutputVar
+type OutputArg = Arg OutputBinding OutputVar Builtin
 
-type OutputExpr = Expr OutputBinding OutputVar
+type OutputExpr = Expr OutputBinding OutputVar Builtin
 
-type OutputDecl = Decl OutputBinding OutputVar
+type OutputDecl = Decl OutputBinding OutputVar Builtin
 
-type OutputProg = Prog OutputBinding OutputVar
+type OutputProg = Prog OutputBinding OutputVar Builtin
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.
