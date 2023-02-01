@@ -50,12 +50,12 @@ solveMaxLinearity ::
   m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (VLinearityExpr p l1, VLinearityExpr _ l2) -> do
-      let linRes = VLinearityExpr p $ maxLinearity l1 l2
+    (VLinearityExpr l1, VLinearityExpr l2) -> do
+      let linRes = VLinearityExpr $ maxLinearity l1 l2
       return $ Progress [unify (contextOf c) res linRes]
-    (_, VLinearityExpr _ Constant) ->
+    (_, VLinearityExpr Constant) ->
       return $ Progress [unify (contextOf c) lin1 res]
-    (VLinearityExpr _ Constant, _) ->
+    (VLinearityExpr Constant, _) ->
       return $ Progress [unify (contextOf c) lin2 res]
     (getMeta -> Just m1, _) -> blockOn [m1]
     (_, getMeta -> Just m2) -> blockOn [m2]
@@ -69,14 +69,16 @@ solveMulLinearity ::
   m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
-    (VLinearityExpr _ l1, VLinearityExpr _ l2) -> do
+    (VLinearityExpr l1, VLinearityExpr l2) -> do
       let ctx = contextOf c
+      logDebug MaxDetail ("!!!!!" <+> pretty (provenanceOf ctx))
       let p = originalProvenance ctx
-      let linRes = VLinearityExpr p $ mulLinearity p l1 l2
+      logDebug MaxDetail ("!!!!!" <+> pretty (originalProvenance ctx))
+      let linRes = VLinearityExpr $ mulLinearity p l1 l2
       return $ Progress [unify ctx res linRes]
-    (_, VLinearityExpr _ Constant) ->
+    (_, VLinearityExpr Constant) ->
       return $ Progress [unify (contextOf c) lin1 res]
-    (VLinearityExpr _ Constant, _) ->
+    (VLinearityExpr Constant, _) ->
       return $ Progress [unify (contextOf c) lin2 res]
     (getMeta -> Just m1, _) -> blockOn [m1]
     (_, getMeta -> Just m2) -> blockOn [m2]
@@ -91,11 +93,11 @@ solveFunctionLinearity ::
   m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
   (getMeta -> Just m1) -> blockOn [m1]
-  VLinearityExpr _ lin -> do
+  VLinearityExpr lin -> do
     let ctx = contextOf c
     let p = provenanceOf ctx
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
-    let resLin = VLinearityExpr p $ mapLinearityProvenance addFuncProv lin
+    let resLin = VLinearityExpr $ mapLinearityProvenance addFuncProv lin
     return $ Progress [unify ctx res resLin]
   _ -> malformedConstraintError c
 solveFunctionLinearity _ c _ = malformedConstraintError c
@@ -107,7 +109,7 @@ solveIfCondLinearity ::
   m ConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
   (getMeta -> Just m1) -> blockOn [m1]
-  VLinearityExpr _ lin -> case lin of
+  VLinearityExpr lin -> case lin of
     Constant -> return $ Progress []
     Linear {} -> return $ Progress []
     NonLinear {} -> throwError $ NonLinearIfCondition (contextOf c)

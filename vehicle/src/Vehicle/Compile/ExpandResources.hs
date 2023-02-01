@@ -122,7 +122,7 @@ insertDecl = \case
       case paramValue of
         Nothing -> throwError $ InferableParameterUninferrable (ident, p)
         Just (_, _, v) -> do
-          let normParameterExpr = VNatLiteral p v
+          let normParameterExpr = VNatLiteral v
           let parameterExpr = mkTyped normParameterExpr
           modify (Map.insert ident parameterExpr)
           return $ Just $ DefFunction p ident False declType parameterExpr

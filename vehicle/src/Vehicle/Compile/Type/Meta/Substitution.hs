@@ -101,11 +101,11 @@ substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
 instance MetaSubstitutable NormExpr where
   subst expr = case expr of
-    VMeta p m args -> do
+    VMeta m args -> do
       (metaSubst, declCtx) <- ask
       case MetaMap.lookup m metaSubst of
         -- TODO do we need to subst through the args here?
-        Nothing -> VMeta p m <$> subst args
+        Nothing -> VMeta m <$> subst args
         Just value -> do
           substValue <- subst $ normalised value
           case args of
@@ -115,18 +115,18 @@ instance MetaSubstitutable NormExpr where
               runReaderT (evalApp substValue (a : as)) (declCtx, metaSubst)
     VUniverse {} -> return expr
     VLiteral {} -> return expr
-    VFreeVar p v spine -> VFreeVar p v <$> traverse subst spine
-    VBoundVar p v spine -> VBoundVar p v <$> traverse subst spine
-    VLVec p xs spine -> VLVec p <$> traverse subst xs <*> traverse subst spine
-    VBuiltin p b spine -> do
+    VFreeVar v spine -> VFreeVar v <$> traverse subst spine
+    VBoundVar v spine -> VBoundVar v <$> traverse subst spine
+    VLVec xs spine -> VLVec <$> traverse subst xs <*> traverse subst spine
+    VBuiltin b spine -> do
       (metaSubst, declCtx) <- ask
       spine' <- traverse subst spine
-      runReaderT (evalBuiltin p b spine') (declCtx, metaSubst)
+      runReaderT (evalBuiltin b spine') (declCtx, metaSubst)
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
-    VLam p binder env body -> VLam p <$> subst binder <*> subst env <*> subst body
-    VPi p binder body -> VPi p <$> subst binder <*> subst body
+    VLam binder env body -> VLam <$> subst binder <*> subst env <*> subst body
+    VPi binder body -> VPi <$> subst binder <*> subst body
 
 instance MetaSubstitutable GluedExpr where
   subst (Glued a b) = Glued <$> subst a <*> subst b

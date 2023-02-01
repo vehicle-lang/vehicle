@@ -175,8 +175,8 @@ type instance
 data TypeClassConstraint = Has MetaID TypeClass Spine
   deriving (Show)
 
-tcNormExpr :: Provenance -> TypeClassConstraint -> NormExpr
-tcNormExpr p (Has _ tc spine) = VConstructor p (TypeClass tc) spine
+tcNormExpr :: TypeClassConstraint -> NormExpr
+tcNormExpr (Has _ tc spine) = VConstructor (TypeClass tc) spine
 
 type instance
   WithContext TypeClassConstraint =
@@ -193,7 +193,7 @@ data InstanceGoal = InstanceGoal
   deriving (Show)
 
 goalExpr :: InstanceGoal -> NormExpr
-goalExpr InstanceGoal {..} = VConstructor mempty (TypeClass goalHead) goalSpine
+goalExpr InstanceGoal {..} = VConstructor (TypeClass goalHead) goalSpine
 
 data InstanceCandidate = InstanceCandidate
   { candidateContext :: TypingBoundCtx,

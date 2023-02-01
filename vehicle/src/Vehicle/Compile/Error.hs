@@ -112,7 +112,7 @@ data CompileError
   | -- Backend errors
     NoPropertiesFound
   | UnsupportedResource Backend Identifier Provenance Resource
-  | UnsupportedInequality Backend Identifier Provenance
+  | UnsupportedInequality Backend DeclProvenance
   | UnsupportedPolymorphicEquality Backend Provenance Name
   | UnsupportedNonMagicVariable Backend Provenance Name
   | NoNetworkUsedInProperty Backend Provenance Identifier

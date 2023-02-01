@@ -73,7 +73,7 @@ prependConstraint ::
   m CheckedDecl
 prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let p = originalProvenance ctx
-  typeClass <- quote 0 (tcNormExpr p constraint)
+  typeClass <- quote p 0 (tcNormExpr constraint)
   let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass

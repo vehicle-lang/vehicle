@@ -108,20 +108,20 @@ unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext
 
 solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> NormExpr -> m ()
 solveTypeClassMeta ctx meta solution = do
-  quotedSolution <- quote (contextDBLevel ctx) solution
+  quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)
 
-mkVAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormExpr
-mkVAnnBoolType p lin pol = VConstructor p Bool [IrrelevantImplicitArg p lin, IrrelevantImplicitArg p pol]
+mkVAnnBoolType :: NormExpr -> NormExpr -> NormExpr
+mkVAnnBoolType lin pol = VConstructor Bool [IrrelevantImplicitArg mempty lin, IrrelevantImplicitArg mempty pol]
 
-mkVAnnRatType :: Provenance -> NormExpr -> NormExpr
-mkVAnnRatType p lin = VConstructor p Rat [IrrelevantImplicitArg p lin]
+mkVAnnRatType :: NormExpr -> NormExpr
+mkVAnnRatType lin = VConstructor Rat [IrrelevantImplicitArg mempty lin]
 
-mkVIndexType :: Provenance -> NormExpr -> NormExpr
-mkVIndexType p size = VConstructor p Index [ExplicitArg p size]
+mkVIndexType :: NormExpr -> NormExpr
+mkVIndexType size = VConstructor Index [ExplicitArg mempty size]
 
-mkVListType :: Provenance -> NormType -> NormExpr
-mkVListType p tElem = VConstructor p List [ExplicitArg p tElem]
+mkVListType :: NormType -> NormExpr
+mkVListType tElem = VConstructor List [ExplicitArg mempty tElem]
 
-mkVVecType :: Provenance -> NormType -> NormExpr -> NormExpr
-mkVVecType p tElem dim = VConstructor p Vector [ExplicitArg p tElem, ExplicitArg p dim]
+mkVVecType :: NormType -> NormExpr -> NormExpr
+mkVVecType tElem dim = VConstructor Vector [ExplicitArg mempty tElem, ExplicitArg mempty dim]

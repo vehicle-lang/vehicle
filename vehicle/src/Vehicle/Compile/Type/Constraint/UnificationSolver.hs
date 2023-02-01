@@ -106,27 +106,27 @@ unification ctx = \case
   -- Rigid-rigid cases --
   -----------------------
 
-  VUniverse _ l1 :~: VUniverse _ l2
+  VUniverse l1 :~: VUniverse l2
     | l1 == l2 -> solveTrivially
-  VLiteral _ l1 :~: VLiteral _ l2
+  VLiteral l1 :~: VLiteral l2
     | l1 == l2 -> solveTrivially
-  VBoundVar _ v1 spine1 :~: VBoundVar _ v2 spine2
+  VBoundVar v1 spine1 :~: VBoundVar v2 spine2
     | v1 == v2 -> solveSpine ctx spine1 spine2
-  VFreeVar _ v1 spine1 :~: VFreeVar _ v2 spine2
+  VFreeVar v1 spine1 :~: VFreeVar v2 spine2
     | v1 == v2 -> solveSpine ctx spine1 spine2
-  VBuiltin _ b1 spine1 :~: VBuiltin _ b2 spine2
+  VBuiltin b1 spine1 :~: VBuiltin b2 spine2
     | b1 == b2 -> solveSpine ctx spine1 spine2
-  VLVec _ xs1 spine1 :~: VLVec _ xs2 spine2
+  VLVec xs1 spine1 :~: VLVec xs2 spine2
     | length xs1 == length xs2 -> solveVec ctx (xs1, spine1) (xs2, spine2)
-  VPi _ binder1 body1 :~: VPi _ binder2 body2
+  VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi ctx (binder1, body1) (binder2, body2)
-  VLam _ binder1 env1 body1 :~: VLam _ binder2 env2 body2 ->
+  VLam binder1 env1 body1 :~: VLam binder2 env2 body2 ->
     solveLam (binder1, env1, body1) (binder2, env2, body2)
   ---------------------
   -- Flex-flex cases --
   ---------------------
 
-  VMeta _ meta1 spine1 :~: VMeta _ meta2 spine2
+  VMeta meta1 spine1 :~: VMeta meta2 spine2
     | meta1 == meta2 -> solveSpine ctx spine1 spine2
     -- The longer spine normally means its in a deeper scope. This minor
     -- optimisation tries to solve the deeper meta first.
@@ -136,8 +136,8 @@ unification ctx = \case
   -- Flex-rigid cases --
   ----------------------
 
-  VMeta _ meta spine :~: e -> solveFlexRigid ctx (meta, spine) e
-  e :~: VMeta _ meta spine -> solveFlexRigid ctx (meta, spine) e
+  VMeta meta spine :~: e -> solveFlexRigid ctx (meta, spine) e
+  e :~: VMeta meta spine -> solveFlexRigid ctx (meta, spine) e
   -- Catch-all
   _ -> return SoftFailure
 
@@ -196,12 +196,11 @@ solvePi ctx (binder1, body1) (binder2, body2) = do
 
 solveFlexFlex :: TCM m => ConstraintContext -> (MetaID, Spine) -> (MetaID, Spine) -> m UnificationResult
 solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
-  let p = provenanceOf ctx
   -- It may be that only one of the two spines is invertible
   let maybeRenaming = invert (contextDBLevel ctx) spine1
   case maybeRenaming of
-    Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta p meta1 spine1)
-    Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta p meta2 spine2)
+    Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
+    Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
 solveFlexRigid :: TCM m => ConstraintContext -> (MetaID, Spine) -> NormExpr -> m UnificationResult
 solveFlexRigid ctx (meta, spine) = do
@@ -243,7 +242,7 @@ solveFlexRigidWithRenaming ctx (meta, spine) renaming e2 = do
         solveMeta j newMeta (boundContext ctx)
         return True
 
-  unnormSolution <- quote (contextDBLevel ctx) e2
+  unnormSolution <- quote mempty (contextDBLevel ctx) e2
   let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` renaming) unnormSolution
   solveMeta meta substSolution (boundContext ctx)
   return $ Success mempty
@@ -289,7 +288,7 @@ invert ctxSize args = go (length args - 1) IntMap.empty args
     go :: Int -> IntMap DBIndex -> Spine -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
-      (ExplicitArg _ (VBoundVar _ j []) : restArgs) -> do
+      (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
         if IntMap.member (unIndex jIndex) revMap
@@ -305,7 +304,7 @@ metasInWithDependencies e = execWriterT (go e)
   where
     go :: (MonadTypeChecker m, MonadWriter (MetaMap Spine) m) => NormExpr -> m ()
     go expr = case expr of
-      VMeta _ m spine -> do
+      VMeta m spine -> do
         metaSubst <- getMetaSubstitution
         case MetaMap.lookup m metaSubst of
           Nothing -> tell (MetaMap.singleton m spine)
@@ -314,11 +313,11 @@ metasInWithDependencies e = execWriterT (go e)
             go =<< runReaderT (evalApp (normalised solution) spine) (declSubst, metaSubst)
       VUniverse {} -> return ()
       VLiteral {} -> return ()
-      VBuiltin _ _ spine -> goSpine spine
-      VBoundVar _ _ spine -> goSpine spine
-      VFreeVar _ _ spine -> goSpine spine
-      VLVec _ xs spine -> do traverse_ go xs; goSpine spine
-      VPi _ binder result -> do traverse_ go binder; go result
+      VBuiltin _ spine -> goSpine spine
+      VBoundVar _ spine -> goSpine spine
+      VFreeVar _ spine -> goSpine spine
+      VLVec xs spine -> do traverse_ go xs; goSpine spine
+      VPi binder result -> do traverse_ go binder; go result
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used?

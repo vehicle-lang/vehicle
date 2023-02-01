@@ -299,9 +299,9 @@ getPropertyInfo property = do
   where
     go :: MonadCompile m => NormType -> m PropertyInfo
     go = \case
-      VTensorType _ tElem _ -> go tElem
-      VVectorType _ tElem _ -> go tElem
-      VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) ->
+      VTensorType tElem _ -> go tElem
+      VVectorType tElem _ -> go tElem
+      VAnnBoolType (VLinearityExpr lin) (VPolarityExpr pol) ->
         return $ PropertyInfo lin pol
       _ -> do
         let declProv = (identifierOf property, provenanceOf property)

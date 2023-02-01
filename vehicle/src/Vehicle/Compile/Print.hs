@@ -432,7 +432,7 @@ instance
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
   where
   prettyUsing (WithContext (Has m tc args) _) = do
-    let expr = VBuiltin mempty (Constructor $ TypeClass tc) args
+    let expr = VBuiltin (Constructor $ TypeClass tc) args
     let expr' = prettyUsing @rest (expr :: NormExpr)
     prettyTypeClass m expr'
 
@@ -450,9 +450,9 @@ instance
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
   where
   prettyUsing (WithContext (Has m tc args) ctx) = do
-    let expr = VBuiltin mempty (Constructor $ TypeClass tc) args
+    let expr = VBuiltin (Constructor $ TypeClass tc) args
     let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
-    prettyTypeClass m expr'
+    prettyTypeClass m expr' <+> pretty (originalProvenance ctx)
 
 instance
   ( PrettyUsing rest (Contextualised UnificationConstraint ConstraintContext),

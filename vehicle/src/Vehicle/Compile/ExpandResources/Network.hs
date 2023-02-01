@@ -39,7 +39,7 @@ getNetworkType ::
   GluedType ->
   m NetworkType
 getNetworkType decl networkType = case normalised networkType of
-  VPi _ binder result
+  VPi binder result
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- getTensorType Input (typeOf binder)
@@ -56,8 +56,8 @@ getNetworkType decl networkType = case normalised networkType of
       where
         go :: Bool -> NormType -> m (NetworkBaseType, [Int])
         go topLevel = \case
-          VTensorType _ _ dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
-          VVectorType _ tElem dim -> do
+          VTensorType _ dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+          VVectorType tElem dim -> do
             d <- getTensorDimension io dim
             (baseType, ds) <- go False tElem
             return (baseType, d : ds)
@@ -70,8 +70,8 @@ getNetworkType decl networkType = case normalised networkType of
 
     getTensorDimension :: InputOrOutput -> NormType -> m Int
     getTensorDimension io dim = case dim of
-      VNatLiteral _ n -> return n
-      VFreeVar _ varIdent _ -> do
+      VNatLiteral n -> return n
+      VFreeVar varIdent _ -> do
         implicitParameters <- gets inferableParameterContext
         case Map.lookup (nameOf varIdent) implicitParameters of
           Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
