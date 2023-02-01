@@ -1,5 +1,7 @@
 module Vehicle.Compile.Queries.Variable where
 
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as Text (pack)
 import Prettyprinter (brackets)
@@ -47,10 +49,11 @@ instance Pretty NetworkVariable where
 
 instance IsVariable NetworkVariable
 
-sequentialIONetworkVariableNaming :: Text -> Text -> [NetworkVariable] -> [Name]
+sequentialIONetworkVariableNaming :: Text -> Text -> [NetworkVariable] -> Seq Name
 sequentialIONetworkVariableNaming inputPrefix outputPrefix variables = do
   let (_, _, result) = foldl forNetwork (0, 0, []) variables
-  reverse result
+  let names = reverse result
+  Seq.fromList names
   where
     forNetwork :: (Int, Int, [Name]) -> NetworkVariable -> (Int, Int, [Name])
     forNetwork (inputIndex, outputIndex, result) NetworkVariable {..} =

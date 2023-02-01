@@ -5,6 +5,12 @@
     "needs": ["mnist-robustness.vcl"]
   },
   {
+    "name": "Marabou",
+    "run": "vehicle compile -s mnist-robustness.vcl -t Marabou -o mnist-robustness.inputquery/ --network classifier:NO_FILE --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
+    "needs": ["mnist-robustness.vcl", "images.idx", "labels.idx"],
+    "produces": ["mnist-robustness.inputquery/*.txt", "mnist-robustness.inputquery/verification-plan.vcle"]
+  },
+  {
     "name": "Agda",
     "run": "vehicle compile -s mnist-robustness.vcl -t Agda -o mnist-robustness.agda",
     "needs": ["mnist-robustness.vcl"],

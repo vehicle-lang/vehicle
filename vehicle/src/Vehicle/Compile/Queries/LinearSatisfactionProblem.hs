@@ -95,10 +95,10 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
+    let gaussianSolutionEqualities = fmap (second (id . solutionEquality)) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
-            foldl (uncurry . substitute) assertion (fmap (second toDense) gaussianSolutionEqualities)
+            foldl (uncurry . substitute) assertion gaussianSolutionEqualities
 
     -- Calculate the set of unsolved user variables
     let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
@@ -186,10 +186,10 @@ getVariables = do
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion DenseLinearExpr)
+compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
 compileAssertions = go
   where
-    go :: MonadSMT m => StandardNormExpr -> m (Assertion DenseLinearExpr)
+    go :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -219,13 +219,13 @@ compileAssertion ::
   Relation ->
   StandardNormExpr ->
   StandardNormExpr ->
-  m (Assertion DenseLinearExpr)
+  m (Assertion SolvingLinearExpr)
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => StandardNormExpr -> m DenseLinearExpr
+compileLinearExpr :: MonadSMT m => StandardNormExpr -> m SolvingLinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   (linearExpr, constant) <- go lnfExpr
