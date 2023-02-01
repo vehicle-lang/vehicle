@@ -29,7 +29,7 @@ mnist : Tensor Rat [28, 28] -> Vector Rat 10
 -- Next we define what it means for an image `x` to be in a ball of
 -- size epsilon around 0.
 boundedByEpsilon : Tensor Rat [28, 28] -> Bool
-boundedByEpsilon x = forall i j . -0.01 <= (x ! i ! j) <= 0.01
+boundedByEpsilon x = forall i j . -0.01 <= x ! i ! j <= 0.01
 
 --The disjunction avoids having to define absolute value
 boundedByDelta : Tensor Rat [28, 28] -> Tensor Rat [28, 28] -> Bool

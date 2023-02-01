@@ -1,15 +1,23 @@
 module Vehicle.Compile
   ( CompileOptions (..),
     compile,
+    compileToAgda,
+    compileToVerifier,
+    typeCheckUserProg,
     typeCheckExpr,
     parseAndTypeCheckExpr,
+    readSpecification,
+    runCompileMonad,
     loadLibrary,
   )
 where
 
+import Control.Exception (IOException, catch)
 import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
+import Data.Text.IO qualified as TIO
+import System.FilePath (takeExtension)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (LDecl, writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -19,18 +27,21 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Queries
+import Vehicle.Compile.Queries (QueryData, compileToQueries)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
-import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
+import Vehicle.Libraries
+  ( Library,
+    findLibraryContentFile,
+    libraryInfo,
+    libraryName,
+  )
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
-
---------------------------------------------------------------------------------
--- Interface
 
 data CompileOptions = CompileOptions
   { target :: Backend,
@@ -71,12 +82,15 @@ compileToVerifier ::
   Resources ->
   VerifierIdentifier ->
   Maybe FilePath ->
-  m ()
+  m (Specification QueryData)
 compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile = do
   let mergedProg = mergeImports imports typedProg
   let verifier = verifiers verifierIdentifier
-  queries <- compileToQueries verifier mergedProg resources
-  outputVerificationQueries verifier outputFile queries
+  compiledSpecification <- compileToQueries verifier mergedProg resources
+  case outputFile of
+    Nothing -> outputSpecification compiledSpecification
+    Just folder -> writeSpecificationFiles verifier folder compiledSpecification
+  return compiledSpecification
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
@@ -101,7 +115,29 @@ compileToAgda agdaOptions (_, typedProg) outputFile = do
   writeAgdaFile outputFile agdaCode
 
 --------------------------------------------------------------------------------
--- Useful functions that apply to multiple compiler passes
+-- Useful functions that apply multiple compiler passes
+
+readSpecification :: MonadIO m => FilePath -> m SpecificationText
+readSpecification inputFile
+  | takeExtension inputFile /= vehicleFileExtension = do
+      fatalError $
+        "Specification"
+          <+> quotePretty inputFile
+          <+> "has unsupported"
+          <+> "extension"
+          <+> quotePretty (takeExtension inputFile) <> "."
+          <+> "Only files with a"
+          <+> quotePretty vehicleFileExtension
+          <+> "extension are supported."
+  | otherwise =
+      liftIO $
+        TIO.readFile inputFile `catch` \(e :: IOException) -> do
+          fatalError $
+            "Error occured while reading specification"
+              <+> quotePretty inputFile
+                <> ":"
+                <> line
+                <> indent 2 (pretty (show e))
 
 parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
 parseAndTypeCheckExpr expr = do
