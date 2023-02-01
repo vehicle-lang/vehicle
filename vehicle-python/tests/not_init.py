@@ -124,8 +124,6 @@ class LossFunctionTranslation:
             return self._translate_let(contents, metadata)
         elif tag == "Domain":
             return self._translate_domain(contents, metadata)
-        elif tag == "ExponentialAnd":
-            return self._translate_exponential_and(contents, metadata)
         else:
             raise TypeError(f'Unknown tag "{tag}"')
 
