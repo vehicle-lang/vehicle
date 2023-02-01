@@ -28,27 +28,27 @@ lnf expr = case expr of
   VLam {} -> caseError currentPass "Lam" ["QuantifierExpr"]
   VFreeVar {} -> normalisationError currentPass "FreeVar"
   -- Elimination cases
-  VBuiltin (Neg dom) [arg] ->
+  VBuiltinFunction (Neg dom) [arg] ->
     lnf $ lowerNeg dom (argExpr arg)
-  VBuiltin (Sub dom) [arg1, arg2] -> do
+  VBuiltinFunction (Sub dom) [arg1, arg2] -> do
     let negDom = subToNegDomain dom
     let addDom = subToAddDomain dom
-    lnf $ VBuiltin (Add addDom) [arg1, fmap (lowerNeg negDom) arg2]
+    lnf $ VBuiltinFunction (Add addDom) [arg1, fmap (lowerNeg negDom) arg2]
 
   -- Inductive cases
-  VBuiltin (Add dom) args ->
-    VBuiltin (Add dom) <$> traverse (traverse lnf) args
-  VBuiltin (Mul dom) args@[arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
-    (_, VBuiltin (Add addDom) [v1, v2]) -> do
-      let e1 = ExplicitArg p $ VBuiltin (Mul dom) [arg1, v1]
-      let e2 = ExplicitArg p $ VBuiltin (Mul dom) [arg1, v2]
-      lnf $ VBuiltin (Add addDom) [e1, e2]
-    (VBuiltin (Add addDom) [v1, v2], _) -> do
-      let e1 = ExplicitArg p $ VBuiltin (Mul dom) [v1, arg1]
-      let e2 = ExplicitArg p $ VBuiltin (Mul dom) [v2, arg2]
-      lnf $ VBuiltin (Add addDom) [e1, e2]
+  VBuiltinFunction (Add dom) args ->
+    VBuiltinFunction (Add dom) <$> traverse (traverse lnf) args
+  VBuiltinFunction (Mul dom) args@[arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
+    (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
+      let e1 = ExplicitArg p $ VBuiltinFunction (Mul dom) [arg1, v1]
+      let e2 = ExplicitArg p $ VBuiltinFunction (Mul dom) [arg1, v2]
+      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
+    (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
+      let e1 = ExplicitArg p $ VBuiltinFunction (Mul dom) [v1, arg1]
+      let e2 = ExplicitArg p $ VBuiltinFunction (Mul dom) [v2, arg2]
+      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
     _ -> do
-      VBuiltin (Mul dom) <$> traverse (traverse lnf) args
+      VBuiltinFunction (Mul dom) <$> traverse (traverse lnf) args
 
   -- Anything else is a base case.
   VLiteral {} -> return expr
@@ -60,7 +60,7 @@ lnf expr = case expr of
 lowerNeg :: NegDomain -> NormExpr -> NormExpr
 lowerNeg dom = \case
   -- Base cases
-  VBuiltin (Neg _) [e] -> argExpr e
+  VBuiltinFunction (Neg _) [e] -> argExpr e
   VLiteral (LInt x) -> VLiteral $ LInt (-x)
   VLiteral (LRat x) -> VLiteral $ LRat (-x)
   v@(VBoundVar _ []) -> do
@@ -68,11 +68,11 @@ lowerNeg dom = \case
     let minus1 = ExplicitArg mempty $ case dom of
           NegInt -> VLiteral $ LInt (-1)
           NegRat -> VLiteral $ LRat (-1)
-    VBuiltin (Mul mulDom) [minus1, ExplicitArg mempty v]
+    VBuiltinFunction (Mul mulDom) [minus1, ExplicitArg mempty v]
 
   -- Inductive cases
-  VBuiltin (Add addDom) [e1, e2] -> VBuiltin (Add addDom) [fmap (lowerNeg dom) e1, fmap (lowerNeg dom) e2]
-  VBuiltin (Mul mulDom) [e1, e2] -> VBuiltin (Mul mulDom) [fmap (lowerNeg dom) e1, e2]
+  VBuiltinFunction (Add addDom) [e1, e2] -> VBuiltinFunction (Add addDom) [fmap (lowerNeg dom) e1, fmap (lowerNeg dom) e2]
+  VBuiltinFunction (Mul mulDom) [e1, e2] -> VBuiltinFunction (Mul mulDom) [fmap (lowerNeg dom) e1, e2]
   -- Errors
   e -> developerError ("Unable to lower 'neg' through" <+> pretty (show e))
 

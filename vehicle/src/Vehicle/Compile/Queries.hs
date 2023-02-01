@@ -124,17 +124,17 @@ compilePropertyTopLevelStructure = go
     go expr = case expr of
       VLiteral LBool {} ->
         Query <$> compileQuerySet False expr
-      VBuiltin Equals {} _ ->
+      VBuiltinFunction Equals {} _ ->
         Query <$> compileQuerySet False expr
-      VBuiltin Order {} _ ->
+      VBuiltinFunction Order {} _ ->
         Query <$> compileQuerySet False expr
-      VBuiltin And [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction And [ExplicitArg _ e1, ExplicitArg _ e2] ->
         Conjunct <$> go e1 <*> go e2
-      VBuiltin Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
         Disjunct <$> go e1 <*> go e2
-      VBuiltin Not [ExplicitArg _ x] ->
+      VBuiltinFunction Not [ExplicitArg _ x] ->
         go $ lowerNotNorm x
-      VBuiltin If [_tRes, c, x, y] ->
+      VBuiltinFunction If [_tRes, c, x, y] ->
         go $ unfoldIf c x y
       VQuantifierExpr q dom args binder env body -> do
         let subsectionDoc = "Identified start of query set:" <+> prettyFriendly (WithContext expr emptyDBCtx)
@@ -148,7 +148,7 @@ compilePropertyTopLevelStructure = go
               -- If the property is universally quantified then we negate the expression.
               logDebug MinDetail "Negating property..."
               let p = mempty
-              return (True, BuiltinExpr p Not [ExplicitArg p body])
+              return (True, BuiltinFunctionExpr p Not [ExplicitArg p body])
 
           let negatedExpr = VQuantifierExpr Exists dom args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
@@ -205,19 +205,19 @@ compileQueryStructure = go False
   where
     go :: Bool -> CumulativeVariables -> NormExpr -> m (PropositionTree, CumulativeVariables)
     go processingLiftedIfs cumulativeVariables expr = case expr of
-      VBuiltin And [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction And [ExplicitArg _ e1, ExplicitArg _ e2] ->
         goOp2 Conjunct processingLiftedIfs cumulativeVariables e1 e2
-      VBuiltin Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
         goOp2 Disjunct processingLiftedIfs cumulativeVariables e1 e2
-      VBuiltin Not [ExplicitArg _ x] ->
+      VBuiltinFunction Not [ExplicitArg _ x] ->
         go processingLiftedIfs cumulativeVariables $ lowerNotNorm x
-      VBuiltin If [_tRes, c, x, y] ->
+      VBuiltinFunction If [_tRes, c, x, y] ->
         go processingLiftedIfs cumulativeVariables $ unfoldIf c x y
       VQuantifierExpr Exists dom _ binder env body ->
         compileQuantifierBodyToPropositionTree cumulativeVariables dom binder env body
-      VBuiltin Equals {} _ ->
+      VBuiltinFunction Equals {} _ ->
         goProposition processingLiftedIfs cumulativeVariables expr
-      VBuiltin Order {} _ ->
+      VBuiltinFunction Order {} _ ->
         goProposition processingLiftedIfs cumulativeVariables expr
       VLiteral LBool {} -> do
         goProposition processingLiftedIfs cumulativeVariables expr
@@ -257,7 +257,7 @@ compileQueryStructure = go False
           return result
 
     wasIfLifted :: NormExpr -> Bool
-    wasIfLifted (VBuiltin Or _) = True
+    wasIfLifted (VBuiltinFunction Or _) = True
     wasIfLifted _ = False
 
 compileQuantifierBodyToPropositionTree ::
@@ -322,16 +322,16 @@ lowerNotNorm :: NormExpr -> NormExpr
 lowerNotNorm arg = case arg of
   -- Base cases
   VLiteral (LBool b) -> VLiteral (LBool (not b))
-  VBuiltin (Order dom ord) args -> VBuiltin (Order dom (neg ord)) args
-  VBuiltin (Equals dom eq) args -> VBuiltin (Equals dom (neg eq)) args
-  VBuiltin Not [e] -> argExpr e
+  VBuiltinFunction (Order dom ord) args -> VBuiltinFunction (Order dom (neg ord)) args
+  VBuiltinFunction (Equals dom eq) args -> VBuiltinFunction (Equals dom (neg eq)) args
+  VBuiltinFunction Not [e] -> argExpr e
   -- Inductive cases
-  VBuiltin Or args -> VBuiltin And (lowerNotNormArg <$> args)
-  VBuiltin And args -> VBuiltin Or (lowerNotNormArg <$> args)
+  VBuiltinFunction Or args -> VBuiltinFunction And (lowerNotNormArg <$> args)
+  VBuiltinFunction And args -> VBuiltinFunction Or (lowerNotNormArg <$> args)
   VQuantifierExpr q dom args binder env body ->
     let p = mempty
      in VQuantifierExpr (neg q) dom args binder env (NotExpr p [ExplicitArg p body])
-  VBuiltin If [tRes, c, e1, e2] -> VBuiltin If [tRes, c, lowerNotNormArg e1, lowerNotNormArg e2]
+  VBuiltinFunction If [tRes, c, e1, e2] -> VBuiltinFunction If [tRes, c, lowerNotNormArg e1, lowerNotNormArg e2]
   -- Errors
   e -> developerError ("Unable to lower 'not' through norm expr:" <+> prettyVerbose e)
 
@@ -404,7 +404,7 @@ calculateEnvEntry startingLevel binder = do
 
 pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [NormArg] -> NormBinder -> Env -> DBExpr -> NormExpr
 pattern VQuantifierExpr q dom args binder env body <-
-  VBuiltin (Quantifier q dom) (reverse -> ExplicitArg _ (VLam binder env body) : args)
+  VBuiltinFunction (Quantifier q dom) (reverse -> ExplicitArg _ (VLam binder env body) : args)
   where
     VQuantifierExpr q dom args binder env body =
-      VBuiltin (Quantifier q dom) (reverse (ExplicitArg mempty (VLam binder env body) : args))
+      VBuiltinFunction (Quantifier q dom) (reverse (ExplicitArg mempty (VLam binder env body) : args))

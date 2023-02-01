@@ -41,6 +41,13 @@ pattern BuiltinExpr p b args <- App p (Builtin _ b) args
   where
     BuiltinExpr p b args = App p (Builtin p b) args
 
+pattern BuiltinFunctionExpr ::
+  Provenance ->
+  BuiltinFunction ->
+  NonEmpty (Arg binder var Builtin) ->
+  Expr binder var Builtin
+pattern BuiltinFunctionExpr p b args = BuiltinExpr p (BuiltinFunction b) args
+
 pattern ConstructorExpr ::
   Provenance ->
   BuiltinConstructor ->
@@ -406,14 +413,14 @@ pattern QuantifierExpr ::
   DBExpr ->
   DBExpr
 pattern QuantifierExpr p q dom binder body <-
-  BuiltinExpr
+  BuiltinFunctionExpr
     p
     (Quantifier q dom)
     [ ExplicitArg _ (Lam _ binder body)
       ]
   where
     QuantifierExpr p q dom binder body =
-      BuiltinExpr
+      BuiltinFunctionExpr
         p
         (Quantifier q dom)
         [ ExplicitArg p (Lam p binder body)
@@ -495,17 +502,17 @@ pattern IfExpr ::
   [Arg binder var Builtin] ->
   Expr binder var Builtin
 pattern IfExpr p tRes args <-
-  App
+  BuiltinFunctionExpr
     p
-    (Builtin _ If)
+    If
     ( ImplicitArg _ tRes
         :| args
       )
   where
     IfExpr p tRes args =
-      App
+      BuiltinFunctionExpr
         p
-        (Builtin p If)
+        If
         ( ImplicitArg p tRes
             :| args
         )
@@ -519,14 +526,14 @@ pattern FromNatExpr ::
   FromNatDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern FromNatExpr p n dom args <- BuiltinExpr p (FromNat n dom) args
+pattern FromNatExpr p n dom args <- BuiltinFunctionExpr p (FromNat n dom) args
 
 pattern FromRatExpr ::
   Provenance ->
   FromRatDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern FromRatExpr p dom args <- BuiltinExpr p (FromRat dom) args
+pattern FromRatExpr p dom args <- BuiltinFunctionExpr p (FromRat dom) args
 
 pattern FromVecExpr ::
   Provenance ->
@@ -535,9 +542,9 @@ pattern FromVecExpr ::
   [Arg binder var Builtin] ->
   Expr binder var Builtin
 pattern FromVecExpr p n dom explicitArgs <-
-  App
+  BuiltinFunctionExpr
     p
-    (Builtin _ (FromVec n dom))
+    (FromVec n dom)
     ( ImplicitArg _ _
         :| explicitArgs
       )
@@ -546,33 +553,23 @@ pattern FromVecExpr p n dom explicitArgs <-
 -- Boolean operations
 
 pattern BooleanOp2Expr ::
-  Builtin ->
+  BuiltinFunction ->
   Provenance ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern BooleanOp2Expr op p explicitArgs <- App p (Builtin _ op) explicitArgs
-  where
-    BooleanOp2Expr op p explicitArgs = App p (Builtin p op) explicitArgs
+pattern BooleanOp2Expr op p explicitArgs = BuiltinFunctionExpr p op explicitArgs
 
 pattern AndExpr :: Provenance -> NonEmpty (Arg binder var Builtin) -> Expr binder var Builtin
-pattern AndExpr p explicitArgs <- BooleanOp2Expr And p explicitArgs
-  where
-    AndExpr p explicitArgs = BooleanOp2Expr And p explicitArgs
+pattern AndExpr p explicitArgs = BooleanOp2Expr And p explicitArgs
 
 pattern OrExpr :: Provenance -> NonEmpty (Arg binder var Builtin) -> Expr binder var Builtin
-pattern OrExpr p explicitArgs <- BooleanOp2Expr Or p explicitArgs
-  where
-    OrExpr p explicitArgs = BooleanOp2Expr Or p explicitArgs
+pattern OrExpr p explicitArgs = BooleanOp2Expr Or p explicitArgs
 
 pattern ImpliesExpr :: Provenance -> NonEmpty (Arg binder var Builtin) -> Expr binder var Builtin
-pattern ImpliesExpr p explicitArgs <- BooleanOp2Expr Implies p explicitArgs
-  where
-    ImpliesExpr p explicitArgs = BooleanOp2Expr Implies p explicitArgs
+pattern ImpliesExpr p explicitArgs = BooleanOp2Expr Implies p explicitArgs
 
 pattern NotExpr :: Provenance -> NonEmpty (Arg binder var Builtin) -> Expr binder var Builtin
-pattern NotExpr p explicitArgs <- App p (Builtin _ Not) explicitArgs
-  where
-    NotExpr p explicitArgs = App p (Builtin p Not) explicitArgs
+pattern NotExpr p explicitArgs = BuiltinFunctionExpr p Not explicitArgs
 
 pattern AppliedAndExpr :: Provenance -> Expr binder var Builtin -> Expr binder var Builtin -> Expr binder var Builtin
 pattern AppliedAndExpr p x y <- AndExpr p [ExplicitArg _ x, ExplicitArg _ y]
@@ -588,14 +585,14 @@ pattern NegExpr ::
   NegDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern NegExpr p dom args = BuiltinExpr p (Neg dom) args
+pattern NegExpr p dom args = BuiltinFunctionExpr p (Neg dom) args
 
 pattern AddExpr ::
   Provenance ->
   AddDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern AddExpr p dom args = BuiltinExpr p (Add dom) args
+pattern AddExpr p dom args = BuiltinFunctionExpr p (Add dom) args
 
 pattern AddTCExpr ::
   Provenance ->
@@ -617,7 +614,7 @@ pattern SubExpr ::
   SubDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern SubExpr p dom args = BuiltinExpr p (Sub dom) args
+pattern SubExpr p dom args = BuiltinFunctionExpr p (Sub dom) args
 
 pattern SubTCExpr ::
   Provenance ->
@@ -639,14 +636,14 @@ pattern MulExpr ::
   MulDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern MulExpr p dom args = BuiltinExpr p (Mul dom) args
+pattern MulExpr p dom args = BuiltinFunctionExpr p (Mul dom) args
 
 pattern DivExpr ::
   Provenance ->
   DivDomain ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern DivExpr p dom args = BuiltinExpr p (Div dom) args
+pattern DivExpr p dom args = BuiltinFunctionExpr p (Div dom) args
 
 --------------------------------------------------------------------------------
 -- EqualityOp
@@ -678,9 +675,7 @@ pattern EqualityExpr ::
   EqualityOp ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern EqualityExpr p dom op args <- App p (Builtin _ (Equals dom op)) args
-  where
-    EqualityExpr p dom op args = App p (Builtin p (Equals dom op)) args
+pattern EqualityExpr p dom op args = BuiltinFunctionExpr p (Equals dom op) args
 
 --------------------------------------------------------------------------------
 -- OrderOp
@@ -714,9 +709,7 @@ pattern OrderExpr ::
   OrderOp ->
   NonEmpty (Arg binder var Builtin) ->
   Expr binder var Builtin
-pattern OrderExpr p dom op args <- App p (Builtin _ (Order dom op)) args
-  where
-    OrderExpr p dom op args = App p (Builtin p (Order dom op)) args
+pattern OrderExpr p dom op args = BuiltinFunctionExpr p (Order dom op) args
 
 --------------------------------------------------------------------------------
 -- Nil and cons
@@ -761,9 +754,9 @@ pattern ForeachExpr ::
   Expr binder var Builtin ->
   Expr binder var Builtin
 pattern ForeachExpr p tElem size lam <-
-  App
+  BuiltinFunctionExpr
     p
-    (Builtin _ Foreach)
+    Foreach
     [ ImplicitArg _ tElem,
       ImplicitArg _ size,
       ExplicitArg _ lam
@@ -779,9 +772,9 @@ pattern AtExpr ::
   [Arg binder var Builtin] ->
   Expr binder var Builtin
 pattern AtExpr p tElem tDim explicitArgs <-
-  App
+  BuiltinFunctionExpr
     p
-    (Builtin _ At)
+    At
     ( ImplicitArg _ tElem
         :| ImplicitArg _ tDim
         : explicitArgs
@@ -798,7 +791,7 @@ pattern MapVectorExpr ::
   [Arg binder var Builtin] ->
   Expr binder var Builtin
 pattern MapVectorExpr p tTo tFrom size explicitArgs <-
-  BuiltinExpr
+  BuiltinFunctionExpr
     p
     (Map MapVector)
     ( ImplicitArg _ tTo
@@ -818,9 +811,9 @@ pattern FoldVectorExpr ::
   [Arg binder var Builtin] ->
   Expr binder var Builtin
 pattern FoldVectorExpr p tElem size tRes explicitArgs <-
-  App
+  BuiltinFunctionExpr
     p
-    (Builtin _ (Fold FoldVector))
+    (Fold FoldVector)
     ( ImplicitArg _ tElem
         :| ImplicitArg _ size
         : ImplicitArg _ tRes

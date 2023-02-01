@@ -37,7 +37,7 @@ import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (NormExpr (..))
+import Vehicle.Expr.Normalised (NormExpr (..), pattern VBuiltinFunction)
 import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
@@ -220,7 +220,7 @@ compileAssertions = go
       VLiteral l -> case l of
         LBool _ -> normalisationError currentPass "LBool"
         _ -> caseError currentPass "Literal" ["AndExpr"]
-      VBuiltin (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltinFunction (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan, e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
@@ -228,7 +228,7 @@ compileAssertions = go
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
         return assertion
-      VBuiltin (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+      VBuiltinFunction (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
           throwError $ UnsupportedInequality MarabouBackend ident
@@ -262,14 +262,14 @@ compileLinearExpr expr = do
     go e = case e of
       VBoundVar v [] ->
         return $ singletonVar v 1
-      VBuiltin (Neg NegRat) [ExplicitArg _ (VBoundVar v [])] ->
+      VBuiltinFunction (Neg NegRat) [ExplicitArg _ (VBoundVar v [])] ->
         return $ singletonVar v (-1)
       VLiteral (LRat l) -> do
         constLevel <- getExprConstantIndex
         return $ singletonVar constLevel (fromRational l)
-      VBuiltin (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltinFunction (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         Map.unionWith (+) <$> go e1 <*> go e2
-      VBuiltin (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
         case (e1, e2) of
           (VLiteral (LRat l), VBoundVar v []) -> return $ singletonVar v (fromRational l)
           (VBoundVar v [], VLiteral (LRat l)) -> return $ singletonVar v (fromRational l)

@@ -53,6 +53,7 @@ instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr
 
 -- Vehicle.Syntax.AST.Builtin
 instance NoThunks BuiltinConstructor
+instance NoThunks BuiltinFunction
 instance NoThunks NegDomain
 instance NoThunks AddDomain
 instance NoThunks SubDomain

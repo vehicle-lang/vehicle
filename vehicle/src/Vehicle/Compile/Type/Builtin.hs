@@ -10,8 +10,11 @@ import Vehicle.Expr.DSL
 typeOfBuiltin :: Provenance -> Builtin -> CheckedType
 typeOfBuiltin p b = fromDSL p $ case b of
   Constructor c -> typeOfConstructor c
-  -- Type classes operations
   TypeClassOp tc -> typeOfTypeClassOp tc
+  BuiltinFunction f -> typeOfBuiltinFunction f
+
+typeOfBuiltinFunction :: BuiltinFunction -> DSLExpr
+typeOfBuiltinFunction = \case
   -- Boolean operations
   Not ->
     forAllIrrelevant "l" tLin $ \l ->

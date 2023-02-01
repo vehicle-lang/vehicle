@@ -54,6 +54,9 @@ liftEnvOverBinder = (VBoundVar 0 [] :)
 -----------------------------------------------------------------------------
 -- Patterns
 
+pattern VBuiltinFunction :: BuiltinFunction -> Spine -> NormExpr
+pattern VBuiltinFunction f spine = VBuiltin (BuiltinFunction f) spine
+
 pattern VTypeUniverse :: UniverseLevel -> NormType
 pattern VTypeUniverse l = VUniverse (TypeUniv l)
 

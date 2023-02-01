@@ -173,6 +173,11 @@ delabUniverse = \case
 delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputArg] -> m B.Expr
 delabBuiltin fun args = case fun of
   V.Constructor c -> delabConstructor c args
+  V.TypeClassOp tc -> delabTypeClassOp tc args
+  V.BuiltinFunction f -> delabBuiltinFunction f args
+
+delabBuiltinFunction :: MonadDelab m => V.BuiltinFunction -> [V.InputArg] -> m B.Expr
+delabBuiltinFunction fun args = case fun of
   V.And -> delabTypeClassOp V.AndTC args
   V.Or -> delabTypeClassOp V.OrTC args
   V.Implies -> delabTypeClassOp V.ImpliesTC args
@@ -193,7 +198,6 @@ delabBuiltin fun args = case fun of
   V.Map {} -> delabTypeClassOp V.MapTC args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Foreach -> delabForeach args
-  V.TypeClassOp tc -> delabTypeClassOp tc args
 
 delabConstructor :: MonadDelab m => V.BuiltinConstructor -> [V.InputArg] -> m B.Expr
 delabConstructor fun args = case fun of

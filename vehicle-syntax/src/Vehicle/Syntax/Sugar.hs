@@ -32,7 +32,7 @@ data BinderFoldTarget binder var builtin
   | FunFold
 
 pattern ForeachExpr p binder body <-
-  App p (Builtin _ Foreach) (ExplicitArg _ (Lam _ binder body) :| [])
+  App p (Builtin _ (BuiltinFunction Foreach)) (ExplicitArg _ (Lam _ binder body) :| [])
 
 pattern QuantifierExpr p binder body q <-
   App p (Builtin _ (TypeClassOp (QuantifierTC q))) (ExplicitArg _ (Lam _ binder body) :| [])

@@ -57,9 +57,9 @@ wasInserted arg = case visibilityOf arg of
 
 isLiteralCast :: Expr binder var Builtin -> Bool
 isLiteralCast = \case
-  Builtin _ FromNat {} -> True
-  Builtin _ FromRat {} -> True
-  Builtin _ FromVec {} -> True
+  Builtin _ (BuiltinFunction FromNat {}) -> True
+  Builtin _ (BuiltinFunction FromRat {}) -> True
+  Builtin _ (BuiltinFunction FromVec {}) -> True
   Builtin _ (TypeClassOp FromNatTC {}) -> True
   Builtin _ (TypeClassOp FromRatTC {}) -> True
   Builtin _ (TypeClassOp FromVecTC {}) -> True

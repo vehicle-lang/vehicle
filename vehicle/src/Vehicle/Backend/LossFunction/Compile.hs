@@ -238,10 +238,12 @@ normBuiltin b = case b of
     V.MulTC -> True
     V.DivTC -> True
     _ -> False
-  V.FromNat {} -> True
-  V.FromRat {} -> True
-  V.FromVec {} -> True
-  V.Foreach {} -> True
+  V.BuiltinFunction f -> case f of
+    V.FromNat {} -> True
+    V.FromRat {} -> True
+    V.FromVec {} -> True
+    V.Foreach {} -> True
+    _ -> False
   _ -> False
 
 -----------------------------------------------------------------------

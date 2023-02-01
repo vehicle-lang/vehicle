@@ -34,8 +34,8 @@ currentPass = "if elimination"
 -- If operations
 
 liftIf :: (NormExpr -> NormExpr) -> NormExpr -> NormExpr
-liftIf f (VBuiltin If [_t, cond, e1, e2]) =
-  VBuiltin
+liftIf f (VBuiltinFunction If [_t, cond, e1, e2]) =
+  VBuiltinFunction
     If
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
     [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
@@ -82,14 +82,14 @@ liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: NormExpr -> NormExpr
-elimIf (VBuiltin If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf (VBuiltinFunction If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
 elimIf e = e
 
 unfoldIf :: NormArg -> NormArg -> NormArg -> NormExpr
 unfoldIf c x y =
-  VBuiltin Or $
+  VBuiltinFunction Or $
     fmap
       (ExplicitArg mempty)
-      [ VBuiltin And [c, x],
-        VBuiltin And [ExplicitArg mempty (VBuiltin Not [c]), y]
+      [ VBuiltinFunction And [c, x],
+        VBuiltinFunction And [ExplicitArg mempty (VBuiltinFunction Not [c]), y]
       ]

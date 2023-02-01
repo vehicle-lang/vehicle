@@ -21,6 +21,7 @@ module Vehicle.Expr.DSL
     forAllLinearityTriples,
     forAllPolarityTriples,
     builtin,
+    builtinFunction,
     tUnit,
     tBool,
     tNat,
@@ -159,6 +160,9 @@ tMax t1 t2 = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 builtin :: Builtin -> DSLExpr
 builtin b = DSL $ \p _ -> Builtin p b
+
+builtinFunction :: BuiltinFunction -> DSLExpr
+builtinFunction b = DSL $ \p _ -> Builtin p (BuiltinFunction b)
 
 constructor :: BuiltinConstructor -> DSLExpr
 constructor = builtin . Constructor

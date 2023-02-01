@@ -121,13 +121,18 @@ lookupIn i env = case lookupVar env i of
 --
 -- TODO Pass in the right number of arguments ensuring all literals
 evalBuiltin :: MonadNorm m => Builtin -> Spine -> m NormExpr
-evalBuiltin b args
+evalBuiltin b args = case b of
+  Constructor {} -> return $ VBuiltin b args
+  TypeClassOp op -> evalTypeClassOp op args
+  BuiltinFunction f -> evalBuiltinFunction f args
+
+evalBuiltinFunction :: MonadNorm m => BuiltinFunction -> Spine -> m NormExpr
+evalBuiltinFunction b args
   | isDerived b = evalDerivedBuiltin b args
   | otherwise = do
       let relevantArgs = filter isRelevant args
 
       let result = case b of
-            Constructor {} -> Nothing
             Quantifier {} -> Nothing
             Not -> evalNot relevantArgs
             And -> evalAnd relevantArgs
@@ -146,7 +151,6 @@ evalBuiltin b args
             FromNat _ dom -> evalFromNat dom relevantArgs
             FromRat dom -> evalFromRat dom relevantArgs
             FromVec _n dom -> evalFromVec dom relevantArgs
-            TypeClassOp {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
             Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
             Map {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
 
@@ -159,19 +163,17 @@ evalBuiltin b args
       --       logDebug MaxDetail (prettyVerbose x')
 
       case result of
-        Nothing -> return $ VBuiltin b args
+        Nothing -> return $ VBuiltinFunction b args
         Just r -> r
 
-isDerived :: Builtin -> Bool
+isDerived :: BuiltinFunction -> Bool
 isDerived = \case
-  TypeClassOp {} -> True
   Implies {} -> True
   Map {} -> True
   _ -> False
 
-evalDerivedBuiltin :: MonadNorm m => Builtin -> Spine -> m NormExpr
+evalDerivedBuiltin :: MonadNorm m => BuiltinFunction -> Spine -> m NormExpr
 evalDerivedBuiltin b args = case b of
-  TypeClassOp op -> evalTypeClassOp op args
   Implies -> evalImplies args
   Map dom -> evalMap dom args
   _ -> compilerDeveloperError $ "Invalid derived builtin" <+> quotePretty b
@@ -424,7 +426,7 @@ evalFoldList = \case
   [_, _, _f, e, ExplicitArg _ (VConstructor Nil [_])] ->
     Just $ return $ argExpr e
   [toT, fromT, f, e, ExplicitArg _ (VConstructor Cons [_, x, xs'])] -> Just $ do
-    r <- evalBuiltin (Fold FoldList) [toT, fromT, f, e, xs']
+    r <- evalBuiltinFunction (Fold FoldList) [toT, fromT, f, e, xs']
     evalApp (argExpr f) [x, ExplicitArg mempty r]
   _ -> Nothing
 
@@ -475,9 +477,9 @@ evalTypeClassOp _op args = do
 evalImplies :: EvalDerived
 evalImplies = \case
   [e1, e2] -> do
-    ne1 <- ExplicitArg mempty <$> evalBuiltin Not [e1]
-    evalBuiltin Or [ne1, e2]
-  args -> return $ VBuiltin Implies args
+    ne1 <- ExplicitArg mempty <$> evalBuiltinFunction Not [e1]
+    evalBuiltinFunction Or [ne1, e2]
+  args -> return $ VBuiltinFunction Implies args
 
 evalMap :: MapDomain -> EvalDerived
 evalMap = \case
@@ -492,14 +494,14 @@ evalMapList = \case
     x' <- ExplicitArg mempty <$> evalApp (argExpr f) [x]
     xs' <- ExplicitArg mempty <$> evalMapList [tFrom, tTo, f, xs]
     return $ VConstructor Cons [tTo, x', xs']
-  args -> return $ VBuiltin (Map MapList) args
+  args -> return $ VBuiltinFunction (Map MapList) args
 
 evalMapVec :: EvalDerived
 evalMapVec = \case
   [_n, _t1, t2, ExplicitArg _ f, ExplicitArg _ (VLVec xs _)] -> do
     xs' <- traverse (\x -> evalApp f [ExplicitArg mempty x]) xs
     return $ mkVLVec xs' (argExpr t2)
-  args -> return $ VBuiltin (Map MapVector) args
+  args -> return $ VBuiltinFunction (Map MapVector) args
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
@@ -529,7 +531,7 @@ forceExpr = go
     goBuiltin :: Builtin -> Spine -> m (Maybe NormExpr, MetaSet)
     goBuiltin b spine = case b of
       Constructor {} -> return (Nothing, mempty)
-      Foreach -> return (Nothing, mempty)
+      BuiltinFunction Foreach -> return (Nothing, mempty)
       TypeClassOp {} -> return (Nothing, mempty)
       _ -> do
         (argResults, argsReduced, argBlockingMetas) <- unzip3 <$> traverse goBuiltinArg spine
