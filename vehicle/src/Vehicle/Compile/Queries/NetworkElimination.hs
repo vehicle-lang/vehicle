@@ -8,9 +8,11 @@ module Vehicle.Compile.Queries.NetworkElimination
 where
 
 import Control.Monad (zipWithM)
+import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (MonadState (..), StateT (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.List.Split (chunksOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -18,17 +20,20 @@ import Data.Map qualified as Map
     lookup,
   )
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise
+import Vehicle.Compile.Normalise.NBE (reeval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
 import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Expr.Boolean (ConjunctAll (unConjunctAll))
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 import Vehicle.Verify.Specification (MetaNetwork)
 
 -- Pairs of (input variable == expression)
-type InputEqualities = [(Int, CheckedExpr)]
+-- TODO push back through this file once changing CheckedExpr to NormExpr
+type InputEqualities = [(DBLevel, BasicNormExpr)]
 
 -- | Okay so this is a wild ride. The Marabou query format has special variable
 -- names for input and output variables, namely x1 ... xN and y1 ... yM but
@@ -50,59 +55,61 @@ replaceNetworkApplications ::
   MonadCompile m =>
   NetworkContext ->
   BoundDBCtx ->
-  CheckedExpr ->
-  m (MetaNetwork, [NetworkVariable], InputEqualities, CheckedExpr)
-replaceNetworkApplications networkCtx boundCtx query = do
+  ConjunctAll BasicNormExpr ->
+  m (MetaNetwork, [NetworkVariable], InputEqualities, ConjunctAll BasicNormExpr)
+replaceNetworkApplications networkCtx boundCtx conjunctions = do
   logCompilerPass MinDetail "input/output variable insertion" $ do
     let initialState = IOVarState mempty mempty mempty 0 0
     let processApplicationFn = processNetworkApplication networkCtx boundCtx
 
-    (queryExpr, IOVarState {..}) <- runStateT (go query processApplicationFn) initialState
+    (networkFreeConjunctions, IOVarState {..}) <-
+      runStateT (traverse (go processApplicationFn) conjunctions) initialState
     let finalMetaNetwork = reverse metaNetwork
     let finalInputEqualities = concat (reverse inputEqualities)
 
     -- We can now calculate the meta-network and the network variables.
     networkVariables <- getNetworkVariables networkCtx finalMetaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty finalMetaNetwork <> line
-    return (finalMetaNetwork, networkVariables, finalInputEqualities, queryExpr)
+
+    normQueryExpr <- runReaderT (traverse reeval networkFreeConjunctions) mempty
+
+    logCompilerPassOutput $ prettyVerbose (NonEmpty.toList $ unConjunctAll normQueryExpr)
+    return (finalMetaNetwork, networkVariables, finalInputEqualities, normQueryExpr)
   where
     go ::
       MonadCompile m =>
-      CheckedExpr ->
-      (Identifier -> CheckedExpr -> m CheckedExpr) ->
-      m CheckedExpr
-    go expr k = case expr of
-      Universe {} -> unexpectedTypeInExprError currentPass "Universe"
-      Pi {} -> unexpectedTypeInExprError currentPass "Pi"
-      Hole {} -> resolutionError currentPass "Hole"
-      Meta {} -> resolutionError currentPass "Meta"
-      Ann {} -> normalisationError currentPass "Ann"
-      Lam {} -> normalisationError currentPass "Lam"
-      Let {} -> normalisationError currentPass "Let"
-      Var {} -> return expr
-      Literal {} -> return expr
-      Builtin {} -> return expr
-      LVec p xs -> LVec p <$> traverse (flip go k) xs
-      App p fun args -> do
-        fun' <- go fun k
-        args' <- traverse (traverse (flip go k)) args
-        case (fun', args') of
-          (FreeVar _ network, [ExplicitArg _ arg]) -> k network arg
-          (FreeVar _ network, _) ->
+      (Identifier -> BasicNormExpr -> m BasicNormExpr) ->
+      BasicNormExpr ->
+      m BasicNormExpr
+    go k expr = case expr of
+      VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
+      VPi {} -> unexpectedTypeInExprError currentPass "Pi"
+      VMeta {} -> normalisationError currentPass "Lam"
+      VLam {} -> normalisationError currentPass "Lam"
+      VLiteral {} -> return expr
+      VBoundVar v spine -> VBoundVar v <$> goSpine k spine
+      VBuiltin b spine -> VBuiltin b <$> goSpine k spine
+      VLVec xs spine -> VLVec <$> traverse (go k) xs <*> goSpine k spine
+      VFreeVar network spine -> do
+        spine' <- goSpine k spine
+        case spine' of
+          [ExplicitArg _ arg] -> k network arg
+          _ ->
             compilerDeveloperError $
               "Network" <+> quotePretty network <+> "seems to have multiple arguments"
-          _ -> do
-            runSilentLoggerT $
-              normaliseExpr (normApp p fun' args') $
-                fullNormalisationOptions
-                  { boundContext = boundCtx
-                  }
+
+    goSpine ::
+      MonadCompile m =>
+      (Identifier -> BasicNormExpr -> m BasicNormExpr) ->
+      BasicSpine ->
+      m BasicSpine
+    goSpine k = traverse (traverse (go k))
 
 -- | The current state of the input/output network variables.
 data IOVarState = IOVarState
-  { applicationCache :: HashMap (Identifier, CheckedExpr) CheckedExpr,
+  { applicationCache :: HashMap (Identifier, BasicNormExpr) BasicNormExpr,
     metaNetwork :: MetaNetwork,
-    inputEqualities :: [InputEqualities],
+    inputEqualities :: [[(DBLevel, BasicNormExpr)]],
     magicInputVarCount :: Int,
     magicOutputVarCount :: Int
   }
@@ -112,13 +119,12 @@ processNetworkApplication ::
   NetworkContext ->
   BoundDBCtx ->
   Identifier ->
-  CheckedExpr ->
-  m CheckedExpr
+  BasicNormExpr ->
+  m BasicNormExpr
 processNetworkApplication networkCtx boundCtx ident inputVector = do
   let sectionLog = "Replacing application:" <+> pretty ident <+> prettyVerbose inputVector
   logCompilerSection MaxDetail sectionLog $ do
     IOVarState {..} <- get
-    let p = mempty
     case HashMap.lookup (ident, inputVector) applicationCache of
       Just result -> return result
       Nothing -> do
@@ -128,21 +134,21 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
         let outputType = baseType outputs
 
         let numberOfUserVariables = length boundCtx
-        let inputStartingDBIndex = numberOfUserVariables + magicInputVarCount + magicOutputVarCount
-        let outputStartingDBIndex = inputStartingDBIndex + inputSize
-        let outputEndingDBIndex = outputStartingDBIndex + outputSize
-        let inputVarIndices = [inputStartingDBIndex .. outputStartingDBIndex - 1]
-        let outputVarIndices = [outputStartingDBIndex .. outputEndingDBIndex - 1]
+        let inputStartingDBLevel = DBLevel $ numberOfUserVariables + magicInputVarCount + magicOutputVarCount
+        let outputStartingDBLevel = inputStartingDBLevel + DBLevel inputSize
+        let outputEndingDBLevel = outputStartingDBLevel + DBLevel outputSize
+        let inputVarIndices = [inputStartingDBLevel .. outputStartingDBLevel - 1]
+        let outputVarIndices = [outputStartingDBLevel .. outputEndingDBLevel - 1]
 
-        logDebug MaxDetail $ "starting index:            " <+> pretty inputStartingDBIndex
+        logDebug MaxDetail $ "starting level:            " <+> pretty inputStartingDBLevel
         logDebug MaxDetail $ "number of input variables: " <+> pretty inputSize
         logDebug MaxDetail $ "number of output variables:" <+> pretty outputSize
-        logDebug MaxDetail $ "input indices:             " <+> pretty inputVarIndices
-        logDebug MaxDetail $ "output indices:            " <+> pretty outputVarIndices
+        logDebug MaxDetail $ "input levels:             " <+> pretty inputVarIndices
+        logDebug MaxDetail $ "output levels:            " <+> pretty outputVarIndices
 
         inputVarEqualities <- createInputVarEqualities (dimensions inputs) inputVarIndices inputVector
 
-        outputVarsExpr <- mkMagicVariableSeq p outputType (dimensions outputs) outputVarIndices
+        outputVarsExpr <- mkMagicVariableSeq outputType (dimensions outputs) outputVarIndices
 
         put $
           IOVarState
@@ -155,8 +161,8 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
 
         return outputVarsExpr
 
-createInputVarEqualities :: MonadCompile m => [Int] -> [Int] -> CheckedExpr -> m InputEqualities
-createInputVarEqualities (_dim : dims) inputVarIndices (VecLiteral _ _ xs) = do
+createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> BasicNormExpr -> m [(DBLevel, BasicNormExpr)]
+createInputVarEqualities (_dim : dims) inputVarIndices (VLVec xs _) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
   concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
 createInputVarEqualities [] [i] e = return [(i, e)]
@@ -169,23 +175,22 @@ createInputVarEqualities dims d xs =
 
 mkMagicVariableSeq ::
   MonadCompile m =>
-  Provenance ->
   NetworkBaseType ->
   [Int] ->
-  [Int] ->
-  m CheckedExpr
-mkMagicVariableSeq p tElem = go
+  [DBLevel] ->
+  m BasicNormExpr
+mkMagicVariableSeq tElem = go
   where
-    baseElemType = reconstructNetworkBaseType tElem p
-
-    go :: MonadCompile m => [Int] -> [Int] -> m CheckedExpr
+    go :: MonadCompile m => [Int] -> [DBLevel] -> m BasicNormExpr
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks
-      let elemType = mkTensorType p baseElemType (mkTensorDims p dims)
-      return (mkVec p elemType elems)
-    go [] [outputVarIndex] =
-      return $ BoundVar p $ DBIndex outputVarIndex
+      -- mkTensorType p baseElemType (mkTensorDims p dims)
+      -- baseElemType = reconstructNetworkBaseType tElem p
+      let elemType = VLiteral LUnit
+      return (mkVLVec elems elemType)
+    go [] [outputVar] =
+      return $ VBoundVar outputVar []
     go dims outputVarIndices =
       compilerDeveloperError $
         "apparently miscalculated number of magic output variables:"

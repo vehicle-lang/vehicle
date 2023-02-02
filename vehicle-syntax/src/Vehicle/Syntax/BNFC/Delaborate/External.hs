@@ -173,6 +173,11 @@ delabUniverse = \case
 delabBuiltin :: MonadDelab m => V.Builtin -> [V.InputArg] -> m B.Expr
 delabBuiltin fun args = case fun of
   V.Constructor c -> delabConstructor c args
+  V.TypeClassOp tc -> delabTypeClassOp tc args
+  V.BuiltinFunction f -> delabBuiltinFunction f args
+
+delabBuiltinFunction :: MonadDelab m => V.BuiltinFunction -> [V.InputArg] -> m B.Expr
+delabBuiltinFunction fun args = case fun of
   V.And -> delabTypeClassOp V.AndTC args
   V.Or -> delabTypeClassOp V.OrTC args
   V.Implies -> delabTypeClassOp V.ImpliesTC args
@@ -181,18 +186,18 @@ delabBuiltin fun args = case fun of
   V.FromNat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
   V.FromRat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
   V.FromVec {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
-  V.Neg _ -> delabTypeClassOp V.NegTC args
-  V.Add _ -> delabTypeClassOp V.AddTC args
-  V.Sub _ -> delabTypeClassOp V.SubTC args
-  V.Mul _ -> delabTypeClassOp V.MulTC args
-  V.Div _ -> delabTypeClassOp V.DivTC args
+  V.Neg {} -> delabTypeClassOp V.NegTC args
+  V.Add {} -> delabTypeClassOp V.AddTC args
+  V.Sub {} -> delabTypeClassOp V.SubTC args
+  V.Mul {} -> delabTypeClassOp V.MulTC args
+  V.Div {} -> delabTypeClassOp V.DivTC args
+  V.Quantifier q _ -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
-  V.Fold _ -> delabTypeClassOp V.FoldTC args
-  V.Map _ -> delabTypeClassOp V.MapTC args
+  V.Fold {} -> delabTypeClassOp V.FoldTC args
+  V.Map {} -> delabTypeClassOp V.MapTC args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Foreach -> delabForeach args
-  V.TypeClassOp tc -> delabTypeClassOp tc args
 
 delabConstructor :: MonadDelab m => V.BuiltinConstructor -> [V.InputArg] -> m B.Expr
 delabConstructor fun args = case fun of
@@ -350,9 +355,7 @@ delabQuantifier q args = case reverse args of
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
     return $ mkTk binders' tokDot body'
-  _ -> do
-    let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
-    argsError sym 1 <$> traverse delabM args
+  _ -> return $ cheatDelab (layoutAsText $ pretty q)
 
 delabQuantifierIn :: MonadDelab m => V.Quantifier -> [V.InputArg] -> m B.Expr
 delabQuantifierIn q args = case reverse args of

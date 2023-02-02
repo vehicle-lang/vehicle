@@ -21,7 +21,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
-import Vehicle.Libraries.StandardLibrary.Names
 
 -- | Run a function in 'MonadNorm'.
 normaliseProg :: MonadCompile m => CheckedProg -> NormalisationOptions -> m CheckedProg
@@ -163,33 +162,13 @@ nfApp p fun args = do
   case fun' of
     Lam {} | normaliseLambdaApplications -> nfAppLam p fun' (NonEmpty.toList args')
     Builtin _ b | normaliseBuiltin b -> nfBuiltin p b args'
-    FreeVar _ i | normaliseStdLibApplications -> case findStdLibFunction (nameOf i) of
-      Nothing -> return e
-      Just f -> nfStdLibFn p f args'
+    FreeVar _ _i | normaliseStdLibApplications -> return e
     _ -> return e
 
 nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
 nfAppLam _ fun [] = nf fun
 nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substDBInto (argExpr arg) body) args
 nfAppLam p fun (arg : args) = nfApp p fun (arg :| args)
-
-nfStdLibFn ::
-  MonadNorm m =>
-  Provenance ->
-  StdLibFunction ->
-  NonEmpty CheckedArg ->
-  m CheckedExpr
-nfStdLibFn p f allArgs = do
-  let e = App p (FreeVar p (identifierOf f)) allArgs
-  fromMaybe (return e) $ case embedStdLib f allArgs of
-    Nothing -> Nothing
-    Just res -> case res of
-      ForallVector tElem s recFn binder body -> case s of
-        NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
-        _ -> Nothing
-      ExistsVector tElem s recFn binder body -> case s of
-        NatLiteral _ size -> Just $ nfQuantifierVector p tElem size binder body recFn
-        _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -245,8 +224,8 @@ nfTypeClassOp ::
   MonadCompile m =>
   Provenance ->
   TypeClassOp ->
-  [Arg binder var] ->
-  Maybe (m (Expr binder var, NonEmpty (Arg binder var)))
+  [Arg binder var Builtin] ->
+  Maybe (m (Expr binder var Builtin, NonEmpty (Arg binder var Builtin)))
 nfTypeClassOp _p op args = do
   let (inst, remainingArgs) = findInstanceArg args
   case (inst, remainingArgs) of
@@ -258,9 +237,6 @@ nfTypeClassOp _p op args = do
       Just $
         compilerDeveloperError $
           "Type class operation with no further arguments:" <+> pretty op
-
---------------------------------------------------------------------------------
--- Normalising quantification over types
 
 nfForeach ::
   MonadNorm m =>
@@ -291,49 +267,12 @@ nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
     return $
       App
         p
-        (Builtin p (Fold FoldVector))
+        (Builtin p (BuiltinFunction (Fold FoldVector)))
         ( ImplicitArg p tElem
             :| ImplicitArg p size
             : ImplicitArg p tRes
             : [foldOp, unit, vector]
         )
-
------------------------------------------------------------------------------
--- Normalising quantifiers
-
--- If we're quantifying over a tensor, instead quantify over each individual
--- element, and then substitute in a LVec construct with those elements in.
-nfQuantifierVector ::
-  MonadNorm m =>
-  Provenance ->
-  CheckedExpr ->
-  Int ->
-  CheckedBinder ->
-  CheckedExpr ->
-  CheckedExpr ->
-  m CheckedExpr
-nfQuantifierVector p tElem size binder body recFn = do
-  -- Use the list monad to create a nested list of all possible indices into the tensor
-  let allIndices = [0 .. size - 1]
-
-  -- Generate the corresponding names from the indices
-  let allNames = map (mkNameWithIndices (getBinderName binder)) (reverse allIndices)
-
-  -- Generate a list of variables, one for each index
-  let allExprs = map (\i -> Var p (Bound (DBIndex i))) (reverse allIndices)
-  -- Construct the corresponding nested tensor expression
-  let tensor = mkVec p tElem allExprs
-  -- We're introducing `tensorSize` new binder so lift the indices in the body accordingly
-  let body1 = liftDBIndices (DBLevel size) body
-  -- Substitute throught the tensor expression for the old top-level binder
-  body2 <- nf $ substDBIntoAtLevel (DBIndex size) tensor body1
-
-  let mkBinderForm name = BinderDisplayForm (OnlyName name) True
-  let mkBinder name = Binder p (mkBinderForm name) Explicit Relevant () tElem
-  let mkQuantifier e name = App p recFn [ExplicitArg p (Lam p (mkBinder name) e)]
-
-  -- Generate a expression prepended with `tensorSize` quantifiers
-  return $ foldl mkQuantifier body2 allNames
 
 nfMapVector ::
   MonadNorm m =>
@@ -373,7 +312,7 @@ mkMapVectorExpr :: Provenance -> CheckedType -> CheckedType -> CheckedExpr -> [C
 mkMapVectorExpr p tTo tFrom size explicitArgs =
   BuiltinExpr
     p
-    (Map MapVector)
+    (BuiltinFunction (Map MapVector))
     ( ImplicitArg p tTo
         :| ImplicitArg p tFrom
         : ImplicitArg p size

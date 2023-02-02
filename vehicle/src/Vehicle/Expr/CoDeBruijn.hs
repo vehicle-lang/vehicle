@@ -44,11 +44,11 @@ data CoDBVar
 instance Hashable CoDBVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type PartialCoDBBinder = Binder CoDBBinding CoDBVar
+type PartialCoDBBinder = Binder CoDBBinding CoDBVar Builtin
 
-type PartialCoDBArg = Arg CoDBBinding CoDBVar
+type PartialCoDBArg = Arg CoDBBinding CoDBVar Builtin
 
-type PartialCoDBExpr = Expr CoDBBinding CoDBVar
+type PartialCoDBExpr = Expr CoDBBinding CoDBVar Builtin
 
 type CoDBBinder = (PartialCoDBBinder, BoundVarMap)
 

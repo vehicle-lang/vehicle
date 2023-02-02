@@ -164,7 +164,10 @@ typeCheckFunction p ident isProperty typ body = do
       return gluedDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
-      checkedDecl1 <- addFunctionAuxiliaryInputOutputConstraints substDecl
+      checkedDecl1 <-
+        if moduleOf ident == User
+          then addFunctionAuxiliaryInputOutputConstraints substDecl
+          else return substDecl
       logUnsolvedUnknowns (Just substDecl) Nothing
 
       checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
@@ -294,11 +297,11 @@ getPropertyInfo property = do
   propertyInfo <- go (normalised (glued $ typeOf property))
   return propertyInfo
   where
-    go :: MonadCompile m => NormType -> m PropertyInfo
+    go :: MonadCompile m => BasicNormType -> m PropertyInfo
     go = \case
-      VTensorType _ tElem _ -> go tElem
-      VVectorType _ tElem _ -> go tElem
-      VAnnBoolType _ (VLinearityExpr _ lin) (VPolarityExpr _ pol) ->
+      VTensorType tElem _ -> go tElem
+      VVectorType tElem _ -> go tElem
+      VAnnBoolType (VLinearityExpr lin) (VPolarityExpr pol) ->
         return $ PropertyInfo lin pol
       _ -> do
         let declProv = (identifierOf property, provenanceOf property)
@@ -406,7 +409,7 @@ bidirectionalPassDoc = "bidirectional pass over"
 -- been simplified as much as possible.
 -- All irrelevent code (such as polarity and linearity annotations) is also
 -- removed.
-getNormalised :: MonadCompile m => TypedExpr -> m NormExpr
+getNormalised :: MonadCompile m => TypedExpr -> m BasicNormExpr
 getNormalised expr = removeIrrelevantCode (normalised (glued expr))
 
 -- | Retrieves an unnormalised representation of the typed expression

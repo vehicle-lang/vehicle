@@ -9,6 +9,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
@@ -23,6 +24,7 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise (NormalisationOptions (..), normaliseProg)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Resource qualified as V
 import Vehicle.Compile.Type (getUnnormalised)
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
@@ -56,20 +58,20 @@ compile ::
   V.TypedProg ->
   m [LDecl]
 compile resources logic typedProg = do
-  (_, expandedProg) <- expandResources resources typedProg
+  (networkCtx, expandedProg) <- expandResources resources typedProg
   unnormalisedProg <- traverse getUnnormalised expandedProg
   normalisedProg <- normaliseProg unnormalisedProg normalisationOptions
-  compileProg logic normalisedProg
+  compileProg networkCtx logic normalisedProg
 
 -- | Compile entire specification (calls compileDecl)
-compileProg :: MonadCompile m => DifferentiableLogic -> V.CheckedProg -> m [LDecl]
-compileProg logic (V.Main ds) =
+compileProg :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.CheckedProg -> m [LDecl]
+compileProg networkCtx logic (V.Main ds) =
   logCompilerPass MinDetail "compilation to loss function" $
-    traverse (compileDecl logic) ds
+    traverse (compileDecl networkCtx logic) ds
 
 -- | Compile all functions found in spec, save their names (call compileExpr on each)
-compileDecl :: MonadCompile m => DifferentiableLogic -> V.CheckedDecl -> m LDecl
-compileDecl logic d =
+compileDecl :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.CheckedDecl -> m LDecl
+compileDecl networkCtx logic d =
   case d of
     V.DefResource _ _ r _ ->
       normalisationError currentPass (pretty r <+> "declaration")
@@ -78,12 +80,12 @@ compileDecl logic d =
     V.DefFunction p ident _ _ expr ->
       logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
         let logicImplementation = implementationOf logic
-        expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
+        expr' <- runReaderT (compileExpr logicImplementation expr) (networkCtx, logic, (ident, p))
         return (DefFunction (nameOf ident) expr')
 
 type MonadCompileLoss m =
   ( MonadCompile m,
-    MonadReader (DifferentiableLogic, V.DeclProvenance) m
+    MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
   )
 
 compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
@@ -109,7 +111,7 @@ compileExpr t e = showExit $ do
     V.NotExpr p [e1] -> case compileNot t of
       Just f -> f <$> compileArg t e1
       Nothing -> do
-        (logic, declProv) <- ask
+        (_, logic, declProv) <- ask
         ne1 <- runReaderT (lowerNot (argExpr e1)) (logic, declProv, p)
         compileExpr t ne1
     V.AndExpr _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
@@ -132,7 +134,12 @@ compileExpr t e = showExit $ do
         V.Gt -> compileGt t <$> compileArg t e1 <*> compileArg t e2
     V.VecLiteral _ _ xs -> TensorLiteral <$> traverse (compileExpr t) xs
     V.Literal _ l -> return $ Constant $ compileLiteral t l
-    V.App _ (V.Var _ (V.Free ident)) p -> NetworkApplication (V.nameOf ident) <$> traverse (compileArg t) p
+    V.App _ (V.Var _ (V.Free ident)) args -> do
+      (networkCtx, _, _) <- ask
+      let name = V.nameOf ident
+      if name `Map.member` networkCtx
+        then NetworkApplication name <$> traverse (compileArg t) args
+        else FreeVariable name <$> traverse (compileArg t) args
     V.Var _ (V.Bound var) -> return (Variable (V.unIndex var))
     V.AtExpr _ _ _ [xs, i] -> At <$> compileArg t xs <*> compileArg t i
     V.Let _ x binder expression -> Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
@@ -229,10 +236,12 @@ normBuiltin b = case b of
     V.MulTC -> True
     V.DivTC -> True
     _ -> False
-  V.FromNat {} -> True
-  V.FromRat {} -> True
-  V.FromVec {} -> True
-  V.Foreach {} -> True
+  V.BuiltinFunction f -> case f of
+    V.FromNat {} -> True
+    V.FromRat {} -> True
+    V.FromVec {} -> True
+    V.Foreach {} -> True
+    _ -> False
   _ -> False
 
 -----------------------------------------------------------------------

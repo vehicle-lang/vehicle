@@ -35,7 +35,7 @@ instance Serialize Module
 instance Pretty Module where
   pretty = \case
     User -> "User"
-    StdLib -> "Standard library"
+    StdLib -> "StdLib"
 
 --------------------------------------------------------------------------------
 -- Identifiers

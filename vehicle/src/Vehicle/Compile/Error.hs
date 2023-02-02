@@ -9,12 +9,6 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Expr.Normalised
-  ( GluedExpr,
-    GluedType,
-    NormBinder,
-    NormExpr,
-    NormType,
-  )
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (VerifierIdentifier)
 
@@ -60,23 +54,23 @@ data CompileError
       UncheckedArg -- The non-explicit argument
       CheckedType -- Expected type of the argument
   | FailedUnificationConstraints (NonEmpty (WithContext UnificationConstraint))
-  | FailedEqConstraint ConstraintContext NormType NormType EqualityOp
-  | FailedOrdConstraint ConstraintContext NormType NormType OrderOp
-  | FailedBuiltinConstraintArgument ConstraintContext Builtin NormType [UnAnnDoc] Int Int
-  | FailedBuiltinConstraintResult ConstraintContext Builtin NormType [UnAnnDoc]
-  | FailedNotConstraint ConstraintContext NormType
-  | FailedBoolOp2Constraint ConstraintContext NormType NormType Builtin
-  | FailedQuantifierConstraintDomain ConstraintContext NormType Quantifier
-  | FailedQuantifierConstraintBody ConstraintContext NormType Quantifier
-  | FailedArithOp2Constraint ConstraintContext NormType NormType Builtin
-  | FailedFoldConstraintContainer ConstraintContext NormType
-  | FailedQuantInConstraintContainer ConstraintContext NormType Quantifier
-  | FailedNatLitConstraint ConstraintContext Int NormType
+  | FailedEqConstraint ConstraintContext BasicNormType BasicNormType EqualityOp
+  | FailedOrdConstraint ConstraintContext BasicNormType BasicNormType OrderOp
+  | FailedBuiltinConstraintArgument ConstraintContext Builtin BasicNormType [UnAnnDoc] Int Int
+  | FailedBuiltinConstraintResult ConstraintContext Builtin BasicNormType [UnAnnDoc]
+  | FailedNotConstraint ConstraintContext BasicNormType
+  | FailedBoolOp2Constraint ConstraintContext BasicNormType BasicNormType Builtin
+  | FailedQuantifierConstraintDomain ConstraintContext BasicNormType Quantifier
+  | FailedQuantifierConstraintBody ConstraintContext BasicNormType Quantifier
+  | FailedArithOp2Constraint ConstraintContext BasicNormType BasicNormType Builtin
+  | FailedFoldConstraintContainer ConstraintContext BasicNormType
+  | FailedQuantInConstraintContainer ConstraintContext BasicNormType Quantifier
+  | FailedNatLitConstraint ConstraintContext Int BasicNormType
   | FailedNatLitConstraintTooBig ConstraintContext Int Int
-  | FailedNatLitConstraintUnknown ConstraintContext Int NormType
-  | FailedIntLitConstraint ConstraintContext NormType
-  | FailedRatLitConstraint ConstraintContext NormType
-  | FailedConLitConstraint ConstraintContext NormType
+  | FailedNatLitConstraintUnknown ConstraintContext Int BasicNormType
+  | FailedIntLitConstraint ConstraintContext BasicNormType
+  | FailedRatLitConstraint ConstraintContext BasicNormType
+  | FailedConLitConstraint ConstraintContext BasicNormType
   | FailedInstanceConstraint ConstraintContext InstanceGoal
   | QuantifiedIfCondition ConstraintContext
   | NonLinearIfCondition ConstraintContext
@@ -86,17 +80,17 @@ data CompileError
   | UnsupportedResourceFormat DeclProvenance Resource String
   | UnableToParseResource DeclProvenance Resource String
   | NetworkTypeIsNotAFunction DeclProvenance GluedType
-  | NetworkTypeIsNotOverTensors DeclProvenance GluedType NormType InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance GluedType NormBinder
-  | NetworkTypeHasVariableSizeTensor DeclProvenance GluedType NormExpr InputOrOutput
+  | NetworkTypeIsNotOverTensors DeclProvenance GluedType BasicNormType InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance GluedType BasicNormBinder
+  | NetworkTypeHasVariableSizeTensor DeclProvenance GluedType BasicNormType InputOrOutput
   | NetworkTypeHasImplicitSizeTensor DeclProvenance GluedType Identifier InputOrOutput
-  | NetworkTypeHasUnsupportedElementType DeclProvenance GluedType NormType InputOrOutput
+  | NetworkTypeHasUnsupportedElementType DeclProvenance GluedType BasicNormType InputOrOutput
   | DatasetTypeUnsupportedContainer DeclProvenance GluedType
-  | DatasetTypeUnsupportedElement DeclProvenance GluedType NormType
-  | DatasetVariableSizeTensor DeclProvenance GluedType NormExpr
+  | DatasetTypeUnsupportedElement DeclProvenance GluedType BasicNormType
+  | DatasetVariableSizeTensor DeclProvenance GluedType BasicNormType
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int [Int] [Int]
   | DatasetDimensionsMismatch DeclProvenance FilePath GluedExpr [Int]
-  | DatasetTypeMismatch DeclProvenance FilePath GluedType NormType NormType
+  | DatasetTypeMismatch DeclProvenance FilePath GluedType BasicNormType BasicNormType
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | ParameterTypeUnsupported DeclProvenance GluedType
@@ -112,11 +106,11 @@ data CompileError
   | -- Backend errors
     NoPropertiesFound
   | UnsupportedResource Backend Identifier Provenance Resource
-  | UnsupportedInequality Backend Identifier Provenance
+  | UnsupportedInequality Backend DeclProvenance
   | UnsupportedPolymorphicEquality Backend Provenance Name
   | UnsupportedNonMagicVariable Backend Provenance Name
   | NoNetworkUsedInProperty Backend Provenance Identifier
-  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name CheckedType [Builtin]
+  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name BasicNormType BasicNormType [Builtin]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | UnsupportedNegatedOperation DifferentiableLogic DeclProvenance Provenance CheckedExpr

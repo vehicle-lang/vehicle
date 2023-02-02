@@ -13,15 +13,13 @@
             "tag": "Conjunct",
             "contents": [
               {
-                "tag": "Disjunct",
-                "contents": [
-                  {
-                    "tag": "Query",
-                    "contents": [
-                      false,
-                      {
-                        "tag": "NonTrivial",
-                        "contents": {
+                "tag": "Query",
+                "contents": {
+                  "queries": {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "unDisjunctAll": [
+                        {
                           "userVar": [],
                           "metaNetwork": [
                             [
@@ -30,51 +28,46 @@
                             ]
                           ]
                         }
-                      }
-                    ]
+                      ]
+                    }
                   },
-                  {
-                    "tag": "Query",
-                    "contents": [
-                      false,
-                      {
-                        "tag": "Trivial",
-                        "contents": false
-                      }
-                    ]
-                  }
-                ]
+                  "negated": false
+                }
               },
               {
-                "tag": "Disjunct",
+                "tag": "Conjunct",
                 "contents": [
                   {
                     "tag": "Query",
-                    "contents": [
-                      false,
-                      {
+                    "contents": {
+                      "queries": {
                         "tag": "NonTrivial",
                         "contents": {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
-                            ]
+                          "unDisjunctAll": [
+                            {
+                              "userVar": [],
+                              "metaNetwork": [
+                                [
+                                  "f",
+                                  "NO_FILE"
+                                ]
+                              ]
+                            }
                           ]
                         }
-                      }
-                    ]
+                      },
+                      "negated": false
+                    }
                   },
                   {
                     "tag": "Query",
-                    "contents": [
-                      false,
-                      {
+                    "contents": {
+                      "queries": {
                         "tag": "Trivial",
-                        "contents": false
-                      }
-                    ]
+                        "contents": true
+                      },
+                      "negated": false
+                    }
                   }
                 ]
               }
@@ -84,70 +77,78 @@
             "tag": "Conjunct",
             "contents": [
               {
-                "tag": "Disjunct",
+                "tag": "Conjunct",
                 "contents": [
                   {
                     "tag": "Query",
-                    "contents": [
-                      false,
-                      {
+                    "contents": {
+                      "queries": {
                         "tag": "NonTrivial",
                         "contents": {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
-                            ]
+                          "unDisjunctAll": [
+                            {
+                              "userVar": [],
+                              "metaNetwork": [
+                                [
+                                  "f",
+                                  "NO_FILE"
+                                ]
+                              ]
+                            }
                           ]
                         }
-                      }
-                    ]
+                      },
+                      "negated": false
+                    }
                   },
                   {
-                    "tag": "Query",
+                    "tag": "Conjunct",
                     "contents": [
-                      false,
                       {
-                        "tag": "Trivial",
-                        "contents": false
+                        "tag": "Query",
+                        "contents": {
+                          "queries": {
+                            "tag": "NonTrivial",
+                            "contents": {
+                              "unDisjunctAll": [
+                                {
+                                  "userVar": [],
+                                  "metaNetwork": [
+                                    [
+                                      "f",
+                                      "NO_FILE"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "negated": false
+                        }
+                      },
+                      {
+                        "tag": "Query",
+                        "contents": {
+                          "queries": {
+                            "tag": "Trivial",
+                            "contents": true
+                          },
+                          "negated": false
+                        }
                       }
                     ]
                   }
                 ]
               },
               {
-                "tag": "Disjunct",
-                "contents": [
-                  {
-                    "tag": "Query",
-                    "contents": [
-                      false,
-                      {
-                        "tag": "NonTrivial",
-                        "contents": {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
-                            ]
-                          ]
-                        }
-                      }
-                    ]
+                "tag": "Query",
+                "contents": {
+                  "queries": {
+                    "tag": "Trivial",
+                    "contents": true
                   },
-                  {
-                    "tag": "Query",
-                    "contents": [
-                      false,
-                      {
-                        "tag": "Trivial",
-                        "contents": false
-                      }
-                    ]
-                  }
-                ]
+                  "negated": false
+                }
               }
             ]
           }

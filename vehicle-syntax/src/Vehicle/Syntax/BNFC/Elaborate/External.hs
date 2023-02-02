@@ -253,7 +253,7 @@ elabExpr = \case
   B.Impl e1 tk e2 -> builtin (V.TypeClassOp V.ImpliesTC) tk [e1, e2]
   B.And e1 tk e2 -> builtin (V.TypeClassOp V.AndTC) tk [e1, e2]
   B.Or e1 tk e2 -> builtin (V.TypeClassOp V.OrTC) tk [e1, e2]
-  B.If tk1 e1 _ e2 _ e3 -> builtin V.If tk1 [e1, e2, e3]
+  B.If tk1 e1 _ e2 _ e3 -> builtin (V.BuiltinFunction V.If) tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> builtin (V.TypeClassOp $ V.EqualsTC V.Eq) tk [e1, e2]
   B.Neq e1 tk e2 -> builtin (V.TypeClassOp $ V.EqualsTC V.Neq) tk [e1, e2]
   B.Le e1 tk e2 -> elabOrder V.Le tk e1 e2
@@ -265,7 +265,7 @@ elabExpr = \case
   B.Mul e1 tk e2 -> builtin (V.TypeClassOp V.MulTC) tk [e1, e2]
   B.Div e1 tk e2 -> builtin (V.TypeClassOp V.DivTC) tk [e1, e2]
   B.Neg tk e -> builtin (V.TypeClassOp V.NegTC) tk [e]
-  B.At e1 tk e2 -> builtin V.At tk [e1, e2]
+  B.At e1 tk e2 -> builtin (V.BuiltinFunction V.At) tk [e1, e2]
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
   B.HasEq tk -> builtin (V.Constructor $ V.TypeClass (V.HasEq V.Eq)) tk []
@@ -526,7 +526,7 @@ elabForeach ::
   m V.InputExpr
 elabForeach tk binders body = do
   p <- mkProvenance tk
-  let builtin = V.Builtin p V.Foreach
+  let builtin = V.Builtin p (V.BuiltinFunction V.Foreach)
 
   binders' <- elabNamedBinders tk binders
   body' <- elabExpr body

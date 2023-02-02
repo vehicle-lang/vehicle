@@ -5,6 +5,7 @@ import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
   ( BinderDisplayForm (BinderDisplayForm),
     BinderNamingForm (OnlyName),
+    Builtin,
     CheckedBinder,
     CheckedExpr,
     CheckedType,
@@ -89,7 +90,7 @@ liftingTests =
 
 data SubstitutionTest = SubstitutionTest
   { name :: String,
-    value :: DBExpr,
+    value :: DBExpr Builtin,
     expr :: CheckedExpr,
     expected :: CheckedExpr
   }

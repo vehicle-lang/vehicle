@@ -1,13 +1,16 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Queries.IfElimination
   ( eliminateIfs,
+    unfoldIf,
   )
 where
 
-import Data.List.NonEmpty as NonEmpty
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Core (normaliseNotArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
+import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Primary function
@@ -17,11 +20,12 @@ import Vehicle.Compile.Print
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-eliminateIfs :: MonadCompile m => CheckedExpr -> m CheckedExpr
-eliminateIfs e = logCompilerPass MinDetail currentPass $ do
-  result <- liftAndElimIf e
-  logCompilerPassOutput (prettyExternal (WithContext e emptyDBCtx))
-  return result
+eliminateIfs :: MonadCompile m => BoundDBCtx -> BasicNormExpr -> m BasicNormExpr
+eliminateIfs ctx e =
+  logCompilerPass MaxDetail currentPass $ do
+    result <- elimIf <$> recLiftIf e
+    logCompilerPassOutput (prettyFriendly (WithContext result ctx))
+    return result
 
 currentPass :: Doc a
 currentPass = "if elimination"
@@ -29,77 +33,63 @@ currentPass = "if elimination"
 --------------------------------------------------------------------------------
 -- If operations
 
-liftIf :: (CheckedExpr -> CheckedExpr) -> CheckedExpr -> CheckedExpr
-liftIf f (IfExpr p _t [cond, e1, e2]) =
-  IfExpr
-    p
+liftIf :: (BasicNormExpr -> BasicNormExpr) -> BasicNormExpr -> BasicNormExpr
+liftIf f (VBuiltinFunction If [_t, cond, e1, e2]) =
+  VBuiltinFunction
+    If
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-    (BoolType p)
-    [ cond,
+    [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
+      cond,
       fmap (liftIf f) e1,
       fmap (liftIf f) e2
     ]
 liftIf f e = f e
 
--- | Recursively removes all top-level `if` statements in the current
--- provided expression.
-elimIf :: CheckedExpr -> CheckedExpr
-elimIf (IfExpr p _ [cond, e1, e2]) =
-  OrExpr p $
-    fmap
-      (ExplicitArg p)
-      [ AndExpr p [cond, fmap elimIf e1],
-        AndExpr p [normaliseNotArg cond, fmap elimIf e2]
-      ]
-elimIf e = e
-
-liftAndElimIf :: MonadCompile m => CheckedExpr -> m CheckedExpr
-liftAndElimIf expr = case expr of
-  Universe {} -> return expr
-  Builtin {} -> return expr
-  Literal {} -> return expr
-  Var {} -> return expr
-  Hole {} -> return expr
-  Meta {} -> return expr
-  Pi {} -> unexpectedTypeInExprError currentPass "Pi"
-  PostulatedQuantifierExpr ident p binder body ->
-    PostulatedQuantifierExpr ident p binder . elimIf <$> liftAndElimIf body
-  NotExpr p args -> NotExpr p <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
-  AndExpr p args -> AndExpr p <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
-  OrExpr p args -> OrExpr p <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
-  ImpliesExpr p args -> ImpliesExpr p <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
-  IfExpr p t args -> IfExpr p t <$> traverse (traverse (fmap elimIf . liftAndElimIf)) args
-  Let p bound binder body ->
-    Let p <$> liftAndElimIf bound <*> pure binder <*> liftAndElimIf body
-  App p fun args -> do
-    fun' <- liftAndElimIf fun
-    args' <- traverse (traverse liftAndElimIf) args
-    return $ liftIf (\v -> liftArgs (\vs -> App p v vs) args') fun'
-  Ann p e t -> do
-    e' <- liftAndElimIf e
-    t' <- liftAndElimIf t
-    return $ liftIf (\e'' -> liftIf (\t'' -> Ann p e'' t'') t') e'
-  LVec p es -> do
-    es' <- traverse liftAndElimIf es
-    return $ liftSeq (\es'' -> LVec p es'') es'
-
+recLiftIf :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
+recLiftIf expr = case expr of
+  VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   -- Quantified lambdas should have been caught before now.
-  Lam {} -> normalisationError currentPass "Non-quantified Lam"
+  VLam {} -> normalisationError currentPass "Non-quantified Lam"
+  VUniverse {} -> return expr
+  VLiteral {} -> return expr
+  VMeta {} -> return expr
+  VBoundVar {} -> return expr
+  VFreeVar v spine -> liftArgs (VFreeVar v) <$> traverse (traverse recLiftIf) spine
+  VBuiltin b spine -> liftArgs (VBuiltin b) <$> traverse (traverse recLiftIf) spine
+  VLVec es spine -> do
+    es' <- traverse recLiftIf es
+    let result = liftSeq (\es'' -> VLVec es'' spine) es'
+    return result
 
-liftArg :: (CheckedArg -> CheckedExpr) -> CheckedArg -> CheckedExpr
+liftArg :: (BasicNormArg -> BasicNormExpr) -> BasicNormArg -> BasicNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
-
-liftSeq :: ([CheckedExpr] -> CheckedExpr) -> [CheckedExpr] -> CheckedExpr
-liftSeq f [] = f []
-liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
 liftArgs ::
-  (NonEmpty CheckedArg -> CheckedExpr) ->
-  NonEmpty CheckedArg ->
-  CheckedExpr
-liftArgs f (x :| []) = liftArg (\x' -> f (x' :| [])) x
-liftArgs f (arg :| y : xs) =
-  if visibilityOf arg == Explicit
-    then liftArg (\arg' -> liftArgs (\as -> f (arg' <| as)) (y :| xs)) arg
-    else liftArgs (\as -> f (arg <| as)) (y :| xs)
+  (BasicSpine -> BasicNormExpr) ->
+  BasicSpine ->
+  BasicNormExpr
+liftArgs f [] = f []
+liftArgs f (x : xs) =
+  if visibilityOf x == Explicit
+    then liftArg (\a -> liftArgs (\as -> f (a : as)) xs) x
+    else liftArgs (\as -> f (x : as)) xs
+
+liftSeq :: ([BasicNormExpr] -> BasicNormExpr) -> [BasicNormExpr] -> BasicNormExpr
+liftSeq f [] = f []
+liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
+
+-- | Recursively removes all top-level `if` statements in the current
+-- provided expression.
+elimIf :: BasicNormExpr -> BasicNormExpr
+elimIf (VBuiltinFunction If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf e = e
+
+unfoldIf :: BasicNormArg -> BasicNormArg -> BasicNormArg -> BasicNormExpr
+unfoldIf c x y =
+  VBuiltinFunction Or $
+    fmap
+      (ExplicitArg mempty)
+      [ VBuiltinFunction And [c, x],
+        VBuiltinFunction And [ExplicitArg mempty (VBuiltinFunction Not [c]), y]
+      ]

@@ -13,7 +13,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint (InstanceCandidate (..))
-import Vehicle.Expr.DSL
+import Vehicle.Expr.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Names (StdLibFunction (..))
 
 declaredCandidates :: HashMap TypeClass [InstanceCandidate]
@@ -81,7 +81,7 @@ candidates =
                 forAll "l" tLin $ \l ->
                   forAllNat $ \n ->
                     forAllInstance "eq" (hasEq Eq l t1 t2) $ \eq ->
-                      free (identifierOf StdEqualsVector) @@@ [t1, t2] .@@@ [l] @@@ [n] @@@@ [eq]
+                      free (identifierOf StdEqualsVector) @@@ [t1, t2] @@@ [n] @@@@ [eq]
           ),
           ------------
           -- HasNotEq --
@@ -117,7 +117,7 @@ candidates =
                 forAll "l" tLin $ \l ->
                   forAllNat $ \n ->
                     forAllInstance "eq" (hasEq Neq l t1 t2) $ \eq ->
-                      free (identifierOf StdNotEqualsVector) .@@@ [l] @@@ [t1, t2, n] @@@@ [eq]
+                      free (identifierOf StdNotEqualsVector) @@@ [t1, t2, n] @@@@ [eq]
           ),
           ------------
           -- HasNot --
@@ -228,3 +228,6 @@ processCandidate candidate = case findTypeClassOfCandidate (candidateExpr candid
           <> line
           <> "Problematic expr:"
         <+> problemDoc
+
+builtin :: BuiltinFunction -> DSLExpr
+builtin = builtinFunction

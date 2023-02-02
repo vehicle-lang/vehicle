@@ -33,7 +33,7 @@ data LExpr
   | -- | variable (bound)
     Variable Int -- DBIndex
   | -- | variable (free)
-    FreeVariable V.Name
+    FreeVariable V.Name (NonEmpty LExpr)
   | NetworkApplication V.Name (NonEmpty LExpr)
   | -- | quantifiers forall, exists
     Quantifier Quantifier V.Name Domain LExpr

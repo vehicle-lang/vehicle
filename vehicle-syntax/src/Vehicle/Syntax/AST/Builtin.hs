@@ -291,14 +291,36 @@ instance FromJSON MapDomain
 
 instance Serialize MapDomain
 
--- | Builtins in the Vehicle language
-data Builtin
-  = Constructor BuiltinConstructor
-  | -- Boolean expressions
-    Not
+data QuantifierDomain
+  = QuantNat
+  | QuantInt
+  | QuantRat
+  | QuantVec
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData QuantifierDomain
+
+instance Hashable QuantifierDomain
+
+instance ToJSON QuantifierDomain
+
+instance FromJSON QuantifierDomain
+
+instance Serialize QuantifierDomain
+
+instance Pretty QuantifierDomain where
+  pretty = \case
+    QuantNat -> "Nat"
+    QuantInt -> "Int"
+    QuantRat -> "Rat"
+    QuantVec -> "Vec"
+
+data BuiltinFunction
+  = Not
   | And
   | Or
   | Implies
+  | Quantifier Quantifier QuantifierDomain
   | If
   | -- Numeric conversion
     FromNat Int FromNatDomain
@@ -315,10 +337,50 @@ data Builtin
   | Order OrderDomain OrderOp
   | At
   | Map MapDomain
-  | -- Derived
-    TypeClassOp TypeClassOp
   | Fold FoldDomain
   | Foreach
+  deriving (Eq, Show, Generic)
+
+instance NFData BuiltinFunction
+
+instance Hashable BuiltinFunction
+
+instance ToJSON BuiltinFunction
+
+instance Serialize BuiltinFunction
+
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
+instance Pretty BuiltinFunction where
+  pretty = \case
+    Not -> "notBool"
+    And -> "andBool"
+    Or -> "orBool"
+    Implies -> "impliesBool"
+    Quantifier q dom -> pretty q <> pretty dom
+    If -> "if"
+    Neg dom -> "neg" <> pretty dom
+    Add dom -> "add" <> pretty dom
+    Sub dom -> "sub" <> pretty dom
+    Mul dom -> "mul" <> pretty dom
+    Div dom -> "div" <> pretty dom
+    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
+    FromRat dom -> "fromRatTo" <> pretty dom
+    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
+    Equals dom op -> equalityOpName op <> pretty dom
+    Order dom op -> orderOpName op <> pretty dom
+    Foreach -> "foreach"
+    Fold dom -> "fold" <> pretty dom
+    Map dom -> "map" <> pretty dom
+    At -> "!"
+
+-- | Builtins in the Vehicle language
+data Builtin
+  = Constructor BuiltinConstructor
+  | -- Boolean expressions
+    BuiltinFunction BuiltinFunction
+  | -- Derived
+    TypeClassOp TypeClassOp
   deriving (Eq, Show, Generic)
 
 instance NFData Builtin
@@ -335,25 +397,7 @@ instance Pretty Builtin where
   pretty = \case
     Constructor c -> pretty c
     TypeClassOp tcOp -> pretty tcOp
-    Not -> "notBool"
-    And -> "andBool"
-    Or -> "orBool"
-    Implies -> "impliesBool"
-    If -> "if"
-    Neg dom -> "neg" <> pretty dom
-    Add dom -> "add" <> pretty dom
-    Sub dom -> "sub" <> pretty dom
-    Mul dom -> "mul" <> pretty dom
-    Div dom -> "div" <> pretty dom
-    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
-    FromRat dom -> "fromRatTo" <> pretty dom
-    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
-    Equals dom op -> equalityOpName op <> pretty dom
-    Order dom op -> orderOpName op <> pretty dom
-    Foreach -> "foreach"
-    Fold dom -> "fold" <> pretty dom
-    Map dom -> "map" <> pretty dom
-    At -> "!"
+    BuiltinFunction function -> pretty function
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = mempty

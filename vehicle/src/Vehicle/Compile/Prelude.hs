@@ -29,17 +29,17 @@ type UncheckedBinding = DBBinding
 
 type UncheckedVar = DBIndexVar
 
-type UncheckedBinder = DBBinder
+type UncheckedBinder = DBBinder Builtin
 
-type UncheckedArg = DBArg
+type UncheckedArg = DBArg Builtin
 
-type UncheckedExpr = DBExpr
+type UncheckedExpr = DBExpr Builtin
 
-type UncheckedType = DBExpr
+type UncheckedType = DBExpr Builtin
 
-type UncheckedDecl = DBDecl
+type UncheckedDecl = DBDecl Builtin
 
-type UncheckedProg = DBProg
+type UncheckedProg = DBProg Builtin
 
 -- * Types post type-checking
 
@@ -47,17 +47,17 @@ type CheckedBinding = DBBinding
 
 type CheckedVar = DBIndexVar
 
-type CheckedBinder = DBBinder
+type CheckedBinder = DBBinder Builtin
 
-type CheckedArg = DBArg
+type CheckedArg = DBArg Builtin
 
-type CheckedExpr = DBExpr
+type CheckedExpr = DBExpr Builtin
 
 type CheckedType = CheckedExpr
 
-type CheckedDecl = DBDecl
+type CheckedDecl = DBDecl Builtin
 
-type CheckedProg = DBProg
+type CheckedProg = DBProg Builtin
 
 type CheckedTelescope = [CheckedBinder]
 
@@ -67,15 +67,15 @@ type OutputBinding = ()
 
 type OutputVar = Name
 
-type OutputBinder = Binder OutputBinding OutputVar
+type OutputBinder = Binder OutputBinding OutputVar Builtin
 
-type OutputArg = Arg OutputBinding OutputVar
+type OutputArg = Arg OutputBinding OutputVar Builtin
 
-type OutputExpr = Expr OutputBinding OutputVar
+type OutputExpr = Expr OutputBinding OutputVar Builtin
 
-type OutputDecl = Decl OutputBinding OutputVar
+type OutputDecl = Decl OutputBinding OutputVar Builtin
 
-type OutputProg = Prog OutputBinding OutputVar
+type OutputProg = Prog OutputBinding OutputVar Builtin
 
 -- | An expression paired with a position tree represting positions within it.
 -- Currently used mainly for pretty printing position trees.

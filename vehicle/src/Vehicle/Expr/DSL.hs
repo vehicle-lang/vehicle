@@ -21,6 +21,7 @@ module Vehicle.Expr.DSL
     forAllLinearityTriples,
     forAllPolarityTriples,
     builtin,
+    builtinFunction,
     tUnit,
     tBool,
     tNat,
@@ -93,10 +94,10 @@ class DSL expr where
   free :: Identifier -> expr
 
 newtype DSLExpr = DSL
-  { unDSL :: Provenance -> DBLevel -> DBExpr
+  { unDSL :: Provenance -> DBLevel -> CheckedExpr
   }
 
-fromDSL :: Provenance -> DSLExpr -> DBExpr
+fromDSL :: Provenance -> DSLExpr -> CheckedExpr
 fromDSL p e = unDSL e p 0
 
 boundVar :: DBLevel -> DSLExpr
@@ -142,10 +143,10 @@ instance DSL DSLExpr where
   free ident = DSL $ \p _i ->
     FreeVar p ident
 
-piType :: DBExpr -> DBExpr -> DBExpr
+piType :: CheckedExpr -> CheckedExpr -> CheckedExpr
 piType t1 t2 = t1 `tMax` t2
 
-universeLevel :: DBExpr -> UniverseLevel
+universeLevel :: CheckedExpr -> UniverseLevel
 universeLevel (Universe _ (TypeUniv l)) = l
 universeLevel (Meta _ _) = 0 -- This is probably going to bite us, apologies.
 universeLevel (App _ (Meta _ _) _) = 0 -- This is probably going to bite us, apologies.
@@ -154,11 +155,14 @@ universeLevel t =
   developerError $
     "Expected argument of type Type. Found" <+> pretty (show t) <> "."
 
-tMax :: DBExpr -> DBExpr -> DBExpr
+tMax :: CheckedExpr -> CheckedExpr -> CheckedExpr
 tMax t1 t2 = if universeLevel t1 > universeLevel t2 then t1 else t2
 
 builtin :: Builtin -> DSLExpr
 builtin b = DSL $ \p _ -> Builtin p b
+
+builtinFunction :: BuiltinFunction -> DSLExpr
+builtinFunction b = DSL $ \p _ -> Builtin p (BuiltinFunction b)
 
 constructor :: BuiltinConstructor -> DSLExpr
 constructor = builtin . Constructor

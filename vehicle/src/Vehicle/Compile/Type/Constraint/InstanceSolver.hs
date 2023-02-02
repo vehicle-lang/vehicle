@@ -158,7 +158,7 @@ checkCandidate ctx meta goal candidate = do
 
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
-instantiateCandidateTelescope :: TCM m => ConstraintContext -> InstanceCandidate -> m (NormExpr, CheckedExpr)
+instantiateCandidateTelescope :: TCM m => ConstraintContext -> InstanceCandidate -> m (BasicNormExpr, CheckedExpr)
 instantiateCandidateTelescope ctx InstanceCandidate {..} =
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
     let p = provenanceOf ctx

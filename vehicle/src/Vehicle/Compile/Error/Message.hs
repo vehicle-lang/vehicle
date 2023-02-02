@@ -354,9 +354,9 @@ instance MeaningfulError CompileError where
             fix = Nothing
           }
       where
-        getMessage :: NormExpr -> Doc a
+        getMessage :: BasicNormExpr -> Doc a
         getMessage = \case
-          VConstructor _ (TypeClass tc) args -> case (tc, args) of
+          VConstructor (TypeClass tc) args -> case (tc, args) of
             (HasMap, _) ->
               "unable to work out the type for"
                 <+> pretty MapTC <> "."
@@ -373,7 +373,7 @@ instance MeaningfulError CompileError where
             _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
           e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
 
-        failedOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
+        failedOp2Message :: BoundDBCtx -> TypeClassOp -> BasicNormExpr -> BasicNormExpr -> BasicNormExpr -> Doc a
         failedOp2Message boundCtx op t1 t2 t3 =
           "cannot apply"
             <+> squotes (pretty op)
@@ -704,7 +704,7 @@ instance MeaningfulError CompileError where
     NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
       UError $
         UserError
-          { provenance = provenanceOf nonTensorType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the"
@@ -736,7 +736,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
       UError $
         UserError
-          { provenance = provenanceOf elementType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as"
@@ -754,7 +754,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
-          { provenance = provenanceOf tDim,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the size of the"
@@ -859,10 +859,10 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: NormType -> Int
+        dimensionsOf :: BasicNormType -> Int
         dimensionsOf = \case
-          VListType _ t -> 1 + dimensionsOf t
-          VVectorType _ t _ -> 1 + dimensionsOf t
+          VListType t -> 1 + dimensionsOf t
+          VVectorType t _ -> 1 + dimensionsOf t
           _ -> 0
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
       UError $
@@ -1181,7 +1181,7 @@ instance MeaningfulError CompileError where
                 "try avoiding it, otherwise please open an issue on the"
                   <+> "Vehicle issue tracker."
           }
-    UnsupportedVariableType target ident p name t supportedTypes ->
+    UnsupportedVariableType target ident p name problemType baseType supportedTypes ->
       UError $
         UserError
           { provenance = p,
@@ -1191,16 +1191,24 @@ instance MeaningfulError CompileError where
                 <+> "contains a quantified variable"
                 <+> quotePretty name
                 <+> "of type"
-                <+> squotes (prettyFriendly (WithContext t emptyDBCtx))
+                <+> squotes (prettyFriendly (WithContext baseType emptyDBCtx))
                 <+> "which is not currently supported"
                 <+> "by"
-                <+> pretty target <> ".",
+                <+> pretty target
+                  <> "."
+                  <> ( if baseType == problemType
+                         then ""
+                         else
+                           " In particular the element type"
+                             <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
+                             <+> "is not supported."
+                     ),
             fix =
               Just $
                 "try switching the variable to one of the following supported types:"
                   <+> pretty supportedTypes
           }
-    UnsupportedInequality target identifier p ->
+    UnsupportedInequality target (identifier, p) ->
       UError $
         UserError
           { provenance = p,

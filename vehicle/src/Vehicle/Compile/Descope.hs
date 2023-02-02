@@ -32,13 +32,13 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed DBProg InputProg where
+instance DescopeNamed (DBProg builtin) (Prog InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed DBDecl InputDecl where
+instance DescopeNamed (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised DBExpr BoundDBCtx) InputExpr where
+instance DescopeNamed (Contextualised (DBExpr builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
@@ -61,13 +61,13 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive DBProg InputProg where
+instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive DBDecl InputDecl where
+instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive DBExpr InputExpr where
+instance DescopeNaive (Expr DBBinding DBIndexVar builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -82,7 +82,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive NormExpr InputExpr where
+instance DescopeNaive (NormExpr builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -94,14 +94,14 @@ newtype Ctx = Ctx BoundDBCtx
 runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: Binder InputBinding var -> Ctx -> Ctx
+addBinderToCtx :: Binder InputBinding var builtin -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping ::
   Show var =>
   (Provenance -> var -> Reader Ctx Name) ->
-  Contextualised (Expr DBBinding var) BoundDBCtx ->
-  InputExpr
+  Contextualised (Expr DBBinding var builtin) BoundDBCtx ->
+  Expr InputBinding InputVar builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) (Ctx ctx)
 
@@ -110,8 +110,8 @@ type MonadDescope m = MonadReader Ctx m
 descopeExpr ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
-  Expr DBBinding var ->
-  m InputExpr
+  Expr DBBinding var builtin ->
+  m (Expr InputBinding InputVar builtin)
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
   Hole p name -> return $ Hole p name
@@ -139,56 +139,58 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Binder DBBinding var ->
-  f InputBinder
+  Binder DBBinding var builtin ->
+  f (Binder InputBinding InputVar builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Arg DBBinding var ->
-  f InputArg
+  Arg DBBinding var builtin ->
+  f (Arg InputBinding InputVar builtin)
 descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `NormExpr`s in a readable form.
-descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr -> InputExpr
+descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr builtin -> Expr InputBinding InputVar builtin
 descopeNormExpr f e = case e of
-  VUniverse p u -> Universe p u
-  VLiteral p l -> Literal p l
-  VMeta p m spine -> normAppList p (Meta p m) $ descopeSpine f spine
-  VFreeVar p v spine -> normAppList p (Var p (nameOf v)) $ descopeSpine f spine
-  VBuiltin p b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
-  VBoundVar p v spine -> do
+  VUniverse u -> Universe p u
+  VLiteral l -> Literal p l
+  VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
+  VFreeVar v spine -> normAppList p (Var p (nameOf v)) $ descopeSpine f spine
+  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
+  VBoundVar v spine -> do
     let var = Var p $ f p v
     let args = descopeSpine f spine
     normAppList p var args
-  VLVec p xs _spine -> do
+  VLVec xs _spine -> do
     let xs' = fmap (descopeNormExpr f) xs
     -- let args = descopeSpine f spine
     -- normAppList p (LVec p xs') args
     LVec p xs'
-  VPi p binder body -> do
+  VPi binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
     Pi p binder' body'
-  VLam p binder env body -> do
+  VLam binder env body -> do
     let binder' = descopeNormBinder f binder
     let env' = fmap (descopeNormExpr f) env
     let body' = descopeNaive body
     let envExpr = App p (Var p "ENV") [ExplicitArg p $ LVec p env']
     Lam p binder' (App p envExpr [ExplicitArg p body'])
+  where
+    p = mempty
 
 descopeSpine ::
   (Provenance -> DBLevel -> Name) ->
-  Spine ->
-  [InputArg]
+  Spine builtin ->
+  [Arg InputBinding InputVar builtin]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> DBLevel -> Name) ->
-  NormBinder ->
-  InputBinder
+  NormBinder builtin ->
+  Binder InputBinding InputVar builtin
 descopeNormBinder f = fmap (descopeNormExpr f)
 
 descopeDBIndexVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name
@@ -217,11 +219,11 @@ descopeCoDBVarNaive _ = \case
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: Show var => Expr DBBinding var -> Expr DBBinding var
+showScopeEntry :: Show var => Expr DBBinding var builtin -> Expr DBBinding var builtin
 showScopeEntry e =
   e
 
-showScopeExit :: MonadDescope m => m InputExpr -> m InputExpr
+showScopeExit :: MonadDescope m => m (Expr InputBinding InputVar builtin) -> m (Expr InputBinding InputVar builtin)
 showScopeExit m = do
   e <- m
   return e

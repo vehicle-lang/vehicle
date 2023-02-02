@@ -14,33 +14,33 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isTypeUniverse :: Expr binder var -> Bool
+isTypeUniverse :: Expr binder var Builtin -> Bool
 isTypeUniverse TypeUniverse {} = True
 isTypeUniverse _ = False
 
-isPolarityUniverse :: Expr binder var -> Bool
+isPolarityUniverse :: Expr binder var Builtin -> Bool
 isPolarityUniverse PolarityUniverse {} = True
 isPolarityUniverse _ = False
 
-isLinearityUniverse :: Expr binder var -> Bool
+isLinearityUniverse :: Expr binder var Builtin -> Bool
 isLinearityUniverse LinearityUniverse {} = True
 isLinearityUniverse _ = False
 
-isAuxiliaryUniverse :: Expr binder var -> Bool
+isAuxiliaryUniverse :: Expr binder var Builtin -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
-isBoundVar :: DBExpr -> Bool
+isBoundVar :: DBExpr Builtin -> Bool
 isBoundVar BoundVar {} = True
 isBoundVar _ = False
 
-isAnnBoolType :: DBExpr -> Bool
+isAnnBoolType :: DBExpr Builtin -> Bool
 isAnnBoolType AnnBoolType {} = True
 isAnnBoolType _ = False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNamesIn :: Expr binder DBIndexVar -> [Identifier]
+freeNamesIn :: Expr binder DBIndexVar builtin -> [Identifier]
 freeNamesIn = cata $ \case
   VarF _ (Free ident) -> [ident]
   VarF _ (Bound _) -> []
@@ -59,11 +59,11 @@ freeNamesIn = cata $ \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr binder var -> (Expr binder var, [Arg binder var])
+toHead :: Expr binder var builtin -> (Expr binder var builtin, [Arg binder var builtin])
 toHead (App _ fun args) = (fun, NonEmpty.toList args)
 toHead e = (e, [])
 
-exprHead :: Expr binder var -> Expr binder var
+exprHead :: Expr binder var builtin -> Expr binder var builtin
 exprHead = fst . toHead
 
 onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
@@ -72,12 +72,12 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 --------------------------------------------------------------------------------
 -- Views
 
-getMetaID :: Expr binder var -> Maybe MetaID
+getMetaID :: Expr binder var builtin -> Maybe MetaID
 getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getFreeVar :: DBExpr -> Maybe Identifier
+getFreeVar :: DBExpr Builtin -> Maybe Identifier
 getFreeVar = \case
   FreeVar _ ident -> Just ident
   _ -> Nothing
@@ -88,7 +88,7 @@ getBinderName binder = case binderNamingForm binder of
   OnlyName name -> name
   OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
 
-getContainerElem :: DBExpr -> Maybe DBExpr
+getContainerElem :: DBExpr Builtin -> Maybe (DBExpr Builtin)
 getContainerElem (ListType _ t) = Just t
 getContainerElem (TensorType p t dims) = case getDimensions dims of
   Just [_] -> Just t
@@ -96,11 +96,11 @@ getContainerElem (TensorType p t dims) = case getDimensions dims of
   _ -> Nothing
 getContainerElem _ = Nothing
 
-getDimension :: DBExpr -> Maybe Int
+getDimension :: DBExpr Builtin -> Maybe Int
 getDimension (NatLiteral _ n) = return n
 getDimension _ = Nothing
 
-getDimensions :: DBExpr -> Maybe [Int]
+getDimensions :: DBExpr Builtin -> Maybe [Int]
 getDimensions NilExpr {} = Just []
 getDimensions (ConsExpr _ _ [x, xs]) = do
   d <- getDimension (argExpr x)
@@ -108,15 +108,15 @@ getDimensions (ConsExpr _ _ [x, xs]) = do
   return $ d : ds
 getDimensions _ = Nothing
 
-getExplicitArg :: Arg binder var -> Maybe (Expr binder var)
+getExplicitArg :: Arg binder var builtin -> Maybe (Expr binder var builtin)
 getExplicitArg (ExplicitArg _ arg) = Just arg
 getExplicitArg _ = Nothing
 
-getImplicitArg :: Arg binder var -> Maybe (Expr binder var)
+getImplicitArg :: Arg binder var builtin -> Maybe (Expr binder var builtin)
 getImplicitArg (ImplicitArg _ arg) = Just arg
 getImplicitArg _ = Nothing
 
-filterOutNonExplicitArgs :: NonEmpty (Arg binder var) -> [Expr binder var]
+filterOutNonExplicitArgs :: NonEmpty (Arg binder var builtin) -> [Expr binder var builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
 
 findInstanceArg :: [GenericArg a] -> (a, [GenericArg a])
@@ -133,10 +133,10 @@ mkNameWithIndices n index = n <> pack (show index)
 
 -- mconcat (n : [pack (show index) | index <- indices])
 
-mkDoubleExpr :: Provenance -> Double -> DBExpr
+mkDoubleExpr :: Provenance -> Double -> DBExpr Builtin
 mkDoubleExpr p v = RatLiteral p (toRational v)
 
-mkIndexType :: Provenance -> Int -> DBExpr
+mkIndexType :: Provenance -> Int -> DBExpr Builtin
 mkIndexType p n =
   ConstructorExpr
     p
@@ -144,7 +144,7 @@ mkIndexType p n =
     [ ExplicitArg p (NatLiteral p n)
     ]
 
-mkIntExpr :: Provenance -> Int -> DBExpr
+mkIntExpr :: Provenance -> Int -> DBExpr Builtin
 mkIntExpr p v
   | v >= 0 = NatLiteral p v
   | otherwise = IntLiteral p v
@@ -152,14 +152,14 @@ mkIntExpr p v
 mkTensorDims ::
   Provenance ->
   [Int] ->
-  [DBExpr]
+  [DBExpr Builtin]
 mkTensorDims p = fmap (NatLiteral p)
 
 mkTensorType ::
   Provenance ->
-  DBExpr ->
-  [DBExpr] ->
-  DBExpr
+  DBExpr Builtin ->
+  [DBExpr Builtin] ->
+  DBExpr Builtin
 mkTensorType _ tElem [] = tElem
 mkTensorType p tElem dims =
   let dimList = mkList p (NatType p) dims
@@ -167,9 +167,9 @@ mkTensorType p tElem dims =
 
 mkList ::
   Provenance ->
-  Expr var binder ->
-  [Expr var binder] ->
-  Expr var binder
+  Expr var binder Builtin ->
+  [Expr var binder Builtin] ->
+  Expr var binder Builtin
 mkList p elemType = foldr cons nil
   where
     nil = ConstructorExpr p Nil [ImplicitArg p elemType]
@@ -185,9 +185,9 @@ mkList p elemType = foldr cons nil
 
 mkVec ::
   Provenance ->
-  Expr var binder ->
-  [Expr var binder] ->
-  Expr var binder
+  Expr var binder builtin ->
+  [Expr var binder builtin] ->
+  Expr var binder builtin
 mkVec p tElem xs =
   App
     p

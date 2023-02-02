@@ -151,9 +151,9 @@ nfAt :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedArg -> CheckedArg -> 
 nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
   (AnnVecLiteral _ _ es, IndexLiteral _ _ i) -> es !! fromIntegral i
   _ ->
-    App
+    BuiltinFunctionExpr
       p
-      (Builtin p At)
+      At
       ( ImplicitArg p tElem
           :| ImplicitArg p tDim
           : [vector, index]
