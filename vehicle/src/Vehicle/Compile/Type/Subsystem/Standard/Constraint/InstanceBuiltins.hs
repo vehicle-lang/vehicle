@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
-module Vehicle.Compile.Type.Constraint.InstanceBuiltins
+module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
   ( declaredCandidates,
     findTypeClassOfCandidate,
   )
@@ -13,6 +13,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint (InstanceCandidate (..))
+import Vehicle.Compile.Type.Subsystem.Standard.Core ()
 import Vehicle.Expr.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Names (StdLibFunction (..))
 
@@ -21,7 +22,7 @@ declaredCandidates = do
   let tcAndCandidates = fmap (second (: []) . processCandidate) candidates
   HashMap.fromListWith (<>) tcAndCandidates
 
-findTypeClassOfCandidate :: CheckedExpr -> Either CheckedExpr TypeClass
+findTypeClassOfCandidate :: TypeCheckedExpr -> Either TypeCheckedExpr TypeClass
 findTypeClassOfCandidate = \case
   Pi _ binder body
     | not (isExplicit binder) -> findTypeClassOfCandidate body

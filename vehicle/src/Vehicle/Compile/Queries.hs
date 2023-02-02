@@ -22,6 +22,8 @@ import Vehicle.Compile.Queries.NetworkElimination
 import Vehicle.Compile.Queries.Variable (UserVariable (..))
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getNormalised, getPropertyInfo)
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Normalisation ()
 import Vehicle.Compile.Type.VariableContext (DeclSubstitution)
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn (DBLevel (..))
@@ -41,7 +43,7 @@ currentPass = "compilation of properties"
 compileToQueries ::
   (MonadIO m, MonadCompile m) =>
   Verifier ->
-  TypedProg ->
+  StandardTypedProg ->
   Resources ->
   m (VerificationPlan, VerificationQueries)
 compileToQueries verifier@Verifier {..} typedProg resources =
@@ -66,15 +68,15 @@ compileToQueries verifier@Verifier {..} typedProg resources =
 getProperties ::
   MonadCompile m =>
   VerifierIdentifier ->
-  GenericProg TypedExpr ->
-  m [(DeclSubstitution, DeclProvenance, BasicNormExpr)]
+  GenericProg StandardTypedExpr ->
+  m [(DeclSubstitution Builtin, DeclProvenance, StandardNormExpr)]
 getProperties verifier (Main decls) = go mempty decls
   where
     go ::
       MonadCompile m =>
-      DeclSubstitution ->
-      [TypedDecl] ->
-      m [(DeclSubstitution, DeclProvenance, BasicNormExpr)]
+      DeclSubstitution Builtin ->
+      [StandardTypedDecl] ->
+      m [(DeclSubstitution Builtin, DeclProvenance, StandardNormExpr)]
     go _ [] = return []
     go ctx (d : ds) = case d of
       DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
@@ -94,7 +96,7 @@ getProperties verifier (Main decls) = go mempty decls
 --------------------------------------------------------------------------------
 -- Compilation
 
-type PropertyReaderState = (DeclSubstitution, Verifier, DeclProvenance, NetworkContext)
+type PropertyReaderState = (DeclSubstitution Builtin, Verifier, DeclProvenance, NetworkContext)
 
 type MonadCompileProperty m =
   ( MonadCompile m,
@@ -104,7 +106,7 @@ type MonadCompileProperty m =
 -- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
 -- by recursing through the levels of vectors until it reaches something of
 -- type `Bool`.
-compileProperty :: MonadCompileProperty m => BasicNormExpr -> m (Property (QueryMetaData, QueryText))
+compileProperty :: MonadCompileProperty m => StandardNormExpr -> m (Property (QueryMetaData, QueryText))
 compileProperty = \case
   VLVec es _ -> MultiProperty <$> traverse compileProperty es
   expr ->
@@ -116,11 +118,11 @@ compileProperty = \case
 compilePropertyTopLevelStructure ::
   forall m.
   MonadCompileProperty m =>
-  BasicNormExpr ->
+  StandardNormExpr ->
   m (BoolProperty (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
   where
-    go :: BasicNormExpr -> m (BoolProperty (QueryMetaData, QueryText))
+    go :: StandardNormExpr -> m (BoolProperty (QueryMetaData, QueryText))
     go expr = case expr of
       VLiteral LBool {} ->
         Query <$> compileQuerySet False expr
@@ -157,7 +159,7 @@ compilePropertyTopLevelStructure = go
 compileQuerySet ::
   MonadCompileProperty m =>
   Bool ->
-  BasicNormExpr ->
+  StandardNormExpr ->
   m (QuerySet (QueryMetaData, QueryText))
 compileQuerySet isPropertyNegated expr = do
   -- First we recursively compile down the remaining boolean structure, stopping at
@@ -182,7 +184,7 @@ compileQuerySet isPropertyNegated expr = do
 
 -- | This is a tree structure which stores the reverse environment at each
 -- node and propositional expressions at the leaves.
-type PropositionTree = BooleanExpr BasicNormExpr
+type PropositionTree = BooleanExpr StandardNormExpr
 
 -- | The set of variables that will be cumulatively in scope at the current
 -- point in time once all existential quantifiers have been lifted to the
@@ -199,11 +201,11 @@ compileQueryStructure ::
   forall m.
   MonadCompileProperty m =>
   CumulativeVariables ->
-  BasicNormExpr ->
+  StandardNormExpr ->
   m (PropositionTree, CumulativeVariables)
 compileQueryStructure = go False
   where
-    go :: Bool -> CumulativeVariables -> BasicNormExpr -> m (PropositionTree, CumulativeVariables)
+    go :: Bool -> CumulativeVariables -> StandardNormExpr -> m (PropositionTree, CumulativeVariables)
     go processingLiftedIfs cumulativeVariables expr = case expr of
       VBuiltinFunction And [ExplicitArg _ e1, ExplicitArg _ e2] ->
         goOp2 Conjunct processingLiftedIfs cumulativeVariables e1 e2
@@ -227,8 +229,8 @@ compileQueryStructure = go False
       (PropositionTree -> PropositionTree -> PropositionTree) ->
       Bool ->
       CumulativeVariables ->
-      BasicNormExpr ->
-      BasicNormExpr ->
+      StandardNormExpr ->
+      StandardNormExpr ->
       m (PropositionTree, CumulativeVariables)
     goOp2 op2 processingLiftedIfs cumulativeVariables e1 e2 = do
       let lhsVariables = cumulativeVariables
@@ -238,7 +240,7 @@ compileQueryStructure = go False
       let userVars = lhsUserVars <> rhsUserVars
       return (op2 e1' e2', userVars)
 
-    goProposition :: Bool -> CumulativeVariables -> BasicNormExpr -> m (PropositionTree, CumulativeVariables)
+    goProposition :: Bool -> CumulativeVariables -> StandardNormExpr -> m (PropositionTree, CumulativeVariables)
     goProposition processingLiftedIfs cumulativeVariables expr = do
       let ctx = cumulativeVarsToCtx cumulativeVariables
       let subsectionDoc = "Identified proposition:" <+> prettyFriendly (WithContext expr ctx)
@@ -256,7 +258,7 @@ compileQueryStructure = go False
           decrCallDepth
           return result
 
-    wasIfLifted :: BasicNormExpr -> Bool
+    wasIfLifted :: StandardNormExpr -> Bool
     wasIfLifted (VBuiltinFunction Or _) = True
     wasIfLifted _ = False
 
@@ -264,9 +266,9 @@ compileQuantifierBodyToPropositionTree ::
   MonadCompileProperty m =>
   CumulativeVariables ->
   QuantifierDomain ->
-  BasicNormBinder ->
-  BasicEnv ->
-  CheckedExpr ->
+  StandardNormBinder ->
+  StandardEnv ->
+  TypeCheckedExpr ->
   m (PropositionTree, CumulativeVariables)
 compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = do
   -- TODO avoid calculating this repeatedly?
@@ -278,7 +280,7 @@ compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = d
 
   -- Normalise the body of the expression
   (declCtx, _, _, _) <- ask
-  normBody <- runReaderT (eval newEnv body) (declCtx, mempty)
+  normBody <- runNormT declCtx mempty (eval newEnv body)
 
   (substructure, allUserVars) <- compileQueryStructure updatedCumulativeVars normBody
 
@@ -287,7 +289,7 @@ compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = d
 compileSingleQuery ::
   MonadCompileProperty m =>
   [UserVariable] ->
-  ConjunctAll BasicNormExpr ->
+  ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (QueryMetaData, QueryText))
 compileSingleQuery userVariables conjuncts = do
   (_, verifier, ident, networkCtx) <- ask
@@ -318,7 +320,7 @@ compileSingleQuery userVariables conjuncts = do
         logCompilerPassOutput $ pretty queryText
         return $ NonTrivial (QueryData u v, queryText)
 
-lowerNotNorm :: BasicNormExpr -> BasicNormExpr
+lowerNotNorm :: StandardNormExpr -> StandardNormExpr
 lowerNotNorm arg = case arg of
   -- Base cases
   VLiteral (LBool b) -> VLiteral (LBool (not b))
@@ -335,14 +337,14 @@ lowerNotNorm arg = case arg of
   -- Errors
   e -> developerError ("Unable to lower 'not' through norm expr:" <+> prettyVerbose e)
 
-lowerNotNormArg :: BasicNormArg -> BasicNormArg
+lowerNotNormArg :: StandardNormArg -> StandardNormArg
 lowerNotNormArg = fmap lowerNotNorm
 
 --------------------------------------------------------------------------------
 -- DNF
 
 -- | A tree of expressions in disjunctive normal form.
-type DNFTree = MaybeTrivial (DisjunctAll (ConjunctAll BasicNormExpr))
+type DNFTree = MaybeTrivial (DisjunctAll (ConjunctAll StandardNormExpr))
 
 -- | Converts a boolean structure to disjunctive normal form.
 convertToDNF :: PropositionTree -> DNFTree
@@ -369,14 +371,14 @@ checkCompatibility verifier prov (PropertyInfo linearity polarity) =
       Just $ UnsupportedAlternatingQuantifiers (VerifierBackend verifier) prov q p pp2
     _ -> Nothing
 
-calculateEnvEntry :: MonadCompileProperty m => DBLevel -> BasicNormBinder -> m (BasicNormExpr, [UserVariable])
+calculateEnvEntry :: MonadCompileProperty m => DBLevel -> StandardNormBinder -> m (StandardNormExpr, [UserVariable])
 calculateEnvEntry startingLevel binder = do
   runSupplyT (go baseName baseType) [startingLevel ..]
   where
     baseName = getBinderName binder
     baseType = binderType binder
 
-    go :: (MonadSupply DBLevel m, MonadCompileProperty m) => Name -> BasicNormType -> m (BasicNormExpr, [UserVariable])
+    go :: (MonadSupply DBLevel m, MonadCompileProperty m) => Name -> StandardNormType -> m (StandardNormExpr, [UserVariable])
     go name = \case
       VRatType {} -> do
         dbLevel <- demand
@@ -402,7 +404,7 @@ calculateEnvEntry startingLevel binder = do
         let p = provenanceOf binder
         throwError $ UnsupportedVariableType target ident p baseName typ baseType [Constructor Rat]
 
-pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [BasicNormArg] -> BasicNormBinder -> BasicEnv -> CheckedExpr -> BasicNormExpr
+pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [StandardNormArg] -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VQuantifierExpr q dom args binder env body <-
   VBuiltinFunction (Quantifier q dom) (reverse -> ExplicitArg _ (VLam binder env body) : args)
   where

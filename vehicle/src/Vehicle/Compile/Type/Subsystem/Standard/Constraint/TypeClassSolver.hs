@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Constraint.TypeClassSolver
+module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
   ( solveTypeClassConstraint,
   )
 where
@@ -7,21 +7,25 @@ import Control.Monad (MonadPlus (..), forM)
 import Control.Monad.Except (throwError)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (InternalMonadNorm, forceHead)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Constraint.LinearitySolver
-import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.LinearitySolver
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.PolaritySolver
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Normalisation ()
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Names
 
 --------------------------------------------------------------------------------
 -- Solver
 
-solveTypeClassConstraint :: TCM m => WithContext TypeClassConstraint -> m ()
+solveTypeClassConstraint :: MonadInstance m => WithContext StandardTypeClassConstraint -> m ()
 solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
   progress <- solve tc constraint (argExpr <$> spine)
   case progress of
@@ -33,8 +37,13 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
       solveMeta m solution1 (boundContext ctx)
       addConstraints newConstraints
 
-solve :: TypeClass -> TypeClassSolver
-solve = \case
+type MonadTypeClass m =
+  ( MonadTypeChecker Builtin m,
+    InternalMonadNorm Builtin m
+  )
+
+solve :: Builtin -> TypeClassSolver
+solve (Constructor (TypeClass tc)) = case tc of
   HasOrd ord -> solveHasOrd ord
   HasAnd -> solveHasAnd
   HasOr -> solveHasOr
@@ -49,17 +58,18 @@ solve = \case
   HasVecLits n -> solveHasVecLits n
   AlmostEqualConstraint -> solveAlmostEqual
   NatInDomainConstraint n -> solveInDomain n
-  LinearityTypeClass tc -> castAuxiliaryFn $ solveLinearityConstraint tc
-  PolarityTypeClass tc -> castAuxiliaryFn $ solvePolarityConstraint tc
-  tc -> \_ _ ->
+  LinearityTypeClass ltc -> castAuxiliaryFn $ solveLinearityConstraint ltc
+  PolarityTypeClass ptc -> castAuxiliaryFn $ solvePolarityConstraint ptc
+  _ -> \_ _ ->
     compilerDeveloperError $
       "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
+solve tc = \_ _ -> compilerDeveloperError $ "Invalid instance argument type" <+> quotePretty tc
 
 -- A temporary hack until we separate out the solvers properly.
 castAuxiliaryFn :: AuxiliaryTypeClassSolver -> TypeClassSolver
 castAuxiliaryFn f c e = castProgress <$> f c e
 
-castProgress :: ConstraintProgress -> TypeClassProgress
+castProgress :: StandardConstraintProgress -> TypeClassProgress
 castProgress = \case
   Stuck metas -> Left metas
   Progress newConstraints -> irrelevant newConstraints
@@ -69,7 +79,7 @@ castProgress = \case
 
 solveHasOrd :: OrderOp -> TypeClassSolver
 solveHasOrd op c [arg1, arg2, res]
-  | allOf args isMeta = blockOnMetas args
+  | allOf args isNMeta = blockOnMetas args
   | anyOf args isIndexType = solveIndexComparisonOp ctx arg1 arg2 res (Order OrderIndex op)
   | anyOf args isNatType = solveSimpleComparisonOp ctx arg1 arg2 res (Order OrderNat op)
   | anyOf args isIntType = solveSimpleComparisonOp ctx arg1 arg2 res (Order OrderInt op)
@@ -109,9 +119,9 @@ solveHasImplies = solveHasBoolOp2 ImpliesPolarity Implies
 
 solveHasQuantifier :: Quantifier -> TypeClassSolver
 solveHasQuantifier _ _ [lamType, _]
-  | isMeta lamType = blockOnMetas [lamType]
+  | isNMeta lamType = blockOnMetas [lamType]
 solveHasQuantifier q c [VPi binder body, res]
-  | isMeta domain = blockOnMetas [domain]
+  | isNMeta domain = blockOnMetas [domain]
   | isIndexType domain = solveIndexQuantifier q ctx binder body res
   | isNatType domain = solveNatQuantifier q ctx binder body res
   | isIntType domain = solveIntQuantifier q ctx binder body res
@@ -126,12 +136,12 @@ solveHasQuantifier _ c _ = malformedConstraintError c
 
 type HasQuantifierSolver =
   forall m.
-  TCM m =>
+  MonadTypeClass m =>
   Quantifier ->
-  ConstraintContext ->
-  BasicNormBinder ->
-  BasicNormType ->
-  BasicNormType ->
+  StandardConstraintContext ->
+  StandardNormBinder ->
+  StandardNormType ->
+  StandardNormType ->
   m TypeClassProgress
 
 solveIndexQuantifier :: HasQuantifierSolver
@@ -212,7 +222,7 @@ solveVectorQuantifier q c domainBinder body res = do
 
 solveHasNeg :: TypeClassSolver
 solveHasNeg c [arg, res]
-  | allOf types isMeta = blockOnMetas [arg, res]
+  | allOf types isNMeta = blockOnMetas [arg, res]
   | anyOf types isIntType = solveNeg ctx res arg NegInt
   | anyOf types isRatType = solveNeg ctx res arg NegRat
   | otherwise = blockOrThrowErrors ctx types tcError
@@ -226,10 +236,10 @@ solveHasNeg c [arg, res]
 solveHasNeg c _ = malformedConstraintError c
 
 solveNeg ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
   NegDomain ->
   m TypeClassProgress
 solveNeg c arg res dom = do
@@ -242,7 +252,7 @@ solveNeg c arg res dom = do
 
 solveHasMul :: TypeClassSolver
 solveHasMul c types@[arg1, arg2, res]
-  | allOf types isMeta = blockOnMetas types
+  | allOf types isNMeta = blockOnMetas types
   | anyOf types isNatType = solveMulNat ctx arg1 arg2 res
   | anyOf types isIntType = solveMulInt ctx arg1 arg2 res
   | anyOf types isRatType = solveMulRat ctx arg1 arg2 res
@@ -258,11 +268,11 @@ solveHasMul c _ = malformedConstraintError c
 
 type HasMulSolver =
   forall m.
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
   m TypeClassProgress
 
 solveMulNat :: HasMulSolver
@@ -290,7 +300,7 @@ solveMulRat c arg1 arg2 res = do
 
 solveHasDiv :: TypeClassSolver
 solveHasDiv c types@[arg1, arg2, res]
-  | allOf types isMeta = blockOnMetas types
+  | allOf types isNMeta = blockOnMetas types
   | anyOf types isRatType = solveRatDiv ctx arg1 arg2 res
   | otherwise = blockOrThrowErrors ctx types tcError
   where
@@ -303,11 +313,11 @@ solveHasDiv c types@[arg1, arg2, res]
 solveHasDiv c _ = malformedConstraintError c
 
 solveRatDiv ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
   m TypeClassProgress
 solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
@@ -319,7 +329,7 @@ solveRatDiv c arg1 arg2 res = do
 
 solveHasQuantifierIn :: Quantifier -> TypeClassSolver
 solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
-  (getMeta -> Just {}) -> blockOnMetas [tCont]
+  (getNMeta -> Just {}) -> blockOnMetas [tCont]
   VListType tListElem -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tListElem
@@ -345,7 +355,7 @@ solveHasQuantifierIn _ c _ = malformedConstraintError c
 
 solveHasIf :: TypeClassSolver
 solveHasIf c [tCond, tArg1, tArg2, tRes]
-  | allOf [tArg1, tArg2, tRes] isMeta = blockOnMetas [tArg1, tArg2, tRes]
+  | allOf [tArg1, tArg2, tRes] isNMeta = blockOnMetas [tArg1, tArg2, tRes]
   | otherwise = do
       (tCondEq, condLin, condPol) <- unifyWithAnnBoolType ctx tCond
       argEqs <- checkSubtypes ctx tRes [tArg1, tArg2]
@@ -361,7 +371,7 @@ solveHasIf c _ = malformedConstraintError c
 
 solveHasNatLits :: Int -> TypeClassSolver
 solveHasNatLits n c [arg]
-  | isMeta arg = blockOnMetas [arg]
+  | isNMeta arg = blockOnMetas [arg]
   | isIndexType arg = solveFromNatToIndex ctx n arg
   | isNatType arg = solveSimpleFromNat FromNatToNat ctx n arg
   | isIntType arg = solveSimpleFromNat FromNatToInt ctx n arg
@@ -374,10 +384,10 @@ solveHasNatLits _ c _ = malformedConstraintError c
 
 type HasFromNatSolver =
   forall m.
-  TCM m =>
-  ConstraintContext ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
   Int ->
-  BasicNormType ->
+  StandardNormType ->
   m TypeClassProgress
 
 solveSimpleFromNat :: FromNatDomain -> HasFromNatSolver
@@ -403,7 +413,7 @@ solveFromNatToRat c n arg = do
 
 solveHasVecLits :: Int -> TypeClassSolver
 solveHasVecLits n c [tElem, tCont] = case tCont of
-  (getMeta -> Just {}) -> blockOnMetas [tCont]
+  (getNMeta -> Just {}) -> blockOnMetas [tCont]
   VListType tListElem -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tListElem
@@ -426,7 +436,7 @@ solveHasVecLits _ c _ = malformedConstraintError c
 
 solveAlmostEqual :: TypeClassSolver
 solveAlmostEqual c [targetType, subTypesExpr]
-  | allOf types isMeta = blockOnMetas types
+  | allOf types isNMeta = blockOnMetas types
   | otherwise = irrelevant <$> checkSubtypes ctx targetType subTypes
   where
     ctx = contextOf c
@@ -439,9 +449,9 @@ solveAlmostEqual c _ = malformedConstraintError c
 
 solveInDomain :: Int -> TypeClassSolver
 solveInDomain n c [arg] = case arg of
-  (getMeta -> Just {}) -> blockOnMetas [arg]
+  (getNMeta -> Just {}) -> blockOnMetas [arg]
   VIndexType size -> case size of
-    (getMeta -> Just {}) -> blockOnMetas [size]
+    (getNMeta -> Just {}) -> blockOnMetas [size]
     (VBuiltin (TypeClassOp FromNatTC {}) (_ : InstanceArg _ inst@VMeta {} : _)) ->
       blockOnMetas [inst]
     VNatLiteral m
@@ -460,11 +470,11 @@ solveInDomain _ c _ = malformedConstraintError c
 -- Subtyping
 
 type SubtypingCheck m =
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  [BasicNormType] ->
-  m [WithContext Constraint]
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  [StandardNormType] ->
+  m [WithContext StandardConstraint]
 
 checkSubtypes :: SubtypingCheck m
 checkSubtypes c targetType subTypes
@@ -512,13 +522,13 @@ checkSimpleSubtypes c targetType subTypes = do
 -- Utilities
 
 checkBoolTypesEqualUpTo ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  [BasicNormType] ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  [StandardNormType] ->
   LinearityTypeClass ->
   PolarityTypeClass ->
-  m [WithContext Constraint]
+  m [WithContext StandardConstraint]
 checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
   (targetEqConstraint, targetLin, targetPol) <-
     unifyWithAnnBoolType c targetType
@@ -534,12 +544,12 @@ checkBoolTypesEqualUpTo c targetType subTypes linTC polTC = do
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints <> polTCConstraints
 
 checkRatTypesEqualUpTo ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  [BasicNormType] ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  [StandardNormType] ->
   LinearityTypeClass ->
-  m [WithContext Constraint]
+  m [WithContext StandardConstraint]
 checkRatTypesEqualUpTo c targetType subTypes linTC = do
   (targetEqConstraint, targetLin) <-
     unifyWithAnnRatType c targetType
@@ -553,39 +563,37 @@ checkRatTypesEqualUpTo c targetType subTypes linTC = do
   return $ targetEqConstraint : subEqConstraints <> linTCConstraints
 
 checkOp2SimpleTypesEqual ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
-  m [WithContext Constraint]
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
+  m [WithContext StandardConstraint]
 checkOp2SimpleTypesEqual c arg1 arg2 res = do
   let argsEq = unify c arg1 arg2
   let resEq = unify c arg1 res
   return [argsEq, resEq]
 
 createTC ::
-  TCM m =>
-  ConstraintContext ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
   TypeClass ->
-  [BasicNormType] ->
-  m (BasicNormExpr, WithContext Constraint)
+  [StandardNormType] ->
+  m (StandardNormExpr, WithContext StandardConstraint)
 createTC c tc argExprs = do
   let p = provenanceOf c
   let ctx = copyContext c
   let dbLevel = contextDBLevel c
   let nArgs = ExplicitArg p <$> argExprs
-  logDebug MaxDetail ("XXX" <+> pretty tc)
-  logDebug MaxDetail ("XXX" <+> pretty (originalProvenance ctx))
   newTypeClassExpr <- quote mempty dbLevel (VConstructor (TypeClass tc) nArgs)
   (meta, metaExpr) <- freshTypeClassPlacementMeta p newTypeClassExpr (boundContext c)
-  return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta tc nArgs)) ctx)
+  return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta (Constructor $ TypeClass tc) nArgs)) ctx)
 
 unifyWithAnnBoolType ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  m (WithContext Constraint, GluedExpr, GluedExpr)
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  m (WithContext StandardConstraint, StandardGluedExpr, StandardGluedExpr)
 unifyWithAnnBoolType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
@@ -594,10 +602,10 @@ unifyWithAnnBoolType c t = do
   return (eq, lin, pol)
 
 unifyWithIndexType ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  m (WithContext Constraint, GluedExpr)
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  m (WithContext StandardConstraint, StandardGluedExpr)
 unifyWithIndexType c t = do
   let p = provenanceOf c
   indexSize <- freshExprMeta p (NatType p) (boundContext c)
@@ -605,10 +613,10 @@ unifyWithIndexType c t = do
   return (eq, indexSize)
 
 unifyWithAnnRatType ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  m (WithContext Constraint, GluedExpr)
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  m (WithContext StandardConstraint, StandardGluedExpr)
 unifyWithAnnRatType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
@@ -616,10 +624,10 @@ unifyWithAnnRatType c t = do
   return (eq, lin)
 
 unifyWithListType ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  m (WithContext Constraint, GluedType)
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  m (WithContext StandardConstraint, StandardGluedType)
 unifyWithListType c t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
@@ -627,28 +635,28 @@ unifyWithListType c t = do
   return (eq, elemType)
 
 unifyWithVectorType ::
-  TCM m =>
-  ConstraintContext ->
-  GluedExpr ->
-  BasicNormType ->
-  m (WithContext Constraint, BasicNormType)
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardGluedExpr ->
+  StandardNormType ->
+  m (WithContext StandardConstraint, StandardNormType)
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
   let eq = unify c t (mkVVecType (normalised elemType) (normalised dim))
   return (eq, normalised elemType)
 
-freshDimMeta :: TCM m => ConstraintContext -> m GluedExpr
+freshDimMeta :: MonadTypeClass m => StandardConstraintContext -> m StandardGluedExpr
 freshDimMeta c = do
   let p = provenanceOf c
   freshExprMeta p (NatType p) (boundContext c)
 
 solveSimpleComparisonOp ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveSimpleComparisonOp c arg1 arg2 res solution = do
@@ -657,11 +665,11 @@ solveSimpleComparisonOp c arg1 arg2 res solution = do
   return $ Right ([argEq, resEq], VBuiltinFunction solution [])
 
 solveIndexComparisonOp ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveIndexComparisonOp c arg1 arg2 res solution = do
@@ -671,11 +679,11 @@ solveIndexComparisonOp c arg1 arg2 res solution = do
   return $ Right ([arg1Eq, arg2Eq, resEq], VBuiltinFunction solution [])
 
 solveRatComparisonOp ::
-  TCM m =>
-  ConstraintContext ->
-  BasicNormType ->
-  BasicNormType ->
-  BasicNormType ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  StandardNormType ->
+  StandardNormType ->
+  StandardNormType ->
   BuiltinFunction ->
   m TypeClassProgress
 solveRatComparisonOp c arg1 arg2 res op = do
@@ -696,20 +704,20 @@ solveRatComparisonOp c arg1 arg2 res op = do
 
 combineAuxiliaryConstraints ::
   forall m.
-  TCM m =>
+  MonadTypeClass m =>
   TypeClass ->
   BuiltinConstructor ->
-  (Provenance -> m GluedExpr) ->
-  ConstraintContext ->
-  BasicNormExpr ->
-  [GluedExpr] ->
-  m [WithContext Constraint]
+  (Provenance -> m StandardGluedExpr) ->
+  StandardConstraintContext ->
+  StandardNormExpr ->
+  [StandardGluedExpr] ->
+  m [WithContext StandardConstraint]
 combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
   (res, tcConstraints) <- foldPairs auxs
   let resEq = unify c (normalised res) result
   return $ resEq : tcConstraints
   where
-    foldPairs :: [GluedExpr] -> m (GluedExpr, [WithContext Constraint])
+    foldPairs :: [StandardGluedExpr] -> m (StandardGluedExpr, [WithContext StandardConstraint])
     foldPairs [] = do
       let unUnit = Builtin mempty (Constructor unit)
       let nUnit = VBuiltin (Constructor unit) []
@@ -721,19 +729,19 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
       (_, tc1) <- createTC c tc [normalised a, normalised b, normalised res]
       return (res, tc1 : constraints)
 
-irrelevant :: [WithContext Constraint] -> TypeClassProgress
+irrelevant :: [WithContext StandardConstraint] -> TypeClassProgress
 irrelevant newConstraints = Right (newConstraints, VUnitLiteral)
 
-blockOnMetas :: TCM m => [BasicNormExpr] -> m TypeClassProgress
+blockOnMetas :: MonadTypeClass m => [StandardNormExpr] -> m TypeClassProgress
 blockOnMetas args = do
-  let metas = mapMaybe getMeta args
+  let metas = mapMaybe getNMeta args
   progress <- blockOn metas
   return $ castProgress progress
 
 blockOrThrowErrors ::
-  TCM m =>
-  ConstraintContext ->
-  [BasicNormExpr] ->
+  MonadTypeClass m =>
+  StandardConstraintContext ->
+  [StandardNormExpr] ->
   [CompileError] ->
   m TypeClassProgress
 blockOrThrowErrors _ args err = do
@@ -752,15 +760,15 @@ allOf = flip all
 unless2 :: MonadPlus m => Bool -> a -> m a
 unless2 p a = if not p then return a else mzero
 
-getConcreteList :: BasicNormExpr -> [BasicNormExpr]
+getConcreteList :: StandardNormExpr -> [StandardNormExpr]
 getConcreteList = \case
   VBuiltin (Constructor Nil) _ -> []
   VBuiltin (Constructor Cons) [_, x, xs] -> argExpr x : getConcreteList (argExpr xs)
   _ -> developerError "Malformed concrete list"
 
 tcArgError ::
-  ConstraintContext ->
-  BasicNormType ->
+  StandardConstraintContext ->
+  StandardNormType ->
   TypeClassOp ->
   [UnAnnDoc] ->
   Int ->
@@ -768,16 +776,16 @@ tcArgError ::
   [CompileError]
 tcArgError c arg op allowedTypes argIndex numberOfArgs =
   unless2
-    (isMeta arg)
+    (isNMeta arg)
     (FailedBuiltinConstraintArgument c (TypeClassOp op) arg allowedTypes argIndex numberOfArgs)
 
 tcResultError ::
-  ConstraintContext ->
-  BasicNormType ->
+  StandardConstraintContext ->
+  StandardNormType ->
   TypeClassOp ->
   [UnAnnDoc] ->
   [CompileError]
 tcResultError c result op allowedTypes =
   unless2
-    (isMeta result)
+    (isNMeta result)
     (FailedBuiltinConstraintResult c (TypeClassOp op) result allowedTypes)

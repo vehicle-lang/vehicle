@@ -28,6 +28,7 @@ import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type (getUnnormalised)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Sugar
 
@@ -40,7 +41,7 @@ data AgdaOptions = AgdaOptions
     moduleName :: Maybe String
   }
 
-compileProgToAgda :: MonadCompile m => TypedProg -> AgdaOptions -> m (Doc a)
+compileProgToAgda :: MonadCompile m => StandardTypedProg -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     unnormalisedProg <- traverse getUnnormalised prog
@@ -76,7 +77,7 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
 logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
-  logDebug MaxDetail $ "compile-entry" <+> prettyVerbose e
+  logDebug MaxDetail $ "compile-entry" <+> prettyExternal e
 
 logExit :: MonadAgdaCompile m => Code -> m ()
 logExit e = do
@@ -559,7 +560,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
     let e = normAppList mempty (Builtin mempty op) allArgs
     compilerDeveloperError $
       "unexpected application of builtin found during compilation to Agda:"
-        <+> squotes (prettyVerbose e)
+        <+> squotes (prettyExternal e)
         <+> parens (pretty $ provenanceOf e)
 
 compileTypeClass :: MonadAgdaCompile m => Code -> OutputExpr -> m Code
@@ -861,7 +862,7 @@ unexpectedTypeError actualType expectedTypes =
       <+> "Was expecting one of"
       <+> list expectedTypes
       <+> "but found"
-      <+> prettyVerbose actualType
+      <+> prettyExternal actualType
       <+> "at"
       <+> pretty (provenanceOf actualType) <> "."
 

@@ -34,6 +34,7 @@ import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn
 
@@ -47,8 +48,8 @@ import Vehicle.Expr.DeBruijn
 -- by Wen et al is a good starting point.
 monomorphise ::
   MonadCompile m =>
-  CheckedProg ->
-  m CheckedProg
+  TypeCheckedProg ->
+  m TypeCheckedProg
 monomorphise prog = logCompilerPass MinDetail "monomorphisation" $ do
   ((prog2, applications), candidates) <- runStateT (runWriterT (collect prog)) mempty
   runReaderT (evalStateT (insert applications prog2) candidates) mempty
@@ -60,7 +61,7 @@ monomorphise prog = logCompilerPass MinDetail "monomorphisation" $ do
 type Candidates = HashMap Identifier Int
 
 -- | Applications of monomorphisable functions
-newtype CandidateApplications = Applications (HashMap Identifier (HashSet [CheckedArg]))
+newtype CandidateApplications = Applications (HashMap Identifier (HashSet [TypeCheckedArg]))
 
 instance Semigroup CandidateApplications where
   Applications xs <> Applications ys = Applications $ Map.unionWith Set.union xs ys
@@ -69,7 +70,7 @@ instance Monoid CandidateApplications where
   mempty = Applications mempty
 
 -- | Solution identifier for a candidate monomorphisation application
-type CandidateApplicationSolutions = HashMap (Identifier, [CheckedArg]) Identifier
+type CandidateApplicationSolutions = HashMap (Identifier, [TypeCheckedArg]) Identifier
 
 type MonadMono m =
   ( MonadCompile m,
@@ -78,9 +79,9 @@ type MonadMono m =
 
 traverseCandidateApplications ::
   MonadMono m =>
-  (Provenance -> Identifier -> [CheckedArg] -> [CheckedArg] -> m CheckedExpr) ->
-  CheckedExpr ->
-  m CheckedExpr
+  (Provenance -> Identifier -> [TypeCheckedArg] -> [TypeCheckedArg] -> m TypeCheckedExpr) ->
+  TypeCheckedExpr ->
+  m TypeCheckedExpr
 traverseCandidateApplications processApp = go
   where
     go expr = case expr of
@@ -110,8 +111,8 @@ traverseCandidateApplications processApp = go
 isCandidateApplication ::
   MonadMono m =>
   Identifier ->
-  NonEmpty CheckedArg ->
-  m (Maybe ([CheckedArg], [CheckedArg]))
+  NonEmpty TypeCheckedArg ->
+  m (Maybe ([TypeCheckedArg], [TypeCheckedArg]))
 isCandidateApplication ident args = do
   result <- gets (Map.lookup ident)
   case result of
@@ -136,17 +137,17 @@ addCandidate ident numberOfArgs = do
   modify (Map.insert ident numberOfArgs)
   tell (Applications $ Map.singleton ident mempty)
 
-addCandidateApplication :: MonadCollect m => Identifier -> [CheckedArg] -> m ()
+addCandidateApplication :: MonadCollect m => Identifier -> [TypeCheckedArg] -> m ()
 addCandidateApplication ident argsToMono =
   tell (Applications $ Map.singleton ident (Set.singleton argsToMono))
 
 class Monomorphise a where
   collect :: MonadCollect m => a -> m a
 
-instance Monomorphise CheckedProg where
+instance Monomorphise TypeCheckedProg where
   collect = traverseDecls collect
 
-instance Monomorphise CheckedDecl where
+instance Monomorphise TypeCheckedDecl where
   collect decl = do
     result <- traverse collect decl
     case isMonomorphisationCandidate result of
@@ -154,34 +155,34 @@ instance Monomorphise CheckedDecl where
       Just d -> addCandidate (identifierOf result) d
     return result
 
-instance Monomorphise CheckedExpr where
+instance Monomorphise TypeCheckedExpr where
   collect = traverseCandidateApplications collectApplication
 
 collectApplication ::
   MonadCollect m =>
   Provenance ->
   Identifier ->
-  [CheckedArg] ->
-  [CheckedArg] ->
-  m CheckedExpr
+  [TypeCheckedArg] ->
+  [TypeCheckedArg] ->
+  m TypeCheckedExpr
 collectApplication p ident argsToMono remainingArgs = do
   addCandidateApplication ident argsToMono
   return $ normAppList p (FreeVar p ident) (argsToMono <> remainingArgs)
 
 -- | If monomorphisable then it returns the number of arguments that should be monomorphised.
 -- Tracking the number of arguments this way seems more than a little hacky.
-isMonomorphisationCandidate :: CheckedDecl -> Maybe Int
+isMonomorphisationCandidate :: TypeCheckedDecl -> Maybe Int
 isMonomorphisationCandidate = \case
   DefFunction _ _ _ t _ -> getArgs t
   _ -> Nothing
   where
-    getArgs :: CheckedExpr -> Maybe Int
+    getArgs :: TypeCheckedExpr -> Maybe Int
     getArgs = \case
       Pi _ binder result
         | isCandidateBinder binder -> maybe (Just 1) (\v -> Just (v + 1)) (getArgs result)
       _ -> Nothing
 
-    isCandidateBinder :: CheckedBinder -> Bool
+    isCandidateBinder :: TypeCheckedBinder -> Bool
     isCandidateBinder binder = case (visibilityOf binder, binderType binder) of
       (Implicit {}, TypeUniverse _ 0) -> True
       (Instance {}, _) -> True
@@ -195,10 +196,10 @@ type MonadInsert m =
     MonadReader CandidateApplicationSolutions m
   )
 
-insert :: MonadInsert m => CandidateApplications -> CheckedProg -> m CheckedProg
+insert :: MonadInsert m => CandidateApplications -> TypeCheckedProg -> m TypeCheckedProg
 insert apps (Main ds) = Main <$> insertDecls apps ds
 
-insertDecls :: MonadInsert m => CandidateApplications -> [CheckedDecl] -> m [CheckedDecl]
+insertDecls :: MonadInsert m => CandidateApplications -> [TypeCheckedDecl] -> m [TypeCheckedDecl]
 insertDecls apps = \case
   [] -> return []
   (d : ds) -> do
@@ -209,8 +210,8 @@ insertDecls apps = \case
 insertDecl ::
   MonadInsert m =>
   CandidateApplications ->
-  CheckedDecl ->
-  m ([CheckedDecl], CandidateApplicationSolutions)
+  TypeCheckedDecl ->
+  m ([TypeCheckedDecl], CandidateApplicationSolutions)
 insertDecl (Applications apps) decl = do
   result <- traverse insertExpr decl
 
@@ -244,23 +245,23 @@ insertDecl (Applications apps) decl = do
                     )
               return (decls, Map.unions solutions)
 
-insertExpr :: MonadInsert m => CheckedExpr -> m CheckedExpr
+insertExpr :: MonadInsert m => TypeCheckedExpr -> m TypeCheckedExpr
 insertExpr = traverseCandidateApplications replaceCandidateApplication
 
 replaceCandidateApplication ::
   MonadInsert m =>
   Provenance ->
   Identifier ->
-  [CheckedArg] ->
-  [CheckedArg] ->
-  m CheckedExpr
+  [TypeCheckedArg] ->
+  [TypeCheckedArg] ->
+  m TypeCheckedExpr
 replaceCandidateApplication p ident monoArgs remainingArgs = do
   solution <- asks (Map.lookup (ident, monoArgs))
   case solution of
     Nothing -> compilerDeveloperError "Monomorphisable function application has no resulting monomorphisation."
     Just replacementIdent -> return $ normAppList p (FreeVar p replacementIdent) remainingArgs
 
-substituteArgsThrough :: (CheckedType, CheckedExpr, [CheckedArg]) -> (CheckedType, CheckedExpr)
+substituteArgsThrough :: (TypeCheckedType, TypeCheckedExpr, [TypeCheckedArg]) -> (TypeCheckedType, TypeCheckedExpr)
 substituteArgsThrough = \case
   (t, e, []) -> (t, e)
   (Pi _ _ t, Lam _ _ e, arg : args) -> do
@@ -268,12 +269,12 @@ substituteArgsThrough = \case
     substituteArgsThrough (expr `substDBInto` t, expr `substDBInto` e, args)
   _ -> developerError "Unexpected type/body of function undergoing monomorphisation"
 
-getMonomorphisedSuffix :: [CheckedArg] -> Text
+getMonomorphisedSuffix :: [TypeCheckedArg] -> Text
 getMonomorphisedSuffix args = do
   let implicits = mapMaybe getImplicitArg args
   let typesText = fmap getImplicitName implicits
   let typeNames = fmap (\v -> "[" <> Text.replace " " "-" v <> "]") typesText
   Text.intercalate "-" typeNames
 
-getImplicitName :: CheckedType -> Text
+getImplicitName :: TypeCheckedType -> Text
 getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx

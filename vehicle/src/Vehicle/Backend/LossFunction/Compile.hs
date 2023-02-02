@@ -26,6 +26,7 @@ import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource qualified as V
 import Vehicle.Compile.Type (getUnnormalised)
+import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Expr.DeBruijn qualified as V
 import Vehicle.Prelude
 import Vehicle.Resource (Resources (..))
@@ -55,7 +56,7 @@ compile ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
   DifferentiableLogic ->
-  V.TypedProg ->
+  V.StandardTypedProg ->
   m [LDecl]
 compile resources logic typedProg = do
   (networkCtx, expandedProg) <- expandResources resources typedProg
@@ -64,13 +65,13 @@ compile resources logic typedProg = do
   compileProg networkCtx logic normalisedProg
 
 -- | Compile entire specification (calls compileDecl)
-compileProg :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.CheckedProg -> m [LDecl]
+compileProg :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.TypeCheckedProg -> m [LDecl]
 compileProg networkCtx logic (V.Main ds) =
   logCompilerPass MinDetail "compilation to loss function" $
     traverse (compileDecl networkCtx logic) ds
 
 -- | Compile all functions found in spec, save their names (call compileExpr on each)
-compileDecl :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.CheckedDecl -> m LDecl
+compileDecl :: MonadCompile m => V.NetworkContext -> DifferentiableLogic -> V.TypeCheckedDecl -> m LDecl
 compileDecl networkCtx logic d =
   case d of
     V.DefResource _ _ r _ ->
@@ -88,10 +89,10 @@ type MonadCompileLoss m =
     MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance, V.BoundDBCtx) m
   )
 
-addToCtx :: MonadCompileLoss m => V.CheckedBinder -> m a -> m a
+addToCtx :: MonadCompileLoss m => V.TypeCheckedBinder -> m a -> m a
 addToCtx binder = local (\(a, b, c, ctx) -> (a, b, c, V.nameOf binder : ctx))
 
-compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
+compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.TypeCheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
 -- | Helper function for compiling Literals
@@ -106,7 +107,7 @@ compileLiteral t l = case l of
   V.LRat e -> fromRational e
 
 -- | Compile a property or single expression
-compileExpr :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedExpr -> m LExpr
+compileExpr :: MonadCompileLoss m => DifferentialLogicImplementation -> V.TypeCheckedExpr -> m LExpr
 compileExpr t e = showExit $ do
   e' <- showEntry e
   case e' of
@@ -177,7 +178,7 @@ type MonadLowerNot m =
     MonadReader (DifferentiableLogic, V.DeclProvenance, V.Provenance) m
   )
 
-lowerNot :: MonadLowerNot m => V.CheckedExpr -> m V.CheckedExpr
+lowerNot :: MonadLowerNot m => V.TypeCheckedExpr -> m V.TypeCheckedExpr
 lowerNot arg = case arg of
   ----------------
   -- Base cases --
@@ -213,7 +214,7 @@ lowerNot arg = case arg of
     (logic, declProv, notProv) <- ask
     throwError $ UnsupportedNegatedOperation logic declProv notProv e
 
-lowerNotArg :: MonadLowerNot m => V.CheckedArg -> m V.CheckedArg
+lowerNotArg :: MonadLowerNot m => V.TypeCheckedArg -> m V.TypeCheckedArg
 lowerNotArg = traverse lowerNot
 
 ----------------------------------------------------------------------------------------------------
@@ -256,7 +257,7 @@ normBuiltin b = case b of
 -----------------------------------------------------------------------
 -- Debugging options
 
-showEntry :: MonadCompile m => V.CheckedExpr -> m V.CheckedExpr
+showEntry :: MonadCompile m => V.TypeCheckedExpr -> m V.TypeCheckedExpr
 showEntry e = do
   logDebug MinDetail ("loss-entry " <> prettyVerbose e)
   incrCallDepth

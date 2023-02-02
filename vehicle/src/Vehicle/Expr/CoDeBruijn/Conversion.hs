@@ -19,7 +19,7 @@ import Vehicle.Expr.DeBruijn as DB
 --------------------------------------------------------------------------------
 -- Forwards direction
 
-toCoDBExpr :: CheckedExpr -> CoDBExpr
+toCoDBExpr :: TypeCheckedExpr -> CoDBExpr
 toCoDBExpr = cata $ \case
   UniverseF p l -> (Universe p l, mempty)
   HoleF p n -> (Hole p n, mempty)
@@ -60,7 +60,7 @@ toCoDBBinder binder mpt =
 --------------------------------------------------------------------------------
 -- Backwards
 
-fromCoDB :: CoDBExpr -> CheckedExpr
+fromCoDB :: CoDBExpr -> TypeCheckedExpr
 fromCoDB expr = case recCoDB expr of
   UniverseC p l -> Universe p l
   HoleC p n -> Hole p n
@@ -75,9 +75,9 @@ fromCoDB expr = case recCoDB expr of
   LetC p bound binder body -> Let p (fromCoDB bound) (fromCoDBBinder binder) (fromCoDB body)
   LamC p binder body -> Lam p (fromCoDBBinder binder) (fromCoDB body)
 
-fromCoDBBinder :: RecCoDB a BinderC => a -> CheckedBinder
+fromCoDBBinder :: RecCoDB a BinderC => a -> TypeCheckedBinder
 fromCoDBBinder binder = case recCoDB binder of
   Binder p u v r (CoDBBinding _) t -> Binder p u v r () $ fromCoDB t
 
-fromCoDBArg :: RecCoDB a ArgC => a -> CheckedArg
+fromCoDBArg :: RecCoDB a ArgC => a -> TypeCheckedArg
 fromCoDBArg arg = fromCoDB <$> recCoDB arg

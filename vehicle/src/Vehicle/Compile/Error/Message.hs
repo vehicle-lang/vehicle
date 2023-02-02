@@ -16,6 +16,8 @@ import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
@@ -354,7 +356,7 @@ instance MeaningfulError CompileError where
             fix = Nothing
           }
       where
-        getMessage :: BasicNormExpr -> Doc a
+        getMessage :: StandardNormExpr -> Doc a
         getMessage = \case
           VConstructor (TypeClass tc) args -> case (tc, args) of
             (HasMap, _) ->
@@ -373,7 +375,7 @@ instance MeaningfulError CompileError where
             _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
           e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
 
-        failedOp2Message :: BoundDBCtx -> TypeClassOp -> BasicNormExpr -> BasicNormExpr -> BasicNormExpr -> Doc a
+        failedOp2Message :: BoundDBCtx -> TypeClassOp -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr -> Doc a
         failedOp2Message boundCtx op t1 t2 t3 =
           "cannot apply"
             <+> squotes (pretty op)
@@ -859,7 +861,7 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: BasicNormType -> Int
+        dimensionsOf :: StandardNormType -> Int
         dimensionsOf = \case
           VListType t -> 1 + dimensionsOf t
           VVectorType t _ -> 1 + dimensionsOf t
@@ -1301,7 +1303,7 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> GluedType -> Doc a
+unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> StandardGluedType -> Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType =
   "The type of"
     <+> pretty annotation
@@ -1323,7 +1325,7 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
     unreducedResourceType = unnormalised resourceType
     reducedResourceType = unnormalise 0 (normalised resourceType)
 
-unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
+unsupportedResourceTypeDescription :: Resource -> Identifier -> StandardGluedType -> Doc a
 unsupportedResourceTypeDescription resource =
   unsupportedAnnotationTypeDescription (ResourceAnnotation resource)
 
@@ -1446,7 +1448,7 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> [UncheckedArg] -> Doc a
+prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [UncheckedArg Builtin] -> Doc a
 prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring
@@ -1460,7 +1462,7 @@ prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
       isDesugared _ = False
   _ -> prettyFriendly $ WithContext fun (boundContextOf ctx)
 
-prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc a
+prettyUnificationConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> Doc a
 prettyUnificationConstraintOriginExpr ctx = \case
   Builtin _ b -> pretty b
   expr -> prettyFriendly $ WithContext expr (boundContextOf ctx)

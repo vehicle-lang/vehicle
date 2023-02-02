@@ -9,13 +9,13 @@ import Vehicle.Syntax.AST
 -- Universes
 --------------------------------------------------------------------------------
 
-pattern TypeUniverse :: Provenance -> UniverseLevel -> Expr binder var Builtin
+pattern TypeUniverse :: Provenance -> UniverseLevel -> Expr binder var builtin
 pattern TypeUniverse p l = Universe p (TypeUniv l)
 
-pattern LinearityUniverse :: Provenance -> Expr binder var Builtin
+pattern LinearityUniverse :: Provenance -> Expr binder var builtin
 pattern LinearityUniverse p = Universe p LinearityUniv
 
-pattern PolarityUniverse :: Provenance -> Expr binder var Builtin
+pattern PolarityUniverse :: Provenance -> Expr binder var builtin
 pattern PolarityUniverse p = Universe p PolarityUniv
 
 --------------------------------------------------------------------------------
@@ -34,9 +34,9 @@ pattern BoundVar p index = Var p (Bound index)
 
 pattern BuiltinExpr ::
   Provenance ->
-  Builtin ->
-  NonEmpty (Arg binder var Builtin) ->
-  Expr binder var Builtin
+  builtin ->
+  NonEmpty (Arg binder var builtin) ->
+  Expr binder var builtin
 pattern BuiltinExpr p b args <- App p (Builtin _ b) args
   where
     BuiltinExpr p b args = App p (Builtin p b) args
@@ -329,29 +329,29 @@ pattern HasEqExpr p eq arg1Type arg2Type resType <-
 -- Literals
 --------------------------------------------------------------------------------
 
-pattern UnitLiteral :: Provenance -> Expr binder var Builtin
+pattern UnitLiteral :: Provenance -> Expr binder var builtin
 pattern UnitLiteral p = Literal p LUnit
 
-pattern BoolLiteral :: Provenance -> Bool -> Expr binder var Builtin
+pattern BoolLiteral :: Provenance -> Bool -> Expr binder var builtin
 pattern BoolLiteral p n = Literal p (LBool n)
 
-pattern IndexLiteral :: Provenance -> Int -> Int -> Expr binder var Builtin
+pattern IndexLiteral :: Provenance -> Int -> Int -> Expr binder var builtin
 pattern IndexLiteral p n x = Literal p (LIndex n x)
 
-pattern NatLiteral :: Provenance -> Int -> Expr binder var Builtin
+pattern NatLiteral :: Provenance -> Int -> Expr binder var builtin
 pattern NatLiteral p n = Literal p (LNat n)
 
-pattern IntLiteral :: Provenance -> Int -> Expr binder var Builtin
+pattern IntLiteral :: Provenance -> Int -> Expr binder var builtin
 pattern IntLiteral p n = Literal p (LInt n)
 
-pattern RatLiteral :: Provenance -> Rational -> Expr binder var Builtin
+pattern RatLiteral :: Provenance -> Rational -> Expr binder var builtin
 pattern RatLiteral p n = Literal p (LRat n)
 
 pattern VecLiteral ::
   Provenance ->
-  Expr binder var Builtin ->
-  [Expr binder var Builtin] ->
-  Expr binder var Builtin
+  Expr binder var builtin ->
+  [Expr binder var builtin] ->
+  Expr binder var builtin
 pattern VecLiteral p tElem xs <- App p (LVec _ xs) [ImplicitArg _ tElem]
 
 -- | During type-checking VecLiterals may have an extra irrelevant instance argument
@@ -363,10 +363,10 @@ pattern AnnVecLiteral ::
   Expr binder var Builtin
 pattern AnnVecLiteral p tElem xs <- App p (LVec _ xs) (ImplicitArg _ tElem :| _)
 
-pattern TrueExpr :: Provenance -> Expr binder var Builtin
+pattern TrueExpr :: Provenance -> Expr binder var builtin
 pattern TrueExpr p = BoolLiteral p True
 
-pattern FalseExpr :: Provenance -> Expr binder var Builtin
+pattern FalseExpr :: Provenance -> Expr binder var builtin
 pattern FalseExpr p = BoolLiteral p False
 
 --------------------------------------------------------------------------------

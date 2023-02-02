@@ -14,7 +14,6 @@ module Vehicle.Compile.Type.Constraint
     extendConstraintBoundCtx,
     separateConstraints,
     getTypeClassConstraint,
-    isAuxiliaryTypeClassConstraint,
     BlockingStatus,
     unknownBlockingStatus,
     blockConstraintOn,
@@ -31,7 +30,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.VariableContext
-import Vehicle.Expr.DeBruijn (DBLevel (..))
+import Vehicle.Expr.DeBruijn (DBArg, DBExpr, DBLevel (..), DBTelescope, DBType)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -77,10 +76,10 @@ isAuxiliaryTypeClass tc = do
 --------------------------------------------------------------------------------
 -- Constraint origins
 
-data ConstraintOrigin
-  = CheckingExprType CheckedExpr CheckedType CheckedType
-  | CheckingBinderType (Maybe Name) CheckedType CheckedType
-  | CheckingTypeClass CheckedExpr [UncheckedArg]
+data ConstraintOrigin builtin
+  = CheckingExprType (DBExpr builtin) (DBType builtin) (DBType builtin)
+  | CheckingBinderType (Maybe Name) (DBType builtin) (DBType builtin)
+  | CheckingTypeClass (DBExpr builtin) [DBArg builtin]
   | CheckingAuxiliary
   deriving (Show)
 
@@ -109,11 +108,11 @@ isStillBlocked solvedMetas (BlockingStatus status) =
 --------------------------------------------------------------------------------
 -- Constraint contexts
 
-data ConstraintContext = ConstraintContext
+data ConstraintContext builtin = ConstraintContext
   { -- | The original provenance of the constraint
     originalProvenance :: Provenance,
     -- | The origin of the constraint.
-    origin :: ConstraintOrigin,
+    origin :: ConstraintOrigin builtin,
     -- | Where the constraint was instantiated
     creationProvenance :: Provenance,
     -- | The set of metas blocking progress on this constraint.
@@ -122,98 +121,97 @@ data ConstraintContext = ConstraintContext
     -- | TODO reduce this to just `TypingBoundCtx`
     -- (At the moment the full context is needed for normalisation but should
     -- be able to get that from TCM)
-    boundContext :: TypingBoundCtx,
-    group :: ConstraintGroup
+    boundContext :: TypingBoundCtx builtin
   }
   deriving (Show)
 
-instance Pretty ConstraintContext where
+instance Pretty (ConstraintContext builtin) where
   pretty ctx = pretty (blockedBy ctx)
 
 -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
-instance HasProvenance ConstraintContext where
-  provenanceOf (ConstraintContext _ _ creationProvenance _ _ _) = creationProvenance
+instance HasProvenance (ConstraintContext builtin) where
+  provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
-instance HasBoundCtx ConstraintContext where
+instance HasBoundCtx (ConstraintContext builtin) where
   boundContextOf = boundContextOf . boundContext
 
-blockCtxOn :: MetaSet -> ConstraintContext -> ConstraintContext
-blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
+blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
+blockCtxOn metas (ConstraintContext originProv originalConstraint creationProv _ ctx) =
   let status = BlockingStatus (Just metas)
-   in ConstraintContext originProv originalConstraint creationProv status ctx group
+   in ConstraintContext originProv originalConstraint creationProv status ctx
 
 -- | Create a new fresh copy of the context for a new constraint
-copyContext :: ConstraintContext -> ConstraintContext
-copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx group) =
-  ConstraintContext originProv originalConstraint creationProv unknownBlockingStatus ctx group
+copyContext :: ConstraintContext builtin -> ConstraintContext builtin
+copyContext (ConstraintContext originProv originalConstraint creationProv _ ctx) =
+  ConstraintContext originProv originalConstraint creationProv unknownBlockingStatus ctx
 
-extendConstraintBoundCtx :: ConstraintContext -> CheckedTelescope -> ConstraintContext
+extendConstraintBoundCtx :: ConstraintContext builtin -> DBTelescope builtin -> ConstraintContext builtin
 extendConstraintBoundCtx ConstraintContext {..} telescope =
   ConstraintContext
     { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
       ..
     }
 
-contextDBLevel :: ConstraintContext -> DBLevel
+contextDBLevel :: ConstraintContext builtin -> DBLevel
 contextDBLevel = DBLevel . length . boundContext
 
 --------------------------------------------------------------------------------
 -- Unification constraints
 
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint = Unify BasicNormExpr BasicNormExpr
+data UnificationConstraint builtin = Unify (NormExpr builtin) (NormExpr builtin)
   deriving (Show)
 
 type instance
-  WithContext UnificationConstraint =
-    Contextualised UnificationConstraint ConstraintContext
+  WithContext (UnificationConstraint builtin) =
+    Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)
 
 --------------------------------------------------------------------------------
 -- Type-class constraints
 
-data TypeClassConstraint = Has MetaID TypeClass BasicSpine
+data TypeClassConstraint builtin = Has MetaID builtin (Spine builtin)
   deriving (Show)
 
-tcNormExpr :: TypeClassConstraint -> BasicNormExpr
-tcNormExpr (Has _ tc spine) = VConstructor (TypeClass tc) spine
+tcNormExpr :: TypeClassConstraint builtin -> NormExpr builtin
+tcNormExpr (Has _ tc spine) = VBuiltin tc spine
 
 type instance
-  WithContext TypeClassConstraint =
-    Contextualised TypeClassConstraint ConstraintContext
+  WithContext (TypeClassConstraint builtin) =
+    Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin)
 
 --------------------------------------------------------------------------------
 -- Instance constraints
 
 data InstanceGoal = InstanceGoal
-  { goalTelescope :: CheckedTelescope,
+  { goalTelescope :: DBTelescope Builtin,
     goalHead :: TypeClass,
-    goalSpine :: BasicSpine
+    goalSpine :: Spine Builtin
   }
   deriving (Show)
 
-goalExpr :: InstanceGoal -> BasicNormExpr
-goalExpr InstanceGoal {..} = VConstructor (TypeClass goalHead) goalSpine
+goalExpr :: InstanceGoal -> NormExpr Builtin
+goalExpr InstanceGoal {..} = VBuiltin (Constructor (TypeClass goalHead)) goalSpine
 
 data InstanceCandidate = InstanceCandidate
-  { candidateContext :: TypingBoundCtx,
-    candidateExpr :: CheckedExpr,
-    candidateSolution :: CheckedExpr
+  { candidateContext :: TypingBoundCtx Builtin,
+    candidateExpr :: DBExpr Builtin,
+    candidateSolution :: DBExpr Builtin
   }
 
 --------------------------------------------------------------------------------
 -- Constraint
 
-data Constraint
+data Constraint builtin
   = -- | Represents that the two contained expressions should be equal.
-    UnificationConstraint UnificationConstraint
+    UnificationConstraint (UnificationConstraint builtin)
   | -- | Represents that the provided type must have the required functionality
-    TypeClassConstraint TypeClassConstraint
+    TypeClassConstraint (TypeClassConstraint builtin)
   deriving (Show)
 
 type instance
-  WithContext Constraint =
-    Contextualised Constraint ConstraintContext
+  WithContext (Constraint builtin) =
+    Contextualised (Constraint builtin) (ConstraintContext builtin)
 
 {-
 instance HasBoundCtx Constraint where
@@ -222,15 +220,12 @@ instance HasBoundCtx Constraint where
 instance HasProvenance Constraint where
   provenanceOf = provenanceOf . constraintContext
 -}
-getTypeClassConstraint :: WithContext Constraint -> Maybe (WithContext TypeClassConstraint)
+getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext (TypeClassConstraint builtin))
 getTypeClassConstraint (WithContext constraint ctx) = case constraint of
   TypeClassConstraint tc -> Just (WithContext tc ctx)
   _ -> Nothing
 
-isAuxiliaryTypeClassConstraint :: TypeClassConstraint -> Bool
-isAuxiliaryTypeClassConstraint (Has _ tc _) = isAuxiliaryTypeClass tc
-
-separateConstraints :: [WithContext Constraint] -> ([WithContext UnificationConstraint], [WithContext TypeClassConstraint])
+separateConstraints :: [WithContext (Constraint builtin)] -> ([WithContext (UnificationConstraint builtin)], [WithContext (TypeClassConstraint builtin)])
 separateConstraints [] = ([], [])
 separateConstraints (WithContext c ctx : cs) = case c of
   UnificationConstraint uc -> first (WithContext uc ctx :) (separateConstraints cs)
@@ -248,26 +243,26 @@ isUnificationConstraint _    = False
 -}
 
 blockConstraintOn ::
-  Contextualised c ConstraintContext ->
+  Contextualised c (ConstraintContext builtin) ->
   MetaSet ->
-  Contextualised c ConstraintContext
+  Contextualised c (ConstraintContext builtin)
 blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
-isBlocked :: MetaSet -> ConstraintContext -> Bool
+isBlocked :: MetaSet -> ConstraintContext builtin -> Bool
 isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
 
-constraintIsBlocked :: MetaSet -> Contextualised c ConstraintContext -> Bool
+constraintIsBlocked :: MetaSet -> Contextualised c (ConstraintContext builtin) -> Bool
 constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
 
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
-data ConstraintProgress
+data ConstraintProgress builtin
   = Stuck MetaSet
-  | Progress [WithContext Constraint]
+  | Progress [WithContext (Constraint builtin)]
   deriving (Show)
 
-instance Semigroup ConstraintProgress where
+instance Semigroup (ConstraintProgress builtin) where
   Stuck m1 <> Stuck m2 = Stuck (m1 <> m2)
   Stuck {} <> x@Progress {} = x
   x@Progress {} <> Stuck {} = x

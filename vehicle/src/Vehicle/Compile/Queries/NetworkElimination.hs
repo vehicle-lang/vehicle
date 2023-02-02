@@ -8,7 +8,6 @@ module Vehicle.Compile.Queries.NetworkElimination
 where
 
 import Control.Monad (zipWithM)
-import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (MonadState (..), StateT (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
@@ -20,11 +19,12 @@ import Data.Map qualified as Map
     lookup,
   )
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (reeval)
+import Vehicle.Compile.Normalise.NBE (reeval, runEmptyNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.Boolean (ConjunctAll (unConjunctAll))
 import Vehicle.Expr.DeBruijn
@@ -33,7 +33,7 @@ import Vehicle.Verify.Specification (MetaNetwork)
 
 -- Pairs of (input variable == expression)
 -- TODO push back through this file once changing CheckedExpr to NormExpr
-type InputEqualities = [(DBLevel, BasicNormExpr)]
+type InputEqualities = [(DBLevel, StandardNormExpr)]
 
 -- | Okay so this is a wild ride. The Marabou query format has special variable
 -- names for input and output variables, namely x1 ... xN and y1 ... yM but
@@ -55,8 +55,8 @@ replaceNetworkApplications ::
   MonadCompile m =>
   NetworkContext ->
   BoundDBCtx ->
-  ConjunctAll BasicNormExpr ->
-  m (MetaNetwork, [NetworkVariable], InputEqualities, ConjunctAll BasicNormExpr)
+  ConjunctAll StandardNormExpr ->
+  m (MetaNetwork, [NetworkVariable], InputEqualities, ConjunctAll StandardNormExpr)
 replaceNetworkApplications networkCtx boundCtx conjunctions = do
   logCompilerPass MinDetail "input/output variable insertion" $ do
     let initialState = IOVarState mempty mempty mempty 0 0
@@ -71,16 +71,16 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
     networkVariables <- getNetworkVariables networkCtx finalMetaNetwork
     logDebug MinDetail $ "Generated meta-network" <+> pretty finalMetaNetwork <> line
 
-    normQueryExpr <- runReaderT (traverse reeval networkFreeConjunctions) mempty
+    normQueryExpr <- traverse reevalute networkFreeConjunctions
 
     logCompilerPassOutput $ prettyVerbose (NonEmpty.toList $ unConjunctAll normQueryExpr)
     return (finalMetaNetwork, networkVariables, finalInputEqualities, normQueryExpr)
   where
     go ::
       MonadCompile m =>
-      (Identifier -> BasicNormExpr -> m BasicNormExpr) ->
-      BasicNormExpr ->
-      m BasicNormExpr
+      (Identifier -> StandardNormExpr -> m StandardNormExpr) ->
+      StandardNormExpr ->
+      m StandardNormExpr
     go k expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -100,16 +100,19 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
 
     goSpine ::
       MonadCompile m =>
-      (Identifier -> BasicNormExpr -> m BasicNormExpr) ->
-      BasicSpine ->
-      m BasicSpine
+      (Identifier -> StandardNormExpr -> m StandardNormExpr) ->
+      StandardSpine ->
+      m StandardSpine
     goSpine k = traverse (traverse (go k))
+
+reevalute :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+reevalute expr = runEmptyNormT @Builtin (reeval expr)
 
 -- | The current state of the input/output network variables.
 data IOVarState = IOVarState
-  { applicationCache :: HashMap (Identifier, BasicNormExpr) BasicNormExpr,
+  { applicationCache :: HashMap (Identifier, StandardNormExpr) StandardNormExpr,
     metaNetwork :: MetaNetwork,
-    inputEqualities :: [[(DBLevel, BasicNormExpr)]],
+    inputEqualities :: [[(DBLevel, StandardNormExpr)]],
     magicInputVarCount :: Int,
     magicOutputVarCount :: Int
   }
@@ -119,8 +122,8 @@ processNetworkApplication ::
   NetworkContext ->
   BoundDBCtx ->
   Identifier ->
-  BasicNormExpr ->
-  m BasicNormExpr
+  StandardNormExpr ->
+  m StandardNormExpr
 processNetworkApplication networkCtx boundCtx ident inputVector = do
   let sectionLog = "Replacing application:" <+> pretty ident <+> prettyVerbose inputVector
   logCompilerSection MaxDetail sectionLog $ do
@@ -161,7 +164,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
 
         return outputVarsExpr
 
-createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> BasicNormExpr -> m [(DBLevel, BasicNormExpr)]
+createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> StandardNormExpr -> m [(DBLevel, StandardNormExpr)]
 createInputVarEqualities (_dim : dims) inputVarIndices (VLVec xs _) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
   concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
@@ -178,10 +181,10 @@ mkMagicVariableSeq ::
   NetworkBaseType ->
   [Int] ->
   [DBLevel] ->
-  m BasicNormExpr
+  m StandardNormExpr
 mkMagicVariableSeq tElem = go
   where
-    go :: MonadCompile m => [Int] -> [DBLevel] -> m BasicNormExpr
+    go :: MonadCompile m => [Int] -> [DBLevel] -> m StandardNormExpr
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks

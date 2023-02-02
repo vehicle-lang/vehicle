@@ -5,10 +5,11 @@ where
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn (DBLevel)
 import Vehicle.Test.Unit.Common (unitTestCase)
@@ -56,14 +57,14 @@ normalisationTests =
 data NBETest = NBETest
   { name :: String,
     dbLevel :: DBLevel,
-    input :: CheckedExpr,
-    expected :: CheckedExpr
+    input :: TypeCheckedExpr,
+    expected :: TypeCheckedExpr
   }
 
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- whnf dbLevel mempty mempty input
+    normInput <- runEmptyNormT @Builtin $ whnf dbLevel input
     actual <- quote mempty dbLevel normInput
 
     let errorMessage =
@@ -85,5 +86,5 @@ normalisationTest NBETest {..} =
 p :: Provenance
 p = mempty
 
-binding :: CheckedType -> CheckedBinder
+binding :: TypeCheckedType -> TypeCheckedBinder
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()

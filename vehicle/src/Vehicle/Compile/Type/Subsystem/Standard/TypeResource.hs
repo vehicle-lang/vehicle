@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Resource
+module Vehicle.Compile.Type.Subsystem.Standard.TypeResource
   ( checkResourceType,
   )
 where
@@ -8,15 +8,17 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalised
 
 checkResourceType ::
-  TCM m =>
+  MonadTypeChecker Builtin m =>
   Resource ->
   DeclProvenance ->
-  GluedType ->
-  m CheckedType
+  GluedType Builtin ->
+  m (CheckedType Builtin)
 checkResourceType resource decl@(ident, _) resourceType = do
   let resourceName = pretty resource <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
@@ -30,10 +32,10 @@ checkResourceType resource decl@(ident, _) resourceType = do
 -- Parameters
 
 checkParameterType ::
-  TCM m =>
+  MonadTypeChecker Builtin m =>
   DeclProvenance ->
-  GluedType ->
-  m CheckedType
+  GluedType Builtin ->
+  m (CheckedType Builtin)
 checkParameterType decl@(_, p) parameterType = do
   case normalised parameterType of
     VIndexType {} -> return ()
@@ -46,10 +48,10 @@ checkParameterType decl@(_, p) parameterType = do
   return $ unnormalised parameterType
 
 checkInferableParameterType ::
-  TCM m =>
+  MonadTypeChecker Builtin m =>
   DeclProvenance ->
-  GluedType ->
-  m CheckedType
+  GluedType Builtin ->
+  m (CheckedType Builtin)
 checkInferableParameterType decl parameterType = case normalised parameterType of
   VNatType {} -> return (unnormalised parameterType)
   _ -> throwError $ ParameterTypeUnsupported decl parameterType
@@ -59,15 +61,15 @@ checkInferableParameterType decl parameterType = case normalised parameterType o
 
 checkDatasetType ::
   forall m.
-  TCM m =>
+  MonadTypeChecker Builtin m =>
   DeclProvenance ->
-  GluedType ->
-  m CheckedType
+  GluedType Builtin ->
+  m (CheckedType Builtin)
 checkDatasetType decl@(_, p) datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
   where
-    checkContainerType :: Bool -> BasicNormType -> m ()
+    checkContainerType :: Bool -> StandardNormType -> m ()
     checkContainerType topLevel = \case
       VListType tElem -> checkContainerType False tElem
       VVectorType tElem _tDims -> checkContainerType False tElem
@@ -76,7 +78,7 @@ checkDatasetType decl@(_, p) datasetType = do
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
-    checkDatasetElemType :: BasicNormType -> m ()
+    checkDatasetElemType :: StandardNormType -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
       VIntType {} -> return ()
@@ -90,10 +92,10 @@ checkDatasetType decl@(_, p) datasetType = do
 
 checkNetworkType ::
   forall m.
-  TCM m =>
+  MonadTypeChecker Builtin m =>
   DeclProvenance ->
-  GluedType ->
-  m CheckedType
+  GluedType Builtin ->
+  m (CheckedType Builtin)
 checkNetworkType decl@(ident, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
@@ -116,10 +118,10 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
         return $ Pi p linConstraintBinder (unnormalised networkType)
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    checkTensorType :: InputOrOutput -> BasicNormType -> m BasicNormType
+    checkTensorType :: InputOrOutput -> StandardNormType -> m StandardNormType
     checkTensorType io = go True
       where
-        go :: Bool -> BasicNormType -> m BasicNormType
+        go :: Bool -> StandardNormType -> m StandardNormType
         go topLevel = \case
           VTensorType tElem _ -> go False tElem
           VVectorType tElem _ -> go False tElem
@@ -128,7 +130,7 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
               else checkElementType io elemType
 
-    checkElementType :: InputOrOutput -> BasicNormType -> m BasicNormType
+    checkElementType :: InputOrOutput -> StandardNormType -> m StandardNormType
     checkElementType io = \case
       VAnnRatType lin -> return lin
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io
@@ -136,17 +138,17 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
 --------------------------------------------------------------------------------
 -- Utilities
 
-checkRatIsConstant :: TCM m => Provenance -> BasicNormType -> m ()
+checkRatIsConstant :: MonadTypeChecker Builtin m => Provenance -> StandardNormType -> m ()
 checkRatIsConstant p lin = do
   let targetLinearity = LinearityExpr p Constant
   ulin <- quote mempty 0 lin
-  createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
+  createFreshUnificationConstraint p mempty CheckingAuxiliary targetLinearity ulin
 
-checkBoolIsConstant :: TCM m => Provenance -> BasicNormType -> BasicNormType -> m ()
+checkBoolIsConstant :: MonadTypeChecker Builtin m => Provenance -> StandardNormType -> StandardNormType -> m ()
 checkBoolIsConstant p lin pol = do
   let targetLinearity = LinearityExpr p Constant
   let targetPolarity = PolarityExpr p Unquantified
   ulin <- quote mempty 0 lin
   upol <- quote mempty 0 pol
-  createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
-  createFreshUnificationConstraint PolarityGroup p mempty CheckingAuxiliary targetPolarity upol
+  createFreshUnificationConstraint p mempty CheckingAuxiliary targetLinearity ulin
+  createFreshUnificationConstraint p mempty CheckingAuxiliary targetPolarity upol

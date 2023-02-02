@@ -9,9 +9,11 @@ module Vehicle.Expr.DeBruijn
     DBLevelVar,
     DBBinder,
     DBArg,
+    DBType,
     DBExpr,
     DBDecl,
     DBProg,
+    DBTelescope,
     Substitution,
     substituteDB,
     substDBInto,
@@ -114,11 +116,15 @@ type DBBinder builtin = Binder DBBinding DBIndexVar builtin
 
 type DBArg builtin = Arg DBBinding DBIndexVar builtin
 
+type DBType builtin = DBExpr builtin
+
 type DBExpr builtin = Expr DBBinding DBIndexVar builtin
 
 type DBDecl builtin = Decl DBBinding DBIndexVar builtin
 
 type DBProg builtin = Prog DBBinding DBIndexVar builtin
+
+type DBTelescope builtin = [DBBinder builtin]
 
 --------------------------------------------------------------------------------
 -- Substitution

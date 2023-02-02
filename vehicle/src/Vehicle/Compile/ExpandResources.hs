@@ -16,20 +16,21 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.NBE (runNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getGlued)
-import Vehicle.Expr.Normalised (BasicNormExpr, GluedExpr (..), pattern VNatLiteral)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalised (GluedExpr (..), pattern VNatLiteral)
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.
 expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
-  TypedProg ->
-  m (NetworkContext, TypedProg)
+  StandardTypedProg ->
+  m (NetworkContext, StandardTypedProg)
 expandResources resources@Resources {..} prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     resourcesCtx@ResourceContext {..} <-
@@ -55,10 +56,10 @@ type MonadReadResources m =
     MonadExpandResources m
   )
 
-readResourcesInProg :: MonadReadResources m => TypedProg -> m ()
+readResourcesInProg :: MonadReadResources m => StandardTypedProg -> m ()
 readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 
-readResourcesInDecl :: MonadReadResources m => TypedDecl -> m ()
+readResourcesInDecl :: MonadReadResources m => StandardTypedDecl -> m ()
 readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
   DefPostulate {} -> return ()
@@ -82,8 +83,8 @@ readResourcesInDecl decl = case decl of
         networkDetails <- checkNetwork networkLocations (ident, p) gluedDeclType
         modify (addNetworkType ident networkDetails)
 
-mkTyped :: BasicNormExpr -> TypedExpr
-mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
+mkTyped :: StandardNormExpr -> StandardTypedExpr
+mkTyped expr = StandardTypedExpr (Glued (unnormalise 0 expr) expr)
 
 --------------------------------------------------------------------------------
 -- Second pass
@@ -93,14 +94,14 @@ mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
 -- the new values now inserted.
 type MonadInsertResources m =
   ( MonadReader ResourceContext m,
-    MonadState (DeclCtx TypedExpr) m,
+    MonadState (DeclCtx StandardTypedExpr) m,
     MonadCompile m
   )
 
-insertResourcesInProg :: MonadInsertResources m => TypedProg -> m TypedProg
+insertResourcesInProg :: MonadInsertResources m => StandardTypedProg -> m StandardTypedProg
 insertResourcesInProg (Main ds) = Main . catMaybes <$> insertDecls ds
 
-insertDecls :: MonadInsertResources m => [TypedDecl] -> m [Maybe TypedDecl]
+insertDecls :: MonadInsertResources m => [StandardTypedDecl] -> m [Maybe StandardTypedDecl]
 insertDecls [] = return []
 insertDecls (d : ds) = do
   norm <- normDecl d
@@ -110,8 +111,8 @@ insertDecls (d : ds) = do
 
 insertDecl ::
   MonadInsertResources m =>
-  TypedDecl ->
-  m (Maybe TypedDecl)
+  StandardTypedDecl ->
+  m (Maybe StandardTypedDecl)
 insertDecl = \case
   r@DefFunction {} -> return (Just r)
   r@DefPostulate {} -> return (Just r)
@@ -146,10 +147,10 @@ lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
       "Somehow missed resource" <+> quotePretty ident <+> "on the first pass"
   Just value -> return value
 
-normDecl :: MonadInsertResources m => TypedDecl -> m TypedDecl
+normDecl :: MonadInsertResources m => StandardTypedDecl -> m StandardTypedDecl
 normDecl decl = do
   ctx <- gets (fmap (normalised . glued))
-  for decl $ \(TypedExpr (Glued unnorm norm)) -> do
-    -- Ugh, horrible. We really need to be able to renormalise.
-    norm' <- whnf 0 ctx mempty (unnormalise 0 norm)
-    return $ TypedExpr $ Glued unnorm norm'
+  for decl $ \(StandardTypedExpr (Glued unnorm norm)) -> do
+    -- Ugh, horrible. We really n(eed to be able to renormalise.
+    norm' <- runNormT ctx mempty (whnf 0 (unnormalise 0 norm))
+    return $ StandardTypedExpr $ Glued unnorm norm'

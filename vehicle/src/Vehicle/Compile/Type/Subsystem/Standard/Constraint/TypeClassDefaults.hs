@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Constraint.TypeClassDefaults
+module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
   ( generateConstraintUsingDefaults,
   )
 where
@@ -9,8 +9,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint
-import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -41,7 +42,7 @@ sameFamily PolarityFamily {} PolarityFamily {} = True
 sameFamily LinearityFamily {} LinearityFamily {} = True
 sameFamily _ _ = False
 
-data Candidate = Candidate MetaID TypeClass BasicNormExpr ConstraintContext
+data Candidate = Candidate MetaID TypeClass StandardNormExpr StandardConstraintContext
 
 instance Pretty Candidate where
   pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
@@ -58,9 +59,9 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults ::
-  TCM m =>
-  [WithContext TypeClassConstraint] ->
-  m (Maybe (WithContext Constraint))
+  TCM Builtin m =>
+  [WithContext StandardTypeClassConstraint] ->
+  m (Maybe (WithContext StandardConstraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
   case strongestConstraint of
@@ -83,7 +84,7 @@ generateConstraintUsingDefaults constraints = do
 
 findStrongestConstraint ::
   MonadCompile m =>
-  [WithContext TypeClassConstraint] ->
+  [WithContext StandardTypeClassConstraint] ->
   m CandidateStatus
 findStrongestConstraint [] = return None
 findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
@@ -137,11 +138,11 @@ familyOf = \case
   PolarityTypeClass {} -> auxiliaryTCError
 
 defaultSolution ::
-  TCM m =>
+  TCM Builtin m =>
   Provenance ->
-  ConstraintContext ->
+  StandardConstraintContext ->
   TypeClass ->
-  m BasicNormExpr
+  m StandardNormExpr
 defaultSolution p ctx = \case
   HasEq {} -> return VNatType
   HasOrd {} -> return VNatType
@@ -167,46 +168,48 @@ defaultSolution p ctx = \case
   PolarityTypeClass {} -> auxiliaryTCError
   AlmostEqualConstraint {} -> auxiliaryTCError
 
-createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m BasicNormType
+createDefaultListType :: TCM Builtin m => Provenance -> StandardConstraintContext -> m StandardNormType
 createDefaultListType p ctx = do
   tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
   return $ mkVListType tElem
 
-createDefaultBoolType :: TCM m => Provenance -> m BasicNormType
+createDefaultBoolType :: TCM Builtin m => Provenance -> m StandardNormType
 createDefaultBoolType p = do
   lin <- normalised <$> freshLinearityMeta p
   pol <- normalised <$> freshPolarityMeta p
   return $ mkVAnnBoolType lin pol
 
-createDefaultRatType :: TCM m => Provenance -> m BasicNormType
+createDefaultRatType :: TCM Builtin m => Provenance -> m StandardNormType
 createDefaultRatType p = do
   lin <- normalised <$> freshLinearityMeta p
   return $ mkVAnnRatType lin
 
-getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
-getCandidatesFromConstraint ctx (Has _ tc args) = do
-  let getCandidate = getCandidatesFromArgs ctx
-  return $ case (tc, args) of
-    (HasEq eq, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
-    (HasOrd ord, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
-    (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
-    (HasAdd, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
-    (HasSub, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
-    (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
-    (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
-    (HasFold, [_, t]) -> getCandidate [t] HasFold
-    (HasNatLits n, [t]) -> getCandidate [t] (HasNatLits n)
-    (HasRatLits, [t]) -> getCandidate [t] HasRatLits
-    (HasVecLits n, [_, t]) -> getCandidate [t] (HasVecLits n)
-    (NatInDomainConstraint n, [t]) -> case argExpr t of
-      VIndexType size -> getCandidate [ExplicitArg mempty size] (NatInDomainConstraint n)
+getCandidatesFromConstraint :: MonadCompile m => StandardConstraintContext -> StandardTypeClassConstraint -> m [Candidate]
+getCandidatesFromConstraint ctx (Has _ b args) = case b of
+  Constructor (TypeClass tc) -> do
+    let getCandidate = getCandidatesFromArgs ctx
+    return $ case (tc, args) of
+      (HasEq eq, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
+      (HasOrd ord, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
+      (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
+      (HasAdd, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
+      (HasSub, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
+      (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
+      (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
+      (HasFold, [_, t]) -> getCandidate [t] HasFold
+      (HasNatLits n, [t]) -> getCandidate [t] (HasNatLits n)
+      (HasRatLits, [t]) -> getCandidate [t] HasRatLits
+      (HasVecLits n, [_, t]) -> getCandidate [t] (HasVecLits n)
+      (NatInDomainConstraint n, [t]) -> case argExpr t of
+        VIndexType size -> getCandidate [ExplicitArg mempty size] (NatInDomainConstraint n)
+        _ -> []
       _ -> []
-    _ -> []
+  _ -> return []
 
-getCandidatesFromArgs :: ConstraintContext -> [BasicNormArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: StandardConstraintContext -> [StandardNormArg] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
   let e = argExpr t
-  case getMeta (argExpr t) of
+  case getNMeta (argExpr t) of
     Just m -> Just (Candidate m tc e ctx) -- m, t, tc)
     _ -> Nothing
 

@@ -35,9 +35,10 @@ import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (BasicNormExpr, NormExpr (..), pattern VBuiltinFunction)
+import Vehicle.Expr.Normalised (NormExpr (..))
 import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
@@ -45,7 +46,7 @@ generateCLSTProblem ::
   MonadCompile m =>
   LCSState ->
   InputEqualities ->
-  ConjunctAll BasicNormExpr ->
+  ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   (_, _, metaNetwork, userVariables, _) <- ask
@@ -205,10 +206,10 @@ getExprConstantIndex =
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => BasicNormExpr -> m Assertion
+compileAssertions :: MonadSMT m => StandardNormExpr -> m Assertion
 compileAssertions = go
   where
-    go :: MonadSMT m => BasicNormExpr -> m Assertion
+    go :: MonadSMT m => StandardNormExpr -> m Assertion
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -240,15 +241,15 @@ compileAssertions = go
 compileAssertion ::
   MonadSMT m =>
   Relation ->
-  BasicNormExpr ->
-  BasicNormExpr ->
+  StandardNormExpr ->
+  StandardNormExpr ->
   m Assertion
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => BasicNormExpr -> m LinearExpr
+compileLinearExpr :: MonadSMT m => StandardNormExpr -> m LinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   linearExpr <- go lnfExpr
@@ -258,7 +259,7 @@ compileLinearExpr expr = do
     singletonVar :: DBLevel -> Coefficient -> Map Int Coefficient
     singletonVar v = Map.singleton (unLevel v)
 
-    go :: MonadSMT m => BasicNormExpr -> m (Map Int Coefficient)
+    go :: MonadSMT m => StandardNormExpr -> m (Map Int Coefficient)
     go e = case e of
       VBoundVar v [] ->
         return $ singletonVar v 1

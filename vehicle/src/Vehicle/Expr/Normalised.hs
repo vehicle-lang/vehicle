@@ -4,7 +4,6 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude.Contexts (BoundCtx)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.AST
 
 -----------------------------------------------------------------------------
@@ -52,25 +51,7 @@ liftEnvOverBinder :: Env builtin -> Env builtin
 liftEnvOverBinder = (VBoundVar 0 [] :)
 
 -----------------------------------------------------------------------------
--- Norm expressions with the basic set of builtins
-
-type BasicNormExpr = NormExpr Builtin
-
-type BasicNormBinder = NormBinder Builtin
-
-type BasicNormArg = NormArg Builtin
-
-type BasicNormType = NormType Builtin
-
-type BasicSpine = Spine Builtin
-
-type BasicEnv = Env Builtin
-
------------------------------------------------------------------------------
 -- Patterns
-
-pattern VBuiltinFunction :: BuiltinFunction -> BasicSpine -> BasicNormExpr
-pattern VBuiltinFunction f spine = VBuiltin (BuiltinFunction f) spine
 
 pattern VTypeUniverse :: UniverseLevel -> NormType builtin
 pattern VTypeUniverse l = VUniverse (TypeUniv l)
@@ -99,65 +80,6 @@ pattern VIntLiteral x = VLiteral (LInt x)
 pattern VRatLiteral :: Rational -> NormExpr builtin
 pattern VRatLiteral x = VLiteral (LRat x)
 
-pattern VConstructor :: BuiltinConstructor -> BasicSpine -> BasicNormExpr
-pattern VConstructor c args = VBuiltin (Constructor c) args
-
-pattern VLinearityExpr :: Linearity -> BasicNormExpr
-pattern VLinearityExpr l <- VConstructor (Linearity l) []
-  where
-    VLinearityExpr l = VConstructor (Linearity l) []
-
-pattern VPolarityExpr :: Polarity -> BasicNormExpr
-pattern VPolarityExpr l <- VConstructor (Polarity l) []
-  where
-    VPolarityExpr l = VConstructor (Polarity l) []
-
-pattern VAnnBoolType :: BasicNormExpr -> BasicNormExpr -> BasicNormType
-pattern VAnnBoolType lin pol <- VConstructor Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
-
-pattern VBoolType :: BasicNormType
-pattern VBoolType <- VConstructor Bool []
-  where
-    VBoolType = VConstructor Bool []
-
-pattern VIndexType :: BasicNormType -> BasicNormType
-pattern VIndexType size <- VConstructor Index [ExplicitArg _ size]
-
-pattern VNatType :: BasicNormType
-pattern VNatType <- VConstructor Nat []
-  where
-    VNatType = VConstructor Nat []
-
-pattern VIntType :: BasicNormType
-pattern VIntType <- VConstructor Int []
-  where
-    VIntType = VConstructor Int []
-
-pattern VAnnRatType :: BasicNormExpr -> BasicNormType
-pattern VAnnRatType lin <- VConstructor Rat [IrrelevantImplicitArg _ lin]
-
-pattern VRatType :: BasicNormType
-pattern VRatType <- VConstructor Rat []
-  where
-    VRatType = VConstructor Rat []
-
-pattern VListType :: BasicNormType -> BasicNormType
-pattern VListType tElem <- VConstructor List [ExplicitArg _ tElem]
-
-pattern VVectorType :: BasicNormType -> BasicNormType -> BasicNormType
-pattern VVectorType tElem dim <- VConstructor Vector [ExplicitArg _ tElem, ExplicitArg _ dim]
-
-pattern VTensorType :: BasicNormType -> BasicNormType -> BasicNormType
-pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
-
-mkVList :: BasicNormType -> [BasicNormExpr] -> BasicNormExpr
-mkVList tElem = foldr cons nil
-  where
-    p = mempty
-    t = ImplicitArg p tElem
-    nil = VConstructor Nil [t]
-    cons y ys = VConstructor Cons [t, ExplicitArg p y, ExplicitArg p ys]
-
 mkVLVec :: [NormExpr builtin] -> NormExpr builtin -> NormExpr builtin
 mkVLVec xs t = VLVec xs [ImplicitArg mempty t, InstanceArg mempty VUnitLiteral]
 
@@ -176,71 +98,39 @@ isNLinearityUniverse _ = False
 isNAuxiliaryUniverse :: NormExpr builtin -> Bool
 isNAuxiliaryUniverse e = isNPolarityUniverse e || isNLinearityUniverse e
 
-isMeta :: NormExpr builtin -> Bool
-isMeta VMeta {} = True
-isMeta _ = False
+isNMeta :: NormExpr builtin -> Bool
+isNMeta VMeta {} = True
+isNMeta _ = False
 
-getMeta :: NormExpr builtin -> Maybe MetaID
-getMeta (VMeta m _) = Just m
-getMeta _ = Nothing
-
-isBoolType :: BasicNormExpr -> Bool
-isBoolType (VConstructor Bool _) = True
-isBoolType _ = False
-
-isIndexType :: BasicNormExpr -> Bool
-isIndexType (VConstructor Index _) = True
-isIndexType _ = False
-
-isNatType :: BasicNormExpr -> Bool
-isNatType (VConstructor Nat _) = True
-isNatType _ = False
-
-isIntType :: BasicNormExpr -> Bool
-isIntType (VConstructor Int _) = True
-isIntType _ = False
-
-isRatType :: BasicNormExpr -> Bool
-isRatType (VConstructor Rat _) = True
-isRatType _ = False
-
-isListType :: BasicNormExpr -> Bool
-isListType (VConstructor List _) = True
-isListType _ = False
-
-isVectorType :: BasicNormExpr -> Bool
-isVectorType (VConstructor Vector _) = True
-isVectorType _ = False
-
-isBoundVar :: BasicNormExpr -> Bool
-isBoundVar VBoundVar {} = True
-isBoundVar _ = False
+getNMeta :: NormExpr builtin -> Maybe MetaID
+getNMeta (VMeta m _) = Just m
+getNMeta _ = Nothing
 
 -----------------------------------------------------------------------------
 -- Glued expressions
 
 -- | A pair of an unnormalised and normalised expression.
-data GluedExpr = Glued
-  { unnormalised :: DBExpr Builtin,
-    normalised :: BasicNormExpr
+data GluedExpr builtin = Glued
+  { unnormalised :: DBExpr builtin,
+    normalised :: NormExpr builtin
   }
   deriving (Show, Generic)
 
-instance Serialize GluedExpr
+instance Serialize builtin => Serialize (GluedExpr builtin)
 
-instance HasProvenance GluedExpr where
+instance HasProvenance (GluedExpr builtin) where
   provenanceOf = provenanceOf . unnormalised
 
-type GluedArg = GenericArg GluedExpr
+type GluedArg builtin = GenericArg (GluedExpr builtin)
 
-type GluedType = GluedExpr
+type GluedType builtin = GluedExpr builtin
 
-type GluedProg = GenericProg GluedExpr
+type GluedProg builtin = GenericProg (GluedExpr builtin)
 
-type GluedDecl = GenericDecl GluedExpr
+type GluedDecl builtin = GenericDecl (GluedExpr builtin)
 
-traverseNormalised :: Monad m => (BasicNormExpr -> m BasicNormExpr) -> GluedExpr -> m GluedExpr
+traverseNormalised :: Monad m => (NormExpr builtin -> m (NormExpr builtin)) -> GluedExpr builtin -> m (GluedExpr builtin)
 traverseNormalised f (Glued u n) = Glued u <$> f n
 
-traverseUnnormalised :: Monad m => (DBExpr Builtin -> m (DBExpr Builtin)) -> GluedExpr -> m GluedExpr
+traverseUnnormalised :: Monad m => (DBExpr builtin -> m (DBExpr builtin)) -> GluedExpr builtin -> m (GluedExpr builtin)
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

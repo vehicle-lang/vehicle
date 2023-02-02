@@ -12,9 +12,9 @@ nfEq ::
   Provenance ->
   EqualityDomain ->
   EqualityOp ->
-  CheckedArg ->
-  CheckedArg ->
-  CheckedExpr
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  TypeCheckedExpr
 nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
   (EqIndex, IndexLiteral _ _ x, IndexLiteral _ _ y) -> BoolLiteral p (equalityOp eq x y)
   (EqNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
@@ -27,9 +27,9 @@ nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
 
 nfTensor ::
   Provenance ->
-  CheckedType ->
-  CheckedExpr ->
-  CheckedType
+  TypeCheckedType ->
+  TypeCheckedExpr ->
+  TypeCheckedType
 nfTensor p tElem dims = case dims of
   NilExpr {} -> tElem
   AppConsExpr _ _ d ds -> VectorType p (nfTensor p tElem ds) d
@@ -42,9 +42,9 @@ nfOrder ::
   Provenance ->
   OrderDomain ->
   OrderOp ->
-  CheckedArg ->
-  CheckedArg ->
-  CheckedExpr
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  TypeCheckedExpr
 nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (OrderNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (orderOp ord x y)
   (OrderIndex, IndexLiteral _ _ x, IndexLiteral _ _ y) -> BoolLiteral p (orderOp ord x y)
@@ -55,15 +55,15 @@ nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
 --------------------------------------------------------------------------------
 -- Normalising boolean operations
 
-normaliseNotArg :: CheckedArg -> CheckedArg
+normaliseNotArg :: TypeCheckedArg -> TypeCheckedArg
 normaliseNotArg x = Arg (provenanceOf x) Explicit Relevant $ nfNot (provenanceOf x) x
 
-nfNot :: Provenance -> CheckedArg -> CheckedExpr
+nfNot :: Provenance -> TypeCheckedArg -> TypeCheckedExpr
 nfNot p arg = case argExpr arg of
   BoolLiteral _ b -> BoolLiteral p (not b)
   _ -> NotExpr p [arg]
 
-nfAnd :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
+nfAnd :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (TrueExpr _, _) -> argExpr arg2
   (FalseExpr _, _) -> FalseExpr p
@@ -71,7 +71,7 @@ nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (_, FalseExpr _) -> FalseExpr p
   _ -> AndExpr p [arg1, arg2]
 
-nfOr :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
+nfOr :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (TrueExpr _, _) -> TrueExpr p
   (FalseExpr _, _) -> argExpr arg2
@@ -79,7 +79,7 @@ nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (_, FalseExpr _) -> argExpr arg1
   _ -> OrExpr p [arg1, arg2]
 
-nfImplies :: Provenance -> CheckedArg -> CheckedArg -> CheckedExpr
+nfImplies :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (TrueExpr _, _) -> argExpr arg2
   (FalseExpr _, _) -> TrueExpr p
@@ -87,7 +87,7 @@ nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
   (_, FalseExpr _) -> NotExpr p [arg2]
   _ -> ImpliesExpr p [arg1, arg2]
 
-nfIf :: Provenance -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedArg -> CheckedExpr
+nfIf :: Provenance -> TypeCheckedExpr -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfIf p t condition e1 e2 = case argExpr condition of
   TrueExpr _ -> argExpr e1
   FalseExpr _ -> argExpr e2
@@ -96,12 +96,12 @@ nfIf p t condition e1 e2 = case argExpr condition of
 -----------------------------------------------------------------------------
 -- Normalising conversion
 
-nfFromRat :: MonadCompile m => FromRatDomain -> CheckedArg -> m CheckedExpr
+nfFromRat :: MonadCompile m => FromRatDomain -> TypeCheckedArg -> m TypeCheckedExpr
 nfFromRat dom (ExplicitArg _ rat@RatLiteral {}) = case dom of
   FromRatToRat -> return rat
 nfFromRat _ _ = unexpectedExprError "conversion FromRat" "non-Rat"
 
-nfFromVec :: MonadCompile m => FromVecDomain -> CheckedArg -> m CheckedExpr
+nfFromVec :: MonadCompile m => FromVecDomain -> TypeCheckedArg -> m TypeCheckedExpr
 nfFromVec dom (ExplicitArg _ vec@(AnnVecLiteral p tElem xs)) = case dom of
   FromVecToList -> return $ mkList p tElem xs
   FromVecToVec -> return vec
@@ -110,36 +110,36 @@ nfFromVec _ _ = unexpectedExprError "conversion FromVec" "non-Vec"
 -----------------------------------------------------------------------------
 -- Normalising numeric operations
 
-normaliseNegArg :: NegDomain -> CheckedArg -> CheckedArg
+normaliseNegArg :: NegDomain -> TypeCheckedArg -> TypeCheckedArg
 normaliseNegArg dom x = ExplicitArg (provenanceOf x) $ nfNeg (provenanceOf x) dom x
 
-nfNeg :: Provenance -> NegDomain -> CheckedArg -> CheckedExpr
+nfNeg :: Provenance -> NegDomain -> TypeCheckedArg -> TypeCheckedExpr
 nfNeg p dom e = case (dom, argExpr e) of
   (NegInt, IntLiteral _ x) -> IntLiteral p (-x)
   (NegRat, RatLiteral _ x) -> RatLiteral p (-x)
   _ -> NegExpr p dom [e]
 
-nfAdd :: Provenance -> AddDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfAdd :: Provenance -> AddDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfAdd p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (AddNat, NatLiteral _ x, NatLiteral _ y) -> NatLiteral p (x + y)
   (AddInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x + y)
   (AddRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x + y)
   _ -> AddExpr p dom [arg1, arg2]
 
-nfSub :: Provenance -> SubDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfSub :: Provenance -> SubDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfSub p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (SubInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x - y)
   (SubRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x - y)
   _ -> SubExpr p dom [arg1, arg2]
 
-nfMul :: Provenance -> MulDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfMul :: Provenance -> MulDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfMul p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (MulNat, NatLiteral _ x, NatLiteral _ y) -> NatLiteral p (x * y)
   (MulInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x * y)
   (MulRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x * y)
   _ -> MulExpr p dom [arg1, arg2]
 
-nfDiv :: Provenance -> DivDomain -> CheckedArg -> CheckedArg -> CheckedExpr
+nfDiv :: Provenance -> DivDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
   (DivRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x / y)
   _ -> DivExpr p dom [arg1, arg2]
@@ -147,7 +147,7 @@ nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
 -----------------------------------------------------------------------------
 -- Normalising container operations
 
-nfAt :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedArg -> CheckedArg -> CheckedExpr
+nfAt :: Provenance -> TypeCheckedExpr -> TypeCheckedExpr -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
 nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
   (AnnVecLiteral _ _ es, IndexLiteral _ _ i) -> es !! fromIntegral i
   _ ->
@@ -161,14 +161,14 @@ nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
 
 zipWithVector ::
   Provenance ->
-  CheckedType ->
-  CheckedType ->
-  CheckedType ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr
+  TypeCheckedType ->
+  TypeCheckedType ->
+  TypeCheckedType ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr
 zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
   App
     p
@@ -185,9 +185,9 @@ zipWithVector p tElem1 tElem2 tRes size fn xs ys = do
 bigOp ::
   Provenance ->
   Identifier ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr
 bigOp p identifier size xs =
   App
     p

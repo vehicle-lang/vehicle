@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use max" #-}
-module Vehicle.Compile.Type.Constraint.LinearitySolver
+module Vehicle.Compile.Type.Subsystem.Standard.Constraint.LinearitySolver
   ( solveLinearityConstraint,
   )
 where
@@ -11,15 +11,15 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.Normalised (BasicNormType, getMeta, pattern VLinearityExpr)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalised (getNMeta)
 
 solveLinearityConstraint ::
-  TCM m =>
+  MonadCompile m =>
   LinearityTypeClass ->
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
+  WithContext StandardTypeClassConstraint ->
+  [StandardNormType] ->
+  m StandardConstraintProgress
 solveLinearityConstraint = \case
   MaxLinearity -> solveMaxLinearity
   MulLinearity -> solveMulLinearity
@@ -44,10 +44,10 @@ mulLinearity p l1 l2 = case (l1, l2) of
 -- Constraint solving
 
 solveMaxLinearity ::
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
+  MonadCompile m =>
+  WithContext StandardTypeClassConstraint ->
+  [StandardNormType] ->
+  m StandardConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
     (VLinearityExpr l1, VLinearityExpr l2) -> do
@@ -57,16 +57,16 @@ solveMaxLinearity c [lin1, lin2, res] =
       return $ Progress [unify (contextOf c) lin1 res]
     (VLinearityExpr Constant, _) ->
       return $ Progress [unify (contextOf c) lin2 res]
-    (getMeta -> Just m1, _) -> blockOn [m1]
-    (_, getMeta -> Just m2) -> blockOn [m2]
+    (getNMeta -> Just m1, _) -> blockOn [m1]
+    (_, getNMeta -> Just m2) -> blockOn [m2]
     _ -> malformedConstraintError c
 solveMaxLinearity c _ = malformedConstraintError c
 
 solveMulLinearity ::
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
+  MonadCompile m =>
+  WithContext StandardTypeClassConstraint ->
+  [StandardNormType] ->
+  m StandardConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
     (VLinearityExpr l1, VLinearityExpr l2) -> do
@@ -80,19 +80,19 @@ solveMulLinearity c [lin1, lin2, res] =
       return $ Progress [unify (contextOf c) lin1 res]
     (VLinearityExpr Constant, _) ->
       return $ Progress [unify (contextOf c) lin2 res]
-    (getMeta -> Just m1, _) -> blockOn [m1]
-    (_, getMeta -> Just m2) -> blockOn [m2]
+    (getNMeta -> Just m1, _) -> blockOn [m1]
+    (_, getNMeta -> Just m2) -> blockOn [m2]
     _ -> malformedConstraintError c
 solveMulLinearity c _ = malformedConstraintError c
 
 solveFunctionLinearity ::
-  TCM m =>
+  MonadCompile m =>
   FunctionPosition ->
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
+  WithContext StandardTypeClassConstraint ->
+  [StandardNormType] ->
+  m StandardConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
-  (getMeta -> Just m1) -> blockOn [m1]
+  (getNMeta -> Just m1) -> blockOn [m1]
   VLinearityExpr lin -> do
     let ctx = contextOf c
     let p = provenanceOf ctx
@@ -103,12 +103,12 @@ solveFunctionLinearity functionPosition c [arg, res] = case arg of
 solveFunctionLinearity _ c _ = malformedConstraintError c
 
 solveIfCondLinearity ::
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
+  MonadCompile m =>
+  WithContext StandardTypeClassConstraint ->
+  [StandardNormType] ->
+  m StandardConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
-  (getMeta -> Just m1) -> blockOn [m1]
+  (getNMeta -> Just m1) -> blockOn [m1]
   VLinearityExpr lin -> case lin of
     Constant -> return $ Progress []
     Linear {} -> return $ Progress []

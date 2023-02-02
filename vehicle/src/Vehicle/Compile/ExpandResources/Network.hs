@@ -11,6 +11,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -21,7 +22,7 @@ checkNetwork ::
   MonadExpandResources m =>
   NetworkLocations ->
   DeclProvenance ->
-  GluedType ->
+  StandardGluedType ->
   m (FilePath, NetworkType)
 checkNetwork networkLocations decl@(ident, _) networkType = do
   case Map.lookup (identifierName ident) networkLocations of
@@ -36,7 +37,7 @@ getNetworkType ::
   forall m.
   MonadExpandResources m =>
   DeclProvenance ->
-  GluedType ->
+  StandardGluedType ->
   m NetworkType
 getNetworkType decl networkType = case normalised networkType of
   VPi binder result
@@ -49,12 +50,12 @@ getNetworkType decl networkType = case normalised networkType of
   _ ->
     throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    getTensorType :: InputOrOutput -> BasicNormType -> m NetworkTensorType
+    getTensorType :: InputOrOutput -> StandardNormType -> m NetworkTensorType
     getTensorType io tensorType = do
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> BasicNormType -> m (NetworkBaseType, [Int])
+        go :: Bool -> StandardNormType -> m (NetworkBaseType, [Int])
         go topLevel = \case
           VTensorType _ dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
           VVectorType tElem dim -> do
@@ -68,7 +69,7 @@ getNetworkType decl networkType = case normalised networkType of
                 elemType <- getElementType t
                 return (elemType, [])
 
-    getTensorDimension :: InputOrOutput -> BasicNormType -> m Int
+    getTensorDimension :: InputOrOutput -> StandardNormType -> m Int
     getTensorDimension io dim = case dim of
       VNatLiteral n -> return n
       VFreeVar varIdent _ -> do
@@ -79,7 +80,7 @@ getNetworkType decl networkType = case normalised networkType of
           Just (Just (_, _, d)) -> return d
       dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
 
-    getElementType :: BasicNormType -> m NetworkBaseType
+    getElementType :: StandardNormType -> m NetworkBaseType
     getElementType = \case
       VRatType {} -> return NetworkRatType
       _ -> typingError
