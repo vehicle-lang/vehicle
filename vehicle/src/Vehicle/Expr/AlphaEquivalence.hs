@@ -6,21 +6,21 @@ module Vehicle.Expr.AlphaEquivalence
 where
 
 import Data.Hashable (Hashable (..))
+import Vehicle.Compile.Prelude
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
-instance Hashable DBArg
+instance Hashable CheckedArg
 
-instance Hashable DBExpr where
+instance Hashable CheckedExpr where
   hashWithSalt s e = hashWithSalt s (toCoDBExpr e)
 
-instance Hashable NormArg
+instance Hashable BasicNormArg
 
-instance Hashable NormBinder
+instance Hashable BasicNormBinder
 
-instance Hashable NormExpr
+instance Hashable BasicNormExpr
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool
@@ -28,5 +28,5 @@ class AlphaEquivalence a where
 instance AlphaEquivalence CoDBExpr where
   alphaEq e1 e2 = hash e1 == hash e2
 
-instance AlphaEquivalence DBExpr where
+instance AlphaEquivalence CheckedExpr where
   alphaEq e1 e2 = hash e1 == hash e2

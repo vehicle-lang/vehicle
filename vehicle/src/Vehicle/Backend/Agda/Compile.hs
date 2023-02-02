@@ -413,7 +413,7 @@ compileApp fun args = do
 
 compileLetBinder ::
   MonadAgdaCompile m =>
-  LetBinder OutputBinding OutputVar ->
+  LetBinder OutputBinding OutputVar Builtin ->
   m Code
 compileLetBinder (binder, expr) = do
   let binderName = pretty (getBinderName binder)
@@ -740,7 +740,7 @@ compileDiv dom args = do
 
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "÷" args
 
-isRatType :: Type binder var -> Bool
+isRatType :: Type binder var Builtin -> Bool
 isRatType RatType {} = True
 isRatType _ = False
 

@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Queries.IfElimination
   ( eliminateIfs,
     unfoldIf,
@@ -17,7 +20,7 @@ import Vehicle.Expr.Normalised
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-eliminateIfs :: MonadCompile m => BoundDBCtx -> NormExpr -> m NormExpr
+eliminateIfs :: MonadCompile m => BoundDBCtx -> BasicNormExpr -> m BasicNormExpr
 eliminateIfs ctx e =
   logCompilerPass MaxDetail currentPass $ do
     result <- elimIf <$> recLiftIf e
@@ -30,20 +33,19 @@ currentPass = "if elimination"
 --------------------------------------------------------------------------------
 -- If operations
 
-liftIf :: (NormExpr -> NormExpr) -> NormExpr -> NormExpr
-liftIf f (VBuiltin p If [_t, cond, e1, e2]) =
-  VBuiltin
-    p
+liftIf :: (BasicNormExpr -> BasicNormExpr) -> BasicNormExpr -> BasicNormExpr
+liftIf f (VBuiltinFunction If [_t, cond, e1, e2]) =
+  VBuiltinFunction
     If
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-    [ ImplicitArg p (VBuiltin p (Constructor Bool) []),
+    [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
       cond,
       fmap (liftIf f) e1,
       fmap (liftIf f) e2
     ]
 liftIf f e = f e
 
-recLiftIf :: MonadCompile m => NormExpr -> m NormExpr
+recLiftIf :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   -- Quantified lambdas should have been caught before now.
@@ -52,42 +54,42 @@ recLiftIf expr = case expr of
   VLiteral {} -> return expr
   VMeta {} -> return expr
   VBoundVar {} -> return expr
-  VFreeVar p v spine -> liftArgs (VFreeVar p v) <$> traverse (traverse recLiftIf) spine
-  VBuiltin p b spine -> liftArgs (VBuiltin p b) <$> traverse (traverse recLiftIf) spine
-  VLVec p es spine -> do
+  VFreeVar v spine -> liftArgs (VFreeVar v) <$> traverse (traverse recLiftIf) spine
+  VBuiltin b spine -> liftArgs (VBuiltin b) <$> traverse (traverse recLiftIf) spine
+  VLVec es spine -> do
     es' <- traverse recLiftIf es
-    let result = liftSeq (\es'' -> VLVec p es'' spine) es'
+    let result = liftSeq (\es'' -> VLVec es'' spine) es'
     return result
 
-liftArg :: (NormArg -> NormExpr) -> NormArg -> NormExpr
+liftArg :: (BasicNormArg -> BasicNormExpr) -> BasicNormArg -> BasicNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
 liftArgs ::
-  (Spine -> NormExpr) ->
-  Spine ->
-  NormExpr
+  (BasicSpine -> BasicNormExpr) ->
+  BasicSpine ->
+  BasicNormExpr
 liftArgs f [] = f []
 liftArgs f (x : xs) =
   if visibilityOf x == Explicit
     then liftArg (\a -> liftArgs (\as -> f (a : as)) xs) x
     else liftArgs (\as -> f (x : as)) xs
 
-liftSeq :: ([NormExpr] -> NormExpr) -> [NormExpr] -> NormExpr
+liftSeq :: ([BasicNormExpr] -> BasicNormExpr) -> [BasicNormExpr] -> BasicNormExpr
 liftSeq f [] = f []
 liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
-elimIf :: NormExpr -> NormExpr
-elimIf (VBuiltin p If [_t, cond, e1, e2]) = unfoldIf p cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf :: BasicNormExpr -> BasicNormExpr
+elimIf (VBuiltinFunction If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
 elimIf e = e
 
-unfoldIf :: Provenance -> NormArg -> NormArg -> NormArg -> NormExpr
-unfoldIf p c x y =
-  VBuiltin p Or $
+unfoldIf :: BasicNormArg -> BasicNormArg -> BasicNormArg -> BasicNormExpr
+unfoldIf c x y =
+  VBuiltinFunction Or $
     fmap
-      (ExplicitArg p)
-      [ VBuiltin p And [c, x],
-        VBuiltin p And [ExplicitArg p (VBuiltin p Not [c]), y]
+      (ExplicitArg mempty)
+      [ VBuiltinFunction And [c, x],
+        VBuiltinFunction And [ExplicitArg mempty (VBuiltinFunction Not [c]), y]
       ]

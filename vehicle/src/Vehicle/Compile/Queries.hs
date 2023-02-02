@@ -24,7 +24,7 @@ import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getNormalised, getPropertyInfo)
 import Vehicle.Compile.Type.VariableContext (DeclSubstitution)
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.DeBruijn (DBExpr, DBLevel (..))
+import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -52,11 +52,11 @@ compileToQueries verifier@Verifier {..} typedProg resources =
     if null properties
       then throwError NoPropertiesFound
       else do
-        xs <- forM properties $ \(ctx, name, expr) -> do
-          logCompilerPass MinDetail ("property" <+> quotePretty name) $ do
-            let propertyCtx = (ctx, verifier, name, networkCtx)
+        xs <- forM properties $ \(ctx, decl@(ident, _), expr) -> do
+          logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
+            let propertyCtx = (ctx, verifier, decl, networkCtx)
             property <- runReaderT (compileProperty expr) propertyCtx
-            return (name, property)
+            return (ident, property)
 
         return $ NonEmpty.unzip $ Specification xs
 
@@ -67,14 +67,14 @@ getProperties ::
   MonadCompile m =>
   VerifierIdentifier ->
   GenericProg TypedExpr ->
-  m [(DeclSubstitution, Identifier, NormExpr)]
+  m [(DeclSubstitution, DeclProvenance, BasicNormExpr)]
 getProperties verifier (Main decls) = go mempty decls
   where
     go ::
       MonadCompile m =>
       DeclSubstitution ->
       [TypedDecl] ->
-      m [(DeclSubstitution, Identifier, NormExpr)]
+      m [(DeclSubstitution, DeclProvenance, BasicNormExpr)]
     go _ [] = return []
     go ctx (d : ds) = case d of
       DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
@@ -89,12 +89,12 @@ getProperties verifier (Main decls) = go mempty decls
             let compatibility = checkCompatibility verifier (ident, p) propertyInfo
             case compatibility of
               Just err -> throwError err
-              Nothing -> return $ (ctx, ident, normBody) : res
+              Nothing -> return $ (ctx, (ident, p), normBody) : res
 
 --------------------------------------------------------------------------------
 -- Compilation
 
-type PropertyReaderState = (DeclSubstitution, Verifier, Identifier, NetworkContext)
+type PropertyReaderState = (DeclSubstitution, Verifier, DeclProvenance, NetworkContext)
 
 type MonadCompileProperty m =
   ( MonadCompile m,
@@ -104,9 +104,9 @@ type MonadCompileProperty m =
 -- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
 -- by recursing through the levels of vectors until it reaches something of
 -- type `Bool`.
-compileProperty :: MonadCompileProperty m => NormExpr -> m (Property (QueryMetaData, QueryText))
+compileProperty :: MonadCompileProperty m => BasicNormExpr -> m (Property (QueryMetaData, QueryText))
 compileProperty = \case
-  VLVec _ es _ -> MultiProperty <$> traverse compileProperty es
+  VLVec es _ -> MultiProperty <$> traverse compileProperty es
   expr ->
     logCompilerSection MaxDetail "Starting single boolean property" $ do
       SingleProperty <$> compilePropertyTopLevelStructure expr
@@ -116,27 +116,27 @@ compileProperty = \case
 compilePropertyTopLevelStructure ::
   forall m.
   MonadCompileProperty m =>
-  NormExpr ->
+  BasicNormExpr ->
   m (BoolProperty (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
   where
-    go :: NormExpr -> m (BoolProperty (QueryMetaData, QueryText))
+    go :: BasicNormExpr -> m (BoolProperty (QueryMetaData, QueryText))
     go expr = case expr of
-      VLiteral _ LBool {} ->
+      VLiteral LBool {} ->
         Query <$> compileQuerySet False expr
-      VBuiltin _ Equals {} _ ->
+      VBuiltinFunction Equals {} _ ->
         Query <$> compileQuerySet False expr
-      VBuiltin _ Order {} _ ->
+      VBuiltinFunction Order {} _ ->
         Query <$> compileQuerySet False expr
-      VBuiltin _ And [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction And [ExplicitArg _ e1, ExplicitArg _ e2] ->
         Conjunct <$> go e1 <*> go e2
-      VBuiltin _ Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
         Disjunct <$> go e1 <*> go e2
-      VBuiltin _ Not [ExplicitArg _ x] ->
+      VBuiltinFunction Not [ExplicitArg _ x] ->
         go $ lowerNotNorm x
-      VBuiltin p If [_tRes, c, x, y] ->
-        go $ unfoldIf p c x y
-      VQuantifierExpr p q dom args binder env body -> do
+      VBuiltinFunction If [_tRes, c, x, y] ->
+        go $ unfoldIf c x y
+      VQuantifierExpr q dom args binder env body -> do
         let subsectionDoc = "Identified start of query set:" <+> prettyFriendly (WithContext expr emptyDBCtx)
         logCompilerSection MaxDetail subsectionDoc $ do
           -- Have to check whether to negate the quantifier here, rather than at the top
@@ -147,16 +147,17 @@ compilePropertyTopLevelStructure = go
             Forall -> do
               -- If the property is universally quantified then we negate the expression.
               logDebug MinDetail "Negating property..."
-              return (True, BuiltinExpr p Not [ExplicitArg p body])
+              let p = mempty
+              return (True, BuiltinFunctionExpr p Not [ExplicitArg p body])
 
-          let negatedExpr = VQuantifierExpr p Exists dom args binder env existsBody
+          let negatedExpr = VQuantifierExpr Exists dom args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
       _ -> unexpectedExprError "compiling top-level property structure" (prettyVerbose expr)
 
 compileQuerySet ::
   MonadCompileProperty m =>
   Bool ->
-  NormExpr ->
+  BasicNormExpr ->
   m (QuerySet (QueryMetaData, QueryText))
 compileQuerySet isPropertyNegated expr = do
   -- First we recursively compile down the remaining boolean structure, stopping at
@@ -181,7 +182,7 @@ compileQuerySet isPropertyNegated expr = do
 
 -- | This is a tree structure which stores the reverse environment at each
 -- node and propositional expressions at the leaves.
-type PropositionTree = BooleanExpr NormExpr
+type PropositionTree = BooleanExpr BasicNormExpr
 
 -- | The set of variables that will be cumulatively in scope at the current
 -- point in time once all existential quantifiers have been lifted to the
@@ -198,27 +199,27 @@ compileQueryStructure ::
   forall m.
   MonadCompileProperty m =>
   CumulativeVariables ->
-  NormExpr ->
+  BasicNormExpr ->
   m (PropositionTree, CumulativeVariables)
 compileQueryStructure = go False
   where
-    go :: Bool -> CumulativeVariables -> NormExpr -> m (PropositionTree, CumulativeVariables)
+    go :: Bool -> CumulativeVariables -> BasicNormExpr -> m (PropositionTree, CumulativeVariables)
     go processingLiftedIfs cumulativeVariables expr = case expr of
-      VBuiltin _ And [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction And [ExplicitArg _ e1, ExplicitArg _ e2] ->
         goOp2 Conjunct processingLiftedIfs cumulativeVariables e1 e2
-      VBuiltin _ Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction Or [ExplicitArg _ e1, ExplicitArg _ e2] ->
         goOp2 Disjunct processingLiftedIfs cumulativeVariables e1 e2
-      VBuiltin _ Not [ExplicitArg _ x] ->
+      VBuiltinFunction Not [ExplicitArg _ x] ->
         go processingLiftedIfs cumulativeVariables $ lowerNotNorm x
-      VBuiltin p If [_tRes, c, x, y] ->
-        go processingLiftedIfs cumulativeVariables $ unfoldIf p c x y
-      VQuantifierExpr p Exists dom _ binder env body ->
-        compileQuantifierBodyToPropositionTree cumulativeVariables p dom binder env body
-      VBuiltin _ Equals {} _ ->
+      VBuiltinFunction If [_tRes, c, x, y] ->
+        go processingLiftedIfs cumulativeVariables $ unfoldIf c x y
+      VQuantifierExpr Exists dom _ binder env body ->
+        compileQuantifierBodyToPropositionTree cumulativeVariables dom binder env body
+      VBuiltinFunction Equals {} _ ->
         goProposition processingLiftedIfs cumulativeVariables expr
-      VBuiltin _ Order {} _ ->
+      VBuiltinFunction Order {} _ ->
         goProposition processingLiftedIfs cumulativeVariables expr
-      VLiteral _ LBool {} -> do
+      VLiteral LBool {} -> do
         goProposition processingLiftedIfs cumulativeVariables expr
       _ -> unexpectedExprError "compiling query structure" (prettyVerbose expr)
 
@@ -226,8 +227,8 @@ compileQueryStructure = go False
       (PropositionTree -> PropositionTree -> PropositionTree) ->
       Bool ->
       CumulativeVariables ->
-      NormExpr ->
-      NormExpr ->
+      BasicNormExpr ->
+      BasicNormExpr ->
       m (PropositionTree, CumulativeVariables)
     goOp2 op2 processingLiftedIfs cumulativeVariables e1 e2 = do
       let lhsVariables = cumulativeVariables
@@ -237,7 +238,7 @@ compileQueryStructure = go False
       let userVars = lhsUserVars <> rhsUserVars
       return (op2 e1' e2', userVars)
 
-    goProposition :: Bool -> CumulativeVariables -> NormExpr -> m (PropositionTree, CumulativeVariables)
+    goProposition :: Bool -> CumulativeVariables -> BasicNormExpr -> m (PropositionTree, CumulativeVariables)
     goProposition processingLiftedIfs cumulativeVariables expr = do
       let ctx = cumulativeVarsToCtx cumulativeVariables
       let subsectionDoc = "Identified proposition:" <+> prettyFriendly (WithContext expr ctx)
@@ -255,20 +256,19 @@ compileQueryStructure = go False
           decrCallDepth
           return result
 
-    wasIfLifted :: NormExpr -> Bool
-    wasIfLifted (VBuiltin _ Or _) = True
+    wasIfLifted :: BasicNormExpr -> Bool
+    wasIfLifted (VBuiltinFunction Or _) = True
     wasIfLifted _ = False
 
 compileQuantifierBodyToPropositionTree ::
   MonadCompileProperty m =>
   CumulativeVariables ->
-  Provenance ->
   QuantifierDomain ->
-  NormBinder ->
-  Env ->
+  BasicNormBinder ->
+  BasicEnv ->
   CheckedExpr ->
   m (PropositionTree, CumulativeVariables)
-compileQuantifierBodyToPropositionTree cumulativeVariables _ _ binder env body = do
+compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = do
   -- TODO avoid calculating this repeatedly?
   let currentLevel = DBLevel $ sum (map length cumulativeVariables)
   (envEntry, binderUserVars) <- calculateEnvEntry currentLevel binder
@@ -287,7 +287,7 @@ compileQuantifierBodyToPropositionTree cumulativeVariables _ _ binder env body =
 compileSingleQuery ::
   MonadCompileProperty m =>
   [UserVariable] ->
-  ConjunctAll NormExpr ->
+  ConjunctAll BasicNormExpr ->
   m (MaybeTrivial (QueryMetaData, QueryText))
 compileSingleQuery userVariables conjuncts = do
   (_, verifier, ident, networkCtx) <- ask
@@ -318,30 +318,31 @@ compileSingleQuery userVariables conjuncts = do
         logCompilerPassOutput $ pretty queryText
         return $ NonTrivial (QueryData u v, queryText)
 
-lowerNotNorm :: NormExpr -> NormExpr
+lowerNotNorm :: BasicNormExpr -> BasicNormExpr
 lowerNotNorm arg = case arg of
   -- Base cases
-  VLiteral p (LBool b) -> VLiteral p (LBool (not b))
-  VBuiltin p (Order dom ord) args -> VBuiltin p (Order dom (neg ord)) args
-  VBuiltin p (Equals dom eq) args -> VBuiltin p (Equals dom (neg eq)) args
-  VBuiltin _p Not [e] -> argExpr e
+  VLiteral (LBool b) -> VLiteral (LBool (not b))
+  VBuiltinFunction (Order dom ord) args -> VBuiltinFunction (Order dom (neg ord)) args
+  VBuiltinFunction (Equals dom eq) args -> VBuiltinFunction (Equals dom (neg eq)) args
+  VBuiltinFunction Not [e] -> argExpr e
   -- Inductive cases
-  VBuiltin p Or args -> VBuiltin p And (lowerNotNormArg <$> args)
-  VBuiltin p And args -> VBuiltin p Or (lowerNotNormArg <$> args)
-  VQuantifierExpr p q dom args binder env body ->
-    VQuantifierExpr p (neg q) dom args binder env (NotExpr p [ExplicitArg p body])
-  VBuiltin p If [tRes, c, e1, e2] -> VBuiltin p If [tRes, c, lowerNotNormArg e1, lowerNotNormArg e2]
+  VBuiltinFunction Or args -> VBuiltinFunction And (lowerNotNormArg <$> args)
+  VBuiltinFunction And args -> VBuiltinFunction Or (lowerNotNormArg <$> args)
+  VQuantifierExpr q dom args binder env body ->
+    let p = mempty
+     in VQuantifierExpr (neg q) dom args binder env (NotExpr p [ExplicitArg p body])
+  VBuiltinFunction If [tRes, c, e1, e2] -> VBuiltinFunction If [tRes, c, lowerNotNormArg e1, lowerNotNormArg e2]
   -- Errors
   e -> developerError ("Unable to lower 'not' through norm expr:" <+> prettyVerbose e)
 
-lowerNotNormArg :: NormArg -> NormArg
+lowerNotNormArg :: BasicNormArg -> BasicNormArg
 lowerNotNormArg = fmap lowerNotNorm
 
 --------------------------------------------------------------------------------
 -- DNF
 
 -- | A tree of expressions in disjunctive normal form.
-type DNFTree = MaybeTrivial (DisjunctAll (ConjunctAll NormExpr))
+type DNFTree = MaybeTrivial (DisjunctAll (ConjunctAll BasicNormExpr))
 
 -- | Converts a boolean structure to disjunctive normal form.
 convertToDNF :: PropositionTree -> DNFTree
@@ -355,8 +356,8 @@ convertToDNF = \case
       DisjunctAll $
         NonEmpty.fromList [as <> bs | as <- NonEmpty.toList cs, bs <- NonEmpty.toList ds]
   Query x -> case x of
-    VLiteral _ (LBool False) -> Trivial False
-    VLiteral _ (LBool True) -> Trivial True
+    VBoolLiteral False -> Trivial False
+    VBoolLiteral True -> Trivial True
     _ -> NonTrivial $ DisjunctAll [ConjunctAll [x]]
 
 checkCompatibility :: VerifierIdentifier -> DeclProvenance -> PropertyInfo -> Maybe CompileError
@@ -368,22 +369,22 @@ checkCompatibility verifier prov (PropertyInfo linearity polarity) =
       Just $ UnsupportedAlternatingQuantifiers (VerifierBackend verifier) prov q p pp2
     _ -> Nothing
 
-calculateEnvEntry :: MonadCompileProperty m => DBLevel -> NormBinder -> m (NormExpr, [UserVariable])
+calculateEnvEntry :: MonadCompileProperty m => DBLevel -> BasicNormBinder -> m (BasicNormExpr, [UserVariable])
 calculateEnvEntry startingLevel binder = do
   runSupplyT (go baseName baseType) [startingLevel ..]
   where
     baseName = getBinderName binder
     baseType = binderType binder
 
-    go :: (MonadSupply DBLevel m, MonadCompileProperty m) => Name -> NormType -> m (NormExpr, [UserVariable])
+    go :: (MonadSupply DBLevel m, MonadCompileProperty m) => Name -> BasicNormType -> m (BasicNormExpr, [UserVariable])
     go name = \case
       VRatType {} -> do
         dbLevel <- demand
-        return (VBoundVar (provenanceOf binder) dbLevel [], [UserVariable name])
+        return (VBoundVar dbLevel [], [UserVariable name])
 
       -- If we're quantifying over a tensor, instead quantify over each individual
       -- element, and then substitute in a LVec construct with those elements in.
-      VVectorType p tElem (VLiteral _ (LNat size)) -> do
+      VVectorType tElem (VLiteral (LNat size)) -> do
         -- Use the list monad to create a nested list of all possible indices into the tensor
         let allIndices = [0 .. size - 1]
 
@@ -391,19 +392,19 @@ calculateEnvEntry startingLevel binder = do
         let mkName i = name <> "_" <> pack (show i)
         (subexprs, userVars) <- unzip <$> traverse (\i -> go (mkName i) tElem) allIndices
 
-        let expr = VLVec p subexprs [ImplicitArg p tElem]
+        let expr = VLVec subexprs [ImplicitArg mempty tElem]
 
         -- Generate a expression prepended with `tensorSize` quantifiers
         return (expr, concat userVars)
       typ -> do
-        (_, verifier, ident, _) <- ask
+        (_, verifier, (ident, _), _) <- ask
         let target = verifierIdentifier verifier
         let p = provenanceOf binder
         throwError $ UnsupportedVariableType target ident p baseName typ baseType [Constructor Rat]
 
-pattern VQuantifierExpr :: Provenance -> Quantifier -> QuantifierDomain -> [NormArg] -> NormBinder -> Env -> DBExpr -> NormExpr
-pattern VQuantifierExpr p q dom args binder env body <-
-  VBuiltin p (Quantifier q dom) (reverse -> ExplicitArg _ (VLam _ binder env body) : args)
+pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [BasicNormArg] -> BasicNormBinder -> BasicEnv -> CheckedExpr -> BasicNormExpr
+pattern VQuantifierExpr q dom args binder env body <-
+  VBuiltinFunction (Quantifier q dom) (reverse -> ExplicitArg _ (VLam binder env body) : args)
   where
-    VQuantifierExpr p q dom args binder env body =
-      VBuiltin p (Quantifier q dom) (reverse (ExplicitArg p (VLam p binder env body) : args))
+    VQuantifierExpr q dom args binder env body =
+      VBuiltinFunction (Quantifier q dom) (reverse (ExplicitArg mempty (VLam binder env body) : args))

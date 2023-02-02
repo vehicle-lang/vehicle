@@ -53,6 +53,7 @@ instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr
 
 -- Vehicle.Syntax.AST.Builtin
 instance NoThunks BuiltinConstructor
+instance NoThunks BuiltinFunction
 instance NoThunks NegDomain
 instance NoThunks AddDomain
 instance NoThunks SubDomain
@@ -73,7 +74,7 @@ instance NoThunks expr => NoThunks (GenericDecl expr)
 -- Vehicle.Syntax.AST.Expr
 instance NoThunks Universe
 instance NoThunks Literal
-instance (NoThunks binder, NoThunks var) => NoThunks (Expr binder var)
+instance (NoThunks binder, NoThunks var, NoThunks builtin) => NoThunks (Expr binder var builtin)
 
 -- Vehicle.Syntax.AST.Meta
 instance NoThunks MetaID

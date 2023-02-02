@@ -73,7 +73,7 @@ prependConstraint ::
   m CheckedDecl
 prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let p = originalProvenance ctx
-  typeClass <- quote 0 (tcNormExpr p constraint)
+  typeClass <- quote p 0 (tcNormExpr constraint)
   let relevancy = relevanceOf tc
 
   substTypeClass <- substMetas typeClass
@@ -128,7 +128,7 @@ quantifyOverMeta decl meta = do
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) relevance metaType decl
 
-isMeta :: DBExpr -> Bool
+isMeta :: DBExpr builtin -> Bool
 isMeta Meta {} = True
 isMeta (App _ Meta {} _) = True
 isMeta _ = False

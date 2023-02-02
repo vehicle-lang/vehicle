@@ -12,202 +12,207 @@ import Vehicle.Syntax.AST
 
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
---
--- TODO - make generic over WHNF.
-data NormExpr
-  = VUniverse Provenance Universe
-  | VLiteral Provenance Literal
-  | VLam Provenance NormBinder Env DBExpr
-  | VPi Provenance NormBinder NormExpr
-  | VLVec Provenance [NormExpr] Spine
-  | VMeta Provenance MetaID Spine
-  | VFreeVar Provenance Identifier Spine
-  | VBoundVar Provenance DBLevel Spine
-  | VBuiltin Provenance Builtin Spine
+data NormExpr builtin
+  = VUniverse Universe
+  | VLiteral Literal
+  | VLam (NormBinder builtin) (Env builtin) (Expr DBBinding DBIndexVar builtin)
+  | VPi (NormBinder builtin) (NormExpr builtin)
+  | VLVec [NormExpr builtin] (Spine builtin)
+  | VMeta MetaID (Spine builtin)
+  | VFreeVar Identifier (Spine builtin)
+  | VBoundVar DBLevel (Spine builtin)
+  | VBuiltin builtin (Spine builtin)
   deriving (Eq, Show, Generic)
 
-instance Serialize NormExpr
+instance Serialize builtin => Serialize (NormExpr builtin)
 
-instance HasProvenance NormExpr where
-  provenanceOf = \case
-    VUniverse p _ -> p
-    VLiteral p _ -> p
-    VLam p _ _ _ -> p
-    VPi p _ _ -> p
-    VLVec p _ _ -> p
-    VMeta p _ _ -> p
-    VFreeVar p _ _ -> p
-    VBoundVar p _ _ -> p
-    VBuiltin p _ _ -> p
+type NormArg builtin = GenericArg (NormExpr builtin)
 
-type NormArg = GenericArg NormExpr
+type NormBinder builtin = GenericBinder DBBinding (NormType builtin)
 
-type NormBinder = GenericBinder DBBinding NormType
+type NormDecl builtin = GenericDecl (NormExpr builtin)
 
-type NormDecl = GenericDecl NormExpr
-
-type NormProg = GenericDecl
+type NormProg builtin = GenericDecl builtin
 
 -- | A normalised type
-type NormType = NormExpr
+type NormType builtin = NormExpr builtin
 
 -----------------------------------------------------------------------------
 -- Spines and environments
 
 -- | A list of arguments for an application that cannot be normalised.
-type Spine = [NormArg]
+type Spine builtin = [NormArg builtin]
 
-type Env = BoundCtx NormExpr
+type Env builtin = BoundCtx (NormExpr builtin)
 
-mkNoOpEnv :: DBLevel -> Env
-mkNoOpEnv boundCtxSize = [VBoundVar mempty i [] | i <- reverse [0 .. boundCtxSize - 1]]
+mkNoOpEnv :: DBLevel -> Env builtin
+mkNoOpEnv boundCtxSize = [VBoundVar i [] | i <- reverse [0 .. boundCtxSize - 1]]
 
-liftEnvOverBinder :: Provenance -> Env -> Env
-liftEnvOverBinder p = (VBoundVar p 0 [] :)
+liftEnvOverBinder :: Env builtin -> Env builtin
+liftEnvOverBinder = (VBoundVar 0 [] :)
+
+-----------------------------------------------------------------------------
+-- Norm expressions with the basic set of builtins
+
+type BasicNormExpr = NormExpr Builtin
+
+type BasicNormBinder = NormBinder Builtin
+
+type BasicNormArg = NormArg Builtin
+
+type BasicNormType = NormType Builtin
+
+type BasicSpine = Spine Builtin
+
+type BasicEnv = Env Builtin
 
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern VTypeUniverse :: Provenance -> UniverseLevel -> NormType
-pattern VTypeUniverse p l = VUniverse p (TypeUniv l)
+pattern VBuiltinFunction :: BuiltinFunction -> BasicSpine -> BasicNormExpr
+pattern VBuiltinFunction f spine = VBuiltin (BuiltinFunction f) spine
 
-pattern VPolarityUniverse :: Provenance -> NormExpr
-pattern VPolarityUniverse p = VUniverse p PolarityUniv
+pattern VTypeUniverse :: UniverseLevel -> NormType builtin
+pattern VTypeUniverse l = VUniverse (TypeUniv l)
 
-pattern VLinearityUniverse :: Provenance -> NormExpr
-pattern VLinearityUniverse p = VUniverse p PolarityUniv
+pattern VPolarityUniverse :: NormExpr builtin
+pattern VPolarityUniverse = VUniverse PolarityUniv
 
-pattern VUnitLiteral :: Provenance -> NormExpr
-pattern VUnitLiteral p = VLiteral p LUnit
+pattern VLinearityUniverse :: NormExpr builtin
+pattern VLinearityUniverse = VUniverse PolarityUniv
 
-pattern VBoolLiteral :: Provenance -> Bool -> NormExpr
-pattern VBoolLiteral p x = VLiteral p (LBool x)
+pattern VUnitLiteral :: NormExpr builtin
+pattern VUnitLiteral = VLiteral LUnit
 
-pattern VIndexLiteral :: Provenance -> Int -> Int -> NormExpr
-pattern VIndexLiteral p n x = VLiteral p (LIndex n x)
+pattern VBoolLiteral :: Bool -> NormExpr builtin
+pattern VBoolLiteral x = VLiteral (LBool x)
 
-pattern VNatLiteral :: Provenance -> Int -> NormExpr
-pattern VNatLiteral p x = VLiteral p (LNat x)
+pattern VIndexLiteral :: Int -> Int -> NormExpr builtin
+pattern VIndexLiteral n x = VLiteral (LIndex n x)
 
-pattern VIntLiteral :: Provenance -> Int -> NormExpr
-pattern VIntLiteral p x = VLiteral p (LInt x)
+pattern VNatLiteral :: Int -> NormExpr builtin
+pattern VNatLiteral x = VLiteral (LNat x)
 
-pattern VRatLiteral :: Provenance -> Rational -> NormExpr
-pattern VRatLiteral p x = VLiteral p (LRat x)
+pattern VIntLiteral :: Int -> NormExpr builtin
+pattern VIntLiteral x = VLiteral (LInt x)
 
-pattern VConstructor :: Provenance -> BuiltinConstructor -> [GenericArg NormExpr] -> NormExpr
-pattern VConstructor p c args = VBuiltin p (Constructor c) args
+pattern VRatLiteral :: Rational -> NormExpr builtin
+pattern VRatLiteral x = VLiteral (LRat x)
 
-pattern VLinearityExpr :: Provenance -> Linearity -> NormExpr
-pattern VLinearityExpr p l <- VConstructor p (Linearity l) []
+pattern VConstructor :: BuiltinConstructor -> BasicSpine -> BasicNormExpr
+pattern VConstructor c args = VBuiltin (Constructor c) args
+
+pattern VLinearityExpr :: Linearity -> BasicNormExpr
+pattern VLinearityExpr l <- VConstructor (Linearity l) []
   where
-    VLinearityExpr p l = VConstructor p (Linearity l) []
+    VLinearityExpr l = VConstructor (Linearity l) []
 
-pattern VPolarityExpr :: Provenance -> Polarity -> NormExpr
-pattern VPolarityExpr p l <- VConstructor p (Polarity l) []
+pattern VPolarityExpr :: Polarity -> BasicNormExpr
+pattern VPolarityExpr l <- VConstructor (Polarity l) []
   where
-    VPolarityExpr p l = VConstructor p (Polarity l) []
+    VPolarityExpr l = VConstructor (Polarity l) []
 
-pattern VAnnBoolType :: Provenance -> NormExpr -> NormExpr -> NormType
-pattern VAnnBoolType p lin pol <- VConstructor p Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
+pattern VAnnBoolType :: BasicNormExpr -> BasicNormExpr -> BasicNormType
+pattern VAnnBoolType lin pol <- VConstructor Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
 
-pattern VBoolType :: Provenance -> NormType
-pattern VBoolType p <- VConstructor p Bool []
+pattern VBoolType :: BasicNormType
+pattern VBoolType <- VConstructor Bool []
   where
-    VBoolType p = VConstructor p Bool []
+    VBoolType = VConstructor Bool []
 
-pattern VIndexType :: Provenance -> NormType -> NormType
-pattern VIndexType p size <- VConstructor p Index [ExplicitArg _ size]
+pattern VIndexType :: BasicNormType -> BasicNormType
+pattern VIndexType size <- VConstructor Index [ExplicitArg _ size]
 
-pattern VNatType :: Provenance -> NormType
-pattern VNatType p <- VConstructor p Nat []
+pattern VNatType :: BasicNormType
+pattern VNatType <- VConstructor Nat []
   where
-    VNatType p = VConstructor p Nat []
+    VNatType = VConstructor Nat []
 
-pattern VIntType :: Provenance -> NormType
-pattern VIntType p <- VConstructor p Int []
+pattern VIntType :: BasicNormType
+pattern VIntType <- VConstructor Int []
   where
-    VIntType p = VConstructor p Int []
+    VIntType = VConstructor Int []
 
-pattern VAnnRatType :: Provenance -> NormExpr -> NormType
-pattern VAnnRatType p lin <- VConstructor p Rat [IrrelevantImplicitArg _ lin]
+pattern VAnnRatType :: BasicNormExpr -> BasicNormType
+pattern VAnnRatType lin <- VConstructor Rat [IrrelevantImplicitArg _ lin]
 
-pattern VRatType :: Provenance -> NormType
-pattern VRatType p <- VConstructor p Rat []
+pattern VRatType :: BasicNormType
+pattern VRatType <- VConstructor Rat []
   where
-    VRatType p = VConstructor p Rat []
+    VRatType = VConstructor Rat []
 
-pattern VListType :: Provenance -> NormType -> NormType
-pattern VListType p tElem <- VConstructor p List [ExplicitArg _ tElem]
+pattern VListType :: BasicNormType -> BasicNormType
+pattern VListType tElem <- VConstructor List [ExplicitArg _ tElem]
 
-pattern VVectorType :: Provenance -> NormType -> NormType -> NormType
-pattern VVectorType p tElem dim <- VConstructor p Vector [ExplicitArg _ tElem, ExplicitArg _ dim]
+pattern VVectorType :: BasicNormType -> BasicNormType -> BasicNormType
+pattern VVectorType tElem dim <- VConstructor Vector [ExplicitArg _ tElem, ExplicitArg _ dim]
 
-pattern VTensorType :: Provenance -> NormType -> NormType -> NormType
-pattern VTensorType p tElem dims <- VFreeVar p TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
+pattern VTensorType :: BasicNormType -> BasicNormType -> BasicNormType
+pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
 
-mkVList :: Provenance -> NormType -> [NormExpr] -> NormExpr
-mkVList p tElem = foldr cons nil
+mkVList :: BasicNormType -> [BasicNormExpr] -> BasicNormExpr
+mkVList tElem = foldr cons nil
   where
+    p = mempty
     t = ImplicitArg p tElem
-    nil = VConstructor p Nil [t]
-    cons y ys = VConstructor p Cons [t, ExplicitArg p y, ExplicitArg p ys]
+    nil = VConstructor Nil [t]
+    cons y ys = VConstructor Cons [t, ExplicitArg p y, ExplicitArg p ys]
 
-mkVLVec :: Provenance -> [NormExpr] -> NormExpr -> NormExpr
-mkVLVec p xs t = VLVec p xs [ImplicitArg p t, InstanceArg p (VUnitLiteral p)]
+mkVLVec :: [NormExpr builtin] -> NormExpr builtin -> NormExpr builtin
+mkVLVec xs t = VLVec xs [ImplicitArg mempty t, InstanceArg mempty VUnitLiteral]
 
-isNTypeUniverse :: NormExpr -> Bool
-isNTypeUniverse (VUniverse _ TypeUniv {}) = True
+isNTypeUniverse :: NormExpr builtin -> Bool
+isNTypeUniverse (VUniverse TypeUniv {}) = True
 isNTypeUniverse _ = False
 
-isNPolarityUniverse :: NormExpr -> Bool
-isNPolarityUniverse (VUniverse _ PolarityUniv {}) = True
+isNPolarityUniverse :: NormExpr builtin -> Bool
+isNPolarityUniverse (VUniverse PolarityUniv {}) = True
 isNPolarityUniverse _ = False
 
-isNLinearityUniverse :: NormExpr -> Bool
-isNLinearityUniverse (VUniverse _ LinearityUniv {}) = True
+isNLinearityUniverse :: NormExpr builtin -> Bool
+isNLinearityUniverse (VUniverse LinearityUniv {}) = True
 isNLinearityUniverse _ = False
 
-isNAuxiliaryUniverse :: NormExpr -> Bool
+isNAuxiliaryUniverse :: NormExpr builtin -> Bool
 isNAuxiliaryUniverse e = isNPolarityUniverse e || isNLinearityUniverse e
 
-isMeta :: NormExpr -> Bool
+isMeta :: NormExpr builtin -> Bool
 isMeta VMeta {} = True
 isMeta _ = False
 
-getMeta :: NormExpr -> Maybe MetaID
-getMeta (VMeta _ m _) = Just m
+getMeta :: NormExpr builtin -> Maybe MetaID
+getMeta (VMeta m _) = Just m
 getMeta _ = Nothing
 
-isBoolType :: NormExpr -> Bool
-isBoolType (VConstructor _ Bool _) = True
+isBoolType :: BasicNormExpr -> Bool
+isBoolType (VConstructor Bool _) = True
 isBoolType _ = False
 
-isIndexType :: NormExpr -> Bool
-isIndexType (VConstructor _ Index _) = True
+isIndexType :: BasicNormExpr -> Bool
+isIndexType (VConstructor Index _) = True
 isIndexType _ = False
 
-isNatType :: NormExpr -> Bool
-isNatType (VConstructor _ Nat _) = True
+isNatType :: BasicNormExpr -> Bool
+isNatType (VConstructor Nat _) = True
 isNatType _ = False
 
-isIntType :: NormExpr -> Bool
-isIntType (VConstructor _ Int _) = True
+isIntType :: BasicNormExpr -> Bool
+isIntType (VConstructor Int _) = True
 isIntType _ = False
 
-isRatType :: NormExpr -> Bool
-isRatType (VConstructor _ Rat _) = True
+isRatType :: BasicNormExpr -> Bool
+isRatType (VConstructor Rat _) = True
 isRatType _ = False
 
-isListType :: NormExpr -> Bool
-isListType (VConstructor _ List _) = True
+isListType :: BasicNormExpr -> Bool
+isListType (VConstructor List _) = True
 isListType _ = False
 
-isVectorType :: NormExpr -> Bool
-isVectorType (VConstructor _ Vector _) = True
+isVectorType :: BasicNormExpr -> Bool
+isVectorType (VConstructor Vector _) = True
 isVectorType _ = False
 
-isBoundVar :: NormExpr -> Bool
+isBoundVar :: BasicNormExpr -> Bool
 isBoundVar VBoundVar {} = True
 isBoundVar _ = False
 
@@ -216,8 +221,8 @@ isBoundVar _ = False
 
 -- | A pair of an unnormalised and normalised expression.
 data GluedExpr = Glued
-  { unnormalised :: DBExpr,
-    normalised :: NormExpr
+  { unnormalised :: DBExpr Builtin,
+    normalised :: BasicNormExpr
   }
   deriving (Show, Generic)
 
@@ -234,8 +239,8 @@ type GluedProg = GenericProg GluedExpr
 
 type GluedDecl = GenericDecl GluedExpr
 
-traverseNormalised :: Monad m => (NormExpr -> m NormExpr) -> GluedExpr -> m GluedExpr
+traverseNormalised :: Monad m => (BasicNormExpr -> m BasicNormExpr) -> GluedExpr -> m GluedExpr
 traverseNormalised f (Glued u n) = Glued u <$> f n
 
-traverseUnnormalised :: Monad m => (DBExpr -> m DBExpr) -> GluedExpr -> m GluedExpr
+traverseUnnormalised :: Monad m => (DBExpr Builtin -> m (DBExpr Builtin)) -> GluedExpr -> m GluedExpr
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

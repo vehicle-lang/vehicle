@@ -13,7 +13,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint (InstanceCandidate (..))
-import Vehicle.Expr.DSL
+import Vehicle.Expr.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Names (StdLibFunction (..))
 
 declaredCandidates :: HashMap TypeClass [InstanceCandidate]
@@ -228,3 +228,6 @@ processCandidate candidate = case findTypeClassOfCandidate (candidateExpr candid
           <> line
           <> "Problematic expr:"
         <+> problemDoc
+
+builtin :: BuiltinFunction -> DSLExpr
+builtin = builtinFunction

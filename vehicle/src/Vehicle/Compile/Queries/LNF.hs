@@ -9,7 +9,7 @@ import Vehicle.Compile.Print
 import Vehicle.Expr.Normalised
 
 -- | Converts an arithmetic expression to linear normal form.
-convertToLNF :: MonadCompile m => NormExpr -> m NormExpr
+convertToLNF :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 convertToLNF expr =
   logCompilerPass MinDetail "conversion to linear normal form" $ do
     result <- lnf expr
@@ -19,7 +19,7 @@ convertToLNF expr =
 --------------------------------------------------------------------------------
 -- PNF
 
-lnf :: MonadCompile m => NormExpr -> m NormExpr
+lnf :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 lnf expr = case expr of
   VLVec {} -> normalisationError currentPass "LVec"
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -28,49 +28,51 @@ lnf expr = case expr of
   VLam {} -> caseError currentPass "Lam" ["QuantifierExpr"]
   VFreeVar {} -> normalisationError currentPass "FreeVar"
   -- Elimination cases
-  VBuiltin _ (Neg dom) [arg] ->
+  VBuiltinFunction (Neg dom) [arg] ->
     lnf $ lowerNeg dom (argExpr arg)
-  VBuiltin p (Sub dom) [arg1, arg2] -> do
+  VBuiltinFunction (Sub dom) [arg1, arg2] -> do
     let negDom = subToNegDomain dom
     let addDom = subToAddDomain dom
-    lnf $ VBuiltin p (Add addDom) [arg1, fmap (lowerNeg negDom) arg2]
+    lnf $ VBuiltinFunction (Add addDom) [arg1, fmap (lowerNeg negDom) arg2]
 
   -- Inductive cases
-  VBuiltin p (Add dom) args ->
-    VBuiltin p (Add dom) <$> traverse (traverse lnf) args
-  VBuiltin p (Mul dom) args@[arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
-    (_, VBuiltin _ (Add addDom) [v1, v2]) -> do
-      let e1 = ExplicitArg p $ VBuiltin p (Mul dom) [arg1, v1]
-      let e2 = ExplicitArg p $ VBuiltin p (Mul dom) [arg1, v2]
-      lnf $ VBuiltin p (Add addDom) [e1, e2]
-    (VBuiltin _ (Add addDom) [v1, v2], _) -> do
-      let e1 = ExplicitArg p $ VBuiltin p (Mul dom) [v1, arg1]
-      let e2 = ExplicitArg p $ VBuiltin p (Mul dom) [v2, arg2]
-      lnf $ VBuiltin p (Add addDom) [e1, e2]
+  VBuiltinFunction (Add dom) args ->
+    VBuiltinFunction (Add dom) <$> traverse (traverse lnf) args
+  VBuiltinFunction (Mul dom) args@[arg1, arg2] -> case (argExpr arg1, argExpr arg2) of
+    (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
+      let e1 = ExplicitArg p $ VBuiltinFunction (Mul dom) [arg1, v1]
+      let e2 = ExplicitArg p $ VBuiltinFunction (Mul dom) [arg1, v2]
+      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
+    (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
+      let e1 = ExplicitArg p $ VBuiltinFunction (Mul dom) [v1, arg1]
+      let e2 = ExplicitArg p $ VBuiltinFunction (Mul dom) [v2, arg2]
+      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
     _ -> do
-      VBuiltin p (Mul dom) <$> traverse (traverse lnf) args
+      VBuiltinFunction (Mul dom) <$> traverse (traverse lnf) args
 
   -- Anything else is a base case.
   VLiteral {} -> return expr
   VBuiltin {} -> return expr
   VBoundVar {} -> return expr
+  where
+    p = mempty
 
-lowerNeg :: NegDomain -> NormExpr -> NormExpr
+lowerNeg :: NegDomain -> BasicNormExpr -> BasicNormExpr
 lowerNeg dom = \case
   -- Base cases
-  VBuiltin _ (Neg _) [e] -> argExpr e
-  VLiteral p (LInt x) -> VLiteral p $ LInt (-x)
-  VLiteral p (LRat x) -> VLiteral p $ LRat (-x)
-  v@(VBoundVar p _ []) -> do
+  VBuiltinFunction (Neg _) [e] -> argExpr e
+  VLiteral (LInt x) -> VLiteral $ LInt (-x)
+  VLiteral (LRat x) -> VLiteral $ LRat (-x)
+  v@(VBoundVar _ []) -> do
     let mulDom = negToMulDomain dom
-    let minus1 = ExplicitArg p $ case dom of
-          NegInt -> VLiteral p $ LInt (-1)
-          NegRat -> VLiteral p $ LRat (-1)
-    VBuiltin p (Mul mulDom) [minus1, ExplicitArg p v]
+    let minus1 = ExplicitArg mempty $ case dom of
+          NegInt -> VLiteral $ LInt (-1)
+          NegRat -> VLiteral $ LRat (-1)
+    VBuiltinFunction (Mul mulDom) [minus1, ExplicitArg mempty v]
 
   -- Inductive cases
-  VBuiltin p (Add addDom) [e1, e2] -> VBuiltin p (Add addDom) [fmap (lowerNeg dom) e1, fmap (lowerNeg dom) e2]
-  VBuiltin p (Mul mulDom) [e1, e2] -> VBuiltin p (Mul mulDom) [fmap (lowerNeg dom) e1, e2]
+  VBuiltinFunction (Add addDom) [e1, e2] -> VBuiltinFunction (Add addDom) [fmap (lowerNeg dom) e1, fmap (lowerNeg dom) e2]
+  VBuiltinFunction (Mul mulDom) [e1, e2] -> VBuiltinFunction (Mul mulDom) [fmap (lowerNeg dom) e1, e2]
   -- Errors
   e -> developerError ("Unable to lower 'neg' through" <+> pretty (show e))
 

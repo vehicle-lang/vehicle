@@ -34,13 +34,13 @@ checkParameterType ::
   DeclProvenance ->
   GluedType ->
   m CheckedType
-checkParameterType decl parameterType = do
+checkParameterType decl@(_, p) parameterType = do
   case normalised parameterType of
     VIndexType {} -> return ()
     VNatType {} -> return ()
     VIntType {} -> return ()
-    VAnnRatType p lin -> checkRatIsConstant p lin
-    VAnnBoolType p lin pol -> checkBoolIsConstant p lin pol
+    VAnnRatType lin -> checkRatIsConstant p lin
+    VAnnBoolType lin pol -> checkBoolIsConstant p lin pol
     _ -> throwError $ ParameterTypeUnsupported decl parameterType
 
   return $ unnormalised parameterType
@@ -63,26 +63,26 @@ checkDatasetType ::
   DeclProvenance ->
   GluedType ->
   m CheckedType
-checkDatasetType decl datasetType = do
+checkDatasetType decl@(_, p) datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
   where
-    checkContainerType :: Bool -> NormType -> m ()
+    checkContainerType :: Bool -> BasicNormType -> m ()
     checkContainerType topLevel = \case
-      VListType _ tElem -> checkContainerType False tElem
-      VVectorType _ tElem _tDims -> checkContainerType False tElem
-      VTensorType _ tElem _tDims -> checkContainerType False tElem
+      VListType tElem -> checkContainerType False tElem
+      VVectorType tElem _tDims -> checkContainerType False tElem
+      VTensorType tElem _tDims -> checkContainerType False tElem
       remainingType
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
-    checkDatasetElemType :: NormType -> m ()
+    checkDatasetElemType :: BasicNormType -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
       VIntType {} -> return ()
       VIndexType {} -> return ()
-      VAnnRatType p lin -> checkRatIsConstant p lin
-      VAnnBoolType p lin pol -> checkBoolIsConstant p lin pol
+      VAnnRatType lin -> checkRatIsConstant p lin
+      VAnnBoolType lin pol -> checkBoolIsConstant p lin pol
       _ -> throwError $ DatasetTypeUnsupportedElement decl datasetType elementType
 
 --------------------------------------------------------------------------------
@@ -94,16 +94,16 @@ checkNetworkType ::
   DeclProvenance ->
   GluedType ->
   m CheckedType
-checkNetworkType decl@(ident, _) networkType = case normalised networkType of
+checkNetworkType decl@(ident, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
-  VPi p binder result
+  VPi binder result
     | visibilityOf binder /= Explicit ->
         throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
     | otherwise -> do
-        inputLin <- quote 0 =<< checkTensorType Input (typeOf binder)
-        outputLin <- quote 0 =<< checkTensorType Output result
+        inputLin <- quote mempty 0 =<< checkTensorType Input (typeOf binder)
+        outputLin <- quote mempty 0 =<< checkTensorType Output result
 
         -- The linearity of the output of a network is the max of 1) Linear (as outputs
         -- are also variables) and 2) the linearity of its input. So prepend this
@@ -116,37 +116,37 @@ checkNetworkType decl@(ident, _) networkType = case normalised networkType of
         return $ Pi p linConstraintBinder (unnormalised networkType)
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    checkTensorType :: InputOrOutput -> NormType -> m NormType
+    checkTensorType :: InputOrOutput -> BasicNormType -> m BasicNormType
     checkTensorType io = go True
       where
-        go :: Bool -> NormType -> m NormType
+        go :: Bool -> BasicNormType -> m BasicNormType
         go topLevel = \case
-          VTensorType _ tElem _ -> go False tElem
-          VVectorType _ tElem _ -> go False tElem
+          VTensorType tElem _ -> go False tElem
+          VVectorType tElem _ -> go False tElem
           elemType ->
             if topLevel
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
               else checkElementType io elemType
 
-    checkElementType :: InputOrOutput -> NormType -> m NormType
+    checkElementType :: InputOrOutput -> BasicNormType -> m BasicNormType
     checkElementType io = \case
-      VAnnRatType _ lin -> return lin
+      VAnnRatType lin -> return lin
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io
 
 --------------------------------------------------------------------------------
 -- Utilities
 
-checkRatIsConstant :: TCM m => Provenance -> NormType -> m ()
+checkRatIsConstant :: TCM m => Provenance -> BasicNormType -> m ()
 checkRatIsConstant p lin = do
   let targetLinearity = LinearityExpr p Constant
-  ulin <- quote 0 lin
+  ulin <- quote mempty 0 lin
   createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
 
-checkBoolIsConstant :: TCM m => Provenance -> NormType -> NormType -> m ()
+checkBoolIsConstant :: TCM m => Provenance -> BasicNormType -> BasicNormType -> m ()
 checkBoolIsConstant p lin pol = do
   let targetLinearity = LinearityExpr p Constant
   let targetPolarity = PolarityExpr p Unquantified
-  ulin <- quote 0 lin
-  upol <- quote 0 pol
+  ulin <- quote mempty 0 lin
+  upol <- quote mempty 0 pol
   createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
   createFreshUnificationConstraint PolarityGroup p mempty CheckingAuxiliary targetPolarity upol
