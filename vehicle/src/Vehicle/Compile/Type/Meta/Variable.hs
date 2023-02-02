@@ -92,7 +92,7 @@ getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg] -> ([DBLevel], Spine)
+getNormMetaDependencies :: [NormArg builtin] -> ([DBLevel], Spine builtin)
 getNormMetaDependencies = \case
   (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
@@ -121,7 +121,7 @@ instance HasMetas CheckedExpr where
     Lam _ binder body -> do findMetas binder; findMetas body
     App _ fun args -> do findMetas fun; findMetas args
 
-instance HasMetas NormExpr where
+instance HasMetas (NormExpr builtin) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)

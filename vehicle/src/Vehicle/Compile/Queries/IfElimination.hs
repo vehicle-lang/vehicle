@@ -20,7 +20,7 @@ import Vehicle.Expr.Normalised
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-eliminateIfs :: MonadCompile m => BoundDBCtx -> NormExpr -> m NormExpr
+eliminateIfs :: MonadCompile m => BoundDBCtx -> BasicNormExpr -> m BasicNormExpr
 eliminateIfs ctx e =
   logCompilerPass MaxDetail currentPass $ do
     result <- elimIf <$> recLiftIf e
@@ -33,9 +33,9 @@ currentPass = "if elimination"
 --------------------------------------------------------------------------------
 -- If operations
 
-liftIf :: (NormExpr -> NormExpr) -> NormExpr -> NormExpr
-liftIf f (VBuiltin If [_t, cond, e1, e2]) =
-  VBuiltin
+liftIf :: (BasicNormExpr -> BasicNormExpr) -> BasicNormExpr -> BasicNormExpr
+liftIf f (VBuiltinFunction If [_t, cond, e1, e2]) =
+  VBuiltinFunction
     If
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
     [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
@@ -45,7 +45,7 @@ liftIf f (VBuiltin If [_t, cond, e1, e2]) =
     ]
 liftIf f e = f e
 
-recLiftIf :: MonadCompile m => NormExpr -> m NormExpr
+recLiftIf :: MonadCompile m => BasicNormExpr -> m BasicNormExpr
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   -- Quantified lambdas should have been caught before now.
@@ -61,35 +61,35 @@ recLiftIf expr = case expr of
     let result = liftSeq (\es'' -> VLVec es'' spine) es'
     return result
 
-liftArg :: (NormArg -> NormExpr) -> NormArg -> NormExpr
+liftArg :: (BasicNormArg -> BasicNormExpr) -> BasicNormArg -> BasicNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
 liftArgs ::
-  (Spine -> NormExpr) ->
-  Spine ->
-  NormExpr
+  (BasicSpine -> BasicNormExpr) ->
+  BasicSpine ->
+  BasicNormExpr
 liftArgs f [] = f []
 liftArgs f (x : xs) =
   if visibilityOf x == Explicit
     then liftArg (\a -> liftArgs (\as -> f (a : as)) xs) x
     else liftArgs (\as -> f (x : as)) xs
 
-liftSeq :: ([NormExpr] -> NormExpr) -> [NormExpr] -> NormExpr
+liftSeq :: ([BasicNormExpr] -> BasicNormExpr) -> [BasicNormExpr] -> BasicNormExpr
 liftSeq f [] = f []
 liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
-elimIf :: NormExpr -> NormExpr
-elimIf (VBuiltin If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf :: BasicNormExpr -> BasicNormExpr
+elimIf (VBuiltinFunction If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
 elimIf e = e
 
-unfoldIf :: NormArg -> NormArg -> NormArg -> NormExpr
+unfoldIf :: BasicNormArg -> BasicNormArg -> BasicNormArg -> BasicNormExpr
 unfoldIf c x y =
-  VBuiltin Or $
+  VBuiltinFunction Or $
     fmap
       (ExplicitArg mempty)
-      [ VBuiltin And [c, x],
-        VBuiltin And [ExplicitArg mempty (VBuiltin Not [c]), y]
+      [ VBuiltinFunction And [c, x],
+        VBuiltinFunction And [ExplicitArg mempty (VBuiltinFunction Not [c]), y]
       ]

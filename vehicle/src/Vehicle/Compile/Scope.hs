@@ -190,8 +190,8 @@ type MonadTraverse m =
 traverseVars ::
   MonadTraverse m =>
   (Provenance -> var1 -> m var2) ->
-  Expr InputBinding var1 ->
-  m (Expr InputBinding var2)
+  Expr InputBinding var1 builtin ->
+  m (Expr InputBinding var2 builtin)
 traverseVars f e = do
   result <- case e of
     Var p v -> Var p <$> f p v
@@ -219,9 +219,9 @@ traverseVars f e = do
 traverseBinder ::
   MonadTraverse m =>
   (Provenance -> var1 -> m var2) ->
-  Binder InputBinding var1 ->
-  (Binder InputBinding var2 -> m (Expr InputBinding var2)) ->
-  m (Expr InputBinding var2)
+  Binder InputBinding var1 builtin ->
+  (Binder InputBinding var2 builtin -> m (Expr InputBinding var2 builtin)) ->
+  m (Expr InputBinding var2 builtin)
 traverseBinder f binder update = do
   binder' <- traverse (traverseVars f) binder
   let updateCtx ctx = nameOf binder : ctx

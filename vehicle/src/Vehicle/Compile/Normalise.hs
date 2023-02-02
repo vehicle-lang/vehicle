@@ -224,8 +224,8 @@ nfTypeClassOp ::
   MonadCompile m =>
   Provenance ->
   TypeClassOp ->
-  [Arg binder var] ->
-  Maybe (m (Expr binder var, NonEmpty (Arg binder var)))
+  [Arg binder var Builtin] ->
+  Maybe (m (Expr binder var Builtin, NonEmpty (Arg binder var Builtin)))
 nfTypeClassOp _p op args = do
   let (inst, remainingArgs) = findInstanceArg args
   case (inst, remainingArgs) of
@@ -267,7 +267,7 @@ nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
     return $
       App
         p
-        (Builtin p (Fold FoldVector))
+        (Builtin p (BuiltinFunction (Fold FoldVector)))
         ( ImplicitArg p tElem
             :| ImplicitArg p size
             : ImplicitArg p tRes
@@ -312,7 +312,7 @@ mkMapVectorExpr :: Provenance -> CheckedType -> CheckedType -> CheckedExpr -> [C
 mkMapVectorExpr p tTo tFrom size explicitArgs =
   BuiltinExpr
     p
-    (Map MapVector)
+    (BuiltinFunction (Map MapVector))
     ( ImplicitArg p tTo
         :| ImplicitArg p tFrom
         : ImplicitArg p size

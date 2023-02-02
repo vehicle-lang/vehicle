@@ -21,7 +21,7 @@ import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type (getGlued)
-import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr, pattern VNatLiteral)
+import Vehicle.Expr.Normalised (BasicNormExpr, GluedExpr (..), pattern VNatLiteral)
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.
@@ -82,7 +82,7 @@ readResourcesInDecl decl = case decl of
         networkDetails <- checkNetwork networkLocations (ident, p) gluedDeclType
         modify (addNetworkType ident networkDetails)
 
-mkTyped :: NormExpr -> TypedExpr
+mkTyped :: BasicNormExpr -> TypedExpr
 mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
 
 --------------------------------------------------------------------------------

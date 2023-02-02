@@ -12,13 +12,13 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.Normalised (NormType, getMeta, pattern VLinearityExpr)
+import Vehicle.Expr.Normalised (BasicNormType, getMeta, pattern VLinearityExpr)
 
 solveLinearityConstraint ::
   TCM m =>
   LinearityTypeClass ->
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 solveLinearityConstraint = \case
   MaxLinearity -> solveMaxLinearity
@@ -46,7 +46,7 @@ mulLinearity p l1 l2 = case (l1, l2) of
 solveMaxLinearity ::
   TCM m =>
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
@@ -65,7 +65,7 @@ solveMaxLinearity c _ = malformedConstraintError c
 solveMulLinearity ::
   TCM m =>
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 solveMulLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
@@ -89,7 +89,7 @@ solveFunctionLinearity ::
   TCM m =>
   FunctionPosition ->
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 solveFunctionLinearity functionPosition c [arg, res] = case arg of
   (getMeta -> Just m1) -> blockOn [m1]
@@ -105,7 +105,7 @@ solveFunctionLinearity _ c _ = malformedConstraintError c
 solveIfCondLinearity ::
   TCM m =>
   WithContext TypeClassConstraint ->
-  [NormType] ->
+  [BasicNormType] ->
   m ConstraintProgress
 solveIfCondLinearity c [arg] = case arg of
   (getMeta -> Just m1) -> blockOn [m1]

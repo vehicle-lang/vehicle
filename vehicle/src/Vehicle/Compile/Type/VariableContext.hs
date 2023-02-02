@@ -12,7 +12,7 @@ import Vehicle.Expr.Normalised
 
 type MetaSubstitution = MetaMap GluedExpr
 
-type DeclSubstitution = DeclCtx NormExpr
+type DeclSubstitution = DeclCtx BasicNormExpr
 
 type TypingDeclCtxEntry = (CheckedType, Maybe GluedExpr)
 

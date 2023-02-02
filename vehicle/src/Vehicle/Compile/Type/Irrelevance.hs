@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode CheckedExpr where
     showRemoveExit result
     return result
 
-instance RemoveIrrelevantCode NormExpr where
+instance RemoveIrrelevantCode (NormExpr Builtin) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VLiteral {} -> return expr
@@ -98,7 +98,7 @@ instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericArg expr) whe
 instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericBinder binding expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode Env where
+instance RemoveIrrelevantCode (Env Builtin) where
   remove = traverse remove
 
 removeArgs ::

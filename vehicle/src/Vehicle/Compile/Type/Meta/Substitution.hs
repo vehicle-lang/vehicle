@@ -16,14 +16,14 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
 import Vehicle.Compile.Type.VariableContext (MetaSubstitution)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr (..))
+import Vehicle.Expr.Normalised (BasicNormExpr, GluedExpr (..), NormExpr (..))
 
 -- | Substitutes meta-variables through the provided object, returning the
 -- updated object and the set of meta-variables within the object for which
 -- no subsitution was provided.
 substituteMetas ::
   (MonadCompile m, MetaSubstitutable a) =>
-  DeclCtx NormExpr ->
+  DeclCtx BasicNormExpr ->
   MetaSubstitution ->
   a ->
   m a
@@ -35,7 +35,7 @@ substituteMetas declCtx sub e =
 
 type MonadSubst m =
   ( MonadCompile m,
-    MonadReader (MetaSubstitution, DeclCtx NormExpr) m
+    MonadReader (MetaSubstitution, DeclCtx BasicNormExpr) m
   )
 
 class MetaSubstitutable a where
@@ -99,7 +99,7 @@ substApp p (fun@(Meta _ m), mArgs) = do
     substArgs e args = return $ normAppList p e args
 substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
-instance MetaSubstitutable NormExpr where
+instance MetaSubstitutable BasicNormExpr where
   subst expr = case expr of
     VMeta m args -> do
       (metaSubst, declCtx) <- ask

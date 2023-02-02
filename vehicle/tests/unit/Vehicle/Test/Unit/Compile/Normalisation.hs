@@ -39,7 +39,7 @@ normalisationTests =
         NBETest
           { name = "AppPlus",
             dbLevel = 1,
-            input = App p (Builtin p $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
+            input = App p (Builtin p $ BuiltinFunction $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest

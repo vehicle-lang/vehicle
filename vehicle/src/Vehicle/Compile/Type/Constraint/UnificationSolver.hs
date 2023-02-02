@@ -100,7 +100,7 @@ instance Monoid UnificationResult where
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x, y)
 
-unification :: TCM m => ConstraintContext -> (NormExpr, NormExpr) -> m UnificationResult
+unification :: TCM m => ConstraintContext -> (BasicNormExpr, BasicNormExpr) -> m UnificationResult
 unification ctx = \case
   -----------------------
   -- Rigid-rigid cases --
@@ -146,7 +146,7 @@ solveTrivially = do
   logDebug MaxDetail "solved-trivially"
   return $ Success mempty
 
-solveArg :: ConstraintContext -> (NormArg, NormArg) -> Maybe UnificationResult
+solveArg :: ConstraintContext -> (BasicNormArg, BasicNormArg) -> Maybe UnificationResult
 solveArg ctx (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just HardFailure
   | isInstance arg1 = Nothing
@@ -155,8 +155,8 @@ solveArg ctx (arg1, arg2)
 solveSpine ::
   TCM m =>
   ConstraintContext ->
-  [NormArg] ->
-  [NormArg] ->
+  [BasicNormArg] ->
+  [BasicNormArg] ->
   m UnificationResult
 solveSpine ctx args1 args2
   | length args1 /= length args2 = return HardFailure
@@ -164,16 +164,16 @@ solveSpine ctx args1 args2
 
 solveLam ::
   TCM m =>
-  (NormBinder, Env, CheckedExpr) ->
-  (NormBinder, Env, CheckedExpr) ->
+  (BasicNormBinder, BasicEnv, CheckedExpr) ->
+  (BasicNormBinder, BasicEnv, CheckedExpr) ->
   m UnificationResult
 solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
 
 solveVec ::
   TCM m =>
   ConstraintContext ->
-  ([NormExpr], Spine) ->
-  ([NormExpr], Spine) ->
+  ([BasicNormExpr], BasicSpine) ->
+  ([BasicNormExpr], BasicSpine) ->
   m UnificationResult
 solveVec ctx (xs1, spine1) (xs2, spine2) = do
   let elemProgress = Success $ zipWith (unify ctx) xs1 xs2
@@ -183,8 +183,8 @@ solveVec ctx (xs1, spine1) (xs2, spine2) = do
 solvePi ::
   TCM m =>
   ConstraintContext ->
-  (NormBinder, NormExpr) ->
-  (NormBinder, NormExpr) ->
+  (BasicNormBinder, BasicNormExpr) ->
+  (BasicNormBinder, BasicNormExpr) ->
   m UnificationResult
 solvePi ctx (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
@@ -194,7 +194,7 @@ solvePi ctx (binder1, body1) (binder2, body2) = do
   let bodyConstraint = unify ctx body1 body2
   return $ Success [binderConstraint, bodyConstraint]
 
-solveFlexFlex :: TCM m => ConstraintContext -> (MetaID, Spine) -> (MetaID, Spine) -> m UnificationResult
+solveFlexFlex :: TCM m => ConstraintContext -> (MetaID, BasicSpine) -> (MetaID, BasicSpine) -> m UnificationResult
 solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
   -- It may be that only one of the two spines is invertible
   let maybeRenaming = invert (contextDBLevel ctx) spine1
@@ -202,7 +202,7 @@ solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
     Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
     Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
-solveFlexRigid :: TCM m => ConstraintContext -> (MetaID, Spine) -> NormExpr -> m UnificationResult
+solveFlexRigid :: TCM m => ConstraintContext -> (MetaID, BasicSpine) -> BasicNormExpr -> m UnificationResult
 solveFlexRigid ctx (meta, spine) = do
   let constraintLevel = DBLevel $ length (boundContext ctx)
   -- Check that 'args' is a pattern and try to calculate a substitution
@@ -214,7 +214,7 @@ solveFlexRigid ctx (meta, spine) = do
     Nothing -> \_ -> return SoftFailure
     Just renaming -> solveFlexRigidWithRenaming ctx (meta, spine) renaming
 
-solveFlexRigidWithRenaming :: TCM m => ConstraintContext -> (MetaID, Spine) -> Renaming -> NormExpr -> m UnificationResult
+solveFlexRigidWithRenaming :: TCM m => ConstraintContext -> (MetaID, BasicSpine) -> Renaming -> BasicNormExpr -> m UnificationResult
 solveFlexRigidWithRenaming ctx (meta, spine) renaming e2 = do
   metasInE2 <- metasInWithDependencies e2
 
@@ -266,7 +266,7 @@ createMetaWithRestrictedDependencies ctx p metaType newDependencies = do
 
     return newMetaExpr
 
-unify :: ConstraintContext -> NormExpr -> NormExpr -> WithContext UnificationConstraint
+unify :: ConstraintContext -> BasicNormExpr -> BasicNormExpr -> WithContext UnificationConstraint
 unify ctx e1 e2 = WithContext (Unify e1 e2) (copyContext ctx)
 
 restrictBoundContext :: [DBLevel] -> TypingBoundCtx -> TypingBoundCtx
@@ -282,10 +282,10 @@ type Renaming = IntMap DBIndex
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: DBLevel -> Spine -> Maybe Renaming
+invert :: DBLevel -> BasicSpine -> Maybe Renaming
 invert ctxSize args = go (length args - 1) IntMap.empty args
   where
-    go :: Int -> IntMap DBIndex -> Spine -> Maybe Renaming
+    go :: Int -> IntMap DBIndex -> BasicSpine -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
       (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
@@ -299,10 +299,10 @@ invert ctxSize args = go (length args - 1) IntMap.empty args
       -- Not a pattern so return nothing.
       _ -> Nothing
 
-metasInWithDependencies :: MonadTypeChecker m => NormExpr -> m (MetaMap Spine)
+metasInWithDependencies :: MonadTypeChecker m => BasicNormExpr -> m (MetaMap BasicSpine)
 metasInWithDependencies e = execWriterT (go e)
   where
-    go :: (MonadTypeChecker m, MonadWriter (MetaMap Spine) m) => NormExpr -> m ()
+    go :: (MonadTypeChecker m, MonadWriter (MetaMap BasicSpine) m) => BasicNormExpr -> m ()
     go expr = case expr of
       VMeta m spine -> do
         metaSubst <- getMetaSubstitution
@@ -323,5 +323,5 @@ metasInWithDependencies e = execWriterT (go e)
       -- in the environment will be used?
       VLam {} -> return ()
 
-    goSpine :: (MonadTypeChecker m, MonadWriter (MetaMap Spine) m) => Spine -> m ()
+    goSpine :: (MonadTypeChecker m, MonadWriter (MetaMap BasicSpine) m) => BasicSpine -> m ()
     goSpine = traverse_ (traverse_ go)

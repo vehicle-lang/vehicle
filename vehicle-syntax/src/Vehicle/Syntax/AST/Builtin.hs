@@ -315,11 +315,8 @@ instance Pretty QuantifierDomain where
     QuantRat -> "Rat"
     QuantVec -> "Vec"
 
--- | Builtins in the Vehicle language
-data Builtin
-  = Constructor BuiltinConstructor
-  | -- Boolean expressions
-    Not
+data BuiltinFunction
+  = Not
   | And
   | Or
   | Implies
@@ -340,26 +337,22 @@ data Builtin
   | Order OrderDomain OrderOp
   | At
   | Map MapDomain
-  | -- Derived
-    TypeClassOp TypeClassOp
   | Fold FoldDomain
   | Foreach
   deriving (Eq, Show, Generic)
 
-instance NFData Builtin
+instance NFData BuiltinFunction
 
-instance Hashable Builtin
+instance Hashable BuiltinFunction
 
-instance ToJSON Builtin
+instance ToJSON BuiltinFunction
 
-instance Serialize Builtin
+instance Serialize BuiltinFunction
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
-instance Pretty Builtin where
+instance Pretty BuiltinFunction where
   pretty = \case
-    Constructor c -> pretty c
-    TypeClassOp tcOp -> pretty tcOp
     Not -> "notBool"
     And -> "andBool"
     Or -> "orBool"
@@ -380,6 +373,31 @@ instance Pretty Builtin where
     Fold dom -> "fold" <> pretty dom
     Map dom -> "map" <> pretty dom
     At -> "!"
+
+-- | Builtins in the Vehicle language
+data Builtin
+  = Constructor BuiltinConstructor
+  | -- Boolean expressions
+    BuiltinFunction BuiltinFunction
+  | -- Derived
+    TypeClassOp TypeClassOp
+  deriving (Eq, Show, Generic)
+
+instance NFData Builtin
+
+instance Hashable Builtin
+
+instance ToJSON Builtin
+
+instance Serialize Builtin
+
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
+instance Pretty Builtin where
+  pretty = \case
+    Constructor c -> pretty c
+    TypeClassOp tcOp -> pretty tcOp
+    BuiltinFunction function -> pretty function
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = mempty

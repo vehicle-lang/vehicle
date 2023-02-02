@@ -67,7 +67,7 @@ checkDatasetType decl@(_, p) datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
   where
-    checkContainerType :: Bool -> NormType -> m ()
+    checkContainerType :: Bool -> BasicNormType -> m ()
     checkContainerType topLevel = \case
       VListType tElem -> checkContainerType False tElem
       VVectorType tElem _tDims -> checkContainerType False tElem
@@ -76,7 +76,7 @@ checkDatasetType decl@(_, p) datasetType = do
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
-    checkDatasetElemType :: NormType -> m ()
+    checkDatasetElemType :: BasicNormType -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
       VIntType {} -> return ()
@@ -116,10 +116,10 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
         return $ Pi p linConstraintBinder (unnormalised networkType)
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    checkTensorType :: InputOrOutput -> NormType -> m NormType
+    checkTensorType :: InputOrOutput -> BasicNormType -> m BasicNormType
     checkTensorType io = go True
       where
-        go :: Bool -> NormType -> m NormType
+        go :: Bool -> BasicNormType -> m BasicNormType
         go topLevel = \case
           VTensorType tElem _ -> go False tElem
           VVectorType tElem _ -> go False tElem
@@ -128,7 +128,7 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
               else checkElementType io elemType
 
-    checkElementType :: InputOrOutput -> NormType -> m NormType
+    checkElementType :: InputOrOutput -> BasicNormType -> m BasicNormType
     checkElementType io = \case
       VAnnRatType lin -> return lin
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io
@@ -136,13 +136,13 @@ checkNetworkType decl@(ident, p) networkType = case normalised networkType of
 --------------------------------------------------------------------------------
 -- Utilities
 
-checkRatIsConstant :: TCM m => Provenance -> NormType -> m ()
+checkRatIsConstant :: TCM m => Provenance -> BasicNormType -> m ()
 checkRatIsConstant p lin = do
   let targetLinearity = LinearityExpr p Constant
   ulin <- quote mempty 0 lin
   createFreshUnificationConstraint LinearityGroup p mempty CheckingAuxiliary targetLinearity ulin
 
-checkBoolIsConstant :: TCM m => Provenance -> NormType -> NormType -> m ()
+checkBoolIsConstant :: TCM m => Provenance -> BasicNormType -> BasicNormType -> m ()
 checkBoolIsConstant p lin pol = do
   let targetLinearity = LinearityExpr p Constant
   let targetPolarity = PolarityExpr p Unquantified

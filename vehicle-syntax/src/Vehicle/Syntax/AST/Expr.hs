@@ -91,7 +91,7 @@ instance Pretty Rational where
 --
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
-data Expr binder var
+data Expr binder var builtin
   = -- | A universe, used to type types.
     Universe
       Provenance
@@ -99,22 +99,22 @@ data Expr binder var
   | -- | User annotation
     Ann
       Provenance
-      (Expr binder var) -- The term
-      (Expr binder var) -- The type of the term
+      (Expr binder var builtin) -- The term
+      (Expr binder var builtin) -- The type of the term
   | -- | Application of one term to another.
     App
       Provenance
-      (Expr binder var) -- Function.
-      (NonEmpty (Arg binder var)) -- Arguments.
+      (Expr binder var builtin) -- Function.
+      (NonEmpty (Arg binder var builtin)) -- Arguments.
   | -- | Dependent product (subsumes both functions and universal quantification).
     Pi
       Provenance
-      (Binder binder var) -- The bound name
-      (Expr binder var) -- (Dependent) result type.
+      (Binder binder var builtin) -- The bound name
+      (Expr binder var builtin) -- (Dependent) result type.
   | -- | Terms consisting of constants that are built into the language.
     Builtin
       Provenance
-      Builtin -- Builtin name.
+      builtin -- Builtin name.
   | -- | Variables that are bound by other expressions
     Var
       Provenance
@@ -135,14 +135,14 @@ data Expr binder var
     -- operations concisely much easier.
     Let
       Provenance
-      (Expr binder var) -- Bound expression body.
-      (Binder binder var) -- Bound expression name.
-      (Expr binder var) -- Expression body.
+      (Expr binder var builtin) -- Bound expression body.
+      (Binder binder var builtin) -- Bound expression name.
+      (Expr binder var builtin) -- Expression body.
   | -- | Lambda expressions (i.e. anonymous functions).
     Lam
       Provenance
-      (Binder binder var) -- Bound expression name.
-      (Expr binder var) -- Expression body.
+      (Binder binder var builtin) -- Bound expression name.
+      (Expr binder var builtin) -- Expression body.
   | -- | Built-in literal values e.g. numbers/booleans.
     Literal
       Provenance
@@ -150,18 +150,18 @@ data Expr binder var
   | -- | A sequence of terms for e.g. list literals.
     LVec
       Provenance
-      [Expr binder var] -- List of expressions.
+      [Expr binder var builtin] -- List of expressions.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (NFData binder, NFData var) => NFData (Expr binder var)
+instance (NFData binder, NFData var, NFData builtin) => NFData (Expr binder var builtin)
 
-instance (ToJSON binder, ToJSON var) => ToJSON (Expr binder var)
+instance (ToJSON binder, ToJSON var, ToJSON builtin) => ToJSON (Expr binder var builtin)
 
-instance (Serialize binder, Serialize var) => Serialize (Expr binder var)
+instance (Serialize binder, Serialize var, Serialize builtin) => Serialize (Expr binder var builtin)
 
 type Type = Expr
 
-instance HasProvenance (Expr binder var) where
+instance HasProvenance (Expr binder var builtin) where
   provenanceOf = \case
     Universe p _ -> p
     Hole p _ -> p
@@ -183,26 +183,26 @@ type InputBinding = ()
 
 type InputVar = Name
 
-type InputArg = Arg InputBinding InputVar
+type InputArg = Arg InputBinding InputVar Builtin
 
-type InputBinder = Binder InputBinding InputVar
+type InputBinder = Binder InputBinding InputVar Builtin
 
-type InputExpr = Expr InputBinding InputVar
+type InputExpr = Expr InputBinding InputVar Builtin
 
-type InputDecl = Decl InputBinding InputVar
+type InputDecl = Decl InputBinding InputVar Builtin
 
-type InputProg = Prog InputBinding InputVar
+type InputProg = Prog InputBinding InputVar Builtin
 
 --------------------------------------------------------------------------------
 -- Other AST datatypes specialised to the Expr type
 
-type Binder binder var = GenericBinder binder (Expr binder var)
+type Binder binder var builtin = GenericBinder binder (Expr binder var builtin)
 
-type Arg binder var = GenericArg (Expr binder var)
+type Arg binder var builtin = GenericArg (Expr binder var builtin)
 
-type Decl binder var = GenericDecl (Expr binder var)
+type Decl binder var builtin = GenericDecl (Expr binder var builtin)
 
-type Prog binder var = GenericProg (Expr binder var)
+type Prog binder var builtin = GenericProg (Expr binder var builtin)
 
 --------------------------------------------------------------------------------
 -- Recursion principles
@@ -212,24 +212,24 @@ makeBaseFunctor ''Expr
 --------------------------------------------------------------------------------
 -- Utilities
 
-renormArgs :: Expr binder var -> NonEmpty (Arg binder var) -> (Expr binder var, NonEmpty (Arg binder var))
+renormArgs :: Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> (Expr binder var builtin, NonEmpty (Arg binder var builtin))
 renormArgs (App p' fun args') args = renormArgs fun (args' <> args)
 renormArgs fun args = (fun, args)
 
 -- Preserves invariant that we never have two nested Apps
-normApp :: Provenance -> Expr binder var -> NonEmpty (Arg binder var) -> Expr binder var
+normApp :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
 normApp p fun args = do
   let (fun', args') = renormArgs fun args
   App p fun' args'
 
-normAppList :: Provenance -> Expr binder var -> [Arg binder var] -> Expr binder var
+normAppList :: Provenance -> Expr binder var builtin -> [Arg binder var builtin] -> Expr binder var builtin
 normAppList _ fun [] = fun
 normAppList p fun (arg : args) = normApp p fun (arg :| args)
 
-mkHole :: Provenance -> Name -> Expr binder var
+mkHole :: Provenance -> Name -> Expr binder var builtin
 mkHole p name = Hole p ("_" <> name)
 
-isTypeSynonym :: Expr binder var -> Bool
+isTypeSynonym :: Expr binder var builtin -> Bool
 isTypeSynonym = \case
   Universe _ TypeUniv {} -> True
   Pi _ _ res -> isTypeSynonym res

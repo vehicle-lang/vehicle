@@ -105,7 +105,7 @@ delabLiteral l = case l of
   V.LInt i ->
     if i >= 0
       then delabNatLit i
-      else B.App (delabBuiltin (V.Neg V.NegInt)) $ B.RelevantExplicitArg (delabNatLit (-i))
+      else B.App (delabBuiltin (V.BuiltinFunction $ V.Neg V.NegInt)) $ B.RelevantExplicitArg (delabNatLit (-i))
   V.LRat r -> delabRatLit r
 
 delabBoolLit :: Bool -> B.Expr
