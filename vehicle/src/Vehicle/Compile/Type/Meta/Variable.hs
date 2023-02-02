@@ -66,12 +66,12 @@ makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
   let unnormBoundEnv = [ExplicitArg p (Var p (Bound $ DBIndex i)) | i <- reverse dependencyLevels]
-  let normBoundEnv = [ExplicitArg p (VBoundVar p (DBLevel i) []) | i <- dependencyLevels]
+  let normBoundEnv = [ExplicitArg p (VBoundVar (DBLevel i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
     { unnormalised = normAppList p (Meta p metaID) unnormBoundEnv,
-      normalised = VMeta p metaID normBoundEnv
+      normalised = VMeta metaID normBoundEnv
     }
 
 -- | Creates a Pi type that abstracts over all bound variables
@@ -94,7 +94,7 @@ getMetaDependencies = \case
 
 getNormMetaDependencies :: [NormArg] -> ([DBLevel], Spine)
 getNormMetaDependencies = \case
-  (ExplicitArg _ (VBoundVar _ i [])) : args -> first (i :) $ getNormMetaDependencies args
+  (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
 
 --------------------------------------------------------------------------------
@@ -123,16 +123,16 @@ instance HasMetas CheckedExpr where
 
 instance HasMetas NormExpr where
   findMetas expr = case expr of
-    VMeta _ m spine -> do
+    VMeta m spine -> do
       tell (MetaSet.singleton m)
       findMetas spine
     VUniverse {} -> return ()
     VLiteral {} -> return ()
-    VBuiltin _ _ spine -> findMetas spine
-    VFreeVar _ _ spine -> findMetas spine
-    VBoundVar _ _ spine -> findMetas spine
-    VLVec _ xs spine -> do findMetas xs; findMetas spine
-    VPi _ binder result -> do findMetas binder; findMetas result
+    VBuiltin _ spine -> findMetas spine
+    VFreeVar _ spine -> findMetas spine
+    VBoundVar _ spine -> findMetas spine
+    VLVec xs spine -> do findMetas xs; findMetas spine
+    VPi binder result -> do findMetas binder; findMetas result
     VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
 
 instance HasMetas expr => HasMetas (GenericArg expr) where

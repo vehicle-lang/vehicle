@@ -142,7 +142,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
 
 type LCSState =
   ( NetworkContext,
-    Identifier,
+    DeclProvenance,
     MetaNetwork,
     [UserVariable],
     [NetworkVariable]
@@ -217,10 +217,10 @@ compileAssertions = go
       VLVec {} -> normalisationError currentPass "LVec"
       VBoundVar {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
       VFreeVar {} -> normalisationError currentPass "VFreeVar"
-      VLiteral _ l -> case l of
+      VLiteral l -> case l of
         LBool _ -> normalisationError currentPass "LBool"
         _ -> caseError currentPass "Literal" ["AndExpr"]
-      VBuiltin _ (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltin (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan, e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
@@ -228,10 +228,10 @@ compileAssertions = go
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
         return assertion
-      VBuiltin p (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+      VBuiltin (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
-          throwError $ UnsupportedInequality MarabouBackend ident p
+          throwError $ UnsupportedInequality MarabouBackend ident
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
           return assertion
@@ -260,19 +260,19 @@ compileLinearExpr expr = do
 
     go :: MonadSMT m => NormExpr -> m (Map Int Coefficient)
     go e = case e of
-      VBoundVar _ v [] ->
+      VBoundVar v [] ->
         return $ singletonVar v 1
-      VBuiltin _ (Neg NegRat) [ExplicitArg _ (VBoundVar _ v [])] ->
+      VBuiltin (Neg NegRat) [ExplicitArg _ (VBoundVar v [])] ->
         return $ singletonVar v (-1)
-      VLiteral _ (LRat l) -> do
+      VLiteral (LRat l) -> do
         constLevel <- getExprConstantIndex
         return $ singletonVar constLevel (fromRational l)
-      VBuiltin _ (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltin (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
         Map.unionWith (+) <$> go e1 <*> go e2
-      VBuiltin _ (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltin (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
         case (e1, e2) of
-          (VLiteral _ (LRat l), VBoundVar _ v []) -> return $ singletonVar v (fromRational l)
-          (VBoundVar _ v [], VLiteral _ (LRat l)) -> return $ singletonVar v (fromRational l)
+          (VLiteral (LRat l), VBoundVar v []) -> return $ singletonVar v (fromRational l)
+          (VBoundVar v [], VLiteral (LRat l)) -> return $ singletonVar v (fromRational l)
           _ -> do
             (_, _ident, _, _, _) <- ask
             _ctx <- getBoundContext

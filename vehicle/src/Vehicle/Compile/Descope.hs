@@ -154,30 +154,32 @@ descopeArg f = traverse (descopeExpr f)
 -- used for printing `NormExpr`s in a readable form.
 descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr -> InputExpr
 descopeNormExpr f e = case e of
-  VUniverse p u -> Universe p u
-  VLiteral p l -> Literal p l
-  VMeta p m spine -> normAppList p (Meta p m) $ descopeSpine f spine
-  VFreeVar p v spine -> normAppList p (Var p (nameOf v)) $ descopeSpine f spine
-  VBuiltin p b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
-  VBoundVar p v spine -> do
+  VUniverse u -> Universe p u
+  VLiteral l -> Literal p l
+  VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
+  VFreeVar v spine -> normAppList p (Var p (nameOf v)) $ descopeSpine f spine
+  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
+  VBoundVar v spine -> do
     let var = Var p $ f p v
     let args = descopeSpine f spine
     normAppList p var args
-  VLVec p xs _spine -> do
+  VLVec xs _spine -> do
     let xs' = fmap (descopeNormExpr f) xs
     -- let args = descopeSpine f spine
     -- normAppList p (LVec p xs') args
     LVec p xs'
-  VPi p binder body -> do
+  VPi binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
     Pi p binder' body'
-  VLam p binder env body -> do
+  VLam binder env body -> do
     let binder' = descopeNormBinder f binder
     let env' = fmap (descopeNormExpr f) env
     let body' = descopeNaive body
     let envExpr = App p (Var p "ENV") [ExplicitArg p $ LVec p env']
     Lam p binder' (App p envExpr [ExplicitArg p body'])
+  where
+    p = mempty
 
 descopeSpine ::
   (Provenance -> DBLevel -> Name) ->

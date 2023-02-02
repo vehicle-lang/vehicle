@@ -83,8 +83,8 @@ parseContainer ::
   NormType ->
   m NormExpr
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
-  VListType _ expectedElemType -> parseList ctx expectedElemType actualDims elems
-  VVectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
+  VListType expectedElemType -> parseList ctx expectedElemType actualDims elems
+  VVectorType expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
   _ ->
     if topLevel
       then typingError ctx
@@ -101,11 +101,11 @@ parseVector ::
 parseVector ctx [] _ _ _ = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
-    VNatLiteral _ n ->
+    VNatLiteral n ->
       if n == actualDim
         then return actualDim
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
-    VFreeVar _ dimIdent _ -> do
+    VFreeVar dimIdent _ -> do
       implicitParams <- gets inferableParameterContext
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup (nameOf dimIdent) implicitParams of
@@ -121,7 +121,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 
   let rows = partitionData currentDim actualDims elems
   rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
-  return $ mkVLVec (snd decl) rowExprs expectedElemType
+  return $ mkVLVec rowExprs expectedElemType
 
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -130,13 +130,13 @@ parseList ::
   [Int] ->
   Vector a ->
   m NormExpr
-parseList ctx@(decl, _, _, _, _) expectedElemType actualDims actualElems =
+parseList ctx expectedElemType actualDims actualElems =
   case actualDims of
     [] -> dimensionMismatchError ctx
     d : ds -> do
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      return $ mkVList (snd decl) expectedElemType exprs
+      return $ mkVList expectedElemType exprs
 
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -166,13 +166,11 @@ doubleElemParser ::
   GluedType ->
   FilePath ->
   ElemParser m Double
-doubleElemParser decl datasetType file value expectedElementType = do
-  let p = freshProvenance decl
-  case expectedElementType of
-    VRatType {} ->
-      return $ VRatLiteral p (toRational value)
-    _ -> do
-      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType (VRatType p)
+doubleElemParser decl datasetType file value expectedElementType = case expectedElementType of
+  VRatType {} ->
+    return $ VRatLiteral (toRational value)
+  _ -> do
+    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VRatType
 
 intElemParser ::
   MonadExpandResources m =>
@@ -180,21 +178,19 @@ intElemParser ::
   GluedType ->
   FilePath ->
   ElemParser m Int
-intElemParser decl datasetType file value expectedElementType = do
-  let p = freshProvenance decl
-  case expectedElementType of
-    VIndexType _ (VNatLiteral _ n) ->
-      if value >= 0 && value < n
-        then return $ VIndexLiteral p n value
-        else throwError $ DatasetInvalidIndex decl file value n
-    VNatType {} ->
-      if value >= 0
-        then return $ VNatLiteral p value
-        else throwError $ DatasetInvalidNat decl file value
-    VIntType {} ->
-      return $ VIntLiteral p value
-    _ ->
-      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType (VIntType p)
+intElemParser decl datasetType file value expectedElementType = case expectedElementType of
+  VIndexType (VNatLiteral n) ->
+    if value >= 0 && value < n
+      then return $ VIndexLiteral n value
+      else throwError $ DatasetInvalidIndex decl file value n
+  VNatType {} ->
+    if value >= 0
+      then return $ VNatLiteral value
+      else throwError $ DatasetInvalidNat decl file value
+  VIntType {} ->
+    return $ VIntLiteral value
+  _ ->
+    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VIntType
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: Vector.Unbox a => Int -> [Int] -> Vector a -> [Vector a]
@@ -202,9 +198,6 @@ partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
-
-freshProvenance :: DeclProvenance -> Provenance
-freshProvenance (_ident, p) = p
 
 variableSizeError :: MonadCompile m => ParseContext m a -> NormExpr -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =

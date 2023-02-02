@@ -356,7 +356,7 @@ instance MeaningfulError CompileError where
       where
         getMessage :: NormExpr -> Doc a
         getMessage = \case
-          VConstructor _ (TypeClass tc) args -> case (tc, args) of
+          VConstructor (TypeClass tc) args -> case (tc, args) of
             (HasMap, _) ->
               "unable to work out the type for"
                 <+> pretty MapTC <> "."
@@ -704,7 +704,7 @@ instance MeaningfulError CompileError where
     NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
       UError $
         UserError
-          { provenance = provenanceOf nonTensorType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the"
@@ -736,7 +736,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
       UError $
         UserError
-          { provenance = provenanceOf elementType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as"
@@ -754,7 +754,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
-          { provenance = provenanceOf tDim,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the size of the"
@@ -861,8 +861,8 @@ instance MeaningfulError CompileError where
       where
         dimensionsOf :: NormType -> Int
         dimensionsOf = \case
-          VListType _ t -> 1 + dimensionsOf t
-          VVectorType _ t _ -> 1 + dimensionsOf t
+          VListType t -> 1 + dimensionsOf t
+          VVectorType t _ -> 1 + dimensionsOf t
           _ -> 0
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
       UError $
@@ -1208,7 +1208,7 @@ instance MeaningfulError CompileError where
                 "try switching the variable to one of the following supported types:"
                   <+> pretty supportedTypes
           }
-    UnsupportedInequality target identifier p ->
+    UnsupportedInequality target (identifier, p) ->
       UError $
         UserError
           { provenance = p,

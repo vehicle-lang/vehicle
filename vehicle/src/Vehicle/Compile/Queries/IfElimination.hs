@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Queries.IfElimination
   ( eliminateIfs,
     unfoldIf,
@@ -31,12 +34,11 @@ currentPass = "if elimination"
 -- If operations
 
 liftIf :: (NormExpr -> NormExpr) -> NormExpr -> NormExpr
-liftIf f (VBuiltin p If [_t, cond, e1, e2]) =
+liftIf f (VBuiltin If [_t, cond, e1, e2]) =
   VBuiltin
-    p
     If
     -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-    [ ImplicitArg p (VBuiltin p (Constructor Bool) []),
+    [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
       cond,
       fmap (liftIf f) e1,
       fmap (liftIf f) e2
@@ -52,11 +54,11 @@ recLiftIf expr = case expr of
   VLiteral {} -> return expr
   VMeta {} -> return expr
   VBoundVar {} -> return expr
-  VFreeVar p v spine -> liftArgs (VFreeVar p v) <$> traverse (traverse recLiftIf) spine
-  VBuiltin p b spine -> liftArgs (VBuiltin p b) <$> traverse (traverse recLiftIf) spine
-  VLVec p es spine -> do
+  VFreeVar v spine -> liftArgs (VFreeVar v) <$> traverse (traverse recLiftIf) spine
+  VBuiltin b spine -> liftArgs (VBuiltin b) <$> traverse (traverse recLiftIf) spine
+  VLVec es spine -> do
     es' <- traverse recLiftIf es
-    let result = liftSeq (\es'' -> VLVec p es'' spine) es'
+    let result = liftSeq (\es'' -> VLVec es'' spine) es'
     return result
 
 liftArg :: (NormArg -> NormExpr) -> NormArg -> NormExpr
@@ -80,14 +82,14 @@ liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: NormExpr -> NormExpr
-elimIf (VBuiltin p If [_t, cond, e1, e2]) = unfoldIf p cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf (VBuiltin If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
 elimIf e = e
 
-unfoldIf :: Provenance -> NormArg -> NormArg -> NormArg -> NormExpr
-unfoldIf p c x y =
-  VBuiltin p Or $
+unfoldIf :: NormArg -> NormArg -> NormArg -> NormExpr
+unfoldIf c x y =
+  VBuiltin Or $
     fmap
-      (ExplicitArg p)
-      [ VBuiltin p And [c, x],
-        VBuiltin p And [ExplicitArg p (VBuiltin p Not [c]), y]
+      (ExplicitArg mempty)
+      [ VBuiltin And [c, x],
+        VBuiltin And [ExplicitArg mempty (VBuiltin Not [c]), y]
       ]

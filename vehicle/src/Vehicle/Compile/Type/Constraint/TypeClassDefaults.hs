@@ -143,25 +143,25 @@ defaultSolution ::
   TypeClass ->
   m NormExpr
 defaultSolution p ctx = \case
-  HasEq {} -> return $ VNatType p
-  HasOrd {} -> return $ VNatType p
+  HasEq {} -> return VNatType
+  HasOrd {} -> return VNatType
   HasNot -> createDefaultBoolType p
   HasAnd -> createDefaultBoolType p
   HasOr -> createDefaultBoolType p
   HasImplies -> createDefaultBoolType p
   HasQuantifier {} -> createDefaultBoolType p
-  HasAdd -> return $ VNatType p
-  HasSub -> return $ VIntType p
-  HasMul -> return $ VNatType p
+  HasAdd -> return VNatType
+  HasSub -> return VIntType
+  HasMul -> return VNatType
   HasDiv -> createDefaultRatType p
-  HasNeg -> return $ VIntType p
-  HasNatLits n -> return $ mkVIndexType p (VNatLiteral p (n + 1))
+  HasNeg -> return VIntType
+  HasNatLits n -> return $ mkVIndexType (VNatLiteral (n + 1))
   HasRatLits -> createDefaultRatType p
   HasVecLits {} -> createDefaultListType p ctx
   HasMap -> createDefaultListType p ctx
   HasFold -> createDefaultListType p ctx
   HasQuantifierIn {} -> createDefaultListType p ctx
-  NatInDomainConstraint n -> return $ VNatLiteral p (n + 1)
+  NatInDomainConstraint n -> return $ VNatLiteral (n + 1)
   HasIf {} -> ifTCError
   LinearityTypeClass {} -> auxiliaryTCError
   PolarityTypeClass {} -> auxiliaryTCError
@@ -170,18 +170,18 @@ defaultSolution p ctx = \case
 createDefaultListType :: TCM m => Provenance -> ConstraintContext -> m NormType
 createDefaultListType p ctx = do
   tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
-  return $ mkVListType p tElem
+  return $ mkVListType tElem
 
 createDefaultBoolType :: TCM m => Provenance -> m NormType
 createDefaultBoolType p = do
   lin <- normalised <$> freshLinearityMeta p
   pol <- normalised <$> freshPolarityMeta p
-  return $ mkVAnnBoolType p lin pol
+  return $ mkVAnnBoolType lin pol
 
 createDefaultRatType :: TCM m => Provenance -> m NormType
 createDefaultRatType p = do
   lin <- normalised <$> freshLinearityMeta p
-  return $ mkVAnnRatType p lin
+  return $ mkVAnnRatType lin
 
 getCandidatesFromConstraint :: MonadCompile m => ConstraintContext -> TypeClassConstraint -> m [Candidate]
 getCandidatesFromConstraint ctx (Has _ tc args) = do
@@ -199,7 +199,7 @@ getCandidatesFromConstraint ctx (Has _ tc args) = do
     (HasRatLits, [t]) -> getCandidate [t] HasRatLits
     (HasVecLits n, [_, t]) -> getCandidate [t] (HasVecLits n)
     (NatInDomainConstraint n, [t]) -> case argExpr t of
-      VIndexType p size -> getCandidate [ExplicitArg p size] (NatInDomainConstraint n)
+      VIndexType size -> getCandidate [ExplicitArg mempty size] (NatInDomainConstraint n)
       _ -> []
     _ -> []
 

@@ -29,7 +29,7 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
       let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
       addConstraints [blockedConstraint]
     Right (newConstraints, solution) -> do
-      solution1 <- quote (contextDBLevel ctx) solution
+      solution1 <- quote mempty (contextDBLevel ctx) solution
       solveMeta m solution1 (boundContext ctx)
       addConstraints newConstraints
 
@@ -57,12 +57,12 @@ solve = \case
 
 -- A temporary hack until we separate out the solvers properly.
 castAuxiliaryFn :: AuxiliaryTypeClassSolver -> TypeClassSolver
-castAuxiliaryFn f c e = castProgress (provenanceOf (contextOf c)) <$> f c e
+castAuxiliaryFn f c e = castProgress <$> f c e
 
-castProgress :: Provenance -> ConstraintProgress -> TypeClassProgress
-castProgress c = \case
+castProgress :: ConstraintProgress -> TypeClassProgress
+castProgress = \case
   Stuck metas -> Left metas
-  Progress newConstraints -> irrelevant c newConstraints
+  Progress newConstraints -> irrelevant newConstraints
 
 --------------------------------------------------------------------------------
 -- HasOrd
@@ -90,9 +90,8 @@ solveHasOrd _ c _ = malformedConstraintError c
 solveHasBoolOp2 :: PolarityTypeClass -> Builtin -> TypeClassSolver
 solveHasBoolOp2 polConstraint solutionBuiltin c [arg1, arg2, res] = do
   let ctx = contextOf c
-  let p = provenanceOf ctx
   constraints <- checkBoolTypesEqualUpTo ctx res [arg1, arg2] MaxLinearity polConstraint
-  let solution = VBuiltin p solutionBuiltin []
+  let solution = VBuiltin solutionBuiltin []
   return $ Right (constraints, solution)
 solveHasBoolOp2 _ _ c _ = malformedConstraintError c
 
@@ -111,7 +110,7 @@ solveHasImplies = solveHasBoolOp2 ImpliesPolarity Implies
 solveHasQuantifier :: Quantifier -> TypeClassSolver
 solveHasQuantifier _ _ [lamType, _]
   | isMeta lamType = blockOnMetas [lamType]
-solveHasQuantifier q c [VPi _ binder body, res]
+solveHasQuantifier q c [VPi binder body, res]
   | isMeta domain = blockOnMetas [domain]
   | isIndexType domain = solveIndexQuantifier q ctx binder body res
   | isNatType domain = solveNatQuantifier q ctx binder body res
@@ -146,7 +145,6 @@ solveIndexQuantifier q c domainBinder body res = do
   let method = identifierOf $ if q == Forall then StdForallIndex else StdExistsIndex
   let solution =
         VFreeVar
-          p
           method
           [ ImplicitArg p (normalised indexSize)
           ]
@@ -155,18 +153,16 @@ solveIndexQuantifier q c domainBinder body res = do
 
 solveNatQuantifier :: HasQuantifierSolver
 solveNatQuantifier q c _domainBinder body res = do
-  let p = provenanceOf c
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
-  let solution = VBuiltin p (Quantifier q QuantNat) []
+  let solution = VBuiltin (Quantifier q QuantNat) []
   return $ Right ([bodyEq, resEq], solution)
 
 solveIntQuantifier :: HasQuantifierSolver
 solveIntQuantifier q c _domainBinder body res = do
-  let p = provenanceOf c
   (bodyEq, _, _) <- unifyWithAnnBoolType c body
   let resEq = unify c res body
-  let solution = VBuiltin p (Quantifier q QuantInt) []
+  let solution = VBuiltin (Quantifier q QuantInt) []
   return $ Right ([bodyEq, resEq], solution)
 
 solveRatQuantifier :: HasQuantifierSolver
@@ -175,8 +171,8 @@ solveRatQuantifier q c domainBinder body res = do
 
   -- The rational being quantified over is, by definition, linear
   let varName = getBinderName domainBinder
-  let domainLin = VLinearityExpr p (Linear (QuantifiedVariableProvenance (provenanceOf domainBinder) varName))
-  let domainEq = unify c (typeOf domainBinder) (mkVAnnRatType p domainLin)
+  let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf domainBinder) varName))
+  let domainEq = unify c (typeOf domainBinder) (mkVAnnRatType domainLin)
 
   -- The body must be of some Bool type
   (bodyEq, bodyLin, bodyPol) <- unifyWithAnnBoolType c body
@@ -186,9 +182,9 @@ solveRatQuantifier q c domainBinder body res = do
   (_, polTC) <- createTC c (PolarityTypeClass (AddPolarity q)) [normalised bodyPol, normalised resPol]
 
   -- The result type is the Bool type with the same linearity as the body.
-  let resEq = unify c res (mkVAnnBoolType p (normalised bodyLin) (normalised resPol))
+  let resEq = unify c res (mkVAnnBoolType (normalised bodyLin) (normalised resPol))
 
-  let solution = VBuiltin p (Quantifier q QuantRat) []
+  let solution = VBuiltin (Quantifier q QuantRat) []
   return $ Right ([domainEq, polTC, bodyEq, resEq], solution)
 
 solveVectorQuantifier :: HasQuantifierSolver
@@ -199,11 +195,10 @@ solveVectorQuantifier q c domainBinder body res = do
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType vecElem domainBinder
-  (metaExpr, recTC) <- createTC c (HasQuantifier q) [VPi p elemDomainBinder body, res]
+  (metaExpr, recTC) <- createTC c (HasQuantifier q) [VPi elemDomainBinder body, res]
 
   let solution =
         VBuiltin
-          p
           (Quantifier q QuantVec)
           [ ImplicitArg p vecElem,
             ImplicitArg p (normalised dim),
@@ -238,9 +233,8 @@ solveNeg ::
   NegDomain ->
   m TypeClassProgress
 solveNeg c arg res dom = do
-  let p = provenanceOf c
   let eq = unify c res arg
-  let solution = VBuiltin p (Neg dom) []
+  let solution = VBuiltin (Neg dom) []
   return $ Right ([eq], solution)
 
 --------------------------------------------------------------------------------
@@ -273,23 +267,22 @@ type HasMulSolver =
 
 solveMulNat :: HasMulSolver
 solveMulNat c arg1 arg2 res = do
-  let p = provenanceOf c
   constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Mul MulNat) []
+  let solution = VBuiltin (Mul MulNat) []
   return $ Right (constraints, solution)
 
 solveMulInt :: HasMulSolver
 solveMulInt c arg1 arg2 res = do
-  let p = provenanceOf c
   constraints <- checkOp2SimpleTypesEqual c arg1 arg2 res
-  let solution = VBuiltin p (Mul MulInt) []
+  let solution = VBuiltin (Mul MulInt) []
   return $ Right (constraints, solution)
 
 solveMulRat :: HasMulSolver
 solveMulRat c arg1 arg2 res = do
-  let p = provenanceOf c
+  logDebug MaxDetail ("!!!" <+> pretty (provenanceOf c))
+  logDebug MaxDetail ("!!!" <+> pretty (originalProvenance c))
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
-  let solution = VBuiltin p (Mul MulRat) []
+  let solution = VBuiltin (Mul MulRat) []
   return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------
@@ -318,7 +311,7 @@ solveRatDiv ::
   m TypeClassProgress
 solveRatDiv c arg1 arg2 res = do
   constraints <- checkRatTypesEqualUpTo c res [arg1, arg2] MulLinearity
-  let solution = VBuiltin (provenanceOf c) (Div DivRat) []
+  let solution = VBuiltin (Div DivRat) []
   return $ Right (constraints, solution)
 
 --------------------------------------------------------------------------------
@@ -327,19 +320,19 @@ solveRatDiv c arg1 arg2 res = do
 solveHasQuantifierIn :: Quantifier -> TypeClassSolver
 solveHasQuantifierIn q c [tElem, tCont, tRes] = case tCont of
   (getMeta -> Just {}) -> blockOnMetas [tCont]
-  VListType _ tListElem -> do
+  VListType tListElem -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tListElem
     (resEq, _, _) <- unifyWithAnnBoolType ctx tRes
     let method = if q == Forall then StdForallInList else StdExistsInList
-    let solution = VFreeVar p (identifierOf method) [ImplicitArg p tElem, ImplicitArg p tRes]
+    let solution = VFreeVar (identifierOf method) [ImplicitArg p tElem, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
-  VVectorType _ tVecElem dim -> do
+  VVectorType tVecElem dim -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tVecElem
     (resEq, _, _) <- unifyWithAnnBoolType ctx tRes
     let method = identifierOf $ if q == Forall then StdForallInVector else StdExistsInVector
-    let solution = VFreeVar p method [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
+    let solution = VFreeVar method [ImplicitArg p tElem, ImplicitArg p dim, ImplicitArg p tRes]
     return $ Right ([elemEq, resEq], solution)
   _ -> blockOrThrowErrors ctx [tCont] [tcError]
   where
@@ -358,7 +351,7 @@ solveHasIf c [tCond, tArg1, tArg2, tRes]
       argEqs <- checkSubtypes ctx tRes [tArg1, tArg2]
       (_, linTC) <- createTC ctx (LinearityTypeClass IfCondLinearity) [normalised condLin]
       (_, polTC) <- createTC ctx (PolarityTypeClass IfCondPolarity) [normalised condPol]
-      return $ irrelevant ctx $ tCondEq : linTC : polTC : argEqs
+      return $ irrelevant $ tCondEq : linTC : polTC : argEqs
   where
     ctx = contextOf c
 solveHasIf c _ = malformedConstraintError c
@@ -388,24 +381,21 @@ type HasFromNatSolver =
   m TypeClassProgress
 
 solveSimpleFromNat :: FromNatDomain -> HasFromNatSolver
-solveSimpleFromNat dom c n _arg = do
-  let p = provenanceOf c
-  let solution = VBuiltin p (FromNat n dom) []
+solveSimpleFromNat dom _c n _arg = do
+  let solution = VBuiltin (FromNat n dom) []
   return $ Right ([], solution)
 
 solveFromNatToIndex :: HasFromNatSolver
 solveFromNatToIndex c n arg = do
-  let p = provenanceOf c
   (indexEq, index) <- unifyWithIndexType c arg
-  let solution = VBuiltin p (FromNat n FromNatToIndex) [ImplicitArg p (normalised index)]
+  let solution = VBuiltin (FromNat n FromNatToIndex) [ImplicitArg mempty (normalised index)]
   return $ Right ([indexEq], solution)
 
 solveFromNatToRat :: HasFromNatSolver
 solveFromNatToRat c n arg = do
-  let p = provenanceOf c
-  let lin = VLinearityExpr (provenanceOf c) Constant
-  let ratEq = unify c arg (mkVAnnRatType p lin)
-  let solution = VBuiltin p (FromNat n FromNatToRat) []
+  let lin = VLinearityExpr Constant
+  let ratEq = unify c arg (mkVAnnRatType lin)
+  let solution = VBuiltin (FromNat n FromNatToRat) []
   return $ Right ([ratEq], solution)
 
 --------------------------------------------------------------------------------
@@ -414,16 +404,16 @@ solveFromNatToRat c n arg = do
 solveHasVecLits :: Int -> TypeClassSolver
 solveHasVecLits n c [tElem, tCont] = case tCont of
   (getMeta -> Just {}) -> blockOnMetas [tCont]
-  VListType _ tListElem -> do
+  VListType tListElem -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tListElem
-    let solution = VBuiltin p (FromVec n FromVecToList) [ImplicitArg p tListElem]
+    let solution = VBuiltin (FromVec n FromVecToList) [ImplicitArg p tListElem]
     return $ Right ([elemEq], solution)
-  VVectorType _ tVecElem dim -> do
+  VVectorType tVecElem dim -> do
     let p = provenanceOf ctx
     let elemEq = unify ctx tElem tVecElem
-    let dimEq = unify ctx dim (VNatLiteral p n)
-    let solution = VBuiltin p (FromVec n FromVecToVec) [ImplicitArg p tVecElem]
+    let dimEq = unify ctx dim (VNatLiteral n)
+    let solution = VBuiltin (FromVec n FromVecToVec) [ImplicitArg p tVecElem]
     return $ Right ([elemEq, dimEq], solution)
   _ -> blockOrThrowErrors ctx [tCont] [tcError]
   where
@@ -437,7 +427,7 @@ solveHasVecLits _ c _ = malformedConstraintError c
 solveAlmostEqual :: TypeClassSolver
 solveAlmostEqual c [targetType, subTypesExpr]
   | allOf types isMeta = blockOnMetas types
-  | otherwise = irrelevant ctx <$> checkSubtypes ctx targetType subTypes
+  | otherwise = irrelevant <$> checkSubtypes ctx targetType subTypes
   where
     ctx = contextOf c
     subTypes = getConcreteList subTypesExpr
@@ -450,21 +440,20 @@ solveAlmostEqual c _ = malformedConstraintError c
 solveInDomain :: Int -> TypeClassSolver
 solveInDomain n c [arg] = case arg of
   (getMeta -> Just {}) -> blockOnMetas [arg]
-  VIndexType _ size -> case size of
+  VIndexType size -> case size of
     (getMeta -> Just {}) -> blockOnMetas [size]
-    (VBuiltin _ (TypeClassOp FromNatTC {}) (_ : InstanceArg _ inst@VMeta {} : _)) ->
+    (VBuiltin (TypeClassOp FromNatTC {}) (_ : InstanceArg _ inst@VMeta {} : _)) ->
       blockOnMetas [inst]
-    VNatLiteral _ m
-      | m > n -> return $ irrelevant ctx []
+    VNatLiteral m
+      | m > n -> return $ irrelevant []
       | otherwise -> throwError $ FailedNatLitConstraintTooBig ctx n m
     _ -> throwError $ FailedNatLitConstraintUnknown ctx n size
-  VNatType {} -> return $ Right ([], VUnitLiteral p)
-  VIntType {} -> return $ Right ([], VUnitLiteral p)
-  VAnnRatType {} -> return $ Right ([], VUnitLiteral p)
+  VNatType {} -> return $ Right ([], VUnitLiteral)
+  VIntType {} -> return $ Right ([], VUnitLiteral)
+  VAnnRatType {} -> return $ Right ([], VUnitLiteral)
   _ -> malformedConstraintError c
   where
     ctx = contextOf c
-    p = provenanceOf ctx
 solveInDomain _ c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
@@ -497,20 +486,18 @@ checkRatSubtypes c targetType subTypes = do
 
 checkListSubtypes :: SubtypingCheck m
 checkListSubtypes c targetType subTypes = do
-  let p = provenanceOf c
   (targetEqConstraint, targetElemType) <- unifyWithListType c targetType
   (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithListType c)
-  let subElemTypeSeq = mkVList p (VTypeUniverse p 0) (fmap normalised subElemTypes)
+  let subElemTypeSeq = mkVList (VTypeUniverse 0) (fmap normalised subElemTypes)
   (_, recEq) <- createTC c AlmostEqualConstraint [normalised targetElemType, subElemTypeSeq]
   return (targetEqConstraint : recEq : subEqConstraints)
 
 checkVectorSubtypes :: SubtypingCheck m
 checkVectorSubtypes c targetType subTypes = do
-  let p = provenanceOf c
   dim <- freshDimMeta c
   (targetEqConstraint, targetElemType) <- unifyWithVectorType c dim targetType
   (subEqConstraints, subElemTypes) <- unzip <$> forM subTypes (unifyWithVectorType c dim)
-  let subElemTypeSeq = mkVList p (VTypeUniverse p 0) subElemTypes
+  let subElemTypeSeq = mkVList (VTypeUniverse 0) subElemTypes
   (_, recEq) <- createTC c AlmostEqualConstraint [targetElemType, subElemTypeSeq]
   return (targetEqConstraint : recEq : subEqConstraints)
 
@@ -588,7 +575,9 @@ createTC c tc argExprs = do
   let ctx = copyContext c
   let dbLevel = contextDBLevel c
   let nArgs = ExplicitArg p <$> argExprs
-  newTypeClassExpr <- quote dbLevel (VConstructor p (TypeClass tc) nArgs)
+  logDebug MaxDetail ("XXX" <+> pretty tc)
+  logDebug MaxDetail ("XXX" <+> pretty (originalProvenance ctx))
+  newTypeClassExpr <- quote mempty dbLevel (VConstructor (TypeClass tc) nArgs)
   (meta, metaExpr) <- freshTypeClassPlacementMeta p newTypeClassExpr (boundContext c)
   return (normalised metaExpr, WithContext (TypeClassConstraint (Has meta tc nArgs)) ctx)
 
@@ -601,7 +590,7 @@ unifyWithAnnBoolType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
   pol <- freshPolarityMeta p
-  let eq = unify c t (mkVAnnBoolType p (normalised lin) (normalised pol))
+  let eq = unify c t (mkVAnnBoolType (normalised lin) (normalised pol))
   return (eq, lin, pol)
 
 unifyWithIndexType ::
@@ -612,7 +601,7 @@ unifyWithIndexType ::
 unifyWithIndexType c t = do
   let p = provenanceOf c
   indexSize <- freshExprMeta p (NatType p) (boundContext c)
-  let eq = unify c t (mkVIndexType p (normalised indexSize))
+  let eq = unify c t (mkVIndexType (normalised indexSize))
   return (eq, indexSize)
 
 unifyWithAnnRatType ::
@@ -623,7 +612,7 @@ unifyWithAnnRatType ::
 unifyWithAnnRatType c t = do
   let p = provenanceOf c
   lin <- freshLinearityMeta p
-  let eq = unify c t (mkVAnnRatType p (normalised lin))
+  let eq = unify c t (mkVAnnRatType (normalised lin))
   return (eq, lin)
 
 unifyWithListType ::
@@ -634,7 +623,7 @@ unifyWithListType ::
 unifyWithListType c t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
-  let eq = unify c t (mkVListType p (normalised elemType))
+  let eq = unify c t (mkVListType (normalised elemType))
   return (eq, elemType)
 
 unifyWithVectorType ::
@@ -646,7 +635,7 @@ unifyWithVectorType ::
 unifyWithVectorType c dim t = do
   let p = provenanceOf c
   elemType <- freshExprMeta p (TypeUniverse p 0) (boundContext c)
-  let eq = unify c t (mkVVecType p (normalised elemType) (normalised dim))
+  let eq = unify c t (mkVVecType (normalised elemType) (normalised dim))
   return (eq, normalised elemType)
 
 freshDimMeta :: TCM m => ConstraintContext -> m GluedExpr
@@ -663,10 +652,9 @@ solveSimpleComparisonOp ::
   Builtin ->
   m TypeClassProgress
 solveSimpleComparisonOp c arg1 arg2 res solution = do
-  let p = provenanceOf c
-  let resEq = unify c res (mkVAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
+  let resEq = unify c res (mkVAnnBoolType (VLinearityExpr Constant) (VPolarityExpr Unquantified))
   let argEq = unify c arg1 arg2
-  return $ Right ([argEq, resEq], VBuiltin p solution [])
+  return $ Right ([argEq, resEq], VBuiltin solution [])
 
 solveIndexComparisonOp ::
   TCM m =>
@@ -677,11 +665,10 @@ solveIndexComparisonOp ::
   Builtin ->
   m TypeClassProgress
 solveIndexComparisonOp c arg1 arg2 res solution = do
-  let p = provenanceOf c
   (arg1Eq, _size1) <- unifyWithIndexType c arg1
   (arg2Eq, _size2) <- unifyWithIndexType c arg2
-  let resEq = unify c res (mkVAnnBoolType p (VLinearityExpr p Constant) (VPolarityExpr p Unquantified))
-  return $ Right ([arg1Eq, arg2Eq, resEq], VBuiltin p solution [])
+  let resEq = unify c res (mkVAnnBoolType (VLinearityExpr Constant) (VPolarityExpr Unquantified))
+  return $ Right ([arg1Eq, arg2Eq, resEq], VBuiltin solution [])
 
 solveRatComparisonOp ::
   TCM m =>
@@ -692,8 +679,6 @@ solveRatComparisonOp ::
   Builtin ->
   m TypeClassProgress
 solveRatComparisonOp c arg1 arg2 res op = do
-  let p = provenanceOf c
-
   (arg1Eq, arg1Lin) <- unifyWithAnnRatType c arg1
   (arg2Eq, arg2Lin) <- unifyWithAnnRatType c arg2
   (resEq, resLin, resPol) <- unifyWithAnnBoolType c res
@@ -705,9 +690,9 @@ solveRatComparisonOp c arg1 arg2 res op = do
       (LinearityTypeClass MaxLinearity)
       [normalised arg1Lin, normalised arg2Lin, normalised resLin]
   -- The polarity is unquantified.
-  let polEq = unify c (normalised resPol) (VPolarityExpr p Unquantified)
+  let polEq = unify c (normalised resPol) (VPolarityExpr Unquantified)
 
-  return $ Right ([arg1Eq, arg2Eq, resEq, linTC, polEq], VBuiltin p op [])
+  return $ Right ([arg1Eq, arg2Eq, resEq, linTC, polEq], VBuiltin op [])
 
 combineAuxiliaryConstraints ::
   forall m.
@@ -727,7 +712,7 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
     foldPairs :: [GluedExpr] -> m (GluedExpr, [WithContext Constraint])
     foldPairs [] = do
       let unUnit = Builtin mempty (Constructor unit)
-      let nUnit = VBuiltin mempty (Constructor unit) []
+      let nUnit = VBuiltin (Constructor unit) []
       return (Glued unUnit nUnit, [])
     foldPairs [a] = return (a, [])
     foldPairs (a : cs) = do
@@ -736,14 +721,14 @@ combineAuxiliaryConstraints tc unit makeMeta c result auxs = do
       (_, tc1) <- createTC c tc [normalised a, normalised b, normalised res]
       return (res, tc1 : constraints)
 
-irrelevant :: HasProvenance a => a -> [WithContext Constraint] -> TypeClassProgress
-irrelevant c newConstraints = Right (newConstraints, VUnitLiteral (provenanceOf c))
+irrelevant :: [WithContext Constraint] -> TypeClassProgress
+irrelevant newConstraints = Right (newConstraints, VUnitLiteral)
 
 blockOnMetas :: TCM m => [NormExpr] -> m TypeClassProgress
 blockOnMetas args = do
   let metas = mapMaybe getMeta args
   progress <- blockOn metas
-  return $ castProgress mempty progress
+  return $ castProgress progress
 
 blockOrThrowErrors ::
   TCM m =>
@@ -769,8 +754,8 @@ unless2 p a = if not p then return a else mzero
 
 getConcreteList :: NormExpr -> [NormExpr]
 getConcreteList = \case
-  VBuiltin _ (Constructor Nil) _ -> []
-  VBuiltin _ (Constructor Cons) [_, x, xs] -> argExpr x : getConcreteList (argExpr xs)
+  VBuiltin (Constructor Nil) _ -> []
+  VBuiltin (Constructor Cons) [_, x, xs] -> argExpr x : getConcreteList (argExpr xs)
   _ -> developerError "Malformed concrete list"
 
 tcArgError ::

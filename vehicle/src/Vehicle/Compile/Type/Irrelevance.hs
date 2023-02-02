@@ -68,26 +68,26 @@ instance RemoveIrrelevantCode NormExpr where
   remove expr = case expr of
     VUniverse {} -> return expr
     VLiteral {} -> return expr
-    VPi p binder res
+    VPi binder res
       -- Don't need to substitute through here as irrelevent
       -- bound variables should only be used in irrelevent positions
       -- which will also be removed.
       | isIrrelevant binder -> remove res
-      | otherwise -> VPi p <$> remove binder <*> remove res
-    VLam p binder env body
+      | otherwise -> VPi <$> remove binder <*> remove res
+    VLam binder env body
       -- However, passing in the empty decl context here does feel like a bug...
       -- But don't have access to it here. Tried adding it to the `Env` type, but then
       -- every lambda stores an independent copy.
       | isIrrelevant binder -> do
-          newExpr <- runReaderT (eval (VUnitLiteral p : env) body) (mempty, mempty)
+          newExpr <- runReaderT (eval (VUnitLiteral : env) body) (mempty, mempty)
           remove newExpr
       | otherwise -> do
-          VLam p <$> remove binder <*> remove env <*> remove body
-    VLVec p xs spine -> VLVec p <$> traverse remove xs <*> removeArgs spine
-    VFreeVar p v spine -> VFreeVar p v <$> removeArgs spine
-    VBoundVar p v spine -> VBoundVar p v <$> removeArgs spine
-    VMeta p m spine -> VMeta p m <$> removeArgs spine
-    VBuiltin p b spine -> VBuiltin p b <$> removeArgs spine
+          VLam <$> remove binder <*> remove env <*> remove body
+    VLVec xs spine -> VLVec <$> traverse remove xs <*> removeArgs spine
+    VFreeVar v spine -> VFreeVar v <$> removeArgs spine
+    VBoundVar v spine -> VBoundVar v <$> removeArgs spine
+    VMeta m spine -> VMeta m <$> removeArgs spine
+    VBuiltin b spine -> VBuiltin b <$> removeArgs spine
 
 instance RemoveIrrelevantCode GluedExpr where
   remove (Glued u n) = Glued <$> remove u <*> remove n

@@ -87,10 +87,10 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
       VMeta {} -> normalisationError currentPass "Lam"
       VLam {} -> normalisationError currentPass "Lam"
       VLiteral {} -> return expr
-      VBoundVar p v spine -> VBoundVar p v <$> goSpine k spine
-      VBuiltin p b spine -> VBuiltin p b <$> goSpine k spine
-      VLVec p xs spine -> VLVec p <$> traverse (go k) xs <*> goSpine k spine
-      VFreeVar _ network spine -> do
+      VBoundVar v spine -> VBoundVar v <$> goSpine k spine
+      VBuiltin b spine -> VBuiltin b <$> goSpine k spine
+      VLVec xs spine -> VLVec <$> traverse (go k) xs <*> goSpine k spine
+      VFreeVar network spine -> do
         spine' <- goSpine k spine
         case spine' of
           [ExplicitArg _ arg] -> k network arg
@@ -125,7 +125,6 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
   let sectionLog = "Replacing application:" <+> pretty ident <+> prettyVerbose inputVector
   logCompilerSection MaxDetail sectionLog $ do
     IOVarState {..} <- get
-    let p = mempty
     case HashMap.lookup (ident, inputVector) applicationCache of
       Just result -> return result
       Nothing -> do
@@ -149,7 +148,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
 
         inputVarEqualities <- createInputVarEqualities (dimensions inputs) inputVarIndices inputVector
 
-        outputVarsExpr <- mkMagicVariableSeq p outputType (dimensions outputs) outputVarIndices
+        outputVarsExpr <- mkMagicVariableSeq outputType (dimensions outputs) outputVarIndices
 
         put $
           IOVarState
@@ -163,7 +162,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
         return outputVarsExpr
 
 createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> NormExpr -> m [(DBLevel, NormExpr)]
-createInputVarEqualities (_dim : dims) inputVarIndices (VLVec _ xs _) = do
+createInputVarEqualities (_dim : dims) inputVarIndices (VLVec xs _) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
   concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
 createInputVarEqualities [] [i] e = return [(i, e)]
@@ -176,12 +175,11 @@ createInputVarEqualities dims d xs =
 
 mkMagicVariableSeq ::
   MonadCompile m =>
-  Provenance ->
   NetworkBaseType ->
   [Int] ->
   [DBLevel] ->
   m NormExpr
-mkMagicVariableSeq p tElem = go
+mkMagicVariableSeq tElem = go
   where
     go :: MonadCompile m => [Int] -> [DBLevel] -> m NormExpr
     go (_dim : dims) outputVarIndices = do
@@ -189,10 +187,10 @@ mkMagicVariableSeq p tElem = go
       elems <- traverse (go dims) outputVarIndicesChunks
       -- mkTensorType p baseElemType (mkTensorDims p dims)
       -- baseElemType = reconstructNetworkBaseType tElem p
-      let elemType = VLiteral p LUnit
-      return (mkVLVec p elems elemType)
+      let elemType = VLiteral LUnit
+      return (mkVLVec elems elemType)
     go [] [outputVar] =
-      return $ VBoundVar p outputVar []
+      return $ VBoundVar outputVar []
     go dims outputVarIndices =
       compilerDeveloperError $
         "apparently miscalculated number of magic output variables:"

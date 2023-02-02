@@ -64,7 +64,7 @@ normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
     normInput <- whnf dbLevel mempty mempty input
-    actual <- quote dbLevel normInput
+    actual <- quote mempty dbLevel normInput
 
     let errorMessage =
           layoutAsString $

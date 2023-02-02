@@ -9,7 +9,7 @@ import Vehicle.Expr.Normalised
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
 unnormalise :: forall a b. Quote a b => DBLevel -> a -> b
-unnormalise level e = runCompileMonadSilently "unquoting" (quote level e)
+unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 
 -----------------------------------------------------------------------------
 -- Quoting
@@ -17,24 +17,24 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote level e)
 -- i.e. converting back to unnormalised expressions
 
 class Quote a b where
-  quote :: MonadCompile m => DBLevel -> a -> m b
+  quote :: MonadCompile m => Provenance -> DBLevel -> a -> m b
 
 instance Quote NormExpr CheckedExpr where
-  quote level = \case
-    VUniverse p u -> return $ Universe p u
-    VLiteral p l -> return $ Literal p l
-    VMeta p m spine -> quoteSpine level p (Meta p m) spine
-    VFreeVar p v spine -> quoteSpine level p (Var p (Free v)) spine
-    VBoundVar p v spine -> quoteSpine level p (Var p (Bound (dbLevelToIndex level v))) spine
-    VBuiltin p b spine -> quoteSpine level p (Builtin p b) spine
-    VLVec p xs spine -> do
-      xs' <- traverse (quote level) xs
+  quote p level = \case
+    VUniverse u -> return $ Universe p u
+    VLiteral l -> return $ Literal p l
+    VMeta m spine -> quoteSpine level p (Meta p m) spine
+    VFreeVar v spine -> quoteSpine level p (Var p (Free v)) spine
+    VBoundVar v spine -> quoteSpine level p (Var p (Bound (dbLevelToIndex level v))) spine
+    VBuiltin b spine -> quoteSpine level p (Builtin p b) spine
+    VLVec xs spine -> do
+      xs' <- traverse (quote p level) xs
       quoteSpine level p (LVec p xs') spine
-    VPi p binder body ->
-      Pi p <$> quote level binder <*> quote (level + 1) body
-    VLam p binder env body -> do
-      quotedBinder <- quote level binder
-      quotedEnv <- traverse (quote (level + 1)) env
+    VPi binder body ->
+      Pi p <$> quote p level binder <*> quote p (level + 1) body
+    VLam binder env body -> do
+      quotedBinder <- quote p level binder
+      quotedEnv <- traverse (quote p (level + 1)) env
       let liftedEnv = BoundVar p 0 : quotedEnv
       let quotedBody = substituteDB 0 (envSubst liftedEnv) body
       -- Here we deliberately avoid using the standard `quote . eval` approach below
@@ -43,16 +43,16 @@ instance Quote NormExpr CheckedExpr where
       --
       -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
       -- quotedBody <- quote (level + 1) normBody
-      return $ Lam p quotedBinder quotedBody
+      return $ Lam mempty quotedBinder quotedBody
 
 instance Quote NormBinder CheckedBinder where
-  quote level = traverse (quote level)
+  quote p level = traverse (quote p level)
 
 instance Quote NormArg CheckedArg where
-  quote level = traverse (quote level)
+  quote p level = traverse (quote p level)
 
 quoteSpine :: MonadCompile m => DBLevel -> Provenance -> CheckedExpr -> Spine -> m CheckedExpr
-quoteSpine l p fn spine = normAppList p fn <$> traverse (quote l) spine
+quoteSpine l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
 envSubst :: BoundCtx CheckedExpr -> Substitution DBExpr
 envSubst env i = case lookupVar env i of
