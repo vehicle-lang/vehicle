@@ -32,7 +32,7 @@
                           "contents": [
                             {
                               "tag": "Variable",
-                              "contents": 0
+                              "contents": "a"
                             },
                             {
                               "tag": "Constant",
@@ -72,7 +72,7 @@
                                           "contents": [
                                             {
                                               "tag": "Variable",
-                                              "contents": 0
+                                              "contents": "a"
                                             },
                                             {
                                               "tag": "Constant",
@@ -130,7 +130,7 @@
                                           "contents": [
                                             {
                                               "tag": "Variable",
-                                              "contents": 0
+                                              "contents": "a"
                                             },
                                             {
                                               "tag": "Constant",
@@ -207,7 +207,7 @@
                                     },
                                     {
                                       "tag": "Variable",
-                                      "contents": 1
+                                      "contents": "a"
                                     }
                                   ]
                                 }
@@ -252,11 +252,11 @@
                                                     "contents": [
                                                       {
                                                         "tag": "Variable",
-                                                        "contents": 1
+                                                        "contents": "a"
                                                       },
                                                       {
                                                         "tag": "Variable",
-                                                        "contents": 0
+                                                        "contents": "b"
                                                       }
                                                     ]
                                                   }
@@ -295,11 +295,11 @@
                                                               "contents": [
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 1
+                                                                  "contents": "a"
                                                                 },
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 0
+                                                                  "contents": "b"
                                                                 }
                                                               ]
                                                             },
@@ -308,7 +308,7 @@
                                                               "contents": [
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 1
+                                                                  "contents": "a"
                                                                 },
                                                                 {
                                                                   "tag": "Multiplication",
@@ -319,7 +319,7 @@
                                                                     },
                                                                     {
                                                                       "tag": "Variable",
-                                                                      "contents": 0
+                                                                      "contents": "b"
                                                                     }
                                                                   ]
                                                                 }
@@ -375,11 +375,11 @@
                                                               "contents": [
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 1
+                                                                  "contents": "a"
                                                                 },
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 0
+                                                                  "contents": "b"
                                                                 }
                                                               ]
                                                             },
@@ -388,7 +388,7 @@
                                                               "contents": [
                                                                 {
                                                                   "tag": "Variable",
-                                                                  "contents": 1
+                                                                  "contents": "a"
                                                                 },
                                                                 {
                                                                   "tag": "Multiplication",
@@ -399,7 +399,7 @@
                                                                     },
                                                                     {
                                                                       "tag": "Variable",
-                                                                      "contents": 0
+                                                                      "contents": "b"
                                                                     }
                                                                   ]
                                                                 }
@@ -453,11 +453,11 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 0
+                                                          "contents": "b"
                                                         }
                                                       ]
                                                     },
@@ -466,7 +466,7 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Multiplication",
@@ -477,7 +477,7 @@
                                                             },
                                                             {
                                                               "tag": "Variable",
-                                                              "contents": 0
+                                                              "contents": "b"
                                                             }
                                                           ]
                                                         }
@@ -533,11 +533,11 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 0
+                                                          "contents": "b"
                                                         }
                                                       ]
                                                     },
@@ -546,7 +546,7 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Multiplication",
@@ -557,7 +557,7 @@
                                                             },
                                                             {
                                                               "tag": "Variable",
-                                                              "contents": 0
+                                                              "contents": "b"
                                                             }
                                                           ]
                                                         }
@@ -622,11 +622,11 @@
                                             "contents": [
                                               {
                                                 "tag": "Variable",
-                                                "contents": 1
+                                                "contents": "a"
                                               },
                                               {
                                                 "tag": "Variable",
-                                                "contents": 0
+                                                "contents": "b"
                                               }
                                             ]
                                           }
@@ -665,11 +665,11 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 0
+                                                          "contents": "b"
                                                         }
                                                       ]
                                                     },
@@ -678,7 +678,7 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Multiplication",
@@ -689,7 +689,7 @@
                                                             },
                                                             {
                                                               "tag": "Variable",
-                                                              "contents": 0
+                                                              "contents": "b"
                                                             }
                                                           ]
                                                         }
@@ -745,11 +745,11 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 0
+                                                          "contents": "b"
                                                         }
                                                       ]
                                                     },
@@ -758,7 +758,7 @@
                                                       "contents": [
                                                         {
                                                           "tag": "Variable",
-                                                          "contents": 1
+                                                          "contents": "a"
                                                         },
                                                         {
                                                           "tag": "Multiplication",
@@ -769,7 +769,7 @@
                                                             },
                                                             {
                                                               "tag": "Variable",
-                                                              "contents": 0
+                                                              "contents": "b"
                                                             }
                                                           ]
                                                         }
@@ -823,11 +823,11 @@
                                               "contents": [
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 1
+                                                  "contents": "a"
                                                 },
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 0
+                                                  "contents": "b"
                                                 }
                                               ]
                                             },
@@ -836,7 +836,7 @@
                                               "contents": [
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 1
+                                                  "contents": "a"
                                                 },
                                                 {
                                                   "tag": "Multiplication",
@@ -847,7 +847,7 @@
                                                     },
                                                     {
                                                       "tag": "Variable",
-                                                      "contents": 0
+                                                      "contents": "b"
                                                     }
                                                   ]
                                                 }
@@ -903,11 +903,11 @@
                                               "contents": [
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 1
+                                                  "contents": "a"
                                                 },
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 0
+                                                  "contents": "b"
                                                 }
                                               ]
                                             },
@@ -916,7 +916,7 @@
                                               "contents": [
                                                 {
                                                   "tag": "Variable",
-                                                  "contents": 1
+                                                  "contents": "a"
                                                 },
                                                 {
                                                   "tag": "Multiplication",
@@ -927,7 +927,7 @@
                                                     },
                                                     {
                                                       "tag": "Variable",
-                                                      "contents": 0
+                                                      "contents": "b"
                                                     }
                                                   ]
                                                 }
@@ -1011,7 +1011,7 @@
                                                 "contents": [
                                                   {
                                                     "tag": "Variable",
-                                                    "contents": 1
+                                                    "contents": "a"
                                                   },
                                                   {
                                                     "tag": "Constant",
@@ -1029,7 +1029,7 @@
                                       "contents": [
                                         {
                                           "tag": "Variable",
-                                          "contents": 0
+                                          "contents": "b"
                                         },
                                         {
                                           "tag": "Constant",
@@ -1050,7 +1050,7 @@
                               "contents": [
                                 {
                                   "tag": "Variable",
-                                  "contents": 0
+                                  "contents": "b"
                                 },
                                 {
                                   "tag": "Constant",
@@ -1073,11 +1073,11 @@
                                     "contents": [
                                       {
                                         "tag": "Variable",
-                                        "contents": 1
+                                        "contents": "a"
                                       },
                                       {
                                         "tag": "Variable",
-                                        "contents": 0
+                                        "contents": "b"
                                       }
                                     ]
                                   }

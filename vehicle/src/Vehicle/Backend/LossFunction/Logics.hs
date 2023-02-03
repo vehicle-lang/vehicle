@@ -31,7 +31,7 @@ data LExpr
   | Division LExpr LExpr
   | IndicatorFunction LExpr LExpr
   | -- | variable (bound)
-    Variable Int -- DBIndex
+    Variable V.Name
   | -- | variable (free)
     FreeVariable V.Name (NonEmpty LExpr)
   | NetworkApplication V.Name (NonEmpty LExpr)

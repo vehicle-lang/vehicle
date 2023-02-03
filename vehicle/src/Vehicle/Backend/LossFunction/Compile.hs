@@ -80,13 +80,16 @@ compileDecl networkCtx logic d =
     V.DefFunction p ident _ _ expr ->
       logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
         let logicImplementation = implementationOf logic
-        expr' <- runReaderT (compileExpr logicImplementation expr) (networkCtx, logic, (ident, p))
+        expr' <- runReaderT (compileExpr logicImplementation expr) (networkCtx, logic, (ident, p), mempty)
         return (DefFunction (nameOf ident) expr')
 
 type MonadCompileLoss m =
   ( MonadCompile m,
-    MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
+    MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance, V.BoundDBCtx) m
   )
+
+addToCtx :: MonadCompileLoss m => V.CheckedBinder -> m a -> m a
+addToCtx binder = local (\(a, b, c, ctx) -> (a, b, c, V.nameOf binder : ctx))
 
 compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> V.CheckedArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
@@ -111,7 +114,7 @@ compileExpr t e = showExit $ do
     V.NotExpr p [e1] -> case compileNot t of
       Just f -> f <$> compileArg t e1
       Nothing -> do
-        (_, logic, declProv) <- ask
+        (_, logic, declProv, _) <- ask
         ne1 <- runReaderT (lowerNot (argExpr e1)) (logic, declProv, p)
         compileExpr t ne1
     V.AndExpr _ [e1, e2] -> compileAnd t <$> compileArg t e1 <*> compileArg t e2
@@ -135,17 +138,23 @@ compileExpr t e = showExit $ do
     V.VecLiteral _ _ xs -> TensorLiteral <$> traverse (compileExpr t) xs
     V.Literal _ l -> return $ Constant $ compileLiteral t l
     V.App _ (V.Var _ (V.Free ident)) args -> do
-      (networkCtx, _, _) <- ask
+      (networkCtx, _, _, _) <- ask
       let name = V.nameOf ident
       if name `Map.member` networkCtx
         then NetworkApplication name <$> traverse (compileArg t) args
         else FreeVariable name <$> traverse (compileArg t) args
-    V.Var _ (V.Bound var) -> return (Variable (V.unIndex var))
+    V.Var _ (V.Bound var) -> do
+      (_, _, _, ctx) <- ask
+      case ctx !! V.unIndex var of
+        Nothing -> compilerDeveloperError $ "No name provided for variable" <+> pretty var
+        Just v -> return $ Variable v
     V.AtExpr _ _ _ [xs, i] -> At <$> compileArg t xs <*> compileArg t i
     V.Let _ x binder expression -> Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
-    V.Lam _ binder x -> Lambda (V.getBinderName binder) <$> compileExpr t x
+    V.Lam _ binder body -> do
+      body' <- addToCtx binder $ compileExpr t body
+      return $ Lambda (V.getBinderName binder) body'
     V.QuantifierTCExpr _ q binder body -> do
-      body' <- compileExpr t body
+      body' <- addToCtx binder $ compileExpr t body
       let varName = V.getBinderName binder
       return $ Quantifier (compileQuant q) varName (Domain ()) body'
     V.Hole {} -> resolutionError currentPass "Should not enounter Hole"

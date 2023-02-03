@@ -126,16 +126,15 @@ class TestLossFunctionTranslation(unittest.TestCase):
         loss = generate_loss_function(path_to_vcl, functionName, networks)
         self.assertEqual(loss(), 0)
 
-    def test_quantifier(self):
+    def test_forall_quantifier(self):
         path_to_vcl = self.vcl_file("test_quantifier_all")
-        functionName = "quantifier"
+        functionName = "quantifierForall"
         networks = {}
 
         quantifier_sampling = {"x": lambda: 2.1}
         loss = generate_loss_function(
             path_to_vcl, functionName, networks, quantifier_sampling=quantifier_sampling
         )
-        print(loss())
         self.assertEqual(loss(), 0)
 
         quantifier_sampling = {"x": lambda: -5.5}
@@ -144,7 +143,10 @@ class TestLossFunctionTranslation(unittest.TestCase):
         )
         self.assertEqual(loss(), 5.5)
 
+    def test_exists_quantifier(self):
         path_to_vcl = self.vcl_file("test_quantifier_any")
+        functionName = "quantifierExists"
+        networks = {}
 
         quantifier_sampling = {"x": lambda: 21.5}
         loss = generate_loss_function(

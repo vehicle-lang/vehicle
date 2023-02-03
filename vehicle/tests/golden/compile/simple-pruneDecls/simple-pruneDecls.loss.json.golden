@@ -10,7 +10,7 @@
           "contents": [
             {
               "tag": "Variable",
-              "contents": 0
+              "contents": "x"
             },
             {
               "tag": "Constant",
@@ -61,7 +61,7 @@
                         [
                           {
                             "tag": "Variable",
-                            "contents": 0
+                            "contents": "x"
                           }
                         ]
                       ]
@@ -111,7 +111,7 @@
                         [
                           {
                             "tag": "Variable",
-                            "contents": 0
+                            "contents": "x"
                           }
                         ]
                       ]
