@@ -21,7 +21,7 @@
                       "contents": [
                         {
                           "tag": "Variable",
-                          "contents": 2
+                          "contents": "x"
                         },
                         {
                           "tag": "Multiplication",
@@ -32,7 +32,7 @@
                             },
                             {
                               "tag": "Variable",
-                              "contents": 1
+                              "contents": "y"
                             }
                           ]
                         }
@@ -43,11 +43,11 @@
                       "contents": [
                         {
                           "tag": "Variable",
-                          "contents": 0
+                          "contents": "z"
                         },
                         {
                           "tag": "Variable",
-                          "contents": 1
+                          "contents": "y"
                         }
                       ]
                     }
