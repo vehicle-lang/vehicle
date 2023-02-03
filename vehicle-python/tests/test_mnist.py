@@ -2,13 +2,12 @@ import random
 
 import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
 from keras.datasets import mnist
 
 from vehicle import generate_loss_function
-#from not_init import generate_loss_function
 
+# from not_init import generate_loss_function
 
 
 def train(
@@ -95,26 +94,23 @@ if __name__ == "__main__":
     function_name = "robust1"
     model = keras.Sequential(
         [
-        keras.Input(shape=(28, 28, 1)),
-        keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-        keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-        keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras.layers.Flatten(),
-        keras.layers.Dropout(0.5),
-        keras.layers.Dense(10, activation="softmax"),
+            keras.Input(shape=(28, 28)),
+            keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
+            keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+            keras.layers.MaxPooling2D(pool_size=(2, 2)),
+            keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            keras.layers.MaxPooling2D(pool_size=(2, 2)),
+            keras.layers.Flatten(),
+            keras.layers.Dropout(0.5),
+            keras.layers.Dense(10, activation="softmax"),
         ]
     )
     networks = {"mnist": model}
-
-    quantifier_sampling = {"x": lambda: random.choice(X_train), "j": lambda: random.randint(0,27), 
-        "i": lambda: random.randint(0,27), "pertubation": lambda: random.uniform(-0.02, 0.02),}
 
     batch_size = 1
     epochs = 4
     alfa = 0
     beta = 1
-
 
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
@@ -122,12 +118,20 @@ if __name__ == "__main__":
     X_train = X_train.astype("float32") / 255
     X_test = X_test.astype("float32") / 255
     # Make sure images have shape (28, 28, 1)
-    X_train = np.expand_dims(X_train, -1)
-    X_test = np.expand_dims(X_test, -1)
+    # X_train = np.expand_dims(X_train, -1)
+    # X_test = np.expand_dims(X_test, -1)
 
     y_train = keras.utils.to_categorical(y_train, 10)
     y_test = keras.utils.to_categorical(y_test, 10)
 
+    quantifier_sampling = {
+        "x": lambda: random.choice(X_train),
+        "j": lambda: random.randint(0, 27),
+        "i": lambda: random.randint(0, 27),
+        "pertubation": lambda: np.random.uniform(low=-0.02, high=0.02, size=(28, 28)),
+    }
+
+    print(model(X_train))
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
