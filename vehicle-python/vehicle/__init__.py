@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-import numpy as np
 import tensorflow as tf
 
 from .command_line import call_vehicle_to_generate_loss_json
