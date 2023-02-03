@@ -43,7 +43,7 @@ def call_vehicle_to_generate_loss_json(
             "--outputFile",
             path_to_json,
         ]
-        args += make_resource_arguments(networks, "network")
+        args += make_resource_arguments({k: "N/A" for k in networks}, "network")
         args += make_resource_arguments(datasets, "dataset")
         args += make_resource_arguments(parameters, "parameter")
         args += ["--declaration", function_name]
@@ -68,7 +68,7 @@ def call_vehicle_to_verify_specification(
     datasets: Dict[str, str],
     parameters: Dict[str, Any],
 ) -> None:
-    network_list = make_resource_arguments(networks, "network")
+    network_list = make_resource_arguments({k: "N/A" for k in networks}, "network")
     dataset_list = make_resource_arguments(datasets, "dataset")
     parameter_list = make_resource_arguments(parameters, "parameter")
     args = ["verify", "--specification", specification, "--verifier", verifier]
