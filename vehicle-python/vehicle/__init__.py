@@ -1,6 +1,6 @@
+import typing
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-import numpy as np
 import tensorflow as tf
 
 from .command_line import call_vehicle_to_generate_loss_json
@@ -95,7 +95,7 @@ class LossFunctionTranslation:
                 print(f"Global scope: {list(global_scope.keys())}")
 
             exec(decl_loss_bytecode, global_scope, local_scope)
-            loss_fn = local_scope["loss_fn"]
+            loss_fn = typing.cast(Callable[..., Any], local_scope["loss_fn"])
 
             decl_ctx[ident] = loss_fn
 
