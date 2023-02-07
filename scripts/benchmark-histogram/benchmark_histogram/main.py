@@ -16,7 +16,6 @@ import seaborn as sns
 @click.argument("sources", type=click.Path(exists=True), nargs=-1)
 @click.option("--commits", type=str, required=False)
 def main(sources: typing.List[str], commits: typing.Optional[str]):
-
     # Load all benchmarks:
     benchmarks = Benchmark.load_all(*[pathlib.Path(source) for source in sources])
 

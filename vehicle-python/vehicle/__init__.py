@@ -60,7 +60,6 @@ class LossFunctionTranslation:
     def to_loss_function(
         self, function_name: str, json_dict: Dict[Any, Any]
     ) -> Callable[..., Any]:
-
         decl_ctx: Dict[str, Callable[..., Any]] = {}
         for [ident, decl] in json_dict:
             self.current_decl = ident
