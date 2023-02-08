@@ -33,12 +33,12 @@ boundedByEpsilon x = forall i j . -0.01 <= x ! i ! j <= 0.01
 
 --The disjunction avoids having to define absolute value
 boundedByDelta : Tensor Rat [28, 28] -> Tensor Rat [28, 28] -> Bool
-boundedByDelta x y = forall i . (-0.02 <= (((mnist x) ! i ) - ((mnist y) ! i )) <= 0.02) 
+boundedByDelta x y = forall k . (-0.02 <= (((mnist x) ! k ) - ((mnist y) ! k )) <= 0.02) 
 
 
 robustSingleInput : Tensor Rat [28, 28] -> Bool
 robustSingleInput image = forall pertubation .
-    let perturbedImage = image - pertubation in
+    let perturbedImage = image + pertubation in
     boundedByEpsilon pertubation => boundedByDelta image perturbedImage
 
 @property

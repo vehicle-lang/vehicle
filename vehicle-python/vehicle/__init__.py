@@ -1,6 +1,6 @@
+import typing
 from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-import numpy as np
 import tensorflow as tf
 
 from .command_line import call_vehicle_to_generate_loss_json
@@ -60,7 +60,6 @@ class LossFunctionTranslation:
     def to_loss_function(
         self, function_name: str, json_dict: Dict[Any, Any]
     ) -> Callable[..., Any]:
-
         decl_ctx: Dict[str, Callable[..., Any]] = {}
         for [ident, decl] in json_dict:
             self.current_decl = ident
@@ -83,7 +82,8 @@ class LossFunctionTranslation:
                 "sample_" + var_name: sample
                 for (var_name, sample) in self.quantifier_sampling.items()
             }
-            tensorflow_ctx = {"to_tensor": tf.convert_to_tensor}
+            tensorflow_ctx = {"to_tensor": tf.convert_to_tensor,
+                              "expand": tf.expand_dims}
             global_scope = {**decl_ctx, **network_ctx, **sample_ctx, **tensorflow_ctx}
             local_scope = {**result_ctx}
 
@@ -95,7 +95,7 @@ class LossFunctionTranslation:
                 print(f"Global scope: {list(global_scope.keys())}")
 
             exec(decl_loss_bytecode, global_scope, local_scope)
-            loss_fn = local_scope["loss_fn"]
+            loss_fn = typing.cast(Callable[..., Any], local_scope["loss_fn"])
 
             decl_ctx[ident] = loss_fn
 
@@ -207,7 +207,7 @@ class LossFunctionTranslation:
     def _translate_network(self, contents: Dict[Any, Any]) -> str:
         model = contents[0]
         input_losses = ", ".join([self._translate_expression(c) for c in contents[1]])
-        return f"{model}({input_losses}, training=True)"
+        return f"{model}(expand({input_losses}, axis=0), training=True)[0]"
 
     def _translate_free_variable(self, contents: Dict[Any, Any]) -> str:
         free_var = contents[0]
@@ -240,10 +240,7 @@ class LossFunctionTranslation:
             internal_error_msg(
                 "Found a quantifier in the generated json that is not All nor Any."
             )
-
-        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(10)])".format(
-            op, variable_name, body
-        )
+        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(10)])".format(op, variable_name, body)
 
     def _translate_lambda(self, contents: Dict[Any, Any]) -> str:
         var_name = contents[0]

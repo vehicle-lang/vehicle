@@ -47,9 +47,8 @@ def train(
         for x_batch_train, y_batch_train in train_dataset:
             # Open a GradientTape to record the operations run during the forward pass, which enables auto-differentiation.
             with tf.GradientTape() as tape:
-                outputs = model(
-                    x_batch_train, training=True
-                )  # Outputs for this minibatch
+                # Outputs for this minibatch
+                outputs = model(x_batch_train, training=True)
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
                 vehicle_loss = vehicle_batch_loss()
                 print(vehicle_loss)
@@ -90,19 +89,26 @@ def train(
 
 if __name__ == "__main__":
     print("Starting")
-    path_to_spec = "vehicle-python/tests/mnist.vcl"
+    path_to_spec = "vehicle-python/tests\mnist.vcl"
     function_name = "robust1"
+    # model = keras.Sequential(
+    #     [
+    #         keras.Input(shape=(28, 28)),
+    #         keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
+    #         keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+    #         keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    #         keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+    #         keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    #         keras.layers.Flatten(),
+    #         keras.layers.Dropout(0.5),
+    #         keras.layers.Dense(10, activation="softmax"),
+    #     ]
+    # )
     model = keras.Sequential(
         [
             keras.Input(shape=(28, 28)),
-            keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
-            keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-            keras.layers.MaxPooling2D(pool_size=(2, 2)),
-            keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-            keras.layers.MaxPooling2D(pool_size=(2, 2)),
             keras.layers.Flatten(),
-            keras.layers.Dropout(0.5),
-            keras.layers.Dense(10, activation="softmax"),
+            keras.layers.Dense(10, activation="softmax")
         ]
     )
     networks = {"mnist": model}
@@ -128,10 +134,9 @@ if __name__ == "__main__":
         "x": lambda: random.choice(X_train),
         "j": lambda: random.randint(0, 27),
         "i": lambda: random.randint(0, 27),
-        "pertubation": lambda: np.random.uniform(low=-0.02, high=0.02, size=(28, 28)),
+        "k": lambda: random.randint(0, 9),
+        "pertubation": lambda: np.random.uniform(low=-0.1, high=0.01, size=(28, 28)),
     }
-
-    print(model(X_train))
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
