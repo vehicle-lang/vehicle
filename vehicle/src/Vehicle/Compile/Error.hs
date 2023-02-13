@@ -7,8 +7,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Linearity.Core
+import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (VerifierIdentifier)
@@ -45,25 +46,25 @@ data CompileError
   | FunTypeMismatch
       Provenance -- The location of the mismatch.
       BoundDBCtx -- The context at the time of the failure
-      TypeCheckedExpr -- The function being typed
-      TypeCheckedType -- The possible inferred types.
-      TypeCheckedType -- The expected type.
+      StandardExpr -- The function being typed
+      StandardType -- The possible inferred types.
+      StandardType -- The expected type.
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
-      (UncheckedArg Builtin) -- The non-explicit argument
-      TypeCheckedType -- Expected type of the argument
-  | UnsolvedConstraints (NonEmpty (WithContext (Constraint Builtin)))
+      (UncheckedArg StandardBuiltinType) -- The non-explicit argument
+      StandardType -- Expected type of the argument
+  | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
-  | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint Builtin)))
+  | FailedUnificationConstraints (NonEmpty (WithContext StandardUnificationConstraint))
   | FailedEqConstraint StandardConstraintContext StandardNormType StandardNormType EqualityOp
   | FailedOrdConstraint StandardConstraintContext StandardNormType StandardNormType OrderOp
-  | FailedBuiltinConstraintArgument StandardConstraintContext Builtin StandardNormType [UnAnnDoc] Int Int
-  | FailedBuiltinConstraintResult StandardConstraintContext Builtin StandardNormType [UnAnnDoc]
+  | FailedBuiltinConstraintArgument StandardConstraintContext TypeClassOp StandardNormType [UnAnnDoc] Int Int
+  | FailedBuiltinConstraintResult StandardConstraintContext StandardBuiltin StandardNormType [UnAnnDoc]
   | FailedNotConstraint StandardConstraintContext StandardNormType
-  | FailedBoolOp2Constraint StandardConstraintContext StandardNormType StandardNormType Builtin
+  | FailedBoolOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
   | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
   | FailedQuantifierConstraintBody StandardConstraintContext StandardNormType Quantifier
-  | FailedArithOp2Constraint StandardConstraintContext StandardNormType StandardNormType Builtin
+  | FailedArithOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
   | FailedFoldConstraintContainer StandardConstraintContext StandardNormType
   | FailedQuantInConstraintContainer StandardConstraintContext StandardNormType Quantifier
   | FailedNatLitConstraint StandardConstraintContext Int StandardNormType
@@ -72,9 +73,9 @@ data CompileError
   | FailedIntLitConstraint StandardConstraintContext StandardNormType
   | FailedRatLitConstraint StandardConstraintContext StandardNormType
   | FailedConLitConstraint StandardConstraintContext StandardNormType
-  | FailedInstanceConstraint StandardConstraintContext InstanceGoal
-  | QuantifiedIfCondition StandardConstraintContext
-  | NonLinearIfCondition StandardConstraintContext
+  | FailedInstanceConstraint StandardConstraintContext InstanceGoal [WithContext InstanceCandidate]
+  | QuantifiedIfCondition PolarityConstraintContext
+  | NonLinearIfCondition LinearityConstraintContext
   | -- Resource typing errors
     ResourceNotProvided DeclProvenance Resource
   | ResourceIOError DeclProvenance Resource IOException
@@ -97,7 +98,7 @@ data CompileError
   | ParameterTypeUnsupported DeclProvenance StandardGluedType
   | ParameterTypeVariableSizeIndex DeclProvenance StandardGluedType
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
-  | ParameterValueUnparsable DeclProvenance String BuiltinConstructor
+  | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterTypeUnsupported DeclProvenance StandardGluedType
@@ -114,7 +115,7 @@ data CompileError
   | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name StandardNormType StandardNormType [Builtin]
   | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
-  | UnsupportedNegatedOperation DifferentiableLogic DeclProvenance Provenance TypeCheckedExpr
+  | UnsupportedNegatedOperation DifferentiableLogic Provenance (NamedExpr StandardBuiltin)
   deriving (Show)
 
 --------------------------------------------------------------------------------

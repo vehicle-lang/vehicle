@@ -30,9 +30,9 @@ type InferableParameterEntry = (DeclProvenance, Resource, Int)
 
 type InferableParameterContext = Map Name (Maybe InferableParameterEntry)
 
-type ParameterContext = Map Name StandardTypedExpr
+type ParameterContext = Map Name StandardGluedExpr
 
-type DatasetContext = Map Name StandardTypedExpr
+type DatasetContext = Map Name StandardGluedExpr
 
 data ResourceContext = ResourceContext
   { inferableParameterContext :: InferableParameterContext,
@@ -58,14 +58,14 @@ addPossibleInferableParameterSolution ident entry ResourceContext {..} =
       ..
     }
 
-addParameter :: Identifier -> StandardTypedExpr -> ResourceContext -> ResourceContext
+addParameter :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
 addParameter ident value ResourceContext {..} =
   ResourceContext
     { parameterContext = Map.insert (nameOf ident) value parameterContext,
       ..
     }
 
-addDataset :: Identifier -> StandardTypedExpr -> ResourceContext -> ResourceContext
+addDataset :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
 addDataset ident value ResourceContext {..} =
   ResourceContext
     { datasetContext = Map.insert (nameOf ident) value datasetContext,

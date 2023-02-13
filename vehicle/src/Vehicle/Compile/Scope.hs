@@ -135,16 +135,14 @@ findGeneralisableVariables declContext expr =
   where
     traverseVar ::
       (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
-      Provenance ->
-      Name ->
-      m Name
+      VarUpdate m Name Name
     traverseVar p symbol = do
       (declCtx, boundCtx) <- ask
 
       when (Map.notMember symbol declCtx && notElem (Just symbol) boundCtx) $ do
         tell [(p, symbol)]
 
-      return symbol
+      return $ BoundVar p symbol
 
 generaliseOverVariables ::
   MonadCompile m =>
@@ -182,16 +180,16 @@ scopeExpr :: MonadScopeExpr m => UnscopedExpr -> m ScopedExpr
 scopeExpr = traverseVars scopeVar
 
 -- | Find the index for a given name of a given sort.
-scopeVar :: MonadScopeExpr m => Provenance -> Name -> m DBIndexVar
+scopeVar :: MonadScopeExpr m => VarUpdate m Name DBIndex
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
-    Just i -> return $ Bound $ DBIndex i
+    Just i -> return $ BoundVar p $ DBIndex i
     Nothing -> case Map.lookup symbol declCtx of
       Just ident -> do
         tell [ident]
-        return $ Free ident
+        return $ FreeVar p ident
       Nothing -> do
         throwError $ UnboundName p symbol
 
@@ -203,22 +201,24 @@ type MonadTraverse m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
+type VarUpdate m var1 var2 =
+  forall builtin. Provenance -> var1 -> m (Expr NamedBinding var2 builtin)
+
 traverseVars ::
   MonadTraverse m =>
-  (Provenance -> var1 -> m var2) ->
+  VarUpdate m var1 var2 ->
   Expr NamedBinding var1 builtin ->
   m (Expr NamedBinding var2 builtin)
 traverseVars f e = do
   result <- case e of
-    Var p v -> Var p <$> f p v
+    BoundVar p v -> f p v
+    FreeVar p v -> return $ FreeVar p v
     Universe p l -> return $ Universe p l
     Meta p i -> return $ Meta p i
     Hole p n -> return $ Hole p n
     Builtin p op -> return $ Builtin p op
-    Literal p l -> return $ Literal p l
     Ann p ex t -> Ann p <$> traverseVars f ex <*> traverseVars f t
     App p fun args -> App p <$> traverseVars f fun <*> traverse (traverse (traverseVars f)) args
-    LVec p es -> LVec p <$> traverse (traverseVars f) es
     Pi p binder res ->
       traverseBinder f binder $ \binder' ->
         Pi p binder' <$> traverseVars f res
@@ -234,7 +234,7 @@ traverseVars f e = do
 
 traverseBinder ::
   MonadTraverse m =>
-  (Provenance -> var1 -> m var2) ->
+  VarUpdate m var1 var2 ->
   Binder NamedBinding var1 builtin ->
   (Binder NamedBinding var2 builtin -> m (Expr NamedBinding var2 builtin)) ->
   m (Expr NamedBinding var2 builtin)
@@ -259,7 +259,7 @@ getImportCtx imports =
   Map.fromList $
     [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
   where
-    getEntry :: TypedDecl Builtin -> (Name, Identifier)
+    getEntry :: StandardGluedDecl -> (Name, Identifier)
     getEntry d = do
       let ident = identifierOf d
       (nameOf ident, ident)

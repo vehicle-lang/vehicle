@@ -111,11 +111,19 @@ Profiling of the compiler can be done by:
 
 This will generate a `vehicle.prof` profiling file. The file can be viewed in a nice graphical format by installing `profiteur` and then running `profiteur vehicle.prof` to generate `vehicle.prof.html` which is then viewable in a web-browser.
 
-## 7. Documentation
+## 7. Detecting infinite loops
+
+The testing framework captures the output of the program and therefore will not produce anything
+if the program itself loops.
+
+Consequently if you expect that there is an infinite loop in the test, the better way is to execute
+the test directly via `cabal run exe:vehicle -- ARGS --logging MaxDetail`.
+
+## 8. Documentation
 
 The documentation is hosted by ReadTheDocs (RTD). The documentation is automatically rebuilt.
 
-## 8. Coding conventions
+## 9. Coding conventions
 
 - In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable

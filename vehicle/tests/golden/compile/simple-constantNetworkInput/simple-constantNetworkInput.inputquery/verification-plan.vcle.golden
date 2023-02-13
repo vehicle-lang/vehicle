@@ -7,41 +7,26 @@
     {
       "tag": "SingleProperty",
       "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
             "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
-                  "unDisjunctAll": [
-                    {
-                      "userVar": [],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
+              "unDisjunctAll": [
+                {
+                  "userVar": [],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
                   ]
                 }
-              },
-              "negated": false
+              ]
             }
           },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "Trivial",
-                "contents": true
-              },
-              "negated": false
-            }
-          }
-        ]
+          "negated": false
+        }
       }
     }
   ]

@@ -7,6 +7,7 @@ where
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (NormBinder, NormExpr (..), Spine)
 
 --------------------------------------------------------------------------------
@@ -67,7 +68,7 @@ instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) wher
 instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr DBBinding DBIndexVar builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (Expr DBBinding DBIndex builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -82,7 +83,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (NormExpr builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (NormExpr types) (Expr InputBinding InputVar (NormalisableBuiltin types)) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -116,12 +117,11 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
   Hole p name -> return $ Hole p name
   Builtin p op -> return $ Builtin p op
-  Literal p l -> return $ Literal p l
   Meta p i -> return $ Meta p i
-  Var p v -> Var p <$> f p v
+  FreeVar p v -> return $ FreeVar p v
+  BoundVar p v -> BoundVar p <$> f p v
   Ann p e1 t -> Ann p <$> descopeExpr f e1 <*> descopeExpr f t
   App p fun args -> App p <$> descopeExpr f fun <*> traverse (descopeArg f) args
-  LVec p es -> LVec p <$> traverse (descopeExpr f) es
   Let p bound binder body -> do
     bound' <- descopeExpr f bound
     binder' <- descopeBinder f binder
@@ -152,60 +152,55 @@ descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `NormExpr`s in a readable form.
-descopeNormExpr :: (Provenance -> DBLevel -> Name) -> NormExpr builtin -> Expr InputBinding InputVar builtin
+descopeNormExpr ::
+  (Provenance -> DBLevel -> Name) ->
+  NormExpr types ->
+  Expr InputBinding InputVar (NormalisableBuiltin types)
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
-  VLiteral l -> Literal p l
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
-  VFreeVar v spine -> normAppList p (Var p (nameOf v)) $ descopeSpine f spine
-  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
+  VFreeVar v spine -> normAppList p (FreeVar p v) $ descopeSpine f spine
+  VBuiltin b spine -> normAppList p (Builtin p b) $ fmap (ExplicitArg p . descopeNormExpr f) spine
   VBoundVar v spine -> do
-    let var = Var p $ f p v
+    let var = BoundVar p $ f p v
     let args = descopeSpine f spine
     normAppList p var args
-  VLVec xs _spine -> do
-    let xs' = fmap (descopeNormExpr f) xs
-    -- let args = descopeSpine f spine
-    -- normAppList p (LVec p xs') args
-    LVec p xs'
   VPi binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
     Pi p binder' body'
-  VLam binder env body -> do
+  VLam binder _env body -> do
     let binder' = descopeNormBinder f binder
-    let env' = fmap (descopeNormExpr f) env
     let body' = descopeNaive body
-    let envExpr = App p (Var p "ENV") [ExplicitArg p $ LVec p env']
-    Lam p binder' (App p envExpr [ExplicitArg p body'])
+    -- let env' = fmap (descopeNormExpr f) env
+    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (ExplicitArg p) env'
+    -- Lam p binder' (App p envExpr [ExplicitArg p body'])
+    Lam p binder' body'
   where
     p = mempty
 
 descopeSpine ::
   (Provenance -> DBLevel -> Name) ->
-  Spine builtin ->
-  [Arg InputBinding InputVar builtin]
+  Spine types ->
+  [Arg InputBinding InputVar (NormalisableBuiltin types)]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> DBLevel -> Name) ->
-  NormBinder builtin ->
-  Binder InputBinding InputVar builtin
+  NormBinder types ->
+  Binder InputBinding InputVar (NormalisableBuiltin types)
 descopeNormBinder f = fmap (descopeNormExpr f)
 
-descopeDBIndexVar :: MonadDescope m => Provenance -> DBIndexVar -> m Name
-descopeDBIndexVar _ (Free ident) = return $ nameOf ident
-descopeDBIndexVar p (Bound i) = do
+descopeDBIndexVar :: MonadDescope m => Provenance -> DBIndex -> m Name
+descopeDBIndexVar p i = do
   Ctx ctx <- ask
   case lookupVar ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
     Just Nothing -> return "_" -- usingUnnamedBoundVariable p i
     Just (Just name) -> return name
 
-descopeDBIndexVarNaive :: MonadDescope m => Provenance -> DBIndexVar -> m Name
-descopeDBIndexVarNaive _ = \case
-  Free i -> return $ nameOf i
-  Bound i -> return $ layoutAsText (pretty i)
+descopeDBIndexVarNaive :: MonadDescope m => Provenance -> DBIndex -> m Name
+descopeDBIndexVarNaive _ i = return $ layoutAsText (pretty i)
 
 descopeDBLevelVarNaive :: Provenance -> DBLevel -> Name
 descopeDBLevelVarNaive _ l = layoutAsText $ pretty l

@@ -32,13 +32,22 @@ data ITP
   deriving (Eq, Show, Read, Bounded, Enum)
 
 --------------------------------------------------------------------------------
+-- Different type-checking modes
+
+data TypingSystem
+  = Standard
+  | Polarity
+  | Linearity
+  deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
 -- General backends
 
 data Backend
   = ITP ITP
   | VerifierBackend VerifierIdentifier
   | LossFunction DifferentiableLogic
-  | TypeCheck
+  | TypeCheck TypingSystem
   deriving (Eq, Show)
 
 pattern AgdaBackend :: Backend
@@ -67,7 +76,7 @@ instance Pretty Backend where
     ITP x -> pretty $ show x
     VerifierBackend x -> pretty x
     LossFunction _ -> "LossFunction"
-    TypeCheck -> "TypeCheck"
+    TypeCheck _ -> "TypeCheck"
 
 instance Read Backend where
   readsPrec _d x = case x of
@@ -80,7 +89,9 @@ instance Read Backend where
     "LossFunction-Product" -> [(LossFunctionProduct, [])]
     "LossFunction-Yager" -> [(LossFunctionYager, [])]
     "Agda" -> [(AgdaBackend, [])]
-    "TypeCheck" -> [(TypeCheck, [])]
+    "TypeCheck" -> [(TypeCheck Standard, [])]
+    "LinearityCheck" -> [(TypeCheck Linearity, [])]
+    "PolarityCheck" -> [(TypeCheck Polarity, [])]
     _ -> []
 
 commentTokenOf :: Backend -> Maybe (Doc a)
@@ -88,21 +99,21 @@ commentTokenOf = \case
   VerifierBackend Marabou -> Nothing
   ITP Agda -> Just "--"
   LossFunction {} -> Nothing
-  TypeCheck -> Nothing
+  TypeCheck {} -> Nothing
 
 versionOf :: Backend -> Maybe Version
 versionOf target = case target of
   VerifierBackend Marabou -> Nothing
   ITP Agda -> Just $ makeVersion [2, 6, 2]
   LossFunction {} -> Nothing
-  TypeCheck -> Nothing
+  TypeCheck {} -> Nothing
 
 extensionOf :: Backend -> String
 extensionOf = \case
   VerifierBackend Marabou -> "-marabou"
   ITP Agda -> ".agda"
   LossFunction {} -> ".json"
-  TypeCheck -> ""
+  TypeCheck {} -> ""
 
 -- | Generate the file header given the token used to start comments in the
 --  target language

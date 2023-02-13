@@ -16,20 +16,15 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
-import Vehicle.Syntax.AST.Builtin.Linearity as X
-import Vehicle.Syntax.AST.Builtin.Polarity as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
 
 --------------------------------------------------------------------------------
--- Constructors
+-- Types
 
 -- | Constructors for types in the language. The types and type-classes
 -- are viewed as constructors for `Type`.
-data BuiltinConstructor
-  = -- Annotations - these should not be shown to the user.
-    Polarity Polarity
-  | Linearity Linearity
-  | -- Types
+data BuiltinType
+  = -- Types
     Unit
   | Bool
   | Index
@@ -38,11 +33,42 @@ data BuiltinConstructor
   | Rat
   | List
   | Vector
-  | -- Type classes
-    TypeClass TypeClass
-  | -- Container expressions
-    Nil
+  deriving (Eq, Show, Generic)
+
+instance NFData BuiltinType
+
+instance Hashable BuiltinType
+
+instance ToJSON BuiltinType
+
+instance Serialize BuiltinType
+
+instance Pretty BuiltinType where
+  pretty = \case
+    Unit -> "Unit"
+    Bool -> "Bool"
+    Index -> "Index"
+    Nat -> "Nat"
+    Int -> "Int"
+    Rat -> "Rat"
+    List -> "List"
+    Vector -> "Vector"
+
+--------------------------------------------------------------------------------
+-- Constructors
+
+-- | Constructors for types in the language. The types and type-classes
+-- are viewed as constructors for `Type`.
+data BuiltinConstructor
+  = Nil
   | Cons
+  | LUnit
+  | LBool Bool
+  | LIndex Int
+  | LNat Int
+  | LInt Int
+  | LRat Rational
+  | LVec Int
   deriving (Eq, Show, Generic)
 
 instance NFData BuiltinConstructor
@@ -55,19 +81,18 @@ instance Serialize BuiltinConstructor
 
 instance Pretty BuiltinConstructor where
   pretty = \case
-    Unit -> "Unit"
-    Bool -> "Bool"
-    Index -> "Index"
-    Nat -> "Nat"
-    Int -> "Int"
-    Rat -> "Rat"
-    List -> "List"
-    Vector -> "Vector"
-    TypeClass tc -> pretty tc
-    Polarity pol -> pretty pol
-    Linearity lin -> pretty lin
     Nil -> "nil"
     Cons -> "::"
+    LUnit -> "()"
+    LBool x -> pretty x
+    LIndex x -> pretty x
+    LNat x -> pretty x
+    LInt x -> pretty x
+    LRat x -> pretty x
+    LVec n -> "LVec[" <> pretty n <> "]"
+
+instance Pretty Rational where
+  pretty p = pretty (fromRational p :: Double)
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -231,26 +256,6 @@ instance FromJSON FromRatDomain
 
 instance Serialize FromRatDomain
 
-data FromVecDomain
-  = FromVecToVec
-  | FromVecToList
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromVecDomain where
-  pretty = \case
-    FromVecToVec -> "Vector"
-    FromVecToList -> "List"
-
-instance NFData FromVecDomain
-
-instance Hashable FromVecDomain
-
-instance ToJSON FromVecDomain
-
-instance FromJSON FromVecDomain
-
-instance Serialize FromVecDomain
-
 data FoldDomain
   = FoldList
   | FoldVector
@@ -270,26 +275,6 @@ instance ToJSON FoldDomain
 instance FromJSON FoldDomain
 
 instance Serialize FoldDomain
-
-data MapDomain
-  = MapList
-  | MapVector
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty MapDomain where
-  pretty = \case
-    MapList -> "List"
-    MapVector -> "Vector"
-
-instance NFData MapDomain
-
-instance Hashable MapDomain
-
-instance ToJSON MapDomain
-
-instance FromJSON MapDomain
-
-instance Serialize MapDomain
 
 data QuantifierDomain
   = QuantNat
@@ -325,7 +310,6 @@ data BuiltinFunction
   | -- Numeric conversion
     FromNat Int FromNatDomain
   | FromRat FromRatDomain
-  | FromVec Int FromVecDomain
   | -- Numeric operations
     Neg NegDomain
   | Add AddDomain
@@ -336,9 +320,9 @@ data BuiltinFunction
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
   | At
-  | Map MapDomain
+  | ConsVector
   | Fold FoldDomain
-  | Foreach
+  | Indices
   deriving (Eq, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -353,10 +337,10 @@ instance Serialize BuiltinFunction
 -- somehow.
 instance Pretty BuiltinFunction where
   pretty = \case
-    Not -> "notBool"
-    And -> "andBool"
-    Or -> "orBool"
-    Implies -> "impliesBool"
+    Not -> "not"
+    And -> "and"
+    Or -> "or"
+    Implies -> "=>"
     Quantifier q dom -> pretty q <> pretty dom
     If -> "if"
     Neg dom -> "neg" <> pretty dom
@@ -366,21 +350,20 @@ instance Pretty BuiltinFunction where
     Div dom -> "div" <> pretty dom
     FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
-    FromVec n dom -> "fromVec[" <> pretty n <> "]To" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
-    Foreach -> "foreach"
     Fold dom -> "fold" <> pretty dom
-    Map dom -> "map" <> pretty dom
     At -> "!"
+    ConsVector -> "::v"
+    Indices -> "indices"
 
 -- | Builtins in the Vehicle language
 data Builtin
   = Constructor BuiltinConstructor
-  | -- Boolean expressions
-    BuiltinFunction BuiltinFunction
-  | -- Derived
-    TypeClassOp TypeClassOp
+  | BuiltinFunction BuiltinFunction
+  | BuiltinType BuiltinType
+  | TypeClass TypeClass
+  | TypeClassOp TypeClassOp
   deriving (Eq, Show, Generic)
 
 instance NFData Builtin
@@ -396,8 +379,10 @@ instance Serialize Builtin
 instance Pretty Builtin where
   pretty = \case
     Constructor c -> pretty c
-    TypeClassOp tcOp -> pretty tcOp
-    BuiltinFunction function -> pretty function
+    TypeClass tc -> pretty tc
+    TypeClassOp o -> pretty o
+    BuiltinFunction f -> pretty f
+    BuiltinType t -> pretty t
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = mempty

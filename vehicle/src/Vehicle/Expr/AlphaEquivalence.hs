@@ -6,7 +6,6 @@ module Vehicle.Expr.AlphaEquivalence
 where
 
 import Data.Hashable (Hashable (..))
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion

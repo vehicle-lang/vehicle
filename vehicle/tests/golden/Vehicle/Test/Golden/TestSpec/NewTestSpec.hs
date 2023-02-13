@@ -47,7 +47,7 @@ import Test.Tasty.Options (IsOption (optionHelp, parseValue))
 import Text.Printf (printf)
 import Vehicle qualified (ModeOptions, Options (..))
 import Vehicle qualified as ModeOptions (ModeOptions (..))
-import Vehicle.Backend.Prelude (Backend (TypeCheck), pattern MarabouBackend)
+import Vehicle.Backend.Prelude (Backend (TypeCheck), TypingSystem (..), pattern MarabouBackend)
 import Vehicle.Backend.Prelude qualified as Backend
 import Vehicle.Check qualified as CheckOptions (proofCache)
 import Vehicle.Check qualified as Vehicle (CheckOptions)
@@ -260,7 +260,7 @@ instance TestSpecLike Vehicle.CompileOptions where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
         case CompileOptions.target opts of
-          TypeCheck -> assert (isNothing outputFile) []
+          TypeCheck Standard -> assert (isNothing outputFile) []
           MarabouBackend -> [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
           _ -> maybeToList outputFile
 

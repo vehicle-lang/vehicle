@@ -2,115 +2,203 @@
 
 module Vehicle.Compile.Type.Subsystem.Standard.Core where
 
-import Data.Serialize
+import Control.Monad.Identity
+import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
+import GHC.Generics
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary
 
 -----------------------------------------------------------------------------
--- Constraints
+-- Types
 
-type StandardConstraintProgress = ConstraintProgress Builtin
+data StandardBuiltinType
+  = StandardBuiltinType BuiltinType
+  | StandardTypeClass TypeClass
+  | StandardTypeClassOp TypeClassOp
+  deriving (Eq, Show, Generic)
 
-type StandardTypeClassConstraint = TypeClassConstraint Builtin
+instance Pretty StandardBuiltinType where
+  pretty = \case
+    StandardBuiltinType t -> pretty t
+    StandardTypeClass t -> pretty t
+    StandardTypeClassOp t -> pretty t
 
-type StandardUnificationConstraint = UnificationConstraint Builtin
+instance PrintableBuiltin StandardBuiltinType where
+  convertBuiltin p b = Builtin p $ case b of
+    StandardBuiltinType t -> BuiltinType t
+    StandardTypeClass t -> TypeClass t
+    StandardTypeClassOp t -> TypeClassOp t
 
-type StandardConstraintContext = ConstraintContext Builtin
+  isTypeClassOp = \case
+    StandardTypeClassOp {} -> True
+    _ -> False
 
-type StandardConstraint = Constraint Builtin
+instance Hashable StandardBuiltinType
+
+instance Serialize StandardBuiltinType
+
+convertToNormalisableBuiltins :: DBExpr Builtin -> DBExpr StandardBuiltin
+convertToNormalisableBuiltins expr = runIdentity (traverseBuiltins updateFn expr)
+  where
+    updateFn :: BuiltinUpdate Identity DBBinding DBIndex Builtin StandardBuiltin
+    updateFn p1 p2 b args = do
+      fn <- case b of
+        Constructor c -> return $ Builtin p2 $ CConstructor c
+        BuiltinFunction f -> return $ Builtin p2 $ CFunction f
+        BuiltinType t -> return $ Builtin p2 $ CType $ StandardBuiltinType t
+        TypeClass t -> return $ Builtin p2 $ CType $ StandardTypeClass t
+        TypeClassOp t -> return $ Builtin p2 $ CType $ StandardTypeClassOp t
+
+      return $ normAppList p1 fn args
+
+-----------------------------------------------------------------------------
+-- Expressions
+
+type StandardBuiltin = NormalisableBuiltin StandardBuiltinType
+
+type StandardExpr = NormalisableExpr StandardBuiltinType
+
+type StandardBinder = NormalisableBinder StandardBuiltinType
+
+type StandardArg = NormalisableArg StandardBuiltinType
+
+type StandardDecl = NormalisableDecl StandardBuiltinType
+
+type StandardProg = NormalisableProg StandardBuiltinType
+
+type StandardType = StandardExpr
+
+type StandardTelescope = NormalisableTelescope StandardBuiltinType
+
+type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
 
 -----------------------------------------------------------------------------
 -- Norm expressions
 
-type StandardNormExpr = NormExpr Builtin
+type StandardNormExpr = NormExpr StandardBuiltinType
 
-type StandardNormBinder = NormBinder Builtin
+type StandardNormBinder = NormBinder StandardBuiltinType
 
-type StandardNormArg = NormArg Builtin
+type StandardNormArg = NormArg StandardBuiltinType
 
-type StandardNormType = NormType Builtin
+type StandardNormType = NormType StandardBuiltinType
 
-type StandardSpine = Spine Builtin
+type StandardSpine = Spine StandardBuiltinType
 
-type StandardEnv = Env Builtin
+type StandardExplicitSpine = ExplicitSpine StandardBuiltinType
 
-pattern VBuiltinFunction :: BuiltinFunction -> StandardSpine -> StandardNormExpr
-pattern VBuiltinFunction f spine = VBuiltin (BuiltinFunction f) spine
-
-pattern VConstructor :: BuiltinConstructor -> StandardSpine -> StandardNormExpr
-pattern VConstructor c args = VBuiltin (Constructor c) args
-
-pattern VLinearityExpr :: Linearity -> StandardNormExpr
-pattern VLinearityExpr l <- VConstructor (Linearity l) []
-  where
-    VLinearityExpr l = VConstructor (Linearity l) []
-
-pattern VPolarityExpr :: Polarity -> StandardNormExpr
-pattern VPolarityExpr l <- VConstructor (Polarity l) []
-  where
-    VPolarityExpr l = VConstructor (Polarity l) []
-
-pattern VAnnBoolType :: StandardNormExpr -> StandardNormExpr -> StandardNormType
-pattern VAnnBoolType lin pol <- VConstructor Bool [IrrelevantImplicitArg _ lin, IrrelevantImplicitArg _ pol]
-
-pattern VBoolType :: StandardNormType
-pattern VBoolType <- VConstructor Bool []
-  where
-    VBoolType = VConstructor Bool []
-
-pattern VIndexType :: StandardNormType -> StandardNormType
-pattern VIndexType size <- VConstructor Index [ExplicitArg _ size]
-
-pattern VNatType :: StandardNormType
-pattern VNatType <- VConstructor Nat []
-  where
-    VNatType = VConstructor Nat []
-
-pattern VIntType :: StandardNormType
-pattern VIntType <- VConstructor Int []
-  where
-    VIntType = VConstructor Int []
-
-pattern VAnnRatType :: StandardNormExpr -> StandardNormType
-pattern VAnnRatType lin <- VConstructor Rat [IrrelevantImplicitArg _ lin]
-
-pattern VRatType :: StandardNormType
-pattern VRatType <- VConstructor Rat []
-  where
-    VRatType = VConstructor Rat []
-
-pattern VListType :: StandardNormType -> StandardNormType
-pattern VListType tElem <- VConstructor List [ExplicitArg _ tElem]
-
-pattern VVectorType :: StandardNormType -> StandardNormType -> StandardNormType
-pattern VVectorType tElem dim <- VConstructor Vector [ExplicitArg _ tElem, ExplicitArg _ dim]
-
-pattern VTensorType :: StandardNormType -> StandardNormType -> StandardNormType
-pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
-
-mkVList :: StandardNormType -> [StandardNormExpr] -> StandardNormExpr
-mkVList tElem = foldr cons nil
-  where
-    p = mempty
-    t = ImplicitArg p tElem
-    nil = VConstructor Nil [t]
-    cons y ys = VConstructor Cons [t, ExplicitArg p y, ExplicitArg p ys]
+type StandardEnv = Env StandardBuiltinType
 
 -----------------------------------------------------------------------------
 -- Glued expressions
 
-type StandardGluedExpr = GluedExpr Builtin
+type StandardGluedExpr = GluedExpr StandardBuiltinType
 
-type StandardGluedType = GluedType Builtin
+type StandardGluedType = GluedType StandardBuiltinType
 
-type StandardTypedExpr = TypedExpr Builtin
+type StandardGluedProg = GenericProg StandardGluedExpr
 
-instance Serialize StandardTypedExpr
+type StandardGluedDecl = GenericDecl StandardGluedExpr
 
-type StandardTypedProg = GenericProg StandardTypedExpr
+type ImportedModules = [StandardGluedProg]
 
-type StandardTypedDecl = GenericDecl StandardTypedExpr
+-----------------------------------------------------------------------------
+-- Constraints
 
-type ImportedModules = [StandardTypedProg]
+type StandardConstraintProgress = ConstraintProgress StandardBuiltinType
+
+type StandardTypeClassConstraint = TypeClassConstraint StandardBuiltinType
+
+type StandardUnificationConstraint = UnificationConstraint StandardBuiltinType
+
+type StandardConstraintContext = ConstraintContext StandardBuiltinType
+
+type StandardConstraint = Constraint StandardBuiltinType
+
+-----------------------------------------------------------------------------
+-- Normalised patterns
+
+pattern VBuiltinType :: BuiltinType -> StandardExplicitSpine -> StandardNormExpr
+pattern VBuiltinType c args = VBuiltin (CType (StandardBuiltinType c)) args
+
+pattern VBoolType :: StandardNormType
+pattern VBoolType <- VBuiltinType Bool []
+  where
+    VBoolType = VBuiltinType Bool []
+
+pattern VIndexType :: StandardNormType -> StandardNormType
+pattern VIndexType size <- VBuiltinType Index [size]
+  where
+    VIndexType size = VBuiltinType Index [size]
+
+pattern VNatType :: StandardNormType
+pattern VNatType <- VBuiltinType Nat []
+  where
+    VNatType = VBuiltinType Nat []
+
+pattern VIntType :: StandardNormType
+pattern VIntType <- VBuiltinType Int []
+  where
+    VIntType = VBuiltinType Int []
+
+pattern VRatType :: StandardNormType
+pattern VRatType <- VBuiltinType Rat []
+  where
+    VRatType = VBuiltinType Rat []
+
+pattern VListType :: StandardNormType -> StandardNormType
+pattern VListType tElem <- VBuiltinType List [tElem]
+
+pattern VVectorType :: StandardNormType -> StandardNormExpr -> StandardNormType
+pattern VVectorType tElem dim <- VBuiltinType Vector [tElem, dim]
+  where
+    VVectorType tElem dim = VBuiltinType Vector [tElem, dim]
+
+pattern VTensorType :: StandardNormType -> StandardNormType -> StandardNormType
+pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
+
+--------------------------------------------------------------------------------
+-- Instance constraints
+
+data InstanceGoal = InstanceGoal
+  { goalTelescope :: StandardTelescope,
+    goalHead :: TypeClass,
+    goalSpine :: StandardExplicitSpine
+  }
+  deriving (Show)
+
+goalExpr :: InstanceGoal -> StandardNormExpr
+goalExpr InstanceGoal {..} = VBuiltin (CType (StandardTypeClass goalHead)) goalSpine
+
+data InstanceCandidate = InstanceCandidate
+  { candidateExpr :: StandardExpr,
+    candidateSolution :: StandardExpr
+  }
+  deriving (Show)
+
+type instance
+  WithContext InstanceCandidate =
+    Contextualised InstanceCandidate StandardTypingBoundCtx
+
+-----------------------------------------------------------------------------
+
+-- * Types post type-checking
+
+-----------------------------------------------------------------------------
+
+type TypeCheckedBinder = DBBinder StandardBuiltin
+
+type TypeCheckedArg = DBArg StandardBuiltin
+
+type TypeCheckedExpr = DBExpr StandardBuiltin
+
+type TypeCheckedType = DBExpr StandardBuiltin
+
+type TypeCheckedDecl = DBDecl StandardBuiltin
+
+type TypeCheckedProg = DBProg StandardBuiltin

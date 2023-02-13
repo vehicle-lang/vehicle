@@ -70,7 +70,7 @@ identifierName (Identifier _ n) = n
 --------------------------------------------------------------------------------
 -- Names
 
-class HasName a name where
+class HasName a name | a -> name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where

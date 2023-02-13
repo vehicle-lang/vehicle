@@ -54,13 +54,12 @@ instance Delaborate V.InputDecl B.Decl where
 instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of
     V.Universe _ u -> return $ delabUniverse u
-    V.Var _ n -> return $ B.Var (delabSymbol n)
+    V.FreeVar _ n -> return $ B.Var (delabSymbol (V.nameOf n))
+    V.BoundVar _ n -> return $ B.Var (delabSymbol n)
     V.Hole _ n -> return $ B.Hole (mkToken B.HoleToken n)
-    V.Literal _ l -> return $ delabLiteral l
     V.Builtin _ op -> return $ delabBuiltin op
     V.Ann _ e t -> B.Ann <$> delabM e <*> delabM t
     V.Pi _ b t -> B.Pi <$> delabM b <*> delabM t
-    V.LVec _ es -> B.LVec <$> traverse delabM es
     V.Let _ v b e -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
     V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
@@ -87,26 +86,12 @@ instance Delaborate V.InputBinder B.Binder where
       (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
       (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
 
-delabUniverse :: V.Universe -> B.Expr
+delabUniverse :: V.UniverseLevel -> B.Expr
 delabUniverse = \case
-  V.TypeUniv l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
-  V.PolarityUniv -> B.Builtin $ mkBuiltinToken V.PolarityUniv
-  V.LinearityUniv -> B.Builtin $ mkBuiltinToken V.LinearityUniv
+  V.UniverseLevel l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
   where
     mkBuiltinToken :: Pretty a => a -> B.BuiltinToken
     mkBuiltinToken a = mkToken B.BuiltinToken $ layoutAsText (pretty a)
-
-delabLiteral :: V.Literal -> B.Expr
-delabLiteral l = case l of
-  V.LUnit -> B.Literal B.UnitLiteral
-  V.LBool b -> delabBoolLit b
-  V.LIndex _ n -> delabNatLit n
-  V.LNat n -> delabNatLit n
-  V.LInt i ->
-    if i >= 0
-      then delabNatLit i
-      else B.App (delabBuiltin (V.BuiltinFunction $ V.Neg V.NegInt)) $ B.RelevantExplicitArg (delabNatLit (-i))
-  V.LRat r -> delabRatLit r
 
 delabBoolLit :: Bool -> B.Expr
 delabBoolLit b = B.Literal $ B.BoolLiteral (mkToken B.BoolToken (if b then "True" else "False"))

@@ -2,49 +2,55 @@
   [
     "index",
     {
-      "tag": "TensorLiteral",
+      "tag": "Map",
       "contents": [
         {
-          "tag": "Max",
+          "tag": "Lambda",
           "contents": [
+            "i",
             {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
+              "tag": "Max",
               "contents": [
                 {
                   "tag": "Constant",
                   "contents": 0
                 },
                 {
-                  "tag": "At",
+                  "tag": "Subtraction",
                   "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "TensorLiteral",
-                            "contents": [
-                              {
-                                "tag": "Constant",
-                                "contents": 0
-                              },
-                              {
-                                "tag": "Constant",
-                                "contents": 0
-                              }
-                            ]
-                          }
-                        ]
-                      ]
-                    },
                     {
                       "tag": "Constant",
                       "contents": 0
+                    },
+                    {
+                      "tag": "At",
+                      "contents": [
+                        {
+                          "tag": "NetworkApplication",
+                          "contents": [
+                            "f",
+                            [
+                              {
+                                "tag": "TensorLiteral",
+                                "contents": [
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
+                                  },
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "Variable",
+                          "contents": "i"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -53,52 +59,11 @@
           ]
         },
         {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "TensorLiteral",
-                            "contents": [
-                              {
-                                "tag": "Constant",
-                                "contents": 0
-                              },
-                              {
-                                "tag": "Constant",
-                                "contents": 0
-                              }
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 1
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+          "tag": "Range",
+          "contents": {
+            "tag": "Constant",
+            "contents": 2
+          }
         }
       ]
     }

@@ -1,12 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Expr.DeBruijn
-  ( LocallyNamelessVar (..),
-    DBBinding,
+  ( DBBinding,
     DBIndex (..),
-    DBIndexVar,
     DBLevel (..),
-    DBLevelVar,
     DBBinder,
     DBArg,
     DBType,
@@ -38,20 +35,6 @@ import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Definitions
-
--- | The type of data DeBruijn indices store at name sites
-data LocallyNamelessVar a
-  = Free Identifier
-  | Bound a
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData a => NFData (LocallyNamelessVar a)
-
-instance Hashable a => Hashable (LocallyNamelessVar a)
-
-instance ToJSON a => ToJSON (LocallyNamelessVar a)
-
-instance Serialize a => Serialize (LocallyNamelessVar a)
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the variable position upwards.
@@ -91,12 +74,6 @@ instance Serialize DBLevel
 instance Pretty DBLevel where
   pretty l = "𝓵" <> pretty (unLevel l)
 
--- | The type of data DeBruijn indices store at name sites
-type DBIndexVar = LocallyNamelessVar DBIndex
-
--- | The type of data DeBruijn levels store at name sites
-type DBLevelVar = LocallyNamelessVar DBLevel
-
 -- | The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = ()
 
@@ -112,17 +89,17 @@ shiftDBIndex i l = DBIndex (unIndex i + unLevel l)
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder builtin = Binder DBBinding DBIndexVar builtin
+type DBBinder builtin = Binder DBBinding DBIndex builtin
 
-type DBArg builtin = Arg DBBinding DBIndexVar builtin
+type DBArg builtin = Arg DBBinding DBIndex builtin
 
 type DBType builtin = DBExpr builtin
 
-type DBExpr builtin = Expr DBBinding DBIndexVar builtin
+type DBExpr builtin = Expr DBBinding DBIndex builtin
 
-type DBDecl builtin = Decl DBBinding DBIndexVar builtin
+type DBDecl builtin = Decl DBBinding DBIndex builtin
 
-type DBProg builtin = Prog DBBinding DBIndexVar builtin
+type DBProg builtin = Prog DBBinding DBIndex builtin
 
 type DBTelescope builtin = [DBBinder builtin]
 
@@ -141,22 +118,20 @@ instance Substitutable expr expr => Substitutable expr (GenericBinder binder exp
   subst = traverse subst
 
 instance Substitutable (DBExpr builtin) (DBExpr builtin) where
-  subst = \case
-    Var p (Bound i) -> do
+  subst expr = case expr of
+    BoundVar p i -> do
       (d, s) <- ask
       return $
         if unIndex i < unLevel d
-          then Var p (Bound i)
+          then BoundVar p i
           else case s (shiftDBIndex i (-d)) of
-            Left i' -> Var p (Bound $ shiftDBIndex i' d)
+            Left i' -> BoundVar p (shiftDBIndex i' d)
             Right v -> if d > 0 then liftDBIndices d v else v
-    Universe p l -> return $ Universe p l
-    Meta p m -> return $ Meta p m
-    Hole p name -> return $ Hole p name
-    Builtin p op -> return $ Builtin p op
-    Literal p l -> return $ Literal p l
-    Var p (Free i) -> return $ Var p (Free i)
-    LVec p es -> LVec p <$> traverse subst es
+    Universe {} -> return expr
+    Meta {} -> return expr
+    Hole {} -> return expr
+    Builtin {} -> return expr
+    FreeVar {} -> return expr
     Ann p term typ -> Ann p <$> subst term <*> subst typ
     App p fun args -> normApp p <$> subst fun <*> traverse subst args
     Pi p binder res -> Pi p <$> traverse subst binder <*> underDBBinder (subst res)

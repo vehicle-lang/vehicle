@@ -33,10 +33,6 @@ instance HasRelevance TypeClass where
   relevanceOf = \case
     HasEq {} -> Relevant
     HasOrd {} -> Relevant
-    HasNot {} -> Relevant
-    HasAnd {} -> Relevant
-    HasOr {} -> Relevant
-    HasImplies {} -> Relevant
     HasQuantifier {} -> Relevant
     HasAdd {} -> Relevant
     HasSub {} -> Relevant
@@ -49,8 +45,4 @@ instance HasRelevance TypeClass where
     HasNatLits {} -> Relevant
     HasRatLits {} -> Relevant
     HasVecLits {} -> Relevant
-    HasIf {} -> Irrelevant
-    AlmostEqualConstraint {} -> Irrelevant
     NatInDomainConstraint {} -> Irrelevant
-    LinearityTypeClass {} -> Irrelevant
-    PolarityTypeClass {} -> Irrelevant

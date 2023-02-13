@@ -112,7 +112,6 @@ library
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
     Vehicle.Compile.Normalise
-    Vehicle.Compile.Normalise.Core
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
@@ -121,6 +120,7 @@ library
     Vehicle.Compile.Queries.GaussianElimination
     Vehicle.Compile.Queries.IfElimination
     Vehicle.Compile.Queries.LinearExpr
+    Vehicle.Compile.Queries.LinearityAndPolarityErrors
     Vehicle.Compile.Queries.LinearSatisfactionProblem
     Vehicle.Compile.Queries.LNF
     Vehicle.Compile.Queries.NetworkElimination
@@ -131,6 +131,7 @@ library
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
     Vehicle.Compile.Type.Subsystem.Standard
+    Vehicle.Compile.Type.Subsystem.Standard.Patterns
     Vehicle.Export
     Vehicle.Expr.AlphaEquivalence
     Vehicle.Expr.Boolean
@@ -139,11 +140,10 @@ library
     Vehicle.Expr.CoDeBruijn.PositionTree
     Vehicle.Expr.DeBruijn
     Vehicle.Expr.DSL
+    Vehicle.Expr.Normalisable
     Vehicle.Expr.Normalised
-    Vehicle.Expr.Patterns
     Vehicle.Libraries
     Vehicle.Libraries.StandardLibrary
-    Vehicle.Libraries.StandardLibrary.Names
     Vehicle.Prelude
     Vehicle.Resource
     Vehicle.Verify
@@ -170,9 +170,7 @@ library
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Queries
-    Vehicle.Compile.Type.Auxiliary
     Vehicle.Compile.Type.Bidirectional
-    Vehicle.Compile.Type.Constraint
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
@@ -186,19 +184,25 @@ library
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Monad.Class
     Vehicle.Compile.Type.Monad.Instance
-    Vehicle.Compile.Type.Subsystem
+    Vehicle.Compile.Type.Subsystem.InputOutputInsertion
+    Vehicle.Compile.Type.Subsystem.Linearity
+    Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions
+    Vehicle.Compile.Type.Subsystem.Linearity.Core
+    Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
+    Vehicle.Compile.Type.Subsystem.Linearity.Type
+    Vehicle.Compile.Type.Subsystem.Polarity
+    Vehicle.Compile.Type.Subsystem.Polarity.AnnotationRestrictions
+    Vehicle.Compile.Type.Subsystem.Polarity.Core
+    Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
+    Vehicle.Compile.Type.Subsystem.Polarity.Type
+    Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.LinearitySolver
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.PolaritySolver
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
-    Vehicle.Compile.Type.Subsystem.Standard.Normalisation
     Vehicle.Compile.Type.Subsystem.Standard.Type
-    Vehicle.Compile.Type.Subsystem.Standard.TypeResource
-    Vehicle.Compile.Type.VariableContext
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging

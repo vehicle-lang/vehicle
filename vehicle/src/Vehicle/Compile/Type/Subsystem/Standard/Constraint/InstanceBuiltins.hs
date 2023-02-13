@@ -2,7 +2,7 @@
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-  ( declaredCandidates,
+  ( builtinInstances,
     findTypeClassOfCandidate,
   )
 where
@@ -12,21 +12,21 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint (InstanceCandidate (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core ()
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL hiding (builtin)
-import Vehicle.Libraries.StandardLibrary.Names (StdLibFunction (..))
+import Vehicle.Expr.Normalisable
+import Vehicle.Libraries.StandardLibrary
 
-declaredCandidates :: HashMap TypeClass [InstanceCandidate]
-declaredCandidates = do
+builtinInstances :: HashMap TypeClass [Provenance -> InstanceCandidate]
+builtinInstances = do
   let tcAndCandidates = fmap (second (: []) . processCandidate) candidates
   HashMap.fromListWith (<>) tcAndCandidates
 
-findTypeClassOfCandidate :: TypeCheckedExpr -> Either TypeCheckedExpr TypeClass
+findTypeClassOfCandidate :: StandardExpr -> Either StandardExpr TypeClass
 findTypeClassOfCandidate = \case
   Pi _ binder body
     | not (isExplicit binder) -> findTypeClassOfCandidate body
-  App _ (Builtin _ (Constructor (TypeClass tc))) _ -> Right tc
+  App _ (Builtin _ (CType (StandardTypeClass tc))) _ -> Right tc
   expr -> Left expr
 
 --------------------------------------------------------------------------------
@@ -38,101 +38,97 @@ findTypeClassOfCandidate = \case
 -- Also note that annoyingly because of a lack of first class records we have
 -- to duplicate the context for both the candidate and the candidate's solution.
 
-candidates :: [InstanceCandidate]
+candidates :: [Provenance -> InstanceCandidate]
 candidates =
   mkCandidate
     <$> [
           ----------------
           -- HasRatLits --
           ----------------
-          ( hasRatLits (tAnnRat constant),
+          ( hasRatLits tRat,
             builtin (FromRat FromRatToRat)
+          ),
+          ----------------
+          -- HasVecLits --
+          ----------------
+          ( forAll "n" tNat $ \n ->
+              hasVecLits n (tVectorFunctor n),
+            implLam "n" tNat $ \n ->
+              free StdVectorToVector @@@ [n]
+          ),
+          ( forAll "n" tNat $ \n ->
+              hasVecLits n tListRaw,
+            implLam "n" tNat $ \n ->
+              free StdVectorToList @@@ [n]
           ),
           ------------
           -- HasEq --
           ------------
           ( forAll "n1" tNat $ \n1 ->
               forAll "n2" tNat $ \n2 ->
-                hasEq Eq constant (tIndex n1) (tIndex n2),
-            forAll "n1" tNat $ \n1 ->
-              forAll "n2" tNat $ \n2 ->
+                hasEq Eq (tIndex n1) (tIndex n2),
+            implLam "n1" tNat $ \n1 ->
+              implLam "n2" tNat $ \n2 ->
                 builtin (Equals EqIndex Eq) @@@ [n1, n2]
           ),
-          ( hasEq Eq constant tNat tNat,
+          ( hasEq Eq tNat tNat,
             builtin (Equals EqNat Eq)
           ),
-          ( hasEq Eq constant tInt tInt,
+          ( hasEq Eq tInt tInt,
             builtin (Equals EqInt Eq)
           ),
-          ( forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> hasEq Eq l3 (tAnnRat l1) (tAnnRat l2),
-            forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> builtin (Equals EqRat Eq)
+          ( hasEq Eq tRat tRat,
+            builtin (Equals EqRat Eq)
           ),
           ( forAll "t1" type0 $ \t1 ->
               forAll "t2" type0 $ \t2 ->
-                forAll "l" tLin $ \l ->
-                  forAllNat $ \n ->
-                    hasEq Eq l t1 t2
-                      ~~~> hasEq Eq l (tVector t1 n) (tVector t2 n),
-            forAll "t1" type0 $ \t1 ->
-              forAll "t2" type0 $ \t2 ->
-                forAll "l" tLin $ \l ->
-                  forAllNat $ \n ->
-                    forAllInstance "eq" (hasEq Eq l t1 t2) $ \eq ->
-                      free (identifierOf StdEqualsVector) @@@ [t1, t2] @@@ [n] @@@@ [eq]
+                forAllNat $ \n ->
+                  hasEq Eq t1 t2
+                    ~~~> hasEq Eq (tVector t1 n) (tVector t2 n),
+            implLam "t1" type0 $ \t1 ->
+              implLam "t2" type0 $ \t2 ->
+                implLam "n" tNat $ \n ->
+                  instLam "eq" (hasEq Eq t1 t2) $ \eq ->
+                    free StdEqualsVector @@@ [t1, t2] @@@ [n] @@@@ [eq]
           ),
           ------------
           -- HasNotEq --
           ------------
           ( forAll "n1" tNat $ \n1 ->
               forAll "n2" tNat $ \n2 ->
-                hasEq Neq constant (tIndex n1) (tIndex n2),
-            forAll "n1" tNat $ \n1 ->
-              forAll "n2" tNat $ \n2 ->
+                hasEq Neq (tIndex n1) (tIndex n2),
+            implLam "n1" tNat $ \n1 ->
+              implLam "n2" tNat $ \n2 ->
                 builtin (Equals EqIndex Neq) @@@ [n1, n2]
           ),
-          ( hasEq Neq constant tNat tNat,
+          ( hasEq Neq tNat tNat,
             builtin (Equals EqNat Neq)
           ),
-          ( hasEq Neq constant tInt tInt,
+          ( hasEq Neq tInt tInt,
             builtin (Equals EqInt Neq)
           ),
-          ( forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> hasEq Neq l3 (tAnnRat l1) (tAnnRat l2),
-            forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> builtin (Equals EqRat Neq)
+          ( hasEq Neq tRat tRat,
+            builtin (Equals EqRat Neq)
           ),
           ( forAll "t1" type0 $ \t1 ->
               forAll "t2" type0 $ \t2 ->
-                forAll "l" tLin $ \l ->
-                  forAllNat $ \n ->
-                    hasEq Neq l t1 t2
-                      ~~~> hasEq Neq l (tVector t1 n) (tVector t2 n),
-            forAll "t1" type0 $ \t1 ->
-              forAll "t2" type0 $ \t2 ->
-                forAll "l" tLin $ \l ->
-                  forAllNat $ \n ->
-                    forAllInstance "eq" (hasEq Neq l t1 t2) $ \eq ->
-                      free (identifierOf StdNotEqualsVector) @@@ [t1, t2, n] @@@@ [eq]
+                forAllNat $ \n ->
+                  hasEq Neq t1 t2
+                    ~~~> hasEq Neq (tVector t1 n) (tVector t2 n),
+            implLam "t1" type0 $ \t1 ->
+              implLam "t2" type0 $ \t2 ->
+                implLam "n" tNat $ \n ->
+                  instLam "eq" (hasEq Neq t1 t2) $ \eq ->
+                    free StdNotEqualsVector @@@ [t1, t2, n] @@@@ [eq]
           ),
           ------------
-          -- HasNot --
+          -- HasNeg --
           ------------
-          ( forAllIrrelevant "l" tLin $ \l ->
-              forAllIrrelevant "p1" tPol $ \p1 ->
-                forAllIrrelevant "p2" tPol $ \p2 ->
-                  negPolarity p1 p2
-                    .~~~> hasNot (tAnnBool l p1) (tAnnBool l p2),
-            forAllIrrelevant "l" tLin $ \_l ->
-              forAllIrrelevant "p1" tPol $ \p1 ->
-                forAllIrrelevant "p2" tPol $ \p2 ->
-                  negPolarity p1 p2
-                    .~~~> builtin Not
+          ( hasNeg tInt tInt,
+            builtin (Neg NegInt)
+          ),
+          ( hasNeg tRat tRat,
+            builtin (Neg NegRat)
           ),
           ------------
           -- HasAdd --
@@ -143,26 +139,17 @@ candidates =
           ( hasAdd tInt tInt tInt,
             builtin (Add AddInt)
           ),
-          ( forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> hasAdd (tAnnRat l1) (tAnnRat l2) (tAnnRat l3),
-            forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> builtin (Add AddRat)
+          ( hasAdd tRat tRat tRat,
+            builtin (Add AddRat)
           ),
-          ( forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
-              hasAdd t1 t2 t3
-                ~~~> hasAdd (tVector t1 n) (tVector t2 n) (tVector t3 n),
-            forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
-              forAllInstance "add" (hasAdd t1 t2 t3) $ \add ->
-                app
-                  (free (identifierOf StdAddVector))
-                  [ (Implicit True, Relevant, t1),
-                    (Implicit True, Relevant, t2),
-                    (Implicit True, Relevant, t3),
-                    (Implicit True, Relevant, n),
-                    (Instance True, Relevant, add)
-                  ]
+          ( forAllTypeTriples $ \t1 t2 t3 ->
+              forAllNat $ \n ->
+                hasAdd t1 t2 t3
+                  ~~~> hasAdd (tVector t1 n) (tVector t2 n) (tVector t3 n),
+            implTypeTripleLam $ \t1 t2 t3 ->
+              implLam "n" tNat $ \n ->
+                instLam "add" (hasAdd t1 t2 t3) $ \add ->
+                  free StdAddVector @@@ [t1, t2, t3, n] @@@@ [add]
           ),
           ------------
           -- HasSub --
@@ -170,35 +157,44 @@ candidates =
           ( hasSub tInt tInt tInt,
             builtin (Sub SubInt)
           ),
-          ( forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> hasSub (tAnnRat l1) (tAnnRat l2) (tAnnRat l3),
-            forAllLinearityTriples $ \l1 l2 l3 ->
-              maxLinearity l1 l2 l3
-                .~~~> builtin (Sub SubRat)
+          ( hasSub tRat tRat tRat,
+            builtin (Sub SubRat)
           ),
-          ( forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
-              hasSub t1 t2 t3
-                ~~~> hasSub (tVector t1 n) (tVector t2 n) (tVector t3 n),
-            forAllTypeTriples $ \t1 t2 t3 -> forAllNat $ \n ->
-              forAllInstance "sub" (hasSub t1 t2 t3) $ \sub ->
-                app
-                  (free (identifierOf StdSubVector))
-                  [ (Implicit True, Relevant, t1),
-                    (Implicit True, Relevant, t2),
-                    (Implicit True, Relevant, t3),
-                    (Implicit True, Relevant, n),
-                    (Instance True, Relevant, sub)
-                  ]
+          ( forAllTypeTriples $ \t1 t2 t3 ->
+              forAllNat $ \n ->
+                hasSub t1 t2 t3
+                  ~~~> hasSub (tVector t1 n) (tVector t2 n) (tVector t3 n),
+            implTypeTripleLam $ \t1 t2 t3 ->
+              implLam "n" tNat $ \n ->
+                instLam "sub" (hasSub t1 t2 t3) $ \sub ->
+                  free StdSubVector @@@ [t1, t2, t3, n] @@@@ [sub]
+          ),
+          ------------
+          -- HasMul --
+          ------------
+          ( hasMul tNat tNat tNat,
+            builtin (Mul MulNat)
+          ),
+          ( hasMul tInt tInt tInt,
+            builtin (Mul MulInt)
+          ),
+          ( hasMul tRat tRat tRat,
+            builtin (Mul MulRat)
+          ),
+          ------------
+          -- HasDiv --
+          ------------
+          ( hasDiv tRat tRat tRat,
+            builtin (Div DivRat)
           ),
           ------------
           -- HasMap --
           ------------
           ( hasMap tListRaw,
-            builtin (Map MapList)
+            free StdMapList
           ),
-          ( forAllNat $ \n -> hasMap (lam "A" Explicit Relevant type0 (\a -> tVector a n)),
-            forAllNat $ \n -> app (builtin (Map MapVector)) [(Implicit True, Relevant, n)]
+          ( forAllNat $ \n -> hasMap (tVectorFunctor n),
+            implLam "n" tNat $ \n -> free StdMapVector @@@ [n]
           ),
           ------------
           -- HasFold --
@@ -206,29 +202,35 @@ candidates =
           ( hasFold tListRaw,
             builtin (Fold FoldList)
           ),
-          ( forAllNat $ \n -> hasFold (lam "A" Explicit Relevant type0 (\a -> tVector a n)),
-            forAllNat $ \n -> app (builtin (Fold FoldVector)) [(Implicit True, Relevant, n)]
+          ( forAllNat $ \n -> hasFold (tVectorFunctor n),
+            implLam "n" tNat $ \n ->
+              implLam "A" type0 $ \a ->
+                implLam "B" type0 $ \b ->
+                  explLam "f" (a ~> b ~> b) $ \f ->
+                    builtin (Fold FoldVector) @@@ [n, a, b] @@ [implLam "m" tNat (const f)]
           )
         ]
 
-mkCandidate :: (DSLExpr, DSLExpr) -> InstanceCandidate
-mkCandidate (expr, solution) = do
-  let expr' = fromDSL mempty expr
-  let solution' = fromDSL mempty solution
-  InstanceCandidate mempty expr' solution'
+mkCandidate :: (StandardDSLExpr, StandardDSLExpr) -> Provenance -> InstanceCandidate
+mkCandidate (expr, solution) p = do
+  let expr' = fromDSL p expr
+  let solution' = fromDSL p solution
+  InstanceCandidate expr' solution'
 
-processCandidate :: InstanceCandidate -> (TypeClass, InstanceCandidate)
-processCandidate candidate = case findTypeClassOfCandidate (candidateExpr candidate) of
-  Right tc -> (tc, candidate)
-  Left expr -> do
-    let candidateDoc = prettyVerbose (candidateExpr candidate)
-    let problemDoc = prettyVerbose expr
-    developerError $
-      "Invalid builtin instance candidate:"
-        <+> candidateDoc
-          <> line
-          <> "Problematic expr:"
-        <+> problemDoc
+processCandidate :: (Provenance -> InstanceCandidate) -> (TypeClass, Provenance -> InstanceCandidate)
+processCandidate candidate = do
+  let expr = candidateExpr (candidate mempty)
+  case findTypeClassOfCandidate expr of
+    Right tc -> (tc, candidate)
+    Left subexpr -> do
+      let candidateDoc = prettyVerbose subexpr
+      let problemDoc = prettyVerbose subexpr
+      developerError $
+        "Invalid builtin instance candidate:"
+          <+> candidateDoc
+            <> line
+            <> "Problematic subexpr:"
+          <+> problemDoc
 
-builtin :: BuiltinFunction -> DSLExpr
+builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction

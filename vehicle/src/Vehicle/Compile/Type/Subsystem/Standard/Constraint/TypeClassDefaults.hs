@@ -1,18 +1,75 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
-  ( generateConstraintUsingDefaults,
+  ( addNewConstraintUsingDefaults,
   )
 where
 
-import Control.Monad (foldM)
+import Control.Monad (filterM, foldM)
 import Data.Maybe (catMaybes)
+import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Substitution
+import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalised
+
+-- | Tries to add new unification constraints using default values.
+addNewConstraintUsingDefaults ::
+  TCM StandardBuiltinType m =>
+  Maybe StandardDecl ->
+  m Bool
+addNewConstraintUsingDefaults maybeDecl = do
+  logDebug MaxDetail $ "Temporarily stuck" <> line
+
+  logCompilerPass
+    MidDetail
+    "trying to generate a new constraint using type-classes defaults"
+    $ do
+      -- Calculate the set of candidate constraints
+      candidateConstraints <- getDefaultCandidates maybeDecl
+      logDebug MaxDetail $
+        "Candidate type-class constraints:"
+          <> line
+          <> indent 2 (prettyVerbose candidateConstraints)
+          <> line
+
+      result <- generateConstraintUsingDefaults candidateConstraints
+      case result of
+        Nothing -> return False
+        Just newConstraint -> do
+          addConstraints [newConstraint]
+          return True
+
+getDefaultCandidates ::
+  forall m.
+  TCM StandardBuiltinType m =>
+  Maybe StandardDecl ->
+  m [WithContext StandardTypeClassConstraint]
+getDefaultCandidates maybeDecl = do
+  typeClassConstraints <- getActiveTypeClassConstraints
+  case maybeDecl of
+    Nothing -> return typeClassConstraints
+    Just decl -> do
+      declType <- substMetas (typeOf decl)
+
+      -- We only want to generate default solutions for constraints
+      -- that *don't* appear in the type of the declaration, as those will be
+      -- quantified over later.
+      constraints <- getActiveConstraints
+      typeMetas <- getMetasLinkedToMetasIn constraints declType
+
+      whenM (loggingLevelAtLeast MaxDetail) $ do
+        unsolvedMetasInTypeDoc <- prettyMetas (Proxy @StandardBuiltinType) typeMetas
+        logDebug MaxDetail $
+          "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
+
+      flip filterM typeClassConstraints $ \tc -> do
+        constraintMetas <- metasIn (objectIn tc)
+        return $ MetaSet.disjoint constraintMetas typeMetas
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints
@@ -59,7 +116,7 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults ::
-  TCM Builtin m =>
+  TCM StandardBuiltinType m =>
   [WithContext StandardTypeClassConstraint] ->
   m (Maybe (WithContext StandardConstraint))
 generateConstraintUsingDefaults constraints = do
@@ -70,8 +127,7 @@ generateConstraintUsingDefaults constraints = do
       return Nothing
     Invalid -> return Nothing
     Valid (Candidate m tc metaExpr ctx) -> do
-      let p = provenanceOf ctx
-      solution <- defaultSolution p ctx tc
+      solution <- defaultSolution tc
       logDebug MaxDetail $
         "using default"
           <+> pretty m
@@ -79,7 +135,7 @@ generateConstraintUsingDefaults constraints = do
           <+> prettyVerbose solution
           <+> "         " <> parens ("from" <+> pretty tc)
       let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
-      let newConstraint = WithContext unificationConstraint (copyContext ctx)
+      newConstraint <- WithContext unificationConstraint <$> copyContext ctx
       return $ Just newConstraint
 
 findStrongestConstraint ::
@@ -113,10 +169,6 @@ strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
 
 familyOf :: MonadCompile m => TypeClass -> m DefaultFamily
 familyOf = \case
-  HasNot -> return BooleanFamily
-  HasAnd -> return BooleanFamily
-  HasOr -> return BooleanFamily
-  HasImplies -> return BooleanFamily
   HasQuantifier {} -> return BooleanFamily
   HasEq {} -> return $ NumericFamily NatT False 0
   HasOrd {} -> return $ NumericFamily NatT False 0
@@ -132,93 +184,59 @@ familyOf = \case
   HasFold -> return $ ContainerFamily False
   HasQuantifierIn {} -> return $ ContainerFamily False
   NatInDomainConstraint n -> return $ NumericFamily NatT False n
-  AlmostEqualConstraint {} -> auxiliaryTCError
-  HasIf {} -> ifTCError
-  LinearityTypeClass {} -> auxiliaryTCError
-  PolarityTypeClass {} -> auxiliaryTCError
 
 defaultSolution ::
-  TCM Builtin m =>
-  Provenance ->
-  StandardConstraintContext ->
+  TCM StandardBuiltinType m =>
   TypeClass ->
   m StandardNormExpr
-defaultSolution p ctx = \case
+defaultSolution = \case
   HasEq {} -> return VNatType
   HasOrd {} -> return VNatType
-  HasNot -> createDefaultBoolType p
-  HasAnd -> createDefaultBoolType p
-  HasOr -> createDefaultBoolType p
-  HasImplies -> createDefaultBoolType p
-  HasQuantifier {} -> createDefaultBoolType p
+  HasQuantifier {} -> return VBoolType
   HasAdd -> return VNatType
   HasSub -> return VIntType
   HasMul -> return VNatType
-  HasDiv -> createDefaultRatType p
+  HasDiv -> return VRatType
   HasNeg -> return VIntType
-  HasNatLits n -> return $ mkVIndexType (VNatLiteral (n + 1))
-  HasRatLits -> createDefaultRatType p
-  HasVecLits {} -> createDefaultListType p ctx
-  HasMap -> createDefaultListType p ctx
-  HasFold -> createDefaultListType p ctx
-  HasQuantifierIn {} -> createDefaultListType p ctx
+  HasNatLits n -> return $ VIndexType (VNatLiteral (n + 1))
+  HasRatLits -> return VRatType
+  HasVecLits {} -> createDefaultListType
+  HasMap -> createDefaultListType
+  HasFold -> createDefaultListType
+  HasQuantifierIn {} -> createDefaultListType
   NatInDomainConstraint n -> return $ VNatLiteral (n + 1)
-  HasIf {} -> ifTCError
-  LinearityTypeClass {} -> auxiliaryTCError
-  PolarityTypeClass {} -> auxiliaryTCError
-  AlmostEqualConstraint {} -> auxiliaryTCError
 
-createDefaultListType :: TCM Builtin m => Provenance -> StandardConstraintContext -> m StandardNormType
-createDefaultListType p ctx = do
-  tElem <- normalised <$> freshExprMeta p (TypeUniverse p 0) (boundContext ctx)
-  return $ mkVListType tElem
+createDefaultListType ::
+  TCM StandardBuiltinType m =>
+  m StandardNormType
+createDefaultListType = return $ VBuiltinType List mempty
 
-createDefaultBoolType :: TCM Builtin m => Provenance -> m StandardNormType
-createDefaultBoolType p = do
-  lin <- normalised <$> freshLinearityMeta p
-  pol <- normalised <$> freshPolarityMeta p
-  return $ mkVAnnBoolType lin pol
-
-createDefaultRatType :: TCM Builtin m => Provenance -> m StandardNormType
-createDefaultRatType p = do
-  lin <- normalised <$> freshLinearityMeta p
-  return $ mkVAnnRatType lin
-
-getCandidatesFromConstraint :: MonadCompile m => StandardConstraintContext -> StandardTypeClassConstraint -> m [Candidate]
+getCandidatesFromConstraint ::
+  MonadCompile m =>
+  StandardConstraintContext ->
+  StandardTypeClassConstraint ->
+  m [Candidate]
 getCandidatesFromConstraint ctx (Has _ b args) = case b of
-  Constructor (TypeClass tc) -> do
+  StandardTypeClass tc -> do
     let getCandidate = getCandidatesFromArgs ctx
     return $ case (tc, args) of
-      (HasEq eq, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasEq eq)
       (HasOrd ord, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
       (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
-      (HasAdd, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasAdd
-      (HasSub, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasSub
       (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
       (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
-      (HasFold, [_, t]) -> getCandidate [t] HasFold
       (HasNatLits n, [t]) -> getCandidate [t] (HasNatLits n)
       (HasRatLits, [t]) -> getCandidate [t] HasRatLits
-      (HasVecLits n, [_, t]) -> getCandidate [t] (HasVecLits n)
-      (NatInDomainConstraint n, [t]) -> case argExpr t of
-        VIndexType size -> getCandidate [ExplicitArg mempty size] (NatInDomainConstraint n)
+      (HasVecLits, [_n, t]) -> getCandidate [t] HasVecLits
+      (HasMap, [t]) -> getCandidate [t] HasMap
+      (HasFold, [t]) -> getCandidate [t] HasFold
+      (NatInDomainConstraint n, [t]) -> case t of
+        VIndexType size -> getCandidate [size] (NatInDomainConstraint n)
         _ -> []
       _ -> []
   _ -> return []
 
-getCandidatesFromArgs :: StandardConstraintContext -> [StandardNormArg] -> TypeClass -> [Candidate]
+getCandidatesFromArgs :: StandardConstraintContext -> [StandardNormExpr] -> TypeClass -> [Candidate]
 getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
-  let e = argExpr t
-  case getNMeta (argExpr t) of
-    Just m -> Just (Candidate m tc e ctx) -- m, t, tc)
+  case getNMeta t of
+    Just m -> Just (Candidate m tc t ctx) -- m, t, tc)
     _ -> Nothing
-
-auxiliaryTCError :: MonadCompile m => m a
-auxiliaryTCError =
-  compilerDeveloperError
-    "Should not be considering defaults for auxiliary constraints"
-
-ifTCError :: MonadCompile m => m a
-ifTCError =
-  compilerDeveloperError
-    "Should not be considering defaults for 'HasIf' constraints"

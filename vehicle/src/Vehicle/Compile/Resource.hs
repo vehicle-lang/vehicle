@@ -2,7 +2,6 @@ module Vehicle.Compile.Resource where
 
 import Data.Map (Map)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn (DBType)
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -40,8 +39,5 @@ data NetworkBaseType
 instance Pretty NetworkBaseType where
   pretty = \case
     NetworkRatType -> pretty Rat
-
-reconstructNetworkBaseType :: NetworkBaseType -> Provenance -> DBType Builtin
-reconstructNetworkBaseType NetworkRatType = RatType
 
 type NetworkContext = Map Name (FilePath, NetworkType)

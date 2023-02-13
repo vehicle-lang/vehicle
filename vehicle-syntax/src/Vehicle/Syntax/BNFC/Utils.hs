@@ -19,6 +19,9 @@ mkProvenance tk = do
   mod <- ask
   return $ tkProvenance mod tk
 
+tokType :: Int -> B.Expr
+tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
+
 networkAnn = B.Network $ mkToken B.TokNetwork "@network"
 
 datasetAnn = B.Dataset $ mkToken B.TokDataset "@dataset"
@@ -28,9 +31,6 @@ parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
 propertyAnn = B.Property $ mkToken B.TokProperty "@property"
 
 postulateAnn = B.Dataset $ mkToken B.TokDataset "@postulate"
-
-tokType :: Int -> B.Expr
-tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
 
 tokArrow = mkToken B.TokArrow "->"
 
@@ -108,18 +108,28 @@ tokNil = mkToken B.TokNil "nil"
 
 tokCons = mkToken B.TokCons "::"
 
+tokConsVector = mkToken B.TokConsVector "::"
+
 tokAt = mkToken B.TokAt "!"
 
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
 
+tokDepFold = mkToken B.TokDepFold "dfold"
+
+tokIndices = mkToken B.TokIndices "indices"
+
 tokHasAdd = mkToken B.TokHasAdd "HasAdd"
 
-tokHasSub = mkToken B.TokHasSub "HasFold"
+tokHasSub = mkToken B.TokHasSub "HasSub"
 
 tokHasMul = mkToken B.TokHasMul "HasMul"
 
 tokHasEq = mkToken B.TokHasEq "HasEq"
 
 tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
+
+tokHasMap = mkToken B.TokHasMap "HasMap"
+
+tokHasFold = mkToken B.TokHasFold "HasFold"

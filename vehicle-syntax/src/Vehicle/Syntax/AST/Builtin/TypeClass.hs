@@ -7,8 +7,6 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Builtin.Core
-import Vehicle.Syntax.AST.Builtin.Linearity (LinearityTypeClass)
-import Vehicle.Syntax.AST.Builtin.Polarity (PolarityTypeClass)
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -17,10 +15,6 @@ data TypeClass
   = -- Operation type-classes
     HasEq EqualityOp
   | HasOrd OrderOp
-  | HasNot
-  | HasAnd
-  | HasOr
-  | HasImplies
   | HasQuantifier Quantifier
   | HasAdd
   | HasSub
@@ -29,28 +23,15 @@ data TypeClass
   | HasNeg
   | HasFold
   | HasMap
-  | HasIf
   | HasQuantifierIn Quantifier
   | -- Literal type-classes
 
     -- | The parameter is the value (needed for Index).
     HasNatLits Int
   | HasRatLits
-  | -- | The parameter is the size of the vector.
-    HasVecLits Int
+  | HasVecLits
   | -- Utility constraints
-
-    -- | Types are equal, modulo the auxiliary constraints.
-    AlmostEqualConstraint
-  | NatInDomainConstraint Int
-  | ----------------------------
-    -- Synthetic type-classes --
-    ----------------------------
-
-    LinearityTypeClass LinearityTypeClass
-  | PolarityTypeClass PolarityTypeClass
-  -- Linearity type-classes
-
+    NatInDomainConstraint Int
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClass
@@ -65,10 +46,6 @@ instance Pretty TypeClass where
   pretty = \case
     HasEq {} -> "HasEq"
     HasOrd {} -> "HasOrd"
-    HasNot -> "HasNot"
-    HasAnd -> "HasAnd"
-    HasOr -> "HasOr"
-    HasImplies -> "HasImplies"
     HasQuantifier q -> "HasQuantifier" <+> pretty q
     HasAdd -> "HasAdd"
     HasSub -> "HasSub"
@@ -77,25 +54,16 @@ instance Pretty TypeClass where
     HasNeg -> "HasNeg"
     HasMap -> "HasMap"
     HasFold -> "HasFold"
-    HasQuantifierIn q -> "HasQuantifierIn" <+> pretty q
-    HasIf -> "HasIf"
     HasNatLits n -> "HasNatLiterals[" <> pretty n <> "]"
     HasRatLits -> "HasRatLiterals"
-    HasVecLits n -> "HasVecLiterals[" <> pretty n <> "]"
-    AlmostEqualConstraint {} -> "AlmostEqualConstraint"
+    HasVecLits -> "HasVecLiterals"
     NatInDomainConstraint {} -> "NatInDomainConstraint"
-    LinearityTypeClass tc -> pretty tc
-    PolarityTypeClass tc -> pretty tc
 
 -- Builtin operations for type-classes
 data TypeClassOp
-  = NotTC
-  | AndTC
-  | OrTC
-  | ImpliesTC
-  | FromNatTC Int
+  = FromNatTC Int
   | FromRatTC
-  | FromVecTC Int
+  | FromVecTC
   | NegTC
   | AddTC
   | SubTC
@@ -106,7 +74,6 @@ data TypeClassOp
   | MapTC
   | FoldTC
   | QuantifierTC Quantifier
-  | QuantifierInTC Quantifier
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClassOp
@@ -119,10 +86,6 @@ instance Serialize TypeClassOp
 
 instance Pretty TypeClassOp where
   pretty = \case
-    NotTC -> "not"
-    AndTC -> "and"
-    OrTC -> "or"
-    ImpliesTC -> "=>"
     NegTC -> "-"
     AddTC -> "+"
     SubTC -> "-"
@@ -130,10 +93,26 @@ instance Pretty TypeClassOp where
     DivTC -> "/"
     FromNatTC n -> "fromNat[" <> pretty n <> "]"
     FromRatTC -> "fromRat"
-    FromVecTC n -> "fromVec[" <> pretty n <> "]"
+    FromVecTC -> "fromVec"
     EqualsTC op -> pretty op
     OrderTC op -> pretty op
     MapTC -> "map"
     FoldTC -> "fold"
     QuantifierTC q -> pretty q
-    QuantifierInTC q -> pretty q <> "In"
+
+opOfTypeClass :: TypeClass -> TypeClassOp
+opOfTypeClass = \case
+  HasEq op -> EqualsTC op
+  HasOrd op -> OrderTC op
+  HasQuantifier q -> QuantifierTC q
+  HasAdd -> AddTC
+  HasSub -> SubTC
+  HasMul -> MulTC
+  HasDiv -> DivTC
+  HasNeg -> NegTC
+  HasFold -> FoldTC
+  HasMap -> MapTC
+  HasNatLits n -> FromNatTC n
+  HasRatLits -> FromRatTC
+  HasVecLits -> FromVecTC
+  NatInDomainConstraint n -> error "`NatInDomainConstraint` has no corresponding type class."
