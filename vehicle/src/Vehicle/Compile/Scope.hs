@@ -17,22 +17,38 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
   MonadCompile m =>
   ImportedModules ->
-  InputProg ->
-  m (UncheckedProg, DependencyGraph)
+  UnscopedProg ->
+  m (ScopedProg, DependencyGraph)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
   (prog, dependencies) <- runReaderT (scopeProg e) importCtx
   return (prog, fromEdges dependencies)
 
-scopeCheckClosedExpr :: MonadCompile m => InputExpr -> m UncheckedExpr
+scopeCheckClosedExpr :: MonadCompile m => UnscopedExpr -> m ScopedExpr
 scopeCheckClosedExpr e =
   fst
     <$> runWriterT (runReaderT (scopeExpr e) (mempty, mempty))
+
+--------------------------------------------------------------------------------
+-- Type synonyms
+
+type UnscopedProg = NamedProg Builtin
+
+type UnscopedDecl = NamedDecl Builtin
+
+type UnscopedExpr = NamedExpr Builtin
+
+type ScopedProg = DBProg Builtin
+
+type ScopedDecl = DBDecl Builtin
+
+type ScopedExpr = DBExpr Builtin
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
@@ -49,10 +65,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: MonadScope m => InputProg -> m (UncheckedProg, DependencyList)
+scopeProg :: MonadScope m => UnscopedProg -> m (ScopedProg, DependencyList)
 scopeProg (Main ds) = first Main <$> scopeDecls ds
 
-scopeDecls :: MonadScope m => [InputDecl] -> m ([UncheckedDecl], DependencyList)
+scopeDecls :: MonadScope m => [UnscopedDecl] -> m ([ScopedDecl], DependencyList)
 scopeDecls = \case
   [] -> return ([], [])
   (d : ds) -> do
@@ -69,7 +85,7 @@ scopeDecls = \case
         (ds', deps) <- bindDecl ident (scopeDecls ds)
         return (d' : ds', (ident, dep) : deps)
 
-scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => InputDecl -> m UncheckedDecl
+scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => UnscopedDecl -> m ScopedDecl
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefResource p ident r t ->
@@ -84,8 +100,8 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
 scopeDeclExpr ::
   (MonadWriter Dependencies m, MonadScope m) =>
   Bool ->
-  InputExpr ->
-  m UncheckedExpr
+  UnscopedExpr ->
+  m ScopedExpr
 scopeDeclExpr generalise expr = do
   declCtx <- ask
 
@@ -104,7 +120,7 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: MonadCompile m => DeclScopeCtx -> InputExpr -> m InputExpr
+generaliseExpr :: MonadCompile m => DeclScopeCtx -> UnscopedExpr -> m UnscopedExpr
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
@@ -112,7 +128,7 @@ generaliseExpr declContext expr = do
 findGeneralisableVariables ::
   MonadCompile m =>
   DeclScopeCtx ->
-  InputExpr ->
+  UnscopedExpr ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
   execWriterT (runReaderT (traverseVars traverseVar expr) (declContext, mempty))
@@ -120,8 +136,8 @@ findGeneralisableVariables declContext expr =
     traverseVar ::
       (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
       Provenance ->
-      InputVar ->
-      m InputVar
+      Name ->
+      m Name
     traverseVar p symbol = do
       (declCtx, boundCtx) <- ask
 
@@ -133,15 +149,15 @@ findGeneralisableVariables declContext expr =
 generaliseOverVariables ::
   MonadCompile m =>
   [GeneralisableVariable] ->
-  InputExpr ->
-  m InputExpr
+  UnscopedExpr ->
+  m UnscopedExpr
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
       MonadCompile m =>
-      (InputExpr, Set Name) ->
+      (UnscopedExpr, Set Name) ->
       GeneralisableVariable ->
-      m (InputExpr, Set Name)
+      m (UnscopedExpr, Set Name)
     generalise (expr, seenNames) (p, name)
       | name `Set.member` seenNames = return (expr, seenNames)
       | otherwise = do
@@ -162,7 +178,7 @@ type MonadScopeExpr m =
     MonadWriter Dependencies m
   )
 
-scopeExpr :: MonadScopeExpr m => InputExpr -> m UncheckedExpr
+scopeExpr :: MonadScopeExpr m => UnscopedExpr -> m ScopedExpr
 scopeExpr = traverseVars scopeVar
 
 -- | Find the index for a given name of a given sort.
@@ -190,8 +206,8 @@ type MonadTraverse m =
 traverseVars ::
   MonadTraverse m =>
   (Provenance -> var1 -> m var2) ->
-  Expr InputBinding var1 builtin ->
-  m (Expr InputBinding var2 builtin)
+  Expr NamedBinding var1 builtin ->
+  m (Expr NamedBinding var2 builtin)
 traverseVars f e = do
   result <- case e of
     Var p v -> Var p <$> f p v
@@ -219,16 +235,16 @@ traverseVars f e = do
 traverseBinder ::
   MonadTraverse m =>
   (Provenance -> var1 -> m var2) ->
-  Binder InputBinding var1 builtin ->
-  (Binder InputBinding var2 builtin -> m (Expr InputBinding var2 builtin)) ->
-  m (Expr InputBinding var2 builtin)
+  Binder NamedBinding var1 builtin ->
+  (Binder NamedBinding var2 builtin -> m (Expr NamedBinding var2 builtin)) ->
+  m (Expr NamedBinding var2 builtin)
 traverseBinder f binder update = do
   binder' <- traverse (traverseVars f) binder
   let updateCtx ctx = nameOf binder : ctx
   local (second updateCtx) (update binder')
 
 {-
-logScopeEntry :: MonadTraverse m => Expr InputBinding -> m ()
+logScopeEntry :: MonadTraverse m => Expr UnscopedBinding -> m ()
 logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
@@ -243,7 +259,7 @@ getImportCtx imports =
   Map.fromList $
     [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
   where
-    getEntry :: TypedDecl -> (Name, Identifier)
+    getEntry :: TypedDecl Builtin -> (Name, Identifier)
     getEntry d = do
       let ident = identifierOf d
       (nameOf ident, ident)

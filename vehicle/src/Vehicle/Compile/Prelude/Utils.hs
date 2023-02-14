@@ -14,19 +14,19 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isTypeUniverse :: Expr binder var Builtin -> Bool
+isTypeUniverse :: Expr binder var builtin -> Bool
 isTypeUniverse TypeUniverse {} = True
 isTypeUniverse _ = False
 
-isPolarityUniverse :: Expr binder var Builtin -> Bool
+isPolarityUniverse :: Expr binder var builtin -> Bool
 isPolarityUniverse PolarityUniverse {} = True
 isPolarityUniverse _ = False
 
-isLinearityUniverse :: Expr binder var Builtin -> Bool
+isLinearityUniverse :: Expr binder var builtin -> Bool
 isLinearityUniverse LinearityUniverse {} = True
 isLinearityUniverse _ = False
 
-isAuxiliaryUniverse :: Expr binder var Builtin -> Bool
+isAuxiliaryUniverse :: Expr binder var builtin -> Bool
 isAuxiliaryUniverse e = isPolarityUniverse e || isLinearityUniverse e
 
 isBoundVar :: DBExpr Builtin -> Bool

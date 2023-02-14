@@ -7,20 +7,20 @@ where
 
 import Data.Hashable (Hashable (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
-import Vehicle.Expr.Normalised
 
-instance Hashable CheckedArg
+instance Hashable TypeCheckedArg
 
-instance Hashable CheckedExpr where
+instance Hashable TypeCheckedExpr where
   hashWithSalt s e = hashWithSalt s (toCoDBExpr e)
 
-instance Hashable BasicNormArg
+instance Hashable StandardNormArg
 
-instance Hashable BasicNormBinder
+instance Hashable StandardNormBinder
 
-instance Hashable BasicNormExpr
+instance Hashable StandardNormExpr
 
 class AlphaEquivalence a where
   alphaEq :: a -> a -> Bool
@@ -28,5 +28,5 @@ class AlphaEquivalence a where
 instance AlphaEquivalence CoDBExpr where
   alphaEq e1 e2 = hash e1 == hash e2
 
-instance AlphaEquivalence CheckedExpr where
+instance AlphaEquivalence TypeCheckedExpr where
   alphaEq e1 e2 = hash e1 == hash e2

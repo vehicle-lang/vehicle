@@ -23,12 +23,12 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
 
 -- | Run a function in 'MonadNorm'.
-normaliseProg :: MonadCompile m => CheckedProg -> NormalisationOptions -> m CheckedProg
+normaliseProg :: MonadCompile m => TypeCheckedProg -> NormalisationOptions -> m TypeCheckedProg
 normaliseProg x options@Options {..} = logCompilerPass MinDetail currentPass $ do
   result <- evalStateT (runReaderT (nf x) options) declContext
   return result
 
-normaliseExpr :: MonadCompile m => CheckedExpr -> NormalisationOptions -> m CheckedExpr
+normaliseExpr :: MonadCompile m => TypeCheckedExpr -> NormalisationOptions -> m TypeCheckedExpr
 normaliseExpr x options@Options {..} = logCompilerPass MinDetail currentPass $ do
   result <- evalStateT (runReaderT (nf x) options) declContext
   return result
@@ -37,7 +37,7 @@ normaliseExpr x options@Options {..} = logCompilerPass MinDetail currentPass $ d
 -- Normalisation options
 
 data NormalisationOptions = Options
-  { declContext :: DeclCtx CheckedExpr,
+  { declContext :: DeclCtx TypeCheckedExpr,
     boundContext :: BoundDBCtx,
     normaliseDeclApplications :: Bool,
     normaliseLambdaApplications :: Bool,
@@ -60,7 +60,7 @@ fullNormalisationOptions =
 type MonadNorm m =
   ( MonadCompile m,
     MonadReader NormalisationOptions m,
-    MonadState (Map Identifier CheckedExpr) m
+    MonadState (Map Identifier TypeCheckedExpr) m
   )
 
 --------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ class Norm vf where
 instance Norm (GenericDecl expr) => Norm (GenericProg expr) where
   nf = traverseDecls nf
 
-instance Norm CheckedDecl where
+instance Norm TypeCheckedDecl where
   nf decl = logCompilerPass MidDetail ("normalisation of" <+> declIdent) $ do
     result <- case decl of
       DefResource p r ident typ ->
@@ -92,7 +92,7 @@ instance Norm CheckedDecl where
 
 -- | This a horrible, horrible hack. Only introducing this very temporarily,
 -- before normalisation is pushed all the way in.
-instance Norm GluedDecl where
+instance Norm (GluedDecl Builtin) where
   nf decl = logCompilerPass MidDetail ("normalisation of" <+> squotes declIdent) $
     case decl of
       DefResource p r ident typ ->
@@ -107,10 +107,10 @@ instance Norm GluedDecl where
     where
       declIdent = pretty (identifierOf decl)
 
-instance Norm GluedExpr where
+instance Norm (GluedExpr Builtin) where
   nf = traverseUnnormalised nf
 
-instance Norm CheckedExpr where
+instance Norm TypeCheckedExpr where
   nf e = showExit e $ do
     e' <- showEntry e
     Options {..} <- ask
@@ -145,16 +145,16 @@ instance Norm CheckedExpr where
         nArgs <- traverse nf args
         nfApp p nFun nArgs
 
-instance Norm CheckedBinder where
+instance Norm TypeCheckedBinder where
   nf = traverse nf
 
-instance Norm CheckedArg where
+instance Norm TypeCheckedArg where
   nf = traverseNonInstanceArgExpr nf
 
 --------------------------------------------------------------------------------
 -- Application
 
-nfApp :: MonadNorm m => Provenance -> CheckedExpr -> NonEmpty CheckedArg -> m CheckedExpr
+nfApp :: MonadNorm m => Provenance -> TypeCheckedExpr -> NonEmpty TypeCheckedArg -> m TypeCheckedExpr
 nfApp p fun args = do
   let (fun', args') = renormArgs fun args
   let e = App p fun' args'
@@ -165,7 +165,7 @@ nfApp p fun args = do
     FreeVar _ _i | normaliseStdLibApplications -> return e
     _ -> return e
 
-nfAppLam :: MonadNorm m => Provenance -> CheckedExpr -> [CheckedArg] -> m CheckedExpr
+nfAppLam :: MonadNorm m => Provenance -> TypeCheckedExpr -> [TypeCheckedArg] -> m TypeCheckedExpr
 nfAppLam _ fun [] = nf fun
 nfAppLam p (Lam _ _ body) (arg : args) = nfAppLam p (substDBInto (argExpr arg) body) args
 nfAppLam p fun (arg : args) = nfApp p fun (arg :| args)
@@ -173,7 +173,7 @@ nfAppLam p fun (arg : args) = nfApp p fun (arg :| args)
 --------------------------------------------------------------------------------
 -- Builtins
 
-nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty CheckedArg -> m CheckedExpr
+nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty TypeCheckedArg -> m TypeCheckedExpr
 nfBuiltin p (Constructor c) args =
   return $ App p (Builtin p (Constructor c)) args
 nfBuiltin p (TypeClassOp op) args = do
@@ -241,10 +241,10 @@ nfTypeClassOp _p op args = do
 nfForeach ::
   MonadNorm m =>
   Provenance ->
-  CheckedType ->
+  TypeCheckedType ->
   Int ->
-  CheckedExpr ->
-  m CheckedExpr
+  TypeCheckedExpr ->
+  m TypeCheckedExpr
 nfForeach p resultType size lambda = do
   let fn i = nfAppLam p lambda [ExplicitArg p (IndexLiteral p size i)]
   mkVec p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
@@ -252,13 +252,13 @@ nfForeach p resultType size lambda = do
 nfFoldVector ::
   MonadNorm m =>
   Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedArg ->
-  CheckedArg ->
-  CheckedArg ->
-  m CheckedExpr
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  m TypeCheckedExpr
 nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
   AnnVecLiteral _ _ xs -> do
     let combine x body = normApp p (argExpr foldOp) (ExplicitArg p <$> [x, body])
@@ -277,12 +277,12 @@ nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
 nfMapVector ::
   MonadNorm m =>
   Provenance ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedExpr ->
-  CheckedArg ->
-  CheckedArg ->
-  m CheckedExpr
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedExpr ->
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  m TypeCheckedExpr
 nfMapVector p tFrom tTo size fun vector =
   case argExpr vector of
     AnnVecLiteral _ _ xs -> do
@@ -295,8 +295,8 @@ nfFromNat ::
   Provenance ->
   Int ->
   FromNatDomain ->
-  NonEmpty CheckedArg ->
-  m CheckedExpr
+  NonEmpty TypeCheckedArg ->
+  m TypeCheckedExpr
 nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
   (FromNatToIndex, size) -> do
     -- This is a massive hack, we should really be normalising implicit args.
@@ -308,7 +308,7 @@ nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
   (FromNatToInt, _) -> return $ IntLiteral p x
   (FromNatToRat, _) -> return $ RatLiteral p (fromIntegral x)
 
-mkMapVectorExpr :: Provenance -> CheckedType -> CheckedType -> CheckedExpr -> [CheckedArg] -> CheckedExpr
+mkMapVectorExpr :: Provenance -> TypeCheckedType -> TypeCheckedType -> TypeCheckedExpr -> [TypeCheckedArg] -> TypeCheckedExpr
 mkMapVectorExpr p tTo tFrom size explicitArgs =
   BuiltinExpr
     p
@@ -325,13 +325,13 @@ mkMapVectorExpr p tTo tFrom size explicitArgs =
 currentPass :: Doc ()
 currentPass = "normalisation"
 
-showEntry :: MonadNorm m => CheckedExpr -> m CheckedExpr
+showEntry :: MonadNorm m => TypeCheckedExpr -> m TypeCheckedExpr
 showEntry e = do
   logDebug MaxDetail ("norm-entry " <> prettyVerbose e)
   incrCallDepth
   return e
 
-showExit :: MonadNorm m => CheckedExpr -> m CheckedExpr -> m CheckedExpr
+showExit :: MonadNorm m => TypeCheckedExpr -> m TypeCheckedExpr -> m TypeCheckedExpr
 showExit old mNew = do
   new <- mNew
   decrCallDepth

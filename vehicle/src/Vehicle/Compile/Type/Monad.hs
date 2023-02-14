@@ -1,32 +1,73 @@
 module Vehicle.Compile.Type.Monad
-  ( module Vehicle.Compile.Type.Monad.Class,
-    TCM,
+  ( TCM,
+    MonadTypeChecker (..),
+    TypeCheckerState,
+    -- Top-level interface
     runTypeChecker,
     runTypeCheckerHypothetically,
     adoptHypotheticalState,
+    -- Meta variables
+    freshPolarityMeta,
+    freshLinearityMeta,
+    freshExprMeta,
+    freshTypeClassPlacementMeta,
+    getMetaType,
+    getMetaCtx,
+    getMetaProvenance,
+    getUnsolvedMetas,
+    solveMeta,
+    extendBoundCtxOfMeta,
+    filterMetasByTypes,
+    removeMetaDependencies,
+    getMetasLinkedToMetasIn,
+    trackSolvedMetas,
+    prettyMeta,
+    prettyMetas,
+    -- Constraints
+    createFreshUnificationConstraint,
+    createFreshTypeClassConstraint,
+    getActiveConstraints,
+    getActiveUnificationConstraints,
+    getActiveTypeClassConstraints,
+    setTypeClassConstraints,
+    setUnificationConstraints,
+    addConstraints,
+    addUnificationConstraints,
+    -- Other
+    clearMetaCtx,
+    getBinderNameOrFreshName,
+    getDeclType,
+    instantiateArgForNonExplicitBinder,
+    glueNBE,
   )
 where
 
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Vehicle.Compile.Error (CompileError)
-import Vehicle.Compile.Prelude (MonadLogger (..))
+import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
+import Vehicle.Compile.Type.Subsystem (TypableBuiltin)
 import Vehicle.Compile.Type.VariableContext (TypingDeclCtx)
 
 -- | The type-checking monad.
-type TCM m = MonadTypeChecker m
+type TCM builtin m =
+  ( MonadTypeChecker builtin m,
+    MonadNorm builtin m,
+    TypableBuiltin builtin
+  )
 
-runTypeChecker :: Monad m => TypingDeclCtx -> TypeCheckerT m a -> m a
+runTypeChecker :: Monad m => TypingDeclCtx builtin -> TypeCheckerT builtin m a -> m a
 runTypeChecker declCtx e = fst <$> runTypeCheckerT declCtx emptyTypeCheckerState e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
 runTypeCheckerHypothetically ::
-  TCM m =>
-  TypeCheckerT (ExceptT CompileError m) a ->
-  m (Either CompileError (a, TypeCheckerState))
+  TCM builtin m =>
+  TypeCheckerT builtin (ExceptT CompileError m) a ->
+  m (Either CompileError (a, TypeCheckerState builtin))
 runTypeCheckerHypothetically e = do
   callDepth <- getCallDepth
   declCtx <- getDeclContext
@@ -40,5 +81,5 @@ runTypeCheckerHypothetically e = do
       return $ Left err
 
 -- | Accepts the hypothetical outcome of the type-checker.
-adoptHypotheticalState :: TCM m => TypeCheckerState -> m ()
+adoptHypotheticalState :: TCM builtin m => TypeCheckerState builtin -> m ()
 adoptHypotheticalState = modifyMetaCtx . const

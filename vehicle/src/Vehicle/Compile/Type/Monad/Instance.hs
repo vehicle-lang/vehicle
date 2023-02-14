@@ -7,7 +7,7 @@ module Vehicle.Compile.Type.Monad.Instance
 where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State
   ( MonadState (..),
     StateT (..),
@@ -17,22 +17,26 @@ import Control.Monad.State
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
+import Data.Map qualified as Map
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.VariableContext
+import Vehicle.Expr.DeBruijn (DBType)
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Implementation
 
-type TypeCheckerTInternals m =
-  ReaderT TypingDeclCtx (StateT TypeCheckerState m)
+type TypeCheckerTInternals builtin m =
+  ReaderT (TypingDeclCtx builtin) (StateT (TypeCheckerState builtin) m)
 
-clearFreshNamesInternal :: Monad m => TypeCheckerTInternals m ()
+clearFreshNamesInternal :: Monad m => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
-getFreshNameInternal :: Monad m => CheckedType -> TypeCheckerTInternals m Name
+getFreshNameInternal :: Monad m => DBType builtin -> TypeCheckerTInternals builtin2 m Name
 getFreshNameInternal _typ = do
   nameID <- gets freshNameState
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})
@@ -41,40 +45,48 @@ getFreshNameInternal _typ = do
 --------------------------------------------------------------------------------
 -- The type-checking monad
 
-newtype TypeCheckerT m a = TypeCheckerT
-  { unTypeCheckerT :: TypeCheckerTInternals m a
+newtype TypeCheckerT builtin m a = TypeCheckerT
+  { unTypeCheckerT :: TypeCheckerTInternals builtin m a
   }
   deriving (Functor, Applicative, Monad)
 
-runTypeCheckerT :: Monad m => TypingDeclCtx -> TypeCheckerState -> TypeCheckerT m a -> m (a, TypeCheckerState)
+runTypeCheckerT :: Monad m => TypingDeclCtx builtin -> TypeCheckerState builtin -> TypeCheckerT builtin m a -> m (a, TypeCheckerState builtin)
 runTypeCheckerT declCtx metaCtx (TypeCheckerT e) =
   runStateT (runReaderT e declCtx) metaCtx
 
 mapTypeCheckerT ::
-  (m (a, TypeCheckerState) -> n (b, TypeCheckerState)) ->
-  TypeCheckerT m a ->
-  TypeCheckerT n b
+  (m (a, TypeCheckerState builtin) -> n (b, TypeCheckerState builtin)) ->
+  TypeCheckerT builtin m a ->
+  TypeCheckerT builtin n b
 mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 
 --------------------------------------------------------------------------------
 -- Instances that TypeCheckerT satisfies
 
-instance MonadCompile m => MonadTypeChecker (TypeCheckerT m) where
+instance MonadCompile m => InternalMonadNorm builtin (TypeCheckerT builtin m) where
+  getDeclSubstitution = TypeCheckerT $ asks $ Map.mapMaybe (fmap normalised . snd)
+
+  getMetaSubstitution = TypeCheckerT (gets currentSubstitution)
+
+instance (MonadCompile m, NormalisableBuiltin builtin) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getDeclContext = TypeCheckerT ask
   addDeclContext d s = TypeCheckerT $ local (addToDeclCtx d) (unTypeCheckerT s)
   getMetaState = TypeCheckerT get
   modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ
-  clearFreshNames = TypeCheckerT clearFreshNamesInternal
+  clearFreshNames _ = TypeCheckerT clearFreshNamesInternal
 
-instance MonadTrans TypeCheckerT where
+--------------------------------------------------------------------------------
+-- Monad inheritance laws that TypeCheckerT satisfies
+
+instance MonadTrans (TypeCheckerT builtin) where
   lift = TypeCheckerT . lift . lift
 
-instance MonadError e m => MonadError e (TypeCheckerT m) where
+instance MonadError e m => MonadError e (TypeCheckerT builtin m) where
   throwError = lift . throwError
   catchError m f = TypeCheckerT (catchError (unTypeCheckerT m) (unTypeCheckerT . f))
 
-instance MonadLogger m => MonadLogger (TypeCheckerT m) where
+instance MonadLogger m => MonadLogger (TypeCheckerT builtin m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -82,6 +94,6 @@ instance MonadLogger m => MonadLogger (TypeCheckerT m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
 
-instance MonadReader r m => MonadReader r (TypeCheckerT m) where
+instance MonadReader r m => MonadReader r (TypeCheckerT builtin m) where
   ask = lift ask
   local = mapTypeCheckerT . local

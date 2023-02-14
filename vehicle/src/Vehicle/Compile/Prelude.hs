@@ -6,7 +6,6 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
-import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
@@ -23,43 +22,33 @@ import Vehicle.Syntax.AST as X
 --------------------------------------------------------------------------------
 -- Type synonyms
 
--- * Types pre type-checking
+type NamedBinding = ()
 
-type UncheckedBinding = DBBinding
+type NamedVar = Name
 
-type UncheckedVar = DBIndexVar
+type NamedArg builtin = Arg NamedBinding NamedVar builtin
 
-type UncheckedBinder = DBBinder Builtin
+type NamedBinder builtin = Binder NamedBinding NamedVar builtin
 
-type UncheckedArg = DBArg Builtin
+type NamedExpr builtin = Expr NamedBinding NamedVar builtin
 
-type UncheckedExpr = DBExpr Builtin
+type NamedDecl builtin = Decl NamedBinding NamedVar builtin
 
-type UncheckedType = DBExpr Builtin
-
-type UncheckedDecl = DBDecl Builtin
-
-type UncheckedProg = DBProg Builtin
+type NamedProg builtin = Prog NamedBinding NamedVar builtin
 
 -- * Types post type-checking
 
-type CheckedBinding = DBBinding
+type TypeCheckedBinder = DBBinder Builtin
 
-type CheckedVar = DBIndexVar
+type TypeCheckedArg = DBArg Builtin
 
-type CheckedBinder = DBBinder Builtin
+type TypeCheckedExpr = DBExpr Builtin
 
-type CheckedArg = DBArg Builtin
+type TypeCheckedType = DBExpr Builtin
 
-type CheckedExpr = DBExpr Builtin
+type TypeCheckedDecl = DBDecl Builtin
 
-type CheckedType = CheckedExpr
-
-type CheckedDecl = DBDecl Builtin
-
-type CheckedProg = DBProg Builtin
-
-type CheckedTelescope = [CheckedBinder]
+type TypeCheckedProg = DBProg Builtin
 
 -- * Type of annotations attached to the AST that are output by the compiler
 
@@ -87,22 +76,18 @@ type DeclProvenance = (Identifier, Provenance)
 --------------------------------------------------------------------------------
 -- Typed expressions
 
-type ImportedModules = [TypedProg]
-
 -- | A typed-expression. Outside of the type-checker, the contents of this
 -- should not be inspected directly but instead use
-newtype TypedExpr = TypedExpr
-  { glued :: GluedExpr
+newtype TypedExpr builtin = StandardTypedExpr
+  { glued :: GluedExpr builtin
   }
   -- \|^ Stores the both the unnormalised and normalised expression, WITH
   -- auxiliary annotations.
   deriving (Generic)
 
-instance Serialize TypedExpr
+type TypedProg builtin = GenericProg (TypedExpr builtin)
 
-type TypedDecl = GenericDecl TypedExpr
-
-type TypedProg = GenericProg TypedExpr
+type TypedDecl builtin = GenericDecl (TypedExpr builtin)
 
 --------------------------------------------------------------------------------
 -- Property annotations

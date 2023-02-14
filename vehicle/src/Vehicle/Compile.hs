@@ -22,6 +22,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
@@ -67,7 +68,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
 
 compileToVerifier ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardTypedProg) ->
   Resources ->
   VerifierIdentifier ->
   Maybe FilePath ->
@@ -80,7 +81,7 @@ compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile =
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardTypedProg) ->
   Resources ->
   DifferentiableLogic ->
   Maybe FilePath ->
@@ -93,7 +94,7 @@ compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
   AgdaOptions ->
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardTypedProg) ->
   Maybe FilePath ->
   m ()
 compileToAgda agdaOptions (_, typedProg) outputFile = do
@@ -103,7 +104,7 @@ compileToAgda agdaOptions (_, typedProg) outputFile = do
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
 
-parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m TypeCheckedExpr
 parseAndTypeCheckExpr expr = do
   standardLibraryProg <- loadLibrary standardLibrary
   let imports = [standardLibraryProg]
@@ -123,7 +124,7 @@ typeCheckUserProg ::
   FilePath ->
   DeclarationNames ->
   Bool ->
-  m (ImportedModules, TypedProg)
+  m (ImportedModules, StandardTypedProg)
 typeCheckUserProg spec declarationsToCompile noStdlib = do
   imports <-
     if noStdlib
@@ -140,7 +141,7 @@ typeCheckProg ::
   ImportedModules ->
   SpecificationText ->
   DeclarationNames ->
-  m TypedProg
+  m StandardTypedProg
 typeCheckProg modul imports spec declarationsToCompile = do
   vehicleProg <- parseProgText modul spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
@@ -148,7 +149,7 @@ typeCheckProg modul imports spec declarationsToCompile = do
   typedProg <- typeCheck imports prunedProg
   return typedProg
 
-mergeImports :: ImportedModules -> TypedProg -> TypedProg
+mergeImports :: ImportedModules -> StandardTypedProg -> StandardTypedProg
 mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
 
 -- | Parses and type-checks the program but does
@@ -159,7 +160,7 @@ typeCheckOrLoadProg ::
   ImportedModules ->
   FilePath ->
   DeclarationNames ->
-  m TypedProg
+  m StandardTypedProg
 typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
@@ -178,7 +179,7 @@ parseProgText modul txt = do
       Left err -> throwError $ ParseError err
       Right prog' -> return prog'
 
-loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
+loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m StandardTypedProg
 loadLibrary library = do
   let libname = libraryName $ libraryInfo library
   logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do

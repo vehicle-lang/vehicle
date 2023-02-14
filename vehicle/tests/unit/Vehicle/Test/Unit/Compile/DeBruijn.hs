@@ -6,14 +6,14 @@ import Vehicle.Compile.Prelude
   ( BinderDisplayForm (BinderDisplayForm),
     BinderNamingForm (OnlyName),
     Builtin,
-    CheckedBinder,
-    CheckedExpr,
-    CheckedType,
     Expr (Lam),
     GenericBinder (Binder),
     Pretty (pretty),
     Provenance,
     Relevance (Relevant),
+    TypeCheckedBinder,
+    TypeCheckedExpr,
+    TypeCheckedType,
     Visibility (Explicit),
     indent,
     layoutAsString,
@@ -91,8 +91,8 @@ liftingTests =
 data SubstitutionTest = SubstitutionTest
   { name :: String,
     value :: DBExpr Builtin,
-    expr :: CheckedExpr,
-    expected :: CheckedExpr
+    expr :: TypeCheckedExpr,
+    expected :: TypeCheckedExpr
   }
 
 substTest :: SubstitutionTest -> TestTree
@@ -126,8 +126,8 @@ substTest SubstitutionTest {..} =
 data LiftingTest = LiftingTest
   { name :: String,
     amount :: DBLevel,
-    input :: CheckedExpr,
-    expected :: CheckedExpr
+    input :: TypeCheckedExpr,
+    expected :: TypeCheckedExpr
   }
 
 liftTest :: LiftingTest -> TestTree
@@ -156,5 +156,5 @@ liftTest LiftingTest {..} =
 p :: Provenance
 p = mempty
 
-binding :: CheckedType -> CheckedBinder
+binding :: TypeCheckedType -> TypeCheckedBinder
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()

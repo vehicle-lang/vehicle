@@ -1,14 +1,29 @@
-module Vehicle.Compile.Type.Builtin
-  ( typeOfBuiltin,
+module Vehicle.Compile.Type.Subsystem.Standard.Type
+  ( typeStandardBuiltin,
+    standardTypeOfLiteral,
+    standardTypeOfVectorLiteral,
+    handleStandardTypingError,
+    getStandardPropertyInfo,
+    relevanceOfTypeClass,
   )
 where
 
+import Control.Monad.Except (MonadError (..))
+import Data.Monoid (Endo (..), appEndo)
+import Data.Text (pack)
+import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (getTypeClass)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
+import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeOfBuiltin :: Provenance -> Builtin -> CheckedType
-typeOfBuiltin p b = fromDSL p $ case b of
+typeStandardBuiltin :: Provenance -> Builtin -> CheckedType Builtin
+typeStandardBuiltin p b = fromDSL p $ case b of
   Constructor c -> typeOfConstructor c
   TypeClassOp tc -> typeOfTypeClassOp tc
   BuiltinFunction f -> typeOfBuiltinFunction f
@@ -304,3 +319,71 @@ typeOfOrder domain _op = case domain of
   OrderRat {} ->
     forAllLinearityTriples $ \l1 l2 l3 ->
       maxLinearity l1 l2 l3 .~~~> tAnnRat l1 ~> tAnnRat l2 ~> tAnnBool l3 unquantified
+
+-- | Return the type of the provided literal,
+standardTypeOfLiteral :: Provenance -> Literal -> CheckedType Builtin
+standardTypeOfLiteral p l = fromDSL p $ case l of
+  LUnit -> tUnit
+  LBool _ -> tAnnBool constant unquantified
+  LIndex n _ -> tIndex (natLit n)
+  LNat {} -> tNat
+  LInt {} -> tInt
+  LRat {} -> tAnnRat constant
+
+standardTypeOfVectorLiteral ::
+  Provenance ->
+  [TypeCheckedType] ->
+  TypeCheckedType
+standardTypeOfVectorLiteral p typesOfElems = do
+  -- Create the new type.
+  -- Roughly [x1, ..., xn] has type
+  --  forall {A} .{{TypesEqual A [t1, ..., tn]}} . Vector tElem n
+  let liftedTypesOfElems = liftDBIndices 1 <$> typesOfElems
+  let typesOfElemsSeq = mkList p (TypeUniverse p 0) liftedTypesOfElems
+  let tc = AlmostEqualConstraint
+  let elemsTC tElem = BuiltinTypeClass p tc (ExplicitArg p <$> [tElem, typesOfElemsSeq])
+  let typeOfContainer =
+        Pi p (Binder p (BinderDisplayForm (OnlyName "A") False) (Implicit False) Relevant () (TypeUniverse p 0)) $
+          Pi p (Binder p (BinderDisplayForm OnlyType False) (Instance False) Irrelevant () (elemsTC (Var p (Bound 0)))) $
+            VectorType p (Var p (Bound 1)) (NatLiteral p (length typesOfElems))
+
+  -- Return the result
+  typeOfContainer
+
+handleStandardTypingError :: MonadCompile m => TypingError Builtin -> m a
+handleStandardTypingError = \case
+  MissingExplicitArgument boundCtx expectedBinder actualArg ->
+    throwError $ MissingExplicitArg (boundContextOf boundCtx) actualArg (typeOf expectedBinder)
+  FunctionTypeMismatch boundCtx fun originalArgs nonPiType args -> do
+    let p = provenanceOf fun
+    let mkRes =
+          [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+            | (i, arg) <- zip [0 :: Int ..] args
+          ]
+    let expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
+    let currentFun = normAppList p fun (take (length args) originalArgs)
+    throwError $ FunTypeMismatch p (boundContextOf boundCtx) currentFun nonPiType expectedType
+  FailedUnification constraints ->
+    throwError (FailedUnificationConstraints constraints)
+  UnsolvableConstraints constraints ->
+    throwError $ UnsolvedConstraints constraints
+
+getStandardPropertyInfo :: MonadCompile m => StandardTypedDecl -> m PropertyInfo
+getStandardPropertyInfo property = do
+  propertyInfo <- go (normalised (glued $ typeOf property))
+  return propertyInfo
+  where
+    go :: MonadCompile m => StandardNormType -> m PropertyInfo
+    go = \case
+      VTensorType tElem _ -> go tElem
+      VVectorType tElem _ -> go tElem
+      VAnnBoolType (VLinearityExpr lin) (VPolarityExpr pol) ->
+        return $ PropertyInfo lin pol
+      _ -> do
+        let declProv = (identifierOf property, provenanceOf property)
+        throwError $ PropertyTypeUnsupported declProv (glued $ typeOf property)
+
+relevanceOfTypeClass :: MonadCompile m => Builtin -> m Relevance
+relevanceOfTypeClass b = do
+  tc <- getTypeClass b
+  return $ relevanceOf tc

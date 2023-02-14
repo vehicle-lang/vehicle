@@ -3,7 +3,7 @@
 module Vehicle.Test.Unit.Common where
 
 import Control.Monad.Except (ExceptT)
-import Data.Data (Proxy (Proxy))
+import Data.Data (Proxy (..))
 import Data.Functor.Foldable (Recursive (cata))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Tagged (Tagged (Tagged))
@@ -21,10 +21,10 @@ import Vehicle.Compile.Error.Message
 import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
   ( Builtin (TypeClassOp),
-    CheckedExpr,
     Expr (..),
     ExprF (..),
     LoggingLevel,
+    TypeCheckedExpr,
     normApp,
   )
 import Vehicle.Prelude
@@ -70,7 +70,7 @@ unitTestCase testName errorOrAssertionWithLogs =
         Left x -> developerError $ pretty $ details x
         Right y -> y
 
-normTypeClasses :: MonadCompile m => CheckedExpr -> m CheckedExpr
+normTypeClasses :: MonadCompile m => TypeCheckedExpr -> m TypeCheckedExpr
 normTypeClasses = cata $ \case
   AppF p fun args -> do
     fun' <- fun

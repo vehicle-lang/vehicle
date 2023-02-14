@@ -40,16 +40,16 @@ import Vehicle.Expr.Normalised
 type MetaCtxSize = Int
 
 -- | The information stored about each meta-variable.
-data MetaInfo = MetaInfo
+data MetaInfo builtin = MetaInfo
   { -- | Location in the source file the meta-variable was generated
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
-    metaType :: CheckedType,
+    metaType :: DBExpr builtin,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtx :: TypingBoundCtx
+    metaCtx :: TypingBoundCtx builtin
   }
 
-extendMetaCtx :: CheckedBinder -> MetaInfo -> MetaInfo
+extendMetaCtx :: DBBinder builtin -> MetaInfo builtin -> MetaInfo builtin
 extendMetaCtx binder MetaInfo {..} =
   MetaInfo
     { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
@@ -60,8 +60,8 @@ extendMetaCtx binder MetaInfo {..} =
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  TypingBoundCtx ->
-  GluedExpr
+  TypingBoundCtx builtin ->
+  GluedExpr builtin
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
@@ -76,18 +76,18 @@ makeMetaExpr p metaID boundCtx = do
 
 -- | Creates a Pi type that abstracts over all bound variables
 makeMetaType ::
-  TypingBoundCtx ->
+  TypingBoundCtx builtin ->
   Provenance ->
-  CheckedType ->
-  CheckedType
+  DBType builtin ->
+  DBType builtin
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
-    entryToPi :: (Maybe Name, CheckedType, Maybe CheckedExpr) -> CheckedType -> CheckedType
+    entryToPi :: (Maybe Name, DBType builtin, Maybe (DBExpr builtin)) -> DBType builtin -> DBType builtin
     entryToPi (name, t, _) = do
       let n = fromMaybe "_" name
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
-getMetaDependencies :: [CheckedArg] -> [DBIndex]
+getMetaDependencies :: [DBArg builtin] -> [DBIndex]
 getMetaDependencies = \case
   (ExplicitArg _ (Var _ (Bound i))) : args -> i : getMetaDependencies args
   _ -> []
@@ -106,7 +106,7 @@ class HasMetas a where
   metasIn :: MonadCompile m => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
-instance HasMetas CheckedExpr where
+instance HasMetas (DBExpr builtin) where
   findMetas expr = case expr of
     Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()
@@ -147,13 +147,13 @@ instance HasMetas a => HasMetas [a] where
 instance HasMetas a => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
-instance HasMetas TypeClassConstraint where
+instance HasMetas (TypeClassConstraint builtin) where
   findMetas (Has _ _ e) = findMetas e
 
-instance HasMetas UnificationConstraint where
+instance HasMetas (UnificationConstraint builtin) where
   findMetas (Unify e1 e2) = do findMetas e1; findMetas e2
 
-instance HasMetas Constraint where
+instance HasMetas (Constraint builtin) where
   findMetas = \case
     UnificationConstraint c -> findMetas c
     TypeClassConstraint c -> findMetas c

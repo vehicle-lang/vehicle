@@ -4,17 +4,17 @@ module Vehicle.Compile.Type.Irrelevance
   )
 where
 
-import Control.Monad.Reader (ReaderT (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (MonadNorm, NormalisableBuiltin, eval)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode ::
-  (MonadCompile m, RemoveIrrelevantCode a) =>
+  (MonadCompile m, RemoveIrrelevantCode m a) =>
   a ->
   m a
 removeIrrelevantCode x = do
@@ -28,16 +28,16 @@ type MonadRemove m =
   ( MonadCompile m
   )
 
-class RemoveIrrelevantCode a where
+class RemoveIrrelevantCode m a where
   remove :: MonadRemove m => a -> m a
 
-instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericProg expr) where
+instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericProg expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericDecl expr) where
+instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode CheckedExpr where
+instance RemoveIrrelevantCode m (CheckedExpr builtin) where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of
@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode CheckedExpr where
     showRemoveExit result
     return result
 
-instance RemoveIrrelevantCode (NormExpr Builtin) where
+instance MonadNorm builtin m => RemoveIrrelevantCode m (NormExpr builtin) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VLiteral {} -> return expr
@@ -79,7 +79,7 @@ instance RemoveIrrelevantCode (NormExpr Builtin) where
       -- But don't have access to it here. Tried adding it to the `Env` type, but then
       -- every lambda stores an independent copy.
       | isIrrelevant binder -> do
-          newExpr <- runReaderT (eval (VUnitLiteral : env) body) (mempty, mempty)
+          newExpr <- eval (VUnitLiteral : env) body
           remove newExpr
       | otherwise -> do
           VLam <$> remove binder <*> remove env <*> remove body
@@ -89,20 +89,20 @@ instance RemoveIrrelevantCode (NormExpr Builtin) where
     VMeta m spine -> VMeta m <$> removeArgs spine
     VBuiltin b spine -> VBuiltin b <$> removeArgs spine
 
-instance RemoveIrrelevantCode GluedExpr where
+instance (MonadNorm builtin m, NormalisableBuiltin builtin) => RemoveIrrelevantCode m (GluedExpr builtin) where
   remove (Glued u n) = Glued <$> remove u <*> remove n
 
-instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericArg expr) where
+instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericArg expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode expr => RemoveIrrelevantCode (GenericBinder binding expr) where
+instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericBinder binding expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode (Env Builtin) where
+instance (MonadNorm builtin m, NormalisableBuiltin builtin) => RemoveIrrelevantCode m (Env builtin) where
   remove = traverse remove
 
 removeArgs ::
-  (MonadRemove m, RemoveIrrelevantCode expr) =>
+  (MonadRemove m, RemoveIrrelevantCode m expr) =>
   [GenericArg expr] ->
   m [GenericArg expr]
 removeArgs = traverse remove . filter isRelevant
@@ -110,12 +110,12 @@ removeArgs = traverse remove . filter isRelevant
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showRemoveEntry :: MonadRemove m => CheckedExpr -> m ()
+showRemoveEntry :: MonadRemove m => CheckedExpr builtin -> m ()
 showRemoveEntry _e = do
   -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showRemoveExit :: MonadRemove m => CheckedExpr -> m ()
+showRemoveExit :: MonadRemove m => CheckedExpr builtin -> m ()
 showRemoveExit _e = do
   decrCallDepth
 

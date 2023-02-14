@@ -17,17 +17,17 @@ import Vehicle.Expr.DeBruijn
 -- all references to them. Cannot be done during the main compilation pass as we
 -- need to be able to distinguish between free and bound variables.
 
-capitaliseTypeNames :: CheckedProg -> CheckedProg
+capitaliseTypeNames :: TypeCheckedProg -> TypeCheckedProg
 capitaliseTypeNames prog = evalState (cap prog) mempty
 
-isTypeDef :: CheckedExpr -> Bool
+isTypeDef :: TypeCheckedExpr -> Bool
 isTypeDef t = case t of
   -- We don't capitalise things of type `Bool` because they will be lifted
   -- to the type level, only things of type `X -> Bool`.
   Pi _ _ result -> go result
   _ -> False
   where
-    go :: CheckedExpr -> Bool
+    go :: TypeCheckedExpr -> Bool
     go (BoolType _) = True
     go (Pi _ _ res) = go res
     go _ = False
@@ -35,10 +35,10 @@ isTypeDef t = case t of
 class CapitaliseTypes a where
   cap :: MonadState (Set Identifier) m => a -> m a
 
-instance CapitaliseTypes CheckedProg where
+instance CapitaliseTypes TypeCheckedProg where
   cap (Main ds) = Main <$> traverse cap ds
 
-instance CapitaliseTypes CheckedDecl where
+instance CapitaliseTypes TypeCheckedDecl where
   cap d = case d of
     DefResource p ident r t ->
       DefResource p <$> cap ident <*> pure r <*> cap t
@@ -49,7 +49,7 @@ instance CapitaliseTypes CheckedDecl where
     DefPostulate p ident t ->
       DefPostulate p <$> cap ident <*> cap t
 
-instance CapitaliseTypes CheckedExpr where
+instance CapitaliseTypes TypeCheckedExpr where
   cap = cata $ \case
     UniverseF p l -> return $ Universe p l
     HoleF p n -> return $ Hole p n

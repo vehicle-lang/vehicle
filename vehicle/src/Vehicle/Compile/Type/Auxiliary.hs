@@ -8,11 +8,14 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (compilerDeveloperError)
+import Vehicle.Compile.Normalise as OldNorm
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.VariableContext (toNormalisationDeclContext)
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
@@ -21,18 +24,15 @@ import Vehicle.Expr.Normalised
 data AuxType = Pol | Lin
 
 -- | Function for updating an auxiliary argument (which may be missing)
-type AuxArgUpdate m = Provenance -> AuxType -> Maybe CheckedExpr -> m CheckedExpr
+type AuxArgUpdate m = Provenance -> AuxType -> Maybe (CheckedExpr Builtin) -> m (CheckedExpr Builtin)
 
 class TraverseAuxiliaryArguments a where
   -- | Traverses all the auxiliary type arguments in the provided element,
   -- applying the provided update function when it finds them (or a space
   -- where they should be).
-  traverseAux :: TCM m => AuxArgUpdate m -> a -> m a
+  traverseAux :: TCM Builtin m => AuxArgUpdate m -> a -> m a
 
-instance TraverseAuxiliaryArguments UncheckedDecl where
-  traverseAux f = traverse (traverseAux f)
-
-instance TraverseAuxiliaryArguments UncheckedExpr where
+instance TraverseAuxiliaryArguments (UncheckedExpr Builtin) where
   traverseAux f expr = case expr of
     BoolType p -> do
       lin <- f p Lin Nothing
@@ -65,10 +65,10 @@ instance TraverseAuxiliaryArguments UncheckedExpr where
     Literal {} -> return expr
     Builtin {} -> return expr
 
-instance TraverseAuxiliaryArguments UncheckedArg where
+instance TraverseAuxiliaryArguments (UncheckedArg Builtin) where
   traverseAux f = traverse (traverseAux f)
 
-instance TraverseAuxiliaryArguments UncheckedBinder where
+instance TraverseAuxiliaryArguments (UncheckedBinder Builtin) where
   traverseAux f = traverse (traverseAux f)
 
 instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments (NonEmpty a) where
@@ -77,7 +77,7 @@ instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments (NonEmpty a)
 instance TraverseAuxiliaryArguments a => TraverseAuxiliaryArguments [a] where
   traverseAux f = traverse (traverseAux f)
 
-mkAnnBoolType :: Provenance -> CheckedExpr -> CheckedExpr -> CheckedExpr
+mkAnnBoolType :: Provenance -> CheckedExpr Builtin -> CheckedExpr Builtin -> CheckedExpr Builtin
 mkAnnBoolType p lin pol =
   ConstructorExpr
     p
@@ -86,10 +86,10 @@ mkAnnBoolType p lin pol =
       IrrelevantImplicitArg p pol
     ]
 
-mkAnnRatType :: Provenance -> CheckedExpr -> CheckedExpr
+mkAnnRatType :: Provenance -> CheckedExpr Builtin -> CheckedExpr Builtin
 mkAnnRatType p lin = ConstructorExpr p Rat [IrrelevantImplicitArg p lin]
 
-traverseFreeVariable :: TCM m => AuxArgUpdate m -> Provenance -> Identifier -> [CheckedArg] -> m CheckedExpr
+traverseFreeVariable :: TCM Builtin m => AuxArgUpdate m -> Provenance -> Identifier -> [CheckedArg Builtin] -> m (CheckedExpr Builtin)
 traverseFreeVariable f p ident args = do
   args' <- traverseAux f args
   declType <- getDeclType p ident
@@ -103,12 +103,12 @@ traverseFreeVariable f p ident args = do
 -- | Traverses a telescope of the expected type and the actual provided arguments
 -- applying the update function everywhere it finds an auxiliary argument in the type.
 traverseAuxFreeVarArgs ::
-  TCM m =>
+  TCM Builtin m =>
   AuxArgUpdate m ->
   Provenance ->
-  CheckedType ->
-  [CheckedArg] ->
-  m [CheckedArg]
+  CheckedType Builtin ->
+  [CheckedArg Builtin] ->
+  m [CheckedArg Builtin]
 traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
   (Pi _ binder res, arg : args) -> do
     let inputType = binderType binder
@@ -131,10 +131,10 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
         return $ IrrelevantImplicitArg p meta : xs
   (_, []) -> return []
   (FreeVar {}, _) -> do
-    normDeclType <- whnf declType
+    normDeclType <- oldNorm declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
   (App _ FreeVar {} _, _) -> do
-    normDeclType <- whnf declType
+    normDeclType <- oldNorm declType
     traverseAuxFreeVarArgs f p normDeclType declArgs
   (_, _) ->
     compilerDeveloperError $
@@ -149,6 +149,21 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
               <+> prettyVerbose declArgs
           )
 
+oldNorm :: MonadTypeChecker Builtin m => TypeCheckedExpr -> m TypeCheckedExpr
+oldNorm e = do
+  declCtx <- getDeclContext
+  runSilentLoggerT $
+    normaliseExpr
+      e
+      Options
+        { declContext = toNormalisationDeclContext declCtx,
+          boundContext = mempty, -- see issue #129
+          normaliseDeclApplications = True,
+          normaliseLambdaApplications = True,
+          normaliseStdLibApplications = True,
+          normaliseBuiltin = const True
+        }
+
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity annotations
 
@@ -156,16 +171,12 @@ traverseAuxFreeVarArgs f p declType declArgs = case (declType, declArgs) of
 -- polarity annotations on the `Bool` type and linearity annotations on the
 -- `Rat` type.
 insertHolesForAuxiliaryAnnotations ::
-  ( TCM m,
-    TraverseAuxiliaryArguments a
-  ) =>
-  a ->
-  m a
+  TCM Builtin m => UncheckedExpr Builtin -> m (UncheckedExpr Builtin)
 insertHolesForAuxiliaryAnnotations e =
   logCompilerPass MaxDetail "insertion of missing auxiliary types" $
     traverseAux insertionUpdateFn e
 
-insertionUpdateFn :: TCM m => AuxArgUpdate m
+insertionUpdateFn :: TCM Builtin m => AuxArgUpdate m
 insertionUpdateFn p auxType = \case
   Just e -> return e
   Nothing -> case auxType of
@@ -180,9 +191,9 @@ insertionUpdateFn p auxType = \case
 -- meta variables, and then relates the the two by adding a new suitable
 -- constraint.
 addFunctionAuxiliaryInputOutputConstraints ::
-  TCM m =>
-  CheckedDecl ->
-  m CheckedDecl
+  TCM Builtin m =>
+  CheckedDecl Builtin ->
+  m (CheckedDecl Builtin)
 addFunctionAuxiliaryInputOutputConstraints = \case
   DefFunction p ident isProperty t e -> do
     logCompilerPass MaxDetail "insertion of function constraints" $ do
@@ -191,11 +202,11 @@ addFunctionAuxiliaryInputOutputConstraints = \case
   d -> return d
 
 decomposePiType ::
-  (TCM m, MonadState (MetaMap CheckedExpr) m) =>
+  (TCM Builtin m, MonadState (MetaMap (CheckedExpr Builtin)) m) =>
   DeclProvenance ->
   Int ->
-  CheckedType ->
-  m CheckedType
+  CheckedType Builtin ->
+  m (CheckedType Builtin)
 decomposePiType declProv@(ident, p) explicitBindingDepth = \case
   Pi p' binder res
     | isExplicit binder -> do
@@ -211,7 +222,7 @@ decomposePiType declProv@(ident, p) explicitBindingDepth = \case
     traverseAux (replaceAux (p, position)) outputType
 
 replaceAux ::
-  (TCM m, MonadState (MetaMap CheckedExpr) m) =>
+  (TCM Builtin m, MonadState (MetaMap (CheckedExpr Builtin)) m) =>
   (Provenance, FunctionPosition) ->
   AuxArgUpdate m
 replaceAux position p auxType = \case
@@ -223,12 +234,12 @@ replaceAux position p auxType = \case
     Pol -> addFunctionConstraint (PolarityTypeClass . FunctionPolarity) (unnormalised <$> freshPolarityMeta p) position expr
 
 addFunctionConstraint ::
-  (TCM m, MonadState (MetaMap CheckedExpr) m) =>
+  (TCM Builtin m, MonadState (MetaMap (CheckedExpr Builtin)) m) =>
   (FunctionPosition -> TypeClass) ->
-  m CheckedExpr ->
+  m (CheckedExpr Builtin) ->
   (Provenance, FunctionPosition) ->
-  CheckedExpr ->
-  m CheckedExpr
+  CheckedExpr Builtin ->
+  m (CheckedExpr Builtin)
 addFunctionConstraint mkTC createNewMeta (declProv, position) existingExpr = do
   newExpr <- case existingExpr of
     Meta _ m -> do

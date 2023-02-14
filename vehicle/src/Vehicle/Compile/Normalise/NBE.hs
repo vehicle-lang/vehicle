@@ -1,54 +1,131 @@
+{-# HLINT ignore "Use <|>" #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use <|>" #-}
 
 module Vehicle.Compile.Normalise.NBE
   ( whnf,
     eval,
     evalApp,
-    evalBuiltin,
     liftEnvOverBinder,
-    forceExpr,
+    forceHead,
+    forceArg,
     reeval,
+    MonadNorm,
+    NormT,
+    runNormT,
+    runEmptyNormT,
+    NormalisableBuiltin (..),
+    InternalMonadNorm (..),
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Foldable (foldrM)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (ReaderT (..), asks)
+import Control.Monad.State (StateT)
+import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Writer (WriterT)
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map qualified as Map (lookup)
 import Data.Maybe (isJust)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.VariableContext (DeclSubstitution, MetaSubstitution)
+import Vehicle.Compile.Type.VariableContext
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
+-----------------------------------------------------------------------------
+-- Main method
+
 whnf ::
-  MonadCompile m =>
+  MonadNorm builtin m =>
   DBLevel ->
-  DeclSubstitution ->
-  MetaSubstitution ->
-  CheckedExpr ->
-  m BasicNormExpr
-whnf dbLevel declCtx metaSubst e = do
-  let env = mkNoOpEnv dbLevel
-  runReaderT (eval env e) (declCtx, metaSubst)
+  DBExpr builtin ->
+  m (NormExpr builtin)
+whnf dbLevel = eval (mkNoOpEnv dbLevel)
+
+-----------------------------------------------------------------------------
+-- Normalisation monad
+
+class MonadCompile m => InternalMonadNorm builtin m where
+  getDeclSubstitution :: m (DeclSubstitution builtin)
+  getMetaSubstitution :: m (MetaSubstitution builtin)
+
+instance InternalMonadNorm builtin m => InternalMonadNorm builtin (StateT s m) where
+  getDeclSubstitution = lift getDeclSubstitution
+  getMetaSubstitution = lift getMetaSubstitution
+
+instance (Monoid s, InternalMonadNorm builtin m) => InternalMonadNorm builtin (WriterT s m) where
+  getDeclSubstitution = lift getDeclSubstitution
+  getMetaSubstitution = lift getMetaSubstitution
+
+instance InternalMonadNorm builtin m => InternalMonadNorm builtin (ReaderT s m) where
+  getDeclSubstitution = lift getDeclSubstitution
+  getMetaSubstitution = lift getMetaSubstitution
+
+newtype NormT builtin m a = NormT
+  { unnormT :: ReaderT (DeclSubstitution builtin, MetaSubstitution builtin) m a
+  }
+  deriving (Functor, Applicative, Monad)
+
+runNormT :: DeclSubstitution builtin -> MetaSubstitution builtin -> NormT builtin m a -> m a
+runNormT declSubst metaSubst x = runReaderT (unnormT x) (declSubst, metaSubst)
+
+runEmptyNormT :: NormT builtin m a -> m a
+runEmptyNormT = runNormT mempty mempty
+
+instance MonadTrans (NormT builtin) where
+  lift = NormT . lift
+
+instance MonadLogger m => MonadLogger (NormT builtin m) where
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+
+instance MonadError e m => MonadError e (NormT builtin m) where
+  throwError = lift . throwError
+  catchError m f = NormT (catchError (unnormT m) (unnormT . f))
+
+instance MonadCompile m => InternalMonadNorm builtin (NormT builtin m) where
+  getDeclSubstitution = NormT $ asks fst
+  getMetaSubstitution = NormT $ asks snd
+
+-----------------------------------------------------------------------------
+-- Subsystem
+
+class (Eq builtin, PrintableBuiltin builtin) => NormalisableBuiltin builtin where
+  -- | The ability to evaluate the builtin
+  evalBuiltin ::
+    InternalMonadNorm builtin m =>
+    builtin ->
+    Spine builtin ->
+    m (NormExpr builtin)
+
+  -- | Force the application of a builtin returning the reduced expression and the
+  -- set of blocking metas.
+  forceBuiltin ::
+    InternalMonadNorm builtin m =>
+    builtin ->
+    Spine builtin ->
+    m (Maybe (NormExpr builtin), MetaSet)
+
+type MonadNorm builtin m =
+  ( InternalMonadNorm builtin m,
+    NormalisableBuiltin builtin
+  )
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
-type MonadNorm m =
-  ( MonadCompile m,
-    MonadReader (DeclSubstitution, MetaSubstitution) m
-  )
-
 -- TODO change to return a tuple of NF and WHNF?
-eval :: MonadNorm m => Env Builtin -> CheckedExpr -> m BasicNormExpr
+eval :: MonadNorm builtin m => Env builtin -> DBExpr builtin -> m (NormExpr builtin)
 eval env expr = do
   showEntry env expr
   result <- case expr of
@@ -67,8 +144,8 @@ eval env expr = do
     Var _ v -> case v of
       Bound i -> i `lookupIn` env
       Free ident -> do
-        (declCtx, _) <- ask
-        let declExpr = Map.lookup ident declCtx
+        declSubst <- getDeclSubstitution
+        let declExpr = Map.lookup ident declSubst
         return $ case declExpr of
           Just x -> x
           Nothing -> VFreeVar ident []
@@ -83,10 +160,10 @@ eval env expr = do
   showExit result
   return result
 
-evalBinder :: MonadNorm m => Env Builtin -> CheckedBinder -> m BasicNormBinder
+evalBinder :: MonadNorm builtin m => Env builtin -> DBBinder builtin -> m (NormBinder builtin)
 evalBinder env = traverse (eval env)
 
-evalApp :: MonadNorm m => BasicNormExpr -> BasicSpine -> m BasicNormExpr
+evalApp :: MonadNorm builtin m => NormExpr builtin -> Spine builtin -> m (NormExpr builtin)
 evalApp fun [] = return fun
 evalApp fun (arg : args) = case fun of
   VMeta v spine -> return $ VMeta v (spine <> (arg : args))
@@ -103,7 +180,7 @@ evalApp fun (arg : args) = case fun of
   VPi {} -> unexpectedExprError currentPass "VPi"
   VLiteral {} -> unexpectedExprError currentPass "VLiteral"
 
-lookupIn :: MonadCompile m => DBIndex -> BasicEnv -> m BasicNormExpr
+lookupIn :: MonadCompile m => DBIndex -> Env builtin -> m (NormExpr builtin)
 lookupIn i env = case lookupVar env i of
   Just value -> return value
   Nothing ->
@@ -115,73 +192,9 @@ lookupIn i env = case lookupVar env i of
         <+> pretty i
 
 -----------------------------------------------------------------------------
--- Full evaluation of builtins
-
--- TODO Separate builtins from syntactic sugar
---
--- TODO Pass in the right number of arguments ensuring all literals
-evalBuiltin :: MonadNorm m => Builtin -> BasicSpine -> m BasicNormExpr
-evalBuiltin b args = case b of
-  Constructor {} -> return $ VBuiltin b args
-  TypeClassOp op -> evalTypeClassOp op args
-  BuiltinFunction f -> evalBuiltinFunction f args
-
-evalBuiltinFunction :: MonadNorm m => BuiltinFunction -> BasicSpine -> m BasicNormExpr
-evalBuiltinFunction b args
-  | isDerived b = evalDerivedBuiltin b args
-  | otherwise = do
-      let relevantArgs = filter isRelevant args
-
-      let result = case b of
-            Quantifier {} -> Nothing
-            Not -> evalNot relevantArgs
-            And -> evalAnd relevantArgs
-            Or -> evalOr relevantArgs
-            Neg dom -> evalNeg dom relevantArgs
-            Add dom -> evalAdd dom relevantArgs
-            Sub dom -> evalSub dom relevantArgs
-            Mul dom -> evalMul dom relevantArgs
-            Div dom -> evalDiv dom relevantArgs
-            Equals dom op -> evalEquals dom op relevantArgs
-            Order dom op -> evalOrder dom op relevantArgs
-            If -> evalIf relevantArgs
-            At -> evalAt relevantArgs
-            Fold dom -> evalFold dom relevantArgs
-            Foreach -> evalForeach relevantArgs
-            FromNat _ dom -> evalFromNat dom relevantArgs
-            FromRat dom -> evalFromRat dom relevantArgs
-            FromVec _n dom -> evalFromVec dom relevantArgs
-            Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
-            Map {} -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
-
-      -- when (b == And) $ do
-      --   logDebug MaxDetail $ prettyVerbose (VBuiltin b args)
-      --   case result of
-      --     Nothing -> logDebug MaxDetail "not normalised"
-      --     Just x -> do
-      --       x' <- x
-      --       logDebug MaxDetail (prettyVerbose x')
-
-      case result of
-        Nothing -> return $ VBuiltinFunction b args
-        Just r -> r
-
-isDerived :: BuiltinFunction -> Bool
-isDerived = \case
-  Implies {} -> True
-  Map {} -> True
-  _ -> False
-
-evalDerivedBuiltin :: MonadNorm m => BuiltinFunction -> BasicSpine -> m BasicNormExpr
-evalDerivedBuiltin b args = case b of
-  Implies -> evalImplies args
-  Map dom -> evalMap dom args
-  _ -> compilerDeveloperError $ "Invalid derived builtin" <+> quotePretty b
-
------------------------------------------------------------------------------
 -- Reevaluation
 
-reeval :: MonadNorm m => BasicNormExpr -> m BasicNormExpr
+reeval :: MonadNorm builtin m => NormExpr builtin -> m (NormExpr builtin)
 reeval expr = case expr of
   VUniverse {} -> return expr
   VLiteral {} -> return expr
@@ -193,333 +206,38 @@ reeval expr = case expr of
   VBoundVar v spine -> VBoundVar v <$> reevalSpine spine
   VBuiltin b spine -> evalApp (VBuiltin b []) =<< reevalSpine spine
 
-reevalSpine :: MonadNorm m => BasicSpine -> m BasicSpine
+reevalSpine :: MonadNorm builtin m => Spine builtin -> m (Spine builtin)
 reevalSpine = traverse (traverse reeval)
-
------------------------------------------------------------------------------
--- Indvidual builtins
-
-type EvalBuiltin = forall m. MonadNorm m => BasicSpine -> Maybe (m BasicNormExpr)
-
-pattern VBool :: Bool -> BasicNormArg
-pattern VBool x <- ExplicitArg _ (VLiteral (LBool x))
-
-pattern VIndex :: Int -> BasicNormArg
-pattern VIndex x <- ExplicitArg _ (VLiteral (LIndex _ x))
-
-pattern VNat :: Int -> BasicNormArg
-pattern VNat x <- ExplicitArg _ (VLiteral (LNat x))
-
-pattern VInt :: Int -> BasicNormArg
-pattern VInt x <- ExplicitArg _ (VLiteral (LInt x))
-
-pattern VRat :: Rational -> BasicNormArg
-pattern VRat x <- ExplicitArg _ (VLiteral (LRat x))
-
--- TODO a lot of duplication in the below. Once we have separated out the
--- derived builtins we should be able to
-
-evalNot :: EvalBuiltin
-evalNot e = case e of
-  [VBool x] -> Just $ return $ VLiteral (LBool (not x))
-  _ -> Nothing
-
-evalAnd :: EvalBuiltin
-evalAnd = \case
-  [VBool x, VBool y] -> Just $ return $ VLiteral (LBool (x && y))
-  _ -> Nothing
-
-evalOr :: EvalBuiltin
-evalOr = \case
-  [VBool x, VBool y] -> Just $ return $ VLiteral (LBool (x && y))
-  _ -> Nothing
-
-evalNeg :: NegDomain -> EvalBuiltin
-evalNeg = \case
-  NegInt -> evalNegInt
-  NegRat -> evalNegRat
-
-evalNegInt :: EvalBuiltin
-evalNegInt = \case
-  [VInt x] -> Just $ return $ VLiteral (LInt (-x))
-  _ -> Nothing
-
-evalNegRat :: EvalBuiltin
-evalNegRat = \case
-  [VRat x] -> Just $ return $ VLiteral (LRat (-x))
-  _ -> Nothing
-
-evalAdd :: AddDomain -> EvalBuiltin
-evalAdd = \case
-  AddNat -> evalAddNat
-  AddInt -> evalAddInt
-  AddRat -> evalAddRat
-
-evalAddNat :: EvalBuiltin
-evalAddNat = \case
-  [VNat x, VNat y] -> Just $ return $ VLiteral (LNat (x + y))
-  _ -> Nothing
-
-evalAddInt :: EvalBuiltin
-evalAddInt = \case
-  [VInt x, VInt y] -> Just $ return $ VLiteral (LInt (x + y))
-  _ -> Nothing
-
-evalAddRat :: EvalBuiltin
-evalAddRat = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LRat (x + y))
-  _ -> Nothing
-
-evalSub :: SubDomain -> EvalBuiltin
-evalSub = \case
-  SubInt -> evalSubInt
-  SubRat -> evalSubRat
-
-evalSubInt :: EvalBuiltin
-evalSubInt = \case
-  [VInt x, VInt y] -> Just $ return $ VLiteral (LInt (x - y))
-  _ -> Nothing
-
-evalSubRat :: EvalBuiltin
-evalSubRat = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LRat (x - y))
-  _ -> Nothing
-
-evalMul :: MulDomain -> EvalBuiltin
-evalMul = \case
-  MulNat -> evalMulNat
-  MulInt -> evalMulInt
-  MulRat -> evalMulRat
-
-evalMulNat :: EvalBuiltin
-evalMulNat = \case
-  [VNat x, VNat y] -> Just $ return $ VLiteral (LNat (x * y))
-  _ -> Nothing
-
-evalMulInt :: EvalBuiltin
-evalMulInt = \case
-  [VInt x, VInt y] -> Just $ return $ VLiteral (LInt (x * y))
-  _ -> Nothing
-
-evalMulRat :: EvalBuiltin
-evalMulRat = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LRat (x * y))
-  _ -> Nothing
-
-evalDiv :: DivDomain -> EvalBuiltin
-evalDiv = \case
-  DivRat -> evalDivRat
-
-evalDivRat :: EvalBuiltin
-evalDivRat = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LRat (x * y))
-  _ -> Nothing
-
-evalOrder :: OrderDomain -> OrderOp -> EvalBuiltin
-evalOrder = \case
-  OrderIndex -> evalOrderIndex
-  OrderNat -> evalOrderNat
-  OrderInt -> evalOrderInt
-  OrderRat -> evalOrderRat
-
-evalOrderIndex :: OrderOp -> EvalBuiltin
-evalOrderIndex op = \case
-  [VIndex x, VIndex y] -> Just $ return $ VLiteral (LBool (orderOp op x y))
-  _ -> Nothing
-
-evalOrderNat :: OrderOp -> EvalBuiltin
-evalOrderNat op = \case
-  [VNat x, VNat y] -> Just $ return $ VLiteral (LBool (orderOp op x y))
-  _ -> Nothing
-
-evalOrderInt :: OrderOp -> EvalBuiltin
-evalOrderInt op = \case
-  [VInt x, VInt y] -> Just $ return $ VLiteral (LBool (orderOp op x y))
-  _ -> Nothing
-
-evalOrderRat :: OrderOp -> EvalBuiltin
-evalOrderRat op = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LBool (orderOp op x y))
-  _ -> Nothing
-
-evalEquals :: EqualityDomain -> EqualityOp -> EvalBuiltin
-evalEquals = \case
-  EqIndex -> evalEqualityIndex
-  EqNat -> evalEqualityNat
-  EqInt -> evalEqualityInt
-  EqRat -> evalEqualityRat
-
-evalEqualityIndex :: EqualityOp -> EvalBuiltin
-evalEqualityIndex op = \case
-  [_, _, VIndex x, VIndex y] -> Just $ return $ VLiteral (LBool (equalityOp op x y))
-  _ -> Nothing
-
-evalEqualityNat :: EqualityOp -> EvalBuiltin
-evalEqualityNat op = \case
-  [VNat x, VNat y] -> Just $ return $ VLiteral (LBool (equalityOp op x y))
-  _ -> Nothing
-
-evalEqualityInt :: EqualityOp -> EvalBuiltin
-evalEqualityInt op = \case
-  [VInt x, VInt y] -> Just $ return $ VLiteral (LBool (equalityOp op x y))
-  _ -> Nothing
-
-evalEqualityRat :: EqualityOp -> EvalBuiltin
-evalEqualityRat op = \case
-  [VRat x, VRat y] -> Just $ return $ VLiteral (LBool (equalityOp op x y))
-  _ -> Nothing
-
-evalFromNat :: FromNatDomain -> EvalBuiltin
-evalFromNat = \case
-  FromNatToIndex -> evalFromNatToIndex
-  FromNatToNat -> evalFromNatToNat
-  FromNatToInt -> evalFromNatToInt
-  FromNatToRat -> evalFromNatToRat
-
-evalFromNatToIndex :: EvalBuiltin
-evalFromNatToIndex = \case
-  [ImplicitArg _ (VLiteral (LNat n)), VNat x] -> Just $ return $ VLiteral $ LIndex n x
-  _ -> Nothing
-
-evalFromNatToNat :: EvalBuiltin
-evalFromNatToNat = \case
-  [ExplicitArg _ x] -> Just $ return x
-  _ -> Nothing
-
-evalFromNatToInt :: EvalBuiltin
-evalFromNatToInt = \case
-  [VNat x] -> Just $ return $ VLiteral $ LInt x
-  _ -> Nothing
-
-evalFromNatToRat :: EvalBuiltin
-evalFromNatToRat = \case
-  [VNat x] -> Just $ return $ VLiteral $ LRat (fromIntegral x)
-  _ -> Nothing
-
-evalFromRat :: FromRatDomain -> EvalBuiltin
-evalFromRat = \case
-  FromRatToRat -> evalFromRatToRat
-
-evalFromRatToRat :: EvalBuiltin
-evalFromRatToRat = \case
-  [ExplicitArg _ x] -> Just $ return x
-  _ -> Nothing
-
-evalIf :: EvalBuiltin
-evalIf = \case
-  [_, VBool True, e1, _e2] -> Just $ return $ argExpr e1
-  [_, VBool False, _e1, e2] -> Just $ return $ argExpr e2
-  _ -> Nothing
-
-evalAt :: EvalBuiltin
-evalAt = \case
-  [_, _, ExplicitArg _ (VLVec es _), VIndex i] -> Just $ return $ es !! fromIntegral i
-  _ -> Nothing
-
-evalFold :: FoldDomain -> EvalBuiltin
-evalFold = \case
-  FoldList -> evalFoldList
-  FoldVector -> evalFoldVector
-
-evalFoldList :: EvalBuiltin
-evalFoldList = \case
-  [_, _, _f, e, ExplicitArg _ (VConstructor Nil [_])] ->
-    Just $ return $ argExpr e
-  [toT, fromT, f, e, ExplicitArg _ (VConstructor Cons [_, x, xs'])] -> Just $ do
-    r <- evalBuiltinFunction (Fold FoldList) [toT, fromT, f, e, xs']
-    evalApp (argExpr f) [x, ExplicitArg mempty r]
-  _ -> Nothing
-
-evalFoldVector :: EvalBuiltin
-evalFoldVector = \case
-  [_, _, _, f, e, ExplicitArg _ (VLVec v _)] ->
-    Just $
-      foldrM f' (argExpr e) v
-    where
-      f' x r = evalApp (argExpr f) [ExplicitArg mempty x, ExplicitArg mempty r]
-  _ -> Nothing
-
-evalForeach :: EvalBuiltin
-evalForeach = \case
-  [tRes, ImplicitArg _ (VLiteral (LNat n)), ExplicitArg _ f] -> Just $ do
-    let fn i = evalApp f [ExplicitArg mempty (VLiteral (LIndex n i))]
-    xs <- traverse fn [0 .. (n - 1 :: Int)]
-    return $ mkVLVec xs (argExpr tRes)
-  _ -> Nothing
-
-evalFromVec :: FromVecDomain -> EvalBuiltin
-evalFromVec = \case
-  FromVecToVec -> evalFromVecToVec
-  FromVecToList -> evalFromVecToList
-
-evalFromVecToList :: EvalBuiltin
-evalFromVecToList args = case args of
-  [tElem, ExplicitArg _ (VLVec xs _)] -> Just $ return $ mkVList (argExpr tElem) xs
-  _ -> Nothing
-
-evalFromVecToVec :: EvalBuiltin
-evalFromVecToVec = \case
-  [_, ExplicitArg _ e] -> Just $ return e
-  _ -> Nothing
-
------------------------------------------------------------------------------
--- Derived
-
-type EvalDerived = forall m. MonadNorm m => BasicSpine -> m BasicNormExpr
-
--- TODO define in terms of language
-
-evalTypeClassOp :: TypeClassOp -> EvalDerived
-evalTypeClassOp _op args = do
-  let (inst, remainingArgs) = findInstanceArg args
-  evalApp inst remainingArgs
-
-evalImplies :: EvalDerived
-evalImplies = \case
-  [e1, e2] -> do
-    ne1 <- ExplicitArg mempty <$> evalBuiltinFunction Not [e1]
-    evalBuiltinFunction Or [ne1, e2]
-  args -> return $ VBuiltinFunction Implies args
-
-evalMap :: MapDomain -> EvalDerived
-evalMap = \case
-  MapList -> evalMapList
-  MapVector -> evalMapVec
-
-evalMapList :: EvalDerived
-evalMapList = \case
-  [_, tTo, _f, ExplicitArg _ (VConstructor Nil _)] ->
-    return $ VConstructor Nil [tTo]
-  [tFrom, tTo, f, ExplicitArg _ (VConstructor Cons [x, xs])] -> do
-    x' <- ExplicitArg mempty <$> evalApp (argExpr f) [x]
-    xs' <- ExplicitArg mempty <$> evalMapList [tFrom, tTo, f, xs]
-    return $ VConstructor Cons [tTo, x', xs']
-  args -> return $ VBuiltinFunction (Map MapList) args
-
-evalMapVec :: EvalDerived
-evalMapVec = \case
-  [_n, _t1, t2, ExplicitArg _ f, ExplicitArg _ (VLVec xs _)] -> do
-    xs' <- traverse (\x -> evalApp f [ExplicitArg mempty x]) xs
-    return $ mkVLVec xs' (argExpr t2)
-  args -> return $ VBuiltinFunction (Map MapVector) args
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
 
+-- | Recursively forces the evaluation of any meta-variables at the head
+-- of the expresson.
+forceHead :: MonadNorm builtin m => NormExpr builtin -> m (NormExpr builtin, MetaSet)
+forceHead expr = do
+  (maybeForcedExpr, blockingMetas) <- forceExpr expr
+  forcedExpr <- case maybeForcedExpr of
+    Nothing -> return expr
+    Just forcedExpr -> do
+      logDebug MaxDetail $ "forced" <+> prettyVerbose expr <+> "to" <+> prettyVerbose forcedExpr
+      return forcedExpr
+  return (forcedExpr, blockingMetas)
+
 -- | Recursively forces the evaluation of any meta-variables that are blocking
 -- evaluation.
-forceExpr :: forall m. MonadNorm m => BasicNormExpr -> m (Maybe BasicNormExpr, MetaSet)
+forceExpr :: forall builtin m. MonadNorm builtin m => NormExpr builtin -> m (Maybe (NormExpr builtin), MetaSet)
 forceExpr = go
   where
-    go :: BasicNormExpr -> m (Maybe BasicNormExpr, MetaSet)
+    go :: NormExpr builtin -> m (Maybe (NormExpr builtin), MetaSet)
     go = \case
       VMeta m spine -> goMeta m spine
-      VBuiltin b spine -> goBuiltin b spine
+      VBuiltin b spine -> forceBuiltin b spine
       _ -> return (Nothing, mempty)
 
-    goMeta :: MetaID -> BasicSpine -> m (Maybe BasicNormExpr, MetaSet)
+    goMeta :: MetaID -> Spine builtin -> m (Maybe (NormExpr builtin), MetaSet)
     goMeta m spine = do
-      (_, metaSubst) <- ask
+      metaSubst <- getMetaSubstitution
       case MetaMap.lookup m metaSubst of
         Just solution -> do
           normMetaExpr <- evalApp (normalised solution) spine
@@ -528,77 +246,29 @@ forceExpr = go
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
-    goBuiltin :: Builtin -> BasicSpine -> m (Maybe BasicNormExpr, MetaSet)
-    goBuiltin b spine = case b of
-      Constructor {} -> return (Nothing, mempty)
-      BuiltinFunction Foreach -> return (Nothing, mempty)
-      TypeClassOp {} -> return (Nothing, mempty)
-      _ -> do
-        (argResults, argsReduced, argBlockingMetas) <- unzip3 <$> traverse goBuiltinArg spine
-        let anyArgsReduced = or argsReduced
-        let blockingMetas = MetaSet.unions argBlockingMetas
-        result <-
-          if not anyArgsReduced
-            then return Nothing
-            else do
-              Just <$> evalBuiltin b argResults
-        return (result, blockingMetas)
+forceArg :: MonadNorm builtin m => NormArg builtin -> m (NormArg builtin, Bool, MetaSet)
+forceArg arg
+  -- We assume that non-explicit args aren't depended on computationally
+  -- (this may not hold in future.)
+  | not (isExplicit arg) = return (arg, False, mempty)
+  | otherwise = do
+      (maybeResult, blockingMetas) <- forceExpr (argExpr arg)
+      let result = maybe arg (`replaceArgExpr` arg) maybeResult
+      let reduced = isJust maybeResult
+      return (result, reduced, blockingMetas)
 
-    goBuiltinArg :: BasicNormArg -> m (BasicNormArg, Bool, MetaSet)
-    goBuiltinArg arg
-      -- We assume that non-explicit args aren't depended on computationally
-      -- (this may not hold in future.)
-      | not (isExplicit arg) = return (arg, False, mempty)
-      | otherwise = do
-          (maybeResult, blockingMetas) <- go (argExpr arg)
-          let result = maybe arg (`replaceArgExpr` arg) maybeResult
-          let reduced = isJust maybeResult
-          return (result, reduced, blockingMetas)
-
-{-
------------------------------------------------------------------------------
--- Blocking
-
--- | A generic scheme for evaluating builtins.
-type EvaluationBlocker = NormExpr -> Bool
-
--- | A manually blocked expression. This is a massive hack that relies on us
--- constructing a lambda expression that can never be written by the user,
--- and therefore never generated by user code. We may eventually need to
--- break this out into its own constructor somehow.
-pattern BlockedExpr :: Provenance -> Env -> DBExpr -> NormExpr
-pattern BlockedExpr p env expr = VLam p BlockingBinder env expr
-
-pattern BlockingBinder :: NormBinder
-pattern BlockingBinder <- Binder _ BlockingBinderDisplayFrom Explicit Relevant () (VLiteral _ LUnit)
-  where BlockingBinder = Binder mempty BlockingBinderDisplayFrom Explicit Relevant () (VLiteral mempty LUnit)
-
-pattern BlockingBinderDisplayFrom :: BinderDisplayForm
-pattern BlockingBinderDisplayFrom = BinderDisplayForm (OnlyName "@BLOCKED@") True
-
-noBlocking :: EvaluationBlocker
-noBlocking = const False
-
-blockOnBooleanPropositions :: EvaluationBlocker
-blockOnBooleanPropositions = \case
-  VBuiltin _ b _ -> case b of
-    Equals{} -> True
-    Order{} -> True
-    _ -> False
-  _ -> False
--}
 -----------------------------------------------------------------------------
 -- Other
 
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: MonadNorm m => Env builtin -> CheckedExpr -> m ()
+showEntry :: MonadNorm builtin m => Env builtin -> DBExpr builtin -> m ()
 showEntry _env _expr = do
   -- logDebug MaxDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}")
   incrCallDepth
 
-showExit :: MonadNorm m => NormExpr builtin -> m ()
+showExit :: MonadNorm builtin m => NormExpr builtin -> m ()
 showExit _result = do
   decrCallDepth
 
