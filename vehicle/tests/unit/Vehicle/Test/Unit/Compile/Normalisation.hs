@@ -9,13 +9,13 @@ import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, StandardType, StandardBinder, StandardBuiltinType (..))
+import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn (DBLevel)
-import Vehicle.Test.Unit.Common (unitTestCase)
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.Normalisable (NormalisableBuiltin(..))
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
+import Vehicle.Test.Unit.Common (unitTestCase)
 
 normalisationTests :: TestTree
 normalisationTests =

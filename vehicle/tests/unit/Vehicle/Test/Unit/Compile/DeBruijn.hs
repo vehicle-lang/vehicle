@@ -18,11 +18,11 @@ import Vehicle.Compile.Prelude
     pattern BoundVar,
   )
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn (DBLevel, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
-import Vehicle.Compile.Type.Subsystem.Standard (TypeCheckedExpr, TypeCheckedBinder, TypeCheckedType, StandardExpr)
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 
 --------------------------------------------------------------------------------
 -- De Bruijn tests
