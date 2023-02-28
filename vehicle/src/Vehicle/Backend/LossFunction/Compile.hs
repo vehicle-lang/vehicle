@@ -296,7 +296,7 @@ lowerNots ::
   DifferentiableLogic ->
   InputProg ->
   m InputProg
-lowerNots logic = traverse (V.traverseBuiltins builtinUpdateFunction)
+lowerNots logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
     builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of

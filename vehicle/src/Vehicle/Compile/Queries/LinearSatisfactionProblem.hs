@@ -62,11 +62,6 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
 
   userAssertions <- NonEmpty.toList . unConjunctAll <$> traverse compileAssertions conjuncts
 
-  {-
-  case result of
-    Trivial p -> return $ Trivial p
-    NonTrivial userAssertions -> do
-      -}
   let assertions = inputEqualityAssertions <> userAssertions
   let clst = CLSTProblem variables assertions
 
@@ -135,8 +130,6 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
       Just finalAssertions -> do
         let clstProblem = CLSTProblem networkVariables finalAssertions
         NonTrivial (clstProblem, varSolutions)
-
--- Return the problem
 
 --------------------------------------------------------------------------------
 -- Monad

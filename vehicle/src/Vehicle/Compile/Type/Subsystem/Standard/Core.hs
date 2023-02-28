@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Type.Subsystem.Standard.Core where
 
-import Control.Monad.Identity
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics
@@ -43,18 +42,15 @@ instance Hashable StandardBuiltinType
 instance Serialize StandardBuiltinType
 
 convertToNormalisableBuiltins :: DBExpr Builtin -> DBExpr StandardBuiltin
-convertToNormalisableBuiltins expr = runIdentity (traverseBuiltins updateFn expr)
-  where
-    updateFn :: BuiltinUpdate Identity DBBinding DBIndex Builtin StandardBuiltin
-    updateFn p1 p2 b args = do
-      fn <- case b of
-        Constructor c -> return $ Builtin p2 $ CConstructor c
-        BuiltinFunction f -> return $ Builtin p2 $ CFunction f
-        BuiltinType t -> return $ Builtin p2 $ CType $ StandardBuiltinType t
-        TypeClass t -> return $ Builtin p2 $ CType $ StandardTypeClass t
-        TypeClassOp t -> return $ Builtin p2 $ CType $ StandardTypeClassOp t
+convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
+  let fn = Builtin p2 $ case b of
+        Constructor c -> CConstructor c
+        BuiltinFunction f -> CFunction f
+        BuiltinType t -> CType $ StandardBuiltinType t
+        TypeClass t -> CType $ StandardTypeClass t
+        TypeClassOp t -> CType $ StandardTypeClassOp t
 
-      return $ normAppList p1 fn args
+  normAppList p1 fn args
 
 -----------------------------------------------------------------------------
 -- Expressions

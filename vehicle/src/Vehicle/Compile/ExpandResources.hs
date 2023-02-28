@@ -9,7 +9,6 @@ import Control.Monad.State
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
-import Data.Maybe (catMaybes)
 import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -97,15 +96,21 @@ type MonadInsertResources m =
   )
 
 insertResourcesInProg :: MonadInsertResources m => StandardGluedProg -> m StandardGluedProg
-insertResourcesInProg (Main ds) = Main . catMaybes <$> insertDecls ds
+insertResourcesInProg (Main ds) = Main <$> insertDecls ds
 
-insertDecls :: MonadInsertResources m => [StandardGluedDecl] -> m [Maybe StandardGluedDecl]
+insertDecls :: MonadInsertResources m => [StandardGluedDecl] -> m [StandardGluedDecl]
 insertDecls [] = return []
 insertDecls (d : ds) = do
   norm <- normDecl d
-  d' <- insertDecl norm
-  ds' <- insertDecls ds
-  return $ d' : ds'
+  maybeDecl <- insertDecl norm
+  case maybeDecl of
+    Nothing -> insertDecls ds
+    Just decl -> do
+      case bodyOf decl of
+        Nothing -> return ()
+        Just body -> modify (Map.insert (identifierOf decl) body)
+      ds' <- insertDecls ds
+      return $ decl : ds'
 
 insertDecl ::
   MonadInsertResources m =>
@@ -149,6 +154,6 @@ normDecl :: MonadInsertResources m => StandardGluedDecl -> m StandardGluedDecl
 normDecl decl = do
   ctx <- gets (fmap normalised)
   for decl $ \(Glued unnorm norm) -> do
-    -- Ugh, horrible. We really n(eed to be able to renormalise.
+    -- Ugh, horrible. We really need to be able to renormalise.
     norm' <- runNormT ctx mempty (whnf mempty (unnormalise 0 norm))
     return $ Glued unnorm norm'

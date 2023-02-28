@@ -87,7 +87,7 @@ typeCheckWithSubsystem prog = do
 resolveInstanceArguments :: forall m. MonadCompile m => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
-    result <- traverse (traverseBuiltins builtinUpdateFunction) prog
+    result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
     logCompilerPassOutput $ prettyFriendly result
     return result
   where
@@ -121,7 +121,8 @@ removeImplicitAndInstanceArgs prog =
       Ann p e t -> Ann p <$> go e <*> go t
       Pi p binder res -> Pi p <$> traverse go binder <*> go res
       Lam p binder body
-        | isExplicit binder || not (isTypeUniverse (typeOf binder)) -> Lam p <$> traverse go binder <*> go body
+        | isExplicit binder || not (isTypeUniverse (typeOf binder)) ->
+            Lam p <$> traverse go binder <*> go body
         | otherwise -> do
             -- TODO This is a massive hack to get around the unused implicit
             -- {l} argument in `mapVector` in the standard library that isn't

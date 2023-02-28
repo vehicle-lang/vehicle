@@ -589,9 +589,9 @@ showEntry _env _expr = do
 showExit :: MonadNorm types m => Env types -> NormExpr types -> m ()
 showExit _env _result = do
   decrCallDepth
-
--- logDebug MaxDetail $ "nbe-exit" <+> prettyVerbose result
--- logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
+  -- logDebug MaxDetail $ "nbe-exit" <+> prettyVerbose result
+  -- logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
+  return ()
 
 showApp :: MonadNorm types m => NormExpr types -> Spine types -> m ()
 showApp _fun _spine =
