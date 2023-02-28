@@ -86,10 +86,8 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
       VMeta {} -> normalisationError currentPass "Lam"
       VLam {} -> normalisationError currentPass "Lam"
-      VLiteral {} -> return expr
       VBoundVar v spine -> VBoundVar v <$> goSpine k spine
-      VBuiltin b spine -> VBuiltin b <$> goSpine k spine
-      VLVec xs spine -> VLVec <$> traverse (go k) xs <*> goSpine k spine
+      VBuiltin b spine -> VBuiltin b <$> traverse (go k) spine
       VFreeVar network spine -> do
         spine' <- goSpine k spine
         case spine' of
@@ -106,7 +104,7 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
     goSpine k = traverse (traverse (go k))
 
 reevalute :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
-reevalute expr = runEmptyNormT @Builtin (reeval expr)
+reevalute expr = runEmptyNormT @StandardBuiltinType (reeval expr)
 
 -- | The current state of the input/output network variables.
 data IOVarState = IOVarState
@@ -165,7 +163,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
         return outputVarsExpr
 
 createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> StandardNormExpr -> m [(DBLevel, StandardNormExpr)]
-createInputVarEqualities (_dim : dims) inputVarIndices (VLVec xs _) = do
+createInputVarEqualities (_dim : dims) inputVarIndices (VVecLiteral xs) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
   concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
 createInputVarEqualities [] [i] e = return [(i, e)]
@@ -188,10 +186,7 @@ mkMagicVariableSeq tElem = go
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks
-      -- mkTensorType p baseElemType (mkTensorDims p dims)
-      -- baseElemType = reconstructNetworkBaseType tElem p
-      let elemType = VLiteral LUnit
-      return (mkVLVec elems elemType)
+      return $ mkVLVec elems
     go [] [outputVar] =
       return $ VBoundVar outputVar []
     go dims outputVarIndices =

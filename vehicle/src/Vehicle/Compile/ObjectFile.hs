@@ -16,7 +16,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 
 data ObjectFileContents = ObjectFileContents
   { _fileHash :: Int,
-    _typeResult :: StandardTypedProg
+    _typeResult :: StandardGluedProg
   }
   deriving (Generic)
 
@@ -30,7 +30,7 @@ readObjectFile ::
   (MonadLogger m, MonadIO m) =>
   FilePath ->
   SpecificationText ->
-  m (Maybe StandardTypedProg)
+  m (Maybe StandardGluedProg)
 readObjectFile specificationFile spec = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   errorOrContents <- liftIO $ do
@@ -56,7 +56,7 @@ writeObjectFile ::
   MonadIO m =>
   FilePath ->
   SpecificationText ->
-  StandardTypedProg ->
+  StandardGluedProg ->
   m ()
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile

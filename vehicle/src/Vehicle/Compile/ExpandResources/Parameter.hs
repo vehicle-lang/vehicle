@@ -81,5 +81,5 @@ parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v ->
     if v >= 0 && v < n
-      then return $ VIndexLiteral n v
+      then return $ VIndexLiteral v
       else throwError $ ParameterValueInvalidIndex decl v n

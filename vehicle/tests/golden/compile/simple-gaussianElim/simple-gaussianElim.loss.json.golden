@@ -46,100 +46,37 @@
                       "tag": "Subtraction",
                       "contents": [
                         {
-                          "tag": "Max",
+                          "tag": "NetworkApplication",
                           "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
+                            "f",
+                            [
+                              {
+                                "tag": "TensorLiteral",
+                                "contents": [
+                                  {
+                                    "tag": "Addition",
+                                    "contents": [
                                       {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Constant",
-                                                "contents": 2
-                                              }
-                                            ]
-                                          }
-                                        ]
+                                        "tag": "Variable",
+                                        "contents": "a"
+                                      },
+                                      {
+                                        "tag": "Constant",
+                                        "contents": 2
                                       }
                                     ]
-                                  ]
-                                },
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
+                                  }
+                                ]
+                              }
+                            ]
                           ]
                         },
                         {
-                          "tag": "Max",
+                          "tag": "TensorLiteral",
                           "contents": [
                             {
                               "tag": "Constant",
                               "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                },
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Constant",
-                                                "contents": 2
-                                              }
-                                            ]
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                }
-                              ]
                             }
                           ]
                         }
@@ -158,100 +95,37 @@
                       "tag": "Subtraction",
                       "contents": [
                         {
-                          "tag": "Max",
+                          "tag": "NetworkApplication",
                           "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
+                            "f",
+                            [
+                              {
+                                "tag": "TensorLiteral",
+                                "contents": [
+                                  {
+                                    "tag": "Addition",
+                                    "contents": [
                                       {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Constant",
-                                                "contents": 2
-                                              }
-                                            ]
-                                          }
-                                        ]
+                                        "tag": "Variable",
+                                        "contents": "a"
+                                      },
+                                      {
+                                        "tag": "Constant",
+                                        "contents": 2
                                       }
                                     ]
-                                  ]
-                                },
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
+                                  }
+                                ]
+                              }
+                            ]
                           ]
                         },
                         {
-                          "tag": "Max",
+                          "tag": "TensorLiteral",
                           "contents": [
                             {
                               "tag": "Constant",
                               "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                },
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Constant",
-                                                "contents": 2
-                                              }
-                                            ]
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                }
-                              ]
                             }
                           ]
                         }
@@ -344,144 +218,59 @@
                               "tag": "Subtraction",
                               "contents": [
                                 {
-                                  "tag": "Max",
+                                  "tag": "NetworkApplication",
                                   "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    },
-                                    {
-                                      "tag": "Subtraction",
-                                      "contents": [
-                                        {
-                                          "tag": "NetworkApplication",
-                                          "contents": [
-                                            "g",
-                                            [
+                                    "g",
+                                    [
+                                      {
+                                        "tag": "TensorLiteral",
+                                        "contents": [
+                                          {
+                                            "tag": "Addition",
+                                            "contents": [
                                               {
-                                                "tag": "TensorLiteral",
+                                                "tag": "Variable",
+                                                "contents": "a"
+                                              },
+                                              {
+                                                "tag": "Variable",
+                                                "contents": "b"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "tag": "Addition",
+                                            "contents": [
+                                              {
+                                                "tag": "Variable",
+                                                "contents": "a"
+                                              },
+                                              {
+                                                "tag": "Multiplication",
                                                 "contents": [
                                                   {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "b"
-                                                      }
-                                                    ]
+                                                    "tag": "Constant",
+                                                    "contents": 2
                                                   },
                                                   {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Multiplication",
-                                                        "contents": [
-                                                          {
-                                                            "tag": "Constant",
-                                                            "contents": 2
-                                                          },
-                                                          {
-                                                            "tag": "Variable",
-                                                            "contents": "b"
-                                                          }
-                                                        ]
-                                                      }
-                                                    ]
+                                                    "tag": "Variable",
+                                                    "contents": "b"
                                                   }
                                                 ]
                                               }
                                             ]
-                                          ]
-                                        },
-                                        {
-                                          "tag": "TensorLiteral",
-                                          "contents": [
-                                            {
-                                              "tag": "Constant",
-                                              "contents": 0
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   ]
                                 },
                                 {
-                                  "tag": "Max",
+                                  "tag": "TensorLiteral",
                                   "contents": [
                                     {
                                       "tag": "Constant",
                                       "contents": 0
-                                    },
-                                    {
-                                      "tag": "Subtraction",
-                                      "contents": [
-                                        {
-                                          "tag": "TensorLiteral",
-                                          "contents": [
-                                            {
-                                              "tag": "Constant",
-                                              "contents": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "tag": "NetworkApplication",
-                                          "contents": [
-                                            "g",
-                                            [
-                                              {
-                                                "tag": "TensorLiteral",
-                                                "contents": [
-                                                  {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "b"
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Multiplication",
-                                                        "contents": [
-                                                          {
-                                                            "tag": "Constant",
-                                                            "contents": 2
-                                                          },
-                                                          {
-                                                            "tag": "Variable",
-                                                            "contents": "b"
-                                                          }
-                                                        ]
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          ]
-                                        }
-                                      ]
                                     }
                                   ]
                                 }
@@ -500,144 +289,59 @@
                               "tag": "Subtraction",
                               "contents": [
                                 {
-                                  "tag": "Max",
+                                  "tag": "NetworkApplication",
                                   "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    },
-                                    {
-                                      "tag": "Subtraction",
-                                      "contents": [
-                                        {
-                                          "tag": "NetworkApplication",
-                                          "contents": [
-                                            "g",
-                                            [
+                                    "g",
+                                    [
+                                      {
+                                        "tag": "TensorLiteral",
+                                        "contents": [
+                                          {
+                                            "tag": "Addition",
+                                            "contents": [
                                               {
-                                                "tag": "TensorLiteral",
+                                                "tag": "Variable",
+                                                "contents": "a"
+                                              },
+                                              {
+                                                "tag": "Variable",
+                                                "contents": "b"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "tag": "Addition",
+                                            "contents": [
+                                              {
+                                                "tag": "Variable",
+                                                "contents": "a"
+                                              },
+                                              {
+                                                "tag": "Multiplication",
                                                 "contents": [
                                                   {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "b"
-                                                      }
-                                                    ]
+                                                    "tag": "Constant",
+                                                    "contents": 2
                                                   },
                                                   {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Multiplication",
-                                                        "contents": [
-                                                          {
-                                                            "tag": "Constant",
-                                                            "contents": 2
-                                                          },
-                                                          {
-                                                            "tag": "Variable",
-                                                            "contents": "b"
-                                                          }
-                                                        ]
-                                                      }
-                                                    ]
+                                                    "tag": "Variable",
+                                                    "contents": "b"
                                                   }
                                                 ]
                                               }
                                             ]
-                                          ]
-                                        },
-                                        {
-                                          "tag": "TensorLiteral",
-                                          "contents": [
-                                            {
-                                              "tag": "Constant",
-                                              "contents": 0
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
+                                          }
+                                        ]
+                                      }
+                                    ]
                                   ]
                                 },
                                 {
-                                  "tag": "Max",
+                                  "tag": "TensorLiteral",
                                   "contents": [
                                     {
                                       "tag": "Constant",
                                       "contents": 0
-                                    },
-                                    {
-                                      "tag": "Subtraction",
-                                      "contents": [
-                                        {
-                                          "tag": "TensorLiteral",
-                                          "contents": [
-                                            {
-                                              "tag": "Constant",
-                                              "contents": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "tag": "NetworkApplication",
-                                          "contents": [
-                                            "g",
-                                            [
-                                              {
-                                                "tag": "TensorLiteral",
-                                                "contents": [
-                                                  {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "b"
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "tag": "Addition",
-                                                    "contents": [
-                                                      {
-                                                        "tag": "Variable",
-                                                        "contents": "a"
-                                                      },
-                                                      {
-                                                        "tag": "Multiplication",
-                                                        "contents": [
-                                                          {
-                                                            "tag": "Constant",
-                                                            "contents": 2
-                                                          },
-                                                          {
-                                                            "tag": "Variable",
-                                                            "contents": "b"
-                                                          }
-                                                        ]
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          ]
-                                        }
-                                      ]
                                     }
                                   ]
                                 }

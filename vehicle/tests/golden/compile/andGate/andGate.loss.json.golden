@@ -130,83 +130,36 @@
           "contents": [
             "x2",
             {
-              "tag": "Addition",
+              "tag": "Let",
               "contents": [
+                "y",
                 {
-                  "tag": "Max",
+                  "tag": "At",
                   "contents": [
                     {
-                      "tag": "Negation",
-                      "contents": {
-                        "tag": "Negation",
-                        "contents": {
-                          "tag": "Addition",
-                          "contents": [
-                            {
-                              "tag": "FreeVariable",
-                              "contents": [
-                                "truthy",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x1"
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "FreeVariable",
-                              "contents": [
-                                "truthy",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x2"
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        }
-                      }
-                    },
-                    {
-                      "tag": "FreeVariable",
+                      "tag": "NetworkApplication",
                       "contents": [
-                        "truthy",
+                        "andGate",
                         [
                           {
-                            "tag": "At",
+                            "tag": "TensorLiteral",
                             "contents": [
                               {
-                                "tag": "NetworkApplication",
-                                "contents": [
-                                  "andGate",
-                                  [
-                                    {
-                                      "tag": "TensorLiteral",
-                                      "contents": [
-                                        {
-                                          "tag": "Variable",
-                                          "contents": "x1"
-                                        },
-                                        {
-                                          "tag": "Variable",
-                                          "contents": "x2"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                ]
+                                "tag": "Variable",
+                                "contents": "x1"
                               },
                               {
-                                "tag": "Constant",
-                                "contents": 0
+                                "tag": "Variable",
+                                "contents": "x2"
                               }
                             ]
                           }
                         ]
                       ]
+                    },
+                    {
+                      "tag": "Constant",
+                      "contents": 0
                     }
                   ]
                 },
@@ -219,72 +172,43 @@
                         {
                           "tag": "Negation",
                           "contents": {
-                            "tag": "Negation",
-                            "contents": {
-                              "tag": "Addition",
-                              "contents": [
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "truthy",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x1"
-                                      }
-                                    ]
+                            "tag": "Addition",
+                            "contents": [
+                              {
+                                "tag": "FreeVariable",
+                                "contents": [
+                                  "truthy",
+                                  [
+                                    {
+                                      "tag": "Variable",
+                                      "contents": "x1"
+                                    }
                                   ]
-                                },
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "falsey",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x2"
-                                      }
-                                    ]
+                                ]
+                              },
+                              {
+                                "tag": "FreeVariable",
+                                "contents": [
+                                  "truthy",
+                                  [
+                                    {
+                                      "tag": "Variable",
+                                      "contents": "x2"
+                                    }
                                   ]
-                                }
-                              ]
-                            }
+                                ]
+                              }
+                            ]
                           }
                         },
                         {
                           "tag": "FreeVariable",
                           "contents": [
-                            "falsey",
+                            "truthy",
                             [
                               {
-                                "tag": "At",
-                                "contents": [
-                                  {
-                                    "tag": "NetworkApplication",
-                                    "contents": [
-                                      "andGate",
-                                      [
-                                        {
-                                          "tag": "TensorLiteral",
-                                          "contents": [
-                                            {
-                                              "tag": "Variable",
-                                              "contents": "x1"
-                                            },
-                                            {
-                                              "tag": "Variable",
-                                              "contents": "x2"
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    ]
-                                  },
-                                  {
-                                    "tag": "Constant",
-                                    "contents": 0
-                                  }
-                                ]
+                                "tag": "Variable",
+                                "contents": "y"
                               }
                             ]
                           ]
@@ -300,36 +224,33 @@
                             {
                               "tag": "Negation",
                               "contents": {
-                                "tag": "Negation",
-                                "contents": {
-                                  "tag": "Addition",
-                                  "contents": [
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "falsey",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x1"
-                                          }
-                                        ]
+                                "tag": "Addition",
+                                "contents": [
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "truthy",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "x1"
+                                        }
                                       ]
-                                    },
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "truthy",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x2"
-                                          }
-                                        ]
+                                    ]
+                                  },
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "falsey",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "x2"
+                                        }
                                       ]
-                                    }
-                                  ]
-                                }
+                                    ]
+                                  }
+                                ]
                               }
                             },
                             {
@@ -338,34 +259,8 @@
                                 "falsey",
                                 [
                                   {
-                                    "tag": "At",
-                                    "contents": [
-                                      {
-                                        "tag": "NetworkApplication",
-                                        "contents": [
-                                          "andGate",
-                                          [
-                                            {
-                                              "tag": "TensorLiteral",
-                                              "contents": [
-                                                {
-                                                  "tag": "Variable",
-                                                  "contents": "x1"
-                                                },
-                                                {
-                                                  "tag": "Variable",
-                                                  "contents": "x2"
-                                                }
-                                              ]
-                                            }
-                                          ]
-                                        ]
-                                      },
-                                      {
-                                        "tag": "Constant",
-                                        "contents": 0
-                                      }
-                                    ]
+                                    "tag": "Variable",
+                                    "contents": "y"
                                   }
                                 ]
                               ]
@@ -373,79 +268,104 @@
                           ]
                         },
                         {
-                          "tag": "Max",
+                          "tag": "Addition",
                           "contents": [
                             {
-                              "tag": "Negation",
-                              "contents": {
-                                "tag": "Negation",
-                                "contents": {
-                                  "tag": "Addition",
-                                  "contents": [
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "falsey",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x1"
-                                          }
-                                        ]
-                                      ]
-                                    },
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "falsey",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x2"
-                                          }
-                                        ]
-                                      ]
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            {
-                              "tag": "FreeVariable",
+                              "tag": "Max",
                               "contents": [
-                                "falsey",
-                                [
-                                  {
-                                    "tag": "At",
+                                {
+                                  "tag": "Negation",
+                                  "contents": {
+                                    "tag": "Addition",
                                     "contents": [
                                       {
-                                        "tag": "NetworkApplication",
+                                        "tag": "FreeVariable",
                                         "contents": [
-                                          "andGate",
+                                          "falsey",
                                           [
                                             {
-                                              "tag": "TensorLiteral",
-                                              "contents": [
-                                                {
-                                                  "tag": "Variable",
-                                                  "contents": "x1"
-                                                },
-                                                {
-                                                  "tag": "Variable",
-                                                  "contents": "x2"
-                                                }
-                                              ]
+                                              "tag": "Variable",
+                                              "contents": "x1"
                                             }
                                           ]
                                         ]
                                       },
                                       {
-                                        "tag": "Constant",
-                                        "contents": 0
+                                        "tag": "FreeVariable",
+                                        "contents": [
+                                          "truthy",
+                                          [
+                                            {
+                                              "tag": "Variable",
+                                              "contents": "x2"
+                                            }
+                                          ]
+                                        ]
                                       }
                                     ]
                                   }
-                                ]
+                                },
+                                {
+                                  "tag": "FreeVariable",
+                                  "contents": [
+                                    "falsey",
+                                    [
+                                      {
+                                        "tag": "Variable",
+                                        "contents": "y"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "Max",
+                              "contents": [
+                                {
+                                  "tag": "Negation",
+                                  "contents": {
+                                    "tag": "Addition",
+                                    "contents": [
+                                      {
+                                        "tag": "FreeVariable",
+                                        "contents": [
+                                          "falsey",
+                                          [
+                                            {
+                                              "tag": "Variable",
+                                              "contents": "x1"
+                                            }
+                                          ]
+                                        ]
+                                      },
+                                      {
+                                        "tag": "FreeVariable",
+                                        "contents": [
+                                          "falsey",
+                                          [
+                                            {
+                                              "tag": "Variable",
+                                              "contents": "x2"
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "tag": "FreeVariable",
+                                  "contents": [
+                                    "falsey",
+                                    [
+                                      {
+                                        "tag": "Variable",
+                                        "contents": "y"
+                                      }
+                                    ]
+                                  ]
+                                }
                               ]
                             }
                           ]
@@ -481,36 +401,33 @@
                 {
                   "tag": "Negation",
                   "contents": {
-                    "tag": "Negation",
-                    "contents": {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "FreeVariable",
-                          "contents": [
-                            "validInput",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x1"
-                              }
-                            ]
+                    "tag": "Addition",
+                    "contents": [
+                      {
+                        "tag": "FreeVariable",
+                        "contents": [
+                          "validInput",
+                          [
+                            {
+                              "tag": "Variable",
+                              "contents": "x1"
+                            }
                           ]
-                        },
-                        {
-                          "tag": "FreeVariable",
-                          "contents": [
-                            "validInput",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x2"
-                              }
-                            ]
+                        ]
+                      },
+                      {
+                        "tag": "FreeVariable",
+                        "contents": [
+                          "validInput",
+                          [
+                            {
+                              "tag": "Variable",
+                              "contents": "x2"
+                            }
                           ]
-                        }
-                      ]
-                    }
+                        ]
+                      }
+                    ]
                   }
                 },
                 {

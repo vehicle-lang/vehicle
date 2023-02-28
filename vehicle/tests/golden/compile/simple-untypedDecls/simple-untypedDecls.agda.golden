@@ -8,10 +8,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Integer as ℤ using (ℤ)
-open import Data.Rational as ℚ using (ℚ)
 
 module simple-untypedDecls where
 
-ratMinus3 : ℚ
-ratMinus3 = ℚ.- (ℤ.+ 3 ℚ./ 1)

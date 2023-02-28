@@ -21,72 +21,23 @@
                   "tag": "Subtraction",
                   "contents": [
                     {
-                      "tag": "Max",
+                      "tag": "NetworkApplication",
                       "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x"
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
+                        "f",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": "x"
+                          }
+                        ]
                       ]
                     },
                     {
-                      "tag": "Max",
+                      "tag": "TensorLiteral",
                       "contents": [
                         {
                           "tag": "Constant",
                           "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            },
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x"
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
                         }
                       ]
                     }
@@ -105,72 +56,23 @@
                   "tag": "Subtraction",
                   "contents": [
                     {
-                      "tag": "Max",
+                      "tag": "NetworkApplication",
                       "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x"
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
+                        "f",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": "x"
+                          }
+                        ]
                       ]
                     },
                     {
-                      "tag": "Max",
+                      "tag": "TensorLiteral",
                       "contents": [
                         {
                           "tag": "Constant",
                           "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            },
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x"
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
                         }
                       ]
                     }

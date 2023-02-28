@@ -61,10 +61,9 @@ instance Elab B.Expr V.InputExpr where
     B.Pi binder expr -> op2 V.Pi <$> elab binder <*> elab expr
     B.Lam binder e -> op2 V.Lam <$> elab binder <*> elab e
     B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*> elab e2
-    B.LVec es -> op1 V.LVec <$> traverse elab es
+    B.LVec es -> elabVec <$> traverse elab es
     B.Builtin c -> V.Builtin <$> mkProvenance c <*> lookupBuiltin c
-    B.Var n -> V.Var <$> mkProvenance n <*> pure (tkSymbol n)
-    B.Literal v -> V.Literal mempty <$> elab v
+    B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
     B.App fun arg -> do
       fun' <- elab fun
       arg' <- elab arg
@@ -98,7 +97,7 @@ instance Elab B.Arg V.InputArg where
       mkArg :: V.Visibility -> V.Relevance -> V.InputExpr -> V.InputArg
       mkArg v r e = V.Arg (expandByArgVisibility v (provenanceOf e)) v r e
 
-instance Elab B.Lit V.Literal where
+instance Elab B.Lit V.BuiltinConstructor where
   elab = \case
     B.UnitLiteral -> return V.LUnit
     B.BoolLiteral b -> return $ V.LBool (read (Text.unpack $ tkSymbol b))
@@ -142,6 +141,11 @@ op3 ::
   d
 op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 t2 t3
 
+elabVec :: [V.InputExpr] -> V.InputExpr
+elabVec xs = do
+  let vecConstructor = V.Builtin mempty (V.Constructor $ V.LVec (length xs))
+  V.normAppList mempty vecConstructor (V.ExplicitArg mempty <$> xs)
+
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got
 -- the grammar wrong.
@@ -149,5 +153,5 @@ convType :: MonadElab m => TypeToken -> m V.InputExpr
 convType tk = case Text.unpack (tkSymbol tk) of
   ('T' : 'y' : 'p' : 'e' : l) -> do
     p <- mkProvenance tk
-    return $ V.Universe p (V.TypeUniv (read l))
+    return $ V.Universe p (V.UniverseLevel (read l))
   t -> developerError $ "Malformed type token" <+> pretty t

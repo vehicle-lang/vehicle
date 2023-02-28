@@ -122,7 +122,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 
   let rows = partitionData currentDim actualDims elems
   rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
-  return $ mkVLVec rowExprs expectedElemType
+  return $ mkVLVec rowExprs
 
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -137,7 +137,7 @@ parseList ctx expectedElemType actualDims actualElems =
     d : ds -> do
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      return $ mkVList expectedElemType exprs
+      return $ mkVList exprs
 
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -182,7 +182,7 @@ intElemParser ::
 intElemParser decl datasetType file value expectedElementType = case expectedElementType of
   VIndexType (VNatLiteral n) ->
     if value >= 0 && value < n
-      then return $ VIndexLiteral n value
+      then return $ VIndexLiteral value
       else throwError $ DatasetInvalidIndex decl file value n
   VNatType {} ->
     if value >= 0

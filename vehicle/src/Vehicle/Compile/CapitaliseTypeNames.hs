@@ -7,7 +7,8 @@ import Control.Monad.State (MonadState (..), evalState, modify, when)
 import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 
 --------------------------------------------------------------------------------
 -- Capitalise type names
@@ -54,16 +55,14 @@ instance CapitaliseTypes TypeCheckedExpr where
     UniverseF p l -> return $ Universe p l
     HoleF p n -> return $ Hole p n
     MetaF p m -> return $ Meta p m
-    LiteralF p l -> return $ Literal p l
     BuiltinF p op -> return $ Builtin p op
     AnnF p e t -> Ann p <$> e <*> t
     AppF p fun args -> App p <$> fun <*> traverse sequenceA args -- traverse cap args
     PiF p binder result -> Pi p <$> sequenceA binder <*> result
     LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
     LamF p binder body -> Lam p <$> sequenceA binder <*> body
-    LVecF p xs -> LVec p <$> sequence xs
-    VarF p v@(Bound _) -> return $ Var p v
-    VarF p (Free ident) -> Var p . Free <$> cap ident
+    BoundVarF p v -> return $ BoundVar p v
+    FreeVarF p ident -> FreeVar p <$> cap ident
 
 instance CapitaliseTypes Identifier where
   cap ident@(Identifier m s) = do

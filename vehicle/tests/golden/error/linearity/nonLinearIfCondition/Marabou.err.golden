@@ -1,2 +1,9 @@
-Error at Line 6, Columns 25-27: cannot currently use expressions that are non-linear in quantified variables in `if` conditions.
-Fix: This is a limitation of the current implementation rather than a fundamental problem. If you would like this to be fixed, please open an issue at 'https://github.com/vehicle-lang/vehicle/issues/'
+Error at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by Marabou.
+In particular the multiplication at Line 6, Columns 30-31 involves
+  1. the quantified variable 'x' introduced at Line 6, Columns 13-20
+  2. which is used on the left hand side of the multiplication
+and
+  1. the quantified variable 'x' introduced at Line 6, Columns 13-20
+  2. which is used on the right hand side of the multiplication
+
+Fix: try avoiding it, otherwise please open an issue on the Vehicle issue tracker.

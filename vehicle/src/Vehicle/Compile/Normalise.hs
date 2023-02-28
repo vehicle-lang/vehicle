@@ -11,16 +11,19 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NonEmpty (head, reverse, toList)
+import Data.List.NonEmpty qualified as NonEmpty (reverse, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (GluedDecl, GluedExpr (..), traverseUnnormalised)
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalised (GluedExpr (..), traverseUnnormalised)
+import Vehicle.Libraries.StandardLibrary
 
 -- | Run a function in 'MonadNorm'.
 normaliseProg :: MonadCompile m => TypeCheckedProg -> NormalisationOptions -> m TypeCheckedProg
@@ -39,10 +42,9 @@ normaliseExpr x options@Options {..} = logCompilerPass MinDetail currentPass $ d
 data NormalisationOptions = Options
   { declContext :: DeclCtx TypeCheckedExpr,
     boundContext :: BoundDBCtx,
-    normaliseDeclApplications :: Bool,
+    normaliseDeclApplications :: Identifier -> Bool,
     normaliseLambdaApplications :: Bool,
-    normaliseStdLibApplications :: Bool,
-    normaliseBuiltin :: Builtin -> Bool
+    normaliseBuiltin :: StandardBuiltin -> Bool
   }
 
 fullNormalisationOptions :: NormalisationOptions
@@ -50,9 +52,8 @@ fullNormalisationOptions =
   Options
     { declContext = mempty,
       boundContext = mempty,
-      normaliseDeclApplications = True,
+      normaliseDeclApplications = const True,
       normaliseLambdaApplications = True,
-      normaliseStdLibApplications = True,
       normaliseBuiltin = const True
     }
 
@@ -92,7 +93,7 @@ instance Norm TypeCheckedDecl where
 
 -- | This a horrible, horrible hack. Only introducing this very temporarily,
 -- before normalisation is pushed all the way in.
-instance Norm (GluedDecl Builtin) where
+instance Norm StandardGluedDecl where
   nf decl = logCompilerPass MidDetail ("normalisation of" <+> squotes declIdent) $
     case decl of
       DefResource p r ident typ ->
@@ -107,7 +108,7 @@ instance Norm (GluedDecl Builtin) where
     where
       declIdent = pretty (identifierOf decl)
 
-instance Norm (GluedExpr Builtin) where
+instance Norm StandardGluedExpr where
   nf = traverseUnnormalised nf
 
 instance Norm TypeCheckedExpr where
@@ -117,24 +118,21 @@ instance Norm TypeCheckedExpr where
     case e' of
       Universe {} -> return e
       Hole {} -> return e
-      Literal {} -> return e
       Builtin {} -> return e
       Meta {} -> return e
-      LVec p xs -> LVec p <$> traverse nf xs
       Lam p binder expr ->
         Lam p <$> nf binder <*> nf expr
       Pi p binder body ->
         Pi p <$> nf binder <*> nf body
       Ann _ expr _typ -> nf expr
-      Var _ v -> case v of
-        Bound {} -> return e
-        Free ident
-          | normaliseDeclApplications -> do
-              ctx <- get
-              case Map.lookup ident ctx of
-                Nothing -> return e
-                Just x -> nf x
-          | otherwise -> return e
+      BoundVar {} -> return e
+      FreeVar _ ident
+        | normaliseDeclApplications ident -> do
+            ctx <- get
+            case Map.lookup ident ctx of
+              Nothing -> return e
+              Just x -> nf x
+        | otherwise -> return e
       Let _ letValue _letBinder letBody -> do
         letValue' <- nf letValue
         letBody' <- nf letBody
@@ -162,7 +160,6 @@ nfApp p fun args = do
   case fun' of
     Lam {} | normaliseLambdaApplications -> nfAppLam p fun' (NonEmpty.toList args')
     Builtin _ b | normaliseBuiltin b -> nfBuiltin p b args'
-    FreeVar _ _i | normaliseStdLibApplications -> return e
     _ -> return e
 
 nfAppLam :: MonadNorm m => Provenance -> TypeCheckedExpr -> [TypeCheckedArg] -> m TypeCheckedExpr
@@ -173,11 +170,11 @@ nfAppLam p fun (arg : args) = nfApp p fun (arg :| args)
 --------------------------------------------------------------------------------
 -- Builtins
 
-nfBuiltin :: forall m. MonadNorm m => Provenance -> Builtin -> NonEmpty TypeCheckedArg -> m TypeCheckedExpr
-nfBuiltin p (Constructor c) args =
-  return $ App p (Builtin p (Constructor c)) args
-nfBuiltin p (TypeClassOp op) args = do
-  let originalExpr = App p (Builtin p (TypeClassOp op)) args
+nfBuiltin :: forall m. MonadNorm m => Provenance -> StandardBuiltin -> NonEmpty TypeCheckedArg -> m TypeCheckedExpr
+nfBuiltin p (CConstructor c) args =
+  return $ App p (Builtin p (CConstructor c)) args
+nfBuiltin p (CType (StandardTypeClassOp op)) args = do
+  let originalExpr = BuiltinTypeClassOp p op args
   case nfTypeClassOp p op (NonEmpty.toList args) of
     Nothing -> return originalExpr
     Just res -> do
@@ -206,15 +203,9 @@ nfBuiltin p b args = do
     -- Numeric conversion
     FromNatExpr _ n dom args' -> Just $ nfFromNat p n dom args'
     FromRatExpr _ dom [arg] -> Just $ nfFromRat dom arg
-    FromVecExpr _ _ dom [arg] -> Just $ nfFromVec dom arg
     -- Containers
     -- MapExpr _ tElem tRes [fn, cont] -> nfMap  p tElem tRes (argExpr fn) (argExpr cont)
     AtExpr _ tElem tDim [tensor, index] -> Just $ return $ nfAt p tElem tDim tensor index
-    ForeachExpr _ tElem s body -> case s of
-      NatLiteral _ size -> Just $ nfForeach p tElem size body
-      _ -> Nothing
-    MapVectorExpr _ tFrom tTo size [fn, vector] ->
-      Just $ nfMapVector p tFrom tTo size fn vector
     FoldVectorExpr _ tElem size tRes [op, unit, cont] ->
       Just $ nfFoldVector p tElem size tRes op unit cont
     -- Fall-through case
@@ -224,8 +215,8 @@ nfTypeClassOp ::
   MonadCompile m =>
   Provenance ->
   TypeClassOp ->
-  [Arg binder var Builtin] ->
-  Maybe (m (Expr binder var Builtin, NonEmpty (Arg binder var Builtin)))
+  [Arg binder var StandardBuiltin] ->
+  Maybe (m (Expr binder var StandardBuiltin, NonEmpty (Arg binder var StandardBuiltin)))
 nfTypeClassOp _p op args = do
   let (inst, remainingArgs) = findInstanceArg args
   case (inst, remainingArgs) of
@@ -238,17 +229,6 @@ nfTypeClassOp _p op args = do
         compilerDeveloperError $
           "Type class operation with no further arguments:" <+> pretty op
 
-nfForeach ::
-  MonadNorm m =>
-  Provenance ->
-  TypeCheckedType ->
-  Int ->
-  TypeCheckedExpr ->
-  m TypeCheckedExpr
-nfForeach p resultType size lambda = do
-  let fn i = nfAppLam p lambda [ExplicitArg p (IndexLiteral p size i)]
-  mkVec p resultType <$> traverse fn [0 .. (size - 1 :: Int)]
-
 nfFoldVector ::
   MonadNorm m =>
   Provenance ->
@@ -260,35 +240,19 @@ nfFoldVector ::
   TypeCheckedArg ->
   m TypeCheckedExpr
 nfFoldVector p tElem size tRes foldOp unit vector = case argExpr vector of
-  AnnVecLiteral _ _ xs -> do
-    let combine x body = normApp p (argExpr foldOp) (ExplicitArg p <$> [x, body])
+  VecLiteral _ _ xs -> do
+    let combine x body = normApp p (argExpr foldOp) [x, ExplicitArg p body]
     nf $ foldr combine (argExpr unit) xs
   _ ->
     return $
-      App
+      BuiltinFunctionExpr
         p
-        (Builtin p (BuiltinFunction (Fold FoldVector)))
+        (Fold FoldVector)
         ( ImplicitArg p tElem
             :| ImplicitArg p size
             : ImplicitArg p tRes
             : [foldOp, unit, vector]
         )
-
-nfMapVector ::
-  MonadNorm m =>
-  Provenance ->
-  TypeCheckedExpr ->
-  TypeCheckedExpr ->
-  TypeCheckedExpr ->
-  TypeCheckedArg ->
-  TypeCheckedArg ->
-  m TypeCheckedExpr
-nfMapVector p tFrom tTo size fun vector =
-  case argExpr vector of
-    AnnVecLiteral _ _ xs -> do
-      let appFun x = App p (argExpr fun) [ExplicitArg p x]
-      return $ mkVec p tTo (fmap appFun xs)
-    _ -> return $ mkMapVectorExpr p tFrom tTo size [fun, vector]
 
 nfFromNat ::
   MonadNorm m =>
@@ -297,27 +261,155 @@ nfFromNat ::
   FromNatDomain ->
   NonEmpty TypeCheckedArg ->
   m TypeCheckedExpr
-nfFromNat p x dom args = case (dom, argExpr (NonEmpty.head args)) of
-  (FromNatToIndex, size) -> do
+nfFromNat p x dom _args = case dom of
+  FromNatToIndex -> do
     -- This is a massive hack, we should really be normalising implicit args.
-    nSize <- nf size
-    case nSize of
-      NatLiteral _ n -> return $ IndexLiteral p n x
-      _ -> unexpectedExprError currentPass "non-NatLiteral index"
-  (FromNatToNat, _) -> return $ NatLiteral p x
-  (FromNatToInt, _) -> return $ IntLiteral p x
-  (FromNatToRat, _) -> return $ RatLiteral p (fromIntegral x)
+    return $ IndexLiteral p x
+  FromNatToNat -> return $ NatLiteral p x
+  FromNatToInt -> return $ IntLiteral p x
+  FromNatToRat -> return $ RatLiteral p (fromIntegral x)
 
-mkMapVectorExpr :: Provenance -> TypeCheckedType -> TypeCheckedType -> TypeCheckedExpr -> [TypeCheckedArg] -> TypeCheckedExpr
-mkMapVectorExpr p tTo tFrom size explicitArgs =
-  BuiltinExpr
-    p
-    (BuiltinFunction (Map MapVector))
-    ( ImplicitArg p tTo
-        :| ImplicitArg p tFrom
-        : ImplicitArg p size
-        : explicitArgs
-    )
+--------------------------------------------------------------------------------
+-- Normalising equality
+
+nfEq ::
+  Provenance ->
+  EqualityDomain ->
+  EqualityOp ->
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  TypeCheckedExpr
+nfEq p dom eq e1 e2 = case (dom, argExpr e1, argExpr e2) of
+  (EqIndex, IndexLiteral _ x, IndexLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
+  (EqNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
+  (EqInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
+  (EqRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (equalityOp eq x y)
+  _ -> EqualityExpr p dom eq [e1, e2]
+
+--------------------------------------------------------------------------------
+-- Normalising tensor types
+
+nfTensor ::
+  Provenance ->
+  TypeCheckedType ->
+  TypeCheckedExpr ->
+  TypeCheckedType
+nfTensor p tElem dims = case dims of
+  NilExpr {} -> tElem
+  AppConsExpr _ _ d ds -> VectorType p (nfTensor p tElem ds) d
+  _ -> App p (FreeVar p TensorIdent) (ExplicitArg p <$> [tElem, dims])
+
+--------------------------------------------------------------------------------
+-- Normalising orders
+
+nfOrder ::
+  Provenance ->
+  OrderDomain ->
+  OrderOp ->
+  TypeCheckedArg ->
+  TypeCheckedArg ->
+  TypeCheckedExpr
+nfOrder p dom ord arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+  (OrderNat, NatLiteral _ x, NatLiteral _ y) -> BoolLiteral p (orderOp ord x y)
+  (OrderIndex, IndexLiteral _ x, IndexLiteral _ y) -> BoolLiteral p (orderOp ord x y)
+  (OrderInt, IntLiteral _ x, IntLiteral _ y) -> BoolLiteral p (orderOp ord x y)
+  (OrderRat, RatLiteral _ x, RatLiteral _ y) -> BoolLiteral p (orderOp ord x y)
+  _ -> OrderExpr p dom ord [arg1, arg2]
+
+--------------------------------------------------------------------------------
+-- Normalising boolean operations
+
+nfNot :: Provenance -> TypeCheckedArg -> TypeCheckedExpr
+nfNot p arg = case argExpr arg of
+  BoolLiteral _ b -> BoolLiteral p (not b)
+  _ -> NotExpr p [arg]
+
+nfAnd :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfAnd p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr _, _) -> argExpr arg2
+  (FalseExpr _, _) -> FalseExpr p
+  (_, TrueExpr _) -> argExpr arg1
+  (_, FalseExpr _) -> FalseExpr p
+  _ -> AndExpr p [arg1, arg2]
+
+nfOr :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfOr p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr _, _) -> TrueExpr p
+  (FalseExpr _, _) -> argExpr arg2
+  (_, TrueExpr _) -> TrueExpr p
+  (_, FalseExpr _) -> argExpr arg1
+  _ -> OrExpr p [arg1, arg2]
+
+nfImplies :: Provenance -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfImplies p arg1 arg2 = case (argExpr arg1, argExpr arg2) of
+  (TrueExpr _, _) -> argExpr arg2
+  (FalseExpr _, _) -> TrueExpr p
+  (_, TrueExpr _) -> TrueExpr p
+  (_, FalseExpr _) -> NotExpr p [arg2]
+  _ -> ImpliesExpr p [arg1, arg2]
+
+nfIf :: Provenance -> TypeCheckedExpr -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfIf p t condition e1 e2 = case argExpr condition of
+  TrueExpr _ -> argExpr e1
+  FalseExpr _ -> argExpr e2
+  _ -> IfExpr p t [condition, e1, e2]
+
+-----------------------------------------------------------------------------
+-- Normalising conversion
+
+nfFromRat :: MonadCompile m => FromRatDomain -> TypeCheckedArg -> m TypeCheckedExpr
+nfFromRat dom (ExplicitArg _ rat@RatLiteral {}) = case dom of
+  FromRatToRat -> return rat
+nfFromRat _ _ = unexpectedExprError "conversion FromRat" "non-Rat"
+
+-----------------------------------------------------------------------------
+-- Normalising numeric operations
+
+nfNeg :: Provenance -> NegDomain -> TypeCheckedArg -> TypeCheckedExpr
+nfNeg p dom e = case (dom, argExpr e) of
+  (NegInt, IntLiteral _ x) -> IntLiteral p (-x)
+  (NegRat, RatLiteral _ x) -> RatLiteral p (-x)
+  _ -> NegExpr p dom [e]
+
+nfAdd :: Provenance -> AddDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfAdd p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+  (AddNat, NatLiteral _ x, NatLiteral _ y) -> NatLiteral p (x + y)
+  (AddInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x + y)
+  (AddRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x + y)
+  _ -> AddExpr p dom [arg1, arg2]
+
+nfSub :: Provenance -> SubDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfSub p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+  (SubInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x - y)
+  (SubRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x - y)
+  _ -> SubExpr p dom [arg1, arg2]
+
+nfMul :: Provenance -> MulDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfMul p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+  (MulNat, NatLiteral _ x, NatLiteral _ y) -> NatLiteral p (x * y)
+  (MulInt, IntLiteral _ x, IntLiteral _ y) -> IntLiteral p (x * y)
+  (MulRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x * y)
+  _ -> MulExpr p dom [arg1, arg2]
+
+nfDiv :: Provenance -> DivDomain -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfDiv p dom arg1 arg2 = case (dom, argExpr arg1, argExpr arg2) of
+  (DivRat, RatLiteral _ x, RatLiteral _ y) -> RatLiteral p (x / y)
+  _ -> DivExpr p dom [arg1, arg2]
+
+-----------------------------------------------------------------------------
+-- Normalising container operations
+
+nfAt :: Provenance -> TypeCheckedExpr -> TypeCheckedExpr -> TypeCheckedArg -> TypeCheckedArg -> TypeCheckedExpr
+nfAt p tElem tDim vector index = case (argExpr vector, argExpr index) of
+  (VecLiteral _ _ es, IndexLiteral _ i) -> argExpr $ es !! fromIntegral i
+  _ ->
+    BuiltinFunctionExpr
+      p
+      At
+      ( ImplicitArg p tElem
+          :| ImplicitArg p tDim
+          : [vector, index]
+      )
 
 --------------------------------------------------------------------------------
 -- Debug functions

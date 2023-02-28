@@ -10,6 +10,7 @@ where
 import Data.Functor.Foldable (Recursive (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn as DB
@@ -25,12 +26,8 @@ toCoDBExpr = cata $ \case
   HoleF p n -> (Hole p n, mempty)
   MetaF p m -> (Meta p m, mempty)
   BuiltinF p op -> (Builtin p op, mempty)
-  LiteralF p l -> (Literal p l, mempty)
-  LVecF p xs ->
-    let (xs', bvms) = unzip xs in (LVec p xs', nodeBVM bvms)
-  VarF p v -> case v of
-    DB.Free ident -> (Var p (CoDBFree ident), mempty)
-    DB.Bound i -> (Var p CoDBBound, leafBVM i)
+  FreeVarF p v -> (FreeVar p v, mempty)
+  BoundVarF p i -> (BoundVar p CoDBBound, leafBVM i)
   AnnF p (e', bvm1) (t', bvm2) ->
     (Ann p e' t', nodeBVM [bvm1, bvm2])
   AppF p (fun', bvm) args ->
@@ -66,9 +63,8 @@ fromCoDB expr = case recCoDB expr of
   HoleC p n -> Hole p n
   MetaC p m -> Meta p m
   BuiltinC p op -> Builtin p op
-  LiteralC p l -> Literal p l
-  LSeqC p xs -> LVec p (fmap fromCoDB xs)
-  VarC p v -> Var p v
+  FreeVarC p v -> FreeVar p v
+  BoundVarC p v -> BoundVar p v
   AnnC p e t -> Ann p (fromCoDB e) (fromCoDB t)
   AppC p fun args -> App p (fromCoDB fun) (fmap fromCoDBArg args)
   PiC p binder result -> Pi p (fromCoDBBinder binder) (fromCoDB result)

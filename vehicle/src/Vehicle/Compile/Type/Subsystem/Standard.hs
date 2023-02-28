@@ -5,34 +5,37 @@ module Vehicle.Compile.Type.Subsystem.Standard
   )
 where
 
-import Vehicle.Compile.Type.Auxiliary
-import Vehicle.Compile.Type.Subsystem
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (isAuxTypeClassConstraint)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults (generateConstraintUsingDefaults)
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core
-import Vehicle.Compile.Type.Subsystem.Standard.Normalisation ()
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Compile.Type.Subsystem.Standard.Type
-import Vehicle.Compile.Type.Subsystem.Standard.TypeResource
-import Vehicle.Syntax.AST (Builtin)
+import Vehicle.Expr.Normalisable
+import Vehicle.Syntax.Sugar
 
 -----------------------------------------------------------------------------
 -- Standard builtins
 -----------------------------------------------------------------------------
 
--- TODO Separate builtins from syntactic sugar
---
--- TODO Pass in the right number of arguments ensuring all literals
-instance TypableBuiltin Builtin where
+instance TypableBuiltin StandardBuiltinType where
+  convertFromStandardTypes p t args = return $ normAppList p (Builtin p (CType t)) args
+  useDependentMetas _ = True
   typeBuiltin = typeStandardBuiltin
-  typeLiteral = standardTypeOfLiteral
-  typeVectorLiteral = standardTypeOfVectorLiteral
-  typeResource = checkResourceType
-  isAuxiliaryTypeClassConstraint = isAuxTypeClassConstraint
-  insertHolesForAuxAnnotations = insertHolesForAuxiliaryAnnotations
+  restrictNetworkType = restrictStandardNetworkType
+  restrictDatasetType = restrictStandardDatasetType
+  restrictParameterType = restrictStandardParameterType
+  restrictInferableParameterType = restrictStandardInferableParameterType
+  restrictPropertyType = restrictStandardPropertyType
   handleTypingError = handleStandardTypingError
   typeClassRelevancy = relevanceOfTypeClass
   solveInstance = solveInstanceConstraint
-  getPropertyInfo = getStandardPropertyInfo
-  addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints
-  generateDefaultConstraint = generateConstraintUsingDefaults
+  addAuxiliaryInputOutputConstraints = return
+  generateDefaultConstraint = addNewConstraintUsingDefaults
+
+instance FoldableBuiltin StandardBuiltin where
+  getQuant = \case
+    QuantifierTCExpr p q binder body -> Just (p, q, binder, body)
+    _ -> Nothing

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle compile -s quantifierInIf.vcl -t TypeCheck --network f:NO_FILE",
+    "needs": ["quantifierInIf.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s quantifierInIf.vcl -t Marabou -o quantifierInIf.inputquery/ --network f:NO_FILE",
+    "needs": ["quantifierInIf.vcl"],
+    "produces": ["quantifierInIf.inputquery/*.txt", "quantifierInIf.inputquery/verification-plan.vcle"]
+  }
+]

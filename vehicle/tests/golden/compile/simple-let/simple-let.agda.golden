@@ -8,7 +8,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
 open import Data.Unit
 open import Data.Empty
 open import Data.Product
@@ -25,15 +24,6 @@ module simple-let where
 postulate e1 : let x = ⊤ in let y = ⊥ in x × y
 
 postulate e2 : let y = # 1 in y Fin.≥ # 2
-
-e3 : ℕ
-e3 = let y = 1 ⊕ 1 in y
-
-lamLet : ℕ → ℕ
-lamLet = λ (x : ℕ) → let y = x in y
-
-letLam : ℕ → ℕ
-letLam = let y = λ x → x in y
 
 postulate forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
 

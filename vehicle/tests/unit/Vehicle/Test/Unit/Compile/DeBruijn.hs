@@ -5,27 +5,23 @@ import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
   ( BinderDisplayForm (BinderDisplayForm),
     BinderNamingForm (OnlyName),
-    Builtin,
     Expr (Lam),
     GenericBinder (Binder),
     Pretty (pretty),
     Provenance,
     Relevance (Relevant),
-    TypeCheckedBinder,
-    TypeCheckedExpr,
-    TypeCheckedType,
     Visibility (Explicit),
     indent,
     layoutAsString,
     line,
     (<+>),
     pattern BoundVar,
-    pattern NatLiteral,
-    pattern NatType,
   )
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.AlphaEquivalence ()
-import Vehicle.Expr.DeBruijn (DBExpr, DBLevel, liftDBIndices, substDBInto)
+import Vehicle.Expr.DeBruijn (DBLevel, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -90,9 +86,9 @@ liftingTests =
 
 data SubstitutionTest = SubstitutionTest
   { name :: String,
-    value :: DBExpr Builtin,
-    expr :: TypeCheckedExpr,
-    expected :: TypeCheckedExpr
+    value :: StandardExpr,
+    expr :: StandardExpr,
+    expected :: StandardExpr
   }
 
 substTest :: SubstitutionTest -> TestTree

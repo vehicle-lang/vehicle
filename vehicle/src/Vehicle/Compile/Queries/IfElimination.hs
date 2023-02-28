@@ -35,14 +35,12 @@ currentPass = "if elimination"
 -- If operations
 
 liftIf :: (StandardNormExpr -> StandardNormExpr) -> StandardNormExpr -> StandardNormExpr
-liftIf f (VBuiltinFunction If [_t, cond, e1, e2]) =
+liftIf f (VBuiltinFunction If [cond, e1, e2]) =
   VBuiltinFunction
     If
-    -- Can't reconstruct the result type of `f` here, so have to insert a hole.
-    [ ImplicitArg mempty (VBuiltin (Constructor Bool) []),
-      cond,
-      fmap (liftIf f) e1,
-      fmap (liftIf f) e2
+    [ cond,
+      liftIf f e1,
+      liftIf f e2
     ]
 liftIf f e = f e
 
@@ -52,45 +50,43 @@ recLiftIf expr = case expr of
   -- Quantified lambdas should have been caught before now.
   VLam {} -> normalisationError currentPass "Non-quantified Lam"
   VUniverse {} -> return expr
-  VLiteral {} -> return expr
   VMeta {} -> return expr
   VBoundVar {} -> return expr
-  VFreeVar v spine -> liftArgs (VFreeVar v) <$> traverse (traverse recLiftIf) spine
-  VBuiltin b spine -> liftArgs (VBuiltin b) <$> traverse (traverse recLiftIf) spine
-  VLVec es spine -> do
-    es' <- traverse recLiftIf es
-    let result = liftSeq (\es'' -> VLVec es'' spine) es'
-    return result
+  VFreeVar v spine -> liftSpine (VFreeVar v) <$> traverse (traverse recLiftIf) spine
+  VBuiltin b spine -> liftExplicitSpine (VBuiltin b) <$> traverse recLiftIf spine
 
 liftArg :: (StandardNormArg -> StandardNormExpr) -> StandardNormArg -> StandardNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
-liftArgs ::
+liftSpine ::
   (StandardSpine -> StandardNormExpr) ->
   StandardSpine ->
   StandardNormExpr
-liftArgs f [] = f []
-liftArgs f (x : xs) =
+liftSpine f [] = f []
+liftSpine f (x : xs) =
   if visibilityOf x == Explicit
-    then liftArg (\a -> liftArgs (\as -> f (a : as)) xs) x
-    else liftArgs (\as -> f (x : as)) xs
+    then liftArg (\a -> liftSpine (\as -> f (a : as)) xs) x
+    else liftSpine (\as -> f (x : as)) xs
 
-liftSeq :: ([StandardNormExpr] -> StandardNormExpr) -> [StandardNormExpr] -> StandardNormExpr
-liftSeq f [] = f []
-liftSeq f (x : xs) = liftIf (\v -> liftSeq (\ys -> f (v : ys)) xs) x
+liftExplicitSpine ::
+  (StandardExplicitSpine -> StandardNormExpr) ->
+  [StandardNormExpr] ->
+  StandardNormExpr
+liftExplicitSpine f [] = f []
+liftExplicitSpine f (x : xs) = do
+  liftIf (\a -> liftExplicitSpine (\as -> f (a : as)) xs) x
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: StandardNormExpr -> StandardNormExpr
-elimIf (VBuiltinFunction If [_t, cond, e1, e2]) = unfoldIf cond (fmap elimIf e1) (fmap elimIf e2)
+elimIf (VBuiltinFunction If [cond, e1, e2]) = unfoldIf cond (elimIf e1) (elimIf e2)
 elimIf e = e
 
-unfoldIf :: StandardNormArg -> StandardNormArg -> StandardNormArg -> StandardNormExpr
+unfoldIf :: StandardNormExpr -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
 unfoldIf c x y =
-  VBuiltinFunction Or $
-    fmap
-      (ExplicitArg mempty)
-      [ VBuiltinFunction And [c, x],
-        VBuiltinFunction And [ExplicitArg mempty (VBuiltinFunction Not [c]), y]
-      ]
+  VBuiltinFunction
+    Or
+    [ VBuiltinFunction And [c, x],
+      VBuiltinFunction And [VBuiltinFunction Not [c], y]
+    ]

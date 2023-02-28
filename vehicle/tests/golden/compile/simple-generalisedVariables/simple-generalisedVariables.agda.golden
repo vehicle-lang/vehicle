@@ -8,12 +8,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Rational as ℚ using (ℚ)
 
 module simple-generalisedVariables where
 
-id : ℚ → ℚ
-id x = x
-
-natId : ℚ → ℚ
-natId = id

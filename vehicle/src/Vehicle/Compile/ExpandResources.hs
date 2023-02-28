@@ -20,17 +20,16 @@ import Vehicle.Compile.Normalise.NBE (runNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type (getGlued)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalised (GluedExpr (..), pattern VNatLiteral)
+import Vehicle.Expr.Normalised
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.
 expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
-  StandardTypedProg ->
-  m (NetworkContext, StandardTypedProg)
+  StandardGluedProg ->
+  m (NetworkContext, StandardGluedProg)
 expandResources resources@Resources {..} prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     resourcesCtx@ResourceContext {..} <-
@@ -56,35 +55,34 @@ type MonadReadResources m =
     MonadExpandResources m
   )
 
-readResourcesInProg :: MonadReadResources m => StandardTypedProg -> m ()
+readResourcesInProg :: MonadReadResources m => StandardGluedProg -> m ()
 readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 
-readResourcesInDecl :: MonadReadResources m => StandardTypedDecl -> m ()
+readResourcesInDecl :: MonadReadResources m => StandardGluedDecl -> m ()
 readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
   DefPostulate {} -> return ()
-  DefResource p ident resourceType declType -> do
-    gluedDeclType <- getGlued declType
+  DefResource p ident resourceType declType ->
     case resourceType of
       InferableParameter ->
         modify (noteInferableParameter ident)
       Parameter -> do
         parameterValues <- asks parameters
-        normParameterExpr <- parseParameterValue parameterValues (ident, p) gluedDeclType
+        normParameterExpr <- parseParameterValue parameterValues (ident, p) declType
         let parameterExpr = mkTyped normParameterExpr
         modify (addParameter ident parameterExpr)
       Dataset -> do
         datasetLocations <- asks datasets
-        normDatasetExpr <- parseDataset datasetLocations (ident, p) gluedDeclType
+        normDatasetExpr <- parseDataset datasetLocations (ident, p) declType
         let datasetExpr = mkTyped normDatasetExpr
         modify (addDataset ident datasetExpr)
       Network -> do
         networkLocations <- asks networks
-        networkDetails <- checkNetwork networkLocations (ident, p) gluedDeclType
+        networkDetails <- checkNetwork networkLocations (ident, p) declType
         modify (addNetworkType ident networkDetails)
 
-mkTyped :: StandardNormExpr -> StandardTypedExpr
-mkTyped expr = StandardTypedExpr (Glued (unnormalise 0 expr) expr)
+mkTyped :: StandardNormExpr -> StandardGluedExpr
+mkTyped expr = Glued (unnormalise 0 expr) expr
 
 --------------------------------------------------------------------------------
 -- Second pass
@@ -94,14 +92,14 @@ mkTyped expr = StandardTypedExpr (Glued (unnormalise 0 expr) expr)
 -- the new values now inserted.
 type MonadInsertResources m =
   ( MonadReader ResourceContext m,
-    MonadState (DeclCtx StandardTypedExpr) m,
+    MonadState (DeclCtx StandardGluedExpr) m,
     MonadCompile m
   )
 
-insertResourcesInProg :: MonadInsertResources m => StandardTypedProg -> m StandardTypedProg
+insertResourcesInProg :: MonadInsertResources m => StandardGluedProg -> m StandardGluedProg
 insertResourcesInProg (Main ds) = Main . catMaybes <$> insertDecls ds
 
-insertDecls :: MonadInsertResources m => [StandardTypedDecl] -> m [Maybe StandardTypedDecl]
+insertDecls :: MonadInsertResources m => [StandardGluedDecl] -> m [Maybe StandardGluedDecl]
 insertDecls [] = return []
 insertDecls (d : ds) = do
   norm <- normDecl d
@@ -111,8 +109,8 @@ insertDecls (d : ds) = do
 
 insertDecl ::
   MonadInsertResources m =>
-  StandardTypedDecl ->
-  m (Maybe StandardTypedDecl)
+  StandardGluedDecl ->
+  m (Maybe StandardGluedDecl)
 insertDecl = \case
   r@DefFunction {} -> return (Just r)
   r@DefPostulate {} -> return (Just r)
@@ -147,10 +145,10 @@ lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
       "Somehow missed resource" <+> quotePretty ident <+> "on the first pass"
   Just value -> return value
 
-normDecl :: MonadInsertResources m => StandardTypedDecl -> m StandardTypedDecl
+normDecl :: MonadInsertResources m => StandardGluedDecl -> m StandardGluedDecl
 normDecl decl = do
-  ctx <- gets (fmap (normalised . glued))
-  for decl $ \(StandardTypedExpr (Glued unnorm norm)) -> do
+  ctx <- gets (fmap normalised)
+  for decl $ \(Glued unnorm norm) -> do
     -- Ugh, horrible. We really n(eed to be able to renormalise.
-    norm' <- runNormT ctx mempty (whnf 0 (unnormalise 0 norm))
-    return $ StandardTypedExpr $ Glued unnorm norm'
+    norm' <- runNormT ctx mempty (whnf mempty (unnormalise 0 norm))
+    return $ Glued unnorm norm'
