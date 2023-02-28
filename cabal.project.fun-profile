@@ -1,0 +1,12 @@
+-- Cabal project configuration file for FUNCTION PROFILING
+--
+-- Use `cabal` with `--project-file=cabal.project.fun-profile`
+-- or run vehicle via `./scripts/vehicle-fun-profile`.
+
+import: cabal.project
+
+package vehicle-syntax
+  profiling: True
+
+package vehicle
+  profiling: True
