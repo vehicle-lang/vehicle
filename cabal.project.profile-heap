@@ -36,4 +36,4 @@ package vehicle
     -threaded
 
     -- Necessary on _executable_ for RTSOPTS support
-    -threaded
+    -rtsopts
