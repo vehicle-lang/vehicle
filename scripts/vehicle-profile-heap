@@ -38,23 +38,26 @@ PROFILING_PREFIX="$PROFILING_DIR/vehicle-$TIMESTAMP"
 EVENTLOG_FILE="$PROFILING_PREFIX$HEAP_PROFILE_TYPE.eventlog"
 EVENTLOG_HTML="$EVENTLOG_FILE.html"
 
+# Build vehicle in heap profiling mode with the given options.
+BUILD_CMD="cabal -v1 --project-file=cabal.project.profile-heap build vehicle:exe:vehicle"
+[ ! -s "$fail" ] && ($BUILD_CMD || echo > "$fail")
+
 # On interrupt, kill Vehicle and reset trap.
 _on_interrupt() {
     echo "Forward SIGINT to Vehicle"
-    kill -INT "$PID_VEHICLE" 2>/dev/null
+    kill -INT "$CHILD_PID" 2>/dev/null
     trap - INT
 }
 trap _on_interrupt INT
 
-# Run vehicle in debug mode with the given options.
-# Produce a heap profile grouped by closure type (-hT).
+# Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -ol$EVENTLOG_FILE -s -l ${HEAP_PROFILE_TYPE} -RTS"
-VEHICLE="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
+RUN_CMD="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
 if [ ! -s "$fail" ]; then
-    echo "$VEHICLE $@ $RTSOPTS"
-    $VEHICLE $@ $RTSOPTS || echo > "$fail" &
-    VEHICLE_PID=$!
-    wait "$VEHICLE_PID"
+    echo "$RUN_CMD $@ $RTSOPTS"
+    $RUN_CMD $@ $RTSOPTS || echo > "$fail" &
+    CHILD_PID=$!
+    wait "$CHILD_PID"
     trap - INT
 fi
 
