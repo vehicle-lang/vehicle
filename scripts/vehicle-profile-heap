@@ -8,7 +8,7 @@ EVENTLOG2HTML=$(which eventlog2html || echo > "$fail")
 
 if [ -s "$fail" ]; then
     rm "$fail"
-    echo "The vehicle-mem-profile script requires 'eventlog2html' to visualise the event log."
+    echo "The vehicle-profile-heap script requires 'eventlog2html' to visualise the event log."
     echo "You can install 'eventlog2html' by running:"
     echo
     echo "  cabal v2-install eventlog2html --ignore-project --overwrite-policy=always"
