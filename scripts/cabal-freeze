@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'ghcup' is on the PATH:
+ghcup=$(which ghcup || echo > "$fail")
+
+# Check if 'cabal' is on the PATH:
+cabal=$(which cabal || echo > "$fail")
+
+# Get the GHC version from the arguments:
+GHC_VERSION="$1"
+if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
+    echo "Generating profile and freeze files for GHC ${GHC_VERSION}"
+
+    # Switch to correct GHC version
+    OLD_GHC_VERSION=$(ghc --numeric-version)
+    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
+        echo "Switching to GHC ${GHC_VERSION}"
+        $ghcup set ghc "${GHC_VERSION}"
+    fi
+
+    # Create cabal.project.ghc-X.Y.Z
+    PROJECT_FILE="cabal.project.ghc-${GHC_VERSION}"
+    [ ! -f "${PROJECT_FILE}" ] && ln -s "cabal.project" "cabal.project.ghc-${GHC_VERSION}"
+
+    # Create cabal.project.ghc-X.Y.Z.freeze
+    [ ! -f "${PROJECT_FILE}.freeze" ] && $cabal v2-freeze --project-file="${PROJECT_FILE}"
+
+    # Switch back to previous GHC version
+    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
+        echo "Switching to GHC ${OLD_GHC_VERSION}"
+        $ghcup set ghc "${OLD_GHC_VERSION}"
+    fi
+
+    # Check whether or not any subcommand failed:
+    if [ -s "$fail" ]; then
+        rm "$fail"
+        exit 1
+    else
+        rm "$fail"
+        exit 0
+    fi
+else
+    rm "$fail"
+    echo "Usage: cabal-freeze [X.Y.Z]"
+    exit 1
+fi
