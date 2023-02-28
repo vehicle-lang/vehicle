@@ -8,7 +8,7 @@ PROFITEUR=$(which profiteur || echo > "$fail")
 
 if [ -s "$fail" ]; then
     rm "$fail"
-    echo "The vehicle-mem-profile script requires 'profiteur' to visualise the profiling data."
+    echo "The vehicle-profile-time script requires 'profiteur' to visualise the profiling data."
     echo "You can install 'profiteur' by running:"
     echo
     echo "  cabal v2-install profiteur --ignore-project --overwrite-policy=always"
@@ -24,8 +24,49 @@ PROFILING_DIR=".profiling"
 # Create the timestamped filenames for profiling files:
 TIMESTAMP=$(awk 'BEGIN{srand(); print srand()}')
 PROFILING_PREFIX="$PROFILING_DIR/vehicle-$TIMESTAMP"
+PROFILE_FILE="$PROFILING_PREFIX.prof"
+PROFILE_HTML="$PROFILE_FILE.html"
 
-# Run vehicle in profiling mode with the given options.
-RTSOPTS="+RTS -po"$PROFILING_PREFIX" -p -RTS"
-VEHICLE="cabal -v0 --project-file=cabal.project.time-profile run vehicle:exe:vehicle --"
-[ ! -s "$fail" ] && ($VEHICLE $@ $RTSOPTS || echo > "$fail")
+# Build vehicle in heap profiling mode with the given options.
+CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-time build vehicle:exe:vehicle"
+[ ! -s "$fail" ] && ($CABAL_BUILD || echo > "$fail")
+
+# On interrupt, kill Vehicle and reset trap.
+_on_interrupt() {
+    echo "Forward SIGINT to Vehicle"
+    kill -INT "$CHILD_PID" 2>/dev/null
+    trap - INT
+}
+trap _on_interrupt INT
+
+# Run vehicle in heap profiling mode with the given options.
+RTSOPTS="+RTS -po$PROFILING_PREFIX -p -RTS"
+CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-time run vehicle:exe:vehicle -- $* $RTSOPTS"
+if [ ! -s "$fail" ]; then
+    echo "$CABAL_RUN"
+    $CABAL_RUN || echo > "$fail" &
+    CHILD_PID=$!
+    wait "$CHILD_PID"
+    trap - INT
+fi
+
+# If no eventlog was generated, exit.
+if [ ! -f "$PROFILE_FILE" ]; then
+    echo "No eventlog was generated; did you kill the process too soon?"
+    exit 1
+else
+    # Convert the time profile to an HTML page.
+    $PROFITEUR "$PROFILE_FILE" || echo > "$fail"
+
+    # Output the path to the generated HTML page.
+    [ -f "$PROFILE_HTML" ] && (echo "Wrote profile to $PROFILE_FILE.html")
+fi
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "Error occurred while profiling; see above."
+    exit 1
+else
+    rm "$fail"
+fi
