@@ -40,7 +40,7 @@ EVENTLOG_FILE="$PROFILING_PREFIX$HEAP_PROFILE_TYPE.eventlog"
 # Run vehicle in debug mode with the given options.
 # Produce a heap profile grouped by closure type (-hT).
 RTSOPTS="+RTS -po"$PROFILING_PREFIX" -ol"$EVENTLOG_FILE" -s -l "${HEAP_PROFILE_TYPE}" -RTS"
-VEHICLE="cabal -v0 --project-file=cabal.project.mem-profile run vehicle:exe:vehicle --"
+VEHICLE="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
 [ ! -s "$fail" ] && ($VEHICLE $@ $RTSOPTS || echo > "$fail")
 
 # Convert the heap profile to an HTML page.
