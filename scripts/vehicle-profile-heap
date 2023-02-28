@@ -39,8 +39,8 @@ EVENTLOG_FILE="$PROFILING_PREFIX$HEAP_PROFILE_TYPE.eventlog"
 EVENTLOG_HTML="$EVENTLOG_FILE.html"
 
 # Build vehicle in heap profiling mode with the given options.
-BUILD_CMD="cabal -v1 --project-file=cabal.project.profile-heap build vehicle:exe:vehicle"
-[ ! -s "$fail" ] && ($BUILD_CMD || echo > "$fail")
+CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-heap build vehicle:exe:vehicle"
+[ ! -s "$fail" ] && ($CABAL_BUILD || echo > "$fail")
 
 # On interrupt, kill Vehicle and reset trap.
 _on_interrupt() {
@@ -52,10 +52,10 @@ trap _on_interrupt INT
 
 # Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -ol$EVENTLOG_FILE -s -l ${HEAP_PROFILE_TYPE} -RTS"
-RUN_CMD="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
+CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
 if [ ! -s "$fail" ]; then
-    echo "$RUN_CMD $@ $RTSOPTS"
-    $RUN_CMD $@ $RTSOPTS || echo > "$fail" &
+    echo "$CABAL_RUN $@ $RTSOPTS"
+    $CABAL_RUN $@ $RTSOPTS || echo > "$fail" &
     CHILD_PID=$!
     wait "$CHILD_PID"
     trap - INT
