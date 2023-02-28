@@ -1,2 +1,0 @@
-Error at Line 6, Columns 5-7: cannot currently use quantifiers in `if` conditions.
-Fix: This is a limitation of the current implementation rather than a fundamental problem. If you would like this to be fixed, please open an issue at 'https://github.com/vehicle-lang/vehicle/issues/'

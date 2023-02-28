@@ -25,9 +25,8 @@ instance Simplify InputExpr where
     Hole {} -> expr
     Meta {} -> expr
     Builtin {} -> expr
-    Literal {} -> expr
-    Var {} -> expr
-    LVec p xs -> LVec p (fmap simplify xs)
+    BoundVar {} -> expr
+    FreeVar {} -> expr
     Ann p e t -> Ann p (simplify e) (simplify t)
     Pi p binder result -> Pi p (simplify binder) (simplify result)
     Let p bound binder body -> Let p (simplify bound) (simplify binder) (simplify body)
@@ -59,7 +58,6 @@ isLiteralCast :: Expr binder var Builtin -> Bool
 isLiteralCast = \case
   Builtin _ (BuiltinFunction FromNat {}) -> True
   Builtin _ (BuiltinFunction FromRat {}) -> True
-  Builtin _ (BuiltinFunction FromVec {}) -> True
   Builtin _ (TypeClassOp FromNatTC {}) -> True
   Builtin _ (TypeClassOp FromRatTC {}) -> True
   Builtin _ (TypeClassOp FromVecTC {}) -> True

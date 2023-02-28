@@ -17,6 +17,7 @@ module Vehicle.Compile.Print
 where
 
 import Control.Exception (assert)
+import Control.Monad.Identity (Identity (..))
 import Data.Bifunctor (bimap)
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
@@ -27,15 +28,17 @@ import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
-import Vehicle.Compile.Prelude hiding (MapList)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Simplify
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.CoDeBruijn
 import Vehicle.Expr.CoDeBruijn.Conversion
 import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Print
 
@@ -43,26 +46,32 @@ import Vehicle.Syntax.Print
 -- Public methods
 --------------------------------------------------------------------------------
 
-type PrettyVerbose a = PrettyWith ('As 'Internal) a
+type VerboseTags = 'Unnamed ('StandardiseBuiltin ('As 'Internal))
 
-type PrettyExternal a = PrettyWith ('Named ('As 'External)) a
+type ExternalTags = 'Named ('StandardiseBuiltin ('As 'External))
 
-type PrettyFriendly a = PrettyWith ('Named ('Simple ('As 'External))) a
+type FriendlyTags = 'Named ('StandardiseBuiltin ('Simple ('As 'External)))
+
+type PrettyVerbose a = PrettyWith VerboseTags a
+
+type PrettyExternal a = PrettyWith ExternalTags a
+
+type PrettyFriendly a = PrettyWith FriendlyTags a
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.
 prettyVerbose :: PrettyVerbose a => a -> Doc b
-prettyVerbose = prettyWith @('As 'Internal)
+prettyVerbose = prettyWith @VerboseTags
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.
 prettyExternal :: PrettyExternal a => a -> Doc b
-prettyExternal = prettyWith @('Named ('As 'External))
+prettyExternal = prettyWith @ExternalTags
 
 -- | Prints to the external language for things that need to be displayed to
 --  the user. Must provide the context of the thing being printed.
 prettyFriendly :: PrettyFriendly a => a -> Doc b
-prettyFriendly = prettyWith @('Named ('Simple ('As 'External)))
+prettyFriendly = prettyWith @FriendlyTags
 
 --------------------------------------------------------------------------------
 -- Printing strategies
@@ -72,16 +81,21 @@ prettyFriendly = prettyWith @('Named ('Simple ('As 'External)))
 data Tags
   = -- | The final tag denotes which output grammar should be used
     As VehicleLang
-  | -- | The named tag ensures that the term is converted back to using named binders
+  | -- | The `Named` tag ensures that the term is converted back to using named binders
     Named Tags
-  | -- | The simple tag ensures that superfluous information is erased
+  | -- | The `Unnamed` tag denotes that the term should not be converted back to using named binders
+    Unnamed Tags
+  | -- | The `Simple` tag ensures that superfluous information is erased
     Simple Tags
+  | -- | The `StandardiseBuiltin` tag ensures that the term is converted back to the standard set of builtins
+    StandardiseBuiltin Tags
 
 -- | A strategy is an abstract representation of the sequence of operations that
 -- are needed in order to convert something into a printable form. It should not
 -- be confused with the actual operations needed to do so.
 data Strategy
   = PrintAs VehicleLang
+  | ConvertBuiltins Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
   | CoDBToDB Strategy
@@ -106,55 +120,59 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('As lang) InputExpr = 'PrintAs lang
   StrategyFor ('As lang) InputArg = 'PrintAs lang
   StrategyFor ('As lang) InputBinder = 'PrintAs lang
-  -- To convert a Checked representation with the names supplied directly to the target language
-  -- (instead of first converting the Checked indices to names) then convert the Checked indices naively to a
-  -- string representing them, e.g. the index `0` gets converted to `i0`
-  StrategyFor ('As lang) CheckedProg = 'DescopeNaively (StrategyFor ('As lang) InputProg)
-  StrategyFor ('As lang) CheckedDecl = 'DescopeNaively (StrategyFor ('As lang) InputDecl)
-  StrategyFor ('As lang) CheckedExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
-  StrategyFor ('As lang) CheckedArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
-  StrategyFor ('As lang) CheckedBinder = 'DescopeNaively (StrategyFor ('As lang) InputBinder)
-  -- To convert a BasicNormExpr convert the `DBLevel`s naively.
-  StrategyFor ('As lang) BasicNormExpr = 'DescopeNaively (StrategyFor ('As lang) InputExpr)
-  StrategyFor ('As lang) BasicNormArg = 'DescopeNaively (StrategyFor ('As lang) InputArg)
-  StrategyFor ('As lang) BasicNormBinder = 'DescopeNaively (StrategyFor ('As lang) InputBinder)
+  -- To print a DB expr in an unnamed representation, simply naively descope.
+  StrategyFor ('Unnamed tags) (DBProg builtin) = 'DescopeNaively (StrategyFor tags (NamedProg builtin))
+  StrategyFor ('Unnamed tags) (DBDecl builtin) = 'DescopeNaively (StrategyFor tags (NamedDecl builtin))
+  StrategyFor ('Unnamed tags) (DBExpr builtin) = 'DescopeNaively (StrategyFor tags (NamedExpr builtin))
+  StrategyFor ('Unnamed tags) (DBArg builtin) = 'DescopeNaively (StrategyFor tags (NamedArg builtin))
+  StrategyFor ('Unnamed tags) (DBBinder builtin) = 'DescopeNaively (StrategyFor tags (NamedBinder builtin))
+  -- To print a normalised expr in an unnamed representation, simply naively descope.
+  StrategyFor ('Unnamed tags) (NormExpr types) = 'DescopeNaively (StrategyFor tags (NamedExpr (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (NormArg types) = 'DescopeNaively (StrategyFor tags (NamedArg (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (NormBinder types) = 'DescopeNaively (StrategyFor tags (NamedBinder (NormalisableBuiltin types)))
+  -- To standardise builtins
+  StrategyFor ('StandardiseBuiltin tags) (NamedProg builtin) = 'ConvertBuiltins (StrategyFor tags InputProg)
+  StrategyFor ('StandardiseBuiltin tags) (NamedDecl builtin) = 'ConvertBuiltins (StrategyFor tags InputDecl)
+  StrategyFor ('StandardiseBuiltin tags) (NamedExpr builtin) = 'ConvertBuiltins (StrategyFor tags InputExpr)
+  StrategyFor ('StandardiseBuiltin tags) (NamedArg builtin) = 'ConvertBuiltins (StrategyFor tags InputArg)
+  StrategyFor ('StandardiseBuiltin tags) (NamedBinder builtin) = 'ConvertBuiltins (StrategyFor tags InputBinder)
   -- To convert an expression using a named representation to a named representation is a no-op.
-  StrategyFor ('Named tags) InputProg = StrategyFor tags InputProg
-  StrategyFor ('Named tags) InputDecl = StrategyFor tags InputDecl
-  StrategyFor ('Named tags) InputExpr = StrategyFor tags InputExpr
-  StrategyFor ('Named tags) InputArg = StrategyFor tags InputArg
-  StrategyFor ('Named tags) InputBinder = StrategyFor tags InputBinder
-  -- To convert a closed expression using a Checked representation but whose missing names have been supplied
+  StrategyFor ('Named tags) (NamedProg builtin) = StrategyFor tags (NamedProg builtin)
+  StrategyFor ('Named tags) (NamedDecl builtin) = StrategyFor tags (NamedDecl builtin)
+  StrategyFor ('Named tags) (NamedExpr builtin) = StrategyFor tags (NamedExpr builtin)
+  StrategyFor ('Named tags) (NamedArg builtin) = StrategyFor tags (NamedArg builtin)
+  StrategyFor ('Named tags) (NamedBinder builtin) = StrategyFor tags (NamedBinder builtin)
+  -- To convert a closed expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the Checked to named conversion. For expressions, args, binders
   -- we need to have the context in scope.
-  StrategyFor ('Named tags) CheckedProg = 'DescopeWithNames (StrategyFor tags InputProg)
-  StrategyFor ('Named tags) CheckedDecl = 'DescopeWithNames (StrategyFor tags InputDecl)
-  StrategyFor ('Named tags) (Contextualised CheckedExpr BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputExpr)
-  StrategyFor ('Named tags) (Contextualised CheckedArg BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputArg)
-  StrategyFor ('Named tags) (Contextualised CheckedBinder BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
-  -- To convert a named Basicnormalised expr, first denormalise to a checked expr.
-  StrategyFor ('Named tags) (Contextualised BasicNormExpr BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised CheckedExpr BoundDBCtx))
+  StrategyFor ('Named tags) (DBProg builtin) = 'DescopeWithNames (StrategyFor tags InputProg)
+  StrategyFor ('Named tags) (DBDecl builtin) = 'DescopeWithNames (StrategyFor tags InputDecl)
+  StrategyFor ('Named tags) (Contextualised (DBExpr builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputExpr)
+  StrategyFor ('Named tags) (Contextualised (DBArg builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputArg)
+  StrategyFor ('Named tags) (Contextualised (DBBinder builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
+  -- To convert a named normalised expr, first denormalise to a checked expr.
+  StrategyFor ('Named tags) (Contextualised (NormExpr types) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (DBExpr (NormalisableBuiltin types)) BoundDBCtx))
   -- To convert an open expression using a Checked representation but whose missing names have been supplied
   -- to a named representation, perform the Checked to named conversion.
-  StrategyFor tags CoDBExpr = 'CoDBToDB (StrategyFor tags CheckedExpr)
-  StrategyFor tags CoDBArg = 'CoDBToDB (StrategyFor tags CheckedArg)
-  StrategyFor tags CoDBBinder = 'CoDBToDB (StrategyFor tags CheckedBinder)
-  StrategyFor ('Named tags) (Contextualised CoDBExpr BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised CheckedExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised CoDBArg BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised CheckedArg BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised CoDBBinder BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised CheckedBinder BoundDBCtx))
+  StrategyFor tags CoDBExpr = 'CoDBToDB (StrategyFor tags TypeCheckedExpr)
+  StrategyFor tags CoDBArg = 'CoDBToDB (StrategyFor tags TypeCheckedArg)
+  StrategyFor tags CoDBBinder = 'CoDBToDB (StrategyFor tags TypeCheckedBinder)
+  StrategyFor ('Named tags) (Contextualised CoDBExpr BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised CoDBArg BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedArg BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised CoDBBinder BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedBinder BoundDBCtx))
   -- Things that we just pretty print.
   StrategyFor tags PositionTree = 'Pretty
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised Constraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised BasicNormExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised TypeClassConstraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised BasicNormExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised UnificationConstraint ConstraintContext) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised BasicNormExpr BoundDBCtx))
-  StrategyFor tags (Contextualised Constraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags BasicNormExpr)
-  StrategyFor tags (Contextualised TypeClassConstraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags BasicNormExpr)
-  StrategyFor tags (Contextualised UnificationConstraint ConstraintContext) = 'DiscardConstraintCtx (StrategyFor tags BasicNormExpr)
+  StrategyFor ('Named tags) (Contextualised (Constraint types) (ConstraintContext types)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (TypeClassConstraint types) (ConstraintContext types)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint types) (ConstraintContext types)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
+  StrategyFor tags (Contextualised (Constraint types) (ConstraintContext types)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
+  StrategyFor tags (Contextualised (TypeClassConstraint types) (ConstraintContext types)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
+  StrategyFor tags (Contextualised (UnificationConstraint types) (ConstraintContext types)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags CheckedExpr)
+  StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags TypeCheckedExpr)
   -- Simplification
   StrategyFor ('Simple tags) a = 'Simplify (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
@@ -182,13 +200,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
           ':$$: 'Text "Perhaps you could add support to Vehicle.Compile.Print.StrategyFor?"
       )
 
-{-
-  -- To convert a CoDBExpr with the names supplied directly to the target language
-  -- (instead of first converting to CoDB indices to names) then convert the CoDB indices naively to
-  -- a string representing them.
-  StrategyFor ('As lang) (t (NamedBinding, Maybe PositionTree) CoDBVar) =
-    'CoDBToNamedNaive ('PrintAs lang)
--}
 --------------------------------------------------------------------------------
 -- Executing printing strategies
 --------------------------------------------------------------------------------
@@ -240,56 +251,123 @@ instance PrettyUsing ('PrintAs 'External) InputBinder where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
+-- Converting the basic builtins
+
+instance PrettyUsing rest InputProg => PrettyUsing ('ConvertBuiltins rest) InputProg where
+  prettyUsing = prettyUsing @rest
+
+instance PrettyUsing rest InputDecl => PrettyUsing ('ConvertBuiltins rest) InputDecl where
+  prettyUsing = prettyUsing @rest
+
+instance PrettyUsing rest InputExpr => PrettyUsing ('ConvertBuiltins rest) InputExpr where
+  prettyUsing = prettyUsing @rest
+
+instance PrettyUsing rest InputArg => PrettyUsing ('ConvertBuiltins rest) InputArg where
+  prettyUsing = prettyUsing @rest
+
+instance PrettyUsing rest InputBinder => PrettyUsing ('ConvertBuiltins rest) InputBinder where
+  prettyUsing = prettyUsing @rest
+
+--------------------------------------------------------------------------------
+-- Converting builtins
+
+instance
+  (PrintableBuiltin types, PrettyUsing rest InputProg) =>
+  PrettyUsing ('ConvertBuiltins rest) (NamedProg (NormalisableBuiltin types))
+  where
+  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+
+instance
+  (PrintableBuiltin types, PrettyUsing rest InputDecl) =>
+  PrettyUsing ('ConvertBuiltins rest) (NamedDecl (NormalisableBuiltin types))
+  where
+  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+
+instance
+  (PrintableBuiltin types, PrettyUsing rest InputExpr) =>
+  PrettyUsing ('ConvertBuiltins rest) (NamedExpr (NormalisableBuiltin types))
+  where
+  prettyUsing = prettyUsing @rest . convertExprBuiltins
+
+instance
+  (PrintableBuiltin types, PrettyUsing rest InputArg) =>
+  PrettyUsing ('ConvertBuiltins rest) (NamedArg (NormalisableBuiltin types))
+  where
+  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+
+instance
+  (PrintableBuiltin types, PrettyUsing rest InputBinder) =>
+  PrettyUsing ('ConvertBuiltins rest) (NamedBinder (NormalisableBuiltin types))
+  where
+  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+
+convertExprBuiltins ::
+  forall types binder var.
+  PrintableBuiltin types =>
+  Expr binder var (NormalisableBuiltin types) ->
+  Expr binder var Builtin
+convertExprBuiltins expr = runIdentity (traverseBuiltins builtinUpdateFunction expr)
+  where
+    builtinUpdateFunction :: BuiltinUpdate Identity binder var (NormalisableBuiltin types) Builtin
+    builtinUpdateFunction p1 p2 b args = do
+      fn <- case b of
+        CConstructor c -> return $ Builtin p2 $ Constructor c
+        CFunction f -> return $ Builtin p2 $ BuiltinFunction f
+        CType t -> return $ convertBuiltin p2 t
+
+      return $ normAppList p1 fn args
+
+--------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance PrettyUsing rest InputProg => PrettyUsing ('DescopeNaively rest) CheckedProg where
+instance PrettyUsing rest (NamedProg builtin) => PrettyUsing ('DescopeNaively rest) (DBProg builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputDecl => PrettyUsing ('DescopeNaively rest) CheckedDecl where
+instance PrettyUsing rest (NamedDecl builtin) => PrettyUsing ('DescopeNaively rest) (DBDecl builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputExpr => PrettyUsing ('DescopeNaively rest) CheckedExpr where
+instance PrettyUsing rest (NamedExpr builtin) => PrettyUsing ('DescopeNaively rest) (DBExpr builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) CheckedArg where
+instance PrettyUsing rest (NamedArg builtin) => PrettyUsing ('DescopeNaively rest) (DBArg builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputBinder => PrettyUsing ('DescopeNaively rest) CheckedBinder where
+instance PrettyUsing rest (NamedBinder builtin) => PrettyUsing ('DescopeNaively rest) (DBBinder builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputExpr => PrettyUsing ('DescopeNaively rest) BasicNormExpr where
+instance PrettyUsing rest (NamedExpr (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormExpr types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputArg => PrettyUsing ('DescopeNaively rest) BasicNormArg where
+instance PrettyUsing rest (NamedArg (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormArg types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest InputBinder => PrettyUsing ('DescopeNaively rest) BasicNormBinder where
+instance PrettyUsing rest (NamedBinder (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormBinder types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
-instance PrettyUsing rest InputProg => PrettyUsing ('DescopeWithNames rest) CheckedProg where
+instance PrettyUsing rest (NamedProg builtin) => PrettyUsing ('DescopeWithNames rest) (DBProg builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
-instance PrettyUsing rest InputDecl => PrettyUsing ('DescopeWithNames rest) CheckedDecl where
+instance PrettyUsing rest (NamedDecl builtin) => PrettyUsing ('DescopeWithNames rest) (DBDecl builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest InputExpr =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised CheckedExpr BoundDBCtx)
+  PrettyUsing rest (NamedExpr builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (DBExpr builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest InputArg =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised CheckedArg BoundDBCtx)
+  PrettyUsing rest (NamedArg builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (DBArg builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest InputBinder =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised CheckedBinder BoundDBCtx)
+  PrettyUsing rest (NamedBinder builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (DBBinder builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
@@ -309,7 +387,7 @@ instance
 -- Convert open term from CoDeBruijn representation to DeBruijn representation
 
 instance
-  PrettyUsing rest (Contextualised CheckedExpr BoundDBCtx) =>
+  PrettyUsing rest (Contextualised TypeCheckedExpr BoundDBCtx) =>
   PrettyUsing rest (Contextualised CoDBExpr BoundDBCtx)
   where
   prettyUsing (WithContext e ctx) =
@@ -329,7 +407,7 @@ instance (PrettyUsing rest (BoundDBCtx, CheckedBinder))
 -- Convert closed term from CoDeBruijn representation to DeBruijn representation
 
 instance
-  PrettyUsing rest CheckedExpr =>
+  PrettyUsing rest TypeCheckedExpr =>
   PrettyUsing ('CoDBToDB rest) CoDBExpr
   where
   prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
@@ -393,21 +471,21 @@ instance Pretty a => PrettyUsing 'Pretty a where
   prettyUsing = pretty
 
 --------------------------------------------------------------------------------
--- Instances for Basicnormalised types
+-- Instances for normalised types
 
 instance
-  PrettyUsing rest (Contextualised CheckedExpr BoundDBCtx) =>
-  PrettyUsing ('Denormalise rest) (Contextualised BasicNormExpr BoundDBCtx)
+  PrettyUsing rest (Contextualised (DBExpr (NormalisableBuiltin types)) BoundDBCtx) =>
+  PrettyUsing ('Denormalise rest) (Contextualised (NormExpr types) BoundDBCtx)
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @BasicNormExpr @CheckedExpr (DBLevel $ length ctx) e
+    let e' = unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) (DBLevel $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance PrettyUsing rest CheckedExpr => PrettyUsing ('Denormalise rest) BasicNormExpr where
-  prettyUsing e = prettyUsing @rest (unnormalise @BasicNormExpr @CheckedExpr 0 e)
+instance PrettyUsing rest (DBExpr (NormalisableBuiltin types)) => PrettyUsing ('Denormalise rest) (NormExpr types) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) 0 e)
 
-instance PrettyUsing rest CheckedArg => PrettyUsing ('Denormalise rest) BasicNormArg where
-  prettyUsing e = prettyUsing @rest (unnormalise @BasicNormArg @CheckedArg 0 e)
+instance PrettyUsing rest (DBArg (NormalisableBuiltin types)) => PrettyUsing ('Denormalise rest) (NormArg types) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NormArg types) @(DBArg (NormalisableBuiltin types)) 0 e)
 
 --------------------------------------------------------------------------------
 -- Instances for constraints
@@ -418,47 +496,51 @@ prettyUnify e1 e2 = e1 <+> "~" <+> e2
 prettyTypeClass :: MetaID -> Doc a -> Doc a
 prettyTypeClass m expr = pretty m <+> "<=" <+> expr
 
-instance
-  PrettyUsing rest BasicNormExpr =>
-  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised UnificationConstraint ConstraintContext)
-  where
-  prettyUsing (WithContext (Unify e1 e2) _) = do
-    let e1' = prettyUsing @rest (e1 :: BasicNormExpr)
-    let e2' = prettyUsing @rest (e2 :: BasicNormExpr)
-    prettyUnify e1' e2'
+prettyConstraintContext :: Doc a -> ConstraintContext types -> Doc a
+prettyConstraintContext constraint ctx =
+  "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty (originalProvenance ctx)
 
 instance
-  PrettyUsing rest BasicNormExpr =>
-  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
+  PrettyUsing rest (NormExpr types) =>
+  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint types) (ConstraintContext types))
   where
-  prettyUsing (WithContext (Has m tc args) _) = do
-    let expr = VBuiltin (Constructor $ TypeClass tc) args
-    let expr' = prettyUsing @rest (expr :: BasicNormExpr)
-    prettyTypeClass m expr'
+  prettyUsing (WithContext (Unify e1 e2) ctx) = do
+    let e1' = prettyUsing @rest (e1 :: NormExpr types)
+    let e2' = prettyUsing @rest (e2 :: NormExpr types)
+    prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  PrettyUsing rest (Contextualised BasicNormExpr BoundDBCtx) =>
-  PrettyUsing ('KeepConstraintCtx rest) (Contextualised UnificationConstraint ConstraintContext)
+  PrettyUsing rest (NormExpr types) =>
+  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (TypeClassConstraint types) (ConstraintContext types))
+  where
+  prettyUsing (WithContext (Has m tc args) ctx) = do
+    let expr = VBuiltin (CType tc) args
+    let expr' = prettyUsing @rest (expr :: NormExpr types)
+    prettyConstraintContext (prettyTypeClass m expr') ctx
+
+instance
+  PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx) =>
+  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Unify e1 e2) ctx) = do
     let e1' = prettyUsing @rest (WithContext e1 (boundContextOf ctx))
     let e2' = prettyUsing @rest (WithContext e2 (boundContextOf ctx))
-    prettyUnify e1' e2'
+    prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  PrettyUsing rest (Contextualised BasicNormExpr BoundDBCtx) =>
-  PrettyUsing ('KeepConstraintCtx rest) (Contextualised TypeClassConstraint ConstraintContext)
+  PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx) =>
+  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (TypeClassConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Has m tc args) ctx) = do
-    let expr = VBuiltin (Constructor $ TypeClass tc) args
+    let expr = VBuiltin (CType tc) args
     let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
-    prettyTypeClass m expr' <+> pretty (originalProvenance ctx)
+    prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  ( PrettyUsing rest (Contextualised UnificationConstraint ConstraintContext),
-    PrettyUsing rest (Contextualised TypeClassConstraint ConstraintContext)
+  ( PrettyUsing rest (Contextualised (UnificationConstraint types) (ConstraintContext types)),
+    PrettyUsing rest (Contextualised (TypeClassConstraint types) (ConstraintContext types))
   ) =>
-  PrettyUsing rest (Contextualised Constraint ConstraintContext)
+  PrettyUsing rest (Contextualised (Constraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext c ctx) = case c of
     UnificationConstraint uc -> prettyUsing @rest (WithContext uc ctx)
@@ -472,7 +554,7 @@ instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
     where
       entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
 
-instance (PrettyUsing rest CheckedExpr) => PrettyUsing ('Opaque rest) PositionsInExpr where
+instance (PrettyUsing rest TypeCheckedExpr) => PrettyUsing ('Opaque rest) PositionsInExpr where
   prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))
     where
       hole = (Hole mempty $ Text.pack "@", mempty)

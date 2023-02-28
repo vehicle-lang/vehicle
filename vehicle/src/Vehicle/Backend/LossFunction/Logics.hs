@@ -1,5 +1,6 @@
 module Vehicle.Backend.LossFunction.Logics
   ( LExpr (..),
+    LDecl (..),
     Domain (..),
     Quantifier (..),
     DifferentialLogicImplementation (..),
@@ -42,11 +43,26 @@ data LExpr
   | Lambda V.Name LExpr
   | Let V.Name LExpr LExpr
   | Power LExpr LExpr
+  | Range LExpr
+  | Map LExpr LExpr
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
 
 instance ToJSON LExpr
+
+--------------------------------------------------------------------------------
+-- Declaration definition
+
+data LDecl
+  = DefFunction
+      V.Name -- Bound function name.
+      LExpr -- Bound function body.
+  deriving (Eq, Show, Generic)
+
+instance FromJSON LDecl
+
+instance ToJSON LDecl
 
 --------------------------------------------------------------------------------
 -- other definitions

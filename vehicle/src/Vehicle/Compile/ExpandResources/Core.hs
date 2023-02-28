@@ -7,6 +7,7 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 --------------------------------------------------------------------------------
 -- The resource monad
@@ -29,9 +30,9 @@ type InferableParameterEntry = (DeclProvenance, Resource, Int)
 
 type InferableParameterContext = Map Name (Maybe InferableParameterEntry)
 
-type ParameterContext = Map Name TypedExpr
+type ParameterContext = Map Name StandardGluedExpr
 
-type DatasetContext = Map Name TypedExpr
+type DatasetContext = Map Name StandardGluedExpr
 
 data ResourceContext = ResourceContext
   { inferableParameterContext :: InferableParameterContext,
@@ -57,14 +58,14 @@ addPossibleInferableParameterSolution ident entry ResourceContext {..} =
       ..
     }
 
-addParameter :: Identifier -> TypedExpr -> ResourceContext -> ResourceContext
+addParameter :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
 addParameter ident value ResourceContext {..} =
   ResourceContext
     { parameterContext = Map.insert (nameOf ident) value parameterContext,
       ..
     }
 
-addDataset :: Identifier -> TypedExpr -> ResourceContext -> ResourceContext
+addDataset :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
 addDataset ident value ResourceContext {..} =
   ResourceContext
     { datasetContext = Map.insert (nameOf ident) value datasetContext,

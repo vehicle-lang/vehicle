@@ -35,9 +35,10 @@ import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (BasicNormExpr, NormExpr (..), pattern VBuiltinFunction)
+import Vehicle.Expr.Normalised
 import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
@@ -45,7 +46,7 @@ generateCLSTProblem ::
   MonadCompile m =>
   LCSState ->
   InputEqualities ->
-  ConjunctAll BasicNormExpr ->
+  ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   (_, _, metaNetwork, userVariables, _) <- ask
@@ -161,13 +162,6 @@ getNetworkDetailsFromCtx networkCtx name = do
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
-getBoundContext :: MonadSMT m => m BoundDBCtx
-getBoundContext = do
-  (_, _, _, userVariables, networkVariables) <- ask
-  let userNames = reverse $ fmap (layoutAsText . pretty) userVariables
-  let networkNames = reverse $ fmap (layoutAsText . pretty) networkVariables
-  return $ fmap Just (userNames <> networkNames)
-
 getNumberOfUserVariables :: MonadSMT m => m Int
 getNumberOfUserVariables = do
   (_, _, _, userVariables, _) <- ask
@@ -205,22 +199,18 @@ getExprConstantIndex =
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => BasicNormExpr -> m Assertion
+compileAssertions :: MonadSMT m => StandardNormExpr -> m Assertion
 compileAssertions = go
   where
-    go :: MonadSMT m => BasicNormExpr -> m Assertion
+    go :: MonadSMT m => StandardNormExpr -> m Assertion
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
       VMeta {} -> resolutionError currentPass "Meta"
       VLam {} -> normalisationError currentPass "Lam"
-      VLVec {} -> normalisationError currentPass "LVec"
       VBoundVar {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
       VFreeVar {} -> normalisationError currentPass "VFreeVar"
-      VLiteral l -> case l of
-        LBool _ -> normalisationError currentPass "LBool"
-        _ -> caseError currentPass "Literal" ["AndExpr"]
-      VBuiltinFunction (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltinFunction (Order OrderRat ord) [e1, e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan, e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
@@ -228,7 +218,7 @@ compileAssertions = go
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
         return assertion
-      VBuiltinFunction (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+      VBuiltinFunction (Equals EqRat eq) [e1, e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
           throwError $ UnsupportedInequality MarabouBackend ident
@@ -240,15 +230,15 @@ compileAssertions = go
 compileAssertion ::
   MonadSMT m =>
   Relation ->
-  BasicNormExpr ->
-  BasicNormExpr ->
+  StandardNormExpr ->
+  StandardNormExpr ->
   m Assertion
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => BasicNormExpr -> m LinearExpr
+compileLinearExpr :: MonadSMT m => StandardNormExpr -> m LinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   linearExpr <- go lnfExpr
@@ -258,27 +248,22 @@ compileLinearExpr expr = do
     singletonVar :: DBLevel -> Coefficient -> Map Int Coefficient
     singletonVar v = Map.singleton (unLevel v)
 
-    go :: MonadSMT m => BasicNormExpr -> m (Map Int Coefficient)
+    go :: MonadSMT m => StandardNormExpr -> m (Map Int Coefficient)
     go e = case e of
       VBoundVar v [] ->
         return $ singletonVar v 1
-      VBuiltinFunction (Neg NegRat) [ExplicitArg _ (VBoundVar v [])] ->
+      VBuiltinFunction (Neg NegRat) [VBoundVar v []] ->
         return $ singletonVar v (-1)
-      VLiteral (LRat l) -> do
+      VRatLiteral l -> do
         constLevel <- getExprConstantIndex
         return $ singletonVar constLevel (fromRational l)
-      VBuiltinFunction (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltinFunction (Add AddRat) [e1, e2] -> do
         Map.unionWith (+) <$> go e1 <*> go e2
-      VBuiltinFunction (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
+      VBuiltinFunction (Mul MulRat) [e1, e2] ->
         case (e1, e2) of
-          (VLiteral (LRat l), VBoundVar v []) -> return $ singletonVar v (fromRational l)
-          (VBoundVar v [], VLiteral (LRat l)) -> return $ singletonVar v (fromRational l)
-          _ -> do
-            (_, _ident, _, _, _) <- ask
-            _ctx <- getBoundContext
-            compilerDeveloperError $
-              "Unexpected non-linear constraint that should have been caught by the"
-                <+> "linearity analysis during type-checking."
+          (VRatLiteral l, VBoundVar v []) -> return $ singletonVar v (fromRational l)
+          (VBoundVar v [], VRatLiteral l) -> return $ singletonVar v (fromRational l)
+          _ -> throwError temporaryUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
 filterTrivialAssertions :: [Assertion] -> Maybe [Assertion]
@@ -295,3 +280,11 @@ filterTrivialAssertions = go
 
 currentPass :: Doc a
 currentPass = "linear satisfaction problem compilation"
+
+-- | Constructs a temporary error with no real fields. This should be recaught
+-- and populated higher up the query compilation process.
+temporaryUnsupportedNonLinearConstraint :: CompileError
+temporaryUnsupportedNonLinearConstraint =
+  UnsupportedNonLinearConstraint x x x x x
+  where
+    x = developerError "Evaluating temporary quantifier error"

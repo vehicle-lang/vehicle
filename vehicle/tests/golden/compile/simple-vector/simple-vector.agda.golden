@@ -17,7 +17,4 @@ module simple-vector where
 
 postulate f : Vector ℚ 1 → Vector ℚ 1
 
-empty : Vector ℚ 0
-empty = []ᵥ
-
 postulate p : f (ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1

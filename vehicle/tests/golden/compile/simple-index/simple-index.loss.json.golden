@@ -15,48 +15,12 @@
               "tag": "Subtraction",
               "contents": [
                 {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 1
-                        }
-                      ]
-                    }
-                  ]
+                  "tag": "Constant",
+                  "contents": 0
                 },
                 {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 1
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
+                  "tag": "Constant",
+                  "contents": 1
                 }
               ]
             }
@@ -73,48 +37,12 @@
               "tag": "Subtraction",
               "contents": [
                 {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 1
-                        }
-                      ]
-                    }
-                  ]
+                  "tag": "Constant",
+                  "contents": 0
                 },
                 {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 1
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
+                  "tag": "Constant",
+                  "contents": 1
                 }
               ]
             }

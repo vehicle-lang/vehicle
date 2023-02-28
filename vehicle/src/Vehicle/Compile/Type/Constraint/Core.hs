@@ -4,69 +4,37 @@ module Vehicle.Compile.Type.Constraint.Core
     malformedConstraintError,
     unify,
     solveTypeClassMeta,
-    TypeClassProgress,
-    InstanceSolver,
-    TypeClassSolver,
-    AuxiliaryTypeClassSolver,
-    mkVAnnBoolType,
-    mkVAnnRatType,
-    mkVIndexType,
-    mkVListType,
-    mkVVecType,
+    anyOf,
+    allOf,
+    createTC,
   )
 where
 
 import Control.Monad (forM_)
+import Data.Data (Proxy (..))
 import Data.List (partition)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (TCM, solveMeta)
-import Vehicle.Compile.Type.Monad.Class (trackSolvedMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, solveMeta, trackSolvedMetas)
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
-
--- | Function signature for constraints solved by instance search.
-type InstanceSolver =
-  forall m.
-  TCM m =>
-  ConstraintContext ->
-  MetaID ->
-  BasicSpine ->
-  m ()
-
-type TypeClassProgress = Either MetaSet ([WithContext Constraint], BasicNormExpr)
-
--- | Function signature for constraints solved by type class resolution.
--- This should eventually be refactored out so all are solved by instance
--- search.
-type TypeClassSolver =
-  forall m.
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m TypeClassProgress
-
--- | Function signature for auxiliary constraints solved by type class resolution.
-type AuxiliaryTypeClassSolver =
-  forall m.
-  TCM m =>
-  WithContext TypeClassConstraint ->
-  [BasicNormType] ->
-  m ConstraintProgress
 
 -- | Attempts to solve as many constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
-  forall m constraint.
-  (TCM m, PrettyExternal (Contextualised constraint ConstraintContext)) =>
-  m [Contextualised constraint ConstraintContext] ->
-  ([Contextualised constraint ConstraintContext] -> m ()) ->
-  (Contextualised constraint ConstraintContext -> m ()) ->
+  forall types m constraint.
+  (TCM types m, PrettyExternal (Contextualised constraint (ConstraintContext types))) =>
+  m [Contextualised constraint (ConstraintContext types)] ->
+  ([Contextualised constraint (ConstraintContext types)] -> m ()) ->
+  (Contextualised constraint (ConstraintContext types) -> m ()) ->
   MetaSet ->
   m ()
 runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loop 0
@@ -87,41 +55,69 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
               -- We have made useful progress so start a new pass
               setConstraints blockedConstraints
 
-              solvedMetas <- trackSolvedMetas $ do
+              solvedMetas <- trackSolvedMetas (Proxy @types) $ do
                 forM_ unblockedConstraints $ \constraint -> do
                   logCompilerSection MaxDetail ("trying:" <+> prettyExternal constraint) $ do
                     attemptToSolveConstraint constraint
 
               loop (loopNumber + 1) solvedMetas
 
-blockOn :: MonadCompile m => [MetaID] -> m ConstraintProgress
+blockOn :: MonadCompile m => [MetaID] -> m (ConstraintProgress builtin)
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
 
-malformedConstraintError :: MonadCompile m => WithContext TypeClassConstraint -> m a
+malformedConstraintError :: (PrintableBuiltin types, MonadCompile m) => WithContext (TypeClassConstraint types) -> m a
 malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
-unify :: ConstraintContext -> BasicNormExpr -> BasicNormExpr -> WithContext Constraint
-unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) (copyContext ctx)
+unify ::
+  MonadTypeChecker types m =>
+  ConstraintContext types ->
+  NormExpr types ->
+  NormExpr types ->
+  m (WithContext (Constraint types))
+unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) <$> copyContext ctx
 
-solveTypeClassMeta :: TCM m => ConstraintContext -> MetaID -> BasicNormExpr -> m ()
+{-
+unifyWithPiType ::
+  TCM types m =>
+  ConstraintContext types ->
+  NormExpr types ->
+  m (WithContext (Constraint types), NormExpr types, NormExpr types)
+unifyWithPiType ctx expr = do
+  let p = provenanceOf ctx
+  let boundCtx = boundContext ctx
+  binderType <- normalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
+  bodyType <- normalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
+  let binder = _
+  eq <- unify ctx expr _
+  return (eq, binderType, bodyType)
+-}
+
+createTC ::
+  TCM types m =>
+  ConstraintContext types ->
+  types ->
+  NonEmpty (NormType types) ->
+  m (CheckedExpr types, WithContext (Constraint types))
+createTC c tc argExprs = do
+  let p = provenanceOf c
+  ctx <- copyContext c
+  let dbLevel = contextDBLevel c
+  let nArgs = ExplicitArg p <$> argExprs
+  newTypeClassExpr <- BuiltinExpr p (CType tc) <$> traverse (quote mempty dbLevel) nArgs
+  (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext c)
+  let newConstraint = TypeClassConstraint (Has meta tc (NonEmpty.toList argExprs))
+  return (unnormalised metaExpr, WithContext newConstraint ctx)
+
+solveTypeClassMeta :: TCM types m => ConstraintContext types -> MetaID -> NormExpr types -> m ()
 solveTypeClassMeta ctx meta solution = do
   quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)
 
-mkVAnnBoolType :: BasicNormExpr -> BasicNormExpr -> BasicNormExpr
-mkVAnnBoolType lin pol = VConstructor Bool [IrrelevantImplicitArg mempty lin, IrrelevantImplicitArg mempty pol]
+anyOf :: [a] -> (a -> Bool) -> Bool
+anyOf = flip any
 
-mkVAnnRatType :: BasicNormExpr -> BasicNormExpr
-mkVAnnRatType lin = VConstructor Rat [IrrelevantImplicitArg mempty lin]
-
-mkVIndexType :: BasicNormExpr -> BasicNormExpr
-mkVIndexType size = VConstructor Index [ExplicitArg mempty size]
-
-mkVListType :: BasicNormType -> BasicNormExpr
-mkVListType tElem = VConstructor List [ExplicitArg mempty tElem]
-
-mkVVecType :: BasicNormType -> BasicNormExpr -> BasicNormExpr
-mkVVecType tElem dim = VConstructor Vector [ExplicitArg mempty tElem, ExplicitArg mempty dim]
+allOf :: [a] -> (a -> Bool) -> Bool
+allOf = flip all

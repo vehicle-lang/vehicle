@@ -5,10 +5,6 @@ import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
   ( BinderDisplayForm (BinderDisplayForm),
     BinderNamingForm (OnlyName),
-    Builtin,
-    CheckedBinder,
-    CheckedExpr,
-    CheckedType,
     Expr (Lam),
     GenericBinder (Binder),
     Pretty (pretty),
@@ -20,12 +16,12 @@ import Vehicle.Compile.Prelude
     line,
     (<+>),
     pattern BoundVar,
-    pattern NatLiteral,
-    pattern NatType,
   )
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.AlphaEquivalence ()
-import Vehicle.Expr.DeBruijn (DBExpr, DBLevel, liftDBIndices, substDBInto)
+import Vehicle.Expr.DeBruijn (DBLevel, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -90,9 +86,9 @@ liftingTests =
 
 data SubstitutionTest = SubstitutionTest
   { name :: String,
-    value :: DBExpr Builtin,
-    expr :: CheckedExpr,
-    expected :: CheckedExpr
+    value :: StandardExpr,
+    expr :: StandardExpr,
+    expected :: StandardExpr
   }
 
 substTest :: SubstitutionTest -> TestTree
@@ -126,8 +122,8 @@ substTest SubstitutionTest {..} =
 data LiftingTest = LiftingTest
   { name :: String,
     amount :: DBLevel,
-    input :: CheckedExpr,
-    expected :: CheckedExpr
+    input :: TypeCheckedExpr,
+    expected :: TypeCheckedExpr
   }
 
 liftTest :: LiftingTest -> TestTree
@@ -156,5 +152,5 @@ liftTest LiftingTest {..} =
 p :: Provenance
 p = mempty
 
-binding :: CheckedType -> CheckedBinder
+binding :: TypeCheckedType -> TypeCheckedBinder
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()

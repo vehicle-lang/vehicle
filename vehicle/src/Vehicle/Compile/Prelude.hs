@@ -4,18 +4,10 @@ module Vehicle.Compile.Prelude
   )
 where
 
-import Control.DeepSeq (NFData)
-import Data.Aeson (ToJSON)
-import Data.Serialize (Serialize)
-import GHC.Generics (Generic)
+import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Expr.CoDeBruijn
-import Vehicle.Expr.CoDeBruijn.PositionTree (PositionTree)
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (GluedExpr)
-import Vehicle.Expr.Patterns as X
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
@@ -23,103 +15,21 @@ import Vehicle.Syntax.AST as X
 --------------------------------------------------------------------------------
 -- Type synonyms
 
--- * Types pre type-checking
+type NamedBinding = ()
 
-type UncheckedBinding = DBBinding
+type NamedVar = Name
 
-type UncheckedVar = DBIndexVar
+type NamedArg builtin = Arg NamedBinding NamedVar builtin
 
-type UncheckedBinder = DBBinder Builtin
+type NamedBinder builtin = Binder NamedBinding NamedVar builtin
 
-type UncheckedArg = DBArg Builtin
+type NamedExpr builtin = Expr NamedBinding NamedVar builtin
 
-type UncheckedExpr = DBExpr Builtin
+type NamedDecl builtin = Decl NamedBinding NamedVar builtin
 
-type UncheckedType = DBExpr Builtin
-
-type UncheckedDecl = DBDecl Builtin
-
-type UncheckedProg = DBProg Builtin
-
--- * Types post type-checking
-
-type CheckedBinding = DBBinding
-
-type CheckedVar = DBIndexVar
-
-type CheckedBinder = DBBinder Builtin
-
-type CheckedArg = DBArg Builtin
-
-type CheckedExpr = DBExpr Builtin
-
-type CheckedType = CheckedExpr
-
-type CheckedDecl = DBDecl Builtin
-
-type CheckedProg = DBProg Builtin
-
-type CheckedTelescope = [CheckedBinder]
-
--- * Type of annotations attached to the AST that are output by the compiler
-
-type OutputBinding = ()
-
-type OutputVar = Name
-
-type OutputBinder = Binder OutputBinding OutputVar Builtin
-
-type OutputArg = Arg OutputBinding OutputVar Builtin
-
-type OutputExpr = Expr OutputBinding OutputVar Builtin
-
-type OutputDecl = Decl OutputBinding OutputVar Builtin
-
-type OutputProg = Prog OutputBinding OutputVar Builtin
-
--- | An expression paired with a position tree represting positions within it.
--- Currently used mainly for pretty printing position trees.
-data PositionsInExpr = PositionsInExpr CoDBExpr PositionTree
-  deriving (Show)
+type NamedProg builtin = Prog NamedBinding NamedVar builtin
 
 type DeclProvenance = (Identifier, Provenance)
-
---------------------------------------------------------------------------------
--- Typed expressions
-
-type ImportedModules = [TypedProg]
-
--- | A typed-expression. Outside of the type-checker, the contents of this
--- should not be inspected directly but instead use
-newtype TypedExpr = TypedExpr
-  { glued :: GluedExpr
-  }
-  -- \|^ Stores the both the unnormalised and normalised expression, WITH
-  -- auxiliary annotations.
-  deriving (Generic)
-
-instance Serialize TypedExpr
-
-type TypedDecl = GenericDecl TypedExpr
-
-type TypedProg = GenericProg TypedExpr
-
---------------------------------------------------------------------------------
--- Property annotations
-
--- | A marker for how a declaration is used as part of a quantified property
--- and therefore needs to be lifted to the type-level when being exported, or
--- whether it is only used unquantified and therefore needs to be computable.
-data PropertyInfo
-  = PropertyInfo Linearity Polarity
-  deriving (Show, Eq, Generic)
-
-instance NFData PropertyInfo
-
-instance ToJSON PropertyInfo
-
-instance Pretty PropertyInfo where
-  pretty (PropertyInfo lin pol) = pretty lin <+> pretty pol
 
 --------------------------------------------------------------------------------
 -- Other
@@ -146,3 +56,40 @@ instance HasType (GenericDecl expr) expr where
 
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
+
+-------------------------------------------------------------------------------
+-- Utilities for traversing auxiliary arguments.
+
+-- | Function for updating an auxiliary argument (which may be missing)
+type BuiltinUpdate m binder var builtin1 builtin2 =
+  Provenance -> Provenance -> builtin1 -> [Arg binder var builtin2] -> m (Expr binder var builtin2)
+
+-- | Traverses all the auxiliary type arguments in the provided element,
+-- applying the provided update function when it finds them (or a space
+-- where they should be).
+traverseBuiltins ::
+  Monad m =>
+  BuiltinUpdate m binder var builtin1 builtin2 ->
+  Expr binder var builtin1 ->
+  m (Expr binder var builtin2)
+traverseBuiltins f expr = case expr of
+  Builtin p b -> f p p b []
+  App p1 (Builtin p2 b) args -> do
+    args' <- traverse (traverseBuiltinsArg f) args
+    f p1 p2 b (NonEmpty.toList args')
+  Ann p e t -> Ann p <$> traverseBuiltins f e <*> traverseBuiltins f t
+  App p fun args -> App p <$> traverseBuiltins f fun <*> traverse (traverseBuiltinsArg f) args
+  Pi p binder res -> Pi p <$> traverseBuiltinsBinder f binder <*> traverseBuiltins f res
+  Let p bound binder body -> Let p <$> traverseBuiltins f bound <*> traverseBuiltinsBinder f binder <*> traverseBuiltins f body
+  Lam p binder body -> Lam p <$> traverseBuiltinsBinder f binder <*> traverseBuiltins f body
+  Universe p u -> return $ Universe p u
+  FreeVar p v -> return $ FreeVar p v
+  BoundVar p v -> return $ BoundVar p v
+  Hole p n -> return $ Hole p n
+  Meta p m -> return $ Meta p m
+
+traverseBuiltinsArg :: Monad m => BuiltinUpdate m binder var builtin1 builtin2 -> Arg binder var builtin1 -> m (Arg binder var builtin2)
+traverseBuiltinsArg f = traverse (traverseBuiltins f)
+
+traverseBuiltinsBinder :: Monad m => BuiltinUpdate m binder var builtin1 builtin2 -> Binder binder var builtin1 -> m (Binder binder var builtin2)
+traverseBuiltinsBinder f = traverse (traverseBuiltins f)

@@ -19,9 +19,16 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Print
 import Vehicle.Compile.Queries
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (typeCheckWithSubsystem)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheck, typeCheckExpr)
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Linearity.Core (LinearityType)
+import Vehicle.Compile.Type.Subsystem.Polarity.Core (PolarityType)
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.Normalised
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
@@ -48,10 +55,13 @@ data CompileOptions = CompileOptions
 
 compile :: LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
-  typeCheckingResult <- typeCheckUserProg specification declarationsToCompile noStdlib
+  typeCheckingResult@(_, typedProg) <- typeCheckUserProg specification declarationsToCompile noStdlib
   let resources = Resources networkLocations datasetLocations parameterValues
   case target of
-    TypeCheck -> return ()
+    TypeCheck mode -> case mode of
+      Standard -> return ()
+      Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityType typedProg
+      Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityType typedProg
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions typeCheckingResult outputFile
@@ -67,7 +77,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
 
 compileToVerifier ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardGluedProg) ->
   Resources ->
   VerifierIdentifier ->
   Maybe FilePath ->
@@ -80,7 +90,7 @@ compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile =
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardGluedProg) ->
   Resources ->
   DifferentiableLogic ->
   Maybe FilePath ->
@@ -93,7 +103,7 @@ compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
   AgdaOptions ->
-  (ImportedModules, TypedProg) ->
+  (ImportedModules, StandardGluedProg) ->
   Maybe FilePath ->
   m ()
 compileToAgda agdaOptions (_, typedProg) outputFile = do
@@ -103,13 +113,13 @@ compileToAgda agdaOptions (_, typedProg) outputFile = do
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
 
-parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m CheckedExpr
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m TypeCheckedExpr
 parseAndTypeCheckExpr expr = do
   standardLibraryProg <- loadLibrary standardLibrary
   let imports = [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckExpr imports scopedExpr
+  typedExpr <- typeCheckExpr imports (convertToNormalisableBuiltins scopedExpr)
   return typedExpr
 
 parseExprText :: MonadCompile m => Text -> m InputExpr
@@ -123,7 +133,7 @@ typeCheckUserProg ::
   FilePath ->
   DeclarationNames ->
   Bool ->
-  m (ImportedModules, TypedProg)
+  m (ImportedModules, StandardGluedProg)
 typeCheckUserProg spec declarationsToCompile noStdlib = do
   imports <-
     if noStdlib
@@ -140,15 +150,15 @@ typeCheckProg ::
   ImportedModules ->
   SpecificationText ->
   DeclarationNames ->
-  m TypedProg
+  m StandardGluedProg
 typeCheckProg modul imports spec declarationsToCompile = do
   vehicleProg <- parseProgText modul spec
   (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
   prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
-  typedProg <- typeCheck imports prunedProg
+  typedProg <- typeCheck imports (fmap convertToNormalisableBuiltins prunedProg)
   return typedProg
 
-mergeImports :: ImportedModules -> TypedProg -> TypedProg
+mergeImports :: ImportedModules -> StandardGluedProg -> StandardGluedProg
 mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
 
 -- | Parses and type-checks the program but does
@@ -159,7 +169,7 @@ typeCheckOrLoadProg ::
   ImportedModules ->
   FilePath ->
   DeclarationNames ->
-  m TypedProg
+  m StandardGluedProg
 typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
@@ -178,12 +188,25 @@ parseProgText modul txt = do
       Left err -> throwError $ ParseError err
       Right prog' -> return prog'
 
-loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m TypedProg
+loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m StandardGluedProg
 loadLibrary library = do
   let libname = libraryName $ libraryInfo library
   logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
     libraryFile <- findLibraryContentFile library
     typeCheckOrLoadProg StdLib mempty libraryFile mempty
+
+printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => GluedProg builtin -> m ()
+printPropertyTypes (Main decls) = do
+  let properties = filter isPropertyDecl decls
+  let propertyDocs = fmap propertySummary properties
+  let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
+  programOutput outputDoc
+  where
+    propertySummary :: PrintableBuiltin builtin => GluedDecl builtin -> Doc a
+    propertySummary decl = do
+      let propertyName = pretty $ identifierName $ identifierOf decl
+      let propertyType = prettyExternal (WithContext (unnormalised $ typeOf decl) emptyDBCtx)
+      propertyName <+> ":" <+> propertyType
 
 runCompileMonad ::
   MonadIO m =>

@@ -8,11 +8,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
-open import Data.Integer as ℤ using (ℤ)
-open import Data.Rational as ℚ using (ℚ)
 
 module simple-arithmetic where
 
-precedence : ℚ → (ℚ → (ℚ → ℚ))
-precedence x y z = (x ⊕ (ℤ.+ 2 ℚ./ 1) ℚ.* y) ⊖ z ℚ.÷ y

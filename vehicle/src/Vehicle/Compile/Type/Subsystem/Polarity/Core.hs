@@ -1,4 +1,4 @@
-module Vehicle.Syntax.AST.Builtin.Polarity where
+module Vehicle.Compile.Type.Subsystem.Polarity.Core where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON)
@@ -6,8 +6,25 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Builtin.Core
-import Vehicle.Syntax.AST.Provenance
+import Vehicle.Compile.Type.Core
+import Vehicle.Expr.Normalisable
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.AST
+
+--------------------------------------------------------------------------------
+-- Polarity types
+
+data PolarityType
+  = Polarity Polarity
+  | PolarityTypeClass PolarityTypeClass
+  deriving (Show, Eq)
+
+instance Pretty PolarityType where
+  pretty = \case
+    PolarityTypeClass tc -> pretty tc
+    Polarity l -> pretty l
+
+type PolarityBuiltin = NormalisableBuiltin PolarityType
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -80,12 +97,13 @@ mapPolarityProvenance f = \case
 
 data PolarityTypeClass
   = NegPolarity
+  | QuantifierPolarity Quantifier
   | AddPolarity Quantifier
   | EqPolarity EqualityOp
   | ImpliesPolarity
+  | IfPolarity
   | MaxPolarity
   | FunctionPolarity FunctionPosition
-  | IfCondPolarity
   deriving (Eq, Generic, Show)
 
 instance ToJSON PolarityTypeClass
@@ -100,8 +118,44 @@ instance Pretty PolarityTypeClass where
   pretty = \case
     NegPolarity -> "NegPolarity"
     AddPolarity q -> "AddPolarity" <+> pretty q
+    QuantifierPolarity q -> "QuantifierPolarity" <+> pretty q
     EqPolarity eq -> "EqPolarity" <+> pretty eq
     ImpliesPolarity -> "ImpliesPolarity"
     MaxPolarity -> "MaxPolarity"
-    IfCondPolarity -> "IfCondPolarity"
+    IfPolarity -> "IfPolarity"
     FunctionPolarity p -> "FunctionPolarity" <> pretty p
+
+-----------------------------------------------------------------------------
+-- Type synonyms
+
+-- Constraint
+type PolarityConstraintProgress = ConstraintProgress PolarityType
+
+type PolarityTypeClassConstraint = TypeClassConstraint PolarityType
+
+type PolarityUnificationConstraint = UnificationConstraint PolarityType
+
+type PolarityConstraintContext = ConstraintContext PolarityType
+
+type PolarityConstraint = Constraint PolarityType
+
+-- NormExpr
+type PolarityNormExpr = NormExpr PolarityType
+
+type PolarityNormBinder = NormBinder PolarityType
+
+type PolarityNormArg = NormArg PolarityType
+
+type PolarityNormType = NormType PolarityType
+
+type PolaritySpine = Spine PolarityType
+
+type PolarityEnv = Env PolarityType
+
+pattern PolarityExpr :: Provenance -> Polarity -> Expr binder var (NormalisableBuiltin PolarityType)
+pattern PolarityExpr p pol = Builtin p (CType (Polarity pol))
+
+pattern VPolarityExpr :: Polarity -> PolarityNormExpr
+pattern VPolarityExpr l <- VBuiltin (CType (Polarity l)) []
+  where
+    VPolarityExpr l = VBuiltin (CType (Polarity l)) []

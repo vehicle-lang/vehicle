@@ -1,4 +1,7 @@
-module Vehicle.Syntax.AST.Builtin.Linearity where
+module Vehicle.Compile.Type.Subsystem.Linearity.Core
+  ( module Vehicle.Compile.Type.Subsystem.Linearity.Core,
+  )
+where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON)
@@ -7,8 +10,23 @@ import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Vehicle.Syntax.AST.Builtin.Core
-import Vehicle.Syntax.AST.Provenance
+import Vehicle.Compile.Type.Core
+import Vehicle.Expr.Normalisable
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.AST
+
+--------------------------------------------------------------------------------
+-- Linearity type
+
+data LinearityType
+  = LinearityTypeClass LinearityTypeClass
+  | Linearity Linearity
+  deriving (Show, Eq)
+
+instance Pretty LinearityType where
+  pretty = \case
+    LinearityTypeClass tc -> pretty tc
+    Linearity l -> pretty l
 
 --------------------------------------------------------------------------------
 -- LinearityProvenance
@@ -68,7 +86,7 @@ instance Pretty Linearity where
   pretty = \case
     Constant -> "Constant"
     Linear {} -> "Linear"
-    NonLinear {} -> "Non-linear"
+    NonLinear {} -> "NonLinear"
 
 mapLinearityProvenance :: (LinearityProvenance -> LinearityProvenance) -> Linearity -> Linearity
 mapLinearityProvenance f = \case
@@ -85,7 +103,7 @@ data LinearityTypeClass
   = MaxLinearity
   | MulLinearity
   | FunctionLinearity FunctionPosition
-  | IfCondLinearity
+  | QuantifierLinearity Quantifier
   deriving (Eq, Generic, Show)
 
 instance ToJSON LinearityTypeClass
@@ -100,5 +118,45 @@ instance Pretty LinearityTypeClass where
   pretty = \case
     MaxLinearity -> "MaxLinearity"
     MulLinearity -> "MulLinearity"
-    IfCondLinearity -> "IfCondLinearity"
+    QuantifierLinearity q -> "QuantifierLinearity" <> pretty q
     FunctionLinearity p -> "FunctionLinearity" <> pretty p
+
+-----------------------------------------------------------------------------
+-- Type synonyms
+
+type LinearityBuiltin = NormalisableBuiltin LinearityType
+
+-- NormExpr
+type LinearityNormExpr = NormExpr LinearityType
+
+type LinearityNormBinder = NormBinder LinearityType
+
+type LinearityNormArg = NormArg LinearityType
+
+type LinearityNormType = NormType LinearityType
+
+type LinearitySpine = Spine LinearityType
+
+type LinearityEnv = Env LinearityType
+
+-- Constraint
+type LinearityConstraintProgress = ConstraintProgress LinearityType
+
+type LinearityTypeClassConstraint = TypeClassConstraint LinearityType
+
+type LinearityUnificationConstraint = UnificationConstraint LinearityType
+
+type LinearityConstraintContext = ConstraintContext LinearityType
+
+type LinearityConstraint = Constraint LinearityType
+
+-----------------------------------------------------------------------------
+-- Patterns
+
+pattern LinearityExpr :: Provenance -> Linearity -> Expr binder var (NormalisableBuiltin LinearityType)
+pattern LinearityExpr p lin = Builtin p (CType (Linearity lin))
+
+pattern VLinearityExpr :: Linearity -> LinearityNormExpr
+pattern VLinearityExpr l <- VBuiltin (CType (Linearity l)) []
+  where
+    VLinearityExpr l = VBuiltin (CType $ Linearity l) []

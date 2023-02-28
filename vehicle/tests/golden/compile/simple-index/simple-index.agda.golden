@@ -14,20 +14,14 @@ open import Relation.Binary.PropositionalEquality
 
 module simple-index where
 
-eqIndex : Set
-eqIndex = (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)
+postulate eqIndex : (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)
 
-neqIndex : Set
-neqIndex = (Fin 1 ∋ # 0) ≢ (Fin 2 ∋ # 1)
+postulate neqIndex : (Fin 1 ∋ # 0) ≢ (Fin 2 ∋ # 1)
 
-leqIndex : Set
-leqIndex = (Fin 1 ∋ # 0) Fin.≤ (Fin 2 ∋ # 1)
+postulate leqIndex : (Fin 1 ∋ # 0) Fin.≤ (Fin 2 ∋ # 1)
 
-ltIndex : Set
-ltIndex = (Fin 1 ∋ # 0) Fin.< (Fin 2 ∋ # 1)
+postulate ltIndex : (Fin 1 ∋ # 0) Fin.< (Fin 2 ∋ # 1)
 
-geqIndex : Set
-geqIndex = (Fin 1 ∋ # 0) Fin.≥ (Fin 2 ∋ # 1)
+postulate geqIndex : (Fin 1 ∋ # 0) Fin.≥ (Fin 2 ∋ # 1)
 
-gtIndex : Set
-gtIndex = (Fin 1 ∋ # 0) Fin.> (Fin 2 ∋ # 1)
+postulate gtIndex : (Fin 1 ∋ # 0) Fin.> (Fin 2 ∋ # 1)

@@ -6,7 +6,7 @@ import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Vehicle.Syntax.AST.Name (HasIdentifier (..), Identifier)
+import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 
 --------------------------------------------------------------------------------
@@ -49,6 +49,9 @@ instance HasIdentifier (GenericDecl expr) where
     DefFunction _ i _ _ _ -> i
     DefPostulate _ i _ -> i
 
+instance HasName (GenericDecl expr) Name where
+  nameOf = nameOf . identifierOf
+
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
@@ -76,6 +79,12 @@ traverseDeclType ::
   GenericDecl expr ->
   m (GenericDecl expr)
 traverseDeclType f = traverseDeclTypeAndExpr f return
+
+isPropertyDecl :: GenericDecl expr -> Bool
+isPropertyDecl = \case
+  DefResource {} -> False
+  DefPostulate {} -> False
+  DefFunction _ _ b _ _ -> b
 
 --------------------------------------------------------------------------------
 -- Annotations options

@@ -10,6 +10,7 @@ module Vehicle.Expr.CoDeBruijn
     ArgC,
     ExprC (..),
     RecCoDB (..),
+    PositionsInExpr (..),
     substPos,
     liftFreeCoDBIndices,
     lowerFreeCoDBIndices,
@@ -22,33 +23,36 @@ import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList, unzip, zip, zipWith)
 import GHC.Generics (Generic)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.CoDeBruijn.PositionTree
-import Vehicle.Expr.DeBruijn hiding (Bound, Free)
-import Vehicle.Expr.DeBruijn qualified as DB
+import Vehicle.Expr.DeBruijn
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- AST Definitions
 
+-- | An expression paired with a position tree represting positions within it.
+-- Currently used mainly for pretty printing position trees.
+data PositionsInExpr = PositionsInExpr CoDBExpr PositionTree
+  deriving (Show)
+
 newtype CoDBBinding = CoDBBinding (Maybe PositionTree)
   deriving (Show, Eq, Generic)
 
 instance Hashable CoDBBinding
 
-data CoDBVar
-  = CoDBFree Identifier
-  | CoDBBound
+data CoDBVar = CoDBBound
   deriving (Show, Eq, Generic)
 
 instance Hashable CoDBVar
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type PartialCoDBBinder = Binder CoDBBinding CoDBVar Builtin
+type PartialCoDBBinder = Binder CoDBBinding CoDBVar StandardBuiltin
 
-type PartialCoDBArg = Arg CoDBBinding CoDBVar Builtin
+type PartialCoDBArg = Arg CoDBBinding CoDBVar StandardBuiltin
 
-type PartialCoDBExpr = Expr CoDBBinding CoDBVar Builtin
+type PartialCoDBExpr = Expr CoDBBinding CoDBVar StandardBuiltin
 
 type CoDBBinder = (PartialCoDBBinder, BoundVarMap)
 
@@ -135,18 +139,17 @@ type ArgC = GenericArg CoDBExpr
 type BinderC = GenericBinder CoDBBinding CoDBExpr
 
 data ExprC
-  = UniverseC Provenance Universe
+  = UniverseC Provenance UniverseLevel
   | AnnC Provenance CoDBExpr CoDBExpr
   | AppC Provenance CoDBExpr (NonEmpty CoDBArg)
   | PiC Provenance CoDBBinder CoDBExpr
-  | BuiltinC Provenance Builtin
-  | VarC Provenance DBIndexVar
+  | BuiltinC Provenance StandardBuiltin
+  | BoundVarC Provenance DBIndex
+  | FreeVarC Provenance Identifier
   | HoleC Provenance Name
   | MetaC Provenance MetaID
   | LetC Provenance CoDBExpr CoDBBinder CoDBExpr
   | LamC Provenance CoDBBinder CoDBExpr
-  | LiteralC Provenance Literal
-  | LSeqC Provenance [CoDBExpr]
   deriving (Show)
 
 class RecCoDB a b where
@@ -158,11 +161,8 @@ instance RecCoDB CoDBExpr ExprC where
     (Hole p n, _) -> HoleC p n
     (Meta p m, _) -> MetaC p m
     (Builtin p op, _) -> BuiltinC p op
-    (Literal p l, _) -> LiteralC p l
-    (LVec p xs, bvms) -> LSeqC p (zip xs bvms)
-    (Var p v, _) -> case v of
-      CoDBFree ident -> assert (null bvm) (VarC p (DB.Free ident))
-      CoDBBound -> VarC p (DB.Bound (unleafBVM bvm))
+    (BoundVar p _v, _) -> BoundVarC p (unleafBVM bvm)
+    (FreeVar p v, _) -> assert (null bvm) (FreeVarC p v)
     (Ann p e t, bvm1 : bvm2 : _) -> AnnC p (e, bvm1) (t, bvm2)
     (App p fun args, bvm1 : bvm2 : bvms) ->
       AppC p (fun, bvm1) (NonEmpty.zip args (bvm2 :| bvms))
@@ -200,16 +200,13 @@ substPos v (Just (Node l)) expr = case (recCoDB expr, unlist l) of
   (UniverseC {}, _) -> invalidPositionTreeError l
   (HoleC {}, _) -> invalidPositionTreeError l
   (MetaC {}, _) -> invalidPositionTreeError l
-  (LiteralC {}, _) -> invalidPositionTreeError l
   (BuiltinC {}, _) -> invalidPositionTreeError l
-  (VarC {}, _) -> invalidPositionTreeError l
+  (BoundVarC {}, _) -> invalidPositionTreeError l
+  (FreeVarC {}, _) -> invalidPositionTreeError l
   (AnnC p e t, p1 : p2 : _) ->
     let (e', bvm1) = substPos v p1 e
      in let (t', bvm2) = substPos v p2 t
          in (Ann p e' t', nodeBVM [bvm1, bvm2])
-  (LSeqC p xs, ps) ->
-    let (xs', bvms) = unzip (zipWith (substPos v) ps xs)
-     in (LVec p xs', nodeBVM bvms)
   (AppC p fun args, p1 : p2 : ps) ->
     let (fun', bvm1) = substPos v p1 fun
      in let (args', bvms) = NonEmpty.unzip $ NonEmpty.zipWith (substPosArg v) (p2 :| ps) args
