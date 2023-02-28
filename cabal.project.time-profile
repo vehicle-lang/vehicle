@@ -5,8 +5,14 @@
 
 import: cabal.project
 
+profiling: True
+
 package vehicle-syntax
-  profiling: True
+  ghc-options:
+    -- Give all bindings automatic SCC annotations.
+    -fprof-auto
 
 package vehicle
-  profiling: True
+  ghc-options:
+    -- Give all bindings automatic SCC annotations.
+    -fprof-auto

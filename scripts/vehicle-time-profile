@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# POSIX compliant method for 'pipefail':
+fail=$(mktemp)
+
+# Check if 'profiteur' is on the PATH:
+PROFITEUR=$(which profiteur || echo > "$fail")
+
+if [ -s "$fail" ]; then
+    rm "$fail"
+    echo "The vehicle-mem-profile script requires 'profiteur' to visualise the profiling data."
+    echo "You can install 'profiteur' by running:"
+    echo
+    echo "  cabal v2-install profiteur --ignore-project --overwrite-policy=always"
+    echo
+    echo "See: https://github.com/jaspervdj/profiteur#readme"
+    exit 1
+fi
+
+# Create the directory for profiling files:
+PROFILING_DIR=".profiling"
+[ ! -s "$fail" ] && (mkdir -p "$PROFILING_DIR" || echo > "$fail")
+
+# Create the timestamped filenames for profiling files:
+TIMESTAMP=$(awk 'BEGIN{srand(); print srand()}')
+PROFILING_PREFIX="$PROFILING_DIR/vehicle-$TIMESTAMP"
+
+# Run vehicle in profiling mode with the given options.
+RTSOPTS="+RTS -po"$PROFILING_PREFIX" -p -RTS"
+VEHICLE="cabal -v0 --project-file=cabal.project.time-profile run vehicle:exe:vehicle --"
+[ ! -s "$fail" ] && ($VEHICLE $@ $RTSOPTS || echo > "$fail")
