@@ -52,50 +52,31 @@ trap _on_interrupt INT
 
 # Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -ol$EVENTLOG_FILE -s -l ${HEAP_PROFILE_TYPE} -RTS"
-CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle --"
+CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle -- $* $RTSOPTS"
 if [ ! -s "$fail" ]; then
-    echo "$CABAL_RUN $@ $RTSOPTS"
-    $CABAL_RUN $@ $RTSOPTS || echo > "$fail" &
+    echo "$CABAL_RUN"
+    $CABAL_RUN || echo > "$fail" &
     CHILD_PID=$!
     wait "$CHILD_PID"
     trap - INT
 fi
 
-# If an eventlog was generated, convert and open it.
-if [ ! -s "$fail" ] && [ -f "$EVENTLOG_FILE" ]; then
+# If no eventlog was generated, exit.
+if [ ! -f "$EVENTLOG_FILE" ]; then
+    echo "No eventlog was generated; did you kill the process too soon?"
+    exit 1
+else
     # Convert the heap profile to an HTML page.
     $EVENTLOG2HTML "$EVENTLOG_FILE" || echo > "$fail"
 
     # Output the path to the generated HTML page.
-    [ ! -s "$fail" ] && [ -f "$EVENTLOG_HTML" ] && (echo "Wrote eventlog to $EVENTLOG_FILE.html")
-
-    # Get the current platform
-    SYSTEM=$(uname -s | cut -d- -f1)
-    if [ "$SYSTEM" = "CYGWIN_NT"  ] || \
-    [ "$SYSTEM" = "MINGW32_NT" ] || \
-    [ "$SYSTEM" = "MINGW64_NT" ] || \
-    [ "$SYSTEM" = "MSYS_NT"    ]; then
-        PLATFORM="Windows"
-        elif [ "$SYSTEM" = "Darwin" ]; then
-        PLATFORM="macOS"
-        elif [ "$SYSTEM" = "Linux" ]; then
-        PLATFORM="Linux"
-    else
-        echo "WARNING: Could not determine platform" >&2
-    fi
-
-    # Open the eventlog in a browser
-    if [ "$PLATFORM" = "macOS" ]; then
-        open "$EVENTLOG_HTML"
-    fi
-else
-    echo "No eventlog was generated; did you kill the process too soon?"
-    exit 1
+    [ -f "$EVENTLOG_HTML" ] && (echo "Wrote eventlog to $EVENTLOG_FILE.html")
 fi
 
 # Check whether or not any subcommand failed:
 if [ -s "$fail" ]; then
     rm "$fail"
+    echo "Error occurred while profiling; see above."
     exit 1
 else
     rm "$fail"
