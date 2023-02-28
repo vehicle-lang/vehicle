@@ -96,7 +96,7 @@ convertExprFromStandardTypes ::
   (TypableBuiltin types, TCM types m) =>
   UncheckedExpr StandardBuiltinType ->
   m (UncheckedExpr types)
-convertExprFromStandardTypes = traverseBuiltins builtinUpdateFunction
+convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
   where
     builtinUpdateFunction :: BuiltinUpdate m DBBinding DBIndex StandardBuiltin (NormalisableBuiltin types)
     builtinUpdateFunction p1 p2 b args = do

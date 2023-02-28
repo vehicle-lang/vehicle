@@ -17,7 +17,6 @@ module Vehicle.Compile.Print
 where
 
 import Control.Exception (assert)
-import Control.Monad.Identity (Identity (..))
 import Data.Bifunctor (bimap)
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
@@ -46,11 +45,11 @@ import Vehicle.Syntax.Print
 -- Public methods
 --------------------------------------------------------------------------------
 
-type VerboseTags = 'Unnamed ('StandardiseBuiltin ('As 'Internal))
+type VerboseTags = 'Unnamed ('StandardiseBuiltin ('ShortVectors ('As 'Internal)))
 
-type ExternalTags = 'Named ('StandardiseBuiltin ('As 'External))
+type ExternalTags = 'Named ('StandardiseBuiltin ('ShortVectors ('As 'External)))
 
-type FriendlyTags = 'Named ('StandardiseBuiltin ('Simple ('As 'External)))
+type FriendlyTags = 'Named ('StandardiseBuiltin ('Uninserted ('As 'External)))
 
 type PrettyVerbose a = PrettyWith VerboseTags a
 
@@ -85,8 +84,10 @@ data Tags
     Named Tags
   | -- | The `Unnamed` tag denotes that the term should not be converted back to using named binders
     Unnamed Tags
-  | -- | The `Simple` tag ensures that superfluous information is erased
-    Simple Tags
+  | -- | The `Uninserted` tag ensures that automatically inserted annotations and binders are removed.
+    Uninserted Tags
+  | -- | The `ShortVectors` tag ensures that long vectors are printed out concisely.
+    ShortVectors Tags
   | -- | The `StandardiseBuiltin` tag ensures that the term is converted back to the standard set of builtins
     StandardiseBuiltin Tags
 
@@ -102,7 +103,8 @@ data Strategy
   | Denormalise Strategy
   | DiscardConstraintCtx Strategy
   | KeepConstraintCtx Strategy
-  | Simplify Strategy
+  | UninsertArgsAndBinders Strategy
+  | ShortenVectors Strategy
   | MapList Strategy
   | MapMaybe Strategy
   | MapIntMap Strategy
@@ -174,7 +176,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags TypeCheckedExpr)
   -- Simplification
-  StrategyFor ('Simple tags) a = 'Simplify (StrategyFor tags a)
+  StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
+  StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
   StrategyFor tags (Maybe a) = 'MapMaybe (StrategyFor tags a)
   StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
@@ -306,16 +309,13 @@ convertExprBuiltins ::
   PrintableBuiltin types =>
   Expr binder var (NormalisableBuiltin types) ->
   Expr binder var Builtin
-convertExprBuiltins expr = runIdentity (traverseBuiltins builtinUpdateFunction expr)
-  where
-    builtinUpdateFunction :: BuiltinUpdate Identity binder var (NormalisableBuiltin types) Builtin
-    builtinUpdateFunction p1 p2 b args = do
-      fn <- case b of
-        CConstructor c -> return $ Builtin p2 $ Constructor c
-        CFunction f -> return $ Builtin p2 $ BuiltinFunction f
-        CType t -> return $ convertBuiltin p2 t
+convertExprBuiltins = traverseBuiltins $ \p1 p2 b args -> do
+  let fn = case b of
+        CConstructor c -> Builtin p2 $ Constructor c
+        CFunction f -> Builtin p2 $ BuiltinFunction f
+        CType t -> convertBuiltin p2 t
 
-      return $ normAppList p1 fn args
+  normAppList p1 fn args
 
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
@@ -427,9 +427,18 @@ instance PrettyUsing rest CheckedBinder
 
 instance
   (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('Simplify rest) a
+  PrettyUsing ('UninsertArgsAndBinders rest) a
   where
-  prettyUsing e = prettyUsing @rest (simplify e)
+  prettyUsing e = prettyUsing @rest (uninsert e)
+
+instance
+  (Simplify a, PrettyUsing rest a) =>
+  PrettyUsing ('ShortenVectors rest) a
+  where
+  prettyUsing e = prettyUsing @rest (shortenVec e)
+
+--------------------------------------------------------------------------------
+-- Other
 
 instance
   PrettyUsing rest a =>
