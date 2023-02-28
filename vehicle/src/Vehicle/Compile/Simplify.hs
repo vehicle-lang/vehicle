@@ -5,14 +5,15 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (filter)
+import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
-import qualified Data.Text as Text
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
 -- and therefore the resulting code is not guaranteed to be well-typed.
 class Simplify a where
   -- | Removes automatically inserted arguments and binders.
   uninsert :: a -> a
+
   -- | Shortens vectors
   shortenVec :: a -> a
 
@@ -46,12 +47,17 @@ instance Simplify InputExpr where
 
   shortenVec = traverseBuiltins $ \p1 p2 b args ->
     case b of
-      Constructor (LVec n) | length args > 5 ->
-        normAppList p1 (Builtin p2 (Constructor (LVec n)))
-          [ head args
-          , ExplicitArg p2 (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>")))
-          , last args
-          ] where n2 = Text.pack $ show $ length args - 2
+      Constructor (LVec n)
+        | length args > 5 ->
+            normAppList
+              p1
+              (Builtin p2 (Constructor (LVec n)))
+              [ head args,
+                ExplicitArg p2 (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
+                last args
+              ]
+        where
+          n2 = Text.pack $ show $ length args - 2
       _ -> normAppList p1 (Builtin p2 b) args
 
 instance Simplify InputBinder where

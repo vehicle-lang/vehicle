@@ -122,7 +122,7 @@ removeImplicitAndInstanceArgs prog =
       Pi p binder res -> Pi p <$> traverse go binder <*> go res
       Lam p binder body
         | isExplicit binder || not (isTypeUniverse (typeOf binder)) ->
-          Lam p <$> traverse go binder <*> go body
+            Lam p <$> traverse go binder <*> go body
         | otherwise -> do
             -- TODO This is a massive hack to get around the unused implicit
             -- {l} argument in `mapVector` in the standard library that isn't
