@@ -1,7 +1,7 @@
--- Cabal project configuration file for FUNCTION PROFILING
+-- Cabal project configuration file for TIME PROFILING
 --
--- Use `cabal` with `--project-file=cabal.project.fun-profile`
--- or run vehicle via `./scripts/vehicle-fun-profile`.
+-- Use `cabal` with `--project-file=cabal.project.profile-time`
+-- or run vehicle via `./scripts/vehicle-profile-time`.
 
 import: cabal.project
 

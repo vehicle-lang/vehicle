@@ -52,7 +52,7 @@ fi
 
 # If no eventlog was generated, exit.
 if [ ! -f "$PROFILE_FILE" ]; then
-    echo "No eventlog was generated; did you kill the process too soon?"
+    echo "No profile data was generated; did you kill the process too soon?"
     exit 1
 else
     # Convert the time profile to an HTML page.
