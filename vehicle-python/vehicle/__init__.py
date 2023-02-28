@@ -5,6 +5,8 @@ import tensorflow as tf
 
 from .command_line import call_vehicle_to_generate_loss_json
 from .utils import internal_error_msg
+import time
+start_time = time.time()
 
 
 def generate_loss_function(
@@ -29,14 +31,21 @@ def generate_loss_function(
         parameters = {}
     if quantifier_sampling is None:
         quantifier_sampling = {}
-
+    #fine, takes 0.1s
+    print("start generate json: %s seconds ---" % (time.time() - start_time))
     json_dict = call_vehicle_to_generate_loss_json(
         specification, networks, datasets, parameters, function_name
     )
+    print("end generate json: %s seconds ---" % (time.time() - start_time))
+    #fine, takes 0.01s
+    print("start generate loss: %s seconds ---" % (time.time() - start_time))
     translation = LossFunctionTranslation(
         networks, datasets, parameters, quantifier_sampling
     )
+    print("end generate loss: %s seconds ---" % (time.time() - start_time))
+    print("start_to_loss_function: %s seconds ---" % (time.time() - start_time))
     loss = translation.to_loss_function(function_name, json_dict)
+    print("end_to_loss_function: %s seconds ---" % (time.time() - start_time))
     return loss
 
 
@@ -54,13 +63,14 @@ class LossFunctionTranslation:
         self.quantifier_sampling: Dict[str, Callable] = quantifier_sampling
         self.current_decl = None
 
-        self.debug: bool = False
+        self.debug: bool = True
         self.debug_vars: Set[Tuple[str, str]] = set()  # {('boundedByEpsilon', 'x')}
 
     def to_loss_function(
         self, function_name: str, json_dict: Dict[Any, Any]
     ) -> Callable[..., Any]:
         decl_ctx: Dict[str, Callable[..., Any]] = {}
+        print("start_to_loss_function: %s seconds ---" % (time.time() - start_time))
         for [ident, decl] in json_dict:
             self.current_decl = ident
 
@@ -98,7 +108,7 @@ class LossFunctionTranslation:
             loss_fn = typing.cast(Callable[..., Any], local_scope["loss_fn"])
 
             decl_ctx[ident] = loss_fn
-
+        print("end_to_loss_function: %s seconds ---" % (time.time() - start_time))
         return decl_ctx[function_name]
 
     def _translate_expression(self, json_dict: Dict[Any, Any]) -> str:
@@ -236,11 +246,14 @@ class LossFunctionTranslation:
             op = "max"
         elif quantifier == "Any":
             op = "min"
+        #elif quantifier == "ForallIn":
+        #    op = "max"
+        #    n = 
         else:
             internal_error_msg(
                 "Found a quantifier in the generated json that is not All nor Any."
             )
-        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(10)])".format(op, variable_name, body)
+        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(1)])".format(op, variable_name, body)
 
     def _translate_lambda(self, contents: Dict[Any, Any]) -> str:
         var_name = contents[0]

@@ -132,7 +132,7 @@ compileExpr t e = showExit $ do
     V.OrExpr _ [e1, e2] -> case compileOr t of
       Left binaryOr -> binaryOr <$> compileArg t e1 <*> compileArg t e2
       Right naryOr -> naryOr <$> traverse (compileExpr t) (flattenOrs e')
-    V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> (Negation <$> compileArg t e1) <*> compileArg t e2
+    V.ImpliesExpr _ [e1, e2] -> compileImplies t <$> compileArg t e1 <*> compileArg t e2
     -- arithmetic operations
     V.AddTCExpr _ [e1, e2] -> Addition <$> compileArg t e1 <*> compileArg t e2
     V.SubTCExpr _ [e1, e2] -> Subtraction <$> compileArg t e1 <*> compileArg t e2
@@ -141,7 +141,7 @@ compileExpr t e = showExit $ do
     V.NegExpr _ _ [e1] -> Negation <$> compileArg t e1
     V.EqualityTCExpr _ op _ _ _ [e1, e2] -> case op of
       V.Neq -> compileNeq t <$> compileArg t e1 <*> compileArg t e2
-      V.Eq -> compileEq t <$> (Max (Constant 0) <$> (Subtraction <$> compileArg t e1 <*> compileArg t e2)) <*> (Max (Constant 0) <$> (Subtraction <$> compileArg t e2 <*> compileArg t e1))
+      V.Eq -> compileEq t <$> compileArg t e1 <*> compileArg t e2
     V.OrderTCExpr _ order _ _ _ _ [e1, e2] ->
       case order of
         V.Le -> compileLe t <$> compileArg t e1 <*> compileArg t e2
