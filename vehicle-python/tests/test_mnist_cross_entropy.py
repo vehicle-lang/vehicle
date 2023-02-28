@@ -5,9 +5,8 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from keras.datasets import mnist
 import time
-from vehicle import generate_loss_function
 
-# from not_init import generate_loss_function
+from vehicle import generate_loss_function
 
 
 def train(
