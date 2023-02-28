@@ -9,11 +9,12 @@ ghcup=$(which ghcup || echo > "$fail")
 # Check if 'cabal' is on the PATH:
 cabal=$(which cabal || echo > "$fail")
 
+# Get the project file from the environment:
+PROJECT_FILE_BASE="${PROJECT_FILE-cabal.project}"
+
 # Get the GHC version from the arguments:
 GHC_VERSION="$1"
 if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
-    echo "Generating profile and freeze files for GHC ${GHC_VERSION}"
-
     # Switch to correct GHC version
     OLD_GHC_VERSION=$(ghc --numeric-version)
     if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
@@ -22,10 +23,15 @@ if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
     fi
 
     # Create cabal.project.ghc-X.Y.Z
-    PROJECT_FILE="cabal.project.ghc-${GHC_VERSION}"
-    [ ! -f "${PROJECT_FILE}" ] && ln -s "cabal.project" "cabal.project.ghc-${GHC_VERSION}"
+    PROJECT_FILE="${PROJECT_FILE_BASE}.ghc-${GHC_VERSION}"
+    echo "Linking ${PROJECT_FILE_BASE} to ${PROJECT_FILE}"
+    [ ! -f "${PROJECT_FILE}" ] && ln -s "${PROJECT_FILE_BASE}" "${PROJECT_FILE}"
+
+    # Update Cabal package list
+    $cabal update
 
     # Create cabal.project.ghc-X.Y.Z.freeze
+    echo "Generating ${PROJECT_FILE}.freeze"
     [ ! -f "${PROJECT_FILE}.freeze" ] && $cabal v2-freeze --project-file="${PROJECT_FILE}"
 
     # Switch back to previous GHC version
