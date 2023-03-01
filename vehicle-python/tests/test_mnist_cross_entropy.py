@@ -34,8 +34,8 @@ def train(
         quantifier_sampling=quantifier_sampling,
     )
 
-    train_acc_metric = keras.metrics.CategoricalCrossentropy()
-    test_acc_metric = keras.metrics.CategoricalCrossentropy()
+    train_acc_metric = keras.metrics.CategoricalAccuracy()
+    test_acc_metric = keras.metrics.CategoricalAccuracy()
     train_loss_metric = keras.metrics.CategoricalCrossentropy()
     test_loss_metric = keras.metrics.CategoricalCrossentropy()
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     networks = {"mnist": model}
 
-    batch_size = 1
+    batch_size = 64
     epochs = 5
     alfa = 1
     beta = 1
