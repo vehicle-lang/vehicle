@@ -42,27 +42,19 @@ def train(
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}")
         start_time = time.time()
-        #print("Time1: %s seconds ---" % (time.time() - start_time))
         # Iterate over the batches of the dataset.
         for x_batch_train, y_batch_train in train_dataset:
             
             # Open a GradientTape to record the operations run during the forward pass, which enables auto-differentiation.
             with tf.GradientTape() as tape:
                 # Outputs for this minibatch
-                #print("Time2 start batch: %s seconds ---" % (time.time() - start_time))
                 outputs = model(x_batch_train, training=True)
-                #print("Time2.1: %s seconds ---" % (time.time() - start_time))
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                #print("Time2.2: %s seconds ---" % (time.time() - start_time))
-                #HERE LIES THE 20s problem, predictably
                 #vehicle_loss = vehicle_batch_loss()
-                #print("Time2.3: %s seconds ---" % (time.time() - start_time))
                 total_loss = ce_loss_value #* alfa + vehicle_loss * beta
-                #print("Time2.4: %s seconds ---" % (time.time() - start_time))
             # Use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
             #print("Time2.5: %s seconds ---" % (time.time() - start_time))
             grads = tape.gradient(total_loss, model.trainable_weights)
-            #print("Time2.6: %s seconds ---" % (time.time() - start_time))
             # Run one step of gradient descent by updating the value of the variables to minimize the loss.
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
             #print("Time3 end of batch: %s seconds ---" % (time.time() - start_time))
@@ -100,7 +92,7 @@ if __name__ == "__main__":
     print("Starting")
     path_to_spec = "vehicle-python/tests\mnist.vcl"
     function_name = "robust1"
-    model = keras.Sequential(
+    """model = keras.Sequential(
         [
             keras.Input(shape=(28, 28)),
             keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
@@ -112,12 +104,21 @@ if __name__ == "__main__":
             keras.layers.Dropout(0.5),
             keras.layers.Dense(10, activation="softmax"),
         ]
+    )"""
+
+    model = keras.Sequential(
+        [
+            keras.Input(shape=(28, 28)),
+            keras.layers.Flatten(),
+            keras.layers.Dense(30, activation="relu"),
+            keras.layers.Dense(10, activation="softmax"),
+        ]
     )
 
     networks = {"mnist": model}
 
     batch_size = 64
-    epochs = 5
+    epochs = 10
     alfa = 1
     beta = 1
 

@@ -63,7 +63,7 @@ class LossFunctionTranslation:
         self.quantifier_sampling: Dict[str, Callable] = quantifier_sampling
         self.current_decl = None
 
-        self.debug: bool = True
+        self.debug: bool = False
         self.debug_vars: Set[Tuple[str, str]] = set()  # {('boundedByEpsilon', 'x')}
 
     def to_loss_function(

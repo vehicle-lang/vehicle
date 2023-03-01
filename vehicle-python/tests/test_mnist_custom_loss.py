@@ -34,8 +34,8 @@ def train(
         quantifier_sampling=quantifier_sampling,
     )
 
-    train_acc_metric = keras.metrics.CategoricalCrossentropy()
-    test_acc_metric = keras.metrics.CategoricalCrossentropy()
+    train_acc_metric = keras.metrics.CategoricalAccuracy()
+    test_acc_metric = keras.metrics.CategoricalAccuracy()
     train_loss_metric = keras.metrics.CategoricalCrossentropy()
     test_loss_metric = keras.metrics.CategoricalCrossentropy()
 
@@ -103,20 +103,15 @@ if __name__ == "__main__":
     model = keras.Sequential(
         [
             keras.Input(shape=(28, 28)),
-            keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
-            keras.layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-            keras.layers.MaxPooling2D(pool_size=(2, 2)),
-            keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-            keras.layers.MaxPooling2D(pool_size=(2, 2)),
             keras.layers.Flatten(),
-            keras.layers.Dropout(0.5),
+            keras.layers.Dense(30, activation="relu"),
             keras.layers.Dense(10, activation="softmax"),
         ]
     )
 
     networks = {"mnist": model}
 
-    batch_size = 1
+    batch_size = 64
     epochs = 5
     alfa = 1
     beta = 1
