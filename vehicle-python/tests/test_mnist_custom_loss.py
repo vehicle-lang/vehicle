@@ -42,43 +42,31 @@ def train(
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}")
         start_time = time.time()
-        #print("Time1: %s seconds ---" % (time.time() - start_time))
         # Iterate over the batches of the dataset.
         for x_batch_train, y_batch_train in train_dataset:
             
             # Open a GradientTape to record the operations run during the forward pass, which enables auto-differentiation.
             with tf.GradientTape() as tape:
                 # Outputs for this minibatch
-                #print("Time2 start batch: %s seconds ---" % (time.time() - start_time))
                 outputs = model(x_batch_train, training=True)
-                #print("Time2.1: %s seconds ---" % (time.time() - start_time))
                 ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                #print("Time2.2: %s seconds ---" % (time.time() - start_time))
-                #HERE LIES THE 20s problem, predictably
                 vehicle_loss = vehicle_batch_loss()
-                #print("Time2.3: %s seconds ---" % (time.time() - start_time))
                 total_loss = ce_loss_value * alfa + vehicle_loss * beta
-                #print("Time2.4: %s seconds ---" % (time.time() - start_time))
             # Use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
-            #print("Time2.5: %s seconds ---" % (time.time() - start_time))
             grads = tape.gradient(total_loss, model.trainable_weights)
-            #print("Time2.6: %s seconds ---" % (time.time() - start_time))
             # Run one step of gradient descent by updating the value of the variables to minimize the loss.
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
-            #print("Time3 end of batch: %s seconds ---" % (time.time() - start_time))
-        #print("Time4 end of epoch: %s seconds ---" % (time.time() - start_time))
         # Run a training loop at the end of each epoch.
         for x_batch_train, y_batch_train in train_dataset:
             train_outputs = model(x_batch_train, training=False)
             train_acc_metric.update_state(y_batch_train, train_outputs)
             train_loss_metric.update_state(y_batch_train, train_outputs)
-        #print("Time5: %s seconds ---" % (time.time() - start_time))
         # Run a testing loop at the end of each epoch.
         for x_batch_test, y_batch_test in test_dataset:
             test_outputs = model(x_batch_test, training=False)
             test_acc_metric.update_state(y_batch_test, test_outputs)
             test_loss_metric.update_state(y_batch_test, test_outputs)
-        #print("Time6: %s seconds ---" % (time.time() - start_time))
+
         train_acc = train_acc_metric.result()
         test_acc = test_acc_metric.result()
         train_loss = train_loss_metric.result()
