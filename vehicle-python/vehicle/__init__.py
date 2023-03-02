@@ -152,6 +152,8 @@ class LossFunctionTranslation:
             return self._translate_lambda(contents)
         elif tag == "Let":
             return self._translate_let(contents)
+        elif tag == "ExponentialAnd":
+            return self._translate_exponential_and(contents)
         else:
             raise TypeError(f'Unknown tag "{tag}"')
 
@@ -164,6 +166,25 @@ class LossFunctionTranslation:
     def _translate_tensor(self, contents: Dict[Any, Any]) -> str:
         elements = ", ".join([self._translate_expression(c) for c in contents])
         return f"to_tensor([{elements}])"
+
+         #NOT WORKING CURRENTLY
+    def _translate_exponential_and(self, contents: Dict[Any, Any]) -> str:
+        #translation of conjunction solely for the STL based translation
+        conjuncts = [self._translate_expression(c) for c in contents]
+        a_min = min(conjuncts)
+        v = 3 #a constant to be set by user (refer to Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020)
+        sum = 0
+        if (compile(a_min)) == 0:
+            sum = 0
+        elif a_min < 0:
+            for a in conjuncts:
+                a_tilde = (a - a_min)/a_min
+                sum += (a_min*exp(a_tilde)*exp(v*a_tilde))/(exp(v*a_tilde))
+        else:
+            for a in conjuncts:
+                a_tilde = (a - a_min)/a_min
+                sum += (a*exp(-v*a_tilde))/(exp(-v*a_tilde))
+        return f"{sum}"
 
     def _translate_negation(self, contents: Dict[Any, Any]) -> str:
         loss = self._translate_expression(contents)

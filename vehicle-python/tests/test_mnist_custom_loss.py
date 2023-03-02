@@ -112,7 +112,7 @@ if __name__ == "__main__":
     networks = {"mnist": model}
 
     batch_size = 64
-    epochs = 5
+    epochs = 10
     alfa = 1
     beta = 1
 
@@ -128,6 +128,12 @@ if __name__ == "__main__":
     y_train = keras.utils.to_categorical(y_train, 10)
     y_test = keras.utils.to_categorical(y_test, 10)
 
+    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+    test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
+
+    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+    test_dataset = test_dataset.batch(batch_size)
+    
     quantifier_sampling = {
         "x": lambda: random.choice(X_train),
         "j": lambda: random.randint(0, 27),
@@ -136,11 +142,7 @@ if __name__ == "__main__":
         "pertubation": lambda: np.random.uniform(low=-0.1, high=0.01, size=(28, 28)),
     }
 
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
 
-    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-    test_dataset = test_dataset.batch(batch_size)
     model = train(
         model,
         train_dataset,
@@ -156,5 +158,6 @@ if __name__ == "__main__":
         quantifier_sampling,
     )
 
-    model.save('normal_training')
+    #---- uncomment if you'd like to save the trained model
+    #model.save('dl2_training')
 

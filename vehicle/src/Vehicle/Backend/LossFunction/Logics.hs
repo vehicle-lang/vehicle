@@ -221,6 +221,7 @@ parameterisedYagerTranslation p =
       compileFalse = 0
     }
 
+-- | from Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020
 stlTranslation :: DifferentialLogicImplementation
 stlTranslation =
   DifferentialLogicImplementation
