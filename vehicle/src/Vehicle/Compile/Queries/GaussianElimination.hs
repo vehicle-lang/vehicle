@@ -9,34 +9,29 @@ where
 import Control.Monad (foldM, unless)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor
+import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
-import Data.Vector.Unboxed qualified as V
 import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 
-type Row = V.Vector Coefficient
-
-type Solution = (LinearVar, Row)
-
 gaussianElimination ::
-  MonadCompile m =>
+  (MonadCompile m, LinearExpression linexp) =>
   [Variable] ->
-  [LinearExpr] ->
+  [linexp] ->
   Int ->
-  m ([(LinearVar, GaussianVariableSolution)], [LinearExpr])
+  m ([(LinearVar, GaussianVariableSolution)], [linexp])
 gaussianElimination varNames exprs numberOfRowsToReduce =
   logCompilerPass MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExprs varNames exprs
     let maxIterations = min (length exprs) numberOfRowsToReduce
     let iterations :: [Int] = [0 .. maxIterations - 1]
-    let rows = fmap unLinearExpr exprs
-    (solvedVars, reducedRows) <- foldM (reduceRow varNames) (mempty, rows) iterations
+    (solvedVars, reducedRows) <- foldM (reduceRow varNames) (mempty, exprs) iterations
 
-    let unusedExprs = fmap LinearExpr reducedRows
-    let solvedExprs = fmap (second (GaussianVariableSolution . LinearExpr)) solvedVars
+    let unusedExprs = coerce reducedRows
+    let solvedExprs = fmap (second (GaussianVariableSolution . toSparse)) solvedVars
 
     unless (null unusedExprs) $
       logDebug MidDetail $
@@ -44,33 +39,30 @@ gaussianElimination varNames exprs numberOfRowsToReduce =
 
     return (solvedExprs, unusedExprs)
 
-prettyExprs :: [Variable] -> [LinearExpr] -> Doc a
-prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
+--------------------------------------------------------------------------------
+-- Interface
 
-prettyRows :: [Variable] -> [Row] -> Doc a
-prettyRows varNames rows = prettyExprs varNames (fmap LinearExpr rows)
+type Solution row = (LinearVar, row)
 
-prettySolutions :: [Variable] -> [Solution] -> Doc a
-prettySolutions varNames solutions = prettyRows varNames (fmap snd solutions)
+--------------------------------------------------------------------------------
+-- Algorithm
 
 -- | Tries to reduce the provided row in the matrix.
 -- If unable to reduce it, then it returns the matrix unchanged.
 reduceRow ::
-  MonadCompile m =>
+  (MonadCompile m, LinearExpression row) =>
   [Variable] ->
-  ([Solution], [Row]) ->
+  ([Solution row], [row]) ->
   LinearVar ->
-  m ([Solution], [Row])
+  m ([Solution row], [row])
 reduceRow varNames (solvedVars, rows) var = do
   let result = fromMaybe (solvedVars, rows) $ do
         (row, remainingRows) <- removeFirstNonZeroRow var rows
-        let coefficient = row V.! var
-        let normRow = V.map (/ coefficient) row
         -- Eliminate the row from the remaining rows
-        let newRows = eliminateVarFromRow var normRow <$> remainingRows
-        -- Add the newly solved row
-        let normSolvedVars = second (eliminateVarFromRow var normRow) <$> solvedVars
-        let newSolvedVars = (var, normRow) : normSolvedVars
+        let newRows = eliminateVarFromRow var row <$> remainingRows
+        -- Add the newly solved row (TODO remove this?)
+        let normSolvedVars = second (eliminateVarFromRow var row) <$> solvedVars
+        let newSolvedVars = (var, row) : normSolvedVars
         return (newSolvedVars, newRows)
 
   logDebug MaxDetail $
@@ -84,32 +76,34 @@ reduceRow varNames (solvedVars, rows) var = do
               <> prettySolutions varNames (fst result)
               <> line
               <> "Equations:"
-              <> prettyRows varNames (snd result)
+              <> prettyExprs varNames (snd result)
           )
   return result
 
-eliminateVarFromRow :: LinearVar -> Row -> Row -> Row
-eliminateVarFromRow var normRow row =
-  let coefficient = row V.! var
-   in V.zipWith (\a b -> a - coefficient * b) row normRow
+eliminateVarFromRow :: LinearExpression row => LinearVar -> row -> row -> row
+eliminateVarFromRow var normRow row = do
+  let coefficient = lookupAt row var / lookupAt normRow var
+  addExprs 1 row (-coefficient) normRow
 
-removeFirstNonZeroRow :: LinearVar -> [Row] -> Maybe (Row, [Row])
+removeFirstNonZeroRow :: LinearExpression row => LinearVar -> [row] -> Maybe (row, [row])
 removeFirstNonZeroRow _ [] = Nothing
 removeFirstNonZeroRow var (x : xs)
-  | x V.! var /= 0 = Just (x, xs)
+  | lookupAt x var /= 0 = Just (x, xs)
   | otherwise = second (x :) <$> removeFirstNonZeroRow var xs
 
--- | A FM solution for a variable is two lists of constraints. The variable value
--- must be greater than the set of assertions, and less than the first is that
-newtype GaussianVariableSolution = GaussianVariableSolution LinearExpr
-  deriving (Show, Generic)
+--------------------------------------------------------------------------------
+-- Solutions
+
+-- | A solution for a variable is an equation where the coefficient for that
+-- variable is 1.
+newtype GaussianVariableSolution = GaussianVariableSolution
+  { solutionEquality :: SparseLinearExpr
+  }
+  deriving (Generic)
 
 instance ToJSON GaussianVariableSolution
 
 instance FromJSON GaussianVariableSolution
-
-solutionEquality :: GaussianVariableSolution -> LinearExpr
-solutionEquality (GaussianVariableSolution eq) = eq
 
 -- | Tries to reconstruct the value of the variable that is
 -- consistent with the current assignment of variables.
@@ -122,3 +116,12 @@ reconstructGaussianVariableValue assignment solution =
 
 currentPhase :: Doc ()
 currentPhase = "Gaussian elimination of user variables"
+
+--------------------------------------------------------------------------------
+-- Utilities
+
+prettyExprs :: LinearExpression row => [Variable] -> [row] -> Doc a
+prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
+
+prettySolutions :: LinearExpression row => [Variable] -> [Solution row] -> Doc a
+prettySolutions varNames solutions = prettyExprs varNames (fmap snd solutions)

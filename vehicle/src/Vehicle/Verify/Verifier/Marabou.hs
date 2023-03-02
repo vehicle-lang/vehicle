@@ -50,7 +50,7 @@ compileMarabouQuery (CLSTProblem varNames assertions) = do
 compileAssertion ::
   MonadLogger m =>
   [NetworkVariable] ->
-  Assertion ->
+  Assertion DenseLinearExpr ->
   m (Doc a)
 compileAssertion variables (Assertion rel linearExpr) = do
   let (coefficientsVec, constant) = splitOutConstant linearExpr

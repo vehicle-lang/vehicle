@@ -37,7 +37,7 @@ data QueryMetaData = QueryData
   { metaNetwork :: MetaNetwork,
     userVar :: UserVarReconstructionInfo
   }
-  deriving (Show, Generic)
+  deriving (Generic)
 
 instance ToJSON QueryMetaData
 
