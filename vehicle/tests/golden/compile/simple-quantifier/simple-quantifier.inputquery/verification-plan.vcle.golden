@@ -20,12 +20,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
@@ -66,15 +68,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            0,
-                            1,
-                            0,
-                            0,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 7,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "4": 1,
+                              "1": -1
+                            }
+                          }
                         }
                       }
                     ],
@@ -83,15 +84,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            0,
-                            -1,
-                            0,
-                            0,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 7,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "2": 1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
@@ -139,12 +139,14 @@
                           {
                             "tag": "GaussianSolution",
                             "contents": {
-                              "unLinearExpr": [
-                                1,
-                                -1,
-                                0,
-                                0
-                              ]
+                              "solutionEquality": {
+                                "numberOfVars": 4,
+                                "constantValue": 0,
+                                "coefficients": {
+                                  "1": 1,
+                                  "0": -1
+                                }
+                              }
                             }
                           }
                         ]
@@ -176,12 +178,14 @@
                           {
                             "tag": "GaussianSolution",
                             "contents": {
-                              "unLinearExpr": [
-                                1,
-                                -1,
-                                0,
-                                0
-                              ]
+                              "solutionEquality": {
+                                "numberOfVars": 4,
+                                "constantValue": 0,
+                                "coefficients": {
+                                  "1": 1,
+                                  "0": -1
+                                }
+                              }
                             }
                           }
                         ]

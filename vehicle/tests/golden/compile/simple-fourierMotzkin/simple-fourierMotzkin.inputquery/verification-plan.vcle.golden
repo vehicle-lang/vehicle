@@ -30,13 +30,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            0,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 5,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "2": 1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
@@ -81,13 +82,12 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  1,
-                                  -1,
-                                  0,
-                                  1
-                                ]
+                                "numberOfVars": 5,
+                                "constantValue": 1,
+                                "coefficients": {
+                                  "2": -1,
+                                  "1": 1
+                                }
                               }
                             }
                           ],
@@ -95,13 +95,11 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  -1,
-                                  0,
-                                  0,
-                                  2
-                                ]
+                                "numberOfVars": 5,
+                                "constantValue": 2,
+                                "coefficients": {
+                                  "1": -1
+                                }
                               }
                             }
                           ]
@@ -113,13 +111,15 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            1,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 5,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "2": 1,
+                              "1": -1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
@@ -164,13 +164,12 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  1,
-                                  -1,
-                                  0,
-                                  2
-                                ]
+                                "numberOfVars": 5,
+                                "constantValue": 2,
+                                "coefficients": {
+                                  "2": -1,
+                                  "1": 1
+                                }
                               }
                             }
                           ],
@@ -178,13 +177,11 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  -1,
-                                  0,
-                                  0,
-                                  1
-                                ]
+                                "numberOfVars": 5,
+                                "constantValue": 1,
+                                "coefficients": {
+                                  "1": -1
+                                }
                               }
                             }
                           ]
@@ -196,13 +193,15 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            0.5,
-                            -0.5,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 5,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "2": 1,
+                              "1": -1,
+                              "0": -2
+                            }
+                          }
                         }
                       }
                     ]
@@ -248,15 +247,11 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  0,
-                                  0,
-                                  -1,
-                                  0,
-                                  0,
-                                  2
-                                ]
+                                "numberOfVars": 7,
+                                "constantValue": 2,
+                                "coefficients": {
+                                  "3": -1
+                                }
                               }
                             }
                           ]
@@ -273,15 +268,12 @@
                             {
                               "assertionRel": "LessThanOrEqualTo",
                               "assertionExpr": {
-                                "unLinearExpr": [
-                                  0,
-                                  0,
-                                  -1,
-                                  -1,
-                                  0,
-                                  0,
-                                  1
-                                ]
+                                "numberOfVars": 7,
+                                "constantValue": 1,
+                                "coefficients": {
+                                  "3": -1,
+                                  "2": -1
+                                }
                               }
                             }
                           ]
@@ -303,15 +295,15 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            1,
-                            0,
-                            0,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 7,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "4": 1,
+                              "1": -1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]

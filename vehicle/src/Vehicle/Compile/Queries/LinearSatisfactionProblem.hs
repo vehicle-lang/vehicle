@@ -10,13 +10,12 @@ import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
 import Data.List (partition)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Map.Strict qualified as Map
   ( lookup,
-    singleton,
-    unionWith,
   )
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
@@ -56,7 +55,7 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     -- Create linear expression equating the magic variable `x_i`
     -- with the expression `e` in the relevant point = xs_i`
     exprSize <- getExprSize
-    let lhs = linearExprFromMap exprSize (Map.singleton (unLevel i) 1)
+    let lhs = fromSparse $ Sparse exprSize (HashMap.singleton (unLevel i) 1) 0
     rhs <- compileLinearExpr expr
     return $ constructAssertion (lhs, Equal, rhs)
 
@@ -99,7 +98,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
-            foldl (uncurry . substitute) assertion gaussianSolutionEqualities
+            foldl (uncurry . substitute) assertion (fmap (second toDense) gaussianSolutionEqualities)
 
     -- Calculate the set of unsolved user variables
     let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
@@ -184,18 +183,13 @@ getVariables = do
   (_, _, _, userVariables, networkVariables) <- ask
   return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
 
-getExprConstantIndex :: MonadSMT m => m DBLevel
-getExprConstantIndex =
-  -- The constant in the linear expression is stored in the last index.
-  DBLevel <$> getTotalNumberOfVariables
-
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => StandardNormExpr -> m Assertion
+compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion DenseLinearExpr)
 compileAssertions = go
   where
-    go :: MonadSMT m => StandardNormExpr -> m Assertion
+    go :: MonadSMT m => StandardNormExpr -> m (Assertion DenseLinearExpr)
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -225,51 +219,40 @@ compileAssertion ::
   Relation ->
   StandardNormExpr ->
   StandardNormExpr ->
-  m Assertion
+  m (Assertion DenseLinearExpr)
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => StandardNormExpr -> m LinearExpr
+compileLinearExpr :: MonadSMT m => StandardNormExpr -> m DenseLinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
-  linearExpr <- go lnfExpr
+  (linearExpr, constant) <- go lnfExpr
   exprSize <- getExprSize
-  return $ linearExprFromMap exprSize linearExpr
+  return $ fromSparse $ Sparse exprSize linearExpr constant
   where
-    singletonVar :: DBLevel -> Coefficient -> Map Int Coefficient
-    singletonVar v = Map.singleton (unLevel v)
+    singletonVar :: DBLevel -> Coefficient -> HashMap Int Coefficient
+    singletonVar v = HashMap.singleton (unLevel v)
 
-    go :: MonadSMT m => StandardNormExpr -> m (Map Int Coefficient)
+    go :: MonadSMT m => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
     go e = case e of
       VBoundVar v [] ->
-        return $ singletonVar v 1
+        return (singletonVar v 1, 0)
       VBuiltinFunction (Neg NegRat) [VBoundVar v []] ->
-        return $ singletonVar v (-1)
+        return (singletonVar v (-1), 0)
       VRatLiteral l -> do
-        constLevel <- getExprConstantIndex
-        return $ singletonVar constLevel (fromRational l)
+        return (mempty, fromRational l)
       VBuiltinFunction (Add AddRat) [e1, e2] -> do
-        Map.unionWith (+) <$> go e1 <*> go e2
+        (coeff1, const1) <- go e1
+        (coeff2, const2) <- go e2
+        return (HashMap.unionWith (+) coeff1 coeff2, const1 + const2)
       VBuiltinFunction (Mul MulRat) [e1, e2] ->
         case (e1, e2) of
-          (VRatLiteral l, VBoundVar v []) -> return $ singletonVar v (fromRational l)
-          (VBoundVar v [], VRatLiteral l) -> return $ singletonVar v (fromRational l)
+          (VRatLiteral l, VBoundVar v []) -> return (singletonVar v (fromRational l), 0)
+          (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational l), 0)
           _ -> throwError temporaryUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
-
-filterTrivialAssertions :: [Assertion] -> Maybe [Assertion]
-filterTrivialAssertions = go
-  where
-    go :: [Assertion] -> Maybe [Assertion]
-    go [] = Just []
-    go (a : as) = case go as of
-      Nothing -> Nothing
-      Just as' -> case checkTriviality a of
-        Nothing -> Just $ a : as'
-        Just True -> Just as'
-        Just False -> Nothing
 
 currentPass :: Doc a
 currentPass = "linear satisfaction problem compilation"

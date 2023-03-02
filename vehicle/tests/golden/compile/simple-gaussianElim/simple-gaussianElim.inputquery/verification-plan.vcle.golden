@@ -20,12 +20,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            -1,
-                            0,
-                            2
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": -2,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
@@ -66,14 +68,15 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            0,
-                            1,
-                            1,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 6,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "3": 1,
+                              "2": -1,
+                              "1": -1
+                            }
+                          }
                         }
                       }
                     ],
@@ -82,14 +85,15 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            0,
-                            -2,
-                            1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 6,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "3": -1,
+                              "2": 2,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]

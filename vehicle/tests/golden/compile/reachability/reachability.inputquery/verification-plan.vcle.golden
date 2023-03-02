@@ -20,14 +20,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            0,
-                            1,
-                            0,
-                            -1,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 6,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "3": 1,
+                              "1": -1
+                            }
+                          }
                         }
                       }
                     ],
@@ -36,14 +36,14 @@
                       {
                         "tag": "GaussianSolution",
                         "contents": {
-                          "unLinearExpr": [
-                            1,
-                            0,
-                            -1,
-                            0,
-                            0,
-                            0
-                          ]
+                          "solutionEquality": {
+                            "numberOfVars": 6,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "2": 1,
+                              "0": -1
+                            }
+                          }
                         }
                       }
                     ]
