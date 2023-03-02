@@ -42,7 +42,7 @@ gaussianElimination varNames exprs numberOfRowsToReduce =
 --------------------------------------------------------------------------------
 -- Interface
 
-type Solution row = (LinearVar, row)
+type Solution linexp = (LinearVar, linexp)
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -50,19 +50,19 @@ type Solution row = (LinearVar, row)
 -- | Tries to reduce the provided row in the matrix.
 -- If unable to reduce it, then it returns the matrix unchanged.
 reduceRow ::
-  (MonadCompile m, LinearExpression row) =>
+  (MonadCompile m, LinearExpression linexp) =>
   [Variable] ->
-  ([Solution row], [row]) ->
+  ([Solution linexp], [linexp]) ->
   LinearVar ->
-  m ([Solution row], [row])
+  m ([Solution linexp], [linexp])
 reduceRow varNames (solvedVars, rows) var = do
   let result = fromMaybe (solvedVars, rows) $ do
-        (row, remainingRows) <- removeFirstNonZeroRow var rows
+        (pivotRow, remainingRows) <- findPivot var rows
         -- Eliminate the row from the remaining rows
-        let newRows = eliminateVarFromRow var row <$> remainingRows
+        let newRows = eliminateVar var pivotRow <$> remainingRows
         -- Add the newly solved row (TODO remove this?)
-        let normSolvedVars = second (eliminateVarFromRow var row) <$> solvedVars
-        let newSolvedVars = (var, row) : normSolvedVars
+        let normSolvedVars = second (eliminateVar var pivotRow) <$> solvedVars
+        let newSolvedVars = (var, pivotRow) : normSolvedVars
         return (newSolvedVars, newRows)
 
   logDebug MaxDetail $
@@ -80,16 +80,11 @@ reduceRow varNames (solvedVars, rows) var = do
           )
   return result
 
-eliminateVarFromRow :: LinearExpression row => LinearVar -> row -> row -> row
-eliminateVarFromRow var normRow row = do
-  let coefficient = lookupAt row var / lookupAt normRow var
-  addExprs 1 row (-coefficient) normRow
-
-removeFirstNonZeroRow :: LinearExpression row => LinearVar -> [row] -> Maybe (row, [row])
-removeFirstNonZeroRow _ [] = Nothing
-removeFirstNonZeroRow var (x : xs)
+findPivot :: LinearExpression linexp => LinearVar -> [linexp] -> Maybe (linexp, [linexp])
+findPivot _ [] = Nothing
+findPivot var (x : xs)
   | lookupAt x var /= 0 = Just (x, xs)
-  | otherwise = second (x :) <$> removeFirstNonZeroRow var xs
+  | otherwise = second (x :) <$> findPivot var xs
 
 --------------------------------------------------------------------------------
 -- Solutions
@@ -120,8 +115,8 @@ currentPhase = "Gaussian elimination of user variables"
 --------------------------------------------------------------------------------
 -- Utilities
 
-prettyExprs :: LinearExpression row => [Variable] -> [row] -> Doc a
+prettyExprs :: LinearExpression linexp => [Variable] -> [linexp] -> Doc a
 prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
 
-prettySolutions :: LinearExpression row => [Variable] -> [Solution row] -> Doc a
+prettySolutions :: LinearExpression linexp => [Variable] -> [Solution linexp] -> Doc a
 prettySolutions varNames solutions = prettyExprs varNames (fmap snd solutions)

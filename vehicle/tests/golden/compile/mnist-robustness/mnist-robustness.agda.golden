@@ -30,10 +30,10 @@ Label = Fin 10
 ValidImage : Image → Set
 ValidImage x = ∀ i → ∀ j → ℤ.+ 0 ℚ./ 1 ℚ.≤ x i j × x i j ℚ.≤ ℤ.+ 1 ℚ./ 1
 
-postulate mnist : Image → Vector ℚ 10
+postulate classifier : Image → Vector ℚ 10
 
 Advises : Image → (Label → Set)
-Advises x i = ∀ j → j ≢ i → mnist x i ℚ.> mnist x j
+Advises x i = ∀ j → j ≢ i → classifier x i ℚ.> classifier x j
 
 postulate epsilon : ℚ
 

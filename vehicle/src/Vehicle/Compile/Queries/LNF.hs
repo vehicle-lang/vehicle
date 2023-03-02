@@ -5,18 +5,19 @@ where
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 
 -- | Converts an arithmetic expression to linear normal form.
 convertToLNF :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
-convertToLNF expr =
-  logCompilerPass MinDetail "conversion to linear normal form" $ do
-    result <- lnf expr
-    logCompilerPassOutput (prettyVerbose result)
-    return result
+convertToLNF = lnf
 
+{-
+logCompilerPass MinDetail "conversion to linear normal form" $ do
+  result <- lnf expr
+  logCompilerPassOutput (prettyVerbose result)
+  return result
+-}
 --------------------------------------------------------------------------------
 -- PNF
 
