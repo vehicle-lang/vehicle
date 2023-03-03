@@ -86,7 +86,7 @@ def train(
 
 if __name__ == "__main__":
     print("Starting")
-    path_to_spec = "vehicle-python/tests\mnist.vcl"
+    path_to_spec = "vehicle-python/tests/mnist.vcl"
     function_name = "robust1"
     model = keras.Sequential(
         [
