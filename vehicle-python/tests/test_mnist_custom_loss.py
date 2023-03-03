@@ -5,6 +5,8 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from keras.datasets import mnist
 import time
+from pathlib import Path
+
 
 from vehicle import generate_loss_function
 
@@ -86,7 +88,9 @@ def train(
 
 if __name__ == "__main__":
     print("Starting")
-    path_to_spec = "vehicle-python/tests/mnist.vcl"
+    path_to_spec = Path(__file__).parent / "mnist.vcl" 
+    path_to_spec = path_to_spec.__str__()
+    #path_to_spec = "vehicle-python/tests/mnist.vcl"
     function_name = "robust1"
     model = keras.Sequential(
         [
