@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 from vehicle import generate_loss_function
+from constraint_accuracy import get_constraint_accuracy
 
 
 def train(
@@ -152,4 +153,17 @@ if __name__ == "__main__":
 
     #---- uncomment if you'd like to save the trained model
     #model.save('dl2_training')
+    
+
+    #---- uncomment to get constraint accuracy for the model 
+
+    #indexes = np.random.randint(0, X_train.shape[0], size=1000)
+    #images = X_train[indexes]
+    #labels = y_train[indexes]
+
+    #epsilon = 0.01
+    #delta = 0.02
+    
+    #constraint_acc = get_constraint_accuracy(model, images, labels, epsilon, delta)
+    #print(constraint_acc)
 
