@@ -1,13 +1,13 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-constantNetworkInput.vcl -t TypeCheck",
-    "needs": ["simple-constantNetworkInput.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-constantNetworkInput.vcl -t Marabou -o simple-constantNetworkInput.inputquery/ --network f:NO_FILE",
-    "needs": ["simple-constantNetworkInput.vcl"],
-    "produces": ["simple-constantNetworkInput.inputquery/*.txt", "simple-constantNetworkInput.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   }
 ]

@@ -16,7 +16,7 @@ open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
-module andGate where
+module Agda where
 
 postulate andGate : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 

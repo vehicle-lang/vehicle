@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-higherOrder.vcl -t TypeCheck",
-    "needs": ["simple-higherOrder.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   }
 ]

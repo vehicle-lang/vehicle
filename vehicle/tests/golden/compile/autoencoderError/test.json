@@ -1,19 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s autoencoderError.vcl -t TypeCheck",
-    "needs": ["autoencoderError.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s autoencoderError.vcl -t Marabou -o autoencoderError.inputquery/ --network encode:NO_FILE --network decode:NO_FILE",
-    "needs": ["autoencoderError.vcl"],
-    "produces": ["autoencoderError.inputquery/*.txt", "autoencoderError.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network encode:NO_FILE --network decode:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s autoencoderError.vcl -t Agda -o autoencoderError.agda --network encode:NO_FILE --network decode:NO_FILE",
-    "needs": ["autoencoderError.vcl"],
-    "produces": ["autoencoderError.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network encode:NO_FILE --network decode:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

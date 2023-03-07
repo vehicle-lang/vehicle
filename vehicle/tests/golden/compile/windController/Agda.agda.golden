@@ -16,7 +16,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
 
-module windController where
+module Agda where
 
 InputVector : Set
 InputVector = Tensor ℚ (2 ∷ [])

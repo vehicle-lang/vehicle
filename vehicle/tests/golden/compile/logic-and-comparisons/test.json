@@ -1,37 +1,37 @@
 [
     {
       "name": "TypeCheck",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t TypeCheck",
-      "needs": ["logic-and-comparisons.vcl"]
+      "run": "vehicle compile -s spec.vcl -t TypeCheck",
+      "needs": ["spec.vcl"]
     },
     {
       "name": "LossFunction-DL2",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction -o logic-and-comparisons-DL2.loss.json --network f:NO_FILE --network g:NO_FILE",
-      "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons-DL2.loss.json"]
+      "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction-DL2.json --network f:NO_FILE --network g:NO_FILE",
+      "needs": ["spec.vcl"],
+      "produces": ["LossFunction-DL2.json"]
     },
     {
       "name": "LossFunction-Godel",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Godel -o logic-and-comparisons-Godel.loss.json --network f:NO_FILE --network g:NO_FILE",
-      "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons-Godel.loss.json"]
+      "run": "vehicle compile -s spec.vcl -t LossFunction-Godel -o LossFunction-Godel.json --network f:NO_FILE --network g:NO_FILE",
+      "needs": ["spec.vcl"],
+      "produces": ["LossFunction-Godel.json"]
     },
     {
       "name": "LossFunction-Lukasiewicz",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Lukasiewicz -o logic-and-comparisons-Lukasiewicz.loss.json --network f:NO_FILE --network g:NO_FILE",
-      "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons-Lukasiewicz.loss.json"]
+      "run": "vehicle compile -s spec.vcl -t LossFunction-Lukasiewicz -o LossFunction-Lukasiewicz.json --network f:NO_FILE --network g:NO_FILE",
+      "needs": ["spec.vcl"],
+      "produces": ["LossFunction-Lukasiewicz.json"]
     },
     {
       "name": "LossFunction-Yager",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Yager -o logic-and-comparisons-Yager.loss.json --network f:NO_FILE --network g:NO_FILE",
-      "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons-Yager.loss.json"]
+      "run": "vehicle compile -s spec.vcl -t LossFunction-Yager -o LossFunction-Yager.json --network f:NO_FILE --network g:NO_FILE",
+      "needs": ["spec.vcl"],
+      "produces": ["LossFunction-Yager.json"]
     },
     {
       "name": "LossFunction-Product",
-      "run": "vehicle compile -s logic-and-comparisons.vcl -t LossFunction-Product -o logic-and-comparisons-Product.loss.json --network f:NO_FILE --network g:NO_FILE",
-      "needs": ["logic-and-comparisons.vcl"],
-      "produces": ["logic-and-comparisons-Product.loss.json"]
+      "run": "vehicle compile -s spec.vcl -t LossFunction-Product -o LossFunction-Product.json --network f:NO_FILE --network g:NO_FILE",
+      "needs": ["spec.vcl"],
+      "produces": ["LossFunction-Product.json"]
     }
   ]

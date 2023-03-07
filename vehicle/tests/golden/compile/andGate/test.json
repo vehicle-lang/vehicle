@@ -1,25 +1,25 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s andGate.vcl -t TypeCheck",
-    "needs": ["andGate.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s andGate.vcl -t Agda -o andGate.agda -c proofcache.vclp --network andGate:NO_FILE",
-    "needs": ["andGate.vcl"],
-    "produces": ["andGate.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vclp --network andGate:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s andGate.vcl -t Marabou -o andGate.inputquery/ --network andGate:NO_FILE",
-    "needs": ["andGate.vcl"],
-    "produces": ["andGate.inputquery/*.txt", "andGate.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network andGate:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
  },
  {
    "name": "LossFunction",
-   "run": "vehicle compile -s andGate.vcl -t LossFunction -o andGate.loss.json --network andGate:NO_FILE",
-   "needs": ["andGate.vcl"],
-   "produces": ["andGate.loss.json"]
+   "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network andGate:NO_FILE",
+   "needs": ["spec.vcl"],
+   "produces": ["LossFunction.json"]
  }
 ]

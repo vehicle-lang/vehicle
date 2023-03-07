@@ -1,25 +1,25 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s reachability.vcl -t TypeCheck",
-    "needs": ["reachability.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s reachability.vcl -t Marabou -o reachability.inputquery/ --network f:NO_FILE",
-    "needs": ["reachability.vcl"],
-    "produces": ["reachability.inputquery/*.txt", "reachability.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s reachability.vcl -t Agda -o reachability.agda -c proofcache.vclp --network f:NO_FILE",
-    "needs": ["reachability.vcl"],
-    "produces": ["reachability.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vclp --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s reachability.vcl -t LossFunction -o reachability.loss.json --network f:NO_FILE",
-    "needs": ["reachability.vcl"],
-    "produces": ["reachability.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

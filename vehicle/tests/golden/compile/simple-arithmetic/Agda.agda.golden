@@ -9,5 +9,5 @@
 
 open import Vehicle
 
-module simple-untypedDecls where
+module Agda where
 
