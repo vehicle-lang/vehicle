@@ -11,7 +11,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn (DBLevel)
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised

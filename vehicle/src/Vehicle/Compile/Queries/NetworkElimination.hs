@@ -25,9 +25,9 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.Boolean (ConjunctAll (unConjunctAll))
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Hashing ()
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Specification (MetaNetwork)
 
