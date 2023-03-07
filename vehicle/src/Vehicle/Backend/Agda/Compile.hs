@@ -24,7 +24,6 @@ import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
-import Vehicle.Compile.Normalise (nfTypeClassOp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -594,6 +593,24 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
       "unexpected application of builtin found during compilation to Agda:"
         <+> squotes (prettyExternal e)
         <+> parens (pretty $ provenanceOf e)
+
+nfTypeClassOp ::
+  MonadCompile m =>
+  Provenance ->
+  TypeClassOp ->
+  [Arg binder var StandardBuiltin] ->
+  Maybe (m (Expr binder var StandardBuiltin, NonEmpty (Arg binder var StandardBuiltin)))
+nfTypeClassOp _p op args = do
+  let (inst, remainingArgs) = findInstanceArg args
+  case (inst, remainingArgs) of
+    (Meta {}, _) -> Nothing
+    (_, v : vs) -> do
+      let (fn, args') = toHead inst
+      Just $ return (fn, prependList args' (v :| vs))
+    (_, []) ->
+      Just $
+        compilerDeveloperError $
+          "Type class operation with no further arguments:" <+> pretty op
 
 compileTypeClass :: MonadAgdaCompile m => Code -> OutputExpr -> m Code
 compileTypeClass name arg = do
