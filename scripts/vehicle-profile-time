@@ -1,5 +1,17 @@
 #!/bin/sh
 
+# Script for profiling the time taken at various points in the Vehicle compiler.
+# To profile a vehicle command of the form:
+#
+#    vehicle ARGS
+#
+# instead run:
+#
+#    ./scripts/vehicle-profile-time ARGS
+#
+# This will generate an HTML file in the `.profiling` folder that can be viewed in a
+# browser.
+
 # POSIX compliant method for 'pipefail':
 fail=$(mktemp)
 

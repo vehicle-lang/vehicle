@@ -98,18 +98,13 @@ The CI script that controls this is `.github/workflows/build.yml`.
 
 ## 6. Profiling
 
-Profiling of the compiler can be done by:
+There are two scripts for profiling time and memory requirements respectively:
 
-1. Adding `-O0` to `ghc-options` to the `library` component in `vehicle.cabal`.
-  (Template Haskell stops the profiler from working otherwise)
+1. `scripts/vehicle-profile-time`
 
-2. Adding the line `ghc-options: -O0 -prof -fprof-auto -with-rtsopts=-p` to the
-  `executable vehicle` component in `vehicle.cabal`.
+2. `scripts/vehicle-profile-heap`
 
-3. Run `cabal run exe:vehicle -- ARGS` where `ARGS` are the
-  standard Vehicle arguments. (Note, first time you run this there will be a *long* build time as the whole project and all its dependencies are rebuilt with the profiling options enabled.)
-
-This will generate a `vehicle.prof` profiling file. The file can be viewed in a nice graphical format by installing `profiteur` and then running `profiteur vehicle.prof` to generate `vehicle.prof.html` which is then viewable in a web-browser.
+See the top of these files for how to run them.
 
 ## 7. Detecting infinite loops
 
