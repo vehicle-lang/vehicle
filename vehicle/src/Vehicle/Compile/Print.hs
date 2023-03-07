@@ -16,13 +16,11 @@ module Vehicle.Compile.Print
   )
 where
 
-import Control.Exception (assert)
 import Data.Bifunctor (bimap)
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 import Vehicle.Compile.Descope
@@ -33,9 +31,6 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.CoDeBruijn
-import Vehicle.Expr.CoDeBruijn.Conversion
-import Vehicle.Expr.CoDeBruijn.PositionTree
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
@@ -99,7 +94,6 @@ data Strategy
   | ConvertBuiltins Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
-  | CoDBToDB Strategy
   | Denormalise Strategy
   | DiscardConstraintCtx Strategy
   | KeepConstraintCtx Strategy
@@ -154,16 +148,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised (DBBinder builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
   -- To convert a named normalised expr, first denormalise to a checked expr.
   StrategyFor ('Named tags) (Contextualised (NormExpr types) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (DBExpr (NormalisableBuiltin types)) BoundDBCtx))
-  -- To convert an open expression using a Checked representation but whose missing names have been supplied
-  -- to a named representation, perform the Checked to named conversion.
-  StrategyFor tags CoDBExpr = 'CoDBToDB (StrategyFor tags TypeCheckedExpr)
-  StrategyFor tags CoDBArg = 'CoDBToDB (StrategyFor tags TypeCheckedArg)
-  StrategyFor tags CoDBBinder = 'CoDBToDB (StrategyFor tags TypeCheckedBinder)
-  StrategyFor ('Named tags) (Contextualised CoDBExpr BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised CoDBArg BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedArg BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised CoDBBinder BoundDBCtx) = 'CoDBToDB (StrategyFor ('Named tags) (Contextualised TypeCheckedBinder BoundDBCtx))
   -- Things that we just pretty print.
-  StrategyFor tags PositionTree = 'Pretty
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   -- Objects for which we want to block the strategy computation on.
@@ -174,7 +159,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Contextualised (TypeClassConstraint types) (ConstraintContext types)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
   StrategyFor tags (Contextualised (UnificationConstraint types) (ConstraintContext types)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags PositionsInExpr = 'Opaque (StrategyFor tags TypeCheckedExpr)
   -- Simplification
   StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
   StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
@@ -372,57 +356,6 @@ instance
   prettyUsing = prettyUsing @rest . descopeNamed
 
 --------------------------------------------------------------------------------
--- Convert from CoDeBruijn representation to named representation naively
-{-
-instance
-  PrettyUsing rest NamedExpr =>
-  PrettyUsing ('CoDBToNamedNaive rest) (Expr (CoDBBinding Name) CoDBVar)
-  where
-  prettyUsing e = _
-
-    let (e', pts) = runNaiveCoDBDescope e
-     in prettyUsing @rest e' <+> prettyMap pts
-  -}
---------------------------------------------------------------------------------
--- Convert open term from CoDeBruijn representation to DeBruijn representation
-
-instance
-  PrettyUsing rest (Contextualised TypeCheckedExpr BoundDBCtx) =>
-  PrettyUsing rest (Contextualised CoDBExpr BoundDBCtx)
-  where
-  prettyUsing (WithContext e ctx) =
-    prettyUsing @rest (WithContext (fromCoDB e) ctx)
-
-{-
-instance (PrettyUsing rest (BoundDBCtx, CheckedArg))
-      => PrettyUsing ('CoDBToDBOpen rest) (BoundDBCtx, CoDBArg) where
-  prettyUsing (ctx, (e, bvm)) = prettyUsing @rest (ctx , fromCoDBArg (e, bvm))
-
-instance (PrettyUsing rest (BoundDBCtx, CheckedBinder))
-      => PrettyUsing ('CoDBToDBOpen rest) (BoundDBCtx, CoDBBinder) where
-  prettyUsing (ctx, (e, bvm)) = prettyUsing @rest (ctx , fromCoDBBinder (e, bvm))
--}
-
---------------------------------------------------------------------------------
--- Convert closed term from CoDeBruijn representation to DeBruijn representation
-
-instance
-  PrettyUsing rest TypeCheckedExpr =>
-  PrettyUsing ('CoDBToDB rest) CoDBExpr
-  where
-  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
-
-{-
-instance PrettyUsing rest CheckedArg
-      => PrettyUsing ('CoDBToDBClosed rest) CoDBArg where
-  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
-
-instance PrettyUsing rest CheckedBinder
-      => PrettyUsing ('CoDBToDBClosed rest) CoDBBinder where
-  prettyUsing (e, bvm) = assert (null bvm) $ prettyUsing @rest (fromCoDB (e, bvm))
--}
-
---------------------------------------------------------------------------------
 -- Simplification
 
 instance
@@ -562,11 +495,6 @@ instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries
     where
       entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
-
-instance (PrettyUsing rest TypeCheckedExpr) => PrettyUsing ('Opaque rest) PositionsInExpr where
-  prettyUsing (PositionsInExpr e p) = prettyUsing @rest (fromCoDB (substPos hole (Just p) e))
-    where
-      hole = (Hole mempty $ Text.pack "@", mempty)
 
 instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (ConjunctAll a) where
   prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> "and" <> y) docs

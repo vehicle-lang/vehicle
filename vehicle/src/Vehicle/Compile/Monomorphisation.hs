@@ -29,8 +29,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.AlphaEquivalence ()
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Hashing ()
 
 --------------------------------------------------------------------------------
 -- Public interface

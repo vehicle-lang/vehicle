@@ -21,7 +21,6 @@ import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfTypeClassOp)
-import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
 import Vehicle.Expr.DSL (fromDSL)
 import Vehicle.Expr.DeBruijn (substDBInto)
 import Vehicle.Expr.Normalisable
@@ -1331,7 +1330,7 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
       <> line
       <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
       <> line
-      <> ( if reducedResourceType `alphaEq` unreducedResourceType
+      <> ( if reducedResourceType == unreducedResourceType
              then ""
              else
                "which reduces to:"

@@ -133,13 +133,10 @@ library
     Vehicle.Compile.Type.Subsystem.Standard
     Vehicle.Compile.Type.Subsystem.Standard.Patterns
     Vehicle.Export
-    Vehicle.Expr.AlphaEquivalence
     Vehicle.Expr.Boolean
-    Vehicle.Expr.CoDeBruijn
-    Vehicle.Expr.CoDeBruijn.Conversion
-    Vehicle.Expr.CoDeBruijn.PositionTree
     Vehicle.Expr.DeBruijn
     Vehicle.Expr.DSL
+    Vehicle.Expr.Hashing
     Vehicle.Expr.Normalisable
     Vehicle.Expr.Normalised
     Vehicle.Libraries
@@ -319,12 +316,9 @@ library vehicle-unit-tests-common
   hs-source-dirs:  tests/unit
   exposed-modules:
     Vehicle.Test.Unit.Common
-    Vehicle.Test.Unit.Compile.AlphaEquivalence
-    Vehicle.Test.Unit.Compile.CoDeBruijn
     Vehicle.Test.Unit.Compile.CommandLine
     Vehicle.Test.Unit.Compile.DeBruijn
     Vehicle.Test.Unit.Compile.Normalisation
-    Vehicle.Test.Unit.Compile.PositionTree
 
   build-depends:
     , base                  >=4.13 && <5
