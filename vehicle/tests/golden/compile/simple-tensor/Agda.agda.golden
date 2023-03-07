@@ -15,7 +15,7 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
-module simple-tensor where
+module Agda where
 
 postulate f : Tensor ℚ (2 ∷ (2 ∷ [])) → Tensor ℚ (2 ∷ (2 ∷ []))
 

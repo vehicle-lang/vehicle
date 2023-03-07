@@ -1,19 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t TypeCheck",
-    "needs": ["simple-fourierMotzkin.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t Marabou -o simple-fourierMotzkin.inputquery/ --network f:NO_FILE --network g:NO_FILE",
-    "needs": ["simple-fourierMotzkin.vcl"],
-    "produces": ["simple-fourierMotzkin.inputquery/*.txt", "simple-fourierMotzkin.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE --network g:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-fourierMotzkin.vcl -t LossFunction -o simple-fourierMotzkin.loss.json --network f:NO_FILE --network g:NO_FILE",
-    "needs": ["simple-fourierMotzkin.vcl"],
-    "produces": ["simple-fourierMotzkin.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE --network g:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

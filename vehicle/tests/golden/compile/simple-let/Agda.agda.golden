@@ -19,7 +19,7 @@ open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
 open import Relation.Binary.PropositionalEquality
 
-module simple-let where
+module Agda where
 
 postulate e1 : let x = ⊤ in let y = ⊥ in x × y
 

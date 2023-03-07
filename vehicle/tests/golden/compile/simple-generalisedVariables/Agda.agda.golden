@@ -9,5 +9,5 @@
 
 open import Vehicle
 
-module simple-generalisedVariables where
+module Agda where
 

@@ -8,13 +8,20 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Data.Tensor
+open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Fin as Fin using (Fin; #_)
+open import Data.List.Base
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
+open import Relation.Binary.PropositionalEquality
 
-module simple-pruneDecls where
+module Agda where
 
-postulate g : Vector ℚ 2 → Vector ℚ 1
+postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate p2 : ∀ x → g x (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+abstract
+  reachable : ∃ λ x → f x ≡ ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ
+  reachable = checkSpecification record
+    { proofCache   = "proofcache.vclp"
+    }

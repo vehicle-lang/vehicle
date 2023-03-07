@@ -1,19 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s increasing.vcl -t TypeCheck",
-    "needs": ["increasing.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s increasing.vcl -t Marabou -o increasing.inputquery/ --network f:NO_FILE",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing.inputquery/*.txt", "increasing.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s increasing.vcl -t Agda -o increasing.agda",
-    "needs": ["increasing.vcl"],
-    "produces": ["increasing.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

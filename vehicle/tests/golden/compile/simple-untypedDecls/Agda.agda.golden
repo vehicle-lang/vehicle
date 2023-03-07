@@ -8,14 +8,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Data.Tensor
-open import Data.Nat as ℕ using (ℕ)
-open import Data.List
 
-module simple-vectorType-temp where
+module Agda where
 
-Vector : Set → (ℕ → Set)
-Vector A n = Tensor A (n ∷ [])
-
-vec : Vector ℕ 2
-vec = 0 ∷ (1 ∷ [])
