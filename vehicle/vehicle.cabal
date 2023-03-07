@@ -111,7 +111,6 @@ library
     Vehicle.Compile.ExpandResources.Dataset
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
-    Vehicle.Compile.Normalise
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
