@@ -1,2 +1,2 @@
-Error at Line 3, Columns 13-20: Property 'f' contains a quantified variable 'x' of type 'Int' which is not currently supported by Marabou.
+Error at Line 3, Columns 13-20: Property 'f' contains a quantified variable 'x' of type 'Int' which is not currently supported by the Marabou query format.
 Fix: try switching the variable to one of the following supported types: [Rat]

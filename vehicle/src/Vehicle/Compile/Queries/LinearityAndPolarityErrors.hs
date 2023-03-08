@@ -8,7 +8,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude
@@ -21,16 +20,16 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedProg)
-import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Verify.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
   MonadCompile m =>
-  VerifierIdentifier ->
+  QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
   m CompileError
-diagnoseNonLinearity verifier prog propertyIdentifier = do
+diagnoseNonLinearity queryFormat prog propertyIdentifier = do
   setCallDepth 0
   logDebug MaxDetail $
     "ERROR: found non-linear property. Switching to linearity type-checking mode for"
@@ -44,17 +43,17 @@ diagnoseNonLinearity verifier prog propertyIdentifier = do
   case propertyType of
     LinearityExpr _ (NonLinear p pp1 pp2) -> do
       let propertyProv = (propertyIdentifier, provenanceOf property)
-      throwError $ UnsupportedNonLinearConstraint (VerifierBackend verifier) propertyProv p pp1 pp2
+      throwError $ UnsupportedNonLinearConstraint queryFormat propertyProv p pp1 pp2
     _ -> compilerDeveloperError $ "Unexpected linearity type for property" <+> quotePretty propertyIdentifier
 
 diagnoseAlternatingQuantifiers ::
   forall m.
   MonadCompile m =>
-  VerifierIdentifier ->
+  QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
   m CompileError
-diagnoseAlternatingQuantifiers verifier prog propertyIdentifier = do
+diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
   setCallDepth 0
   logDebug MaxDetail $
     "ERROR: found property with alterating quantifiers. Switching to polarity type-checking mode for"
@@ -68,7 +67,7 @@ diagnoseAlternatingQuantifiers verifier prog propertyIdentifier = do
   case propertyType of
     PolarityExpr _ (MixedSequential p pp1 pp2) -> do
       let propertyProv = (propertyIdentifier, provenanceOf property)
-      throwError $ UnsupportedAlternatingQuantifiers (VerifierBackend verifier) propertyProv p pp1 pp2
+      throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv p pp1 pp2
     _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier
 
 typeCheckWithSubsystem ::

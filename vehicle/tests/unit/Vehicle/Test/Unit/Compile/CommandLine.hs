@@ -24,7 +24,7 @@ import Vehicle.Prelude
     line,
   )
 import Vehicle.Verify (VerifyOptions (..))
-import Vehicle.Verify.Core (VerifierIdentifier (..))
+import Vehicle.Verify.Core (VerifierID (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests =
@@ -79,7 +79,7 @@ commandLineParserTests =
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
                       datasetLocations = mempty,
                       parameterValues = mempty,
-                      verifier = Marabou,
+                      verifierID = Marabou,
                       verifierLocation = Nothing,
                       proofCache = Nothing
                     }
@@ -106,7 +106,7 @@ commandLineParserTests =
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],
                       datasetLocations = Map.fromList [("d", "test/myDataset.idx")],
                       parameterValues = Map.fromList [("p", "7.3")],
-                      verifier = Marabou,
+                      verifierID = Marabou,
                       verifierLocation = Nothing,
                       proofCache = Nothing
                     }

@@ -12,7 +12,7 @@ import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Syntax.Parse (ParseError)
-import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Verify.Core (QueryFormatID)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -107,14 +107,12 @@ data CompileError
   | PropertyTypeUnsupported DeclProvenance StandardGluedType
   | -- Backend errors
     NoPropertiesFound
-  | UnsupportedResource Backend Identifier Provenance Resource
-  | UnsupportedInequality Backend DeclProvenance
-  | UnsupportedPolymorphicEquality Backend Provenance Name
-  | UnsupportedNonMagicVariable Backend Provenance Name
-  | NoNetworkUsedInProperty Backend Provenance Identifier
-  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name StandardNormType StandardNormType [Builtin]
-  | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedNonLinearConstraint Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedInequality QueryFormatID DeclProvenance
+  | UnsupportedPolymorphicEquality ITP Provenance Name
+  | NoNetworkUsedInProperty QueryFormatID Provenance Identifier
+  | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | UnsupportedNegatedOperation DifferentiableLogic Provenance (NamedExpr StandardBuiltin)
   deriving (Show)
 

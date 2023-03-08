@@ -7,15 +7,14 @@ module Vehicle.Compile.Queries.GaussianElimination
 where
 
 import Control.Monad (foldM, unless)
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
-import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Verify.Core
 
 gaussianElimination ::
   (MonadCompile m, LinearExpression linexp) =>
@@ -88,17 +87,6 @@ findPivot var (x : xs)
 
 --------------------------------------------------------------------------------
 -- Solutions
-
--- | A solution for a variable is an equation where the coefficient for that
--- variable is 1.
-newtype GaussianVariableSolution = GaussianVariableSolution
-  { solutionEquality :: SparseLinearExpr
-  }
-  deriving (Generic)
-
-instance ToJSON GaussianVariableSolution
-
-instance FromJSON GaussianVariableSolution
 
 -- | Tries to reconstruct the value of the variable that is
 -- consistent with the current assignment of variables.

@@ -28,8 +28,8 @@ import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn (DBLevel (..))
 import Vehicle.Expr.Normalised
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
-import Vehicle.Verify.Verifier.Interface (Verifier (..))
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -41,13 +41,13 @@ currentPass = "compilation of properties"
 -- verifier.
 compileToQueries ::
   (MonadIO m, MonadCompile m) =>
-  Verifier ->
+  QueryFormat ->
   StandardGluedProg ->
   Resources ->
   m (VerificationPlan, VerificationQueries)
-compileToQueries verifier typedProg resources =
+compileToQueries queryFormat typedProg resources =
   logCompilerPass MinDetail currentPass $ do
-    properties <- compileProgToQueries verifier resources typedProg
+    properties <- compileProgToQueries queryFormat resources typedProg
     if null properties
       then throwError NoPropertiesFound
       else return $ NonEmpty.unzip $ Specification properties
@@ -58,11 +58,11 @@ compileToQueries verifier typedProg resources =
 compileProgToQueries ::
   forall m.
   (MonadIO m, MonadCompile m) =>
-  Verifier ->
+  QueryFormat ->
   Resources ->
   GenericProg StandardGluedExpr ->
   m [(Identifier, Property (QueryMetaData, QueryText))]
-compileProgToQueries verifier resources prog = do
+compileProgToQueries queryFormat resources prog = do
   (networkCtx, expandedProg) <- expandResources resources prog
   let Main decls = expandedProg
   go networkCtx mempty decls
@@ -86,18 +86,25 @@ compileProgToQueries verifier resources prog = do
 
         return $ maybeToList maybeProperty ++ properties
 
-    compilePropertyDecl :: NetworkContext -> DeclCtx StandardGluedDecl -> Provenance -> Identifier -> StandardGluedType -> StandardGluedExpr -> m (Identifier, Property (QueryMetaData, QueryText))
+    compilePropertyDecl ::
+      NetworkContext ->
+      DeclCtx StandardGluedDecl ->
+      Provenance ->
+      Identifier ->
+      StandardGluedType ->
+      StandardGluedExpr ->
+      m (Identifier, Property (QueryMetaData, QueryText))
     compilePropertyDecl networkCtx declCtx p ident _typ expr = do
       logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
         let declSubst = mapMaybe (fmap normalised . bodyOf) declCtx
-        let propertyCtx = (declSubst, verifier, (ident, p), networkCtx)
+        let propertyCtx = (declSubst, queryFormat, (ident, p), networkCtx)
         let computeProperty = runReaderT (compileProperty (normalised expr)) propertyCtx
         property <-
           computeProperty `catchError` \e -> do
-            let verifierIdent = verifierIdentifier verifier
+            let formatID = queryFormatID queryFormat
             case e of
-              UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity verifierIdent prog ident
-              UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers verifierIdent prog ident
+              UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog ident
+              UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
               _ -> throwError e
 
         return (ident, property)
@@ -105,7 +112,12 @@ compileProgToQueries verifier resources prog = do
 --------------------------------------------------------------------------------
 -- Compilation
 
-type PropertyReaderState = (DeclSubstitution StandardBuiltinType, Verifier, DeclProvenance, NetworkContext)
+type PropertyReaderState =
+  ( DeclSubstitution StandardBuiltinType,
+    QueryFormat,
+    DeclProvenance,
+    NetworkContext
+  )
 
 type MonadCompileProperty m =
   ( MonadCompile m,
@@ -306,7 +318,7 @@ compileSingleQuery ::
   ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (QueryMetaData, QueryText))
 compileSingleQuery userVariables conjuncts = do
-  (_, verifier, ident, networkCtx) <- ask
+  (_, queryFormat, ident, networkCtx) <- ask
 
   logCompilerPass MinDetail "query" $ do
     -- Convert all user variables and applications of networks into magic I/O variables
@@ -330,7 +342,7 @@ compileSingleQuery userVariables conjuncts = do
         logDebug MaxDetail $ "Query found to be trivially" <+> pretty b
         return $ Trivial b
       NonTrivial (clstProblem, u, v) -> do
-        queryText <- compileQuery verifier clstProblem
+        queryText <- compileQuery queryFormat clstProblem
         logCompilerPassOutput $ pretty queryText
         return $ NonTrivial (QueryData u v, queryText)
 
@@ -409,8 +421,8 @@ calculateEnvEntry startingLevel binder = do
         -- Generate a expression prepended with `tensorSize` quantifiers
         return (expr, concat userVars)
       typ -> do
-        (_, verifier, (ident, _), _) <- ask
-        let target = verifierIdentifier verifier
+        (_, queryFormat, (ident, _), _) <- ask
+        let target = queryFormatID queryFormat
         let p = provenanceOf binder
         throwError $ UnsupportedVariableType target ident p baseName typ baseType [BuiltinType Rat]
 

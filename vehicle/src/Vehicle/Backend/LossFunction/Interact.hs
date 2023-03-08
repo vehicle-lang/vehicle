@@ -16,6 +16,9 @@ writeLossFunctionFiles ::
   DifferentiableLogic ->
   [LDecl] ->
   m ()
-writeLossFunctionFiles filepath t functions = do
+writeLossFunctionFiles filepath _t functions = do
   let json = encodePretty' prettyJSONConfig functions
-  writeResultToFile (LossFunction t) filepath (pretty (unpack json))
+  writeResultToFile lossFunctionOutputFormat filepath (pretty (unpack json))
+
+lossFunctionOutputFormat :: Maybe ExternalOutputFormat
+lossFunctionOutputFormat = Nothing

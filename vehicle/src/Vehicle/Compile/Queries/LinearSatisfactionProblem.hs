@@ -19,25 +19,23 @@ import Data.Map.Strict qualified as Map
   )
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
-import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Queries.GaussianElimination
   ( gaussianElimination,
-    solutionEquality,
   )
 import Vehicle.Compile.Queries.LNF (convertToLNF)
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
@@ -208,7 +206,7 @@ compileAssertions = go
       VBuiltinFunction (Equals EqRat eq) [e1, e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
-          throwError $ UnsupportedInequality MarabouBackend ident
+          throwError $ UnsupportedInequality MarabouQueryFormat ident
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
           return assertion

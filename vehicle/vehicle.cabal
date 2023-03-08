@@ -6,9 +6,9 @@ description:
 
 homepage:      https://github.com/vehicle-lang/vehicle#readme
 bug-reports:   https://github.com/vehicle-lang/vehicle/issues
-author:        Wen Kokke
+author:        Matthew Daggitt and Wen Kokke
 maintainer:    wenkokke@users.noreply.github.com
-copyright:     © Wen Kokke
+copyright:     © Matthew Daggitt and Wen Kokke
 license:       BSD-3-Clause
 license-file:  LICENSE
 build-type:    Simple
@@ -145,10 +145,10 @@ library
     Vehicle.Verify
     Vehicle.Verify.Core
     Vehicle.Verify.ProofCache
+    Vehicle.Verify.QueryFormat.Marabou
     Vehicle.Verify.Specification
     Vehicle.Verify.Specification.IO
     Vehicle.Verify.Specification.Status
-    Vehicle.Verify.Verifier.Interface
 
   other-modules:
     Paths_vehicle

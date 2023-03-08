@@ -1136,28 +1136,7 @@ instance MeaningfulError CompileError where
     -- Backend errors --
     --------------------
 
-    UnsupportedResource target ident p resource ->
-      let dType = squotes (pretty resource)
-       in UError $
-            UserError
-              { provenance = p,
-                problem =
-                  "While compiling property"
-                    <+> prettyIdentName ident
-                    <+> "to"
-                    <+> pretty target
-                    <+> "found a"
-                    <+> dType
-                    <+> "declaration which"
-                    <+> "cannot be compiled.",
-                fix =
-                  Just $
-                    "remove all"
-                      <+> dType
-                      <+> "declarations or switch to a"
-                      <+> "different compilation target."
-              }
-    UnsupportedAlternatingQuantifiers target (ident, p) q pq pp ->
+    UnsupportedAlternatingQuantifiers queryFormat (ident, p) q pq pp ->
       UError $
         UserError
           { provenance = p,
@@ -1169,8 +1148,8 @@ instance MeaningfulError CompileError where
                 <+> quotePretty Forall
                 <+> "and"
                 <+> quotePretty Exists
-                <+> "quantifiers which is not supported by"
-                <+> pretty target
+                <+> "quantifiers which is not supported by the"
+                <+> pretty queryFormat
                   <> "."
                   <> line
                   <> "In particular:"
@@ -1178,7 +1157,7 @@ instance MeaningfulError CompileError where
                   <> indent 2 (prettyPolarityProvenance pq q pp),
             fix = Nothing
           }
-    UnsupportedNonLinearConstraint target (ident, p) p' v1 v2 ->
+    UnsupportedNonLinearConstraint queryFormat (ident, p) p' v1 v2 ->
       UError $
         UserError
           { provenance = p,
@@ -1186,8 +1165,8 @@ instance MeaningfulError CompileError where
               "The property"
                 <+> prettyIdentName ident
                 <+> "contains"
-                <+> "a non-linear constraint which is not supported by"
-                <+> pretty target
+                <+> "a non-linear constraint which is not supported by the"
+                <+> pretty queryFormat
                   <> "."
                   <> line
                   <> "In particular the multiplication at"
@@ -1201,7 +1180,7 @@ instance MeaningfulError CompileError where
                 "try avoiding it, otherwise please open an issue on the"
                   <+> "Vehicle issue tracker."
           }
-    UnsupportedVariableType target ident p name problemType baseType supportedTypes ->
+    UnsupportedVariableType queryFormat ident p name problemType baseType supportedTypes ->
       UError $
         UserError
           { provenance = p,
@@ -1213,8 +1192,8 @@ instance MeaningfulError CompileError where
                 <+> "of type"
                 <+> squotes (prettyFriendly (WithContext baseType emptyDBCtx))
                 <+> "which is not currently supported"
-                <+> "by"
-                <+> pretty target
+                <+> "by the"
+                <+> pretty queryFormat
                   <> "."
                   <> ( if baseType == problemType
                          then ""
@@ -1228,15 +1207,15 @@ instance MeaningfulError CompileError where
                 "try switching the variable to one of the following supported types:"
                   <+> pretty supportedTypes
           }
-    UnsupportedInequality target (identifier, p) ->
+    UnsupportedInequality queryFormat (identifier, p) ->
       UError $
         UserError
           { provenance = p,
             problem =
               "After compilation, property"
                 <+> prettyIdentName identifier
-                <+> "contains a `!=` which is not current supported by"
-                <+> pretty target <> ". ",
+                <+> "contains a `!=` which is not current supported by the"
+                <+> pretty queryFormat <> ". ",
             fix = Just (implementationLimitation (Just 74))
           }
     UnsupportedPolymorphicEquality target p typeName ->
@@ -1245,7 +1224,7 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               "The use of equality over the unknown type"
-                <+> squotes (pretty typeName)
+                <+> quotePretty typeName
                 <+> "is not currently supported"
                 <+> "when compiling to"
                 <+> pretty target,
@@ -1253,22 +1232,6 @@ instance MeaningfulError CompileError where
               Just $
                 "try avoiding it, otherwise open an issue on the"
                   <+> "Vehicle issue tracker describing the use case."
-          }
-    UnsupportedNonMagicVariable target p name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The variable"
-                <+> squotes (pretty name)
-                <+> "is not used as"
-                <+> "an input to a network, which is not currently supported"
-                <+> "by"
-                <+> pretty target,
-            fix =
-              Just $
-                "try reformulating the property, or else open an issue on the"
-                  <+> "Vehicle issue tracker describing the use-case."
           }
     NoPropertiesFound ->
       UError $

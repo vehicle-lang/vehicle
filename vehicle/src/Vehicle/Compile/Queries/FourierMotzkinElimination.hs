@@ -6,14 +6,13 @@ module Vehicle.Compile.Queries.FourierMotzkinElimination
 where
 
 import Control.Monad (foldM)
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
-import GHC.Generics (Generic)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Verify.Core
 
 -- | TODO If performance proves unnacceptably poor look into
 -- Imbert's acceleration theorems:
@@ -114,18 +113,6 @@ partition var = foldr categorise ([], [], [])
 
 --------------------------------------------------------------------------------
 -- Solutions
-
--- | A FM solution for a variable is two lists of constraints. The variable value
--- must be greater than the set of assertions, and less than the first is that
-data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [Assertion SparseLinearExpr],
-    upperBounds :: [Assertion SparseLinearExpr]
-  }
-  deriving (Generic)
-
-instance ToJSON FourierMotzkinVariableSolution
-
-instance FromJSON FourierMotzkinVariableSolution
 
 -- | Tries to reconstruct the value of the variable that is
 -- consistent with the current assignment of variables.

@@ -34,13 +34,13 @@ import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.IO
-import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.Verifier (queryFormats)
 
 --------------------------------------------------------------------------------
 -- Interface
 
 data CompileOptions = CompileOptions
-  { target :: Backend,
+  { task :: Task,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
     networkLocations :: NetworkLocations,
@@ -57,36 +57,36 @@ compile :: LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
   typeCheckingResult@(_, typedProg) <- typeCheckUserProg specification declarationsToCompile noStdlib
   let resources = Resources networkLocations datasetLocations parameterValues
-  case target of
+  case task of
     TypeCheck mode -> case mode of
       Standard -> return ()
       Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityType typedProg
       Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityType typedProg
-    ITP Agda -> do
+    CompileToITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions typeCheckingResult outputFile
-    VerifierBackend verifierIdentifier -> do
-      _ <- compileToVerifier typeCheckingResult resources verifierIdentifier outputFile
+    CompileToQueryFormat queryFormatID -> do
+      _ <- compileToQueryFormat typeCheckingResult resources queryFormatID outputFile
       return ()
-    LossFunction differentiableLogic -> do
+    CompileToLossFunction differentiableLogic -> do
       _ <- compileToLossFunction typeCheckingResult resources differentiableLogic outputFile
       return ()
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
-compileToVerifier ::
+compileToQueryFormat ::
   (MonadCompile m, MonadIO m) =>
   (ImportedModules, StandardGluedProg) ->
   Resources ->
-  VerifierIdentifier ->
+  QueryFormatID ->
   Maybe FilePath ->
   m ()
-compileToVerifier (imports, typedProg) resources verifierIdentifier outputFile = do
+compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = do
   let mergedProg = mergeImports imports typedProg
-  let verifier = verifiers verifierIdentifier
+  let verifier = queryFormats queryFormatID
   queries <- compileToQueries verifier mergedProg resources
-  outputVerificationQueries verifier outputFile queries
+  outputVerificationQueries queryFormatID outputFile queries
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>

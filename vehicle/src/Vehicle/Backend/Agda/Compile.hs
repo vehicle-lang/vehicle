@@ -892,8 +892,8 @@ equalityDependencies = \case
   ITensorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
-  FreeVar p n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend p (nameOf n)
-  BoundVar p n -> throwError $ UnsupportedPolymorphicEquality AgdaBackend p n
+  FreeVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p (nameOf n)
+  BoundVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p n
   t -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty (identifierName TensorIdent)])
 
 unexpectedTypeError :: MonadCompile m => OutputExpr -> [Doc ()] -> m a
