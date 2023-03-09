@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s functionWithMismatchedNames.vcl -t TypeCheck",
+  "run": "vehicle typeCheck -s functionWithMismatchedNames.vcl",
   "needs": ["functionWithMismatchedNames.vcl"]
 }

@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "run": "vehicle typeCheck -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {

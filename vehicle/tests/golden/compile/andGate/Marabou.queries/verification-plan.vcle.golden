@@ -1,192 +1,207 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "andGateCorrect"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
+      "andGateCorrect",
+      {
+        "tag": "SingleProperty",
         "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [
-                    [
-                      1,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "3": 1,
-                              "1": -1
+          "tag": "Query",
+          "contents": {
+            "queries": {
+              "tag": "NonTrivial",
+              "contents": {
+                "unDisjunctAll": [
+                  {
+                    "userVar": [
+                      [
+                        1,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "3": 1,
+                                "1": -1
+                              }
                             }
                           }
                         }
-                      }
+                      ],
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "2": 1,
+                                "0": -1
+                              }
+                            }
+                          }
+                        }
+                      ]
                     ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
+                    "metaNetwork": [
+                      [
+                        "andGate",
+                        "fake.onnx"
+                      ]
+                    ]
+                  },
+                  {
+                    "userVar": [
+                      [
+                        1,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "3": 1,
+                                "1": -1
+                              }
                             }
                           }
                         }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "andGate",
-                      "NO_FILE"
-                    ]
-                  ]
-                },
-                {
-                  "userVar": [
-                    [
-                      1,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "3": 1,
-                              "1": -1
+                      ],
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "2": 1,
+                                "0": -1
+                              }
                             }
                           }
                         }
-                      }
+                      ]
                     ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
+                    "metaNetwork": [
+                      [
+                        "andGate",
+                        "fake.onnx"
+                      ]
+                    ]
+                  },
+                  {
+                    "userVar": [
+                      [
+                        1,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "3": 1,
+                                "1": -1
+                              }
                             }
                           }
                         }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "andGate",
-                      "NO_FILE"
-                    ]
-                  ]
-                },
-                {
-                  "userVar": [
-                    [
-                      1,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "3": 1,
-                              "1": -1
+                      ],
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "2": 1,
+                                "0": -1
+                              }
                             }
                           }
                         }
-                      }
+                      ]
                     ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
+                    "metaNetwork": [
+                      [
+                        "andGate",
+                        "fake.onnx"
+                      ]
+                    ]
+                  },
+                  {
+                    "userVar": [
+                      [
+                        1,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "3": 1,
+                                "1": -1
+                              }
                             }
                           }
                         }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "andGate",
-                      "NO_FILE"
-                    ]
-                  ]
-                },
-                {
-                  "userVar": [
-                    [
-                      1,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "3": 1,
-                              "1": -1
+                      ],
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 6,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "2": 1,
+                                "0": -1
+                              }
                             }
                           }
                         }
-                      }
+                      ]
                     ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
-                            }
-                          }
-                        }
-                      }
+                    "metaNetwork": [
+                      [
+                        "andGate",
+                        "fake.onnx"
+                      ]
                     ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "andGate",
-                      "NO_FILE"
-                    ]
-                  ]
-                }
-              ]
-            }
-          },
-          "negated": true
+                  }
+                ]
+              }
+            },
+            "negated": true
+          }
         }
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": -7676010332636500442
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "andGate",
+        "filePath": "fake.onnx",
+        "fileHash": 7336660951960586308
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

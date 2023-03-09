@@ -21,7 +21,8 @@ Contents
 
    installation
    language/index.rst
+   typeChecking.rst
    training
    verification
-   theorem-proving
+   exportingToITP.rst
    other/index.rst

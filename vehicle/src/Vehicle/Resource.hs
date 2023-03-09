@@ -2,12 +2,13 @@
 
 module Vehicle.Resource where
 
+import Control.Exception (IOException, catch)
 import Control.Monad (forM, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
-import Data.Map (Map, assocs, singleton)
+import Data.Map (Map, assocs)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -24,86 +25,141 @@ supportedFileFormats _ = []
 --------------------------------------------------------------------------------
 -- Resource locations
 
-type NetworkLocations = Map Text FilePath
+type SpecificationLocation = FilePath
 
-type DatasetLocations = Map Text FilePath
+type NetworkLocations = Map Name FilePath
 
-type ParameterValues = Map Text String
+type DatasetLocations = Map Name FilePath
+
+type ParameterValues = Map Name String
 
 data Resources = Resources
-  { networks :: NetworkLocations,
+  { specification :: SpecificationLocation,
+    networks :: NetworkLocations,
     datasets :: DatasetLocations,
     parameters :: ParameterValues
   }
 
-instance Semigroup Resources where
-  r1 <> r2 =
-    Resources
-      (networks r1 <> networks r2)
-      (datasets r1 <> datasets r2)
-      (parameters r1 <> parameters r2)
-
-instance Monoid Resources where
-  mempty = Resources mempty mempty mempty
-
 --------------------------------------------------------------------------------
 -- Resource summaries
 
-data ResourceSummary = ResourceSummary
+data ResourceIntegrityInfo = ResourceIntegrityInfo
   { name :: Text,
-    value :: String,
-    fileHash :: Int,
-    resType :: Resource
+    filePath :: FilePath,
+    fileHash :: Int
   }
   deriving (Generic)
 
-instance FromJSON ResourceSummary
+instance FromJSON ResourceIntegrityInfo
 
-instance ToJSON ResourceSummary
+instance ToJSON ResourceIntegrityInfo
+
+data ResourcesIntegrityInfo = ResourcesIntegrityInfo
+  { specificationSummary :: ResourceIntegrityInfo,
+    networkSummaries :: [ResourceIntegrityInfo],
+    datasetSummaries :: [ResourceIntegrityInfo],
+    parameterSummaries :: ParameterValues
+  }
+  deriving (Generic)
+
+instance FromJSON ResourcesIntegrityInfo
+
+instance ToJSON ResourcesIntegrityInfo
 
 --------------------------------------------------------------------------------
 -- Hashing
 
-hashResource :: MonadIO m => Resource -> String -> m Int
-hashResource Network filepath = liftIO $ hash <$> ByteString.readFile filepath
-hashResource Dataset filepath = liftIO $ hash <$> ByteString.readFile filepath
-hashResource Parameter value = return $ hash value
-hashResource InferableParameter _ =
-  developerError "Should not be hashing implicit parameters"
+hashFileContents :: MonadIO m => FilePath -> m Int
+hashFileContents filePath = do
+  fileContents <- liftIO $ ByteString.readFile filePath
+  return $ hash fileContents
 
-hashResources :: MonadIO m => Resources -> m [ResourceSummary]
-hashResources Resources {..} = do
-  networkSummaries <- hashResourceType Network networks
-  datasetSummaries <- hashResourceType Dataset datasets
-  parameterSummaries <- hashResourceType Parameter parameters
-  return $ networkSummaries <> datasetSummaries <> parameterSummaries
-  where
-    hashResourceType ::
-      MonadIO m =>
-      Resource ->
-      Map Text String ->
-      m [ResourceSummary]
-    hashResourceType resourceType values =
-      forM (assocs values) $ \(name, value) -> do
-        networkHash <- liftIO $ hashResource resourceType value
-        return $
-          ResourceSummary
-            { name = name,
-              value = value,
-              fileHash = networkHash,
-              resType = resourceType
-            }
+generateResourceIntegrityInfo :: MonadIO m => (Name, FilePath) -> m ResourceIntegrityInfo
+generateResourceIntegrityInfo (name, filePath) = do
+  fileHash <-
+    liftIO $
+      catch @IOException
+        (hashFileContents filePath)
+        ( \e ->
+            fatalError $
+              "Error occured while reading"
+                <+> quotePretty filePath
+                  <> ":"
+                  <> line
+                  <> indent 2 (pretty (show e))
+        )
 
-reparseResources :: [ResourceSummary] -> Resources
-reparseResources [] = mempty
-reparseResources (x : xs) = r <> reparseResources xs
-  where
-    v = singleton (name x) (value x)
-    r = case resType x of
-      Network -> Resources v mempty mempty
-      Dataset -> Resources mempty v mempty
-      Parameter -> Resources mempty mempty v
-      InferableParameter -> developerError "Should not be reparsing implicit parameters"
+  return $
+    ResourceIntegrityInfo
+      { name = name,
+        filePath = filePath,
+        fileHash = fileHash
+      }
+
+generateResourcesIntegrityInfo :: MonadIO m => Resources -> m ResourcesIntegrityInfo
+generateResourcesIntegrityInfo Resources {..} = do
+  specificationSummary <- generateResourceIntegrityInfo ("specification", specification)
+  networkSummaries <- forM (assocs networks) generateResourceIntegrityInfo
+  datasetSummaries <- forM (assocs datasets) generateResourceIntegrityInfo
+  return $
+    ResourcesIntegrityInfo
+      { specificationSummary = specificationSummary,
+        networkSummaries = networkSummaries,
+        datasetSummaries = datasetSummaries,
+        parameterSummaries = parameters
+      }
+
+data ResourceIntegrityStatus
+  = Unchanged
+  | Altered
+  | Missing
+
+checkResourceIntegrity :: MonadIO m => ResourceIntegrityInfo -> m ResourceIntegrityStatus
+checkResourceIntegrity ResourceIntegrityInfo {..} = do
+  maybeNewHash <-
+    liftIO $
+      catch @IOException
+        (Just <$> hashFileContents filePath)
+        (const $ return Nothing)
+
+  return $ case maybeNewHash of
+    Nothing -> Missing
+    Just newFileHash
+      | fileHash /= newFileHash -> Altered
+      | otherwise -> Unchanged
+
+checkResourcesIntegrity ::
+  MonadIO m =>
+  [ResourceIntegrityInfo] ->
+  m ([ResourceIntegrityInfo], [ResourceIntegrityInfo])
+checkResourcesIntegrity = \case
+  [] -> return ([], [])
+  (r : rs) -> do
+    (missing, altered) <- checkResourcesIntegrity rs
+    resourceStatus <- liftIO (checkResourceIntegrity r)
+    return $ case resourceStatus of
+      Unchanged -> (missing, altered)
+      Altered -> (missing, r : altered)
+      Missing -> (r : missing, altered)
+
+checkIntegrityOfResources ::
+  MonadIO m =>
+  ResourcesIntegrityInfo ->
+  m ([ResourceIntegrityInfo], [ResourceIntegrityInfo])
+checkIntegrityOfResources ResourcesIntegrityInfo {..} =
+  checkResourcesIntegrity $ specificationSummary : networkSummaries <> datasetSummaries
+
+reparseResources :: ResourcesIntegrityInfo -> Resources
+reparseResources ResourcesIntegrityInfo {..} = do
+  Resources
+    { specification = filePath specificationSummary,
+      networks = reparseResourceType networkSummaries,
+      datasets = reparseResourceType datasetSummaries,
+      parameters = parameterSummaries
+    }
+
+reparseResourceType :: [ResourceIntegrityInfo] -> Map Name String
+reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) mempty
 
 --------------------------------------------------------------------------------
 -- Others

@@ -4,7 +4,6 @@ module Vehicle.Test.Unit.Compile.CommandLine
 where
 
 import Data.Map qualified as Map (fromList)
-import Data.Set qualified as Set
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
@@ -16,6 +15,7 @@ import Vehicle
   )
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
+import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Prelude
   ( LoggingLevel (MinDetail),
     Pretty (pretty),
@@ -63,8 +63,8 @@ commandLineParserTests =
                     }
           },
       parserTest
-        "verifyMode1"
-        "vehicle verify \
+        "compileAndVerifyMode1"
+        "vehicle compileAndVerify \
         \--specification test/spec.vcl \
         \--network f:test/myNetwork.onnx \
         \--verifier Marabou"
@@ -72,8 +72,8 @@ commandLineParserTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                Verify $
-                  VerifyOptions
+                CompileAndVerify $
+                  CompileAndVerifyOptions
                     { specification = "test/spec.vcl",
                       properties = mempty,
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
@@ -85,8 +85,8 @@ commandLineParserTests =
                     }
           },
       parserTest
-        "verifyMode2"
-        "vehicle verify \
+        "compileAndVerifyMode2"
+        "vehicle compileAndVerify \
         \--specification test/spec.vcl \
         \--property p1 \
         \--property p2 \
@@ -99,16 +99,35 @@ commandLineParserTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                Verify $
-                  VerifyOptions
+                CompileAndVerify $
+                  CompileAndVerifyOptions
                     { specification = "test/spec.vcl",
-                      properties = Set.fromList ["p1", "p2"],
+                      properties = ["p1", "p2"],
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],
                       datasetLocations = Map.fromList [("d", "test/myDataset.idx")],
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
                       proofCache = Nothing
+                    }
+          },
+      parserTest
+        "verifyMode"
+        "vehicle verify \
+        \--verificationPlan test/verificationPlan.vcle \
+        \--verifier Marabou \
+        \--verifierLocation bin/Marabou \
+        \--proofCache test/proofCache.vclp"
+        Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Verify $
+                  VerifyOptions
+                    { verificationPlan = "test/verificationPlan.vcle",
+                      verifierID = Marabou,
+                      verifierLocation = Just "bin/Marabou",
+                      proofCache = Just "test/proofCache.vclp"
                     }
           }
     ]

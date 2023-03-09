@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s propertyNotGivenBody.vcl -t TypeCheck",
+  "run": "vehicle typeCheck -s propertyNotGivenBody.vcl",
   "needs": ["propertyNotGivenBody.vcl"]
 }

@@ -3,11 +3,10 @@
 module Vehicle.Test.Golden.TestSpec.NewTestSpec where
 
 import Control.Applicative (optional, (<**>))
-import Control.Exception (assert)
 import Control.Monad (forM_, join, unless)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, isNothing, maybeToList)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Tagged (Tagged (unTagged))
 import Data.Text.IO qualified as Text
 import Options.Applicative
@@ -47,7 +46,7 @@ import Test.Tasty.Options (IsOption (optionHelp, parseValue))
 import Text.Printf (printf)
 import Vehicle qualified (ModeOptions, Options (..))
 import Vehicle qualified as ModeOptions (ModeOptions (..))
-import Vehicle.Backend.Prelude (Task (TypeCheck), TypingSystem (..), pattern CompileToMarabouQueries)
+import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Backend.Prelude qualified as Backend
 import Vehicle.Check qualified as CheckOptions (proofCache)
 import Vehicle.Check qualified as Vehicle (CheckOptions)
@@ -57,9 +56,17 @@ import Vehicle.Compile qualified as CompileOptions
     networkLocations,
     outputFile,
     specification,
-    task,
+    target,
   )
 import Vehicle.Compile qualified as Vehicle (CompileOptions)
+import Vehicle.CompileAndVerify qualified as CompileAndVerifyOptions
+  ( datasetLocations,
+    networkLocations,
+    proofCache,
+    specification,
+    verifierID,
+  )
+import Vehicle.CompileAndVerify qualified as Vehicle (CompileAndVerifyOptions)
 import Vehicle.Export qualified as ExportOptions
   ( outputFile,
     proofCacheLocation,
@@ -79,14 +86,17 @@ import Vehicle.Test.Golden.TestSpec
     readTestSpecsFile,
     writeTestSpecsFile,
   )
+import Vehicle.TypeCheck qualified as TypeCheckOptions
+  ( specification,
+  )
+import Vehicle.TypeCheck qualified as Vehicle
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions
-  ( datasetLocations,
-    networkLocations,
+  ( VerifyOptions (verificationPlan),
     proofCache,
-    specification,
     verifierID,
   )
+import Vehicle.Verify.Core (QueryFormatID (MarabouQueryFormat))
 
 data NewTestSpecOptions = NewTestSpecOptions
   { newTestSpecDryRun :: Bool,
@@ -237,14 +247,28 @@ instance TestSpecLike Vehicle.Options where
 instance TestSpecLike Vehicle.ModeOptions where
   testSpecData :: Vehicle.ModeOptions -> TestSpecData
   testSpecData = \case
+    ModeOptions.TypeCheck opts -> testSpecData opts
     ModeOptions.Compile opts -> testSpecData opts
+    ModeOptions.CompileAndVerify opts -> testSpecData opts
     ModeOptions.Verify opts -> testSpecData opts
     ModeOptions.Export opts -> testSpecData opts
     ModeOptions.Check opts -> testSpecData opts
 
+instance TestSpecLike Vehicle.TypeCheckOptions where
+  targetName :: Vehicle.TypeCheckOptions -> String
+  targetName = layoutAsString . pretty . TypeCheckOptions.specification
+
+  needs :: Vehicle.TypeCheckOptions -> [FilePath]
+  needs opts =
+    [ TypeCheckOptions.specification opts
+    ]
+
+  produces :: Vehicle.TypeCheckOptions -> Either String [FilePattern]
+  produces = const (return [])
+
 instance TestSpecLike Vehicle.CompileOptions where
   targetName :: Vehicle.CompileOptions -> String
-  targetName = layoutAsString . pretty . CompileOptions.task
+  targetName = layoutAsString . pretty . CompileOptions.target
 
   needs :: Vehicle.CompileOptions -> [FilePath]
   needs opts =
@@ -259,35 +283,49 @@ instance TestSpecLike Vehicle.CompileOptions where
     where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
-        case CompileOptions.task opts of
-          TypeCheck Standard -> assert (isNothing outputFile) []
-          CompileToMarabouQueries -> [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
+        case CompileOptions.target opts of
+          VerifierQueries MarabouQueryFormat ->
+            [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
           _ -> maybeToList outputFile
-
-instance TestSpecLike Vehicle.ExportOptions where
-  targetName :: Vehicle.ExportOptions -> String
-  targetName = layoutAsString . pretty . Backend.CompileToITP . ExportOptions.target
-
-  needs :: Vehicle.ExportOptions -> [FilePath]
-  needs = (: []) . ExportOptions.proofCacheLocation
-
-  produces :: Vehicle.ExportOptions -> Either String [FilePattern]
-  produces = traverse parseFilePattern . maybeToList . ExportOptions.outputFile
 
 instance TestSpecLike Vehicle.VerifyOptions where
   targetName :: Vehicle.VerifyOptions -> String
   targetName = layoutAsString . pretty . VerifyOptions.verifierID
 
   needs :: Vehicle.VerifyOptions -> [FilePath]
-  needs opts =
+  needs opts = do
     join
-      [ [VerifyOptions.specification opts],
-        Map.elems (VerifyOptions.networkLocations opts),
-        Map.elems (VerifyOptions.datasetLocations opts)
+      [ [VerifyOptions.verificationPlan opts]
+      -- TODO the verification plan also references resources and query files
       ]
 
   produces :: Vehicle.VerifyOptions -> Either String [FilePattern]
   produces = traverse parseFilePattern . maybeToList . VerifyOptions.proofCache
+
+instance TestSpecLike Vehicle.CompileAndVerifyOptions where
+  targetName :: Vehicle.CompileAndVerifyOptions -> String
+  targetName = layoutAsString . pretty . CompileAndVerifyOptions.verifierID
+
+  needs :: Vehicle.CompileAndVerifyOptions -> [FilePath]
+  needs opts =
+    join
+      [ [CompileAndVerifyOptions.specification opts],
+        Map.elems (CompileAndVerifyOptions.networkLocations opts),
+        Map.elems (CompileAndVerifyOptions.datasetLocations opts)
+      ]
+
+  produces :: Vehicle.CompileAndVerifyOptions -> Either String [FilePattern]
+  produces = traverse parseFilePattern . maybeToList . CompileAndVerifyOptions.proofCache
+
+instance TestSpecLike Vehicle.ExportOptions where
+  targetName :: Vehicle.ExportOptions -> String
+  targetName = layoutAsString . pretty . Backend.ITP . ExportOptions.target
+
+  needs :: Vehicle.ExportOptions -> [FilePath]
+  needs = (: []) . ExportOptions.proofCacheLocation
+
+  produces :: Vehicle.ExportOptions -> Either String [FilePattern]
+  produces = traverse parseFilePattern . maybeToList . ExportOptions.outputFile
 
 instance TestSpecLike Vehicle.CheckOptions where
   targetName :: Vehicle.CheckOptions -> String

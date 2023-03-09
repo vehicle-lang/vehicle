@@ -17,13 +17,13 @@ data ExportOptions = ExportOptions
 export :: LoggingSettings -> ExportOptions -> IO ()
 export loggingSettings ExportOptions {..} = do
   proofCache <- readProofCache proofCacheLocation
-  let spec = originalSpec proofCache
+  let spec = filePath $ specificationSummary $ resourcesIntegrityInfo proofCache
   let properties = originalProperties proofCache
-  let resources = reparseResources (resourceSummaries proofCache)
+  let resources = reparseResources (resourcesIntegrityInfo proofCache)
 
   compile loggingSettings $
     CompileOptions
-      { task = CompileToITP target,
+      { target = ITP target,
         specification = spec,
         declarationsToCompile = properties,
         networkLocations = networks resources,
@@ -31,6 +31,5 @@ export loggingSettings ExportOptions {..} = do
         parameterValues = parameters resources,
         outputFile = outputFile,
         moduleName = moduleName,
-        proofCache = Just proofCacheLocation,
-        noStdlib = False
+        proofCache = Just proofCacheLocation
       }

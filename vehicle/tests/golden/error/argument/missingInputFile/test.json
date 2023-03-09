@@ -1,4 +1,4 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s missingInputFile.vcl -t TypeCheck"
+  "run": "vehicle typeCheck -s missingInputFile.vcl"
 }

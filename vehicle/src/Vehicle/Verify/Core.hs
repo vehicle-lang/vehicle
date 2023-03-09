@@ -96,7 +96,7 @@ type UserVarReconstructionInfo = [(LinearVar, VariableSolution)]
 newtype GaussianVariableSolution = GaussianVariableSolution
   { solutionEquality :: SparseLinearExpr
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON GaussianVariableSolution
 
@@ -108,7 +108,7 @@ data FourierMotzkinVariableSolution = FMSolution
   { lowerBounds :: [Assertion SparseLinearExpr],
     upperBounds :: [Assertion SparseLinearExpr]
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON FourierMotzkinVariableSolution
 
@@ -119,7 +119,7 @@ instance FromJSON FourierMotzkinVariableSolution
 data VariableSolution
   = GaussianSolution GaussianVariableSolution
   | FourierMotzkinSolution FourierMotzkinVariableSolution
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON VariableSolution
 

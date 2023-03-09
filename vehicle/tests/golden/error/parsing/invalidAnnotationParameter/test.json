@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s invalidAnnotationParameter.vcl -t TypeCheck",
+  "run": "vehicle typeCheck -s invalidAnnotationParameter.vcl",
   "needs": ["invalidAnnotationParameter.vcl"]
 }

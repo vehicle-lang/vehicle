@@ -4,7 +4,6 @@ module Vehicle.Check
   )
 where
 
-import Control.Exception (IOException, catch)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Prelude
@@ -30,59 +29,30 @@ check loggingSettings checkOptions = runImmediateLogger loggingSettings $ do
 checkStatus :: CheckOptions -> ImmediateLoggerT IO CheckResult
 checkStatus CheckOptions {..} = do
   ProofCache {..} <- liftIO $ readProofCache proofCache
-  (missingNetworks, alteredNetworks) <- checkResourceIntegrity resourceSummaries
-  return $ case (missingNetworks, alteredNetworks, isVerified status) of
+  (missingResources, alteredResources) <- checkIntegrityOfResources resourcesIntegrityInfo
+  return $ case (missingResources, alteredResources, isVerified status) of
     (x : xs, _, _) -> MissingResources (x :| xs)
     ([], x : xs, _) -> AlteredResources (x :| xs)
     ([], [], False) -> Unverified
     ([], [], True) -> Verified
 
-getResourceStatus :: ResourceSummary -> IO ResourceStatus
-getResourceStatus ResourceSummary {..} = do
-  let getResourceHash = hashResource resType value
-  maybeNewHash <- catch @IOException (Just <$> getResourceHash) (const $ return Nothing)
-  return $ case maybeNewHash of
-    Nothing -> Missing
-    Just newHash
-      | fileHash /= newHash -> Altered
-      | otherwise -> Unchanged
-
-checkResourceIntegrity ::
-  (MonadLogger m, MonadIO m) =>
-  [ResourceSummary] ->
-  m ([ResourceSummary], [ResourceSummary])
-checkResourceIntegrity = \case
-  [] -> return ([], [])
-  (r : rs) -> do
-    (missing, altered) <- checkResourceIntegrity rs
-    resourceStatus <- liftIO (getResourceStatus r)
-    return $ case resourceStatus of
-      Unchanged -> (missing, altered)
-      Altered -> (missing, r : altered)
-      Missing -> (r : missing, altered)
-
-data ResourceStatus
-  = Unchanged
-  | Altered
-  | Missing
-
 data CheckResult
   = Verified
   | Unverified
-  | MissingResources (NonEmpty ResourceSummary)
-  | AlteredResources (NonEmpty ResourceSummary)
+  | MissingResources (NonEmpty ResourceIntegrityInfo)
+  | AlteredResources (NonEmpty ResourceIntegrityInfo)
 
 instance Pretty CheckResult where
   pretty Verified = "Status: verified"
   pretty Unverified = "Status: unverified"
-  pretty (MissingResources missingNetworks) =
+  pretty (MissingResources missingResources) =
     "Status: unknown"
       <> line
       <> line
       <> "The following cannot not be found:"
       <> line
       <> line
-      <> indent 2 (vsep (fmap prettyResource missingNetworks))
+      <> indent 2 (vsep (fmap prettyResource missingResources))
       <> line
       <> line
       <> "To fix this problem, either move the missing files back to"
@@ -92,8 +62,8 @@ instance Pretty CheckResult where
       <+> "specification with the new"
       <+> locations <> "."
     where
-      locations = "location" <> if length missingNetworks == 1 then "" else "s"
-  pretty (AlteredResources alteredNetworks) =
+      locations = "location" <> if length missingResources == 1 then "" else "s"
+  pretty (AlteredResources alteredResources) =
     "Status: unknown"
       <> line
       <> line
@@ -101,11 +71,11 @@ instance Pretty CheckResult where
       <+> "last run:"
         <> line
         <> line
-        <> indent 2 (vsep (fmap prettyResource alteredNetworks))
+        <> indent 2 (vsep (fmap prettyResource alteredResources))
         <> line
         <> line
         <> "To fix this problem, use Vehicle to reverify the specification."
 
-prettyResource :: ResourceSummary -> Doc ann
-prettyResource ResourceSummary {..} =
-  pretty resType <+> pretty name <+> parens (pretty value)
+prettyResource :: ResourceIntegrityInfo -> Doc ann
+prettyResource ResourceIntegrityInfo {..} =
+  pretty name <+> parens (pretty filePath)

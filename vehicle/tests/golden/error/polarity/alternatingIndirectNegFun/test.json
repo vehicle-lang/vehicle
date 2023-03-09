@@ -1,6 +1,6 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s alternatingIndirectNegFun.vcl -t Marabou --network f:NO_FILE",
+  "run": "vehicle compile -s alternatingIndirectNegFun.vcl -t MarabouQueries --network f:NO_FILE",
   "needs": ["alternatingIndirectNegFun.vcl"],
   "enabled": false
 }

@@ -1,210 +1,219 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "expandedExpr"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
+      "expandedExpr",
+      {
+        "tag": "SingleProperty",
         "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 4,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "1": 1,
-                              "0": -1
-                            }
-                          }
-                        }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "f",
-                      "NO_FILE"
-                    ]
-                  ]
-                }
-              ]
-            }
-          },
-          "negated": true
-        }
-      }
-    }
-  ],
-  [
-    [
-      "User",
-      "sequential"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
-        "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [
-                    [
-                      1,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 7,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "4": 1,
-                              "1": -1
-                            }
-                          }
-                        }
-                      }
-                    ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 7,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
-                            }
-                          }
-                        }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "f",
-                      "NO_FILE"
-                    ],
-                    [
-                      "f",
-                      "NO_FILE"
-                    ]
-                  ]
-                }
-              ]
-            }
-          },
-          "negated": true
-        }
-      }
-    }
-  ],
-  [
-    [
-      "User",
-      "parallel"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
-                  "unDisjunctAll": [
-                    {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "solutionEquality": {
-                                "numberOfVars": 4,
-                                "constantValue": 0,
-                                "coefficients": {
-                                  "1": 1,
-                                  "0": -1
-                                }
+          "tag": "Query",
+          "contents": {
+            "queries": {
+              "tag": "NonTrivial",
+              "contents": {
+                "unDisjunctAll": [
+                  {
+                    "userVar": [
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 4,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "1": 1,
+                                "0": -1
                               }
                             }
                           }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
+                        }
                       ]
-                    }
-                  ]
-                }
-              },
-              "negated": true
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
-                  "unDisjunctAll": [
-                    {
-                      "userVar": [
-                        [
-                          0,
-                          {
-                            "tag": "GaussianSolution",
-                            "contents": {
-                              "solutionEquality": {
-                                "numberOfVars": 4,
-                                "constantValue": 0,
-                                "coefficients": {
-                                  "1": 1,
-                                  "0": -1
-                                }
-                              }
-                            }
-                          }
-                        ]
-                      ],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        "fake.onnx"
                       ]
-                    }
-                  ]
-                }
-              },
-              "negated": false
-            }
+                    ]
+                  }
+                ]
+              }
+            },
+            "negated": true
           }
-        ]
+        }
       }
-    }
-  ]
-]
+    ],
+    [
+      "sequential",
+      {
+        "tag": "SingleProperty",
+        "contents": {
+          "tag": "Query",
+          "contents": {
+            "queries": {
+              "tag": "NonTrivial",
+              "contents": {
+                "unDisjunctAll": [
+                  {
+                    "userVar": [
+                      [
+                        1,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 7,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "4": 1,
+                                "1": -1
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 7,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "2": 1,
+                                "0": -1
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        "fake.onnx"
+                      ],
+                      [
+                        "f",
+                        "fake.onnx"
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "negated": true
+          }
+        }
+      }
+    ],
+    [
+      "parallel",
+      {
+        "tag": "SingleProperty",
+        "contents": {
+          "tag": "Conjunct",
+          "contents": [
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
+                  "tag": "NonTrivial",
+                  "contents": {
+                    "unDisjunctAll": [
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "negated": true
+              }
+            },
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
+                  "tag": "NonTrivial",
+                  "contents": {
+                    "unDisjunctAll": [
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "negated": false
+              }
+            }
+          ]
+        }
+      }
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": -8492557239416345185
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": 7336660951960586308
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

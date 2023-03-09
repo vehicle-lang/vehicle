@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s unsupportedType.vcl -t Marabou",
+  "run": "vehicle compile -s unsupportedType.vcl -t MarabouQueries",
   "needs": ["unsupportedType.vcl"]
 }

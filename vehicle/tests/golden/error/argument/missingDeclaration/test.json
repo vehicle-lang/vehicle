@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s missingDeclaration.vcl -t TypeCheck -e property",
+  "run": "vehicle typeCheck -s missingDeclaration.vcl -e property",
   "needs": ["missingDeclaration.vcl"]
 }

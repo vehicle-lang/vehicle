@@ -1,13 +1,13 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "run": "vehicle typeCheck -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network classifier:NO_FILE --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
-    "needs": ["spec.vcl", "images.idx", "labels.idx"],
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
+    "needs": ["spec.vcl", "fake.onnx", "images.idx", "labels.idx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
