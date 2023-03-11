@@ -110,7 +110,7 @@ dl2Translation =
     { compileAnd = Left Addition,
       compileOr = Left Multiplication,
       compileNot = Nothing,
-      compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2,
+      compileImplies = \arg1 arg2 -> Multiplication (Max (Constant 0) arg1) arg2,--Max (Negation arg1) arg2,
       compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
       compileLt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2)) (IndicatorFunction arg1 arg2),
       compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
@@ -125,54 +125,54 @@ dl2Translation =
 godelTranslation :: DifferentialLogicImplementation
 godelTranslation =
   DifferentialLogicImplementation
-    { compileAnd = Left Min,
-      compileOr = Left Max,
+    { compileAnd = Left (\arg1 arg2 -> Subtraction (Constant 1) (Min arg1 arg2)),
+      compileOr = Left (\arg1 arg2 -> Subtraction (Constant 1) (Max arg1 arg2)),
       compileNot = Just (\arg -> Subtraction (Constant 1) arg),
-      compileImplies = \arg1 arg2 -> Max (Negation arg1) arg2,
-      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-      compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-      compileEq = IndicatorFunction,
-      compileNeq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-      compileTrue = 1,
-      compileFalse = 0
+      compileImplies = \arg1 arg2 -> Subtraction (Constant 1) (Max (Subtraction (Constant 1) arg1) arg2),
+      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileLt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileGt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileEq = \arg1 arg2 -> Subtraction (Constant 1) (IndicatorFunction arg1 arg2),
+      compileNeq = IndicatorFunction,
+      compileTrue = 0,
+      compileFalse = 1
     }
 
 -- | from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 lukasiewiczTranslation :: DifferentialLogicImplementation
 lukasiewiczTranslation =
   DifferentialLogicImplementation
-    { compileAnd = Left (\arg1 arg2 -> Max (Subtraction (Addition arg1 arg2) (Constant 1)) arg2),
-      compileOr = Left (\arg1 arg2 -> Min (Addition arg1 arg2) (Constant 1)),
+    { compileAnd = Left (\arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction (Addition arg1 arg2) (Constant 1)))),
+      compileOr = Left (\arg1 arg2 -> Subtraction (Constant 1) (Min (Addition arg1 arg2) (Constant 1))),
       compileNot = Just (\arg -> Subtraction (Constant 1) arg),
-      compileImplies = \arg1 arg2 -> Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2),
-      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-      compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-      compileEq = IndicatorFunction,
-      compileNeq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-      compileTrue = 1,
-      compileFalse = 0
+      compileImplies = \arg1 arg2 -> Subtraction (Constant 1) (Min (Constant 1) (Addition (Subtraction (Constant 1) arg1) arg2)),
+      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileLt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileGt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileEq = \arg1 arg2 -> Subtraction (Constant 1) (IndicatorFunction arg1 arg2),
+      compileNeq = IndicatorFunction,
+      compileTrue = 0,
+      compileFalse = 1
     }
 
 -- | from van Krieken, et al. "Analyzing differentiable fuzzy logic operators." 2022
 productTranslation :: DifferentialLogicImplementation
 productTranslation =
   DifferentialLogicImplementation
-    { compileAnd = Left Multiplication,
-      compileOr = Left (\arg1 arg2 -> Subtraction (Addition arg1 arg2) (Multiplication arg1 arg2)),
+    { compileAnd = Left (\arg1 arg2 -> Subtraction (Constant 1) (Multiplication arg1 arg2)),
+      compileOr = Left (\arg1 arg2 -> Subtraction (Constant 1) (Subtraction (Addition arg1 arg2) (Multiplication arg1 arg2))),
       compileNot = Just (\arg -> Subtraction (Constant 1) arg),
-      compileImplies = \arg1 arg2 -> Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2),
-      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-      compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-      compileEq = IndicatorFunction,
-      compileNeq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-      compileTrue = 1,
-      compileFalse = 0
+      compileImplies = \arg1 arg2 -> Subtraction (Constant 1) (Addition (Subtraction (Constant 1) arg1) (Multiplication arg1 arg2)),
+      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileLt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileGt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileEq = \arg1 arg2 -> Subtraction (Constant 1) (IndicatorFunction arg1 arg2),
+      compileNeq = IndicatorFunction,
+      compileTrue = 0,
+      compileFalse = 1
     }
 
 -- | sets parameter p for the Yager DL (by default set to 1)
@@ -183,8 +183,8 @@ yagerTranslation = parameterisedYagerTranslation 1 -- change constant here
 parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
 parameterisedYagerTranslation p =
   DifferentialLogicImplementation
-    { compileAnd = Left (\arg1 arg2 ->
-        Max
+    { compileAnd = Left (\arg1 arg2 -> Subtraction (Constant 1)
+        (Max
           ( Subtraction
               (Constant 1)
               ( Power
@@ -195,30 +195,30 @@ parameterisedYagerTranslation p =
                   (Division (Constant 1) (Constant (fromRational p)))
               )
           )
-          (Constant 0)),
+          (Constant 0))),
       compileNot = Just (\arg -> Subtraction (Constant 1) arg),
-      compileOr = Left (\arg1 arg2 ->
-        Min
+      compileOr = Left (\arg1 arg2 -> Subtraction (Constant 1)
+        (Min
           ( Power
               (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
               (Division (Constant 1) (Constant (fromRational p)))
           )
-          (Constant 1)),
-      compileImplies = \arg1 arg2 ->
+          (Constant 1))),
+      compileImplies = \arg1 arg2 -> Subtraction (Constant 1) (
         Min
           ( Power
               (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
               (Division (Constant 1) (Constant (fromRational p)))
           )
-          (Constant 1),
-      compileLe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2)),
-      compileLt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg1 arg2))),
-      compileGe = \arg1 arg2 -> Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1)),
-      compileGt = \arg1 arg2 -> Negation (Subtraction (Constant 1) (Max (Constant 0) (Subtraction arg2 arg1))),
-      compileEq = IndicatorFunction,
-      compileNeq = \arg1 arg2 -> Negation (IndicatorFunction arg1 arg2),
-      compileTrue = 1,
-      compileFalse = 0
+          (Constant 1)),
+      compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileLt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
+      compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileGt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
+      compileEq = \arg1 arg2 -> Subtraction (Constant 1) (IndicatorFunction arg1 arg2),
+      compileNeq = IndicatorFunction,
+      compileTrue = 0,
+      compileFalse = 1
     }
 
 -- | from Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020
