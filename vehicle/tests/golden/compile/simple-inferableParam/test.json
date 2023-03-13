@@ -10,6 +10,10 @@
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/",
     "needs": ["spec.vcl"],
     "produces": ["Marabou.queries/*.txt"],
+    "ignore":
+    {
+      "matches": ".*\"fileHash\".*"
+    },
     "enabled": false
   }
 ]

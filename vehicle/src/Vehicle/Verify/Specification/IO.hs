@@ -99,8 +99,7 @@ outputVerificationPlan maybeFolder plan = do
                 <> indent 2 ("error:" <+> pretty (show err))
 
 readVerificationPlan :: MonadIO m => FilePath -> m VerificationPlan
-readVerificationPlan folder = do
-  let planFile = verificationPlanFileName folder
+readVerificationPlan planFile = do
   errorOrResult <-
     liftIO $
       catch

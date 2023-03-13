@@ -130,7 +130,7 @@ modeOptionsParser =
 typeCheckDescription :: InfoMod ModeOptions
 typeCheckDescription =
   progDesc $
-    "typeCheck a " <> vehicleSpecificationFileExtension <> " file to an output target"
+    "type checks a " <> vehicleSpecificationFileExtension <> " file to an output target"
 
 typeCheckParser :: Parser TypeCheckOptions
 typeCheckParser =
