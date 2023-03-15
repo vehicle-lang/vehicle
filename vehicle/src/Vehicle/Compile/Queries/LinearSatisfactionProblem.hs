@@ -36,7 +36,6 @@ import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
 generateCLSTProblem ::
