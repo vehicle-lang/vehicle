@@ -45,6 +45,20 @@ data Verifier = Verifier
   }
 
 --------------------------------------------------------------------------------
+-- Addresses
+
+-- | The number of an individual query within a `Property` when traversed
+-- depth-first.
+type QueryID = Int
+
+type QueryAddress = (PropertyAddress, QueryID)
+
+-- | Indices into a multi-property.
+type MultiPropertyIndices = [Int]
+
+type PropertyAddress = (Name, MultiPropertyIndices)
+
+--------------------------------------------------------------------------------
 -- Queries
 
 -- | Location of a verifier query file.

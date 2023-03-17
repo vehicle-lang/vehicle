@@ -4,312 +4,372 @@
       "unusedVar",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "unusedVar",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        1,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [],
-                            "lowerBounds": []
-                          }
-                        }
+                        [
+                          "unusedVar",
+                          []
+                        ],
+                        1
                       ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 5,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "2": 1,
-                                "0": -1
+                      {
+                        "userVar": [
+                          [
+                            1,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [],
+                                "lowerBounds": []
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 5,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "2": 1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ],
     [
       "underConstrainedVar1",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "underConstrainedVar1",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        1,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 5,
-                                  "constantValue": 1,
-                                  "coefficients": {
-                                    "2": -1,
-                                    "1": 1
-                                  }
-                                }
-                              }
-                            ],
-                            "lowerBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 5,
-                                  "constantValue": 2,
-                                  "coefficients": {
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
+                        [
+                          "underConstrainedVar1",
+                          []
+                        ],
+                        1
                       ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 5,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "2": 1,
-                                "1": -1,
-                                "0": -1
+                      {
+                        "userVar": [
+                          [
+                            1,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 5,
+                                      "constantValue": 1,
+                                      "coefficients": {
+                                        "2": -1,
+                                        "1": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "lowerBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 5,
+                                      "constantValue": 2,
+                                      "coefficients": {
+                                        "1": -1
+                                      }
+                                    }
+                                  }
+                                ]
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 5,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "2": 1,
+                                    "1": -1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ],
     [
       "underConstrainedVar2",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "underConstrainedVar2",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        1,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 5,
-                                  "constantValue": 2,
-                                  "coefficients": {
-                                    "2": -1,
-                                    "1": 1
-                                  }
-                                }
-                              }
-                            ],
-                            "lowerBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 5,
-                                  "constantValue": 1,
-                                  "coefficients": {
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
+                        [
+                          "underConstrainedVar2",
+                          []
+                        ],
+                        1
                       ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 5,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "2": 1,
-                                "1": -1,
-                                "0": -2
+                      {
+                        "userVar": [
+                          [
+                            1,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 5,
+                                      "constantValue": 2,
+                                      "coefficients": {
+                                        "2": -1,
+                                        "1": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "lowerBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 5,
+                                      "constantValue": 1,
+                                      "coefficients": {
+                                        "1": -1
+                                      }
+                                    }
+                                  }
+                                ]
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 5,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "2": 1,
+                                    "1": -1,
+                                    "0": -2
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ],
     [
       "underConstrainedVars",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "underConstrainedVars",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        3,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [],
-                            "lowerBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 7,
-                                  "constantValue": 2,
-                                  "coefficients": {
-                                    "3": -1
+                        [
+                          "underConstrainedVars",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            3,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [],
+                                "lowerBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 7,
+                                      "constantValue": 2,
+                                      "coefficients": {
+                                        "3": -1
+                                      }
+                                    }
                                   }
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      [
-                        2,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [],
-                            "lowerBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
-                                  "numberOfVars": 7,
-                                  "constantValue": 1,
-                                  "coefficients": {
-                                    "3": -1,
-                                    "2": -1
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      [
-                        1,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [],
-                            "lowerBounds": []
-                          }
-                        }
-                      ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 7,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "4": 1,
-                                "1": -1,
-                                "0": -1
+                                ]
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ],
+                          [
+                            2,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [],
+                                "lowerBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 7,
+                                      "constantValue": 1,
+                                      "coefficients": {
+                                        "3": -1,
+                                        "2": -1
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            1,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [],
+                                "lowerBounds": []
+                              }
+                            }
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 7,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "4": 1,
+                                    "1": -1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ]
   ],

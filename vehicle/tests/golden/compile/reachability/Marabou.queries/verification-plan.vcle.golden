@@ -4,61 +4,76 @@
       "reachable",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "reachable",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        1,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 6,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "3": 1,
-                                "1": -1
-                              }
-                            }
-                          }
-                        }
+                        [
+                          "reachable",
+                          []
+                        ],
+                        1
                       ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 6,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "2": 1,
-                                "0": -1
+                      {
+                        "userVar": [
+                          [
+                            1,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 6,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "3": 1,
+                                    "1": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 6,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "2": 1,
+                                    "0": -1
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ]
   ],
@@ -73,7 +88,7 @@
       {
         "name": "f",
         "filePath": "fake.onnx",
-        "fileHash": -6969277137687631667
+        "fileHash": -4193105834029876598
       }
     ],
     "datasetSummaries": []

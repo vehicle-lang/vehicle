@@ -4,218 +4,290 @@
       "prop1",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "prop1",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "prop1",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ],
-                    "metaNetwork": [
+                    [
                       [
-                        "f",
-                        "fake.onnx"
-                      ]
-                    ]
-                  },
-                  {
-                    "userVar": [
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "prop1",
+                          []
+                        ],
+                        2
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": true
+                  ]
+                }
+              },
+              "negated": true
+            }
           }
-        }
+        ]
       }
     ],
     [
       "prop2",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "prop2",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
-                              }
-                            }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
-                    ]
-                  },
-                  {
-                    "userVar": [
-                      [
-                        0,
-                        {
-                          "tag": "FourierMotzkinSolution",
-                          "contents": {
-                            "upperBounds": [
-                              {
-                                "assertionRel": "LessThanOrEqualTo",
-                                "assertionExpr": {
+                        [
+                          "prop2",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
                                   "numberOfVars": 4,
                                   "constantValue": 0,
                                   "coefficients": {
-                                    "0": 1
+                                    "1": 1,
+                                    "0": -1
                                   }
                                 }
                               }
-                            ],
-                            "lowerBounds": []
-                          }
-                        }
-                      ]
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ],
-                    "metaNetwork": [
+                    [
                       [
-                        "f",
-                        "fake.onnx"
-                      ]
+                        [
+                          "prop2",
+                          []
+                        ],
+                        2
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "FourierMotzkinSolution",
+                              "contents": {
+                                "upperBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "numberOfVars": 4,
+                                      "constantValue": 0,
+                                      "coefficients": {
+                                        "0": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "lowerBounds": []
+                              }
+                            }
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ],
     [
       "prop3",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "prop3",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "prop3",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ],
-                    "metaNetwork": [
+                    [
                       [
-                        "f",
-                        "fake.onnx"
-                      ]
-                    ]
-                  },
-                  {
-                    "userVar": [
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "prop3",
+                          []
+                        ],
+                        2
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ]
   ],

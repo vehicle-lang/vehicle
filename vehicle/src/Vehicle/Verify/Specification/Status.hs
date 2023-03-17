@@ -10,40 +10,50 @@ import Vehicle.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification
 
 class IsVerified a where
   isVerified :: a -> Bool
-
---------------------------------------------------------------------------------
--- Verification status of a single property
 
 instance IsVerified QueryResult where
   isVerified = \case
     SAT {} -> True
     UnSAT -> False
 
-instance IsVerified (QueryNegationStatus, MaybeTrivial QueryResult) where
-  isVerified (negated, sat) = evaluateQuery negated isVerified sat
+evaluateQuery :: QueryNegationStatus -> MaybeTrivial QueryResult -> Bool
+evaluateQuery negated q =
+  negated `xor` case q of
+    Trivial b -> b
+    NonTrivial a -> isVerified a
 
 --------------------------------------------------------------------------------
 -- Verification status of a single property
 
 data PropertyStatus
-  = MultiPropertyStatus [PropertyStatus]
-  | SinglePropertyStatus (QueryNegationStatus, MaybeTrivial QueryResult)
+  = PropertyStatus QueryNegationStatus (MaybeTrivial QueryResult)
   deriving (Generic)
 
 instance FromJSON PropertyStatus
 
 instance ToJSON PropertyStatus
 
-instance IsVerified PropertyStatus where
+--------------------------------------------------------------------------------
+-- Verification status of a multi property
+
+data MultiPropertyStatus
+  = MultiPropertyStatus [MultiPropertyStatus]
+  | SinglePropertyStatus (QueryNegationStatus, MaybeTrivial QueryResult)
+  deriving (Generic)
+
+instance FromJSON MultiPropertyStatus
+
+instance ToJSON MultiPropertyStatus
+
+instance IsVerified MultiPropertyStatus where
   isVerified = \case
     MultiPropertyStatus ps -> and (fmap isVerified ps)
-    SinglePropertyStatus s -> isVerified s
+    SinglePropertyStatus (negated, result) -> evaluateQuery negated result
 
-prettyPropertyStatus :: Name -> PropertyStatus -> Doc a
+prettyPropertyStatus :: Name -> MultiPropertyStatus -> Doc a
 prettyPropertyStatus name = \case
   MultiPropertyStatus ps -> do
     let numberedSubproperties =
@@ -74,7 +84,7 @@ prettyNameAndStatus name verified = do
 --------------------------------------------------------------------------------
 -- Verification status of the specification
 
-newtype SpecificationStatus = SpecificationStatus (Map Name PropertyStatus)
+newtype SpecificationStatus = SpecificationStatus (Map Name MultiPropertyStatus)
   deriving (Generic)
 
 instance FromJSON SpecificationStatus
