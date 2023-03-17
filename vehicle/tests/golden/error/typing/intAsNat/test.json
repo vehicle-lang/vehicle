@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s intAsNat.vcl",
+  "run": "vehicle check -s intAsNat.vcl",
   "needs": ["intAsNat.vcl"]
 }

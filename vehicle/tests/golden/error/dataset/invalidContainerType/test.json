@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s invalidContainerType.vcl",
+  "run": "vehicle check -s invalidContainerType.vcl",
   "needs": ["invalidContainerType.vcl"]
 }

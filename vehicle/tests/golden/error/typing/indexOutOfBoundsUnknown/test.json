@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s indexOutOfBoundsUnknown.vcl",
+  "run": "vehicle check -s indexOutOfBoundsUnknown.vcl",
   "needs": ["indexOutOfBoundsUnknown.vcl"]
 }

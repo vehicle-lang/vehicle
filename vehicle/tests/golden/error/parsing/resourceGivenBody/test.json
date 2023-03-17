@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s resourceGivenBody.vcl",
+  "run": "vehicle check -s resourceGivenBody.vcl",
   "needs": ["resourceGivenBody.vcl"]
 }

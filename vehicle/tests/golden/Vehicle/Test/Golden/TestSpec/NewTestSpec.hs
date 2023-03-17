@@ -48,8 +48,6 @@ import Vehicle qualified (ModeOptions, Options (..))
 import Vehicle qualified as ModeOptions (ModeOptions (..))
 import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Backend.Prelude qualified as Backend
-import Vehicle.Check qualified as CheckOptions (proofCache)
-import Vehicle.Check qualified as Vehicle (CheckOptions)
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.Compile qualified as CompileOptions
   ( datasetLocations,
@@ -90,6 +88,8 @@ import Vehicle.TypeCheck qualified as TypeCheckOptions
   ( specification,
   )
 import Vehicle.TypeCheck qualified as Vehicle
+import Vehicle.Validate qualified as ValidateOptions (proofCache)
+import Vehicle.Validate qualified as Vehicle (ValidateOptions)
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions
   ( VerifyOptions (verificationPlan),
@@ -247,12 +247,12 @@ instance TestSpecLike Vehicle.Options where
 instance TestSpecLike Vehicle.ModeOptions where
   testSpecData :: Vehicle.ModeOptions -> TestSpecData
   testSpecData = \case
-    ModeOptions.TypeCheck opts -> testSpecData opts
+    ModeOptions.Check opts -> testSpecData opts
     ModeOptions.Compile opts -> testSpecData opts
     ModeOptions.CompileAndVerify opts -> testSpecData opts
     ModeOptions.Verify opts -> testSpecData opts
     ModeOptions.Export opts -> testSpecData opts
-    ModeOptions.Check opts -> testSpecData opts
+    ModeOptions.Validate opts -> testSpecData opts
 
 instance TestSpecLike Vehicle.TypeCheckOptions where
   targetName :: Vehicle.TypeCheckOptions -> String
@@ -327,12 +327,12 @@ instance TestSpecLike Vehicle.ExportOptions where
   produces :: Vehicle.ExportOptions -> Either String [FilePattern]
   produces = traverse parseFilePattern . maybeToList . ExportOptions.outputFile
 
-instance TestSpecLike Vehicle.CheckOptions where
-  targetName :: Vehicle.CheckOptions -> String
+instance TestSpecLike Vehicle.ValidateOptions where
+  targetName :: Vehicle.ValidateOptions -> String
   targetName = const "Check"
 
-  needs :: Vehicle.CheckOptions -> [FilePath]
-  needs = (: []) . CheckOptions.proofCache
+  needs :: Vehicle.ValidateOptions -> [FilePath]
+  needs = (: []) . ValidateOptions.proofCache
 
-  produces :: Vehicle.CheckOptions -> Either String [FilePattern]
+  produces :: Vehicle.ValidateOptions -> Either String [FilePattern]
   produces = const (return [])

@@ -232,24 +232,24 @@ file, which contains:
 - The file paths of the networks and datasets provided to the original
   :code:`verify` command along with a hash of the contents of each file.
 
-The :code:`check` command can then be run to use the proof cache to check
+The :code:`validate` command can then be run to use the proof cache to check
 the status of the specification as follows:
 
 .. code-block:: bash
 
-   vehicle check \
+   vehicle validate \
     --proofCache /my/project/spec.vclp
 
 Vehicle will read the proof cache, and use its contents to find and rehash
 the networks and datasets that were used during the original verification
 of the specification.
 If the new hashes match those stored in the proof cache then the check passes,
-otherwise the check command will exit with an error.
+otherwise the ``validate`` command will exit with an error.
 
 .. note::
 
     For obvious reasons, moving or renaming any of the networks or datasets
-    will result in the :code:`check` command failing.
+    will result in the ``validate`` command failing.
 
 Limitations of verification
 ---------------------------

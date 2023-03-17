@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s annotationWithNoDeclaration.vcl",
+  "run": "vehicle check -s annotationWithNoDeclaration.vcl",
   "needs": ["annotationWithNoDeclaration.vcl"]
 }

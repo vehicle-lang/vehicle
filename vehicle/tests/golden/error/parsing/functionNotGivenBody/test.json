@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s functionNotGivenBody.vcl",
+  "run": "vehicle check -s functionNotGivenBody.vcl",
   "needs": ["functionNotGivenBody.vcl"]
 }

@@ -22,11 +22,11 @@ Command-line interface
 ----------------------
 
 A specification can be type-checked on the command-line using the
-:code:`vehicle typeCheck` mode.
+:code:`vehicle check` mode.
 
 .. code-block:: bash
 
-  vehicle typeCheck \
+  vehicle check \
     --specification my/project/specification.vcl
 
 The table below contains the full list of possible arguments:

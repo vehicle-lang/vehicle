@@ -1,4 +1,4 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s wrongExtension.vclt"
+  "run": "vehicle check -s wrongExtension.vclt"
 }

@@ -13,7 +13,7 @@ import Vehicle
     Options (..),
     defaultGlobalOptions,
   )
-import Vehicle.Check (CheckOptions (..))
+import Vehicle.Backend.Prelude (TypingSystem (..))
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Prelude
@@ -23,6 +23,8 @@ import Vehicle.Prelude
     layoutAsString,
     line,
   )
+import Vehicle.TypeCheck (TypeCheckOptions (..))
+import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifyOptions (..))
 import Vehicle.Verify.Core (VerifierID (..))
 
@@ -30,6 +32,17 @@ commandLineParserTests :: TestTree
 commandLineParserTests =
   testGroup
     "CommandLineParser"
+    [ noModeTests,
+      checkModeTests,
+      verifyTests,
+      compileAndVerifyTests,
+      validateModeTests
+    ]
+
+noModeTests :: TestTree
+noModeTests =
+  testGroup
+    "noMode"
     [ parserTest
         "redirectLogs"
         "vehicle --redirectLogs myLogs/test.txt"
@@ -49,21 +62,80 @@ commandLineParserTests =
                 { loggingLevel = MinDetail
                 },
             modeOptions = Nothing
-          },
-      parserTest
-        "checkMode"
-        "vehicle check --proofCache mpc.vclp"
+          }
+    ]
+
+checkModeTests :: TestTree
+checkModeTests =
+  testGroup
+    "checkMode"
+    [ parserTest
+        "basic"
+        "vehicle check \
+        \--specification test/spec.vcl \
+        \--declaration property1"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Check $
-                  CheckOptions
+                  TypeCheckOptions
+                    { specification = "test/spec.vcl",
+                      typingSystem = Standard,
+                      declarationsToCompile = ["property1"]
+                    }
+          }
+    ]
+
+validateModeTests :: TestTree
+validateModeTests =
+  testGroup
+    "validateMode"
+    [ parserTest
+        "basic"
+        "vehicle validate --proofCache mpc.vclp"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Validate $
+                  ValidateOptions
                     { proofCache = "mpc.vclp"
                     }
-          },
-      parserTest
-        "compileAndVerifyMode1"
+          }
+    ]
+
+verifyTests :: TestTree
+verifyTests =
+  testGroup
+    "verifyMode"
+    [ parserTest
+        "basic"
+        "vehicle verify \
+        \--verificationPlan test/verificationPlan.vcle \
+        \--verifier Marabou \
+        \--verifierLocation bin/Marabou \
+        \--proofCache test/proofCache.vclp"
+        Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Verify $
+                  VerifyOptions
+                    { verificationPlan = "test/verificationPlan.vcle",
+                      verifierID = Marabou,
+                      verifierLocation = Just "bin/Marabou",
+                      proofCache = Just "test/proofCache.vclp"
+                    }
+          }
+    ]
+
+compileAndVerifyTests :: TestTree
+compileAndVerifyTests =
+  testGroup
+    "compileAndVerify"
+    [ parserTest
+        "basic"
         "vehicle compileAndVerify \
         \--specification test/spec.vcl \
         \--network f:test/myNetwork.onnx \
@@ -85,7 +157,7 @@ commandLineParserTests =
                     }
           },
       parserTest
-        "compileAndVerifyMode2"
+        "complex"
         "vehicle compileAndVerify \
         \--specification test/spec.vcl \
         \--property p1 \
@@ -109,25 +181,6 @@ commandLineParserTests =
                       verifierID = Marabou,
                       verifierLocation = Nothing,
                       proofCache = Nothing
-                    }
-          },
-      parserTest
-        "verifyMode"
-        "vehicle verify \
-        \--verificationPlan test/verificationPlan.vcle \
-        \--verifier Marabou \
-        \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vclp"
-        Options
-          { globalOptions = defaultGlobalOptions,
-            modeOptions =
-              Just $
-                Verify $
-                  VerifyOptions
-                    { verificationPlan = "test/verificationPlan.vcle",
-                      verifierID = Marabou,
-                      verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vclp"
                     }
           }
     ]

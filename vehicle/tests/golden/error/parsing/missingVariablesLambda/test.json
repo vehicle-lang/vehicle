@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle typeCheck -s missingVariablesLambda.vcl",
+  "run": "vehicle check -s missingVariablesLambda.vcl",
   "needs": ["missingVariablesLambda.vcl"]
 }

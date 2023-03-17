@@ -36,7 +36,6 @@ import Options.Applicative
   )
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
 import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..))
-import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Export (ExportOptions (..))
@@ -50,6 +49,7 @@ import Vehicle.Prelude
     vehicleVerificationPlanFileExtension,
   )
 import Vehicle.TypeCheck (TypeCheckOptions (..))
+import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ commandLineOptionsParserInfo =
   info
     (optionsParser <**> helper)
     ( fullDesc
-        <> header "Vehicle - a program for writing and checking neural network specifications"
+        <> header "Vehicle - a program for enforcing neural network specifications"
     )
 
 --------------------------------------------------------------------------------
@@ -117,20 +117,20 @@ modeOptionsParser :: Parser (Maybe ModeOptions)
 modeOptionsParser =
   optional $
     hsubparser $
-      command "typeCheck" typeCheckParserInfo
+      command "check" typeCheckParserInfo
         <> command "compile" compileParserInfo
         <> command "verify" verifyParserInfo
         <> command "compileAndVerify" compileAndVerifyParserInfo
-        <> command "check" checkParserInfo
+        <> command "validate" validateParserInfo
         <> command "export" exportParserInfo
 
 --------------------------------------------------------------------------------
--- Type-check mode
+-- Check mode
 
 typeCheckDescription :: InfoMod ModeOptions
 typeCheckDescription =
   progDesc $
-    "type checks a " <> vehicleSpecificationFileExtension <> " file to an output target"
+    "type checks a " <> vehicleSpecificationFileExtension <> " file"
 
 typeCheckParser :: Parser TypeCheckOptions
 typeCheckParser =
@@ -140,7 +140,7 @@ typeCheckParser =
     <*> declarationParser
 
 typeCheckParserInfo :: ParserInfo ModeOptions
-typeCheckParserInfo = info (TypeCheck <$> typeCheckParser) typeCheckDescription
+typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
 
 --------------------------------------------------------------------------------
 -- Compile mode
@@ -214,18 +214,18 @@ compileAndVerifyParserInfo =
 --------------------------------------------------------------------------------
 -- Check mode
 
-checkDescription :: InfoMod ModeOptions
-checkDescription =
+validateDescription :: InfoMod ModeOptions
+validateDescription =
   progDesc
-    "Check the verification status of a Vehicle specification."
+    "Validate the verification status of a Vehicle specification."
 
-checkParser :: Parser CheckOptions
-checkParser =
-  CheckOptions
-    <$> checkProofCacheParser
+validateParser :: Parser ValidateOptions
+validateParser =
+  ValidateOptions
+    <$> validateProofCacheParser
 
-checkParserInfo :: ParserInfo ModeOptions
-checkParserInfo = info (Check <$> checkParser) checkDescription
+validateParserInfo :: ParserInfo ModeOptions
+validateParserInfo = info (Validate <$> validateParser) validateDescription
 
 --------------------------------------------------------------------------------
 -- Export mode
@@ -461,13 +461,12 @@ proofCacheOption helpField =
       <> metavar "FILE"
       <> helpField
 
-checkProofCacheParser :: Parser FilePath
-checkProofCacheParser =
+validateProofCacheParser :: Parser FilePath
+validateProofCacheParser =
   proofCacheOption $
     help
-      "The location of the proof cache \
-      \ that can be used to check the verification status \
-      \ of the specification. The proof cache can be generated via the \
+      "The location of the proof cache to validate. \
+      \ The proof cache can be generated via the \
       \ `vehicle verify` command."
 
 exportProofCacheParser :: Parser FilePath

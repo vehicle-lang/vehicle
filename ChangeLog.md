@@ -30,7 +30,9 @@
   The old behaviour of the `verify` command which performed both compilation
   and verification has been retained in the new `compileAndVerify` command.
 
-* Added new `typeCheck` mode to the command line interface that only type-checks the specification.
+* The existing `check` mode in the command line interface has been renamed `validate`.
+
+* The new `check` mode in the command line interface type-checks the specification.
 
 ### Bug fixes
 

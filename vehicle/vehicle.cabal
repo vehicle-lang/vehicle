@@ -100,7 +100,6 @@ library
     Vehicle.Backend.Agda
     Vehicle.Backend.LossFunction
     Vehicle.Backend.Prelude
-    Vehicle.Check
     Vehicle.CommandLine
     Vehicle.Compile
     Vehicle.Compile.Descope
@@ -144,6 +143,7 @@ library
     Vehicle.Prelude
     Vehicle.Resource
     Vehicle.TypeCheck
+    Vehicle.Validate
     Vehicle.Verify
     Vehicle.Verify.Core
     Vehicle.Verify.ProofCache

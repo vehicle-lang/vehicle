@@ -1,6 +1,6 @@
-module Vehicle.Check
-  ( CheckOptions (..),
-    check,
+module Vehicle.Validate
+  ( ValidateOptions (..),
+    validate,
   )
 where
 
@@ -12,22 +12,22 @@ import Vehicle.Verify.ProofCache (ProofCache (..), readProofCache)
 import Vehicle.Verify.Specification.Status (isVerified)
 
 --------------------------------------------------------------------------------
--- Checking
+-- Proof validation
 
-newtype CheckOptions = CheckOptions
+newtype ValidateOptions = ValidateOptions
   { proofCache :: FilePath
   }
   deriving (Eq, Show)
 
-check :: LoggingSettings -> CheckOptions -> IO ()
-check loggingSettings checkOptions = runImmediateLogger loggingSettings $ do
-  -- If the user has specificied no logging target for check mode then
+validate :: LoggingSettings -> ValidateOptions -> IO ()
+validate loggingSettings checkOptions = runImmediateLogger loggingSettings $ do
+  -- If the user has specified no logging target for check mode then
   -- default to command-line.
   status <- checkStatus checkOptions
   programOutput $ pretty status
 
-checkStatus :: CheckOptions -> ImmediateLoggerT IO CheckResult
-checkStatus CheckOptions {..} = do
+checkStatus :: ValidateOptions -> ImmediateLoggerT IO ValidateResult
+checkStatus ValidateOptions {..} = do
   ProofCache {..} <- liftIO $ readProofCache proofCache
   (missingResources, alteredResources) <- checkIntegrityOfResources resourcesIntegrityInfo
   return $ case (missingResources, alteredResources, isVerified status) of
@@ -36,13 +36,13 @@ checkStatus CheckOptions {..} = do
     ([], [], False) -> Unverified
     ([], [], True) -> Verified
 
-data CheckResult
+data ValidateResult
   = Verified
   | Unverified
   | MissingResources (NonEmpty ResourceIntegrityInfo)
   | AlteredResources (NonEmpty ResourceIntegrityInfo)
 
-instance Pretty CheckResult where
+instance Pretty ValidateResult where
   pretty Verified = "Status: verified"
   pretty Unverified = "Status: unverified"
   pretty (MissingResources missingResources) =
