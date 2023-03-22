@@ -11,6 +11,7 @@ from pathlib import Path
 from vehicle import generate_loss_function
 from constraint_accuracy import get_constraint_accuracy
 
+#This file will run a custom-training for a single network, with parameters set throught the file
 
 def train(
     model,
@@ -83,9 +84,6 @@ def train(
         print(
             f"Train acc: {float(train_acc):.4f}, Train loss: {float(train_loss):.4f} --- Test acc: {float(test_acc):.4f}, Test loss: {float(test_loss):.4f}"
         )
-        dataFile = open("classification-data.csv", "a")
-        dataFile.write(str(epoch + 1) + "," + os.getenv('DLV') + "," + os.getenv('RATIOV') + "," + str(float(test_acc)) + "\n")
-        dataFile.close()
 
     return model
 
@@ -107,22 +105,18 @@ if __name__ == "__main__":
 
     networks = {"mnist": model}
 
+    # Set parameters for training 
     batch_size = 64
-    # epochs = 10
-    # alfa = 1
-    # beta = 1
-    epochs = int(os.getenv('EPOCHV'))
-    alfa = 100 - int(os.getenv('RATIOV'))
-    beta = int(os.getenv('RATIOV'))
+    epochs = 10
+    alfa = 1
+    beta = 1
 
+    # Get the dataset to be used, format to br prepared for neural network training
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
     # Scale images to the [0, 1] range
     X_train = X_train.astype("float32") / 255
     X_test = X_test.astype("float32") / 255
-    # Make sure images have shape (28, 28, 1)
-    # X_train = np.expand_dims(X_train, -1)
-    # X_test = np.expand_dims(X_test, -1)
 
     y_train = keras.utils.to_categorical(y_train, 10)
     y_test = keras.utils.to_categorical(y_test, 10)
@@ -133,8 +127,10 @@ if __name__ == "__main__":
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
     
+    # Specifiy methods of sampling for each of the variables quantified over in specification
     quantifier_sampling = {
         "x": lambda: random.choice(X_train),
+        #"x": 
         "j": lambda: random.randint(0, 27),
         "i": lambda: random.randint(0, 27),
         "k": lambda: random.randint(0, 9),
@@ -157,33 +153,19 @@ if __name__ == "__main__":
         quantifier_sampling,
     )
 
-    #---- uncomment if you'd like to save the trained model
-    #model.save('dl2_training')
+    #comment out if you don't want to to save the trained model
+    model.save('dl2_training')
     
 
-    #---- uncomment to get constraint accuracy for the model 
+    # Below code gets and prints constraint accuracy 
 
     indexes = np.random.randint(0, X_train.shape[0], size=1000)
     images = X_train[indexes]
     labels = y_train[indexes]
 
-    #indexes = np.random.randint(0, X_train.shape[0], size=1000)
-    #images = X_train[indexes]
-    #labels = y_train[indexes]
-
-    #epsilon = 0.01
-    #delta = 0.02
     epsilon = 0.01
-    # delta = 0.02
-
-    #constraint_acc = get_constraint_accuracy(model, images, labels, epsilon, delta)
-    #print(constraint_acc)
-    dataFile = open("constraint-data.csv", "a")
-    deltas = [0.015,0.016,0.017,0.018,0.019,0.02,0.021,0.022,0.023,0.024,0.025]
-    for delta in deltas:
-        constraint_acc = get_constraint_accuracy(model, images, labels, epsilon, delta)
-        print("delta=", delta, ", constraint satisfaction=", constraint_acc)
-        dataFile.write(str(int(os.getenv('EPOCHV'))) + "," + os.getenv('DLV') + "," + os.getenv('RATIOV') + "," + str(delta) + "," + str(float(constraint_acc)) + "\n")
-
-    dataFile.close()
+    delta = 0.02
+    
+    constraint_acc = get_constraint_accuracy(model, images, labels, epsilon, delta)
+    print(constraint_acc)
 

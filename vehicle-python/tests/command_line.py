@@ -4,6 +4,8 @@ import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
+#for experiments
+import os
 
 # Function that calls vehicle - it takes the options
 # TODO: check if it's None or else
@@ -40,7 +42,9 @@ def call_vehicle_to_generate_loss_json(
             # use the string below to specify which translation is used. the options are:
             #LossFunction (uses DL2 by default), LossFunction-DL2, LossFunction-Godel, LossFunction-Lukasiewicz,
             #  LossFunction-Product, LossFunction-STL (in progress, not currently working)
-            "LossFunction",
+            #"LossFunction",
+             # for experiments,
+            os.getenv('DLV'),
             "--specification",
             specification,
             "--outputFile",
