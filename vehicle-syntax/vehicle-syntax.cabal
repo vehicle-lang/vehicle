@@ -159,6 +159,6 @@ library
   -- alex-3.2.7.1-e-alex-74292c840d46e203e846167e7ae201e465952b30efa86f91f8eef0e8478e6cc0
 
   build-tool-depends:
-    , alex:alex    ==3.2.7
+    , alex:alex    ==3.2.7.1
     , BNFC:bnfc    >=2.9.4
     , happy:happy  >=1.19
