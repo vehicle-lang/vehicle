@@ -66,7 +66,7 @@ writeObjectFile specificationFile spec result = do
   maybeErr <-
     liftIO $
       catch
-        (do writeFileAtomically BIO.writeFile interfaceFile contents; return Nothing)
+        (do safeWriteToFile BIO.hPut interfaceFile contents; return Nothing)
         (\(err :: IOException) -> return $ Just err)
 
   case maybeErr of
