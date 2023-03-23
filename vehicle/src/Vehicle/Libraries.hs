@@ -59,11 +59,11 @@ installLibrary Library {..} = do
   -- Write the library info file out
   let libraryInfoFile = getLibraryInfoFile libraryFolder
   let libraryInfoFileContent = encodePretty libraryInfo
-  liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
+  liftIO $ writeFileAtomically BIO.writeFile libraryInfoFile libraryInfoFileContent
 
   -- Write the contents of the library out
   let libraryContentFile = libraryFolder </> name <.> vehicleFileExtension
-  liftIO $ TIO.writeFile libraryContentFile libraryContent
+  liftIO $ writeFileAtomically TIO.writeFile libraryContentFile libraryContent
 
 -- | Finds the file path to the library content. At the moment
 -- this is very hacky, as it assumes there's a single file per library

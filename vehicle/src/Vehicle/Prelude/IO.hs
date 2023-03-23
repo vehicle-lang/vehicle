@@ -4,6 +4,7 @@ module Vehicle.Prelude.IO
     vehicleProofCacheFileExtension,
     vehicleLibraryExtension,
     removeFileIfExists,
+    writeFileAtomically,
     fatalError,
     programOutput,
     getVehiclePath,
@@ -16,12 +17,13 @@ import Control.Exception (catch, throwIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Version (Version)
 import Prettyprinter (Doc)
-import System.Directory (createDirectoryIfMissing, removeFile)
+import System.Directory (copyFile, createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
-import System.FilePath ((</>))
+import System.FilePath (takeFileName, (</>))
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
+import System.IO.Temp (withSystemTempFile)
 import System.Info (os)
 
 --------------------------------------------------------------------------------
@@ -89,6 +91,14 @@ getVehiclePath = do
               <> show env
   liftIO $ createDirectoryIfMissing False vehiclePath
   return vehiclePath
+
+-- | Writes a file atomically by first writing it to a temporary file and
+-- then copying that temporary file into place.
+writeFileAtomically :: (FilePath -> a -> IO ()) -> FilePath -> a -> IO ()
+writeFileAtomically write file contents = do
+  withSystemTempFile (takeFileName file) $ \tempFile _handle -> do
+    write tempFile contents
+    copyFile tempFile file
 
 --------------------------------------------------------------------------------
 -- Other
