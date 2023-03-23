@@ -7,53 +7,91 @@
         "contents": [
           {
             "tag": "SingleProperty",
-            "contents": {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "tag": "NonTrivial",
-                  "contents": {
-                    "unDisjunctAll": [
-                      {
-                        "userVar": [],
-                        "metaNetwork": [
+            "contents": [
+              [
+                "index",
+                [
+                  0
+                ]
+              ],
+              {
+                "tag": "Query",
+                "contents": {
+                  "queries": {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "unDisjunctAll": [
+                        [
                           [
-                            "f",
-                            "fake.onnx"
-                          ]
+                            [
+                              "index",
+                              [
+                                0
+                              ]
+                            ],
+                            1
+                          ],
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
+                            ]
+                          }
                         ]
-                      }
-                    ]
-                  }
-                },
-                "negated": false
+                      ]
+                    }
+                  },
+                  "negated": false
+                }
               }
-            }
+            ]
           },
           {
             "tag": "SingleProperty",
-            "contents": {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "tag": "NonTrivial",
-                  "contents": {
-                    "unDisjunctAll": [
-                      {
-                        "userVar": [],
-                        "metaNetwork": [
+            "contents": [
+              [
+                "index",
+                [
+                  1
+                ]
+              ],
+              {
+                "tag": "Query",
+                "contents": {
+                  "queries": {
+                    "tag": "NonTrivial",
+                    "contents": {
+                      "unDisjunctAll": [
+                        [
                           [
-                            "f",
-                            "fake.onnx"
-                          ]
+                            [
+                              "index",
+                              [
+                                1
+                              ]
+                            ],
+                            1
+                          ],
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
+                            ]
+                          }
                         ]
-                      }
-                    ]
-                  }
-                },
-                "negated": false
+                      ]
+                    }
+                  },
+                  "negated": false
+                }
               }
-            }
+            ]
           }
         ]
       }
