@@ -7,7 +7,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
 import Control.Monad.State
-import Control.Monad.Writer (MonadWriter (..), execWriterT, runWriterT)
+import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (elemIndex)
 import Data.Map (Map)
@@ -24,16 +24,14 @@ scopeCheck ::
   MonadCompile m =>
   ImportedModules ->
   UnscopedProg ->
-  m (ScopedProg, DependencyGraph)
+  m ScopedProg
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
-  (prog, dependencies) <- runReaderT (scopeProg e) importCtx
-  return (prog, fromEdges dependencies)
+  prog <- runReaderT (scopeProg e) importCtx
+  return prog
 
 scopeCheckClosedExpr :: MonadCompile m => UnscopedExpr -> m ScopedExpr
-scopeCheckClosedExpr e =
-  fst
-    <$> runWriterT (runReaderT (scopeExpr e) (mempty, mempty))
+scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 
 --------------------------------------------------------------------------------
 -- Type synonyms
@@ -65,27 +63,25 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: MonadScope m => UnscopedProg -> m (ScopedProg, DependencyList)
-scopeProg (Main ds) = first Main <$> scopeDecls ds
+scopeProg :: MonadScope m => UnscopedProg -> m ScopedProg
+scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: MonadScope m => [UnscopedDecl] -> m ([ScopedDecl], DependencyList)
+scopeDecls :: MonadScope m => [UnscopedDecl] -> m [ScopedDecl]
 scopeDecls = \case
-  [] -> return ([], [])
+  [] -> return []
   (d : ds) -> do
     let ident = identifierOf d
     let identName = nameOf ident
-    (d', dep) <- do
-      (d', dep) <- runWriterT $ scopeDecl d
-      return (d', dep)
+    d' <- scopeDecl d
 
     existingEntry <- asks (Map.lookup identName)
     case existingEntry of
       Just existingIdent -> throwError $ DuplicateName (provenanceOf d) identName existingIdent
       Nothing -> do
-        (ds', deps) <- bindDecl ident (scopeDecls ds)
-        return (d' : ds', (ident, dep) : deps)
+        ds' <- bindDecl ident (scopeDecls ds)
+        return (d' : ds')
 
-scopeDecl :: (MonadWriter Dependencies m, MonadScope m) => UnscopedDecl -> m ScopedDecl
+scopeDecl :: (MonadScope m) => UnscopedDecl -> m ScopedDecl
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefResource p ident r t ->
@@ -98,7 +94,7 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
   return result
 
 scopeDeclExpr ::
-  (MonadWriter Dependencies m, MonadScope m) =>
+  (MonadScope m) =>
   Bool ->
   UnscopedExpr ->
   m ScopedExpr
@@ -172,8 +168,7 @@ generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
 
 type MonadScopeExpr m =
   ( MonadCompile m,
-    MonadReader (DeclScopeCtx, LocalScopeCtx) m,
-    MonadWriter Dependencies m
+    MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
 scopeExpr :: MonadScopeExpr m => UnscopedExpr -> m ScopedExpr
@@ -187,9 +182,7 @@ scopeVar p symbol = do
   case elemIndex (Just symbol) boundCtx of
     Just i -> return $ BoundVar p $ DBIndex i
     Nothing -> case Map.lookup symbol declCtx of
-      Just ident -> do
-        tell [ident]
-        return $ FreeVar p ident
+      Just ident -> return $ FreeVar p ident
       Nothing -> do
         throwError $ UnboundName p symbol
 

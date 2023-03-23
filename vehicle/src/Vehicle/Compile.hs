@@ -10,10 +10,12 @@ import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
+import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification (VerificationPlan (VerificationPlan))
@@ -38,23 +40,25 @@ data CompileOptions = CompileOptions
 
 compile :: LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
-  typeCheckingResult <-
+  (imports, prog) <-
     typeCheckUserProg $
       TypeCheckOptions
         { specification = specification,
-          typingSystem = Standard,
-          declarationsToCompile = declarationsToCompile
+          typingSystem = Standard
         }
+
+  prunedProg <- analyseDependenciesAndPrune unnormalised prog declarationsToCompile
+  let result = (imports, prunedProg)
 
   let resources = Resources specification networkLocations datasetLocations parameterValues
   case target of
     VerifierQueries queryFormatID ->
-      compileToQueryFormat typeCheckingResult resources queryFormatID outputFile
+      compileToQueryFormat result resources queryFormatID outputFile
     LossFunction differentiableLogic ->
-      compileToLossFunction typeCheckingResult resources differentiableLogic outputFile
+      compileToLossFunction result resources differentiableLogic outputFile
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
-      compileToAgda agdaOptions typeCheckingResult outputFile
+      compileToAgda agdaOptions result outputFile
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
