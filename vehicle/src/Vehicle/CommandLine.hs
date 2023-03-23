@@ -37,7 +37,7 @@ import Options.Applicative
     value,
   )
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
-import Vehicle.Backend.Prelude (Backend (..), DifferentiableLogic, ITP)
+import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Task)
 import Vehicle.Check (CheckOptions (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
@@ -49,7 +49,7 @@ import Vehicle.Prelude
     supportedOptions,
     vehicleFileExtension,
   )
-import Vehicle.Verify (VerifierIdentifier, VerifyOptions (..))
+import Vehicle.Verify (VerifierID, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
 -- List of all options
@@ -132,7 +132,7 @@ compileDescription =
 compileParser :: Parser CompileOptions
 compileParser =
   CompileOptions
-    <$> compilationTargetParser
+    <$> compileTargetParser
     <*> specificationParser
     <*> declarationParser
     <*> networkParser
@@ -203,13 +203,13 @@ allITPs :: [String]
 allITPs = map show (enumerate @ITP)
 
 allVerifiers :: [String]
-allVerifiers = map show (enumerate @VerifierIdentifier)
+allVerifiers = map show (enumerate @VerifierID)
 
 allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
-allBackends :: [String]
-allBackends = allVerifiers <> allITPs <> allLossFunctionDLs
+allTasks :: [String]
+allTasks = ["TypeCheck"] <> allVerifiers <> allITPs <> allLossFunctionDLs
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -344,7 +344,7 @@ declarationParser =
               )
       )
 
-verifierParser :: Parser VerifierIdentifier
+verifierParser :: Parser VerifierID
 verifierParser =
   option auto $
     long "verifier"
@@ -372,13 +372,13 @@ exportTargetParser =
       <> metavar "TARGET"
       <> help ("The target to export to. " <> supportedOptions allITPs)
 
-compilationTargetParser :: Parser Backend
-compilationTargetParser =
+compileTargetParser :: Parser Task
+compileTargetParser =
   option auto $
     long "target"
       <> short 't'
       <> metavar "TARGET"
-      <> help ("Compilation target. " <> supportedOptions allBackends)
+      <> help ("Task for the compiler to perform. " <> supportedOptions allTasks)
 
 proofCacheOption :: Mod OptionFields String -> Parser String
 proofCacheOption helpField =

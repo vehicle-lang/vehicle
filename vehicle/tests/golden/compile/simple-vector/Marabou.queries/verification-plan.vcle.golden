@@ -1,0 +1,33 @@
+[
+  [
+    [
+      "User",
+      "p"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              ]
+            }
+          },
+          "negated": false
+        }
+      }
+    }
+  ]
+]

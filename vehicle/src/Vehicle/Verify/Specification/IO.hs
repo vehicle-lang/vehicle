@@ -19,12 +19,12 @@ import Data.Text (unpack)
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeExtension, (<.>), (</>))
-import Vehicle.Backend.Prelude (Backend (..), writeResultToFile)
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier.Interface
+import Vehicle.Verify.Verifier (queryFormats)
 
 --------------------------------------------------------------------------------
 -- Specification
@@ -59,11 +59,11 @@ readSpecification inputFile
 -- otherwise it outputs them to stdout.
 outputVerificationQueries ::
   MonadIO m =>
-  Verifier ->
+  QueryFormatID ->
   Maybe FilePath ->
   (VerificationPlan, VerificationQueries) ->
   m ()
-outputVerificationQueries verifier maybeOutputLocation (plan, queries) =
+outputVerificationQueries queryFormatID maybeOutputLocation (plan, queries) =
   case maybeOutputLocation of
     Nothing -> do
       programOutput (pretty plan)
@@ -72,7 +72,7 @@ outputVerificationQueries verifier maybeOutputLocation (plan, queries) =
       liftIO $ createDirectoryIfMissing True outputLocation
 
       writeVerificationPlan outputLocation plan
-      writeVerificationQueries verifier outputLocation queries
+      writeVerificationQueries queryFormatID outputLocation queries
 
 writeVerificationPlan :: MonadIO m => FilePath -> VerificationPlan -> m ()
 writeVerificationPlan folder plan = do
@@ -122,13 +122,14 @@ readVerificationPlan folder = do
 mkPlanFileName :: FilePath -> FilePath
 mkPlanFileName folder = folder </> "verification-plan.vcle"
 
-writeVerificationQueries :: MonadIO m => Verifier -> FilePath -> VerificationQueries -> m ()
-writeVerificationQueries Verifier {..} folder (Specification properties) = do
-  let backend = VerifierBackend verifierIdentifier
+writeVerificationQueries :: MonadIO m => QueryFormatID -> FilePath -> VerificationQueries -> m ()
+writeVerificationQueries queryFormatID folder (Specification properties) = do
   forM_ properties $ \(ident, property) -> do
     let property' = calculateFilePaths folder ident property
+    let queryFormat = queryFormats queryFormatID
+    let queryOutputForm = Just $ queryOutputFormat queryFormat
     _ <- flip traverseProperty property' $ \(queryFilePath, queryText) ->
-      liftIO $ writeResultToFile backend (Just queryFilePath) (pretty queryText)
+      liftIO $ writeResultToFile queryOutputForm (Just queryFilePath) (pretty queryText)
 
     return ()
 
@@ -162,7 +163,7 @@ verifyProperty = \case
 verifyQuery ::
   (MonadReader (Verifier, VerifierExecutable) m, MonadIO m) =>
   (QueryFile, QueryMetaData) ->
-  m SatisfiabilityStatus
+  m QueryResult
 verifyQuery (queryFile, QueryData metaNetwork userVar) = do
   (verifier, verifierExecutable) <- ask
   invokeVerifier verifier verifierExecutable metaNetwork userVar queryFile

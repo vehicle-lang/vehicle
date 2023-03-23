@@ -1,6 +1,6 @@
 module Vehicle.Verify
   ( VerifyOptions (..),
-    VerifierIdentifier,
+    VerifierID,
     verify,
   )
 where
@@ -12,7 +12,7 @@ import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 import System.IO.Temp (withSystemTempDirectory)
-import Vehicle.Backend.Prelude (Backend (..))
+import Vehicle.Backend.Prelude (Task (..))
 import Vehicle.Compile
 import Vehicle.Prelude
 import Vehicle.Resource
@@ -20,7 +20,6 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
-import Vehicle.Verify.Verifier.Interface
 
 data VerifyOptions = VerifyOptions
   { specification :: FilePath,
@@ -28,7 +27,7 @@ data VerifyOptions = VerifyOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    verifier :: VerifierIdentifier,
+    verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable,
     proofCache :: Maybe FilePath
   }
@@ -36,7 +35,7 @@ data VerifyOptions = VerifyOptions
 
 verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings VerifyOptions {..} = do
-  let verifierImpl = verifiers verifier
+  let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
   let resources = Resources networkLocations datasetLocations parameterValues
 
@@ -45,7 +44,7 @@ verify loggingSettings VerifyOptions {..} = do
   status <- withSystemTempDirectory "specification" $ \tempDir -> do
     compile loggingSettings $
       CompileOptions
-        { target = VerifierBackend verifier,
+        { task = CompileToQueryFormat (verifierQueryFormat verifierImpl),
           specification = specification,
           declarationsToCompile = properties,
           networkLocations = networks resources,

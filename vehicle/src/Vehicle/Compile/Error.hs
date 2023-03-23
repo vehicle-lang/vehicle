@@ -7,10 +7,12 @@ import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
-import Vehicle.Expr.Normalised
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Linearity.Core
+import Vehicle.Compile.Type.Subsystem.Polarity.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Syntax.Parse (ParseError)
-import Vehicle.Verify.Core (VerifierIdentifier)
+import Vehicle.Verify.Core (QueryFormatID)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -44,76 +46,74 @@ data CompileError
   | FunTypeMismatch
       Provenance -- The location of the mismatch.
       BoundDBCtx -- The context at the time of the failure
-      CheckedExpr -- The function being typed
-      CheckedType -- The possible inferred types.
-      CheckedType -- The expected type.
-  | UnsolvedConstraints (NonEmpty (WithContext Constraint))
-  | UnsolvedMetas (NonEmpty (MetaID, Provenance))
+      StandardExpr -- The function being typed
+      StandardType -- The possible inferred types.
+      StandardType -- The expected type.
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
-      UncheckedArg -- The non-explicit argument
-      CheckedType -- Expected type of the argument
-  | FailedUnificationConstraints (NonEmpty (WithContext UnificationConstraint))
-  | FailedEqConstraint ConstraintContext BasicNormType BasicNormType EqualityOp
-  | FailedOrdConstraint ConstraintContext BasicNormType BasicNormType OrderOp
-  | FailedBuiltinConstraintArgument ConstraintContext Builtin BasicNormType [UnAnnDoc] Int Int
-  | FailedBuiltinConstraintResult ConstraintContext Builtin BasicNormType [UnAnnDoc]
-  | FailedNotConstraint ConstraintContext BasicNormType
-  | FailedBoolOp2Constraint ConstraintContext BasicNormType BasicNormType Builtin
-  | FailedQuantifierConstraintDomain ConstraintContext BasicNormType Quantifier
-  | FailedQuantifierConstraintBody ConstraintContext BasicNormType Quantifier
-  | FailedArithOp2Constraint ConstraintContext BasicNormType BasicNormType Builtin
-  | FailedFoldConstraintContainer ConstraintContext BasicNormType
-  | FailedQuantInConstraintContainer ConstraintContext BasicNormType Quantifier
-  | FailedNatLitConstraint ConstraintContext Int BasicNormType
-  | FailedNatLitConstraintTooBig ConstraintContext Int Int
-  | FailedNatLitConstraintUnknown ConstraintContext Int BasicNormType
-  | FailedIntLitConstraint ConstraintContext BasicNormType
-  | FailedRatLitConstraint ConstraintContext BasicNormType
-  | FailedConLitConstraint ConstraintContext BasicNormType
-  | FailedInstanceConstraint ConstraintContext InstanceGoal
-  | QuantifiedIfCondition ConstraintContext
-  | NonLinearIfCondition ConstraintContext
+      (UncheckedArg StandardBuiltinType) -- The non-explicit argument
+      StandardType -- Expected type of the argument
+  | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
+  | UnsolvedMetas (NonEmpty (MetaID, Provenance))
+  | FailedUnificationConstraints (NonEmpty (WithContext StandardUnificationConstraint))
+  | FailedEqConstraint StandardConstraintContext StandardNormType StandardNormType EqualityOp
+  | FailedOrdConstraint StandardConstraintContext StandardNormType StandardNormType OrderOp
+  | FailedBuiltinConstraintArgument StandardConstraintContext TypeClassOp StandardNormType [UnAnnDoc] Int Int
+  | FailedBuiltinConstraintResult StandardConstraintContext StandardBuiltin StandardNormType [UnAnnDoc]
+  | FailedNotConstraint StandardConstraintContext StandardNormType
+  | FailedBoolOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
+  | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
+  | FailedQuantifierConstraintBody StandardConstraintContext StandardNormType Quantifier
+  | FailedArithOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
+  | FailedFoldConstraintContainer StandardConstraintContext StandardNormType
+  | FailedQuantInConstraintContainer StandardConstraintContext StandardNormType Quantifier
+  | FailedNatLitConstraint StandardConstraintContext Int StandardNormType
+  | FailedNatLitConstraintTooBig StandardConstraintContext Int Int
+  | FailedNatLitConstraintUnknown StandardConstraintContext Int StandardNormType
+  | FailedIntLitConstraint StandardConstraintContext StandardNormType
+  | FailedRatLitConstraint StandardConstraintContext StandardNormType
+  | FailedConLitConstraint StandardConstraintContext StandardNormType
+  | FailedInstanceConstraint StandardConstraintContext InstanceGoal [WithContext InstanceCandidate]
+  | QuantifiedIfCondition PolarityConstraintContext
+  | NonLinearIfCondition LinearityConstraintContext
   | -- Resource typing errors
     ResourceNotProvided DeclProvenance Resource
   | ResourceIOError DeclProvenance Resource IOException
   | UnsupportedResourceFormat DeclProvenance Resource String
   | UnableToParseResource DeclProvenance Resource String
-  | NetworkTypeIsNotAFunction DeclProvenance GluedType
-  | NetworkTypeIsNotOverTensors DeclProvenance GluedType BasicNormType InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance GluedType BasicNormBinder
-  | NetworkTypeHasVariableSizeTensor DeclProvenance GluedType BasicNormType InputOrOutput
-  | NetworkTypeHasImplicitSizeTensor DeclProvenance GluedType Identifier InputOrOutput
-  | NetworkTypeHasUnsupportedElementType DeclProvenance GluedType BasicNormType InputOrOutput
-  | DatasetTypeUnsupportedContainer DeclProvenance GluedType
-  | DatasetTypeUnsupportedElement DeclProvenance GluedType BasicNormType
-  | DatasetVariableSizeTensor DeclProvenance GluedType BasicNormType
+  | NetworkTypeIsNotAFunction DeclProvenance StandardGluedType
+  | NetworkTypeIsNotOverTensors DeclProvenance StandardGluedType StandardNormType InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance StandardGluedType StandardNormBinder
+  | NetworkTypeHasVariableSizeTensor DeclProvenance StandardGluedType StandardNormType InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor DeclProvenance StandardGluedType Identifier InputOrOutput
+  | NetworkTypeHasUnsupportedElementType DeclProvenance StandardGluedType StandardNormType InputOrOutput
+  | DatasetTypeUnsupportedContainer DeclProvenance StandardGluedType
+  | DatasetTypeUnsupportedElement DeclProvenance StandardGluedType StandardNormType
+  | DatasetVariableSizeTensor DeclProvenance StandardGluedType StandardNormType
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int [Int] [Int]
-  | DatasetDimensionsMismatch DeclProvenance FilePath GluedExpr [Int]
-  | DatasetTypeMismatch DeclProvenance FilePath GluedType BasicNormType BasicNormType
+  | DatasetDimensionsMismatch DeclProvenance FilePath StandardGluedExpr [Int]
+  | DatasetTypeMismatch DeclProvenance FilePath StandardGluedType StandardNormType StandardNormType
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
-  | ParameterTypeUnsupported DeclProvenance GluedType
-  | ParameterTypeVariableSizeIndex DeclProvenance GluedType
+  | ParameterTypeUnsupported DeclProvenance StandardGluedType
+  | ParameterTypeVariableSizeIndex DeclProvenance StandardGluedType
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
-  | ParameterValueUnparsable DeclProvenance String BuiltinConstructor
+  | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
-  | InferableParameterTypeUnsupported DeclProvenance GluedType
+  | InferableParameterTypeUnsupported DeclProvenance StandardGluedType
   | InferableParameterContradictory Identifier (DeclProvenance, Resource, Int) (DeclProvenance, Resource, Int)
   | InferableParameterUninferrable DeclProvenance
-  | PropertyTypeUnsupported DeclProvenance GluedType
+  | PropertyTypeUnsupported DeclProvenance StandardGluedType
   | -- Backend errors
     NoPropertiesFound
-  | UnsupportedResource Backend Identifier Provenance Resource
-  | UnsupportedInequality Backend DeclProvenance
-  | UnsupportedPolymorphicEquality Backend Provenance Name
-  | UnsupportedNonMagicVariable Backend Provenance Name
-  | NoNetworkUsedInProperty Backend Provenance Identifier
-  | UnsupportedVariableType VerifierIdentifier Identifier Provenance Name BasicNormType BasicNormType [Builtin]
-  | UnsupportedAlternatingQuantifiers Backend DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedNonLinearConstraint Backend DeclProvenance Provenance LinearityProvenance LinearityProvenance
-  | UnsupportedNegatedOperation DifferentiableLogic DeclProvenance Provenance CheckedExpr
+  | UnsupportedInequality QueryFormatID DeclProvenance
+  | UnsupportedPolymorphicEquality ITP Provenance Name
+  | NoNetworkUsedInProperty QueryFormatID Provenance Identifier
+  | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedNegatedOperation DifferentiableLogic Provenance (NamedExpr StandardBuiltin)
   deriving (Show)
 
 --------------------------------------------------------------------------------

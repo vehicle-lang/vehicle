@@ -1,0 +1,229 @@
+[
+  [
+    [
+      "User",
+      "prop1"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              ]
+            }
+          },
+          "negated": true
+        }
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "prop2"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "FourierMotzkinSolution",
+                        "contents": {
+                          "upperBounds": [
+                            {
+                              "assertionRel": "LessThanOrEqualTo",
+                              "assertionExpr": {
+                                "numberOfVars": 4,
+                                "constantValue": 0,
+                                "coefficients": {
+                                  "0": 1
+                                }
+                              }
+                            }
+                          ],
+                          "lowerBounds": []
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              ]
+            }
+          },
+          "negated": false
+        }
+      }
+    }
+  ],
+  [
+    [
+      "User",
+      "prop3"
+    ],
+    {
+      "tag": "SingleProperty",
+      "contents": {
+        "tag": "Query",
+        "contents": {
+          "queries": {
+            "tag": "NonTrivial",
+            "contents": {
+              "unDisjunctAll": [
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                },
+                {
+                  "userVar": [
+                    [
+                      0,
+                      {
+                        "tag": "GaussianSolution",
+                        "contents": {
+                          "solutionEquality": {
+                            "numberOfVars": 4,
+                            "constantValue": 0,
+                            "coefficients": {
+                              "1": 1,
+                              "0": -1
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "metaNetwork": [
+                    [
+                      "f",
+                      "NO_FILE"
+                    ]
+                  ]
+                }
+              ]
+            }
+          },
+          "negated": false
+        }
+      }
+    }
+  ]
+]

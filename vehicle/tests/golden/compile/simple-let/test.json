@@ -1,13 +1,13 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-let.vcl -t TypeCheck",
-    "needs": ["simple-let.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-let.vcl -t Agda -o simple-let.agda",
-    "needs": ["simple-let.vcl"],
-    "produces": ["simple-let.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

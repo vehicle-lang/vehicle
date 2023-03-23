@@ -3,6 +3,7 @@ module Vehicle.Compile.Normalise.Quote where
 import Vehicle.Compile.Error (MonadCompile, runCompileMonadSilently)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- | Converts from a normalised representation to an unnormalised representation.
@@ -19,22 +20,18 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 class Quote a b where
   quote :: MonadCompile m => Provenance -> DBLevel -> a -> m b
 
-instance Quote (NormExpr builtin) (DBExpr builtin) where
+instance Quote (NormExpr types) (NormalisableExpr types) where
   quote p level = \case
     VUniverse u -> return $ Universe p u
-    VLiteral l -> return $ Literal p l
-    VMeta m spine -> quoteSpine level p (Meta p m) spine
-    VFreeVar v spine -> quoteSpine level p (Var p (Free v)) spine
-    VBoundVar v spine -> quoteSpine level p (Var p (Bound (dbLevelToIndex level v))) spine
-    VBuiltin b spine -> quoteSpine level p (Builtin p b) spine
-    VLVec xs spine -> do
-      xs' <- traverse (quote p level) xs
-      quoteSpine level p (LVec p xs') spine
+    VMeta m spine -> quoteApp level p (Meta p m) spine
+    VFreeVar v spine -> quoteApp level p (FreeVar p v) spine
+    VBoundVar v spine -> quoteApp level p (BoundVar p (dbLevelToIndex level v)) spine
+    VBuiltin b spine -> quoteApp level p (Builtin p b) (ExplicitArg p <$> spine)
     VPi binder body ->
       Pi p <$> quote p level binder <*> quote p (level + 1) body
     VLam binder env body -> do
       quotedBinder <- quote p level binder
-      quotedEnv <- traverse (quote p (level + 1)) env
+      quotedEnv <- traverse (\(_n, e) -> quote p (level + 1) e) env
       let liftedEnv = BoundVar p 0 : quotedEnv
       let quotedBody = substituteDB 0 (envSubst liftedEnv) body
       -- Here we deliberately avoid using the standard `quote . eval` approach below
@@ -45,16 +42,16 @@ instance Quote (NormExpr builtin) (DBExpr builtin) where
       -- quotedBody <- quote (level + 1) normBody
       return $ Lam mempty quotedBinder quotedBody
 
-instance Quote (NormBinder builtin) (DBBinder builtin) where
+instance Quote (NormBinder types) (NormalisableBinder types) where
   quote p level = traverse (quote p level)
 
-instance Quote (NormArg builtin) (DBArg builtin) where
+instance Quote (NormArg types) (NormalisableArg types) where
   quote p level = traverse (quote p level)
 
-quoteSpine :: MonadCompile m => DBLevel -> Provenance -> DBExpr builtin -> Spine builtin -> m (DBExpr builtin)
-quoteSpine l p fn spine = normAppList p fn <$> traverse (quote p l) spine
+quoteApp :: MonadCompile m => DBLevel -> Provenance -> NormalisableExpr types -> Spine types -> m (NormalisableExpr types)
+quoteApp l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
-envSubst :: BoundCtx (DBExpr builtin) -> Substitution (DBExpr builtin)
+envSubst :: BoundCtx (NormalisableExpr types) -> Substitution (NormalisableExpr types)
 envSubst env i = case lookupVar env i of
   Just v -> Right v
   Nothing ->

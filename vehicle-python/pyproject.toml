@@ -22,9 +22,9 @@ numpy = "^1.24" # TODO: lowest possible numpy bound?
 test = []
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^0.971"
-tox = "^4.4.3"
-black = "^22.8.0"
+mypy = "^1.1"
+tox = "^4.4.7"
+black = "^23.1.0"
 isort = "^5.12.0"
 flake8 = "^5.0.4"
 

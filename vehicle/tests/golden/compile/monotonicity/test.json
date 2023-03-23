@@ -1,25 +1,25 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s monotonicity.vcl -t TypeCheck",
-    "needs": ["monotonicity.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s monotonicity.vcl -t Marabou -o monotonicity.inputquery/ --network f:NO_FILE",
-    "needs": ["monotonicity.vcl"],
-    "produces": ["monotonicity.inputquery/*.txt", "monotonicity.inputquery/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s monotonicity.vcl -t Agda -o monotonicity.agda --network f:NO_FILE",
-    "needs": ["monotonicity.vcl"],
-    "produces": ["monotonicity.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s monotonicity.vcl -t LossFunction -o monotonicity.loss.json --network f:NO_FILE",
-    "needs": ["monotonicity.vcl"],
-    "produces": ["monotonicity.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

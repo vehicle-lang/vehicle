@@ -3,7 +3,6 @@ module Vehicle.Verify.Verifier.Marabou
   )
 where
 
-import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
 import Data.Text (Text, pack)
@@ -15,13 +14,8 @@ import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification (MetaNetwork, QueryText)
-import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier.Interface
 
 --------------------------------------------------------------------------------
 -- The main interface
@@ -32,65 +26,8 @@ marabouVerifier =
     { verifierIdentifier = Marabou,
       verifierExecutableName = "Marabou",
       invokeVerifier = invokeMarabou,
-      compileQuery = compileMarabouQuery
+      verifierQueryFormat = MarabouQueryFormat
     }
-
---------------------------------------------------------------------------------
--- Compiling to Marabou
-
--- | Compiles an expression representing a single Marabou query. The expression
--- passed should only have conjunctions and existential quantifiers at the boolean
--- level.
-compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m QueryText
-compileMarabouQuery (CLSTProblem varNames assertions) = do
-  assertionDocs <- forM assertions (compileAssertion varNames)
-  let assertionsDoc = vsep assertionDocs
-  return $ layoutAsText assertionsDoc
-
-compileAssertion ::
-  MonadLogger m =>
-  [NetworkVariable] ->
-  Assertion ->
-  m (Doc a)
-compileAssertion variables (Assertion rel linearExpr) = do
-  let (coefficientsVec, constant) = splitOutConstant linearExpr
-  let coefficients = Vector.toList coefficientsVec
-  let variableNames = sequentialIONetworkVariableNaming "x" "y" variables
-  let namedCoefficients = zip coefficients variableNames
-  let coeffVars = filter (\(c, _) -> c /= 0) namedCoefficients
-
-  -- Make the properties a tiny bit nicer by checking if all the vars are
-  -- negative and if so negating everything.
-  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffVars
-  let (finalCoefVars, constant', flipRel) =
-        if allCoefficientsNegative
-          then (fmap (\(c, n) -> (-c, n)) coeffVars, -constant, True)
-          else (coeffVars, constant, False)
-
-  -- Marabou always has the constants on the RHS so we need to negate the constant.
-  let negatedConstant = -constant'
-  -- Also check for and remove `-0.0`s for cleanliness.
-  let finalConstant = if isNegativeZero negatedConstant then 0.0 else negatedConstant
-
-  let compiledRel = compileRel flipRel rel
-  let compiledLHS = hsep (fmap (compileVar (length finalCoefVars > 1)) finalCoefVars)
-  let compiledRHS = pretty finalConstant
-  return $ compiledLHS <+> compiledRel <+> compiledRHS
-
-compileRel :: Bool -> Relation -> Doc a
-compileRel _ Equal = "="
-compileRel False LessThanOrEqualTo = "<="
-compileRel True LessThanOrEqualTo = ">="
--- Suboptimal. Marabou doesn't currently support strict inequalities.
--- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-compileRel False LessThan = "<="
-compileRel True LessThan = ">="
-
-compileVar :: Bool -> (Double, Name) -> Doc a
-compileVar False (1, var) = pretty var
-compileVar True (1, var) = "+" <> pretty var
-compileVar _ (-1, var) = "-" <> pretty var
-compileVar _ (coefficient, var) = pretty coefficient <> pretty var
 
 --------------------------------------------------------------------------------
 -- Invoking Marabou
@@ -113,7 +50,7 @@ prepareNetworkArg _ = do
 parseMarabouOutput ::
   UserVarReconstructionInfo ->
   (ExitCode, String, String) ->
-  IO SatisfiabilityStatus
+  IO QueryResult
 parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
   ExitFailure _ -> do
     -- Marabou seems to output its error messages to stdout rather than stderr...

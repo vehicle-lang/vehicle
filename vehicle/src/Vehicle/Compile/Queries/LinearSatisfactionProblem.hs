@@ -10,42 +10,39 @@ import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HashMap
 import Data.List (partition)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Map.Strict qualified as Map
   ( lookup,
-    singleton,
-    unionWith,
   )
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
-import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Queries.GaussianElimination
   ( gaussianElimination,
-    solutionEquality,
   )
 import Vehicle.Compile.Queries.LNF (convertToLNF)
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (BasicNormExpr, NormExpr (..), pattern VBuiltinFunction)
-import Vehicle.Verify.Specification
+import Vehicle.Expr.Normalised
+import Vehicle.Verify.Core
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
 generateCLSTProblem ::
   MonadCompile m =>
   LCSState ->
   InputEqualities ->
-  ConjunctAll BasicNormExpr ->
+  ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
 generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   (_, _, metaNetwork, userVariables, _) <- ask
@@ -55,17 +52,12 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     -- Create linear expression equating the magic variable `x_i`
     -- with the expression `e` in the relevant point = xs_i`
     exprSize <- getExprSize
-    let lhs = linearExprFromMap exprSize (Map.singleton (unLevel i) 1)
+    let lhs = fromSparse $ Sparse exprSize (HashMap.singleton (unLevel i) 1) 0
     rhs <- compileLinearExpr expr
     return $ constructAssertion (lhs, Equal, rhs)
 
   userAssertions <- NonEmpty.toList . unConjunctAll <$> traverse compileAssertions conjuncts
 
-  {-
-  case result of
-    Trivial p -> return $ Trivial p
-    NonTrivial userAssertions -> do
-      -}
   let assertions = inputEqualityAssertions <> userAssertions
   let clst = CLSTProblem variables assertions
 
@@ -100,7 +92,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
+    let gaussianSolutionEqualities = fmap (second (id . solutionEquality)) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
             foldl (uncurry . substitute) assertion gaussianSolutionEqualities
@@ -135,8 +127,6 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
         let clstProblem = CLSTProblem networkVariables finalAssertions
         NonTrivial (clstProblem, varSolutions)
 
--- Return the problem
-
 --------------------------------------------------------------------------------
 -- Monad
 
@@ -160,13 +150,6 @@ getNetworkDetailsFromCtx networkCtx name = do
     Nothing ->
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
-
-getBoundContext :: MonadSMT m => m BoundDBCtx
-getBoundContext = do
-  (_, _, _, userVariables, networkVariables) <- ask
-  let userNames = reverse $ fmap (layoutAsText . pretty) userVariables
-  let networkNames = reverse $ fmap (layoutAsText . pretty) networkVariables
-  return $ fmap Just (userNames <> networkNames)
 
 getNumberOfUserVariables :: MonadSMT m => m Int
 getNumberOfUserVariables = do
@@ -197,30 +180,21 @@ getVariables = do
   (_, _, _, userVariables, networkVariables) <- ask
   return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
 
-getExprConstantIndex :: MonadSMT m => m DBLevel
-getExprConstantIndex =
-  -- The constant in the linear expression is stored in the last index.
-  DBLevel <$> getTotalNumberOfVariables
-
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => BasicNormExpr -> m Assertion
+compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
 compileAssertions = go
   where
-    go :: MonadSMT m => BasicNormExpr -> m Assertion
+    go :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
       VMeta {} -> resolutionError currentPass "Meta"
       VLam {} -> normalisationError currentPass "Lam"
-      VLVec {} -> normalisationError currentPass "LVec"
       VBoundVar {} -> caseError currentPass "Var" ["OrderOp", "Eq"]
       VFreeVar {} -> normalisationError currentPass "VFreeVar"
-      VLiteral l -> case l of
-        LBool _ -> normalisationError currentPass "LBool"
-        _ -> caseError currentPass "Literal" ["AndExpr"]
-      VBuiltinFunction (Order OrderRat ord) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
+      VBuiltinFunction (Order OrderRat ord) [e1, e2] -> do
         let (rel, lhs, rhs) = case ord of
               Lt -> (LessThan, e1, e2)
               Le -> (LessThanOrEqualTo, e1, e2)
@@ -228,10 +202,10 @@ compileAssertions = go
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
         return assertion
-      VBuiltinFunction (Equals EqRat eq) [ExplicitArg _ e1, ExplicitArg _ e2] -> case eq of
+      VBuiltinFunction (Equals EqRat eq) [e1, e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
-          throwError $ UnsupportedInequality MarabouBackend ident
+          throwError $ UnsupportedInequality MarabouQueryFormat ident
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
           return assertion
@@ -240,58 +214,50 @@ compileAssertions = go
 compileAssertion ::
   MonadSMT m =>
   Relation ->
-  BasicNormExpr ->
-  BasicNormExpr ->
-  m Assertion
+  StandardNormExpr ->
+  StandardNormExpr ->
+  m (Assertion SolvingLinearExpr)
 compileAssertion rel lhs rhs = do
   lhsLinExpr <- compileLinearExpr lhs
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => BasicNormExpr -> m LinearExpr
+compileLinearExpr :: MonadSMT m => StandardNormExpr -> m SolvingLinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
-  linearExpr <- go lnfExpr
+  (linearExpr, constant) <- go lnfExpr
   exprSize <- getExprSize
-  return $ linearExprFromMap exprSize linearExpr
+  return $ fromSparse $ Sparse exprSize linearExpr constant
   where
-    singletonVar :: DBLevel -> Coefficient -> Map Int Coefficient
-    singletonVar v = Map.singleton (unLevel v)
+    singletonVar :: DBLevel -> Coefficient -> HashMap Int Coefficient
+    singletonVar v = HashMap.singleton (unLevel v)
 
-    go :: MonadSMT m => BasicNormExpr -> m (Map Int Coefficient)
+    go :: MonadSMT m => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
     go e = case e of
       VBoundVar v [] ->
-        return $ singletonVar v 1
-      VBuiltinFunction (Neg NegRat) [ExplicitArg _ (VBoundVar v [])] ->
-        return $ singletonVar v (-1)
-      VLiteral (LRat l) -> do
-        constLevel <- getExprConstantIndex
-        return $ singletonVar constLevel (fromRational l)
-      VBuiltinFunction (Add AddRat) [ExplicitArg _ e1, ExplicitArg _ e2] -> do
-        Map.unionWith (+) <$> go e1 <*> go e2
-      VBuiltinFunction (Mul MulRat) [ExplicitArg _ e1, ExplicitArg _ e2] ->
+        return (singletonVar v 1, 0)
+      VBuiltinFunction (Neg NegRat) [VBoundVar v []] ->
+        return (singletonVar v (-1), 0)
+      VRatLiteral l -> do
+        return (mempty, fromRational l)
+      VBuiltinFunction (Add AddRat) [e1, e2] -> do
+        (coeff1, const1) <- go e1
+        (coeff2, const2) <- go e2
+        return (HashMap.unionWith (+) coeff1 coeff2, const1 + const2)
+      VBuiltinFunction (Mul MulRat) [e1, e2] ->
         case (e1, e2) of
-          (VLiteral (LRat l), VBoundVar v []) -> return $ singletonVar v (fromRational l)
-          (VBoundVar v [], VLiteral (LRat l)) -> return $ singletonVar v (fromRational l)
-          _ -> do
-            (_, _ident, _, _, _) <- ask
-            _ctx <- getBoundContext
-            compilerDeveloperError $
-              "Unexpected non-linear constraint that should have been caught by the"
-                <+> "linearity analysis during type-checking."
+          (VRatLiteral l, VBoundVar v []) -> return (singletonVar v (fromRational l), 0)
+          (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational l), 0)
+          _ -> throwError temporaryUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
-
-filterTrivialAssertions :: [Assertion] -> Maybe [Assertion]
-filterTrivialAssertions = go
-  where
-    go :: [Assertion] -> Maybe [Assertion]
-    go [] = Just []
-    go (a : as) = case go as of
-      Nothing -> Nothing
-      Just as' -> case checkTriviality a of
-        Nothing -> Just $ a : as'
-        Just True -> Just as'
-        Just False -> Nothing
 
 currentPass :: Doc a
 currentPass = "linear satisfaction problem compilation"
+
+-- | Constructs a temporary error with no real fields. This should be recaught
+-- and populated higher up the query compilation process.
+temporaryUnsupportedNonLinearConstraint :: CompileError
+temporaryUnsupportedNonLinearConstraint =
+  UnsupportedNonLinearConstraint x x x x x
+  where
+    x = developerError "Evaluating temporary quantifier error"

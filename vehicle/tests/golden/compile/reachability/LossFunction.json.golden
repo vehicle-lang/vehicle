@@ -1,0 +1,88 @@
+[
+  [
+    "reachable",
+    {
+      "tag": "Quantifier",
+      "contents": [
+        "Any",
+        "x",
+        [],
+        {
+          "tag": "Addition",
+          "contents": [
+            {
+              "tag": "Max",
+              "contents": [
+                {
+                  "tag": "Constant",
+                  "contents": 0
+                },
+                {
+                  "tag": "Subtraction",
+                  "contents": [
+                    {
+                      "tag": "NetworkApplication",
+                      "contents": [
+                        "f",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": "x"
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "tag": "TensorLiteral",
+                      "contents": [
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "Max",
+              "contents": [
+                {
+                  "tag": "Constant",
+                  "contents": 0
+                },
+                {
+                  "tag": "Subtraction",
+                  "contents": [
+                    {
+                      "tag": "NetworkApplication",
+                      "contents": [
+                        "f",
+                        [
+                          {
+                            "tag": "Variable",
+                            "contents": "x"
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "tag": "TensorLiteral",
+                      "contents": [
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+]

@@ -19,12 +19,12 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 -- Declare the network used to classify images. The output of the network is a
 -- score for each of the digits 0 to 9.
 @network
-mnist : Image -> Vector Rat 10
+classifier : Image -> Vector Rat 10
 
--- The network advises that input image `x` has label `i` if the score
+-- The classifier advises that input image `x` has label `i` if the score
 -- for label `i` is greater than the score of any other label `j`.
 advises : Image -> Label -> Bool
-advises x i = forall j . j != i => mnist x ! i > mnist x ! j
+advises x i = forall j . j != i => classifier x ! i > classifier x ! j
 
 --------------------------------------------------------------------------------
 -- Definition of robustness around a point

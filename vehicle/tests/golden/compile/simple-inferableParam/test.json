@@ -1,15 +1,15 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-inferableParam.vcl -t TypeCheck",
-    "needs": ["simple-inferableParam.vcl"],
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"],
     "enabled": false
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-inferableParam.vcl -t Marabou -o simple-inferableParam.inputquery/",
-    "needs": ["simple-inferableParam.vcl"],
-    "produces": ["simple-inferableParam.inputquery/*.txt"],
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt"],
     "enabled": false
   }
 ]

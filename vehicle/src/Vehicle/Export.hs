@@ -23,7 +23,7 @@ export loggingSettings ExportOptions {..} = do
 
   compile loggingSettings $
     CompileOptions
-      { target = ITP target,
+      { task = CompileToITP target,
         specification = spec,
         declarationsToCompile = properties,
         networkLocations = networks resources,

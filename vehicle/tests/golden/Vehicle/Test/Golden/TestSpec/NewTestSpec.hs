@@ -47,7 +47,7 @@ import Test.Tasty.Options (IsOption (optionHelp, parseValue))
 import Text.Printf (printf)
 import Vehicle qualified (ModeOptions, Options (..))
 import Vehicle qualified as ModeOptions (ModeOptions (..))
-import Vehicle.Backend.Prelude (Backend (TypeCheck), pattern MarabouBackend)
+import Vehicle.Backend.Prelude (Task (TypeCheck), TypingSystem (..), pattern CompileToMarabouQueries)
 import Vehicle.Backend.Prelude qualified as Backend
 import Vehicle.Check qualified as CheckOptions (proofCache)
 import Vehicle.Check qualified as Vehicle (CheckOptions)
@@ -57,7 +57,7 @@ import Vehicle.Compile qualified as CompileOptions
     networkLocations,
     outputFile,
     specification,
-    target,
+    task,
   )
 import Vehicle.Compile qualified as Vehicle (CompileOptions)
 import Vehicle.Export qualified as ExportOptions
@@ -85,7 +85,7 @@ import Vehicle.Verify qualified as VerifyOptions
     networkLocations,
     proofCache,
     specification,
-    verifier,
+    verifierID,
   )
 
 data NewTestSpecOptions = NewTestSpecOptions
@@ -244,7 +244,7 @@ instance TestSpecLike Vehicle.ModeOptions where
 
 instance TestSpecLike Vehicle.CompileOptions where
   targetName :: Vehicle.CompileOptions -> String
-  targetName = layoutAsString . pretty . CompileOptions.target
+  targetName = layoutAsString . pretty . CompileOptions.task
 
   needs :: Vehicle.CompileOptions -> [FilePath]
   needs opts =
@@ -259,14 +259,14 @@ instance TestSpecLike Vehicle.CompileOptions where
     where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
-        case CompileOptions.target opts of
-          TypeCheck -> assert (isNothing outputFile) []
-          MarabouBackend -> [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
+        case CompileOptions.task opts of
+          TypeCheck Standard -> assert (isNothing outputFile) []
+          CompileToMarabouQueries -> [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
           _ -> maybeToList outputFile
 
 instance TestSpecLike Vehicle.ExportOptions where
   targetName :: Vehicle.ExportOptions -> String
-  targetName = layoutAsString . pretty . Backend.ITP . ExportOptions.target
+  targetName = layoutAsString . pretty . Backend.CompileToITP . ExportOptions.target
 
   needs :: Vehicle.ExportOptions -> [FilePath]
   needs = (: []) . ExportOptions.proofCacheLocation
@@ -276,7 +276,7 @@ instance TestSpecLike Vehicle.ExportOptions where
 
 instance TestSpecLike Vehicle.VerifyOptions where
   targetName :: Vehicle.VerifyOptions -> String
-  targetName = layoutAsString . pretty . Backend.VerifierBackend . VerifyOptions.verifier
+  targetName = layoutAsString . pretty . VerifyOptions.verifierID
 
   needs :: Vehicle.VerifyOptions -> [FilePath]
   needs opts =

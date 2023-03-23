@@ -1,65 +1,51 @@
 module Vehicle.Compile.Type.Meta.Substitution
-  ( MetaSubstitution,
-    MetaSubstitutable,
-    substituteMetas,
+  ( MetaSubstitutable,
+    substMetas,
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalApp, evalBuiltin)
+import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Compile.Type.VariableContext (MetaSubstitution)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (BasicNormExpr, GluedExpr (..), NormExpr (..))
+import Vehicle.Expr.Normalisable
+import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr (..))
 
 -- | Substitutes meta-variables through the provided object, returning the
 -- updated object and the set of meta-variables within the object for which
 -- no subsitution was provided.
-substituteMetas ::
-  (MonadCompile m, MetaSubstitutable a) =>
-  DeclCtx BasicNormExpr ->
-  MetaSubstitution ->
-  a ->
-  m a
-substituteMetas declCtx sub e =
-  runReaderT (subst e) (sub, declCtx)
+substMetas :: (MonadCompile m, MetaSubstitutable m a) => a -> m a
+substMetas = subst
 
 --------------------------------------------------------------------------------
 -- Substitution operation
 
-type MonadSubst m =
-  ( MonadCompile m,
-    MonadReader (MetaSubstitution, DeclCtx BasicNormExpr) m
-  )
+class MetaSubstitutable m a where
+  subst :: MonadCompile m => a -> m a
 
-class MetaSubstitutable a where
-  subst :: MonadSubst m => a -> m a
+instance MetaSubstitutable m b => MetaSubstitutable m (a, b) where
+  subst (x, y) = do
+    y' <- subst y
+    return (x, y')
 
-instance MetaSubstitutable a => MetaSubstitutable (a, a) where
-  subst (e1, e2) = do
-    e1' <- subst e1
-    e2' <- subst e2
-    return (e1', e2')
-
-instance MetaSubstitutable a => MetaSubstitutable [a] where
+instance MetaSubstitutable m a => MetaSubstitutable m [a] where
   subst = traverse subst
 
-instance MetaSubstitutable a => MetaSubstitutable (NonEmpty a) where
+instance MetaSubstitutable m a => MetaSubstitutable m (NonEmpty a) where
   subst = traverse subst
 
-instance MetaSubstitutable a => MetaSubstitutable (GenericArg a) where
+instance MetaSubstitutable m a => MetaSubstitutable m (GenericArg a) where
   subst = traverse subst
 
-instance MetaSubstitutable a => MetaSubstitutable (GenericBinder value a) where
+instance MetaSubstitutable m a => MetaSubstitutable m (GenericBinder value a) where
   subst = traverse subst
 
-instance MetaSubstitutable CheckedExpr where
+instance MonadNorm types m => MetaSubstitutable m (NormalisableExpr types) where
   subst expr =
     -- logCompilerPass MaxDetail (prettyVerbose ex) $
     case expr of
@@ -68,9 +54,8 @@ instance MetaSubstitutable CheckedExpr where
       Universe {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
-      Literal {} -> return expr
-      Var {} -> return expr
-      LVec p es -> LVec p <$> traverse subst es
+      FreeVar {} -> return expr
+      BoundVar {} -> return expr
       Ann p term typ -> Ann p <$> subst term <*> subst typ
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
@@ -82,27 +67,27 @@ instance MetaSubstitutable CheckedExpr where
 -- clogging up our program so this function detects meta applications and normalises
 -- them as it substitutes the meta in.
 substApp ::
-  forall m.
-  MonadSubst m =>
+  forall types m.
+  MonadNorm types m =>
   Provenance ->
-  (CheckedExpr, [CheckedArg]) ->
-  m CheckedExpr
+  (NormalisableExpr types, [NormalisableArg types]) ->
+  m (NormalisableExpr types)
 substApp p (fun@(Meta _ m), mArgs) = do
-  (metaSubst, _declCtx) <- ask
+  metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
     Just value -> subst =<< substArgs (unnormalised value) mArgs
     Nothing -> normAppList p fun <$> subst mArgs
   where
-    substArgs :: CheckedExpr -> [CheckedArg] -> m CheckedExpr
+    substArgs :: NormalisableExpr types -> [NormalisableArg types] -> m (NormalisableExpr types)
     substArgs (Lam _ _ body) (arg : args) = do
       substArgs (argExpr arg `substDBInto` body) args
     substArgs e args = return $ normAppList p e args
 substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
-instance MetaSubstitutable BasicNormExpr where
+instance MonadNorm types m => MetaSubstitutable m (NormExpr types) where
   subst expr = case expr of
     VMeta m args -> do
-      (metaSubst, declCtx) <- ask
+      metaSubst <- getMetaSubstitution
       case MetaMap.lookup m metaSubst of
         -- TODO do we need to subst through the args here?
         Nothing -> VMeta m <$> subst args
@@ -110,51 +95,64 @@ instance MetaSubstitutable BasicNormExpr where
           substValue <- subst $ normalised value
           case args of
             [] -> return substValue
-            (a : as) -> do
-              -- logDebug MaxDetail $ prettyVerbose substValue -- <+> prettyVerbose (fmap argExpr (a : as))
-              runReaderT (evalApp substValue (a : as)) (declCtx, metaSubst)
+            (a : as) -> evalApp substValue (a : as)
+    -- logDebug MaxDetail $ prettyVerbose substValue -- <+> prettyVerbose (fmap argExpr (a : as))
+
     VUniverse {} -> return expr
-    VLiteral {} -> return expr
     VFreeVar v spine -> VFreeVar v <$> traverse subst spine
     VBoundVar v spine -> VBoundVar v <$> traverse subst spine
-    VLVec xs spine -> VLVec <$> traverse subst xs <*> traverse subst spine
     VBuiltin b spine -> do
-      (metaSubst, declCtx) <- ask
       spine' <- traverse subst spine
-      runReaderT (evalBuiltin b spine') (declCtx, metaSubst)
+      evalBuiltin b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
     VLam binder env body -> VLam <$> subst binder <*> subst env <*> subst body
     VPi binder body -> VPi <$> subst binder <*> subst body
 
-instance MetaSubstitutable GluedExpr where
+instance MonadNorm types m => MetaSubstitutable m (GluedExpr types) where
   subst (Glued a b) = Glued <$> subst a <*> subst b
 
-instance MetaSubstitutable expr => MetaSubstitutable (GenericDecl expr) where
+instance MetaSubstitutable m expr => MetaSubstitutable m (GenericDecl expr) where
   subst = traverse subst
 
-instance MetaSubstitutable expr => MetaSubstitutable (GenericProg expr) where
+instance MetaSubstitutable m expr => MetaSubstitutable m (GenericProg expr) where
   subst (Main ds) = Main <$> traverse subst ds
 
-instance MetaSubstitutable UnificationConstraint where
+instance MonadNorm types m => MetaSubstitutable m (UnificationConstraint types) where
   subst (Unify e1 e2) = Unify <$> subst e1 <*> subst e2
 
-instance MetaSubstitutable TypeClassConstraint where
+instance MonadNorm types m => MetaSubstitutable m (TypeClassConstraint types) where
   subst (Has m tc es) = Has m tc <$> subst es
 
-instance MetaSubstitutable Constraint where
+instance MonadNorm types m => MetaSubstitutable m (Constraint types) where
   subst = \case
     UnificationConstraint c -> UnificationConstraint <$> subst c
     TypeClassConstraint c -> TypeClassConstraint <$> subst c
 
-instance MetaSubstitutable constraint => MetaSubstitutable (Contextualised constraint ConstraintContext) where
+instance MetaSubstitutable m constraint => MetaSubstitutable m (Contextualised constraint (ConstraintContext types)) where
   subst (WithContext constraint context) = do
     newConstraint <- subst constraint
     return $ WithContext newConstraint context
 
-instance MetaSubstitutable a => MetaSubstitutable (MetaMap a) where
+instance MonadNorm types m => MetaSubstitutable m (ConstraintContext types) where
+  subst ConstraintContext {..} = do
+    substOrigin <- subst origin
+    return $
+      ConstraintContext
+        { origin = substOrigin,
+          ..
+        }
+
+instance MonadNorm types m => MetaSubstitutable m (ConstraintOrigin types) where
+  subst = \case
+    CheckingExprType e t1 t2 -> CheckingExprType <$> subst e <*> subst t1 <*> subst t2
+    CheckingBinderType n t1 t2 -> CheckingBinderType n <$> subst t1 <*> subst t2
+    CheckingTypeClass op opArgs tc tcArgs -> CheckingTypeClass <$> subst op <*> subst opArgs <*> pure tc <*> subst tcArgs
+    CheckingAuxiliary -> return CheckingAuxiliary
+
+instance MetaSubstitutable m a => MetaSubstitutable m (MetaMap a) where
   subst (MetaMap t) = MetaMap <$> traverse subst t
 
-instance MetaSubstitutable MetaInfo where
+instance MonadNorm types m => MetaSubstitutable m (MetaInfo types) where
   subst (MetaInfo p t ctx) = MetaInfo p <$> subst t <*> pure ctx

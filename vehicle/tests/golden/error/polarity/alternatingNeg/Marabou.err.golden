@@ -1,4 +1,4 @@
-Error at Line 5, Columns 1-2: The property 'p' contains alternating 'forall' and 'exists' quantifiers which is not supported by Marabou.
+Error at Line 5, Columns 1-2: The property 'p' contains alternating 'forall' and 'exists' quantifiers which is not supported by the Marabou query format.
 In particular:
   1. the inner quantifier is the 'forall' located at Line 6, Columns 21-27
   2. which is turned into an 'exists' by the 'not' at Line 6, Columns 16-19

@@ -97,8 +97,6 @@ library
     Vehicle.Syntax.AST.Binder
     Vehicle.Syntax.AST.Builtin
     Vehicle.Syntax.AST.Builtin.Core
-    Vehicle.Syntax.AST.Builtin.Linearity
-    Vehicle.Syntax.AST.Builtin.Polarity
     Vehicle.Syntax.AST.Builtin.TypeClass
     Vehicle.Syntax.AST.Decl
     Vehicle.Syntax.AST.Expr

@@ -8,7 +8,6 @@ module Vehicle.Verify.Specification
     BoolProperty,
     traverseBoolProperty,
     evaluateBoolPropertyM,
-    NegationStatus,
     Property (..),
     traverseProperty,
     Specification (..),
@@ -21,23 +20,20 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Text (Text)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Queries.VariableReconstruction (UserVarReconstructionInfo)
 import Vehicle.Expr.Boolean
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Identifier, Name)
+import Vehicle.Syntax.AST (Identifier)
+import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Query meta data
-
-type MetaNetwork = [(Name, FilePath)]
 
 data QueryMetaData = QueryData
   { metaNetwork :: MetaNetwork,
     userVar :: UserVarReconstructionInfo
   }
-  deriving (Show, Generic)
+  deriving (Generic)
 
 instance ToJSON QueryMetaData
 
@@ -47,8 +43,6 @@ instance Pretty QueryMetaData where
   pretty (QueryData metaNetwork _userVar) =
     "Meta-network:" <+> pretty metaNetwork
 
-type QueryText = Text
-
 -- | The number of an individual query within a `BoolProperty` when traversed
 -- depth-first.
 type QueryID = Int
@@ -56,7 +50,7 @@ type QueryID = Int
 --------------------------------------------------------------------------------
 -- Query
 
-evaluateQuery :: NegationStatus -> (a -> Bool) -> MaybeTrivial a -> Bool
+evaluateQuery :: QueryNegationStatus -> (a -> Bool) -> MaybeTrivial a -> Bool
 evaluateQuery negated f q =
   negated `xor` case q of
     Trivial b -> b
@@ -65,11 +59,8 @@ evaluateQuery negated f q =
 --------------------------------------------------------------------------------
 -- Query set
 
--- | Tracks whether or not a given result should be negated.
-type NegationStatus = Bool
-
 data QuerySet a = QuerySet
-  { negated :: NegationStatus,
+  { negated :: QueryNegationStatus,
     queries :: MaybeTrivial (DisjunctAll a)
   }
   deriving (Show, Generic, Functor, Foldable, Traversable)
@@ -83,7 +74,7 @@ evaluateQuerySetM ::
   (a -> m b) ->
   (b -> Bool) ->
   QuerySet a ->
-  m (NegationStatus, MaybeTrivial b)
+  m (QueryNegationStatus, MaybeTrivial b)
 evaluateQuerySetM f c (QuerySet negated queries) = case queries of
   Trivial b -> return (negated, Trivial b)
   NonTrivial disjuncts -> do
@@ -125,7 +116,7 @@ evaluateBoolPropertyM ::
   (a -> m b) ->
   (b -> Bool) ->
   BoolProperty a ->
-  m (NegationStatus, MaybeTrivial b)
+  m (QueryNegationStatus, MaybeTrivial b)
 evaluateBoolPropertyM f c = \case
   Query qs -> evaluateQuerySetM f c qs
   Disjunct x y -> do

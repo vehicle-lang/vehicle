@@ -13,10 +13,10 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
-import Vehicle.Syntax.AST.Builtin (Builtin, Linearity (..), Polarity (..))
+import Vehicle.Syntax.AST.Builtin (Builtin)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Meta (MetaID)
-import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.AST.Name (Identifier, Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.Prelude
@@ -24,62 +24,19 @@ import Vehicle.Syntax.Prelude
 --------------------------------------------------------------------------------
 -- Universes
 
-type UniverseLevel = Int
-
-data Universe
-  = TypeUniv UniverseLevel
-  | LinearityUniv
-  | PolarityUniv
+newtype UniverseLevel = UniverseLevel Int
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData Universe
+instance NFData UniverseLevel
 
-instance Hashable Universe
+instance Hashable UniverseLevel
 
-instance ToJSON Universe
+instance ToJSON UniverseLevel
 
-instance Serialize Universe
+instance Serialize UniverseLevel
 
-instance Pretty Universe where
-  pretty = \case
-    TypeUniv l -> "Type" <+> pretty l
-    LinearityUniv -> "LinearityUniverse"
-    PolarityUniv -> "PolarityUniverse"
-
---------------------------------------------------------------------------------
--- Literals
-
--- | Type of literals.
--- - The rational literals should `Ratio`, not `Double`
--- - There should be a family of `Float` literals, but we haven't got there yet.
-data Literal
-  = LUnit
-  | LBool Bool
-  | LIndex Int Int
-  | LNat Int
-  | LInt Int
-  | LRat Rational
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData Literal
-
-instance Hashable Literal
-
-instance ToJSON Literal
-
-instance Serialize Literal
-
-instance Pretty Literal where
-  pretty = \case
-    LUnit -> "()"
-    LBool x -> pretty x
-    LIndex _ x -> pretty x
-    LNat x -> pretty x
-    LInt x -> pretty x
-    LRat x -> pretty x
-
-instance Pretty Rational where
-  pretty p = pretty (fromRational p :: Double)
+instance Pretty UniverseLevel where
+  pretty (UniverseLevel l) = "Type" <+> pretty l
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -95,7 +52,7 @@ data Expr binder var builtin
   = -- | A universe, used to type types.
     Universe
       Provenance
-      Universe
+      UniverseLevel
   | -- | User annotation
     Ann
       Provenance
@@ -115,10 +72,14 @@ data Expr binder var builtin
     Builtin
       Provenance
       builtin -- Builtin name.
-  | -- | Variables that are bound by other expressions
-    Var
+  | -- | Variables that are bound locally by other expressions
+    BoundVar
       Provenance
       var -- Variable name.
+  | -- | Variables that refer to other declarations
+    FreeVar
+      Provenance
+      Identifier -- Declaration name
   | -- | A hole in the program.
     Hole
       Provenance
@@ -143,14 +104,6 @@ data Expr binder var builtin
       Provenance
       (Binder binder var builtin) -- Bound expression name.
       (Expr binder var builtin) -- Expression body.
-  | -- | Built-in literal values e.g. numbers/booleans.
-    Literal
-      Provenance
-      Literal -- Value.
-  | -- | A sequence of terms for e.g. list literals.
-    LVec
-      Provenance
-      [Expr binder var builtin] -- List of expressions.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData binder, NFData var, NFData builtin) => NFData (Expr binder var builtin)
@@ -170,11 +123,10 @@ instance HasProvenance (Expr binder var builtin) where
     App p _ _ -> p
     Pi p _ _ -> p
     Builtin p _ -> p
-    Var p _ -> p
+    BoundVar p _ -> p
+    FreeVar p _ -> p
     Let p _ _ _ -> p
     Lam p _ _ -> p
-    Literal p _ -> p
-    LVec p _ -> p
 
 -- * Type of annotations attached to the AST after parsing
 
@@ -231,6 +183,18 @@ mkHole p name = Hole p ("_" <> name)
 
 isTypeSynonym :: Expr binder var builtin -> Bool
 isTypeSynonym = \case
-  Universe _ TypeUniv {} -> True
+  Universe {} -> True
   Pi _ _ res -> isTypeSynonym res
   _ -> False
+
+pattern TypeUniverse :: Provenance -> Int -> Expr binder var builtin
+pattern TypeUniverse p l = Universe p (UniverseLevel l)
+
+pattern BuiltinExpr ::
+  Provenance ->
+  builtin ->
+  NonEmpty (Arg binder var builtin) ->
+  Expr binder var builtin
+pattern BuiltinExpr p b args <- App p (Builtin _ b) args
+  where
+    BuiltinExpr p b args = App p (Builtin p b) args
