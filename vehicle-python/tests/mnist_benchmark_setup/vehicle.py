@@ -3,10 +3,8 @@ from typing import Any, Callable, Dict, Optional, Set, Tuple
 
 import tensorflow as tf
 
-from command_line import call_vehicle_to_generate_loss_json
+from command_line_experiment_setup import call_vehicle_to_generate_loss_json
 from utils import internal_error_msg
-import time
-start_time = time.time()
 
 
 def generate_loss_function(
@@ -237,6 +235,7 @@ class LossFunctionTranslation:
         return f"{free_var}{input_losses}"
 
     def _translate_quantifier(self, contents: Dict[Any, Any]) -> str:
+        
         quantifier = contents[0]
         variable_name = contents[1]
         domain = contents[2]

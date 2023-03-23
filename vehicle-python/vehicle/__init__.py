@@ -5,8 +5,6 @@ import tensorflow as tf
 
 from .command_line import call_vehicle_to_generate_loss_json
 from .utils import internal_error_msg
-import time
-start_time = time.time()
 
 
 def generate_loss_function(
@@ -31,21 +29,13 @@ def generate_loss_function(
         parameters = {}
     if quantifier_sampling is None:
         quantifier_sampling = {}
-    #fine, takes 0.1s
-    print("start generate json: %s seconds ---" % (time.time() - start_time))
     json_dict = call_vehicle_to_generate_loss_json(
         specification, networks, datasets, parameters, function_name
     )
-    print("end generate json: %s seconds ---" % (time.time() - start_time))
-    #fine, takes 0.01s
-    print("start generate loss: %s seconds ---" % (time.time() - start_time))
     translation = LossFunctionTranslation(
         networks, datasets, parameters, quantifier_sampling
     )
-    print("end generate loss: %s seconds ---" % (time.time() - start_time))
-    print("start_to_loss_function: %s seconds ---" % (time.time() - start_time))
     loss = translation.to_loss_function(function_name, json_dict)
-    print("end_to_loss_function: %s seconds ---" % (time.time() - start_time))
     return loss
 
 
@@ -63,17 +53,15 @@ class LossFunctionTranslation:
         self.quantifier_sampling: Dict[str, Callable] = quantifier_sampling
         self.current_decl = None
 
-        self.debug: bool = False
+        self.debug: bool = True
         self.debug_vars: Set[Tuple[str, str]] = set()  # {('boundedByEpsilon', 'x')}
 
     def to_loss_function(
         self, function_name: str, json_dict: Dict[Any, Any]
     ) -> Callable[..., Any]:
         decl_ctx: Dict[str, Callable[..., Any]] = {}
-        print("start_to_loss_function: %s seconds ---" % (time.time() - start_time))
         for [ident, decl] in json_dict:
             self.current_decl = ident
-
             decl_loss_str = self._translate_expression(decl)
             if decl["tag"] != "Lambda":
                 # If the expression that we are translating is not a function in vehicle specification, then translating
@@ -108,7 +96,6 @@ class LossFunctionTranslation:
             loss_fn = typing.cast(Callable[..., Any], local_scope["loss_fn"])
 
             decl_ctx[ident] = loss_fn
-        print("end_to_loss_function: %s seconds ---" % (time.time() - start_time))
         return decl_ctx[function_name]
 
     def _translate_expression(self, json_dict: Dict[Any, Any]) -> str:
@@ -167,7 +154,21 @@ class LossFunctionTranslation:
         elements = ", ".join([self._translate_expression(c) for c in contents])
         return f"to_tensor([{elements}])"
 
-         #NOT WORKING CURRENTLY
+    def _translate_negation(self, contents: Dict[Any, Any]) -> str:
+        loss = self._translate_expression(contents)
+        return f"-{loss}"
+
+    def _translate_minimum(self, contents: Dict[Any, Any]) -> str:
+        loss_1 = self._translate_expression(contents[0])
+        loss_2 = self._translate_expression(contents[1])
+        return f"min({loss_1}, {loss_2})"
+
+    def _translate_maximum(self, contents: Dict[Any, Any]) -> str:
+        loss_1 = self._translate_expression(contents[0])
+        loss_2 = self._translate_expression(contents[1])
+        return f"max({loss_1}, {loss_2})"
+
+    #NOT WORKING CURRENTLY
     def _translate_exponential_and(self, contents: Dict[Any, Any]) -> str:
         #translation of conjunction solely for the STL based translation
         conjuncts = [self._translate_expression(c) for c in contents]
@@ -185,20 +186,6 @@ class LossFunctionTranslation:
                 a_tilde = (a - a_min)/a_min
                 sum += (a*exp(-v*a_tilde))/(exp(-v*a_tilde))
         return f"{sum}"
-
-    def _translate_negation(self, contents: Dict[Any, Any]) -> str:
-        loss = self._translate_expression(contents)
-        return f"-{loss}"
-
-    def _translate_minimum(self, contents: Dict[Any, Any]) -> str:
-        loss_1 = self._translate_expression(contents[0])
-        loss_2 = self._translate_expression(contents[1])
-        return f"min({loss_1}, {loss_2})"
-
-    def _translate_maximum(self, contents: Dict[Any, Any]) -> str:
-        loss_1 = self._translate_expression(contents[0])
-        loss_2 = self._translate_expression(contents[1])
-        return f"max({loss_1}, {loss_2})"
 
     def _translate_addition(self, contents: Dict[Any, Any]) -> str:
         loss_1 = self._translate_expression(contents[0])
@@ -248,6 +235,7 @@ class LossFunctionTranslation:
         return f"{free_var}{input_losses}"
 
     def _translate_quantifier(self, contents: Dict[Any, Any]) -> str:
+        
         quantifier = contents[0]
         variable_name = contents[1]
         domain = contents[2]
@@ -259,9 +247,7 @@ class LossFunctionTranslation:
             raise Exception(
                 "No sampling method provided for variable " + variable_name + "."
             )
-
-        # max_loss = np.NINF
-        # min_loss = np.Inf
+            
         # We generate 10 samples, have to change it in the future
         if quantifier == "All":
             op = "max"

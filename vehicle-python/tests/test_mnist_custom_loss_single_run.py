@@ -4,12 +4,16 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from keras.datasets import mnist
-import time
-from pathlib import Path
 
+from pathlib import Path
+if __name__ == "__main__" and __package__ is None:
+    from sys import path
+    from os.path import dirname as dir
+
+    path.append(dir(path[0]))
 
 from vehicle import generate_loss_function
-from constraint_accuracy import get_constraint_accuracy
+from mnist_constraint_accuracy import get_constraint_accuracy
 
 #This file will run a custom-training for a single network, with parameters set throught the file
 

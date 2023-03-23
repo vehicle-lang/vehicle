@@ -4,12 +4,10 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from keras.datasets import mnist
-import time
 from pathlib import Path
 
-
 from vehicle import generate_loss_function
-from constraint_accuracy import get_constraint_accuracy
+from mnist_constraint_accuracy import get_constraint_accuracy
 
 
 def train(

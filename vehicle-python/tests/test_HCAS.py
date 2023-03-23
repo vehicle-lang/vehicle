@@ -7,7 +7,13 @@ from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
 import h5py
 
-#from not_init import generate_loss_function
+from pathlib import Path
+if __name__ == "__main__" and __package__ is None:
+    from sys import path
+    from os.path import dirname as dir
+
+    path.append(dir(path[0]))
+
 from vehicle import generate_loss_function
 
 trainingDataFiles = "vehicle-python/tests/TrainingDataHCAS/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
