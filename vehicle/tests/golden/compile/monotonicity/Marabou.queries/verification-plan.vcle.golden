@@ -4,65 +4,80 @@
       "monotonic",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "monotonic",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        1,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 7,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "4": 1,
-                                "1": -1
+                        [
+                          "monotonic",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            1,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 7,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "4": 1,
+                                    "1": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ],
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 7,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "2": 1,
-                                "0": -1
+                          ],
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 7,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "2": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ],
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ],
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": true
+                  ]
+                }
+              },
+              "negated": true
+            }
           }
-        }
+        ]
       }
     ]
   ],
