@@ -1,25 +1,25 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t TypeCheck -e p2",
-    "needs": ["simple-pruneDecls.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck -e p2",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t Marabou -o simple-pruneDecls.inputquery -e p2",
-    "needs": ["simple-pruneDecls.vcl"],
-    "produces": ["simple-pruneDecls.inputquery/*.txt"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries --network g:NO_FILE -e p2",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t Agda -o simple-pruneDecls.agda -e p2",
-    "needs": ["simple-pruneDecls.vcl"],
-    "produces": ["simple-pruneDecls.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network f:NO_FILE --network g:NO_FILE -e p2",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-pruneDecls.vcl -t LossFunction -o simple-pruneDecls.loss.json",
-    "needs": ["simple-pruneDecls.vcl"],
-    "produces": ["simple-pruneDecls.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE --network g:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

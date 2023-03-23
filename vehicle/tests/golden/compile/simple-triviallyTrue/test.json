@@ -1,25 +1,25 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t TypeCheck",
-    "needs": ["simple-triviallyTrue.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Marabou -o simple-triviallyTrue.inputquery/",
-    "needs": ["simple-triviallyTrue.vcl"],
-    "produces": ["simple-triviallyTrue.inputquery/*.txt"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t Agda -o simple-triviallyTrue.agda -c proofcache.vclp",
-    "needs": ["simple-triviallyTrue.vcl"],
-    "produces": ["simple-triviallyTrue.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vclp --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s simple-triviallyTrue.vcl -t LossFunction -o simple-triviallyTrue.loss.json",
-    "needs": ["simple-triviallyTrue.vcl"],
-    "produces": ["simple-triviallyTrue.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

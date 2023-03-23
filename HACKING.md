@@ -98,24 +98,27 @@ The CI script that controls this is `.github/workflows/build.yml`.
 
 ## 6. Profiling
 
-Profiling of the compiler can be done by:
+There are two scripts for profiling time and memory requirements respectively:
 
-1. Adding `-O0` to `ghc-options` to the `library` component in `vehicle.cabal`.
-  (Template Haskell stops the profiler from working otherwise)
+1. `scripts/vehicle-profile-time`
 
-2. Adding the line `ghc-options: -O0 -prof -fprof-auto -with-rtsopts=-p` to the
-  `executable vehicle` component in `vehicle.cabal`.
+2. `scripts/vehicle-profile-heap`
 
-3. Run `cabal run exe:vehicle -- ARGS` where `ARGS` are the
-  standard Vehicle arguments. (Note, first time you run this there will be a *long* build time as the whole project and all its dependencies are rebuilt with the profiling options enabled.)
+See the top of these files for how to run them.
 
-This will generate a `vehicle.prof` profiling file. The file can be viewed in a nice graphical format by installing `profiteur` and then running `profiteur vehicle.prof` to generate `vehicle.prof.html` which is then viewable in a web-browser.
+## 7. Detecting infinite loops
 
-## 7. Documentation
+The testing framework captures the output of the program and therefore will not produce anything
+if the program itself loops.
+
+Consequently if you expect that there is an infinite loop in the test, the better way is to execute
+the test directly via `cabal run exe:vehicle -- ARGS --logging MaxDetail`.
+
+## 8. Documentation
 
 The documentation is hosted by ReadTheDocs (RTD). The documentation is automatically rebuilt.
 
-## 8. Coding conventions
+## 9. Coding conventions
 
 - In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable

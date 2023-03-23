@@ -10,22 +10,15 @@ import Vehicle.Backend.LossFunction.Compile
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
 
-encode :: [LDecl] -> String
-encode e =
-  unpack $
-    flip encodePretty' e $
-      Config
-        { confIndent = Spaces 2,
-          confCompare = \t1 t2 -> compare t2 t1,
-          confNumFormat = Generic,
-          confTrailingNewline = False
-        }
-
 writeLossFunctionFiles ::
   MonadIO m =>
   Maybe FilePath ->
   DifferentiableLogic ->
   [LDecl] ->
   m ()
-writeLossFunctionFiles filepath t functions =
-  writeResultToFile (LossFunction t) filepath (pretty (encode functions))
+writeLossFunctionFiles filepath _t functions = do
+  let json = encodePretty' prettyJSONConfig functions
+  writeResultToFile lossFunctionOutputFormat filepath (pretty (unpack json))
+
+lossFunctionOutputFormat :: Maybe ExternalOutputFormat
+lossFunctionOutputFormat = Nothing

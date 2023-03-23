@@ -54,19 +54,24 @@ position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
 
-position token TokNil       {"nil"};
-position token TokSeqOpen   {"["};
-position token TokSeqClose  {"]"};
-position token TokCons      {"::"};
-position token TokAt        {"!"};
-position token TokMap       {"map"};
-position token TokFold      {"fold"};
+position token TokNil        {"nil"};
+position token TokSeqOpen    {"["};
+position token TokSeqClose   {"]"};
+position token TokCons       {"::"};
+position token TokConsVector {"::v"};
+position token TokAt         {"!"};
+position token TokMap        {"map"};
+position token TokFold       {"fold"};
+position token TokDepFold    {"dfold"};
+position token TokIndices    {"indices"};
 
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
 position token TokHasAdd    {"HasAdd"};
 position token TokHasSub    {"HasSub"};
 position token TokHasMul    {"HasMul"};
+position token TokHasFold   {"HasFold"};
+position token TokHasMap    {"HasMap"};
 
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
@@ -143,12 +148,10 @@ Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
 
 -- Quantification
-Forall.    Expr2 ::= TokForall  [NameBinder] TokDot Expr2;
-Exists.    Expr2 ::= TokExists  [NameBinder] TokDot Expr2;
-ForallIn.  Expr2 ::= TokForall  [NameBinder] "in" Expr3 TokDot Expr2;
-ExistsIn.  Expr2 ::= TokExists  [NameBinder] "in" Expr3 TokDot Expr2;
-
-Foreach.   Expr2 ::= TokForeach [NameBinder] TokDot Expr2;
+Forall.    Expr2 ::= TokForall [NameBinder] TokDot Expr2;
+Exists.    Expr2 ::= TokExists [NameBinder] TokDot Expr2;
+ForallIn.  Expr2 ::= TokForall NameBinder "in" Expr3 TokDot Expr2;
+ExistsIn.  Expr2 ::= TokExists NameBinder "in" Expr3 TokDot Expr2;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -171,12 +174,16 @@ Div.     Expr10 ::= Expr10 TokDiv Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
 
 -- Lists and vectors.
+Foreach.    Expr2  ::= TokForeach NameBinder TokDot Expr2;
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
+ConsVector. Expr4  ::= Expr5 TokConsVector Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
+DepFold.    Expr15 ::= TokDepFold;
+Indices.    Expr15 ::= TokIndices;
 
 -- Primitive types.
 Unit.    Expr15 ::= TokUnit;
@@ -194,6 +201,8 @@ HasNotEq. Expr15 ::= TokHasNotEq;
 HasAdd.   Expr15 ::= TokHasAdd;
 HasSub.   Expr15 ::= TokHasSub;
 HasMul.   Expr15 ::= TokHasMul;
+HasMap.   Expr15 ::= TokHasMap;
+HasFold.  Expr15 ::= TokHasFold;
 
 coercions Expr 15;
 separator Expr ",";

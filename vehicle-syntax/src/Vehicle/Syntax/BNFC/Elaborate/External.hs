@@ -223,8 +223,8 @@ elabDefFun isProperty n1 n2 t binders e
 
 elabExpr :: MonadElab m => B.Expr -> m V.InputExpr
 elabExpr = \case
-  B.Type t -> V.Universe <$> mkProvenance t <*> pure (V.TypeUniv 0)
-  B.Var n -> V.Var <$> mkProvenance n <*> pure (tkSymbol n)
+  B.Type t -> V.Universe <$> mkProvenance t <*> pure (V.UniverseLevel 0)
+  B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
   B.Hole n -> V.mkHole <$> mkProvenance n <*> pure (tkSymbol n)
   B.Literal l -> elabLiteral l
   B.Ann e tk t -> op2 V.Ann tk (elabExpr e) (elabExpr t)
@@ -239,21 +239,23 @@ elabExpr = \case
   B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
   B.Foreach tk1 ns _tk2 e -> elabForeach tk1 ns e
-  B.Unit tk -> constructor V.Unit tk []
-  B.Bool tk -> constructor V.Bool tk []
-  B.Index tk -> constructor V.Index tk []
-  B.Nat tk -> constructor V.Nat tk []
-  B.Int tk -> constructor V.Int tk []
-  B.Rat tk -> constructor V.Rat tk []
-  B.List tk -> constructor V.List tk []
-  B.Vector tk -> constructor V.Vector tk []
-  B.Nil tk -> constructor V.Cons tk []
+  B.Unit tk -> builtinType V.Unit tk []
+  B.Bool tk -> builtinType V.Bool tk []
+  B.Index tk -> builtinType V.Index tk []
+  B.Nat tk -> builtinType V.Nat tk []
+  B.Int tk -> builtinType V.Int tk []
+  B.Rat tk -> builtinType V.Rat tk []
+  B.List tk -> builtinType V.List tk []
+  B.Vector tk -> builtinType V.Vector tk []
+  B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
-  B.Not tk e -> builtin (V.TypeClassOp V.NotTC) tk [e]
-  B.Impl e1 tk e2 -> builtin (V.TypeClassOp V.ImpliesTC) tk [e1, e2]
-  B.And e1 tk e2 -> builtin (V.TypeClassOp V.AndTC) tk [e1, e2]
-  B.Or e1 tk e2 -> builtin (V.TypeClassOp V.OrTC) tk [e1, e2]
-  B.If tk1 e1 _ e2 _ e3 -> builtin V.If tk1 [e1, e2, e3]
+  B.ConsVector e1 tk e2 -> builtinFunction V.ConsVector tk [e1, e2]
+  B.Indices tk -> builtinFunction V.Indices tk []
+  B.Not tk e -> builtinFunction V.Not tk [e]
+  B.Impl e1 tk e2 -> builtinFunction V.Implies tk [e1, e2]
+  B.And e1 tk e2 -> builtinFunction V.And tk [e1, e2]
+  B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
+  B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> builtin (V.TypeClassOp $ V.EqualsTC V.Eq) tk [e1, e2]
   B.Neq e1 tk e2 -> builtin (V.TypeClassOp $ V.EqualsTC V.Neq) tk [e1, e2]
   B.Le e1 tk e2 -> elabOrder V.Le tk e1 e2
@@ -265,14 +267,17 @@ elabExpr = \case
   B.Mul e1 tk e2 -> builtin (V.TypeClassOp V.MulTC) tk [e1, e2]
   B.Div e1 tk e2 -> builtin (V.TypeClassOp V.DivTC) tk [e1, e2]
   B.Neg tk e -> builtin (V.TypeClassOp V.NegTC) tk [e]
-  B.At e1 tk e2 -> builtin V.At tk [e1, e2]
+  B.At e1 tk e2 -> builtinFunction V.At tk [e1, e2]
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
-  B.HasEq tk -> builtin (V.Constructor $ V.TypeClass (V.HasEq V.Eq)) tk []
-  B.HasNotEq tk -> builtin (V.Constructor $ V.TypeClass (V.HasEq V.Neq)) tk []
-  B.HasAdd tk -> builtin (V.Constructor $ V.TypeClass V.HasAdd) tk []
-  B.HasSub tk -> builtin (V.Constructor $ V.TypeClass V.HasSub) tk []
-  B.HasMul tk -> builtin (V.Constructor $ V.TypeClass V.HasMul) tk []
+  B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
+  B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
+  B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
+  B.HasAdd tk -> builtinTypeClass V.HasAdd tk []
+  B.HasSub tk -> builtinTypeClass V.HasSub tk []
+  B.HasMul tk -> builtinTypeClass V.HasMul tk []
+  B.HasMap tk -> builtinTypeClass V.HasMap tk []
+  B.HasFold tk -> builtinTypeClass V.HasFold tk []
 
 elabArg :: MonadElab m => B.Arg -> m V.InputArg
 elabArg = \case
@@ -337,21 +342,21 @@ elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
 
 elabLiteral :: MonadElab m => B.Lit -> m V.InputExpr
 elabLiteral = \case
-  B.UnitLiteral -> return $ V.Literal mempty V.LUnit
+  B.UnitLiteral -> return $ V.Builtin mempty $ V.Constructor V.LUnit
   B.BoolLiteral t -> do
     p <- mkProvenance t
     let b = read (unpack $ tkSymbol t)
-    return $ V.Literal p $ V.LBool b
+    return $ V.Builtin p $ V.Constructor $ V.LBool b
   B.NatLiteral t -> do
     p <- mkProvenance t
     let n = readNat (tkSymbol t)
     let fromNat = V.Builtin p (V.TypeClassOp $ V.FromNatTC n)
-    return $ app fromNat [V.Literal p $ V.LNat n]
+    return $ app fromNat [V.Builtin p $ V.Constructor $ V.LNat n]
   B.RatLiteral t -> do
     p <- mkProvenance t
     let r = readRat (tkSymbol t)
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
-    return $ app fromRat [V.Literal p $ V.LRat r]
+    return $ app fromRat [V.Builtin p $ V.Constructor $ V.LRat r]
 
 elabParameterOptions :: MonadElab m => B.DeclAnnOpts -> m V.Resource
 elabParameterOptions = \case
@@ -410,6 +415,15 @@ builtin b t args = do
 constructor :: (MonadElab m, IsToken token) => V.BuiltinConstructor -> token -> [B.Expr] -> m V.InputExpr
 constructor b = builtin (V.Constructor b)
 
+builtinType :: (MonadElab m, IsToken token) => V.BuiltinType -> token -> [B.Expr] -> m V.InputExpr
+builtinType b = builtin (V.BuiltinType b)
+
+builtinTypeClass :: (MonadElab m, IsToken token) => V.TypeClass -> token -> [B.Expr] -> m V.InputExpr
+builtinTypeClass b = builtin (V.TypeClass b)
+
+builtinFunction :: (MonadElab m, IsToken token) => V.BuiltinFunction -> token -> [B.Expr] -> m V.InputExpr
+builtinFunction b = builtin (V.BuiltinFunction b)
+
 app :: V.InputExpr -> [V.InputExpr] -> V.InputExpr
 app fun argExprs = V.normAppList p' fun args
   where
@@ -420,8 +434,9 @@ elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m V.Input
 elabVecLiteral tk xs = do
   let n = length xs
   p <- mkProvenance tk
-  xs' <- op1 V.LVec tk (traverse elabExpr xs)
-  return $ app (V.Builtin p (V.TypeClassOp $ V.FromVecTC n)) [xs']
+  xs' <- traverse elabExpr xs
+  let lit = app (V.Builtin p $ V.Constructor $ V.LVec n) xs'
+  return $ app (V.Builtin p (V.TypeClassOp V.FromVecTC)) [lit]
 
 elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
@@ -495,51 +510,49 @@ elabQuantifierIn ::
   (MonadElab m, IsToken token) =>
   token ->
   V.Quantifier ->
-  [B.NameBinder] ->
+  B.NameBinder ->
   B.Expr ->
   B.Expr ->
   m V.InputExpr
-elabQuantifierIn tk q binders container body = do
+elabQuantifierIn tk q binder container body = do
   p <- mkProvenance tk
-  let builtin = V.Builtin p $ V.TypeClassOp $ V.QuantifierInTC q
+  let builtin = V.FreeVar p $ case q of
+        V.Forall -> V.Identifier V.StdLib "forallIn"
+        V.Exists -> V.Identifier V.StdLib "existsIn"
 
-  binders' <- elabNamedBinders tk binders
+  binder' <- elabNameBinder False binder
   container' <- elabExpr container
   body' <- elabExpr body
 
-  let mkQuantiferIn binder body =
-        let p' = V.provenanceOf binder
-         in V.normAppList
-              p'
-              builtin
-              [ mkArg V.Explicit (V.Lam p' binder body),
-                mkArg V.Explicit container'
-              ]
-
-  return $ foldr mkQuantiferIn body' binders'
+  let p' = V.provenanceOf binder'
+  return $
+    V.normAppList
+      p'
+      builtin
+      [ mkArg V.Explicit (V.Lam p' binder' body'),
+        mkArg V.Explicit container'
+      ]
 
 elabForeach ::
   (MonadElab m, IsToken token) =>
   token ->
-  [B.NameBinder] ->
+  B.NameBinder ->
   B.Expr ->
   m V.InputExpr
-elabForeach tk binders body = do
+elabForeach tk binder body = do
   p <- mkProvenance tk
-  let builtin = V.Builtin p V.Foreach
+  let builtin = V.FreeVar p (V.Identifier V.StdLib "foreachVector")
 
-  binders' <- elabNamedBinders tk binders
+  binder' <- elabNameBinder False binder
   body' <- elabExpr body
 
-  let mkForeach binder body =
-        let p' = V.provenanceOf binder
-         in V.normAppList
-              p'
-              builtin
-              [ mkArg V.Explicit (V.Lam p' binder body)
-              ]
-
-  return $ foldr mkForeach body' binders'
+  let p' = V.provenanceOf binder'
+  return $
+    V.normAppList
+      p'
+      builtin
+      [ mkArg V.Explicit (V.Lam p' binder' body')
+      ]
 
 elabLet :: MonadElab m => B.TokLet -> [B.LetDecl] -> B.Expr -> m V.InputExpr
 elabLet tk decls body = do

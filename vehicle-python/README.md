@@ -3,7 +3,7 @@
 To install the dependencies _and_ the development dependencies, run the following command from this directory:
 
 ```sh
-poetry install --no-root --with dev
+poetry install --with dev
 ```
 
 To run the loss function tests, run the following command from this directory:

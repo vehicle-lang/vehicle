@@ -10,7 +10,7 @@
   the results of type-checking. If the interface file exists and the hash matches
   then it won't re-type check the original file.
 
-* Drastically improved the performance of type-checking (e.g. AcasXu down from 20 seconds to 3 seconds).
+* Drastically improved the performance of type-checking (e.g. AcasXu down from 20 seconds to 0.5 seconds).
 
 * Improved error messages which involve type declarations. The messages now display
   both the original and the expanded form of the type.

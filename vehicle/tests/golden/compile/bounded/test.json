@@ -1,19 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s bounded.vcl -t TypeCheck",
-    "needs": ["bounded.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s bounded.vcl -t Marabou -o bounded.inputquery/",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded.inputquery/*.txt"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s bounded.vcl -t LossFunction -o bounded.loss.json",
-    "needs": ["bounded.vcl"],
-    "produces": ["bounded.loss.json"]
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
   }
 ]

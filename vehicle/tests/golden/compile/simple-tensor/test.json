@@ -1,19 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s simple-tensor.vcl -t TypeCheck",
-    "needs": ["simple-tensor.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s simple-tensor.vcl -t Marabou -o simple-tensor.inputquery/",
-    "needs": ["simple-tensor.vcl"],
-    "produces": ["simple-tensor.inputquery/*.txt"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network f:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s simple-tensor.vcl -t Agda -o simple-tensor.agda -c proofcache.vclp",
-    "needs": ["simple-tensor.vcl"],
-    "produces": ["simple-tensor.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vclp",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

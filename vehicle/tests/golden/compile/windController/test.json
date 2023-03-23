@@ -1,26 +1,26 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s windController.vcl -t TypeCheck",
-    "needs": ["windController.vcl"]
+    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s windController.vcl -t Marabou -o windController.inputquery/",
-    "needs": ["windController.vcl"],
-    "produces": ["windController.inputquery/*.txt"]
+    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network controller:controller.onnx",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s windController.vcl -t Agda -o windController.agda",
-    "needs": ["windController.vcl"],
-    "produces": ["windController.agda"]
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network controller:controller.onnx",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s windController.vcl -t LossFunction -o windController.loss.json",
-    "needs": ["windController.vcl"],
-    "produces": ["windController.loss.json"],
+    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network controller:controller.onnx",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"],
     "enabled": false
   }
 ]

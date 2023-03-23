@@ -1,10 +1,10 @@
-Error at Line 8, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by Marabou.
+Error at Line 8, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by the Marabou query format.
 In particular the multiplication at Line 5, Columns 14-15 involves
-  1. the output of network 'f' at Line 2, Columns 5-33
+  1. the output of network 'f' at Line 2, Columns 1-2
   2. which is used as an input to the function 'square' at Line 9, Columns 24-41
   3. which is used on the left hand side of the multiplication
 and
-  1. the output of network 'f' at Line 2, Columns 5-33
+  1. the output of network 'f' at Line 2, Columns 1-2
   2. which is used as an input to the function 'square' at Line 9, Columns 24-41
   3. which is used on the right hand side of the multiplication
 

@@ -1,2 +1,2 @@
-quantifier : Bool
-quantifier = forall (x : Rat) . x >= 0
+quantifierForall : Bool
+quantifierForall = forall (x : Rat) . x >= 0

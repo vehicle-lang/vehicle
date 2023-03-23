@@ -3,25 +3,12 @@ module Vehicle.Compile.Queries.VariableReconstruction where
 import Control.Monad (foldM)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Queries.FourierMotzkinElimination
-  ( FourierMotzkinVariableSolution,
-    reconstructFourierMotzkinVariableValue,
-  )
 import Vehicle.Compile.Queries.GaussianElimination
-  ( GaussianVariableSolution,
-    reconstructGaussianVariableValue,
-  )
 import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
-
--- | Information neccesary to reconstruct the user variables from the magic
--- input/output variables.
-data VariableSolution
-  = GaussianSolution GaussianVariableSolution
-  | FourierMotzkinSolution FourierMotzkinVariableSolution
-
-type UserVarReconstructionInfo = [(LinearVar, VariableSolution)]
 
 reconstructUserVars ::
   UserVarReconstructionInfo ->

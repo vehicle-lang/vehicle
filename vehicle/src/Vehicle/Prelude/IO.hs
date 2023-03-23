@@ -7,12 +7,14 @@ module Vehicle.Prelude.IO
     fatalError,
     programOutput,
     getVehiclePath,
+    ExternalOutputFormat (..),
   )
 where
 
 import Control.Exception (catch, throwIO)
 -- import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Version (Version)
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
@@ -87,3 +89,12 @@ getVehiclePath = do
               <> show env
   liftIO $ createDirectoryIfMissing False vehiclePath
   return vehiclePath
+
+--------------------------------------------------------------------------------
+-- Other
+
+data ExternalOutputFormat = ExternalOutputFormat
+  { formatName :: forall a. Doc a,
+    formatVersion :: Maybe Version,
+    commentToken :: forall a. Doc a
+  }

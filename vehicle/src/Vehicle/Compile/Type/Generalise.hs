@@ -5,15 +5,17 @@ module Vehicle.Compile.Type.Generalise
 where
 
 import Control.Monad (foldM, forM)
+import Data.Data (Proxy (..))
 import Data.List.NonEmpty ((<|))
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Constraint
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
 
@@ -24,9 +26,9 @@ import Vehicle.Expr.DeBruijn
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
-  TCM m =>
-  CheckedDecl ->
-  m CheckedDecl
+  TCM types m =>
+  CheckedDecl types ->
+  m (CheckedDecl types)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
@@ -38,20 +40,15 @@ generaliseOverUnsolvedConstraints decl =
     return generalisedDecl
 
 generaliseOverConstraint ::
-  TCM m =>
-  [WithContext Constraint] ->
-  (CheckedDecl, [WithContext TypeClassConstraint]) ->
-  WithContext TypeClassConstraint ->
-  m (CheckedDecl, [WithContext TypeClassConstraint])
+  TCM types m =>
+  [WithContext (Constraint types)] ->
+  (CheckedDecl types, [WithContext (TypeClassConstraint types)]) ->
+  WithContext (TypeClassConstraint types) ->
+  m (CheckedDecl types, [WithContext (TypeClassConstraint types)])
 generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
-  let metaFilter =
-        if isAuxiliaryTypeClassConstraint tc
-          then isAuxiliaryUniverse
-          else isTypeUniverse
-
   -- Find any unsolved meta variables that are transitively linked
   -- by constraints of the same type.
-  linkedMetas <- getMetasLinkedToMetasIn allConstraints metaFilter (typeOf decl)
+  linkedMetas <- getMetasLinkedToMetasIn allConstraints (typeOf decl)
   -- Only prepend the constraint if all variables in the constraint
   -- are so linked.
   substTC <- substMetas tc
@@ -67,14 +64,14 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
       return (generalisedDecl, rejected)
 
 prependConstraint ::
-  TCM m =>
-  CheckedDecl ->
-  WithContext TypeClassConstraint ->
-  m CheckedDecl
+  TCM types m =>
+  CheckedDecl types ->
+  WithContext (TypeClassConstraint types) ->
+  m (CheckedDecl types)
 prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let p = originalProvenance ctx
-  typeClass <- quote 0 (tcNormExpr p constraint)
-  let relevancy = relevanceOf tc
+  typeClass <- quote p 0 (tcNormExpr constraint)
+  relevancy <- typeClassRelevancy tc
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $
@@ -87,30 +84,31 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 -- each such meta, it then prepends a new quantified variable to the declaration
 -- type and then solves the meta as that new variable.
 generaliseOverUnsolvedMetaVariables ::
-  TCM m =>
-  CheckedDecl ->
-  m CheckedDecl
+  forall types m.
+  TCM types m =>
+  CheckedDecl types ->
+  m (CheckedDecl types)
 generaliseOverUnsolvedMetaVariables decl = do
   let declType = typeOf decl
 
-  unsolvedMetas <-
-    if isTypeUniverse declType
-      then -- In a type synonym so quantify only over auxiliary metas (unsure about this!)
-        getUnsolvedAuxiliaryMetas
-      else -- Quantify over any unsolved type-level meta variables
-        metasIn (typeOf decl)
-
-  if MetaSet.null unsolvedMetas
-    then return decl
-    else logCompilerPass MinDetail "generalisation of unsolved metas in declaration type" $ do
-      result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
-      substMetas result
+  if isTypeUniverse declType
+    then -- In a type synonym so don't quantify over anything
+      return decl
+    else do
+      -- Quantify over any unsolved type-level meta variables
+      unsolvedMetas <- metasIn (typeOf decl)
+      if MetaSet.null unsolvedMetas
+        then return decl
+        else logCompilerPass MinDetail "generalisation of unsolved metas in declaration type" $ do
+          result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
+          substMetas result
 
 quantifyOverMeta ::
-  TCM m =>
-  CheckedDecl ->
+  forall types m.
+  TCM types m =>
+  CheckedDecl types ->
   MetaID ->
-  m CheckedDecl
+  m (CheckedDecl types)
 quantifyOverMeta decl meta = do
   metaType <- substMetas =<< getMetaType meta
   if isMeta metaType
@@ -119,16 +117,14 @@ quantifyOverMeta decl meta = do
         "Haven't thought about what to do when type of unsolved meta is also"
           <+> "an unsolved meta."
     else do
-      -- TODO more principled to store relevance with the meta itself.
-      let relevance = if isAuxiliaryUniverse metaType then Irrelevant else Relevant
-      metaDoc <- prettyMeta meta
+      metaDoc <- prettyMeta (Proxy @types) meta
       logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
         -- Prepend the implicit binders for the new generalised variable.
         binderName <- getBinderNameOrFreshName Nothing metaType
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
-        prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) relevance metaType decl
+        prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
-isMeta :: DBExpr -> Bool
+isMeta :: DBExpr builtin -> Bool
 isMeta Meta {} = True
 isMeta (App _ Meta {} _) = True
 isMeta _ = False
@@ -137,14 +133,15 @@ isMeta _ = False
 -- Utilities
 
 prependBinderAndSolveMeta ::
-  TCM m =>
+  forall types m.
+  TCM types m =>
   MetaID ->
   BinderDisplayForm ->
   Visibility ->
   Relevance ->
-  CheckedType ->
-  CheckedDecl ->
-  m CheckedDecl
+  CheckedType types ->
+  CheckedDecl types ->
+  m (CheckedDecl types)
 prependBinderAndSolveMeta meta f v r binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
@@ -171,9 +168,9 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
-  metaCtx <- getMetaCtx meta
+  metaCtx <- getMetaCtx @types meta
   let p = provenanceOf prependedDecl
-  let solution = Var p (Bound (DBIndex $ length metaCtx - 1))
+  let solution = BoundVar p (DBIndex $ length metaCtx - 1)
   solveMeta meta solution metaCtx
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
@@ -185,14 +182,15 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   return resultDecl
 
 removeContextsOfMetasIn ::
-  TCM m =>
-  CheckedType ->
-  CheckedDecl ->
-  m (CheckedType, CheckedDecl)
+  forall types m.
+  TCM types m =>
+  CheckedType types ->
+  CheckedDecl types ->
+  m (CheckedType types, CheckedDecl types)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     metasInBinder <- metasIn binderType
-    newMetas <- or <$> forM (MetaSet.toList metasInBinder) removeMetaDependencies
+    newMetas <- or <$> forM (MetaSet.toList metasInBinder) (removeMetaDependencies (Proxy @types))
 
     if not newMetas
       then return (binderType, decl)
@@ -202,10 +200,10 @@ removeContextsOfMetasIn binderType decl =
         logCompilerPassOutput (prettyVerbose substDecl)
         return (substBinderType, substDecl)
 
-addNewArgumentToMetaUses :: MetaID -> CheckedDecl -> CheckedDecl
+addNewArgumentToMetaUses :: MetaID -> CheckedDecl types -> CheckedDecl types
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: DBLevel -> CheckedExpr -> CheckedExpr
+    go :: DBLevel -> CheckedExpr types -> CheckedExpr types
     go d expr = case expr of
       Meta p m
         | m == meta -> App p (Meta p m) [newVar p]
@@ -214,16 +212,15 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Universe {} -> expr
       Hole {} -> expr
       Meta {} -> expr
-      Literal {} -> expr
       Builtin {} -> expr
-      Var {} -> expr
+      FreeVar {} -> expr
+      BoundVar {} -> expr
       Ann p e t -> Ann p (go d e) (go d t)
       App p fun args -> App p (go d fun) (goArgs args)
       Pi p binder result -> Pi p (goBinder binder) (go (d + 1) result)
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
-      LVec p xs -> LVec p (map (go d) xs)
       where
-        newVar p = ExplicitArg p (Var p (Bound $ shiftDBIndex 0 d))
+        newVar p = ExplicitArg p (BoundVar p $ shiftDBIndex 0 d)
         goBinder = fmap (go d)
         goArgs = fmap (fmap (go d))

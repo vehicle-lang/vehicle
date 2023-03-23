@@ -15,8 +15,15 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Constraint
-import Vehicle.Expr.AlphaEquivalence (AlphaEquivalence (..))
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Linearity
+import Vehicle.Compile.Type.Subsystem.Polarity
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfTypeClassOp)
+import Vehicle.Expr.DSL (fromDSL)
+import Vehicle.Expr.DeBruijn (substDBInto)
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
@@ -284,7 +291,7 @@ instance MeaningfulError CompileError where
               <+> squotes (prettyFriendly $ WithContext expectedType boundCtx)
               <+> "but was found to be of type"
               <+> squotes (prettyFriendly $ WithContext actualType boundCtx)
-          CheckingTypeClass fun args ->
+          CheckingTypeClass fun args _ _ ->
             "unable to find a consistent type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -315,7 +322,7 @@ instance MeaningfulError CompileError where
               <+> "to be of type"
               <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
               <+> "but was unable to prove it."
-          CheckingTypeClass fun args ->
+          CheckingTypeClass fun args _ _ ->
             "insufficient information to find a valid type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -346,45 +353,58 @@ instance MeaningfulError CompileError where
           }
       where
         argTypeDoc = prettyFriendly $ WithContext argType ctx
-    FailedInstanceConstraint ctx goal ->
+    FailedInstanceConstraint ctx _goal candidates ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
-            problem = getMessage (goalExpr goal),
+            problem =
+              "unable to work out a valid type for the overloaded expression"
+                <+> originExpr
+                  <> "."
+                  <> line
+                  <> "Type checking has deduced that it is of type:"
+                  <> line
+                  <> indent 2 (inferredOpType (boundContextOf ctx) tcArgs)
+                  <> line
+                  <> "but the list of valid types for it is:"
+                  <> line
+                  <> indent 2 (vsep (fmap candidateType candidates)),
             fix = Nothing
           }
       where
-        getMessage :: NormExpr -> Doc a
-        getMessage = \case
-          VConstructor _ (TypeClass tc) args -> case (tc, args) of
-            (HasMap, _) ->
-              "unable to work out the type for"
-                <+> pretty MapTC <> "."
-                <+> "The second argument to it must be of type"
-                <+> pretty List
-                <+> "or"
-                <+> pretty Vector <> "."
-            (HasAdd, [t1, t2, t3]) ->
-              failedOp2Message (boundContextOf ctx) AddTC (argExpr t1) (argExpr t2) (argExpr t3)
-            (HasSub, [t1, t2, t3]) ->
-              failedOp2Message (boundContextOf ctx) SubTC (argExpr t1) (argExpr t2) (argExpr t3)
-            (HasEq Eq, [t1, t2, t3]) ->
-              failedOp2Message (boundContextOf ctx) (EqualsTC Eq) (argExpr t1) (argExpr t2) (argExpr t3)
-            _ -> developerError $ "Instance search error messages not complete for" <+> quotePretty tc
-          e -> developerError $ "Invalid instance in error message" <+> quotePretty (show e)
+        (tcOp, tcOpArgs, tc, tcArgs) = case origin ctx of
+          CheckingTypeClass tcOp' tcOpArgs' (StandardTypeClass tc') tcArgs' -> (tcOp', tcOpArgs', tc', tcArgs')
+          _ -> developerError "Type class constraints should only have `CheckingTypeClass` origins"
 
-        failedOp2Message :: BoundDBCtx -> TypeClassOp -> NormExpr -> NormExpr -> NormExpr -> Doc a
-        failedOp2Message boundCtx op t1 t2 t3 =
-          "cannot apply"
-            <+> squotes (pretty op)
-            <+> "to"
-            <+> "arguments of type"
-            <+> squotes (prettyFriendly (WithContext t1 boundCtx))
-            <+> "and"
-            <+> squotes (prettyFriendly (WithContext t2 boundCtx))
-            <+> "to obtain a result of type"
-            <+> squotes (prettyFriendly (WithContext t3 boundCtx))
-              <> "."
+        originExpr :: Doc a
+        originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
+
+        inferredOpType :: BoundDBCtx -> [StandardArg] -> Doc a
+        inferredOpType dbCtx args = do
+          let opType = fromDSL mempty $ typeOfTypeClassOp (opOfTypeClass tc)
+          let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
+          let inferedOpType = instantiateTelescope opType argsToSubst
+          prettyFriendly (WithContext inferedOpType dbCtx)
+
+        candidateType :: WithContext InstanceCandidate -> Doc a
+        candidateType (WithContext candidate typingCtx) =
+          go (boundContextOf typingCtx) (candidateExpr candidate)
+          where
+            go :: BoundDBCtx -> StandardExpr -> Doc a
+            go dbCtx = \case
+              BuiltinTypeClass _ _tc args ->
+                inferredOpType dbCtx (NonEmpty.toList args)
+              Pi _ binder result ->
+                go (nameOf binder : dbCtx) result
+              _ -> "UNSUPPORTED PRINTING"
+
+        instantiateTelescope :: StandardExpr -> [StandardExpr] -> StandardExpr
+        instantiateTelescope expr arguments = case (expr, arguments) of
+          (_, []) -> expr
+          (Pi _ _binder body, arg : args) -> do
+            let body' = arg `substDBInto` body
+            instantiateTelescope body' args
+          _ -> developerError "Malformed type-class operation type"
     FailedEqConstraint ctx t1 t2 eq ->
       UError $
         UserError
@@ -704,7 +724,7 @@ instance MeaningfulError CompileError where
     NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
       UError $
         UserError
-          { provenance = provenanceOf nonTensorType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the"
@@ -736,7 +756,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
       UError $
         UserError
-          { provenance = provenanceOf elementType,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as"
@@ -754,7 +774,7 @@ instance MeaningfulError CompileError where
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
-          { provenance = provenanceOf tDim,
+          { provenance = provenanceOf networkType,
             problem =
               unsupportedResourceTypeDescription Network ident networkType
                 <+> "as the size of the"
@@ -859,10 +879,10 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: NormType -> Int
+        dimensionsOf :: StandardNormType -> Int
         dimensionsOf = \case
-          VListType _ t -> 1 + dimensionsOf t
-          VVectorType _ t _ -> 1 + dimensionsOf t
+          VListType t -> 1 + dimensionsOf t
+          VVectorType t _ -> 1 + dimensionsOf t
           _ -> 0
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
       UError $
@@ -1116,28 +1136,7 @@ instance MeaningfulError CompileError where
     -- Backend errors --
     --------------------
 
-    UnsupportedResource target ident p resource ->
-      let dType = squotes (pretty resource)
-       in UError $
-            UserError
-              { provenance = p,
-                problem =
-                  "While compiling property"
-                    <+> prettyIdentName ident
-                    <+> "to"
-                    <+> pretty target
-                    <+> "found a"
-                    <+> dType
-                    <+> "declaration which"
-                    <+> "cannot be compiled.",
-                fix =
-                  Just $
-                    "remove all"
-                      <+> dType
-                      <+> "declarations or switch to a"
-                      <+> "different compilation target."
-              }
-    UnsupportedAlternatingQuantifiers target (ident, p) q pq pp ->
+    UnsupportedAlternatingQuantifiers queryFormat (ident, p) q pq pp ->
       UError $
         UserError
           { provenance = p,
@@ -1149,8 +1148,8 @@ instance MeaningfulError CompileError where
                 <+> quotePretty Forall
                 <+> "and"
                 <+> quotePretty Exists
-                <+> "quantifiers which is not supported by"
-                <+> pretty target
+                <+> "quantifiers which is not supported by the"
+                <+> pretty queryFormat
                   <> "."
                   <> line
                   <> "In particular:"
@@ -1158,7 +1157,7 @@ instance MeaningfulError CompileError where
                   <> indent 2 (prettyPolarityProvenance pq q pp),
             fix = Nothing
           }
-    UnsupportedNonLinearConstraint target (ident, p) p' v1 v2 ->
+    UnsupportedNonLinearConstraint queryFormat (ident, p) p' v1 v2 ->
       UError $
         UserError
           { provenance = p,
@@ -1166,8 +1165,8 @@ instance MeaningfulError CompileError where
               "The property"
                 <+> prettyIdentName ident
                 <+> "contains"
-                <+> "a non-linear constraint which is not supported by"
-                <+> pretty target
+                <+> "a non-linear constraint which is not supported by the"
+                <+> pretty queryFormat
                   <> "."
                   <> line
                   <> "In particular the multiplication at"
@@ -1181,7 +1180,7 @@ instance MeaningfulError CompileError where
                 "try avoiding it, otherwise please open an issue on the"
                   <+> "Vehicle issue tracker."
           }
-    UnsupportedVariableType target ident p name t supportedTypes ->
+    UnsupportedVariableType queryFormat ident p name problemType baseType supportedTypes ->
       UError $
         UserError
           { provenance = p,
@@ -1191,24 +1190,32 @@ instance MeaningfulError CompileError where
                 <+> "contains a quantified variable"
                 <+> quotePretty name
                 <+> "of type"
-                <+> squotes (prettyFriendly (WithContext t emptyDBCtx))
+                <+> squotes (prettyFriendly (WithContext baseType emptyDBCtx))
                 <+> "which is not currently supported"
-                <+> "by"
-                <+> pretty target <> ".",
+                <+> "by the"
+                <+> pretty queryFormat
+                  <> "."
+                  <> ( if baseType == problemType
+                         then ""
+                         else
+                           " In particular the element type"
+                             <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
+                             <+> "is not supported."
+                     ),
             fix =
               Just $
                 "try switching the variable to one of the following supported types:"
                   <+> pretty supportedTypes
           }
-    UnsupportedInequality target identifier p ->
+    UnsupportedInequality queryFormat (identifier, p) ->
       UError $
         UserError
           { provenance = p,
             problem =
               "After compilation, property"
                 <+> prettyIdentName identifier
-                <+> "contains a `!=` which is not current supported by"
-                <+> pretty target <> ". ",
+                <+> "contains a `!=` which is not current supported by the"
+                <+> pretty queryFormat <> ". ",
             fix = Just (implementationLimitation (Just 74))
           }
     UnsupportedPolymorphicEquality target p typeName ->
@@ -1217,7 +1224,7 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               "The use of equality over the unknown type"
-                <+> squotes (pretty typeName)
+                <+> quotePretty typeName
                 <+> "is not currently supported"
                 <+> "when compiling to"
                 <+> pretty target,
@@ -1225,22 +1232,6 @@ instance MeaningfulError CompileError where
               Just $
                 "try avoiding it, otherwise open an issue on the"
                   <+> "Vehicle issue tracker describing the use case."
-          }
-    UnsupportedNonMagicVariable target p name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The variable"
-                <+> squotes (pretty name)
-                <+> "is not used as"
-                <+> "an input to a network, which is not currently supported"
-                <+> "by"
-                <+> pretty target,
-            fix =
-              Just $
-                "try reformulating the property, or else open an issue on the"
-                  <+> "Vehicle issue tracker describing the use-case."
           }
     NoPropertiesFound ->
       UError $
@@ -1262,7 +1253,7 @@ instance MeaningfulError CompileError where
                 <+> "is the wrong compilation target",
             fix = Just "choose a different compilation target than VNNLib"
           }
-    UnsupportedNegatedOperation logic (_ident, _declProv) notProv expr ->
+    UnsupportedNegatedOperation logic notProv expr ->
       UError $
         UserError
           { provenance = notProv,
@@ -1271,12 +1262,12 @@ instance MeaningfulError CompileError where
                 <+> quotePretty logic
                 <+> "does not support"
                 <+> "the"
-                <+> quotePretty NotTC
+                <+> quotePretty Not
                 <+> "at"
                 <+> pretty notProv
                 <+> "applied to"
                 <+> "an expression with the following subterm"
-                <+> squotes (prettyFriendly (WithContext expr emptyDBCtx))
+                <+> squotes (prettyFriendly expr)
                 <+> "at"
                 <+> pretty (provenanceOf expr) <> ".",
             fix = Just "choose a different differential logic"
@@ -1293,7 +1284,7 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> GluedType -> Doc a
+unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> StandardGluedType -> Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType =
   "The type of"
     <+> pretty annotation
@@ -1302,7 +1293,7 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
       <> line
       <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
       <> line
-      <> ( if reducedResourceType `alphaEq` unreducedResourceType
+      <> ( if reducedResourceType == unreducedResourceType
              then ""
              else
                "which reduces to:"
@@ -1315,7 +1306,7 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
     unreducedResourceType = unnormalised resourceType
     reducedResourceType = unnormalise 0 (normalised resourceType)
 
-unsupportedResourceTypeDescription :: Resource -> Identifier -> GluedType -> Doc a
+unsupportedResourceTypeDescription :: Resource -> Identifier -> StandardGluedType -> Doc a
 unsupportedResourceTypeDescription resource =
   unsupportedAnnotationTypeDescription (ResourceAnnotation resource)
 
@@ -1343,7 +1334,7 @@ prettyResource :: Resource -> Identifier -> Doc a
 prettyResource resourceType ident =
   pretty resourceType <+> prettyIdentName ident
 
-prettyBuiltinType :: BuiltinConstructor -> Doc a
+prettyBuiltinType :: BuiltinType -> Doc a
 prettyBuiltinType t = article <+> squotes (pretty t)
   where
     article :: Doc a
@@ -1365,9 +1356,9 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
       QuantifierProvenance p ->
         ["the inner quantifier is the" <+> quotePretty q <+> "located at" <+> pretty p]
       NegateProvenance p pp ->
-        transform p ("the" <+> quotePretty NotTC) : go (neg q) pp
+        transform p ("the" <+> quotePretty Not) : go (neg q) pp
       LHSImpliesProvenance p pp ->
-        transform p ("being on the LHS of the" <+> quotePretty ImpliesTC) : go (neg q) pp
+        transform p ("being on the LHS of the" <+> quotePretty Implies) : go (neg q) pp
       EqProvenance p pp eq ->
         transform p ("being involved in the" <+> quotePretty (EqualsTC eq)) : go (neg q) pp
       PolFunctionProvenance p pp position ->
@@ -1438,21 +1429,23 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> [UncheckedArg] -> Doc a
+prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [UncheckedArg StandardBuiltinType] -> Doc a
 prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring
     | isDesugared b -> prettyFriendly $ WithContext (argExpr $ last args) (boundContextOf ctx)
     | otherwise -> pretty b
     where
-      isDesugared :: Builtin -> Bool
-      isDesugared (TypeClassOp FromNatTC {}) = True
-      isDesugared (TypeClassOp FromRatTC {}) = True
-      isDesugared (TypeClassOp FromVecTC {}) = True
+      isDesugared :: StandardBuiltin -> Bool
+      isDesugared (CType (StandardTypeClassOp op)) = case op of
+        FromNatTC {} -> True
+        FromRatTC {} -> True
+        FromVecTC {} -> True
+        _ -> False
       isDesugared _ = False
   _ -> prettyFriendly $ WithContext fun (boundContextOf ctx)
 
-prettyUnificationConstraintOriginExpr :: ConstraintContext -> CheckedExpr -> Doc a
+prettyUnificationConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> Doc a
 prettyUnificationConstraintOriginExpr ctx = \case
   Builtin _ b -> pretty b
   expr -> prettyFriendly $ WithContext expr (boundContextOf ctx)

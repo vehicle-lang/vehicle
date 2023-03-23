@@ -1,0 +1,39 @@
+-- Cabal project configuration file for HEAP PROFILING
+--
+-- Support heap profiling with -hT or -hi.
+--
+-- Use this configuration in one of two ways:
+--
+-- * pass `--project-file=cabal.project.profile-heap` to Cabal
+-- * run Vehicle via `./scripts/vehicle-profile-heap`
+--
+-- Visualse the produced eventlog with `eventlog2html`.
+-- You can install `eventlog2html` with
+--
+--   cabal v2-install eventlog2html --ignore-project --overwrite-policy=always
+--
+-- See: https://mpickering.github.io/eventlog2html/
+
+import: cabal.project
+
+package vehicle-syntax
+  ghc-options:
+    -- Necessary for eventlog support
+    -eventlog
+
+    -- Necessary for info table profiling with -hi
+    -finfo-table-map -fdistinct-constructor-tables
+
+package vehicle
+  ghc-options:
+    -- Necessary for eventlog support
+    -eventlog
+
+    -- Necessary for info table profiling with -hi
+    -finfo-table-map -fdistinct-constructor-tables
+
+    -- Necessary on _executable_ for eventlog support
+    -threaded
+
+    -- Necessary on _executable_ for RTSOPTS support
+    -rtsopts

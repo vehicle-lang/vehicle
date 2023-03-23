@@ -43,9 +43,11 @@ MAlonzo/**
 __pycache__/
 .mypy_cache/
 
-# Examples folder
-examples/**/*.vclp
-examples/**/*.vclo
+# Vehicle files
+*.vclp
+*.vclo
+
+# Example folders
 examples/windController/agdaProof/WindControllerSpec.agda
 
 # Benchmarks

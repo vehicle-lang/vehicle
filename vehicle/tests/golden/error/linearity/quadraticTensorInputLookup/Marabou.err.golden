@@ -1,4 +1,4 @@
-Error at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by Marabou.
+Error at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by the Marabou query format.
 In particular the multiplication at Line 6, Columns 24-25 involves
   1. the quantified variable 'x' introduced at Line 6, Columns 12-13
   2. which is used on the left hand side of the multiplication

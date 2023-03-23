@@ -1,5 +1,0 @@
-{
-  "name": "TypeCheck",
-  "run": "vehicle compile -s quantifiedIfCondition.vcl -t TypeCheck",
-  "needs": ["quantifiedIfCondition.vcl"]
-}

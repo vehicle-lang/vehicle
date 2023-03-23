@@ -18,9 +18,9 @@ import Data.Bifunctor (Bifunctor (first))
 import Data.Coerce (coerce)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Syntax.AST
 import Prelude hiding (lookup, map)
 
 --------------------------------------------------------------------------------

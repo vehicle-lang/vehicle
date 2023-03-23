@@ -12,10 +12,11 @@ import Data.Serialize (Serialize, decode, encode)
 import GHC.Generics (Generic)
 import System.FilePath (dropExtension)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem.Standard
 
 data ObjectFileContents = ObjectFileContents
   { _fileHash :: Int,
-    _typeResult :: TypedProg
+    _typeResult :: StandardGluedProg
   }
   deriving (Generic)
 
@@ -29,7 +30,7 @@ readObjectFile ::
   (MonadLogger m, MonadIO m) =>
   FilePath ->
   SpecificationText ->
-  m (Maybe TypedProg)
+  m (Maybe StandardGluedProg)
 readObjectFile specificationFile spec = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   errorOrContents <- liftIO $ do
@@ -55,7 +56,7 @@ writeObjectFile ::
   (MonadLogger m, MonadIO m) =>
   FilePath ->
   SpecificationText ->
-  TypedProg ->
+  StandardGluedProg ->
   m ()
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile

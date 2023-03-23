@@ -9,27 +9,26 @@ import Control.Monad.State
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
-import Data.Maybe (catMaybes)
 import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.NBE (runNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type (getGlued)
-import Vehicle.Expr.Normalised (GluedExpr (..), NormExpr, pattern VNatLiteral)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalised
 
 -- | Expands datasets and parameters, and attempts to infer the values of
 -- inferable parameters. Also checks the resulting types of networks.
 expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
-  TypedProg ->
-  m (NetworkContext, TypedProg)
+  StandardGluedProg ->
+  m (NetworkContext, StandardGluedProg)
 expandResources resources@Resources {..} prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     resourcesCtx@ResourceContext {..} <-
@@ -55,34 +54,34 @@ type MonadReadResources m =
     MonadExpandResources m
   )
 
-readResourcesInProg :: MonadReadResources m => TypedProg -> m ()
+readResourcesInProg :: MonadReadResources m => StandardGluedProg -> m ()
 readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 
-readResourcesInDecl :: MonadReadResources m => TypedDecl -> m ()
+readResourcesInDecl :: MonadReadResources m => StandardGluedDecl -> m ()
 readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
   DefPostulate {} -> return ()
-  DefResource p ident resourceType declType -> do
-    gluedDeclType <- getGlued declType
+  DefResource p ident resourceType declType ->
     case resourceType of
       InferableParameter ->
         modify (noteInferableParameter ident)
       Parameter -> do
-        resources <- ask
-        normParameterExpr <- parseParameterValue (parameters resources) (ident, p) gluedDeclType
+        parameterValues <- asks parameters
+        normParameterExpr <- parseParameterValue parameterValues (ident, p) declType
         let parameterExpr = mkTyped normParameterExpr
         modify (addParameter ident parameterExpr)
       Dataset -> do
-        resources <- ask
-        normDatasetExpr <- parseDataset (datasets resources) (ident, p) gluedDeclType
+        datasetLocations <- asks datasets
+        normDatasetExpr <- parseDataset datasetLocations (ident, p) declType
         let datasetExpr = mkTyped normDatasetExpr
         modify (addDataset ident datasetExpr)
       Network -> do
-        networkType <- getNetworkType (ident, p) gluedDeclType
-        modify (addNetworkType ident networkType)
+        networkLocations <- asks networks
+        networkDetails <- checkNetwork networkLocations (ident, p) declType
+        modify (addNetworkType ident networkDetails)
 
-mkTyped :: NormExpr -> TypedExpr
-mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
+mkTyped :: StandardNormExpr -> StandardGluedExpr
+mkTyped expr = Glued (unnormalise 0 expr) expr
 
 --------------------------------------------------------------------------------
 -- Second pass
@@ -92,25 +91,31 @@ mkTyped expr = TypedExpr (Glued (unnormalise 0 expr) expr)
 -- the new values now inserted.
 type MonadInsertResources m =
   ( MonadReader ResourceContext m,
-    MonadState (DeclCtx TypedExpr) m,
+    MonadState (DeclCtx StandardGluedExpr) m,
     MonadCompile m
   )
 
-insertResourcesInProg :: MonadInsertResources m => TypedProg -> m TypedProg
-insertResourcesInProg (Main ds) = Main . catMaybes <$> insertDecls ds
+insertResourcesInProg :: MonadInsertResources m => StandardGluedProg -> m StandardGluedProg
+insertResourcesInProg (Main ds) = Main <$> insertDecls ds
 
-insertDecls :: MonadInsertResources m => [TypedDecl] -> m [Maybe TypedDecl]
+insertDecls :: MonadInsertResources m => [StandardGluedDecl] -> m [StandardGluedDecl]
 insertDecls [] = return []
 insertDecls (d : ds) = do
   norm <- normDecl d
-  d' <- insertDecl norm
-  ds' <- insertDecls ds
-  return $ d' : ds'
+  maybeDecl <- insertDecl norm
+  case maybeDecl of
+    Nothing -> insertDecls ds
+    Just decl -> do
+      case bodyOf decl of
+        Nothing -> return ()
+        Just body -> modify (Map.insert (identifierOf decl) body)
+      ds' <- insertDecls ds
+      return $ decl : ds'
 
 insertDecl ::
   MonadInsertResources m =>
-  TypedDecl ->
-  m (Maybe TypedDecl)
+  StandardGluedDecl ->
+  m (Maybe StandardGluedDecl)
 insertDecl = \case
   r@DefFunction {} -> return (Just r)
   r@DefPostulate {} -> return (Just r)
@@ -121,7 +126,7 @@ insertDecl = \case
       case paramValue of
         Nothing -> throwError $ InferableParameterUninferrable (ident, p)
         Just (_, _, v) -> do
-          let normParameterExpr = VNatLiteral p v
+          let normParameterExpr = VNatLiteral v
           let parameterExpr = mkTyped normParameterExpr
           modify (Map.insert ident parameterExpr)
           return $ Just $ DefFunction p ident False declType parameterExpr
@@ -145,10 +150,10 @@ lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
       "Somehow missed resource" <+> quotePretty ident <+> "on the first pass"
   Just value -> return value
 
-normDecl :: MonadInsertResources m => TypedDecl -> m TypedDecl
+normDecl :: MonadInsertResources m => StandardGluedDecl -> m StandardGluedDecl
 normDecl decl = do
-  ctx <- gets (fmap (normalised . glued))
-  for decl $ \(TypedExpr (Glued unnorm norm)) -> do
+  ctx <- gets (fmap normalised)
+  for decl $ \(Glued unnorm norm) -> do
     -- Ugh, horrible. We really need to be able to renormalise.
-    norm' <- whnf 0 ctx mempty (unnormalise 0 norm)
-    return $ TypedExpr $ Glued unnorm norm'
+    norm' <- runNormT ctx mempty (whnf mempty (unnormalise 0 norm))
+    return $ Glued unnorm norm'

@@ -1,6 +1,6 @@
 module Vehicle.Verify
   ( VerifyOptions (..),
-    VerifierIdentifier,
+    VerifierID,
     verify,
   )
 where
@@ -12,6 +12,7 @@ import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
 import System.IO (stderr)
 import System.IO.Temp (withSystemTempDirectory)
+import Vehicle.Backend.Prelude (Task (..))
 import Vehicle.Compile
 import Vehicle.Prelude
 import Vehicle.Resource
@@ -19,7 +20,6 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
-import Vehicle.Verify.Verifier.Interface
 
 data VerifyOptions = VerifyOptions
   { specification :: FilePath,
@@ -27,7 +27,7 @@ data VerifyOptions = VerifyOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    verifier :: VerifierIdentifier,
+    verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable,
     proofCache :: Maybe FilePath
   }
@@ -35,20 +35,28 @@ data VerifyOptions = VerifyOptions
 
 verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings VerifyOptions {..} = do
-  let verifierImpl = verifiers verifier
+  let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
-
   let resources = Resources networkLocations datasetLocations parameterValues
 
   specificationHash <- hash <$> readSpecification specification
 
-  status <-
-    withSystemTempDirectory "specification" $ \tempDir -> do
-      runCompileMonad loggingSettings $ do
-        -- TODO go via the main compile method instead.
-        typeCheckingResult <- typeCheckUserProg specification properties False
-        compiledSpecification <- compileToVerifier typeCheckingResult resources verifier (Just tempDir)
-        verifySpecification verifierImpl verifierExecutable tempDir networkLocations compiledSpecification
+  status <- withSystemTempDirectory "specification" $ \tempDir -> do
+    compile loggingSettings $
+      CompileOptions
+        { task = CompileToQueryFormat (verifierQueryFormat verifierImpl),
+          specification = specification,
+          declarationsToCompile = properties,
+          networkLocations = networks resources,
+          datasetLocations = datasets resources,
+          parameterValues = parameters resources,
+          outputFile = Just tempDir,
+          moduleName = Nothing,
+          proofCache = Nothing,
+          noStdlib = False
+        }
+
+    verifySpecification verifierImpl verifierExecutable tempDir
 
   programOutput $ pretty status
 

@@ -5,12 +5,15 @@ where
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile.Normalise.NBE (whnf)
+import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.AlphaEquivalence ()
+import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn (DBLevel)
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 normalisationTests :: TestTree
@@ -39,14 +42,14 @@ normalisationTests =
         NBETest
           { name = "AppPlus",
             dbLevel = 1,
-            input = App p (Builtin p $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
+            input = App p (Builtin p $ CFunction $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest
           { name = "ListMeta",
             dbLevel = 1,
-            input = App p (Builtin p $ Constructor List) [ExplicitArg p (Meta p (MetaID 0))],
-            expected = App p (Builtin p $ Constructor List) [ExplicitArg p (Meta p (MetaID 0))]
+            input = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))],
+            expected = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))]
           }
       ]
 
@@ -56,15 +59,15 @@ normalisationTests =
 data NBETest = NBETest
   { name :: String,
     dbLevel :: DBLevel,
-    input :: CheckedExpr,
-    expected :: CheckedExpr
+    input :: StandardExpr,
+    expected :: StandardExpr
   }
 
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- whnf dbLevel mempty mempty input
-    actual <- quote dbLevel normInput
+    normInput <- runEmptyNormT @StandardBuiltinType $ whnf (mkNoOpEnv dbLevel) input
+    actual <- quote mempty dbLevel normInput
 
     let errorMessage =
           layoutAsString $
@@ -85,5 +88,8 @@ normalisationTest NBETest {..} =
 p :: Provenance
 p = mempty
 
-binding :: CheckedType -> CheckedBinder
+binding :: StandardType -> StandardBinder
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()
+
+mkNoOpEnv :: DBLevel -> Env builtin
+mkNoOpEnv boundCtxSize = [(Nothing, VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]
