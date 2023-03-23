@@ -55,9 +55,9 @@ position token TokAdd       {"+"};
 position token TokSub       {"-"};
 
 position token TokNil        {"nil"};
+position token TokCons       {"::"};
 position token TokSeqOpen    {"["};
 position token TokSeqClose   {"]"};
-position token TokCons       {"::"};
 position token TokConsVector {"::v"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};

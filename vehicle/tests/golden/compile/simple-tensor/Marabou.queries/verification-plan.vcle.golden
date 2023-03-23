@@ -1,114 +1,129 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "p"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
+      "p",
+      {
+        "tag": "SingleProperty",
+        "contents": {
+          "tag": "Conjunct",
+          "contents": [
+            {
+              "tag": "Conjunct",
+              "contents": [
+                {
+                  "tag": "Query",
+                  "contents": {
+                    "queries": {
+                      "tag": "NonTrivial",
+                      "contents": {
+                        "unDisjunctAll": [
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
                             ]
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "negated": false
-                }
-              },
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
+                          }
+                        ]
+                      }
+                    },
+                    "negated": false
+                  }
+                },
+                {
+                  "tag": "Query",
+                  "contents": {
+                    "queries": {
+                      "tag": "NonTrivial",
+                      "contents": {
+                        "unDisjunctAll": [
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
                             ]
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "negated": false
+                          }
+                        ]
+                      }
+                    },
+                    "negated": false
+                  }
                 }
-              }
-            ]
-          },
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
+              ]
+            },
+            {
+              "tag": "Conjunct",
+              "contents": [
+                {
+                  "tag": "Query",
+                  "contents": {
+                    "queries": {
+                      "tag": "NonTrivial",
+                      "contents": {
+                        "unDisjunctAll": [
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
                             ]
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "negated": false
-                }
-              },
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
+                          }
+                        ]
+                      }
+                    },
+                    "negated": false
+                  }
+                },
+                {
+                  "tag": "Query",
+                  "contents": {
+                    "queries": {
+                      "tag": "NonTrivial",
+                      "contents": {
+                        "unDisjunctAll": [
+                          {
+                            "userVar": [],
+                            "metaNetwork": [
+                              [
+                                "f",
+                                "fake.onnx"
+                              ]
                             ]
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "negated": false
+                          }
+                        ]
+                      }
+                    },
+                    "negated": false
+                  }
                 }
-              }
-            ]
-          }
-        ]
+              ]
+            }
+          ]
+        }
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8762839351790322055
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

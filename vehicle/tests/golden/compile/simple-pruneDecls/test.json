@@ -1,14 +1,18 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s spec.vcl -t TypeCheck -e p2",
+    "run": "vehicle check -s spec.vcl -e p2",
     "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries --network g:NO_FILE -e p2",
-    "needs": ["spec.vcl"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries --network g:fake.onnx -e p2",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"],
+    "ignore":
+    {
+      "matches": ".*\"fileHash\".*"
+    }
   },
   {
     "name": "Agda",

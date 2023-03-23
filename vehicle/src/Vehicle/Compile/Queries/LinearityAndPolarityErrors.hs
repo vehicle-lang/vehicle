@@ -81,7 +81,7 @@ typeCheckWithSubsystem prog = do
   monomorphisedProg <- monomorphise False typeClassFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   runTypeChecker @m @types mempty $
-    typeCheckProg implicitFreeProg
+    typeCheckProg mempty implicitFreeProg
 
 resolveInstanceArguments :: forall m. MonadCompile m => StandardProg -> m StandardProg
 resolveInstanceArguments prog =

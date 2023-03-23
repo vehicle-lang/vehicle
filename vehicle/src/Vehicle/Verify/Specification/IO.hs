@@ -1,7 +1,9 @@
 module Vehicle.Verify.Specification.IO
   ( readSpecification,
-    outputVerificationQueries,
+    readVerificationPlan,
+    outputVerificationResult,
     verifySpecification,
+    verificationPlanFileName,
   )
 where
 
@@ -15,7 +17,9 @@ import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy qualified as BIO
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
+import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeExtension, (<.>), (</>))
@@ -31,7 +35,7 @@ import Vehicle.Verify.Verifier (queryFormats)
 
 readSpecification :: MonadIO m => FilePath -> m SpecificationText
 readSpecification inputFile
-  | takeExtension inputFile /= vehicleFileExtension = do
+  | takeExtension inputFile /= vehicleSpecificationFileExtension = do
       fatalError $
         "Specification"
           <+> quotePretty inputFile
@@ -39,7 +43,7 @@ readSpecification inputFile
           <+> "extension"
           <+> quotePretty (takeExtension inputFile) <> "."
           <+> "Only files with a"
-          <+> quotePretty vehicleFileExtension
+          <+> quotePretty vehicleSpecificationFileExtension
           <+> "extension are supported."
   | otherwise =
       liftIO $
@@ -57,46 +61,45 @@ readSpecification inputFile
 -- | Outputs the compiled verification plan and queries that make up the specification.
 -- If a folder is provided it outputs them to individual files in that folder,
 -- otherwise it outputs them to stdout.
-outputVerificationQueries ::
-  MonadIO m =>
+outputVerificationResult ::
+  (MonadIO m, MonadLogger m) =>
   QueryFormatID ->
   Maybe FilePath ->
   (VerificationPlan, VerificationQueries) ->
   m ()
-outputVerificationQueries queryFormatID maybeOutputLocation (plan, queries) =
+outputVerificationResult queryFormatID maybeOutputLocation (plan, queries) = do
   case maybeOutputLocation of
-    Nothing -> do
-      programOutput (pretty plan)
-      programOutput (pretty queries)
-    Just outputLocation -> do
-      liftIO $ createDirectoryIfMissing True outputLocation
-
-      writeVerificationPlan outputLocation plan
-      writeVerificationQueries queryFormatID outputLocation queries
-
-writeVerificationPlan :: MonadIO m => FilePath -> VerificationPlan -> m ()
-writeVerificationPlan folder plan = do
-  let planText = encodePretty' prettyJSONConfig plan
-  let planFile = mkPlanFileName folder
-
-  maybeError <-
-    liftIO $
-      catch
-        (do BIO.writeFile planFile planText; return Nothing)
-        (\(e :: IOException) -> return $ Just e)
-
-  case maybeError of
     Nothing -> return ()
-    Just err ->
-      fatalError $
-        "Unable to write the verification plan to file"
-          <+> quotePretty planFile
-            <> line
-            <> indent 2 ("error:" <+> pretty (show err))
+    Just folder -> liftIO $ createDirectoryIfMissing True folder
+
+  outputVerificationPlan maybeOutputLocation plan
+  outputVerificationQueries queryFormatID maybeOutputLocation queries
+
+outputVerificationPlan :: MonadIO m => Maybe FilePath -> VerificationPlan -> m ()
+outputVerificationPlan maybeFolder plan = do
+  let planText = encodePretty' prettyJSONConfig plan
+  case maybeFolder of
+    Nothing -> programOutput $ pretty $ decodeUtf8 $ BIO.toStrict $ encodePretty' prettyJSONConfig plan
+    Just folder -> do
+      let planFile = verificationPlanFileName folder
+
+      maybeError <-
+        liftIO $
+          catch
+            (do BIO.writeFile planFile planText; return Nothing)
+            (\(e :: IOException) -> return $ Just e)
+
+      case maybeError of
+        Nothing -> return ()
+        Just err ->
+          fatalError $
+            "Unable to write the verification plan to file"
+              <+> quotePretty planFile
+                <> line
+                <> indent 2 ("error:" <+> pretty (show err))
 
 readVerificationPlan :: MonadIO m => FilePath -> m VerificationPlan
-readVerificationPlan folder = do
-  let planFile = mkPlanFileName folder
+readVerificationPlan planFile = do
   errorOrResult <-
     liftIO $
       catch
@@ -119,19 +122,27 @@ readVerificationPlan folder = do
             <+> ""
       Just plan -> return plan
 
-mkPlanFileName :: FilePath -> FilePath
-mkPlanFileName folder = folder </> "verification-plan.vcle"
-
-writeVerificationQueries :: MonadIO m => QueryFormatID -> FilePath -> VerificationQueries -> m ()
-writeVerificationQueries queryFormatID folder (Specification properties) = do
+outputVerificationQueries ::
+  (MonadLogger m, MonadIO m) =>
+  QueryFormatID ->
+  Maybe FilePath ->
+  VerificationQueries ->
+  m ()
+outputVerificationQueries queryFormatID maybeFolder (Specification properties) = do
   forM_ properties $ \(ident, property) -> do
-    let property' = calculateFilePaths folder ident property
+    let folderName = fromMaybe "" maybeFolder
+    let property' = calculateFilePaths folderName ident property
     let queryFormat = queryFormats queryFormatID
     let queryOutputForm = Just $ queryOutputFormat queryFormat
     _ <- flip traverseProperty property' $ \(queryFilePath, queryText) ->
-      liftIO $ writeResultToFile queryOutputForm (Just queryFilePath) (pretty queryText)
+      case maybeFolder of
+        Just {} -> writeResultToFile queryOutputForm (Just queryFilePath) (pretty queryText)
+        Nothing -> programOutput ("\n" <> pretty queryFilePath <> "\n\n" <> pretty queryText)
 
     return ()
+
+verificationPlanFileName :: FilePath -> FilePath
+verificationPlanFileName folder = folder </> "verification-plan" <.> vehicleVerificationPlanFileExtension
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -140,16 +151,16 @@ writeVerificationQueries queryFormatID folder (Specification properties) = do
 -- not prevent the verification of the other properties.
 verifySpecification ::
   MonadIO m =>
+  FilePath ->
   Verifier ->
   VerifierExecutable ->
-  FilePath ->
+  Specification QueryMetaData ->
   m SpecificationStatus
-verifySpecification verifier verifierExecutable queryFolder = do
-  Specification namedProperties <- readVerificationPlan queryFolder
+verifySpecification queryFolder verifier verifierExecutable (Specification namedProperties) = do
   results <- forM namedProperties $ \(name, property) -> do
     let property' = calculateFilePaths queryFolder name property
     result <- runReaderT (verifyProperty property') (verifier, verifierExecutable)
-    return (nameOf name, result)
+    return (name, result)
   return $ SpecificationStatus (Map.fromList results)
 
 verifyProperty ::
@@ -174,8 +185,8 @@ verifyQuery (queryFile, QueryData metaNetwork userVar) = do
 -- | Indices into a multi-property.
 type MultiPropertyIndex = Int
 
-calculateFilePaths :: FilePath -> Identifier -> Property a -> Property (FilePath, a)
-calculateFilePaths directory propertyIdentifier = goProperty []
+calculateFilePaths :: FilePath -> Name -> Property a -> Property (FilePath, a)
+calculateFilePaths directory propertyName = goProperty []
   where
     goProperty :: [MultiPropertyIndex] -> Property a -> Property (FilePath, a)
     goProperty propertyIndices = \case
@@ -190,7 +201,7 @@ calculateFilePaths directory propertyIdentifier = goProperty []
     goQuery :: [MultiPropertyIndex] -> BoolProperty a -> BoolProperty (FilePath, a)
     goQuery propertyIndices = fmapNumberedBoolProperty $ first $ \queryID ->
       directory
-        </> unpack (nameOf propertyIdentifier)
+        </> unpack propertyName
           <> propertyStr
           <> "-query"
           <> show queryID <.> "txt"

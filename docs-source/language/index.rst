@@ -1,6 +1,10 @@
 The specification language
 ==========================
 
+Vehicle specifications are written in the *Vehicle Specification Language*,
+which is designed for clearly and concisely expressing mathematical properties
+of neural networks.
+
 .. toctree::
   :maxdepth: 1
 

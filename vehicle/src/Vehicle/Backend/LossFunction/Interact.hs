@@ -11,7 +11,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Prelude
 
 writeLossFunctionFiles ::
-  MonadIO m =>
+  (MonadIO m, MonadLogger m) =>
   Maybe FilePath ->
   DifferentiableLogic ->
   [LDecl] ->

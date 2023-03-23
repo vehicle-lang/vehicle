@@ -6,8 +6,6 @@ where
 import Control.Applicative (Alternative (many), (<**>))
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
-import Data.Set (Set)
-import Data.Set qualified as Set (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
@@ -37,9 +35,9 @@ import Options.Applicative
     value,
   )
 import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
-import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Task)
-import Vehicle.Check (CheckOptions (..))
+import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..))
 import Vehicle.Compile (CompileOptions (..))
+import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
   ( LoggingLevel,
@@ -47,8 +45,11 @@ import Vehicle.Prelude
     enumerate,
     loggingLevelHelp,
     supportedOptions,
-    vehicleFileExtension,
+    vehicleSpecificationFileExtension,
+    vehicleVerificationPlanFileExtension,
   )
+import Vehicle.TypeCheck (TypeCheckOptions (..))
+import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))
 
 --------------------------------------------------------------------------------
@@ -87,7 +88,7 @@ commandLineOptionsParserInfo =
   info
     (optionsParser <**> helper)
     ( fullDesc
-        <> header "Vehicle - a program for writing and checking neural network specifications"
+        <> header "Vehicle - a program for enforcing neural network specifications"
     )
 
 --------------------------------------------------------------------------------
@@ -116,10 +117,30 @@ modeOptionsParser :: Parser (Maybe ModeOptions)
 modeOptionsParser =
   optional $
     hsubparser $
-      command "compile" (info (Compile <$> compileParser) compileDescription)
-        <> command "verify" (info (Verify <$> verifyParser) verifyDescription)
-        <> command "check" (info (Check <$> checkParser) checkDescription)
-        <> command "export" (info (Export <$> exportParser) exportDescription)
+      command "check" typeCheckParserInfo
+        <> command "compile" compileParserInfo
+        <> command "verify" verifyParserInfo
+        <> command "compileAndVerify" compileAndVerifyParserInfo
+        <> command "validate" validateParserInfo
+        <> command "export" exportParserInfo
+
+--------------------------------------------------------------------------------
+-- Check mode
+
+typeCheckDescription :: InfoMod ModeOptions
+typeCheckDescription =
+  progDesc $
+    "type checks a " <> vehicleSpecificationFileExtension <> " file"
+
+typeCheckParser :: Parser TypeCheckOptions
+typeCheckParser =
+  TypeCheckOptions
+    <$> specificationParser
+    <*> typeSystemParser
+    <*> declarationParser
+
+typeCheckParserInfo :: ParserInfo ModeOptions
+typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
 
 --------------------------------------------------------------------------------
 -- Compile mode
@@ -127,7 +148,7 @@ modeOptionsParser =
 compileDescription :: InfoMod ModeOptions
 compileDescription =
   progDesc $
-    "Compile a " <> vehicleFileExtension <> " file to an output target"
+    "Compile a " <> vehicleSpecificationFileExtension <> " file to an output target"
 
 compileParser :: Parser CompileOptions
 compileParser =
@@ -141,7 +162,9 @@ compileParser =
     <*> outputFileParser
     <*> modulePrefixOption
     <*> compileProofCacheParser
-    <*> noStdlibParser
+
+compileParserInfo :: ParserInfo ModeOptions
+compileParserInfo = info (Compile <$> compileParser) compileDescription
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -155,6 +178,26 @@ verifyDescription =
 verifyParser :: Parser VerifyOptions
 verifyParser =
   VerifyOptions
+    <$> verificationPlanParser
+    <*> verifierParser
+    <*> verifierLocationParser
+    <*> verifyProofCacheParser
+
+verifyParserInfo :: ParserInfo ModeOptions
+verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
+
+--------------------------------------------------------------------------------
+-- Compile and verify mode
+
+compileAndVerifyDescription :: InfoMod ModeOptions
+compileAndVerifyDescription =
+  progDesc
+    "Verify the status of a Vehicle property, and write out the result to a \
+    \ proof cache."
+
+compileAndVerifyParser :: Parser CompileAndVerifyOptions
+compileAndVerifyParser =
+  CompileAndVerifyOptions
     <$> specificationParser
     <*> propertyParser
     <*> networkParser
@@ -164,18 +207,25 @@ verifyParser =
     <*> verifierLocationParser
     <*> verifyProofCacheParser
 
+compileAndVerifyParserInfo :: ParserInfo ModeOptions
+compileAndVerifyParserInfo =
+  info (CompileAndVerify <$> compileAndVerifyParser) compileAndVerifyDescription
+
 --------------------------------------------------------------------------------
 -- Check mode
 
-checkDescription :: InfoMod ModeOptions
-checkDescription =
+validateDescription :: InfoMod ModeOptions
+validateDescription =
   progDesc
-    "Check the verification status of a Vehicle specification."
+    "Validate the verification status of a Vehicle specification."
 
-checkParser :: Parser CheckOptions
-checkParser =
-  CheckOptions
-    <$> checkProofCacheParser
+validateParser :: Parser ValidateOptions
+validateParser =
+  ValidateOptions
+    <$> validateProofCacheParser
+
+validateParserInfo :: ParserInfo ModeOptions
+validateParserInfo = info (Validate <$> validateParser) validateDescription
 
 --------------------------------------------------------------------------------
 -- Export mode
@@ -193,6 +243,9 @@ exportParser =
     <*> outputFileParser
     <*> modulePrefixOption
 
+exportParserInfo :: ParserInfo ModeOptions
+exportParserInfo = info (Export <$> exportParser) exportDescription
+
 --------------------------------------------------------------------------------
 -- Some shared option parsers
 
@@ -209,7 +262,13 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
 allTasks :: [String]
-allTasks = ["TypeCheck"] <> allVerifiers <> allITPs <> allLossFunctionDLs
+allTasks = allVerifiers <> allITPs <> allLossFunctionDLs
+
+allTypeSystems :: [String]
+allTypeSystems = flip map (enumerate @TypingSystem) $ \case
+  Standard -> "Standard"
+  Linearity -> "Linearity - check whether quantified variables are used linearly in the specification."
+  Polarity -> "Polarity - check whether alternating quantifiers are used in the specification."
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -244,13 +303,29 @@ loggingLevelParser =
       <> showDefault
       <> help loggingLevelHelp
 
+verificationPlanParser :: Parser FilePath
+verificationPlanParser =
+  strOption $
+    long "verificationPlan"
+      <> short 'p'
+      <> metavar "FILE"
+      <> help ("The " <> vehicleVerificationPlanFileExtension <> " file containing the verification plan.")
+
+typeSystemParser :: Parser TypingSystem
+typeSystemParser =
+  option auto $
+    long "typeSystem"
+      <> short 't'
+      <> help ("Which typing system should be used. " <> supportedOptions allTypeSystems)
+      <> value Standard
+
 specificationParser :: Parser FilePath
 specificationParser =
   strOption $
     long "specification"
       <> short 's'
       <> metavar "FILE"
-      <> help ("The " <> vehicleFileExtension <> " file containing the specification.")
+      <> help ("The " <> vehicleSpecificationFileExtension <> " file containing the specification.")
 
 networkParser :: Parser (Map Text FilePath)
 networkParser =
@@ -314,35 +389,33 @@ outputFileParser =
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
 
-propertyParser :: Parser (Set Text)
+propertyParser :: Parser [Text]
 propertyParser =
-  Set.fromList
-    <$> many
-      ( strOption $
-          long "property"
-            <> short 'y'
-            <> metavar "NAME"
-            <> help
-              ( "Property in the specification to verify. "
-                  <> repeatedParameterHelp
-                  <> " If none provided then all properties in the specification will be verified."
-              )
-      )
+  many
+    ( strOption $
+        long "property"
+          <> short 'y'
+          <> metavar "NAME"
+          <> help
+            ( "Property in the specification to verify. "
+                <> repeatedParameterHelp
+                <> " If none provided then all properties in the specification will be verified."
+            )
+    )
 
-declarationParser :: Parser (Set Text)
+declarationParser :: Parser [Text]
 declarationParser =
-  Set.fromList
-    <$> many
-      ( strOption $
-          long "declaration"
-            <> short 'e'
-            <> metavar "NAME"
-            <> help
-              ( "Declarations in the specification to include during compilation. "
-                  <> repeatedParameterHelp
-                  <> " If not provided then all declarations in the specification will be compiled."
-              )
-      )
+  many
+    ( strOption $
+        long "declaration"
+          <> short 'e'
+          <> metavar "NAME"
+          <> help
+            ( "Declarations in the specification to include during compilation. "
+                <> repeatedParameterHelp
+                <> " If not provided then all declarations in the specification will be compiled."
+            )
+    )
 
 verifierParser :: Parser VerifierID
 verifierParser =
@@ -372,13 +445,13 @@ exportTargetParser =
       <> metavar "TARGET"
       <> help ("The target to export to. " <> supportedOptions allITPs)
 
-compileTargetParser :: Parser Task
+compileTargetParser :: Parser Target
 compileTargetParser =
   option auto $
     long "target"
       <> short 't'
       <> metavar "TARGET"
-      <> help ("Task for the compiler to perform. " <> supportedOptions allTasks)
+      <> help ("The target that the specification should be compiled to. " <> supportedOptions allTasks)
 
 proofCacheOption :: Mod OptionFields String -> Parser String
 proofCacheOption helpField =
@@ -388,13 +461,12 @@ proofCacheOption helpField =
       <> metavar "FILE"
       <> helpField
 
-checkProofCacheParser :: Parser FilePath
-checkProofCacheParser =
+validateProofCacheParser :: Parser FilePath
+validateProofCacheParser =
   proofCacheOption $
     help
-      "The location of the proof cache \
-      \ that can be used to check the verification status \
-      \ of the specification. The proof cache can be generated via the \
+      "The location of the proof cache to validate. \
+      \ The proof cache can be generated via the \
       \ `vehicle verify` command."
 
 exportProofCacheParser :: Parser FilePath
@@ -415,11 +487,3 @@ verifyProofCacheParser =
 
 compileProofCacheParser :: Parser (Maybe FilePath)
 compileProofCacheParser = optional exportProofCacheParser
-
-noStdlibParser :: Parser Bool
-noStdlibParser =
-  switch $
-    long "noStdlib"
-      <> help
-        "Stop the standard library from loading.\
-        \ Not recommended, except for testing purposes."

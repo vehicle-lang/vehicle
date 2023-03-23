@@ -1,50 +1,65 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "p"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
+      "p",
+      {
+        "tag": "SingleProperty",
         "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 4,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "1": 1,
-                              "0": -1
+          "tag": "Query",
+          "contents": {
+            "queries": {
+              "tag": "NonTrivial",
+              "contents": {
+                "unDisjunctAll": [
+                  {
+                    "userVar": [
+                      [
+                        0,
+                        {
+                          "tag": "GaussianSolution",
+                          "contents": {
+                            "solutionEquality": {
+                              "numberOfVars": 4,
+                              "constantValue": 0,
+                              "coefficients": {
+                                "1": 1,
+                                "0": -1
+                              }
                             }
                           }
                         }
-                      }
+                      ]
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        "fake.onnx"
+                      ]
                     ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "f",
-                      "NO_FILE"
-                    ]
-                  ]
-                }
-              ]
-            }
-          },
-          "negated": true
+                  }
+                ]
+              }
+            },
+            "negated": true
+          }
         }
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 7471048486082013603
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

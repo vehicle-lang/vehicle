@@ -44,13 +44,13 @@ compileToQueries ::
   QueryFormat ->
   StandardGluedProg ->
   Resources ->
-  m (VerificationPlan, VerificationQueries)
+  m (Specification (QueryMetaData, QueryText))
 compileToQueries queryFormat typedProg resources =
   logCompilerPass MinDetail currentPass $ do
     properties <- compileProgToQueries queryFormat resources typedProg
     if null properties
       then throwError NoPropertiesFound
-      else return $ NonEmpty.unzip $ Specification properties
+      else return $ Specification properties
 
 --------------------------------------------------------------------------------
 -- Getting properties
@@ -61,7 +61,7 @@ compileProgToQueries ::
   QueryFormat ->
   Resources ->
   GenericProg StandardGluedExpr ->
-  m [(Identifier, Property (QueryMetaData, QueryText))]
+  m [(Name, Property (QueryMetaData, QueryText))]
 compileProgToQueries queryFormat resources prog = do
   (networkCtx, expandedProg) <- expandResources resources prog
   let Main decls = expandedProg
@@ -71,7 +71,7 @@ compileProgToQueries queryFormat resources prog = do
       NetworkContext ->
       DeclCtx StandardGluedDecl ->
       [StandardGluedDecl] ->
-      m [(Identifier, Property (QueryMetaData, QueryText))]
+      m [(Name, Property (QueryMetaData, QueryText))]
     go _ _ [] = return []
     go networkCtx declCtx (d : ds) = case d of
       DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
@@ -93,7 +93,7 @@ compileProgToQueries queryFormat resources prog = do
       Identifier ->
       StandardGluedType ->
       StandardGluedExpr ->
-      m (Identifier, Property (QueryMetaData, QueryText))
+      m (Name, Property (QueryMetaData, QueryText))
     compilePropertyDecl networkCtx declCtx p ident _typ expr = do
       logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
         let declSubst = mapMaybe (fmap normalised . bodyOf) declCtx
@@ -107,7 +107,7 @@ compileProgToQueries queryFormat resources prog = do
               UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
               _ -> throwError e
 
-        return (ident, property)
+        return (nameOf ident, property)
 
 --------------------------------------------------------------------------------
 -- Compilation

@@ -1,63 +1,78 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "index"
+      "index",
+      {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "tag": "Query",
+              "contents": {
+                "queries": {
+                  "tag": "NonTrivial",
+                  "contents": {
+                    "unDisjunctAll": [
+                      {
+                        "userVar": [],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "negated": false
+              }
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "tag": "Query",
+              "contents": {
+                "queries": {
+                  "tag": "NonTrivial",
+                  "contents": {
+                    "unDisjunctAll": [
+                      {
+                        "userVar": [],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "negated": false
+              }
+            }
+          }
+        ]
+      }
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8133922974965376708
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
     ],
-    {
-      "tag": "MultiProperty",
-      "contents": [
-        {
-          "tag": "SingleProperty",
-          "contents": {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
-                  "unDisjunctAll": [
-                    {
-                      "userVar": [],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  ]
-                }
-              },
-              "negated": false
-            }
-          }
-        },
-        {
-          "tag": "SingleProperty",
-          "contents": {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
-                  "unDisjunctAll": [
-                    {
-                      "userVar": [],
-                      "metaNetwork": [
-                        [
-                          "f",
-                          "NO_FILE"
-                        ]
-                      ]
-                    }
-                  ]
-                }
-              },
-              "negated": false
-            }
-          }
-        }
-      ]
-    }
-  ]
-]
+    "datasetSummaries": []
+  }
+}

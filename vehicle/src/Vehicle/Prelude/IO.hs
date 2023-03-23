@@ -1,5 +1,6 @@
 module Vehicle.Prelude.IO
-  ( vehicleFileExtension,
+  ( vehicleSpecificationFileExtension,
+    vehicleVerificationPlanFileExtension,
     vehicleObjectFileExtension,
     vehicleProofCacheFileExtension,
     vehicleLibraryExtension,
@@ -27,17 +28,23 @@ import System.Info (os)
 --------------------------------------------------------------------------------
 -- Files
 
-vehicleFileExtension :: String
-vehicleFileExtension = ".vcl"
+baseFileExtension :: String
+baseFileExtension = ".vcl"
+
+vehicleSpecificationFileExtension :: String
+vehicleSpecificationFileExtension = baseFileExtension
+
+vehicleVerificationPlanFileExtension :: String
+vehicleVerificationPlanFileExtension = baseFileExtension <> "e"
 
 vehicleObjectFileExtension :: String
-vehicleObjectFileExtension = vehicleFileExtension <> "o"
+vehicleObjectFileExtension = baseFileExtension <> "o"
 
 vehicleProofCacheFileExtension :: String
-vehicleProofCacheFileExtension = vehicleFileExtension <> "p"
+vehicleProofCacheFileExtension = baseFileExtension <> "p"
 
 vehicleLibraryExtension :: String
-vehicleLibraryExtension = vehicleFileExtension <> "lib"
+vehicleLibraryExtension = baseFileExtension <> "lib"
 
 --------------------------------------------------------------------------------
 -- IO operations

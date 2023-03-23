@@ -1,33 +1,48 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "p"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
+      "p",
+      {
+        "tag": "SingleProperty",
         "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [],
-                  "metaNetwork": [
-                    [
-                      "f",
-                      "NO_FILE"
+          "tag": "Query",
+          "contents": {
+            "queries": {
+              "tag": "NonTrivial",
+              "contents": {
+                "unDisjunctAll": [
+                  {
+                    "userVar": [],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        "fake.onnx"
+                      ]
                     ]
-                  ]
-                }
-              ]
-            }
-          },
-          "negated": false
+                  }
+                ]
+              }
+            },
+            "negated": false
+          }
         }
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 2332988783337516841
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

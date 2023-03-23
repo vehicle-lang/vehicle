@@ -18,9 +18,7 @@ import Vehicle.Verify.Specification.Status (SpecificationStatus)
 data ProofCache = ProofCache
   { proofCacheVersion :: Version,
     status :: SpecificationStatus,
-    resourceSummaries :: [ResourceSummary],
-    originalSpec :: FilePath,
-    originalSpecHash :: Int,
+    resourcesIntegrityInfo :: ResourcesIntegrityInfo,
     originalProperties :: PropertyNames
   }
   deriving (Generic)
