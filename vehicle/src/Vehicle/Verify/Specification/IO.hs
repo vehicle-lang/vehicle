@@ -47,7 +47,7 @@ readSpecification inputFile
           <+> "extension are supported."
   | otherwise =
       liftIO $
-        TIO.readFile inputFile `catch` \(e :: IOException) -> do
+        safeReadFromFile TIO.hGetContents inputFile `catch` \(e :: IOException) -> do
           fatalError $
             "Error occured while reading specification"
               <+> quotePretty inputFile

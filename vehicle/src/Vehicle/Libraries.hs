@@ -79,7 +79,7 @@ findLibraryContentFile library = do
   errorOrContents <-
     liftIO $
       catch
-        (Right <$> BIO.readFile libraryInfoFile)
+        (Right <$> safeReadFromFile BIO.hGetContents libraryInfoFile)
         (\(e :: IOException) -> return (Left e))
 
   libraryUpToDate <- case errorOrContents of

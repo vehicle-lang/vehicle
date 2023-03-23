@@ -6,6 +6,7 @@ module Vehicle.Prelude.IO
     vehicleLibraryExtension,
     removeFileIfExists,
     safeWriteToFile,
+    safeReadFromFile,
     fatalError,
     programOutput,
     getVehiclePath,
@@ -101,11 +102,20 @@ getVehiclePath = do
 
 -- | Writes a file atomically by first acquiring a lock on it.
 safeWriteToFile :: (Handle -> a -> IO ()) -> FilePath -> a -> IO ()
-safeWriteToFile write file contents = do
+safeWriteToFile writeOp file contents = do
   handle <- openFile file WriteMode
   hLock handle ExclusiveLock
-  write handle contents
+  writeOp handle contents
   hClose handle
+
+-- | Writes a file atomically by first acquiring a lock on it.
+safeReadFromFile :: (Handle -> IO a) -> FilePath -> IO a
+safeReadFromFile readOp file = do
+  handle <- openFile file ReadMode
+  hLock handle SharedLock
+  result <- readOp handle
+  hClose handle
+  return result
 
 --------------------------------------------------------------------------------
 -- Other
