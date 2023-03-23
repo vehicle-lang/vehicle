@@ -4,71 +4,95 @@
       "bounded",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [
+        "contents": [
+          [
+            "bounded",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "bounded",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ],
-                    "metaNetwork": [
+                    [
                       [
-                        "f",
-                        "fake.onnx"
-                      ]
-                    ]
-                  },
-                  {
-                    "userVar": [
-                      [
-                        0,
-                        {
-                          "tag": "GaussianSolution",
-                          "contents": {
-                            "solutionEquality": {
-                              "numberOfVars": 4,
-                              "constantValue": 0,
-                              "coefficients": {
-                                "1": 1,
-                                "0": -1
+                        [
+                          "bounded",
+                          []
+                        ],
+                        2
+                      ],
+                      {
+                        "userVar": [
+                          [
+                            0,
+                            {
+                              "tag": "GaussianSolution",
+                              "contents": {
+                                "solutionEquality": {
+                                  "numberOfVars": 4,
+                                  "constantValue": 0,
+                                  "coefficients": {
+                                    "1": 1,
+                                    "0": -1
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    ],
-                    "metaNetwork": [
-                      [
-                        "f",
-                        "fake.onnx"
-                      ]
+                          ]
+                        ],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": true
+                  ]
+                }
+              },
+              "negated": true
+            }
           }
-        }
+        ]
       }
     ]
   ],

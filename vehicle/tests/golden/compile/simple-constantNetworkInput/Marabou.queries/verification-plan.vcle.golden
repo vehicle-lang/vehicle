@@ -4,28 +4,43 @@
       "p",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Query",
-          "contents": {
-            "queries": {
-              "tag": "NonTrivial",
-              "contents": {
-                "unDisjunctAll": [
-                  {
-                    "userVar": [],
-                    "metaNetwork": [
+        "contents": [
+          [
+            "p",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
+                    [
                       [
-                        "f",
-                        "fake.onnx"
-                      ]
+                        [
+                          "p",
+                          []
+                        ],
+                        1
+                      ],
+                      {
+                        "userVar": [],
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
-              }
-            },
-            "negated": false
+                  ]
+                }
+              },
+              "negated": false
+            }
           }
-        }
+        ]
       }
     ]
   ],

@@ -61,19 +61,19 @@ compileProgToQueries ::
   QueryFormat ->
   Resources ->
   GenericProg StandardGluedExpr ->
-  m [(Name, Property (QueryMetaData, QueryText))]
+  m [(Name, MultiProperty (QueryMetaData, QueryText))]
 compileProgToQueries queryFormat resources prog = do
   (networkCtx, expandedProg) <- expandResources resources prog
   let Main decls = expandedProg
-  go networkCtx mempty decls
+  compileDecls networkCtx mempty decls
   where
-    go ::
+    compileDecls ::
       NetworkContext ->
       DeclCtx StandardGluedDecl ->
       [StandardGluedDecl] ->
-      m [(Name, Property (QueryMetaData, QueryText))]
-    go _ _ [] = return []
-    go networkCtx declCtx (d : ds) = case d of
+      m [(Name, MultiProperty (QueryMetaData, QueryText))]
+    compileDecls _ _ [] = return []
+    compileDecls networkCtx declCtx (d : ds) = case d of
       DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
       DefPostulate {} -> normalisationError currentPass "postulates"
       DefFunction p ident isProperty typ body -> do
@@ -82,7 +82,7 @@ compileProgToQueries queryFormat resources prog = do
             then return Nothing
             else Just <$> compilePropertyDecl networkCtx declCtx p ident typ body
 
-        properties <- go networkCtx (Map.insert ident d declCtx) ds
+        properties <- compileDecls networkCtx (Map.insert ident d declCtx) ds
 
         return $ maybeToList maybeProperty ++ properties
 
@@ -93,12 +93,11 @@ compileProgToQueries queryFormat resources prog = do
       Identifier ->
       StandardGluedType ->
       StandardGluedExpr ->
-      m (Name, Property (QueryMetaData, QueryText))
+      m (Name, MultiProperty (QueryMetaData, QueryText))
     compilePropertyDecl networkCtx declCtx p ident _typ expr = do
       logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
         let declSubst = mapMaybe (fmap normalised . bodyOf) declCtx
-        let propertyCtx = (declSubst, queryFormat, (ident, p), networkCtx)
-        let computeProperty = runReaderT (compileProperty (normalised expr)) propertyCtx
+        let computeProperty = compileMultiProperty networkCtx declSubst p ident (normalised expr)
         property <-
           computeProperty `catchError` \e -> do
             let formatID = queryFormatID queryFormat
@@ -109,30 +108,48 @@ compileProgToQueries queryFormat resources prog = do
 
         return (nameOf ident, property)
 
+    -- \| Compiles a property of type `Tensor Bool dims` for some variable `dims`,
+    -- by recursing through the levels of vectors until it reaches something of
+    -- type `Bool`.
+    compileMultiProperty ::
+      NetworkContext ->
+      DeclSubstitution StandardBuiltinType ->
+      Provenance ->
+      Identifier ->
+      StandardNormExpr ->
+      m (MultiProperty (QueryMetaData, QueryText))
+    compileMultiProperty networkCtx declCtx p ident = go []
+      where
+        go :: MultiPropertyIndices -> StandardNormExpr -> m (MultiProperty (QueryMetaData, QueryText))
+        go indices = \case
+          VVecLiteral es -> do
+            let es' = zip [0 :: QueryID ..] es
+            MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+          expr ->
+            logCompilerSection MaxDetail "Starting single boolean property" $ do
+              let propertyAddress = (nameOf ident, indices)
+              let state = PropertyState queryFormat declCtx networkCtx p ident indices
+              let compileProperty = compilePropertyTopLevelStructure expr
+              property <- runSupplyT (runReaderT compileProperty state) [1 :: QueryID ..]
+              return $ SingleProperty propertyAddress property
+
 --------------------------------------------------------------------------------
 -- Compilation
 
-type PropertyReaderState =
-  ( DeclSubstitution StandardBuiltinType,
-    QueryFormat,
-    DeclProvenance,
-    NetworkContext
-  )
+data PropertyState = PropertyState
+  { queryFormat :: QueryFormat,
+    declSubst :: DeclSubstitution StandardBuiltinType,
+    networkCtx :: NetworkContext,
+    declProvenance :: Provenance,
+    declIdentifier :: Identifier,
+    propertyIndices :: MultiPropertyIndices
+  }
 
 type MonadCompileProperty m =
   ( MonadCompile m,
-    MonadReader PropertyReaderState m
+    MonadReader PropertyState m,
+    MonadSupply QueryID m
   )
-
--- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
--- by recursing through the levels of vectors until it reaches something of
--- type `Bool`.
-compileProperty :: MonadCompileProperty m => StandardNormExpr -> m (Property (QueryMetaData, QueryText))
-compileProperty = \case
-  VVecLiteral es -> MultiProperty <$> traverse compileProperty es
-  expr ->
-    logCompilerSection MaxDetail "Starting single boolean property" $ do
-      SingleProperty <$> compilePropertyTopLevelStructure expr
 
 -- | Compiles the top-level structure of a property of type `Bool` until it
 -- hits the first quantifier.
@@ -140,10 +157,10 @@ compilePropertyTopLevelStructure ::
   forall m.
   MonadCompileProperty m =>
   StandardNormExpr ->
-  m (BoolProperty (QueryMetaData, QueryText))
+  m (Property (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
   where
-    go :: StandardNormExpr -> m (BoolProperty (QueryMetaData, QueryText))
+    go :: StandardNormExpr -> m (Property (QueryMetaData, QueryText))
     go expr = case expr of
       VBoolLiteral {} ->
         Query <$> compileQuerySet False expr
@@ -297,16 +314,17 @@ compileQuantifierBodyToPropositionTree ::
   TypeCheckedExpr ->
   m (PropositionTree, CumulativeVariables)
 compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = do
+  -- Normalise the body of the expression
+  propertyState@PropertyState {..} <- ask
+
   -- TODO avoid calculating this repeatedly?
   let currentLevel = DBLevel $ sum (map length cumulativeVariables)
-  (envEntry, binderUserVars) <- calculateEnvEntry currentLevel binder
+  (envEntry, binderUserVars) <- calculateEnvEntry propertyState currentLevel binder
 
   let updatedCumulativeVars = binderUserVars : cumulativeVariables
   let newEnv = extendEnv binder envEntry env
 
-  -- Normalise the body of the expression
-  (declCtx, _, _, _) <- ask
-  normBody <- runNormT declCtx mempty (eval newEnv body)
+  normBody <- runNormT declSubst mempty (eval newEnv body)
 
   (substructure, allUserVars) <- compileQueryStructure updatedCumulativeVars normBody
 
@@ -316,9 +334,9 @@ compileSingleQuery ::
   MonadCompileProperty m =>
   [UserVariable] ->
   ConjunctAll StandardNormExpr ->
-  m (MaybeTrivial (QueryMetaData, QueryText))
+  m (MaybeTrivial (QueryAddress, (QueryMetaData, QueryText)))
 compileSingleQuery userVariables conjuncts = do
-  (_, queryFormat, ident, networkCtx) <- ask
+  PropertyState {..} <- ask
 
   logCompilerPass MinDetail "query" $ do
     -- Convert all user variables and applications of networks into magic I/O variables
@@ -329,7 +347,7 @@ compileSingleQuery userVariables conjuncts = do
     -- Convert it into a linear satisfaction problem in the user variables
     let state =
           ( networkCtx,
-            ident,
+            (declIdentifier, declProvenance),
             metaNetwork,
             userVariables,
             networkVariables
@@ -344,7 +362,9 @@ compileSingleQuery userVariables conjuncts = do
       NonTrivial (clstProblem, u, v) -> do
         queryText <- compileQuery queryFormat clstProblem
         logCompilerPassOutput $ pretty queryText
-        return $ NonTrivial (QueryData u v, queryText)
+        queryID <- demand
+        let queryAddress = ((nameOf declIdentifier, propertyIndices), queryID)
+        return $ NonTrivial (queryAddress, (QueryData u v, queryText))
 
 lowerNotNorm :: StandardNormExpr -> StandardNormExpr
 lowerNotNorm arg = case arg of
@@ -393,14 +413,19 @@ convertToDNF = \case
     VBoolLiteral True -> Trivial True
     _ -> NonTrivial $ DisjunctAll [ConjunctAll [x]]
 
-calculateEnvEntry :: MonadCompileProperty m => DBLevel -> StandardNormBinder -> m (StandardNormExpr, [UserVariable])
-calculateEnvEntry startingLevel binder = do
+calculateEnvEntry ::
+  MonadCompile m =>
+  PropertyState ->
+  DBLevel ->
+  StandardNormBinder ->
+  m (StandardNormExpr, [UserVariable])
+calculateEnvEntry propertyState startingLevel binder = do
   runSupplyT (go baseName baseType) [startingLevel ..]
   where
     baseName = getBinderName binder
     baseType = binderType binder
 
-    go :: (MonadSupply DBLevel m, MonadCompileProperty m) => Name -> StandardNormType -> m (StandardNormExpr, [UserVariable])
+    go :: (MonadSupply DBLevel m, MonadCompile m) => Name -> StandardNormType -> m (StandardNormExpr, [UserVariable])
     go name = \case
       VRatType {} -> do
         dbLevel <- demand
@@ -421,10 +446,10 @@ calculateEnvEntry startingLevel binder = do
         -- Generate a expression prepended with `tensorSize` quantifiers
         return (expr, concat userVars)
       typ -> do
-        (_, queryFormat, (ident, _), _) <- ask
+        let PropertyState {..} = propertyState
         let target = queryFormatID queryFormat
         let p = provenanceOf binder
-        throwError $ UnsupportedVariableType target ident p baseName typ baseType [BuiltinType Rat]
+        throwError $ UnsupportedVariableType target declIdentifier p baseName typ baseType [BuiltinType Rat]
 
 pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [StandardNormExpr] -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VQuantifierExpr q dom args binder env body <-
