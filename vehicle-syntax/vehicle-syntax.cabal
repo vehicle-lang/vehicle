@@ -155,10 +155,10 @@ library
     , text               >=1.2    && <3
     , these              >=1.0    && <2
 
+  -- Trying to fix version of Alex as the CI is installing a weird dev version with label
+  -- alex-3.2.7.1-e-alex-74292c840d46e203e846167e7ae201e465952b30efa86f91f8eef0e8478e6cc0
+
   build-tool-depends:
     , alex:alex    ==3.2.7
     , BNFC:bnfc    >=2.9.4
     , happy:happy  >=1.19
-
--- Trying to fix version of Alex as the CI is installing a weird dev version with label
--- alex-3.2.7.1-e-alex-74292c840d46e203e846167e7ae201e465952b30efa86f91f8eef0e8478e6cc0
