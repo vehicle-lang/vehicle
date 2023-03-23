@@ -20,10 +20,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -36,10 +36,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -55,7 +55,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -71,7 +71,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -84,10 +84,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -129,10 +129,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -145,10 +145,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -164,7 +164,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -180,7 +180,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -193,10 +193,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -238,10 +238,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -254,10 +254,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -273,7 +273,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -289,7 +289,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -302,10 +302,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -347,10 +347,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -363,10 +363,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -382,7 +382,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -398,7 +398,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -411,10 +411,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -456,10 +456,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -472,10 +472,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -491,7 +491,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -507,7 +507,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -520,10 +520,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -546,10 +546,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -562,10 +562,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -581,7 +581,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -597,7 +597,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -610,10 +610,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -636,10 +636,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -652,10 +652,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -671,7 +671,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -687,7 +687,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -700,10 +700,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -726,10 +726,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -742,10 +742,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -761,7 +761,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -777,7 +777,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -790,10 +790,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -835,10 +835,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -851,10 +851,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -870,7 +870,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -886,7 +886,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -899,10 +899,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -925,10 +925,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -941,10 +941,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -960,7 +960,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -976,7 +976,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -989,10 +989,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1015,10 +1015,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1031,10 +1031,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1050,7 +1050,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1066,7 +1066,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1079,10 +1079,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1105,10 +1105,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1121,10 +1121,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1140,7 +1140,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1156,7 +1156,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1169,10 +1169,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1195,10 +1195,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1211,10 +1211,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1230,7 +1230,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1246,7 +1246,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1259,10 +1259,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1285,10 +1285,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1301,10 +1301,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1320,7 +1320,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1336,7 +1336,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1349,10 +1349,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1375,10 +1375,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1391,10 +1391,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1410,7 +1410,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1426,7 +1426,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1439,10 +1439,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1465,10 +1465,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1481,10 +1481,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1500,7 +1500,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1516,7 +1516,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1529,10 +1529,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1574,10 +1574,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1590,10 +1590,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1609,7 +1609,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1625,7 +1625,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1638,10 +1638,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1664,10 +1664,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1680,10 +1680,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1699,7 +1699,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1715,7 +1715,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1728,10 +1728,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1773,10 +1773,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1789,10 +1789,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1808,7 +1808,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1824,7 +1824,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1837,10 +1837,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1863,10 +1863,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1879,10 +1879,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1898,7 +1898,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -1914,7 +1914,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -1927,10 +1927,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -1953,10 +1953,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -1969,10 +1969,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -1988,7 +1988,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2004,7 +2004,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2017,10 +2017,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2043,10 +2043,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2059,10 +2059,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2078,7 +2078,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2094,7 +2094,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2107,10 +2107,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2133,10 +2133,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2149,10 +2149,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2168,7 +2168,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2184,7 +2184,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2197,10 +2197,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2223,10 +2223,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2239,10 +2239,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2258,7 +2258,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2274,7 +2274,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2287,10 +2287,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2313,10 +2313,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2329,10 +2329,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2348,7 +2348,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2364,7 +2364,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2377,10 +2377,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2403,10 +2403,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2419,10 +2419,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2438,7 +2438,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2454,7 +2454,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2467,10 +2467,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2493,10 +2493,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2509,10 +2509,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2528,7 +2528,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2544,7 +2544,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2557,10 +2557,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2583,10 +2583,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2599,10 +2599,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2618,7 +2618,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2634,7 +2634,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2647,10 +2647,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2673,10 +2673,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2689,10 +2689,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2708,7 +2708,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2724,7 +2724,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2737,10 +2737,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2763,10 +2763,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2779,10 +2779,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2798,7 +2798,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2814,7 +2814,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2827,10 +2827,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2853,10 +2853,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2869,10 +2869,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2888,7 +2888,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2904,7 +2904,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -2917,10 +2917,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -2943,10 +2943,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -2959,10 +2959,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -2978,7 +2978,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -2994,7 +2994,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3007,10 +3007,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3033,10 +3033,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3049,10 +3049,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3068,7 +3068,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3084,7 +3084,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3097,10 +3097,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3123,10 +3123,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3139,10 +3139,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3158,7 +3158,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3174,7 +3174,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3187,10 +3187,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3232,10 +3232,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3248,10 +3248,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3267,7 +3267,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3283,7 +3283,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3296,10 +3296,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3322,10 +3322,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3338,10 +3338,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3357,7 +3357,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3373,7 +3373,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3386,10 +3386,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3412,10 +3412,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3428,10 +3428,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3447,7 +3447,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3463,7 +3463,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3476,10 +3476,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3502,10 +3502,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3518,10 +3518,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3537,7 +3537,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3553,7 +3553,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3566,10 +3566,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3611,10 +3611,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3627,10 +3627,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3646,7 +3646,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3662,7 +3662,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3675,10 +3675,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3701,10 +3701,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3717,10 +3717,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3736,7 +3736,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3752,7 +3752,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3765,10 +3765,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3791,10 +3791,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3807,10 +3807,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3826,7 +3826,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3842,7 +3842,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3855,10 +3855,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3881,10 +3881,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5,
                               "coefficients": {
                                 "9": 1,
-                                "4": -1
+                                "4": -8.333333333333334e-4
                               }
                             }
                           }
@@ -3897,10 +3897,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.5909090909090909,
                               "coefficients": {
                                 "8": 1,
-                                "3": -1
+                                "3": -9.090909090909091e-4
                               }
                             }
                           }
@@ -3916,7 +3916,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "7": 1,
-                                "2": -1
+                                "2": -0.15915497620314795
                               }
                             }
                           }
@@ -3932,7 +3932,7 @@
                               "constantValue": 0,
                               "coefficients": {
                                 "6": 1,
-                                "1": -1
+                                "1": -0.15915497620314795
                               }
                             }
                           }
@@ -3945,10 +3945,10 @@
                           "contents": {
                             "solutionEquality": {
                               "numberOfVars": 16,
-                              "constantValue": 0,
+                              "constantValue": 0.32842287715105956,
                               "coefficients": {
                                 "5": 1,
-                                "0": -1
+                                "0": -1.6594480675727253e-5
                               }
                             }
                           }
@@ -3975,7 +3975,7 @@
     "specificationSummary": {
       "name": "specification",
       "filePath": "spec.vcl",
-      "fileHash": 2053123762057792120
+      "fileHash": 4361660810075860783
     },
     "parameterSummaries": {},
     "networkSummaries": [

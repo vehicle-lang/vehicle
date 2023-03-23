@@ -227,7 +227,7 @@ assertDeclTypeIsType ident actualType = do
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
 solveConstraints :: forall types m. TCM types m => Maybe (CheckedDecl types) -> m ()
-solveConstraints d = logCompilerPass MinDetail "constraint solving" $ do
+solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
     loopOverConstraints :: TCM types m => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()

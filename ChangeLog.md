@@ -58,6 +58,9 @@
 * Removed the `--redirect-output` and `--redirect-error` command line options.
   This functionality can be replicated via pipes.
 
+* Updated ACAS Xu example specification to take into account that the networks
+  expect normalised input.
+
 ## Version 0.1.0
 
 Initial alpha release for testing.

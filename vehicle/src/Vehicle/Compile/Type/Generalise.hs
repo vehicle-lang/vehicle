@@ -30,7 +30,7 @@ generaliseOverUnsolvedConstraints ::
   CheckedDecl types ->
   m (CheckedDecl types)
 generaliseOverUnsolvedConstraints decl =
-  logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
+  logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
     unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
 
@@ -99,7 +99,7 @@ generaliseOverUnsolvedMetaVariables decl = do
       unsolvedMetas <- metasIn (typeOf decl)
       if MetaSet.null unsolvedMetas
         then return decl
-        else logCompilerPass MinDetail "generalisation of unsolved metas in declaration type" $ do
+        else logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
           result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
           substMetas result
 
@@ -118,7 +118,7 @@ quantifyOverMeta decl meta = do
           <+> "an unsolved meta."
     else do
       metaDoc <- prettyMeta (Proxy @types) meta
-      logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
+      logCompilerPass MidDetail ("generalisation over" <+> metaDoc) $ do
         -- Prepend the implicit binders for the new generalised variable.
         binderName <- getBinderNameOrFreshName Nothing metaType
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True

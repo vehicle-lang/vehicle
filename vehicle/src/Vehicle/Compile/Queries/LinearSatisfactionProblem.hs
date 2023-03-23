@@ -248,7 +248,15 @@ compileLinearExpr expr = do
         case (e1, e2) of
           (VRatLiteral l, VBoundVar v []) -> return (singletonVar v (fromRational l), 0)
           (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational l), 0)
-          _ -> throwError temporaryUnsupportedNonLinearConstraint
+          _ -> do
+            logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
+            throwError temporaryUnsupportedNonLinearConstraint
+      VBuiltinFunction (Div DivRat) [e1, e2] ->
+        case (e1, e2) of
+          (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational (1 / l)), 0)
+          _ -> do
+            logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
+            throwError temporaryUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
 currentPass :: Doc a

@@ -31,7 +31,7 @@ diagnoseNonLinearity ::
   m CompileError
 diagnoseNonLinearity queryFormat prog propertyIdentifier = do
   setCallDepth 0
-  logDebug MaxDetail $
+  logDebug MinDetail $
     "ERROR: found non-linear property. Switching to linearity type-checking mode for"
       <+> quotePretty propertyIdentifier <> line
 
@@ -55,7 +55,7 @@ diagnoseAlternatingQuantifiers ::
   m CompileError
 diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
   setCallDepth 0
-  logDebug MaxDetail $
+  logDebug MinDetail $
     "ERROR: found property with alterating quantifiers. Switching to polarity type-checking mode for"
       <+> quotePretty propertyIdentifier <> line
 
