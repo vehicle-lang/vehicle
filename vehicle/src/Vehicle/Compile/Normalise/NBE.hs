@@ -17,6 +17,7 @@ module Vehicle.Compile.Normalise.NBE
     runNormT,
     runEmptyNormT,
     MonadNorm (..),
+    evalMul,
   )
 where
 
@@ -280,24 +281,24 @@ evalBuiltinFunction b args
   | otherwise = do
       let result = case b of
             Quantifier {} -> Nothing
-            Not -> evalNot args
-            And -> evalAnd args
-            Or -> evalOr args
-            Neg dom -> evalNeg dom args
-            Add dom -> evalAdd dom args
-            Sub dom -> evalSub dom args
-            Mul dom -> evalMul dom args
-            Div dom -> evalDiv dom args
-            Equals dom op -> evalEquals dom op args
-            Order dom op -> evalOrder dom op args
-            If -> evalIf args
-            At -> evalAt args
-            ConsVector -> evalConsVector args
+            Not -> return <$> evalNot args
+            And -> return <$> evalAnd args
+            Or -> return <$> evalOr args
+            Neg dom -> return <$> evalNeg dom args
+            Add dom -> return <$> evalAdd dom args
+            Sub dom -> return <$> evalSub dom args
+            Mul dom -> return <$> evalMul dom args
+            Div dom -> return <$> evalDiv dom args
+            Equals dom op -> return <$> evalEquals dom op args
+            Order dom op -> return <$> evalOrder dom op args
+            If -> return <$> evalIf args
+            At -> return <$> evalAt args
+            ConsVector -> return <$> evalConsVector args
             Fold dom -> evalFold dom args
-            FromNat _ dom -> evalFromNat dom args
-            FromRat dom -> evalFromRat dom args
+            FromNat _ dom -> return <$> evalFromNat dom args
+            FromRat dom -> return <$> evalFromRat dom args
+            Indices -> return <$> evalIndices args
             Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
-            Indices -> evalIndices args
 
       case result of
         Nothing -> return $ VBuiltinFunction b args
@@ -322,206 +323,208 @@ evalDerivedBuiltin b args = case b of
 
 type EvalBuiltin types m = ExplicitSpine types -> Maybe (m (NormExpr types))
 
-evalNot :: MonadNorm types m => EvalBuiltin types m
+type EvalSimpleBuiltin types = ExplicitSpine types -> Maybe (NormExpr types)
+
+evalNot :: EvalSimpleBuiltin types
 evalNot e = case e of
-  [VBoolLiteral x] -> Just $ return $ VBoolLiteral (not x)
+  [VBoolLiteral x] -> Just $ VBoolLiteral (not x)
   _ -> Nothing
 
-evalAnd :: MonadNorm types m => EvalBuiltin types m
+evalAnd :: EvalSimpleBuiltin types
 evalAnd = \case
-  [VBoolLiteral x, VBoolLiteral y] -> Just $ return $ VBoolLiteral (x && y)
+  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
   _ -> Nothing
 
-evalOr :: MonadNorm types m => EvalBuiltin types m
+evalOr :: EvalSimpleBuiltin types
 evalOr = \case
-  [VBoolLiteral x, VBoolLiteral y] -> Just $ return $ VBoolLiteral (x && y)
+  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
   _ -> Nothing
 
-evalNeg :: MonadNorm types m => NegDomain -> EvalBuiltin types m
+evalNeg :: NegDomain -> EvalSimpleBuiltin types
 evalNeg = \case
   NegInt -> evalNegInt
   NegRat -> evalNegRat
 
-evalNegInt :: MonadNorm types m => EvalBuiltin types m
+evalNegInt :: EvalSimpleBuiltin types
 evalNegInt = \case
-  [VIntLiteral x] -> Just $ return $ VIntLiteral (-x)
+  [VIntLiteral x] -> Just $ VIntLiteral (-x)
   _ -> Nothing
 
-evalNegRat :: MonadNorm types m => EvalBuiltin types m
+evalNegRat :: EvalSimpleBuiltin types
 evalNegRat = \case
-  [VRatLiteral x] -> Just $ return $ VRatLiteral (-x)
+  [VRatLiteral x] -> Just $ VRatLiteral (-x)
   _ -> Nothing
 
-evalAdd :: MonadNorm types m => AddDomain -> EvalBuiltin types m
+evalAdd :: AddDomain -> EvalSimpleBuiltin types
 evalAdd = \case
   AddNat -> evalAddNat
   AddInt -> evalAddInt
   AddRat -> evalAddRat
 
-evalAddNat :: MonadNorm types m => EvalBuiltin types m
+evalAddNat :: EvalSimpleBuiltin types
 evalAddNat = \case
-  [VNatLiteral x, VNatLiteral y] -> Just $ return $ VNatLiteral (x + y)
+  [VNatLiteral x, VNatLiteral y] -> Just $ VNatLiteral (x + y)
   _ -> Nothing
 
-evalAddInt :: MonadNorm types m => EvalBuiltin types m
+evalAddInt :: EvalSimpleBuiltin types
 evalAddInt = \case
-  [VIntLiteral x, VIntLiteral y] -> Just $ return $ VIntLiteral (x + y)
+  [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x + y)
   _ -> Nothing
 
-evalAddRat :: MonadNorm types m => EvalBuiltin types m
+evalAddRat :: EvalSimpleBuiltin types
 evalAddRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VRatLiteral (x + y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x + y)
   _ -> Nothing
 
-evalSub :: MonadNorm types m => SubDomain -> EvalBuiltin types m
+evalSub :: SubDomain -> EvalSimpleBuiltin types
 evalSub = \case
   SubInt -> evalSubInt
   SubRat -> evalSubRat
 
-evalSubInt :: MonadNorm types m => EvalBuiltin types m
+evalSubInt :: EvalSimpleBuiltin types
 evalSubInt = \case
-  [VIntLiteral x, VIntLiteral y] -> Just $ return $ VIntLiteral (x - y)
+  [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x - y)
   _ -> Nothing
 
-evalSubRat :: MonadNorm types m => EvalBuiltin types m
+evalSubRat :: EvalSimpleBuiltin types
 evalSubRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VRatLiteral (x - y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x - y)
   _ -> Nothing
 
-evalMul :: MonadNorm types m => MulDomain -> EvalBuiltin types m
+evalMul :: MulDomain -> EvalSimpleBuiltin types
 evalMul = \case
   MulNat -> evalMulNat
   MulInt -> evalMulInt
   MulRat -> evalMulRat
 
-evalMulNat :: MonadNorm types m => EvalBuiltin types m
+evalMulNat :: EvalSimpleBuiltin types
 evalMulNat = \case
-  [VNatLiteral x, VNatLiteral y] -> Just $ return $ VNatLiteral (x * y)
+  [VNatLiteral x, VNatLiteral y] -> Just $ VNatLiteral (x * y)
   _ -> Nothing
 
-evalMulInt :: MonadNorm types m => EvalBuiltin types m
+evalMulInt :: EvalSimpleBuiltin types
 evalMulInt = \case
-  [VIntLiteral x, VIntLiteral y] -> Just $ return $ VIntLiteral (x * y)
+  [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x * y)
   _ -> Nothing
 
-evalMulRat :: MonadNorm types m => EvalBuiltin types m
+evalMulRat :: EvalSimpleBuiltin types
 evalMulRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VRatLiteral (x * y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x * y)
   _ -> Nothing
 
-evalDiv :: MonadNorm types m => DivDomain -> EvalBuiltin types m
+evalDiv :: DivDomain -> EvalSimpleBuiltin types
 evalDiv = \case
   DivRat -> evalDivRat
 
-evalDivRat :: MonadNorm types m => EvalBuiltin types m
+evalDivRat :: EvalSimpleBuiltin types
 evalDivRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VRatLiteral (x * y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x * y)
   _ -> Nothing
 
-evalOrder :: MonadNorm types m => OrderDomain -> OrderOp -> EvalBuiltin types m
+evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin types
 evalOrder = \case
   OrderIndex -> evalOrderIndex
   OrderNat -> evalOrderNat
   OrderInt -> evalOrderInt
   OrderRat -> evalOrderRat
 
-evalOrderIndex :: MonadNorm types m => OrderOp -> EvalBuiltin types m
+evalOrderIndex :: OrderOp -> EvalSimpleBuiltin types
 evalOrderIndex op = \case
-  [VIndexLiteral x, VIndexLiteral y] -> Just $ return $ VBoolLiteral (orderOp op x y)
+  [VIndexLiteral x, VIndexLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderNat :: MonadNorm types m => OrderOp -> EvalBuiltin types m
+evalOrderNat :: OrderOp -> EvalSimpleBuiltin types
 evalOrderNat op = \case
-  [VNatLiteral x, VNatLiteral y] -> Just $ return $ VBoolLiteral (orderOp op x y)
+  [VNatLiteral x, VNatLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderInt :: MonadNorm types m => OrderOp -> EvalBuiltin types m
+evalOrderInt :: OrderOp -> EvalSimpleBuiltin types
 evalOrderInt op = \case
-  [VIntLiteral x, VIntLiteral y] -> Just $ return $ VBoolLiteral (orderOp op x y)
+  [VIntLiteral x, VIntLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderRat :: MonadNorm types m => OrderOp -> EvalBuiltin types m
+evalOrderRat :: OrderOp -> EvalSimpleBuiltin types
 evalOrderRat op = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VBoolLiteral (orderOp op x y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalEquals :: MonadNorm types m => EqualityDomain -> EqualityOp -> EvalBuiltin types m
+evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin types
 evalEquals = \case
   EqIndex -> evalEqualityIndex
   EqNat -> evalEqualityNat
   EqInt -> evalEqualityInt
   EqRat -> evalEqualityRat
 
-evalEqualityIndex :: MonadNorm types m => EqualityOp -> EvalBuiltin types m
+evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin types
 evalEqualityIndex op = \case
-  [VIndexLiteral x, VIndexLiteral y] -> Just $ return $ VBoolLiteral (equalityOp op x y)
+  [VIndexLiteral x, VIndexLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityNat :: MonadNorm types m => EqualityOp -> EvalBuiltin types m
+evalEqualityNat :: EqualityOp -> EvalSimpleBuiltin types
 evalEqualityNat op = \case
-  [VNatLiteral x, VNatLiteral y] -> Just $ return $ VBoolLiteral (equalityOp op x y)
+  [VNatLiteral x, VNatLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityInt :: MonadNorm types m => EqualityOp -> EvalBuiltin types m
+evalEqualityInt :: EqualityOp -> EvalSimpleBuiltin types
 evalEqualityInt op = \case
-  [VIntLiteral x, VIntLiteral y] -> Just $ return $ VBoolLiteral (equalityOp op x y)
+  [VIntLiteral x, VIntLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityRat :: MonadNorm types m => EqualityOp -> EvalBuiltin types m
+evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin types
 evalEqualityRat op = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ return $ VBoolLiteral (equalityOp op x y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalFromNat :: MonadNorm types m => FromNatDomain -> EvalBuiltin types m
+evalFromNat :: FromNatDomain -> EvalSimpleBuiltin types
 evalFromNat = \case
   FromNatToIndex -> evalFromNatToIndex
   FromNatToNat -> evalFromNatToNat
   FromNatToInt -> evalFromNatToInt
   FromNatToRat -> evalFromNatToRat
 
-evalFromNatToIndex :: MonadNorm types m => EvalBuiltin types m
+evalFromNatToIndex :: EvalSimpleBuiltin types
 evalFromNatToIndex = \case
-  [VNatLiteral x] -> Just $ return $ VIndexLiteral x
+  [VNatLiteral x] -> Just $ VIndexLiteral x
   _ -> Nothing
 
-evalFromNatToNat :: MonadNorm types m => EvalBuiltin types m
+evalFromNatToNat :: EvalSimpleBuiltin types
 evalFromNatToNat = \case
-  [x] -> Just $ return x
+  [x] -> Just x
   _ -> Nothing
 
-evalFromNatToInt :: MonadNorm types m => EvalBuiltin types m
+evalFromNatToInt :: EvalSimpleBuiltin types
 evalFromNatToInt = \case
-  [VNatLiteral x] -> Just $ return $ VIntLiteral x
+  [VNatLiteral x] -> Just $ VIntLiteral x
   _ -> Nothing
 
-evalFromNatToRat :: MonadNorm types m => EvalBuiltin types m
+evalFromNatToRat :: EvalSimpleBuiltin types
 evalFromNatToRat = \case
-  [VNatLiteral x] -> Just $ return $ VRatLiteral (fromIntegral x)
+  [VNatLiteral x] -> Just $ VRatLiteral (fromIntegral x)
   _ -> Nothing
 
-evalFromRat :: MonadNorm types m => FromRatDomain -> EvalBuiltin types m
+evalFromRat :: FromRatDomain -> EvalSimpleBuiltin types
 evalFromRat = \case
   FromRatToRat -> evalFromRatToRat
 
-evalFromRatToRat :: MonadNorm types m => EvalBuiltin types m
+evalFromRatToRat :: EvalSimpleBuiltin types
 evalFromRatToRat = \case
-  [x] -> Just $ return x
+  [x] -> Just x
   _ -> Nothing
 
-evalIf :: MonadNorm types m => EvalBuiltin types m
+evalIf :: EvalSimpleBuiltin types
 evalIf = \case
-  [VBoolLiteral True, e1, _e2] -> Just $ return e1
-  [VBoolLiteral False, _e1, e2] -> Just $ return e2
+  [VBoolLiteral True, e1, _e2] -> Just e1
+  [VBoolLiteral False, _e1, e2] -> Just e2
   _ -> Nothing
 
-evalAt :: MonadNorm types m => EvalBuiltin types m
+evalAt :: EvalSimpleBuiltin types
 evalAt = \case
-  [VVecLiteral xs, VIndexLiteral i] -> Just $ return $ xs !! fromIntegral i
+  [VVecLiteral xs, VIndexLiteral i] -> Just $ xs !! fromIntegral i
   _ -> Nothing
 
-evalConsVector :: MonadNorm types m => EvalBuiltin types m
+evalConsVector :: EvalSimpleBuiltin types
 evalConsVector = \case
-  [x, VVecLiteral xs] -> Just $ return $ VVecLiteral (x : xs)
+  [x, VVecLiteral xs] -> Just $ VVecLiteral (x : xs)
   _ -> Nothing
 
 evalFold :: MonadNorm types m => FoldDomain -> EvalBuiltin types m
@@ -553,11 +556,9 @@ evalFoldVector = \case
           ]
   _ -> Nothing
 
-evalIndices :: MonadNorm types m => EvalBuiltin types m
+evalIndices :: EvalSimpleBuiltin types
 evalIndices = \case
-  [VNatLiteral n] -> Just $ do
-    let xs = fmap VIndexLiteral [0 .. n - 1]
-    return $ mkVLVec xs
+  [VNatLiteral n] -> Just $ mkVLVec (fmap VIndexLiteral [0 .. n - 1])
   _ -> Nothing
 
 -----------------------------------------------------------------------------

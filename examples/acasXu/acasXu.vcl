@@ -7,26 +7,40 @@
 -- Comments describing the properties are taken directly from the text.
 
 --------------------------------------------------------------------------------
--- Inputs and outputs
+-- Utilities
 
--- We first define the types of the input & output of the network and add
--- meaningful names for the indices.
+-- The value of the constant `pi`.
+pi = 3.141592
 
--- Vehicle is dependently typed so we can specify the dimensions of the vector,
--- as well as the type of data stored within it. This means that it impossible
--- to mess up indexing into vectors, e.g. if you changed
--- `distanceToIntruder = 0` to `distanceToIntruder = 5` the specification would
--- fail to type-check.
+--------------------------------------------------------------------------------
+-- Inputs
+
+-- We first define a new name for the type of inputs of the network.
+-- In particular, it takes inputs of the form of a vector of 5 rational numbers.
 
 type InputVector = Vector Rat 5
 
-distanceToIntruder = 0
-angleToIntruder    = 1
-intruderHeading    = 2
-speed              = 3
-intruderSpeed      = 4
+-- Next we add meaningful names for the indices.
+-- The fact that all vector types come annotated with their size means that it
+-- is impossible to mess up indexing into vectors, e.g. if you changed
+-- `distanceToIntruder = 0` to `distanceToIntruder = 5` the specification would
+-- fail to type-check.
+
+distanceToIntruder = 0   -- measured in metres
+angleToIntruder    = 1   -- measured in radians
+intruderHeading    = 2   -- measured in radians
+speed              = 3   -- measured in metres/second
+intruderSpeed      = 4   -- measured in meters/second
+
+--------------------------------------------------------------------------------
+-- Outputs
+
+-- Outputs are also a vector of 5 rationals. Each one representing the score
+-- for the 5 available courses of action.
 
 type OutputVector = Vector Rat 5
+
+-- Again we define meaningful names for the indices into output vectors.
 
 clearOfConflict = 0
 weakLeft        = 1
@@ -45,16 +59,45 @@ strongRight     = 4
 acasXu : InputVector -> OutputVector
 
 --------------------------------------------------------------------------------
--- Utilities
+-- Normalisation
 
--- The value of the constant `pi`
-pi = 3.141592
+-- As is common in machine learning, the network operates over
+-- normalised values, rather than values in the problem space
+-- (e.g. using standard units like m/s).
+-- This is an issue for us, as we would like to write our specification in
+-- terms of the problem space values .
+-- Therefore before applying the network, we first have to normalise
+-- the values in the problem space.
+
+-- For clarity, we therefore define a new type synonym
+-- for unnormalised input vectors which are in the problem space.
+type UnnormalisedInputVector = Vector Rat 5
+
+-- Next we define the maximum values that each input can take.
+-- (The minimum values are all implicitly assumed to be 0).
+maximumInputValues : UnnormalisedInputVector
+maximumInputValues = [60261.0, 2*pi, 2*pi, 1100.0, 1200.0]
+
+-- Then the mean values that will be used to scale the inputs.
+meanScalingValues : UnnormalisedInputVector
+meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
+
+-- We can now define the normalisation function that takes an input vector and
+-- returns the unnormalised version.
+normalise : UnnormalisedInputVector -> InputVector
+normalise x = foreach i .
+  (x ! i - meanScalingValues ! i) / (maximumInputValues ! i)
+
+-- Using this we can define a new function that first normalises the input
+-- vector and then applies the neural network.
+normAcasXu : UnnormalisedInputVector -> OutputVector
+normAcasXu x = acasXu (normalise x)
 
 -- A constraint that says the network chooses output `i` when given the
 -- input `x`. We must necessarily provide a finite index that is less than 5
 -- (i.e. of type Index 5). The `a ! b` operator lookups index `b` in vector `a`.
-advises : Index 5 -> InputVector -> Bool
-advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
+advises : Index 5 -> UnnormalisedInputVector -> Bool
+advises i x = forall j . i != j => normAcasXu x ! i < normAcasXu x ! j
 
 --------------------------------------------------------------------------------
 -- Property 1
@@ -65,7 +108,7 @@ advises i x = forall j . i != j => acasXu x ! i < acasXu x ! j
 
 -- Tested on: all 45 networks.
 
-intruderDistantAndSlower : InputVector -> Bool
+intruderDistantAndSlower : UnnormalisedInputVector -> Bool
 intruderDistantAndSlower x =
   x ! distanceToIntruder >= 55947.691 and
   x ! speed              >= 1145      and
@@ -74,7 +117,7 @@ intruderDistantAndSlower x =
 @property
 property1 : Bool
 property1 = forall x . intruderDistantAndSlower x =>
-  acasXu x ! clearOfConflict <= 1500
+  normAcasXu x ! clearOfConflict <= 1500
 
 --------------------------------------------------------------------------------
 -- Property 2
@@ -87,7 +130,7 @@ property1 = forall x . intruderDistantAndSlower x =>
 @property
 property2 : Bool
 property2 = forall x . intruderDistantAndSlower x =>
-  (exists j . (acasXu x ! j) > (acasXu x ! clearOfConflict))
+  (exists j . (normAcasXu x ! j) > (normAcasXu x ! clearOfConflict))
 
 --------------------------------------------------------------------------------
 -- Property 3
@@ -97,12 +140,12 @@ property2 = forall x . intruderDistantAndSlower x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-directlyAhead : InputVector -> Bool
+directlyAhead : UnnormalisedInputVector -> Bool
 directlyAhead x =
   1500  <= x ! distanceToIntruder <= 1800 and
   -0.06 <= x ! angleToIntruder    <= 0.06
 
-movingTowards : InputVector -> Bool
+movingTowards : UnnormalisedInputVector -> Bool
 movingTowards x =
   x ! intruderHeading >= 3.10  and
   x ! speed           >= 980   and
@@ -122,7 +165,7 @@ property3 = forall x . directlyAhead x and movingTowards x =>
 
 -- Tested on: all networks except N_{1,7}, N_{1,8}, and N_{1,9}.
 
-movingAway : InputVector -> Bool
+movingAway : UnnormalisedInputVector -> Bool
 movingAway x =
           x ! intruderHeading == 0   and
   1000 <= x ! speed                  and
@@ -141,7 +184,7 @@ property4 = forall x . directlyAhead x and movingAway x =>
 
 -- Tested on: N_{1,1}.
 
-nearAndApproachingFromLeft : InputVector -> Bool
+nearAndApproachingFromLeft : UnnormalisedInputVector -> Bool
 nearAndApproachingFromLeft x =
   250 <= x ! distanceToIntruder <= 400         and
   0.2 <= x ! angleToIntruder    <= 0.4         and
@@ -160,7 +203,7 @@ property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
 
 -- Tested on: N_{1,1}.
 
-intruderFarAway : InputVector -> Bool
+intruderFarAway : UnnormalisedInputVector -> Bool
 intruderFarAway x =
   12000 <= x ! distanceToIntruder <= 62000                                  and
   (- pi <= x ! angleToIntruder <= -0.7 or 0.7 <= x ! angleToIntruder <= pi) and
@@ -179,7 +222,7 @@ property6 = forall x . intruderFarAway x => advises clearOfConflict x
 
 -- Tested on: N_{1,9}.
 
-largeVerticalSeparation : InputVector -> Bool
+largeVerticalSeparation : UnnormalisedInputVector -> Bool
 largeVerticalSeparation x =
   0    <= x ! distanceToIntruder <= 60760  and
   -pi  <= x ! angleToIntruder    <= pi     and
@@ -200,7 +243,7 @@ property7 = forall x . largeVerticalSeparation x =>
 
 -- Tested on: N_{2,9}.
 
-largeVerticalSeparationAndPreviousWeakLeft : InputVector -> Bool
+largeVerticalSeparationAndPreviousWeakLeft : UnnormalisedInputVector -> Bool
 largeVerticalSeparationAndPreviousWeakLeft x =
   0    <= x ! distanceToIntruder <= 60760    and
   -pi  <= x ! angleToIntruder    <= -0.75*pi and
@@ -221,7 +264,7 @@ property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
 
 -- Tested on: N_{3,3}.
 
-previousWeakRightAndNearbyIntruder : InputVector -> Bool
+previousWeakRightAndNearbyIntruder : UnnormalisedInputVector -> Bool
 previousWeakRightAndNearbyIntruder x =
   2000 <= x ! distanceToIntruder <= 7000       and
   -0.4 <= x ! angleToIntruder    <= -0.14      and
@@ -241,7 +284,7 @@ property9 = forall x . previousWeakRightAndNearbyIntruder x =>
 
 -- Tested on: N_{4,5}.
 
-intruderFarAway2 : InputVector -> Bool
+intruderFarAway2 : UnnormalisedInputVector -> Bool
 intruderFarAway2 x =
   36000 <= x ! distanceToIntruder <= 60760       and
   0.7   <= x ! angleToIntruder    <= pi          and

@@ -55,6 +55,7 @@ import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)
@@ -219,6 +220,7 @@ testSpecDiffTestOutput testSpec golden actual = do
           <$> testSpecDiffText testSpec (testOutputStderr golden) (testOutputStderr actual)
 
   -- Compare file content:
+  let sharedFiles = sort $ HashSet.toList $ HashSet.intersection goldenFiles actualFiles
   let differentOutputFileErrors =
         catMaybes
           [ printf "Content of %s differs:\n%s" file
@@ -226,7 +228,7 @@ testSpecDiffTestOutput testSpec golden actual = do
                 testSpec
                 (testOutputFiles golden HashMap.! file)
                 (testOutputFiles actual HashMap.! file)
-            | file <- HashSet.toList $ HashSet.intersection goldenFiles actualFiles
+            | file <- sharedFiles
           ]
   -- Combine all messages:
   let messages =

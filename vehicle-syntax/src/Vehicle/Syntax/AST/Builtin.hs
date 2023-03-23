@@ -214,6 +214,10 @@ instance Pretty DivDomain where
   pretty = \case
     DivRat -> "Rat"
 
+divToMulDomain :: DivDomain -> MulDomain
+divToMulDomain = \case
+  DivRat -> MulRat
+
 data FromNatDomain
   = FromNatToIndex
   | FromNatToNat
