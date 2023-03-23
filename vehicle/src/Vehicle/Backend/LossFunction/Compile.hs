@@ -35,6 +35,8 @@ import Vehicle.Libraries.StandardLibrary
 import Vehicle.Prelude
 import Vehicle.Resource (Resources (..))
 import Vehicle.Syntax.AST (HasName (nameOf), argExpr)
+import Data.Maybe (isNothing)
+import Data.Either (isRight)
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -51,11 +53,12 @@ compile resources logic typedProg = do
   let unnormalisedProg = fmap unnormalised expandedProg
   progWithoutInstanceArgs <- resolveInstanceArguments unnormalisedProg
   let descopedProg = descopeNamed progWithoutInstanceArgs
-  possiblyNotNormalisedProg <- case compileNot (implementationOf logic) of
-    Just {} -> return descopedProg
-    Nothing -> lowerNots logic descopedProg
+  reformattedProg <- reformatLogicalOperators logic descopedProg --case compileNot (implementationOf logic) of
+    --Just {} -> return descopedProg
+    --Nothing -> reformatLogicalOperators logic descopedProg
 
-  compileProg networkCtx logic possiblyNotNormalisedProg
+
+  compileProg networkCtx logic reformattedProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -110,14 +113,14 @@ type MonadCompileLoss m =
     MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
   )
 
-flattenAnds :: InputExpr -> [InputExpr]
-flattenAnds arg = case arg of
-  V.AndExpr _ [e1, e2] -> flattenAnds (argExpr e1) <> flattenAnds (argExpr e2)
+flattenAnds :: InputArg -> NonEmpty InputArg
+flattenAnds arg = case argExpr arg of
+  V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
   _ -> [arg]
 
-flattenOrs :: InputExpr -> [InputExpr]
-flattenOrs arg = case arg of
-  V.OrExpr _ [e1, e2] -> flattenOrs (argExpr e1) <> flattenOrs (argExpr e2)
+flattenOrs :: InputArg -> NonEmpty InputArg
+flattenOrs arg = case argExpr arg of
+  V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
   _ -> [arg]
 --addToCtx :: MonadCompileLoss m => InputBinder -> m a -> m a
 --addToCtx binder = local (\(a, b, c, ctx) -> (a, b, c, V.nameOf binder : ctx))
@@ -195,10 +198,10 @@ compileBuiltinFunction f t args = case f of
   -- Logical operatives
   V.And  ->  case compileAnd t of
       Left binaryAnd -> compileOp2 binaryAnd t args
-      Right naryAnd -> _ --naryAnd <$> traverse (compileExpr t) (flattenAnds e')) t args 
-  V.Or  -> compileOp2 (case compileOr t of
-      Left binaryOr -> binaryOr <$> compileArg t e1 <*> compileArg t e2
-      Right naryOr -> naryOr <$> traverse (compileExpr t) (flattenOrs e')) t args
+      Right naryAnd -> return (naryAnd args)  
+  V.Or  ->  case compileOr t of
+      Left binaryOr -> compileOp2 binaryOr t args
+      Right naryOr -> return (naryOr args)
     
   --V.And -> compileOp2 (compileAnd t) t args
   --V.Or -> compileOp2 (compileOr t) t args
@@ -311,18 +314,27 @@ notYetSupportedStdLibFunction op = notYetSupported (quotePretty op)
 --------------------------------------------------------------------------------
 -- Lowering nots
 
-lowerNots ::
+reformatLogicalOperators ::
   forall m.
   MonadCompile m =>
   DifferentiableLogic ->
   InputProg ->
   m InputProg
-lowerNots logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
+reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
     builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
-      V.CFunction V.Not -> lowerNot p2 (argExpr $ head args)
+      V.CFunction V.Not 
+        | isNothing (compileNot (implementationOf logic)) ->
+            lowerNot p2 (argExpr $ head args)
+      V.CFunction V.And 
+        | isRight (compileAnd (implementationOf logic)) ->
+          return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
+      V.CFunction V.Or 
+        | isRight (compileOr (implementationOf logic)) ->
+          return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
       _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
+      
 
     lowerNot :: V.Provenance -> InputExpr -> m InputExpr
     lowerNot notProv arg = case arg of
