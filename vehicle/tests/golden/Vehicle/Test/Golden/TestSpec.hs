@@ -240,7 +240,11 @@ testSpecDiffTestOutput testSpec golden actual = do
 -- | Compare two texts using the options set in DiffSpec.
 testSpecDiffText :: TestSpec -> Text -> Text -> Maybe String
 testSpecDiffText testSpec golden actual
+  -- First try direct comparison
   | goldenLines == actualLines = Nothing
+  -- If this fails then try comparing with the DiffSpecIgnore
+  | testSpecCompareLines testSpec goldenLines actualLines = Nothing
+  -- Otherwise return the diff
   | otherwise = return prettyDiff
   where
     goldenLines, actualLines :: [Text]
@@ -266,6 +270,11 @@ testSpecDiffText testSpec golden actual
     mapDiff f (First x) = First (f x)
     mapDiff f (Second y) = Second (f y)
     mapDiff f (Both x y) = Both (f x) (f y)
+
+-- | Compares two sets of lines using the options set in DiffSpec.
+testSpecCompareLines :: TestSpec -> [Text] -> [Text] -> Bool
+testSpecCompareLines spec xs ys =
+  all (uncurry (testSpecCompareLine spec)) (zip xs ys)
 
 -- | Compare two lines using the options set in DiffSpec.
 testSpecCompareLine :: TestSpec -> Text -> Text -> Bool
@@ -482,7 +491,7 @@ timeoutToJSON _ = Nothing
 instance FromJSON DiffSpec where
   parseJSON :: Value -> Parser DiffSpec
   parseJSON = withObject "diff" $ \v ->
-    DiffSpec <$> v .:? "ignore"
+    DiffSpec <$> v .:? "matches"
 
 diffSpecToJSON :: DiffSpec -> Maybe Value
 diffSpecToJSON DiffSpec {..} =
@@ -495,7 +504,7 @@ instance FromJSON DiffSpecIgnore where
   parseJSON :: Value -> Parser DiffSpecIgnore
   parseJSON (Value.String regexText) =
     case Regex.compile Regex.defaultCompOpt Regex.defaultExecOpt regexText of
-      Left compileError -> fail $ "Failed to parse regular expression 'ignore': " <> compileError
+      Left compileError -> fail $ "Failed to parse regular expression 'matches': " <> compileError
       Right regex -> return $ DiffSpecIgnore regexText regex
   parseJSON v = typeMismatch "String" v
 

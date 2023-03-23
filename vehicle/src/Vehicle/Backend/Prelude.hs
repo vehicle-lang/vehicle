@@ -41,60 +41,40 @@ data TypingSystem
   = Standard
   | Polarity
   | Linearity
-  deriving (Eq, Show)
+  deriving (Eq, Show, Bounded, Enum)
+
+instance Read TypingSystem where
+  readsPrec _d x = case x of
+    "Standard" -> [(Standard, [])]
+    "Linearity" -> [(Linearity, [])]
+    "Polarity" -> [(Polarity, [])]
+    _ -> []
 
 --------------------------------------------------------------------------------
 -- Action
 
-data Task
-  = TypeCheck TypingSystem
-  | CompileToITP ITP
-  | CompileToQueryFormat QueryFormatID
-  | CompileToLossFunction DifferentiableLogic
+data Target
+  = ITP ITP
+  | VerifierQueries QueryFormatID
+  | LossFunction DifferentiableLogic
   deriving (Eq, Show)
 
-pattern CompileToAgda :: Task
-pattern CompileToAgda = CompileToITP Agda
-
-pattern CompileToMarabouQueries :: Task
-pattern CompileToMarabouQueries = CompileToQueryFormat MarabouQueryFormat
-
-pattern LossFunctionDL2 :: Task
-pattern LossFunctionDL2 = CompileToLossFunction DL2
-
-pattern LossFunctionGodel :: Task
-pattern LossFunctionGodel = CompileToLossFunction Godel
-
-pattern LossFunctionLukasiewicz :: Task
-pattern LossFunctionLukasiewicz = CompileToLossFunction Lukasiewicz
-
-pattern LossFunctionProduct :: Task
-pattern LossFunctionProduct = CompileToLossFunction Product
-
-pattern LossFunctionYager :: Task
-pattern LossFunctionYager = CompileToLossFunction Yager
-
-instance Pretty Task where
+instance Pretty Target where
   pretty = \case
-    TypeCheck _ -> "TypeCheck"
-    CompileToITP x -> pretty $ show x
-    CompileToQueryFormat x -> pretty x
-    CompileToLossFunction _ -> "LossFunction"
+    ITP x -> pretty $ show x
+    VerifierQueries x -> pretty x
+    LossFunction _ -> "LossFunction"
 
-instance Read Task where
+instance Read Target where
   readsPrec _d x = case x of
-    "Marabou" -> [(CompileToMarabouQueries, [])]
-    "LossFunction" -> [(LossFunctionDL2, [])]
-    -- \|this is a default loss translation
-    "LossFunction-DL2" -> [(LossFunctionDL2, [])]
-    "LossFunction-Godel" -> [(LossFunctionGodel, [])]
-    "LossFunction-Lukasiewicz" -> [(LossFunctionLukasiewicz, [])]
-    "LossFunction-Product" -> [(LossFunctionProduct, [])]
-    "LossFunction-Yager" -> [(LossFunctionYager, [])]
-    "Agda" -> [(CompileToAgda, [])]
-    "TypeCheck" -> [(TypeCheck Standard, [])]
-    "LinearityCheck" -> [(TypeCheck Linearity, [])]
-    "PolarityCheck" -> [(TypeCheck Polarity, [])]
+    "MarabouQueries" -> [(VerifierQueries MarabouQueryFormat, [])]
+    "LossFunction" -> [(LossFunction DL2, [])]
+    "LossFunction-DL2" -> [(LossFunction DL2, [])]
+    "LossFunction-Godel" -> [(LossFunction Godel, [])]
+    "LossFunction-Lukasiewicz" -> [(LossFunction Lukasiewicz, [])]
+    "LossFunction-Product" -> [(LossFunction Product, [])]
+    "LossFunction-Yager" -> [(LossFunction Yager, [])]
+    "Agda" -> [(ITP Agda, [])]
     _ -> []
 
 -- | Generate the file header given the token used to start comments in the
@@ -119,8 +99,14 @@ prependfileHeader doc format = case format of
     where
       targetVersion = maybe "unknown" pretty formatVersion
 
-writeResultToFile :: MonadIO m => Maybe ExternalOutputFormat -> Maybe FilePath -> Doc a -> m ()
+writeResultToFile ::
+  (MonadIO m, MonadLogger m) =>
+  Maybe ExternalOutputFormat ->
+  Maybe FilePath ->
+  Doc a ->
+  m ()
 writeResultToFile target filepath doc = do
+  logDebug MaxDetail $ "Creating file:" <+> pretty filepath
   let text = layoutAsText $ prependfileHeader doc target
   liftIO $ case filepath of
     Nothing -> TIO.putStrLn text

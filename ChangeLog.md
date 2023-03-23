@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Version 0.2.0-alpha
+## Version 0.2.0
 
 ### Enhancements
 
@@ -12,12 +12,27 @@
 
 * Drastically improved the performance of type-checking (e.g. AcasXu down from 20 seconds to 0.5 seconds).
 
+* Drastically improved the performance of compilation to Marabou (e.g. mnist-robustness now takes 1.5 seconds per image as opposed to ~50 years!).
+
 * Improved error messages which involve type declarations. The messages now display
   both the original and the expanded form of the type.
 
 * Logs now print out in real-time instead of at the end of compilation.
 
 * Added `Type` to the frontend language for the type of types.
+
+* Decoupled the compilation and verification of verifier queries in the command-line
+  interface.
+  The `compile` command will now generate a `verificationPlan` file that stores
+  all the state needed to reconstruct the truth value of the original property from the query results.
+  The `verify` command now has been altered to now take in the `verificationPlan` file and
+  run it.
+  The old behaviour of the `verify` command which performed both compilation
+  and verification has been retained in the new `compileAndVerify` command.
+
+* The existing `check` mode in the command line interface has been renamed `validate`.
+
+* The new `check` mode in the command line interface type-checks the specification.
 
 ### Bug fixes
 
@@ -35,11 +50,14 @@
 * Fixed problem with properties with no infinite quantifiers getting incorrectly
   negated when compiling to Marabou queries.
 
+* Fixed problem where properties with `forall .. in` and ``exists .. in` were
+  causing compilation to Marabou to get stuck.
+
 ### Other
 
 * Removed the `--redirect-output` and `--redirect-error` command line options.
   This functionality can be replicated via pipes.
 
-## Version 0.1.0-alpha
+## Version 0.1.0
 
 Initial alpha release for testing.

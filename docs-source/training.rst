@@ -1,4 +1,7 @@
-Training with a specification (TODO)
-====================================
+Training with a specification
+=============================
 
-Implementation underway, hopefully coming soon!
+.. warning::
+
+    Training with a specification is still being worked on. We hope
+    to release a standalone Python package soon.

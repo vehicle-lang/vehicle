@@ -13,10 +13,12 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitSuccess)
 import System.FilePath (takeDirectory)
 import System.IO
-import Vehicle.Check (CheckOptions (..), check)
 import Vehicle.Compile (CompileOptions (..), compile)
+import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..), compileAndVerify)
 import Vehicle.Export (ExportOptions, export)
 import Vehicle.Prelude
+import Vehicle.TypeCheck (TypeCheckOptions, typeCheck)
+import Vehicle.Validate (ValidateOptions (..), validate)
 import Vehicle.Verify (VerifyOptions (..), verify)
 
 --------------------------------------------------------------------------------
@@ -44,9 +46,11 @@ defaultGlobalOptions =
     }
 
 data ModeOptions
-  = Compile CompileOptions
+  = Check TypeCheckOptions
+  | Compile CompileOptions
   | Verify VerifyOptions
-  | Check CheckOptions
+  | CompileAndVerify CompileAndVerifyOptions
+  | Validate ValidateOptions
   | Export ExportOptions
   deriving (Eq, Show)
 
@@ -64,11 +68,13 @@ run Options {..} = do
     case modeOptions of
       Nothing ->
         fatalError
-          "No mode provided. Please use one of 'compile', 'verify', 'check', 'export'"
+          "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
       Just mode -> case mode of
+        Check options -> typeCheck ioSettings options
         Compile options -> compile ioSettings options
         Verify options -> verify ioSettings options
-        Check options -> check ioSettings options
+        CompileAndVerify options -> compileAndVerify ioSettings options
+        Validate options -> validate ioSettings options
         Export options -> export ioSettings options
 
 createLoggingSettings ::

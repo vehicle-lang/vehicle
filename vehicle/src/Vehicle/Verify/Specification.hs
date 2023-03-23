@@ -12,7 +12,8 @@ module Vehicle.Verify.Specification
     traverseProperty,
     Specification (..),
     traverseSpecification,
-    VerificationPlan,
+    specificationPropertyNames,
+    VerificationPlan (..),
     VerificationQueries,
     MetaNetwork,
   )
@@ -23,7 +24,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import GHC.Generics (Generic)
 import Vehicle.Expr.Boolean
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Identifier)
+import Vehicle.Resource
+import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
@@ -33,7 +35,7 @@ data QueryMetaData = QueryData
   { metaNetwork :: MetaNetwork,
     userVar :: UserVarReconstructionInfo
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON QueryMetaData
 
@@ -169,15 +171,15 @@ traverseProperty f = \case
 
 -- | A compiled specification, parameterised by the data stored at each query.
 newtype Specification queryData
-  = Specification [(Identifier, Property queryData)]
-  deriving (Generic, Functor)
+  = Specification [(Name, Property queryData)]
+  deriving (Show, Generic, Functor)
 
 instance ToJSON queryData => ToJSON (Specification queryData)
 
 instance FromJSON queryData => FromJSON (Specification queryData)
 
-instance Pretty queryData => Pretty (Specification queryData) where
-  pretty (Specification _xs) = "<Printing of specification not implemented>"
+specificationPropertyNames :: Specification a -> PropertyNames
+specificationPropertyNames (Specification properties) = fmap fst properties
 
 traverseSpecification ::
   Monad m =>
@@ -187,6 +189,14 @@ traverseSpecification ::
 traverseSpecification f (Specification properties) =
   Specification <$> traverse (\(n, q) -> (n,) <$> traverseProperty f q) properties
 
-type VerificationPlan = Specification QueryMetaData
+data VerificationPlan = VerificationPlan
+  { specificationPlan :: Specification QueryMetaData,
+    resourceIntegrityInfo :: ResourcesIntegrityInfo
+  }
+  deriving (Generic)
+
+instance ToJSON VerificationPlan
+
+instance FromJSON VerificationPlan
 
 type VerificationQueries = Specification QueryText

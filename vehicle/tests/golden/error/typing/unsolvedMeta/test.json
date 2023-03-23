@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle compile -s unsolvedMeta.vcl -t TypeCheck",
+  "run": "vehicle check -s unsolvedMeta.vcl",
   "needs": ["unsolvedMeta.vcl"]
 }

@@ -8,7 +8,11 @@ import Data.Version (makeVersion)
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
 
-writeAgdaFile :: MonadIO m => Maybe FilePath -> Doc a -> m ()
+writeAgdaFile ::
+  (MonadLogger m, MonadIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
 writeAgdaFile = writeResultToFile (Just agdaOutputFormat)
 
 agdaOutputFormat :: ExternalOutputFormat
