@@ -50,12 +50,14 @@ parseMarabouOutput :: (ExitCode, String, String) -> IO (QueryResult NetworkVaria
 parseMarabouOutput (exitCode, out, _err) = case exitCode of
   ExitFailure _ -> do
     -- Marabou seems to output its error messages to stdout rather than stderr...
-    hPutStrLn
-      stderr
-      ( "Marabou threw the following error:\n"
-          <> "  "
-          <> pack out
-      )
+    let errorDoc =
+          "Marabou threw the following error:"
+            <> line
+            <> indent 2 (pretty out)
+            <> "when running the command:"
+            <> line
+            <> indent 2 (pretty command)
+    hPutStrLn stderr (layoutAsText errorDoc)
     exitFailure
   ExitSuccess -> do
     let outputLines = fmap Text.pack (lines out)

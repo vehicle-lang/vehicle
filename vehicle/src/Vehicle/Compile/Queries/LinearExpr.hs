@@ -21,13 +21,19 @@ module Vehicle.Compile.Queries.LinearExpr
     filterTrivialAssertions,
     eliminateVar,
     prettyCoefficient,
+    convertToSparseFormat,
   )
 where
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
+import Data.List (sortOn)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 import GHC.Generics (Generic)
@@ -53,6 +59,12 @@ instance Pretty Relation where
     Equal -> "="
     LessThan -> "<"
     LessThanOrEqualTo -> "<="
+
+relationToOp :: Relation -> Either () OrderOp
+relationToOp = \case
+  Equal -> Left ()
+  LessThan -> Right Lt
+  LessThanOrEqualTo -> Right Le
 
 --------------------------------------------------------------------------------
 -- Variables
@@ -345,6 +357,50 @@ filterTrivialAssertions = go
         Nothing -> Just $ a : as'
         Just True -> Just as'
         Just False -> Nothing
+
+-- | Converts an assertion to a sparse format, with various optimisations
+-- to improve readability, including:
+--   1. sorting the variables alphabetically
+--   2. negating everything if all variables have negative coefficients.
+--   3. moving the constant to the RHS.
+convertToSparseFormat ::
+  LinearExpression linexp =>
+  Assertion linexp ->
+  Seq Name ->
+  (NonEmpty (Coefficient, Name), Either () OrderOp, Coefficient)
+convertToSparseFormat (Assertion rel linearExpr) variableNames = do
+  let Sparse _ coeffs constant = toSparse linearExpr
+  let varCoeff = sortOn fst $ HashMap.toList coeffs
+  let lookupName (v, c) = (c, variableNames `Seq.index` v)
+  let coeffVars = lookupName <$> varCoeff
+  let op = relationToOp rel
+
+  -- Move constant to RHS
+  let rhsConstant = -constant
+
+  -- Make the properties a tiny bit nicer by checking if all the vars are
+  -- negative and if so negating everything.
+  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffVars
+  let (almostFinalCoeff, finalOp, almostFinalConstant) =
+        if not allCoefficientsNegative
+          then (coeffVars, op, rhsConstant)
+          else do
+            let negCoeffVars = fmap (\(c, v) -> (-c, v)) coeffVars
+            let negOp = second flipOrder op
+            let negConstant = -rhsConstant
+            (negCoeffVars, negOp, negConstant)
+
+  -- Also check for and remove `-0.0`s for cleanliness.
+  let finalConstant =
+        if isNegativeZero almostFinalConstant
+          then 0.0
+          else almostFinalConstant
+
+  let finalCoeff = case almostFinalCoeff of
+        (c : cs) -> c :| cs
+        [] -> developerError "Found trivial assertion"
+
+  (finalCoeff, finalOp, finalConstant)
 
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem
