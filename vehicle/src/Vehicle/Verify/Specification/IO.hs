@@ -23,6 +23,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeExtension, (<.>), (</>))
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Expr.Boolean
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -189,24 +190,32 @@ type MonadVerify m =
 verifyProperty ::
   MonadVerify m =>
   Property QueryMetaData ->
-  m (QueryNegationStatus, MaybeTrivial QueryResult)
-verifyProperty = \case
-  Query qs -> verifyQuerySet qs
-  Disjunct x y -> do
-    result@(negated, x') <- verifyProperty x
-    if evaluateQuery negated x'
-      then return result
-      else verifyProperty y
-  Conjunct x y -> do
-    result@(negated, x') <- verifyProperty x
-    if not (evaluateQuery negated x')
-      then return result
-      else verifyProperty y
+  m PropertyStatus
+verifyProperty property = do
+  (negationStatus, status) <- go property
+  return $ PropertyStatus negationStatus status
+  where
+    go ::
+      MonadVerify m =>
+      BooleanExpr (QuerySet QueryMetaData) ->
+      m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
+    go = \case
+      Query qs -> verifyQuerySet qs
+      Disjunct x y -> do
+        result@(negated, x') <- go x
+        if evaluateQuery negated x'
+          then return result
+          else go y
+      Conjunct x y -> do
+        result@(negated, x') <- go x
+        if not (evaluateQuery negated x')
+          then return result
+          else go y
 
 verifyQuerySet ::
   MonadVerify m =>
   QuerySet QueryMetaData ->
-  m (QueryNegationStatus, MaybeTrivial QueryResult)
+  m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
 verifyQuerySet (QuerySet negated queries) = case queries of
   Trivial b -> return (negated, Trivial b)
   NonTrivial disjuncts -> do
@@ -217,10 +226,13 @@ verifyDisjunctAll ::
   forall m.
   MonadVerify m =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
-  m QueryResult
+  m (QueryResult UserVariableCounterexample)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
-    go :: Monad m => NonEmpty (QueryAddress, QueryMetaData) -> m QueryResult
+    go ::
+      Monad m =>
+      NonEmpty (QueryAddress, QueryMetaData) ->
+      m (QueryResult UserVariableCounterexample)
     go (x :| []) = verifyQuery x
     go (x :| y : xs) = do
       r <- verifyQuery x
@@ -231,11 +243,12 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
 verifyQuery ::
   MonadVerify m =>
   (QueryAddress, QueryMetaData) ->
-  m QueryResult
+  m (QueryResult UserVariableCounterexample)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
   (verifier, verifierExecutable, folder) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
-  invokeVerifier verifier verifierExecutable metaNetwork userVar queryFile
+  result <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
+  return $ fmap (reconstructUserVars userVar) result
 
 --------------------------------------------------------------------------------
 -- Calculation of file paths

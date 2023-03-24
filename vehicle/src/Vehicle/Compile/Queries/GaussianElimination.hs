@@ -93,9 +93,9 @@ findPivot var (x : xs)
 reconstructGaussianVariableValue ::
   VariableAssignment ->
   GaussianVariableSolution ->
-  Maybe Double
+  Double
 reconstructGaussianVariableValue assignment solution =
-  Just $ evaluateExpr (solutionEquality solution) assignment
+  evaluateExpr (solutionEquality solution) assignment
 
 currentPhase :: Doc ()
 currentPhase = "Gaussian elimination of user variables"

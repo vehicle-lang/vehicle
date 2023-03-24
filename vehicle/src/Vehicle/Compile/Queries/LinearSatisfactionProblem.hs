@@ -43,9 +43,9 @@ generateCLSTProblem ::
   LCSState ->
   InputEqualities ->
   ConjunctAll StandardNormExpr ->
-  m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
+  m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
 generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
-  (_, _, metaNetwork, userVariables, _) <- ask
+  (_, _, _, userVariables, _) <- ask
   variables <- getVariables
 
   inputEqualityAssertions <- forM inputEqualities $ \(i, expr) -> do
@@ -65,7 +65,7 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     solveForUserVariables (length userVariables) clst
 
   let finalQuery = flip fmap networkVarQuery $
-        \(solvedCLST, varReconst) -> (solvedCLST, metaNetwork, varReconst)
+        \(solvedCLST, varReconst) -> (solvedCLST, varReconst)
 
   return finalQuery
 
@@ -73,7 +73,7 @@ solveForUserVariables ::
   MonadCompile m =>
   Int ->
   CLSTProblem Variable ->
-  m (MaybeTrivial (CLSTProblem NetworkVariable, UserVarReconstructionInfo))
+  m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
 solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
   logCompilerPass MinDetail "elimination of user variables" $ do
     let allUserVars = Set.fromList [0 .. numberOfUserVars - 1]
@@ -92,7 +92,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second (id . solutionEquality)) gaussianSolutions
+    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
             foldl (uncurry . substitute) assertion gaussianSolutionEqualities

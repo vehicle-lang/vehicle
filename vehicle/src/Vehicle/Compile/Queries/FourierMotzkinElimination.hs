@@ -119,7 +119,7 @@ partition var = foldr categorise ([], [], [])
 reconstructFourierMotzkinVariableValue ::
   VariableAssignment ->
   FourierMotzkinVariableSolution ->
-  Maybe Double
+  Double
 reconstructFourierMotzkinVariableValue assignment solution = do
   let initialMax = (-1 / 0, LessThanOrEqualTo)
   let initialMin = (1 / 0, LessThanOrEqualTo)
@@ -127,8 +127,11 @@ reconstructFourierMotzkinVariableValue assignment solution = do
   let (upperBound, maxRel) = foldr evaluateMinValue initialMin (upperBounds solution)
 
   if lowerBound < upperBound || minRel == LessThanOrEqualTo && maxRel == LessThanOrEqualTo
-    then return $ (lowerBound + upperBound) / 2
-    else Nothing
+    then (lowerBound + upperBound) / 2
+    else -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
+    -- algorithm. Closest to referencing this impossibility is:
+    -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
+      developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
   where
     evaluateMinValue :: Assertion SparseLinearExpr -> (Double, Relation) -> (Double, Relation)
     evaluateMinValue (Assertion rel expr) current@(currentMin, _) =

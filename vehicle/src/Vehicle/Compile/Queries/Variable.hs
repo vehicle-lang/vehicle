@@ -1,9 +1,11 @@
 module Vehicle.Compile.Queries.Variable where
 
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as Text (pack)
+import GHC.Generics (Generic)
 import Prettyprinter (brackets)
 import Vehicle.Compile.Prelude
 
@@ -19,11 +21,20 @@ class Pretty variable => IsVariable variable
 newtype UserVariable = UserVariable
   { userVarName :: Name
   }
+  deriving (Eq, Ord, Generic)
 
 instance Pretty UserVariable where
   pretty (UserVariable name) = "user" <> brackets (pretty name)
 
 instance IsVariable UserVariable
+
+instance FromJSON UserVariable
+
+instance FromJSONKey UserVariable
+
+instance ToJSON UserVariable
+
+instance ToJSONKey UserVariable
 
 --------------------------------------------------------------------------------
 -- Network variables

@@ -120,7 +120,7 @@ compileProgToQueries queryFormat resources prog = do
       m (MultiProperty (QueryMetaData, QueryText))
     compileMultiProperty networkCtx declCtx p ident = go []
       where
-        go :: MultiPropertyIndices -> StandardNormExpr -> m (MultiProperty (QueryMetaData, QueryText))
+        go :: TensorIndices -> StandardNormExpr -> m (MultiProperty (QueryMetaData, QueryText))
         go indices = \case
           VVecLiteral es -> do
             let es' = zip [0 :: QueryID ..] es
@@ -142,7 +142,7 @@ data PropertyState = PropertyState
     networkCtx :: NetworkContext,
     declProvenance :: Provenance,
     declIdentifier :: Identifier,
-    propertyIndices :: MultiPropertyIndices
+    propertyIndices :: TensorIndices
   }
 
 type MonadCompileProperty m =
@@ -204,7 +204,7 @@ compileQuerySet ::
 compileQuerySet isPropertyNegated expr = do
   -- First we recursively compile down the remaining boolean structure, stopping at
   -- the level of individual propositions (e.g. equality or ordering assertions)
-  (propositionTree, userVariables) <-
+  (propositionTree, quantifiedVariables) <-
     compileQueryStructure mempty expr
 
   -- We then convert this tree into disjunctive normal form (DNF).
@@ -218,8 +218,7 @@ compileQuerySet isPropertyNegated expr = do
     NonTrivial dnf -> do
       -- Split up into the individual queries needed for Marabou.
       logDebug MinDetail $ "Found" <+> pretty (length dnf) <+> "potential queries" <> line
-      let flattenedUserVars = concat userVariables
-      queries <- traverse (compileSingleQuery flattenedUserVars) dnf
+      queries <- traverse (compileSingleQuery quantifiedVariables) dnf
       return $ eliminateTrivialDisjunctions queries
 
   return $ QuerySet isPropertyNegated queries
@@ -231,61 +230,59 @@ type PropositionTree = BooleanExpr StandardNormExpr
 -- | The set of variables that will be cumulatively in scope at the current
 -- point in time once all existential quantifiers have been lifted to the
 -- top level. Essentially the set of quantifiers that are before the current
--- point in the tree when traveresed depth first.
--- Outer list represents quantifier locations in the syntax. Inner lists represent the
--- number of user-variables bound by that quantifier (e.g. for Vectors)
-type CumulativeVariables = [[UserVariable]]
+-- point in the tree when traversed depth first.
+type QuantifiedVariables = [(Name, TensorDimensions, [UserVariable])]
 
-cumulativeVarsToCtx :: CumulativeVariables -> BoundDBCtx
-cumulativeVarsToCtx = concatMap (fmap (Just . userVarName))
+cumulativeVarsToCtx :: QuantifiedVariables -> BoundDBCtx
+cumulativeVarsToCtx = concatMap (fmap (Just . userVarName) . (\(_, _, c) -> c))
 
 compileQueryStructure ::
   forall m.
   MonadCompileProperty m =>
-  CumulativeVariables ->
+  QuantifiedVariables ->
   StandardNormExpr ->
-  m (PropositionTree, CumulativeVariables)
+  m (PropositionTree, QuantifiedVariables)
 compileQueryStructure = go False
   where
-    go :: Bool -> CumulativeVariables -> StandardNormExpr -> m (PropositionTree, CumulativeVariables)
-    go processingLiftedIfs cumulativeVariables expr = case expr of
+    go :: Bool -> QuantifiedVariables -> StandardNormExpr -> m (PropositionTree, QuantifiedVariables)
+    go processingLiftedIfs quantifiedVariables expr = case expr of
       VBuiltinFunction And [e1, e2] ->
-        goOp2 Conjunct processingLiftedIfs cumulativeVariables e1 e2
+        goOp2 Conjunct processingLiftedIfs quantifiedVariables e1 e2
       VBuiltinFunction Or [e1, e2] ->
-        goOp2 Disjunct processingLiftedIfs cumulativeVariables e1 e2
+        goOp2 Disjunct processingLiftedIfs quantifiedVariables e1 e2
       VBuiltinFunction Not [x] ->
-        go processingLiftedIfs cumulativeVariables $ lowerNotNorm x
+        go processingLiftedIfs quantifiedVariables $ lowerNotNorm x
       VBuiltinFunction If [c, x, y] ->
-        go processingLiftedIfs cumulativeVariables $ unfoldIf c x y
+        go processingLiftedIfs quantifiedVariables $ unfoldIf c x y
       VQuantifierExpr q dom _ binder env body -> case q of
-        Exists -> compileQuantifierBodyToPropositionTree cumulativeVariables dom binder env body
+        Exists -> compileQuantifierBodyToPropositionTree quantifiedVariables dom binder env body
         Forall -> throwError temporaryUnsupportedAlternatingQuantifiersError
       VBuiltinFunction Equals {} _ ->
-        goProposition processingLiftedIfs cumulativeVariables expr
+        goProposition processingLiftedIfs quantifiedVariables expr
       VBuiltinFunction Order {} _ ->
-        goProposition processingLiftedIfs cumulativeVariables expr
+        goProposition processingLiftedIfs quantifiedVariables expr
       VBoolLiteral {} -> do
-        goProposition processingLiftedIfs cumulativeVariables expr
+        goProposition processingLiftedIfs quantifiedVariables expr
       _ -> unexpectedExprError "compiling query structure" (prettyVerbose expr)
 
     goOp2 ::
       (PropositionTree -> PropositionTree -> PropositionTree) ->
       Bool ->
-      CumulativeVariables ->
+      QuantifiedVariables ->
       StandardNormExpr ->
       StandardNormExpr ->
-      m (PropositionTree, CumulativeVariables)
-    goOp2 op2 processingLiftedIfs cumulativeVariables e1 e2 = do
-      let lhsVariables = cumulativeVariables
+      m (PropositionTree, QuantifiedVariables)
+    goOp2 op2 processingLiftedIfs quantifiedVariables e1 e2 = do
+      let lhsVariables = quantifiedVariables
       (e1', lhsUserVars) <- go processingLiftedIfs lhsVariables e1
-      let rhsVariables = lhsUserVars <> cumulativeVariables
+      let rhsVariables = lhsUserVars <> quantifiedVariables
       (e2', rhsUserVars) <- go processingLiftedIfs rhsVariables e2
       let userVars = lhsUserVars <> rhsUserVars
       return (op2 e1' e2', userVars)
 
-    goProposition :: Bool -> CumulativeVariables -> StandardNormExpr -> m (PropositionTree, CumulativeVariables)
-    goProposition processingLiftedIfs cumulativeVariables expr = do
-      let ctx = cumulativeVarsToCtx cumulativeVariables
+    goProposition :: Bool -> QuantifiedVariables -> StandardNormExpr -> m (PropositionTree, QuantifiedVariables)
+    goProposition processingLiftedIfs quantifiedVariables expr = do
+      let ctx = cumulativeVarsToCtx quantifiedVariables
       let subsectionDoc = "Identified proposition:" <+> prettyFriendly (WithContext expr ctx)
       logDebug MaxDetail subsectionDoc
       if processingLiftedIfs
@@ -297,7 +294,7 @@ compileQueryStructure = go False
           result <-
             if not (wasIfLifted exprWithoutIf)
               then return (Query expr, [])
-              else go True cumulativeVariables exprWithoutIf
+              else go True quantifiedVariables exprWithoutIf
           decrCallDepth
           return result
 
@@ -307,40 +304,46 @@ compileQueryStructure = go False
 
 compileQuantifierBodyToPropositionTree ::
   MonadCompileProperty m =>
-  CumulativeVariables ->
+  QuantifiedVariables ->
   QuantifierDomain ->
   StandardNormBinder ->
   StandardEnv ->
   TypeCheckedExpr ->
-  m (PropositionTree, CumulativeVariables)
-compileQuantifierBodyToPropositionTree cumulativeVariables _ binder env body = do
-  -- Normalise the body of the expression
+  m (PropositionTree, QuantifiedVariables)
+compileQuantifierBodyToPropositionTree quantifiedVariables _ binder env body = do
   propertyState@PropertyState {..} <- ask
 
+  let variableName = getBinderName binder
   -- TODO avoid calculating this repeatedly?
-  let currentLevel = DBLevel $ sum (map length cumulativeVariables)
-  (envEntry, binderUserVars) <- calculateEnvEntry propertyState currentLevel binder
-
-  let updatedCumulativeVars = binderUserVars : cumulativeVariables
+  let currentLevel = DBLevel $ sum (map (\(_, _, vars) -> length vars) quantifiedVariables)
+  tensorDimensions <- calculateDimensionsOfQuantifiedVariable propertyState binder
+  (envEntry, binderUserVars) <- calculateEnvEntry currentLevel variableName tensorDimensions
   let newEnv = extendEnv binder envEntry env
+
+  let newQuantifiedVariable = (variableName, tensorDimensions, binderUserVars)
+  let updatedQuantifiedVars = newQuantifiedVariable : quantifiedVariables
 
   normBody <- runNormT declSubst mempty (eval newEnv body)
 
-  (substructure, allUserVars) <- compileQueryStructure updatedCumulativeVars normBody
+  (substructure, allQuantifiedVariables) <- compileQueryStructure updatedQuantifiedVars normBody
 
-  return (substructure, binderUserVars : allUserVars)
+  return (substructure, newQuantifiedVariable : allQuantifiedVariables)
 
 compileSingleQuery ::
   MonadCompileProperty m =>
-  [UserVariable] ->
+  QuantifiedVariables ->
   ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (QueryAddress, (QueryMetaData, QueryText)))
-compileSingleQuery userVariables conjuncts = do
+compileSingleQuery quantifiedVariables conjuncts = do
   PropertyState {..} <- ask
+
+  let (variableInfo, nestedNormalisedVars) =
+        unzipWith (\(name, dims, vars) -> ((name, dims), vars)) quantifiedVariables
+  let normalisedVars = concat nestedNormalisedVars
 
   logCompilerPass MinDetail "query" $ do
     -- Convert all user variables and applications of networks into magic I/O variables
-    let boundCtx = fmap (Just . userVarName) userVariables
+    let boundCtx = fmap (Just . userVarName) normalisedVars
     (metaNetwork, networkVariables, inputEqualities, networkFreeConjuncts) <-
       replaceNetworkApplications networkCtx boundCtx conjuncts
 
@@ -349,7 +352,7 @@ compileSingleQuery userVariables conjuncts = do
           ( networkCtx,
             (declIdentifier, declProvenance),
             metaNetwork,
-            userVariables,
+            normalisedVars,
             networkVariables
           )
     clstQuery <- generateCLSTProblem state inputEqualities networkFreeConjuncts
@@ -359,12 +362,14 @@ compileSingleQuery userVariables conjuncts = do
       Trivial b -> do
         logDebug MaxDetail $ "Query found to be trivially" <+> pretty b
         return $ Trivial b
-      NonTrivial (clstProblem, u, v) -> do
+      NonTrivial (clstProblem, normalisedVarInfo) -> do
         queryText <- compileQuery queryFormat clstProblem
         logCompilerPassOutput $ pretty queryText
         queryID <- demand
         let queryAddress = ((nameOf declIdentifier, propertyIndices), queryID)
-        return $ NonTrivial (queryAddress, (QueryData u v, queryText))
+        let queryVarInfo = QueryVariableInfo variableInfo normalisedVarInfo
+        let queryData = QueryData metaNetwork queryVarInfo
+        return $ NonTrivial (queryAddress, (queryData, queryText))
 
 lowerNotNorm :: StandardNormExpr -> StandardNormExpr
 lowerNotNorm arg = case arg of
@@ -413,43 +418,61 @@ convertToDNF = \case
     VBoolLiteral True -> Trivial True
     _ -> NonTrivial $ DisjunctAll [ConjunctAll [x]]
 
-calculateEnvEntry ::
+calculateDimensionsOfQuantifiedVariable ::
+  forall m.
   MonadCompile m =>
   PropertyState ->
-  DBLevel ->
   StandardNormBinder ->
-  m (StandardNormExpr, [UserVariable])
-calculateEnvEntry propertyState startingLevel binder = do
-  runSupplyT (go baseName baseType) [startingLevel ..]
+  m TensorDimensions
+calculateDimensionsOfQuantifiedVariable propertyState binder = go (typeOf binder)
   where
-    baseName = getBinderName binder
-    baseType = binderType binder
+    go :: StandardNormType -> m TensorDimensions
+    go = \case
+      VRatType {} -> return []
+      VVectorType tElem (VNatLiteral dim) -> do
+        dims <- go tElem
+        return $ dim : dims
+      variableType -> do
+        let PropertyState {..} = propertyState
+        let target = queryFormatID queryFormat
+        let p = provenanceOf binder
+        let baseName = getBinderName binder
+        let baseType = binderType binder
+        throwError $ UnsupportedVariableType target declIdentifier p baseName variableType baseType [BuiltinType Rat]
 
-    go :: (MonadSupply DBLevel m, MonadCompile m) => Name -> StandardNormType -> m (StandardNormExpr, [UserVariable])
+calculateEnvEntry ::
+  MonadCompile m =>
+  DBLevel ->
+  Name ->
+  TensorDimensions ->
+  m (StandardNormExpr, [UserVariable])
+calculateEnvEntry startingLevel baseName baseDims = do
+  runSupplyT (go baseName baseDims) [startingLevel ..]
+  where
+    go ::
+      (MonadSupply DBLevel m, MonadCompile m) =>
+      Name ->
+      TensorDimensions ->
+      m (StandardNormExpr, [UserVariable])
     go name = \case
-      VRatType {} -> do
+      [] -> do
         dbLevel <- demand
         return (VBoundVar dbLevel [], [UserVariable name])
 
       -- If we're quantifying over a tensor, instead quantify over each individual
       -- element, and then substitute in a LVec construct with those elements in.
-      VVectorType tElem (VNatLiteral size) -> do
+      size : dims -> do
         -- Use the list monad to create a nested list of all possible indices into the tensor
         let allIndices = [0 .. size - 1]
 
         -- Generate the corresponding names from the indices
         let mkName i = name <> "_" <> pack (show i)
-        (subexprs, userVars) <- unzip <$> traverse (\i -> go (mkName i) tElem) allIndices
+        (subexprs, userVars) <- unzip <$> traverse (\i -> go (mkName i) dims) allIndices
 
         let expr = mkVLVec subexprs
 
         -- Generate a expression prepended with `tensorSize` quantifiers
         return (expr, concat userVars)
-      typ -> do
-        let PropertyState {..} = propertyState
-        let target = queryFormatID queryFormat
-        let p = provenanceOf binder
-        throwError $ UnsupportedVariableType target declIdentifier p baseName typ baseType [BuiltinType Rat]
 
 pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [StandardNormExpr] -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VQuantifierExpr q dom args binder env body <-
