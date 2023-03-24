@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s missingDataset.vcl -t Marabou -d trainingDataset:non-existent.idx",
+  "run": "vehicle compile -s missingDataset.vcl -t MarabouQueries -d trainingDataset:non-existent.idx",
   "needs": ["missingDataset.vcl"]
 }

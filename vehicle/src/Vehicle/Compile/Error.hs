@@ -90,8 +90,8 @@ data CompileError
   | DatasetTypeUnsupportedContainer DeclProvenance StandardGluedType
   | DatasetTypeUnsupportedElement DeclProvenance StandardGluedType StandardNormType
   | DatasetVariableSizeTensor DeclProvenance StandardGluedType StandardNormType
-  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int [Int] [Int]
-  | DatasetDimensionsMismatch DeclProvenance FilePath StandardGluedExpr [Int]
+  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorDimensions TensorDimensions
+  | DatasetDimensionsMismatch DeclProvenance FilePath StandardGluedExpr TensorDimensions
   | DatasetTypeMismatch DeclProvenance FilePath StandardGluedType StandardNormType StandardNormType
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int

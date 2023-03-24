@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "run": "vehicle check -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {
@@ -12,9 +12,13 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/ --network andGate:NO_FILE",
-    "needs": ["spec.vcl"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"]
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network andGate:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"],
+    "ignore":
+    {
+      "matches": ".*\"fileHash\".*"
+    }
  },
  {
    "name": "LossFunction",

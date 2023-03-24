@@ -14,7 +14,6 @@ import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
@@ -33,11 +32,11 @@ marabouVerifier =
 -- Invoking Marabou
 
 invokeMarabou :: VerifierInvocation
-invokeMarabou marabouExecutable networkLocations varReconstruction queryFile =
+invokeMarabou marabouExecutable networkLocations queryFile =
   liftIO $ do
     networkArg <- prepareNetworkArg networkLocations
     marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-    parseMarabouOutput varReconstruction marabouOutput
+    parseMarabouOutput marabouOutput
 
 prepareNetworkArg :: MetaNetwork -> IO String
 prepareNetworkArg [(_name, file)] = return file
@@ -47,11 +46,8 @@ prepareNetworkArg _ = do
       <> "multiple neural networks or multiple applications of the same network."
   exitFailure
 
-parseMarabouOutput ::
-  UserVarReconstructionInfo ->
-  (ExitCode, String, String) ->
-  IO QueryResult
-parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
+parseMarabouOutput :: (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)
+parseMarabouOutput (exitCode, out, _err) = case exitCode of
   ExitFailure _ -> do
     -- Marabou seems to output its error messages to stdout rather than stderr...
     hPutStrLn
@@ -72,24 +68,23 @@ parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
         | otherwise -> do
             let assignmentOutput = drop (i + 1) outputLines
             let ioVarAssignment = parseSATAssignment assignmentOutput
-            let maybeLinearVars = reconstructUserVars reconstructionInfo ioVarAssignment
-            case maybeLinearVars of
-              Nothing -> return $ SAT Nothing
-              -- TODO reverse normalisation of quantified user tensor variables
-              Just _x -> return $ SAT Nothing
+            return $ SAT $ Just ioVarAssignment
+
+-- TODO reverse normalisation of quantified user tensor variables
+-- Just _x -> return $ SAT Nothing
 
 parseSATAssignment :: [Text] -> Vector Double
-parseSATAssignment output =
+parseSATAssignment output = do
   let mInputIndex = elemIndex "Input assignment:" output
-   in let mOutputIndex = elemIndex "Output:" output
-       in case (mInputIndex, mOutputIndex) of
-            (Just inputIndex, Just outputIndex) ->
-              let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
-               in let outputVarLines = drop (outputIndex + 1) output
-                   in let inputValues = parseSATAssignmentLine Input <$> inputVarLines
-                       in let outputValues = parseSATAssignmentLine Output <$> outputVarLines
-                           in Vector.fromList (inputValues <> outputValues)
-            _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
+  let mOutputIndex = elemIndex "Output:" output
+  case (mInputIndex, mOutputIndex) of
+    (Just inputIndex, Just outputIndex) -> do
+      let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
+      let outputVarLines = drop (outputIndex + 1) output
+      let inputValues = parseSATAssignmentLine Input <$> inputVarLines
+      let outputValues = parseSATAssignmentLine Output <$> outputVarLines
+      Vector.fromList (inputValues <> outputValues)
+    _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine :: InputOrOutput -> Text -> Double
 parseSATAssignmentLine _ txt =

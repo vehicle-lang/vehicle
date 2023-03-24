@@ -1,114 +1,183 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "p"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Conjunct",
+      "p",
+      {
+        "tag": "SingleProperty",
         "contents": [
+          [
+            "p",
+            []
+          ],
           {
             "tag": "Conjunct",
             "contents": [
               {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
+                "tag": "Conjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
                     "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
                             [
-                              "f",
-                              "NO_FILE"
+                              [
+                                [
+                                  "p",
+                                  []
+                                ],
+                                1
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
                           ]
                         }
-                      ]
+                      },
+                      "negated": false
                     }
                   },
-                  "negated": false
-                }
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
+                            [
+                              [
+                                [
+                                  "p",
+                                  []
+                                ],
+                                2
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
               },
               {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
+                "tag": "Conjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
                     "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
                             [
-                              "f",
-                              "NO_FILE"
+                              [
+                                [
+                                  "p",
+                                  []
+                                ],
+                                3
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
                           ]
                         }
-                      ]
+                      },
+                      "negated": false
                     }
                   },
-                  "negated": false
-                }
-              }
-            ]
-          },
-          {
-            "tag": "Conjunct",
-            "contents": [
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
+                  {
+                    "tag": "Query",
                     "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
                             [
-                              "f",
-                              "NO_FILE"
+                              [
+                                [
+                                  "p",
+                                  []
+                                ],
+                                4
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
                           ]
                         }
-                      ]
+                      },
+                      "negated": false
                     }
-                  },
-                  "negated": false
-                }
-              },
-              {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "NonTrivial",
-                    "contents": {
-                      "unDisjunctAll": [
-                        {
-                          "userVar": [],
-                          "metaNetwork": [
-                            [
-                              "f",
-                              "NO_FILE"
-                            ]
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "negated": false
-                }
+                  }
+                ]
               }
             ]
           }
         ]
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8762839351790322055
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

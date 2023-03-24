@@ -1,15 +1,19 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s spec.vcl -t TypeCheck",
+    "run": "vehicle check -s spec.vcl",
     "needs": ["spec.vcl"],
     "enabled": false
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t Marabou -o Marabou.queries/",
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/",
     "needs": ["spec.vcl"],
     "produces": ["Marabou.queries/*.txt"],
+    "ignore":
+    {
+      "matches": ".*\"fileHash\".*"
+    },
     "enabled": false
   }
 ]

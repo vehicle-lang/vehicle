@@ -6,27 +6,20 @@ module Vehicle.Verify
 where
 
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Hashable (Hashable (..))
 import Data.Text.IO (hPutStrLn)
 import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
+import System.FilePath (takeDirectory)
 import System.IO (stderr)
-import System.IO.Temp (withSystemTempDirectory)
-import Vehicle.Backend.Prelude (Task (..))
-import Vehicle.Compile
 import Vehicle.Prelude
-import Vehicle.Resource
 import Vehicle.Verify.Core
 import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
+import Vehicle.Verify.Specification (VerificationPlan (VerificationPlan), specificationPropertyNames)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 
 data VerifyOptions = VerifyOptions
-  { specification :: FilePath,
-    properties :: PropertyNames,
-    networkLocations :: NetworkLocations,
-    datasetLocations :: DatasetLocations,
-    parameterValues :: ParameterValues,
+  { verificationPlan :: FilePath,
     verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable,
     proofCache :: Maybe FilePath
@@ -34,44 +27,24 @@ data VerifyOptions = VerifyOptions
   deriving (Eq, Show)
 
 verify :: LoggingSettings -> VerifyOptions -> IO ()
-verify loggingSettings VerifyOptions {..} = do
+verify _loggingSettings VerifyOptions {..} = do
   let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
-  let resources = Resources networkLocations datasetLocations parameterValues
 
-  specificationHash <- hash <$> readSpecification specification
-
-  status <- withSystemTempDirectory "specification" $ \tempDir -> do
-    compile loggingSettings $
-      CompileOptions
-        { task = CompileToQueryFormat (verifierQueryFormat verifierImpl),
-          specification = specification,
-          declarationsToCompile = properties,
-          networkLocations = networks resources,
-          datasetLocations = datasets resources,
-          parameterValues = parameters resources,
-          outputFile = Just tempDir,
-          moduleName = Nothing,
-          proofCache = Nothing,
-          noStdlib = False
-        }
-
-    verifySpecification verifierImpl verifierExecutable tempDir
+  VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlan
+  let verificationFolder = takeDirectory verificationPlan
+  status <- verifySpecification verificationFolder verifierImpl verifierExecutable specificationPlan
 
   programOutput $ pretty status
-
-  resourceSummaries <- liftIO $ hashResources resources
   case proofCache of
     Nothing -> return ()
     Just proofCachePath ->
       writeProofCache proofCachePath $
         ProofCache
           { proofCacheVersion = vehicleVersion,
-            originalSpec = specification,
-            originalSpecHash = specificationHash,
-            originalProperties = properties,
-            status = status,
-            resourceSummaries = resourceSummaries
+            resourcesIntegrityInfo = resourceIntegrity,
+            originalProperties = specificationPropertyNames specificationPlan,
+            status = status
           }
 
 -- | Tries to locate the executable for the verifier at the provided

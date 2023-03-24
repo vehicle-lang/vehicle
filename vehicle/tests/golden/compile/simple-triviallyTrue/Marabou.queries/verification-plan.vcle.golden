@@ -1,120 +1,192 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "p"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
-        "contents": {
-          "queries": {
-            "tag": "Trivial",
-            "contents": true
-          },
-          "negated": false
-        }
+      "p",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          [
+            "p",
+            []
+          ],
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "tag": "Trivial",
+                "contents": true
+              },
+              "negated": false
+            }
+          }
+        ]
       }
-    }
-  ],
-  [
-    [
-      "User",
-      "multiProperty"
     ],
-    {
-      "tag": "MultiProperty",
-      "contents": [
-        {
-          "tag": "MultiProperty",
-          "contents": [
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": true
-                  },
-                  "negated": false
-                }
+    [
+      "multiProperty",
+      {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "MultiProperty",
+            "contents": [
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      0,
+                      0
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": true
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      1,
+                      0
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": true
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      2,
+                      0
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": true
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
               }
-            },
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": true
-                  },
-                  "negated": false
-                }
+            ]
+          },
+          {
+            "tag": "MultiProperty",
+            "contents": [
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      0,
+                      1
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": false
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      1,
+                      1
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": true
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  [
+                    "multiProperty",
+                    [
+                      2,
+                      1
+                    ]
+                  ],
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "Trivial",
+                        "contents": false
+                      },
+                      "negated": false
+                    }
+                  }
+                ]
               }
-            },
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": true
-                  },
-                  "negated": false
-                }
-              }
-            }
-          ]
-        },
-        {
-          "tag": "MultiProperty",
-          "contents": [
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": false
-                  },
-                  "negated": false
-                }
-              }
-            },
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": true
-                  },
-                  "negated": false
-                }
-              }
-            },
-            {
-              "tag": "SingleProperty",
-              "contents": {
-                "tag": "Query",
-                "contents": {
-                  "queries": {
-                    "tag": "Trivial",
-                    "contents": false
-                  },
-                  "negated": false
-                }
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-]
+            ]
+          }
+        ]
+      }
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 1163255927841296261
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -6969277137687631667
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

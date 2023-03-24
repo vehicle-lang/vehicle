@@ -3,6 +3,7 @@ module Vehicle.Verify.Core where
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
+import Data.Vector.Unboxed (Vector)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (Name)
 import Vehicle.Compile.Queries.LinearExpr
@@ -28,9 +29,8 @@ type VerifierInvocation =
   MonadIO m =>
   VerifierExecutable ->
   MetaNetwork ->
-  UserVarReconstructionInfo ->
   QueryFile ->
-  m QueryResult
+  m (QueryResult NetworkVariableCounterexample)
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -45,7 +45,18 @@ data Verifier = Verifier
   }
 
 --------------------------------------------------------------------------------
--- Queries
+-- Addresses
+
+-- | The number of an individual query within a `Property` when traversed
+-- depth-first.
+type QueryID = Int
+
+type QueryAddress = (PropertyAddress, QueryID)
+
+type PropertyAddress = (Name, TensorIndices)
+
+--------------------------------------------------------------------------------
+-- Queries misc
 
 -- | Location of a verifier query file.
 type QueryFile = FilePath
@@ -57,6 +68,24 @@ type QueryNegationStatus = Bool
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [(Name, FilePath)]
+
+--------------------------------------------------------------------------------
+-- Variable assignments
+
+data UserVariableAssignment = UserVariableAssignment
+  { variableName :: Name,
+    variableDimensions :: TensorDimensions,
+    variableValue :: Vector Double
+  }
+  deriving (Generic)
+
+instance ToJSON UserVariableAssignment
+
+instance FromJSON UserVariableAssignment
+
+type NetworkVariableCounterexample = Vector Double
+
+type UserVariableCounterexample = [UserVariableAssignment]
 
 --------------------------------------------------------------------------------
 -- Query formats
@@ -80,47 +109,69 @@ data QueryFormat = QueryFormat
 --------------------------------------------------------------------------------
 -- Query results
 
-data QueryResult
-  = SAT (Maybe Text)
+data QueryResult witness
+  = SAT (Maybe witness)
   | UnSAT
+  deriving (Show, Functor, Foldable, Traversable, Generic)
+
+instance FromJSON witness => FromJSON (QueryResult witness)
+
+instance ToJSON witness => ToJSON (QueryResult witness)
+
+--------------------------------------------------------------------------------
+-- Variable reconstruction
+
+-- | Information for mapping normalised user variables back to
+-- unnormalised user variables. These are stored in reverse order, i.e. the
+-- deepest variables are at the head of the list.
+type QueryUnnormalisedVariableInfo = [(Name, TensorDimensions)]
+
+-- | Information for mapping network variables back to normalised
+-- user variables.
+type QueryNormalisedVariableInfo = [(LinearVar, VariableSolution)]
+
+-- | Information for mapping network variables back to unnormalise user variables.
+data QueryVariableInfo = QueryVariableInfo
+  { unnormalisedVariableInfo :: QueryUnnormalisedVariableInfo,
+    normalisedVariableInfo :: QueryNormalisedVariableInfo
+  }
   deriving (Show, Generic)
 
-instance FromJSON QueryResult
+instance ToJSON QueryVariableInfo
 
-instance ToJSON QueryResult
-
-type UserVarReconstructionInfo = [(LinearVar, VariableSolution)]
-
--- | A solution for a query variable that is an equation where the coefficient
--- for that variable is 1.
-newtype GaussianVariableSolution = GaussianVariableSolution
-  { solutionEquality :: SparseLinearExpr
-  }
-  deriving (Generic)
-
-instance ToJSON GaussianVariableSolution
-
-instance FromJSON GaussianVariableSolution
-
--- | A FM solution for a variable is two lists of constraints. The variable value
--- must be greater than the set of assertions, and less than the first is that
-data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [Assertion SparseLinearExpr],
-    upperBounds :: [Assertion SparseLinearExpr]
-  }
-  deriving (Generic)
-
-instance ToJSON FourierMotzkinVariableSolution
-
-instance FromJSON FourierMotzkinVariableSolution
+instance FromJSON QueryVariableInfo
 
 -- | Information neccesary to reconstruct the user variables from the magic
 -- input/output variables.
 data VariableSolution
   = GaussianSolution GaussianVariableSolution
   | FourierMotzkinSolution FourierMotzkinVariableSolution
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON VariableSolution
 
 instance FromJSON VariableSolution
+
+-- | A solution for a normalised user variable that is an equation
+-- where the coefficient for that variable is 1.
+newtype GaussianVariableSolution = GaussianVariableSolution
+  { solutionEquality :: SparseLinearExpr
+  }
+  deriving (Show, Generic)
+
+instance ToJSON GaussianVariableSolution
+
+instance FromJSON GaussianVariableSolution
+
+-- | A FM solution for an normalised user variable is two lists of constraints.
+-- The variable value must be greater than the first set of assertions, and less than
+-- the second set of assertions.
+data FourierMotzkinVariableSolution = FMSolution
+  { lowerBounds :: [Assertion SparseLinearExpr],
+    upperBounds :: [Assertion SparseLinearExpr]
+  }
+  deriving (Show, Generic)
+
+instance ToJSON FourierMotzkinVariableSolution
+
+instance FromJSON FourierMotzkinVariableSolution

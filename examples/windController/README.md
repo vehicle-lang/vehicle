@@ -18,7 +18,7 @@ This folder contains the following files:
 The controller can be verified against the specification by running the following command:
 
 ```bash
-vehicle verify \
+vehicle compileAndVerify \
   --specification examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
   --verifier Marabou \
@@ -33,7 +33,7 @@ run the following command:
 
 ```bash
 vehicle compile \
-  --target Marabou \
+  --target MarabouQueries \
   --specification examples/windController/windController.vcl \
   --outputFile examples/windController/windController-queries \
   --network controller:examples/windController/controller.onnx

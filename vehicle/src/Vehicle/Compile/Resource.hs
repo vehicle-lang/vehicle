@@ -20,7 +20,7 @@ networkSize network = tensorSize (inputTensor network) + tensorSize (outputTenso
 
 data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
-    dimensions :: [Int]
+    dimensions :: TensorDimensions
   }
 
 tensorSize :: NetworkTensorType -> Int

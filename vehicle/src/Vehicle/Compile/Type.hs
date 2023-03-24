@@ -1,6 +1,5 @@
 module Vehicle.Compile.Type
-  ( typeCheck,
-    typeCheckProg,
+  ( typeCheckProg,
     typeCheckExpr,
     runUnificationSolver,
   )
@@ -35,15 +34,15 @@ import Vehicle.Expr.Normalised
 -------------------------------------------------------------------------------
 -- Algorithm
 
-typeCheck ::
-  (TypableBuiltin StandardBuiltinType, MonadCompile m) =>
-  Imports StandardBuiltinType ->
+typeCheckProg ::
+  (TypableBuiltin types, MonadCompile m) =>
+  Imports types ->
   UncheckedProg StandardBuiltinType ->
-  m (GluedProg StandardBuiltinType)
-typeCheck imports uncheckedProg =
+  m (GluedProg types)
+typeCheckProg imports (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
     runTypeChecker (createDeclCtx imports) $ do
-      typeCheckProg uncheckedProg
+      Main <$> typeCheckDecls uncheckedProg
 
 typeCheckExpr ::
   forall types m.
@@ -62,9 +61,6 @@ typeCheckExpr imports expr1 =
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
-
-typeCheckProg :: TCM types m => UncheckedProg StandardBuiltinType -> m (GluedProg types)
-typeCheckProg (Main ds) = Main <$> typeCheckDecls ds
 
 typeCheckDecls :: TCM types m => [UncheckedDecl StandardBuiltinType] -> m [GluedDecl types]
 typeCheckDecls = \case
@@ -231,7 +227,7 @@ assertDeclTypeIsType ident actualType = do
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
 solveConstraints :: forall types m. TCM types m => Maybe (CheckedDecl types) -> m ()
-solveConstraints d = logCompilerPass MinDetail "constraint solving" $ do
+solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
     loopOverConstraints :: TCM types m => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()

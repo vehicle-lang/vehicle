@@ -12,7 +12,6 @@ import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Version (Version)
@@ -30,10 +29,10 @@ data VehicleLang = External | Internal
 type SpecificationText = Text
 
 -- | A set of properties in the specification.
-type PropertyNames = Set Name
+type PropertyNames = [Name]
 
 -- | A set of declarations in the specification.
-type DeclarationNames = Set Name
+type DeclarationNames = [Name]
 
 (!?) :: Eq a => [(a, b)] -> a -> Maybe b
 [] !? _ = Nothing
@@ -49,6 +48,9 @@ type DeclarationNames = Set Name
 repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n - 1)
+
+unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
+unzipWith f = unzip . map f
 
 partitionMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
 partitionMaybeM _ [] = return ([], [])
@@ -159,3 +161,7 @@ prettyJSONConfig =
       confNumFormat = Generic,
       confTrailingNewline = False
     }
+
+type TensorDimensions = [Int]
+
+type TensorIndices = [Int]

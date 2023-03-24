@@ -1,66 +1,106 @@
-[
-  [
+{
+  "specificationPlan": [
     [
-      "User",
-      "reachable"
-    ],
-    {
-      "tag": "SingleProperty",
-      "contents": {
-        "tag": "Query",
-        "contents": {
-          "queries": {
-            "tag": "NonTrivial",
+      "reachable",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          [
+            "reachable",
+            []
+          ],
+          {
+            "tag": "Query",
             "contents": {
-              "unDisjunctAll": [
-                {
-                  "userVar": [
+              "queries": {
+                "tag": "NonTrivial",
+                "contents": {
+                  "unDisjunctAll": [
                     [
-                      1,
+                      [
+                        [
+                          "reachable",
+                          []
+                        ],
+                        1
+                      ],
                       {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "3": 1,
-                              "1": -1
-                            }
-                          }
-                        }
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x",
+                              [
+                                2
+                              ]
+                            ]
+                          ],
+                          "normalisedVariableInfo": [
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "3": 1,
+                                      "1": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "2": 1,
+                                      "0": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          ]
+                        },
+                        "metaNetwork": [
+                          [
+                            "f",
+                            "fake.onnx"
+                          ]
+                        ]
                       }
-                    ],
-                    [
-                      0,
-                      {
-                        "tag": "GaussianSolution",
-                        "contents": {
-                          "solutionEquality": {
-                            "numberOfVars": 6,
-                            "constantValue": 0,
-                            "coefficients": {
-                              "2": 1,
-                              "0": -1
-                            }
-                          }
-                        }
-                      }
-                    ]
-                  ],
-                  "metaNetwork": [
-                    [
-                      "f",
-                      "NO_FILE"
                     ]
                   ]
                 }
-              ]
+              },
+              "negated": false
             }
-          },
-          "negated": false
-        }
+          }
+        ]
       }
-    }
-  ]
-]
+    ]
+  ],
+  "resourceIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 5598373005914088411
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -4193105834029876598
+      }
+    ],
+    "datasetSummaries": []
+  }
+}

@@ -1,35 +1,66 @@
 module Vehicle.Compile.Queries.VariableReconstruction where
 
-import Control.Monad (foldM)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Queries.FourierMotzkinElimination
 import Vehicle.Compile.Queries.GaussianElimination
 import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Prelude
+import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
 reconstructUserVars ::
-  UserVarReconstructionInfo ->
+  QueryVariableInfo ->
+  NetworkVariableCounterexample ->
+  UserVariableCounterexample
+reconstructUserVars QueryVariableInfo {..} networkVariableAssignment = do
+  let normalisedVariableAssignment =
+        reconstructNormalisedVariables normalisedVariableInfo networkVariableAssignment
+
+  let unnormalisedVariableAssignment =
+        reconstructUnnormalisedVariables unnormalisedVariableInfo normalisedVariableAssignment
+
+  unnormalisedVariableAssignment
+
+reconstructUnnormalisedVariables ::
+  QueryUnnormalisedVariableInfo ->
   VariableAssignment ->
-  Maybe VariableAssignment
-reconstructUserVars info ioVarValues = do
+  UserVariableCounterexample
+reconstructUnnormalisedVariables info normalisedVariableAssignment = do
+  fst $ foldl reconstructUnnormalisedVariable ([], normalisedVariableAssignment) info
+
+reconstructUnnormalisedVariable ::
+  (UserVariableCounterexample, VariableAssignment) ->
+  (Name, TensorDimensions) ->
+  (UserVariableCounterexample, VariableAssignment)
+reconstructUnnormalisedVariable (counterexamples, assignment) (name, dims) = do
+  let (varAssignment, assignmentRemainder) = Vector.splitAt (product dims) assignment
+  let counterexample = UserVariableAssignment name dims varAssignment
+  (counterexample : counterexamples, assignmentRemainder)
+
+reconstructNormalisedVariables ::
+  QueryNormalisedVariableInfo ->
+  NetworkVariableCounterexample ->
+  VariableAssignment
+reconstructNormalisedVariables info networkVariableAssignment = do
   let numberOfUserVars = length info
   let startingUserVarValues = Vector.replicate numberOfUserVars 0
   let constantValue = Vector.singleton 1.0
-  let startingValues = startingUserVarValues <> ioVarValues <> constantValue
-  let reconstructedVars = foldM reconstructVariable startingValues info
-  Vector.take numberOfUserVars <$> reconstructedVars
+  let startingValues = startingUserVarValues <> networkVariableAssignment <> constantValue
+  let finalValues = foldl reconstructNormalisedVariable startingValues info
+  Vector.take numberOfUserVars finalValues
 
-reconstructVariable ::
+reconstructNormalisedVariable ::
   VariableAssignment ->
   (LinearVar, VariableSolution) ->
-  Maybe VariableAssignment
-reconstructVariable assignment (var, solution) = do
-  value <- case solution of
-    GaussianSolution sol ->
-      reconstructGaussianVariableValue assignment sol
-    FourierMotzkinSolution sol ->
-      reconstructFourierMotzkinVariableValue assignment sol
-  return $ Vector.update assignment [(var, value)]
+  VariableAssignment
+reconstructNormalisedVariable assignment (var, solution) = do
+  let value =
+        case solution of
+          GaussianSolution sol ->
+            reconstructGaussianVariableValue assignment sol
+          FourierMotzkinSolution sol ->
+            reconstructFourierMotzkinVariableValue assignment sol
+  Vector.update assignment [(var, value)]

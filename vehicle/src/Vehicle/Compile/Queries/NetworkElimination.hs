@@ -162,11 +162,16 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
 
         return outputVarsExpr
 
-createInputVarEqualities :: MonadCompile m => [Int] -> [DBLevel] -> StandardNormExpr -> m [(DBLevel, StandardNormExpr)]
+createInputVarEqualities ::
+  MonadCompile m =>
+  TensorDimensions ->
+  [DBLevel] ->
+  StandardNormExpr ->
+  m [(DBLevel, StandardNormExpr)]
+createInputVarEqualities [] [i] e = return [(i, e)]
 createInputVarEqualities (_dim : dims) inputVarIndices (VVecLiteral xs) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
   concat <$> zipWithM (createInputVarEqualities dims) inputVarIndicesChunks xs
-createInputVarEqualities [] [i] e = return [(i, e)]
 createInputVarEqualities dims d xs =
   compilerDeveloperError $
     "apparently miscalculated number of magic input variables:"
@@ -177,12 +182,12 @@ createInputVarEqualities dims d xs =
 mkMagicVariableSeq ::
   MonadCompile m =>
   NetworkBaseType ->
-  [Int] ->
+  TensorDimensions ->
   [DBLevel] ->
   m StandardNormExpr
 mkMagicVariableSeq tElem = go
   where
-    go :: MonadCompile m => [Int] -> [DBLevel] -> m StandardNormExpr
+    go :: MonadCompile m => TensorDimensions -> [DBLevel] -> m StandardNormExpr
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks

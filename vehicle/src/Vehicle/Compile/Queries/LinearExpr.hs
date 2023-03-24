@@ -136,7 +136,7 @@ data SparseLinearExpr = Sparse
     coefficients :: HashMap LinearVar Coefficient,
     constantValue :: Coefficient
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON SparseLinearExpr
 
