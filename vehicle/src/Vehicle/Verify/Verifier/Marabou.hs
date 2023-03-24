@@ -5,7 +5,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Text.IO (hPutStrLn)
 import Data.Vector.Unboxed (Vector)
@@ -35,8 +35,10 @@ invokeMarabou :: VerifierInvocation
 invokeMarabou marabouExecutable networkLocations queryFile =
   liftIO $ do
     networkArg <- prepareNetworkArg networkLocations
-    marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-    parseMarabouOutput marabouOutput
+    let args = [networkArg, queryFile]
+    marabouOutput <- readProcessWithExitCode marabouExecutable args ""
+    let command = unwords (marabouExecutable : args)
+    parseMarabouOutput command marabouOutput
 
 prepareNetworkArg :: MetaNetwork -> IO String
 prepareNetworkArg [(_name, file)] = return file
@@ -46,16 +48,18 @@ prepareNetworkArg _ = do
       <> "multiple neural networks or multiple applications of the same network."
   exitFailure
 
-parseMarabouOutput :: (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)
-parseMarabouOutput (exitCode, out, _err) = case exitCode of
+parseMarabouOutput :: String -> (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)
+parseMarabouOutput command (exitCode, out, _err) = case exitCode of
   ExitFailure _ -> do
     -- Marabou seems to output its error messages to stdout rather than stderr...
-    hPutStrLn
-      stderr
-      ( "Marabou threw the following error:\n"
-          <> "  "
-          <> pack out
-      )
+    let errorDoc =
+          "Marabou threw the following error:"
+            <> line
+            <> indent 2 (pretty out)
+            <> "when running the command:"
+            <> line
+            <> indent 2 (pretty command)
+    hPutStrLn stderr (layoutAsText errorDoc)
     exitFailure
   ExitSuccess -> do
     let outputLines = fmap Text.pack (lines out)
@@ -69,9 +73,6 @@ parseMarabouOutput (exitCode, out, _err) = case exitCode of
             let assignmentOutput = drop (i + 1) outputLines
             let ioVarAssignment = parseSATAssignment assignmentOutput
             return $ SAT $ Just ioVarAssignment
-
--- TODO reverse normalisation of quantified user tensor variables
--- Just _x -> return $ SAT Nothing
 
 parseSATAssignment :: [Text] -> Vector Double
 parseSATAssignment output = do

@@ -6,11 +6,13 @@ where
 
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Marabou (marabouQueryFormat)
+import Vehicle.Verify.QueryFormat.VNNLib (vnnlibQueryFormat)
 import Vehicle.Verify.Verifier.Marabou (marabouVerifier)
 
 queryFormats :: QueryFormatID -> QueryFormat
 queryFormats = \case
   MarabouQueryFormat -> marabouQueryFormat
+  VNNLibQueryFormat -> vnnlibQueryFormat
 
 verifiers :: VerifierID -> Verifier
 verifiers = \case

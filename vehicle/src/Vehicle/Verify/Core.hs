@@ -92,11 +92,13 @@ type UserVariableCounterexample = [UserVariableAssignment]
 
 data QueryFormatID
   = MarabouQueryFormat
+  | VNNLibQueryFormat
   deriving (Show, Eq)
 
 instance Pretty QueryFormatID where
   pretty = \case
     MarabouQueryFormat -> "Marabou query format"
+    VNNLibQueryFormat -> "VNNLib query format"
 
 -- | A format for an output query that verifiers can parse.
 data QueryFormat = QueryFormat
