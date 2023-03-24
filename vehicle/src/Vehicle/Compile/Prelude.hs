@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Prelude as X

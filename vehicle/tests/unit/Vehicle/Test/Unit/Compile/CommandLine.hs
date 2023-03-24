@@ -72,8 +72,7 @@ checkModeTests =
     [ parserTest
         "basic"
         "vehicle check \
-        \--specification test/spec.vcl \
-        \--declaration property1"
+        \--specification test/spec.vcl"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -81,8 +80,7 @@ checkModeTests =
                 Check $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
-                      typingSystem = Standard,
-                      declarationsToCompile = ["property1"]
+                      typingSystem = Standard
                     }
           }
     ]

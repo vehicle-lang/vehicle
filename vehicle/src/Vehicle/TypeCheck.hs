@@ -13,7 +13,6 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Dependency.Analysis
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
@@ -34,8 +33,7 @@ import Vehicle.Verify.Specification.IO
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
-    typingSystem :: TypingSystem,
-    declarationsToCompile :: DeclarationNames
+    typingSystem :: TypingSystem
   }
   deriving (Eq, Show)
 
@@ -71,7 +69,7 @@ typeCheckUserProg ::
   m (ImportedModules, StandardGluedProg)
 typeCheckUserProg TypeCheckOptions {..} = do
   imports <- (: []) <$> loadLibrary standardLibrary
-  typedProg <- typeCheckOrLoadProg User imports specification declarationsToCompile
+  typedProg <- typeCheckOrLoadProg User imports specification
   return (imports, typedProg)
 
 -- | Parses and type-checks the program but does
@@ -81,13 +79,11 @@ typeCheckProgram ::
   Module ->
   ImportedModules ->
   SpecificationText ->
-  DeclarationNames ->
   m StandardGluedProg
-typeCheckProgram modul imports spec declarationsToCompile = do
+typeCheckProgram modul imports spec = do
   vehicleProg <- parseProgText modul spec
-  (scopedProg, dependencyGraph) <- scopeCheck imports vehicleProg
-  prunedProg <- analyseDependenciesAndPrune scopedProg dependencyGraph declarationsToCompile
-  typedProg <- typeCheckProg imports (fmap convertToNormalisableBuiltins prunedProg)
+  scopedProg <- scopeCheck imports vehicleProg
+  typedProg <- typeCheckProg imports (fmap convertToNormalisableBuiltins scopedProg)
   return typedProg
 
 -- | Parses and type-checks the program but does
@@ -97,15 +93,14 @@ typeCheckOrLoadProg ::
   Module ->
   ImportedModules ->
   FilePath ->
-  DeclarationNames ->
   m StandardGluedProg
-typeCheckOrLoadProg modul imports specificationFile declarationsToCompile = do
+typeCheckOrLoadProg modul imports specificationFile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing -> do
-      result <- typeCheckProgram modul imports spec declarationsToCompile
+      result <- typeCheckProgram modul imports spec
       writeObjectFile specificationFile spec result
       return result
 
@@ -122,7 +117,7 @@ loadLibrary library = do
   let libname = libraryName $ libraryInfo library
   logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
     libraryFile <- findLibraryContentFile library
-    typeCheckOrLoadProg StdLib mempty libraryFile mempty
+    typeCheckOrLoadProg StdLib mempty libraryFile
 
 printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => GluedProg builtin -> m ()
 printPropertyTypes (Main decls) = do
