@@ -103,5 +103,6 @@ getVehiclePath = do
 data ExternalOutputFormat = ExternalOutputFormat
   { formatName :: forall a. Doc a,
     formatVersion :: Maybe Version,
-    commentToken :: forall a. Doc a
+    commentToken :: forall a. Doc a,
+    emptyLines :: Bool
   }

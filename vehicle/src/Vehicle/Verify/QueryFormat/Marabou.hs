@@ -4,6 +4,8 @@ module Vehicle.Verify.QueryFormat.Marabou
 where
 
 import Control.Monad (forM)
+import Data.Bifunctor (Bifunctor (..))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Sequence (Seq)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
@@ -23,7 +25,8 @@ marabouQueryFormat =
         ExternalOutputFormat
           { formatName = pretty MarabouQueryFormat,
             formatVersion = Nothing,
-            commentToken = "//"
+            commentToken = "//",
+            emptyLines = False
           }
     }
 
@@ -44,10 +47,20 @@ compileAssertion ::
   m (Doc a)
 compileAssertion variableNames assertion = do
   let (coeffVars, rel, constant) = convertToSparseFormat assertion variableNames
-  let multipleVariables = length coeffVars > 1
-  let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars)
-  let compiledRel = compileRel rel
-  let compiledRHS = prettyCoefficient constant
+  let (coeffVars', rel', constant', multipleVariables) =
+        case coeffVars of
+          (coeff, var) :| [] -> do
+            -- Workaround for bug
+            -- https://github.com/NeuralNetworkVerification/Marabou/issues/625
+            let newCoeffVars = (1, var) :| []
+            let newRel = if coeff < 0 then second flipOrder rel else rel
+            let newConstant = constant / coeff
+            (newCoeffVars, newRel, newConstant, False)
+          _ -> (coeffVars, rel, constant, True)
+
+  let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
+  let compiledRel = compileRel rel'
+  let compiledRHS = prettyCoefficient constant'
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
 compileRel :: Either () OrderOp -> Doc a
