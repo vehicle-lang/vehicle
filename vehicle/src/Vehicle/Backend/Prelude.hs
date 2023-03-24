@@ -75,7 +75,7 @@ instance Read Target where
     "LossFunction-Lukasiewicz" -> [(LossFunction Lukasiewicz, [])]
     "LossFunction-Product" -> [(LossFunction Product, [])]
     "LossFunction-Yager" -> [(LossFunction Yager, [])]
-    "LossFunction-STL" -> [(LossFunctionSTL, [])]
+    "LossFunction-STL" -> [(LossFunction STL, [])]
     "Agda" -> [(ITP Agda, [])]
     _ -> []
 
