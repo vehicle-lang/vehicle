@@ -49,6 +49,9 @@ repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n - 1)
 
+unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
+unzipWith f = unzip . map f
+
 partitionMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
 partitionMaybeM _ [] = return ([], [])
 partitionMaybeM f (x : xs) = do
@@ -158,3 +161,7 @@ prettyJSONConfig =
       confNumFormat = Generic,
       confTrailingNewline = False
     }
+
+type TensorDimensions = [Int]
+
+type TensorIndices = [Int]

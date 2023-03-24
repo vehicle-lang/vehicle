@@ -31,7 +31,10 @@
                                 1
                               ],
                               {
-                                "userVar": [],
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
                                 "metaNetwork": [
                                   [
                                     "f",
@@ -62,7 +65,10 @@
                                 2
                               ],
                               {
-                                "userVar": [],
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
                                 "metaNetwork": [
                                   [
                                     "f",
@@ -98,7 +104,10 @@
                                 3
                               ],
                               {
-                                "userVar": [],
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
                                 "metaNetwork": [
                                   [
                                     "f",
@@ -129,7 +138,10 @@
                                 4
                               ],
                               {
-                                "userVar": [],
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
                                 "metaNetwork": [
                                   [
                                     "f",

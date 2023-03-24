@@ -250,19 +250,24 @@ testSpecDiffText testSpec golden actual = do
   let linesEqual =
         length goldenLines == length actualLines
           && and (zipWith compareLine goldenLines actualLines)
-
+  let lineTotal = length goldenLines + length actualLines
   if linesEqual
     then Nothing
-    else do
-      let diffGroups = getGroupedDiffBy compareLine goldenLines actualLines
+    else
+      if lineTotal > 20000
+        then
+          Just $
+            "<too big to diff (" <> show (length goldenLines) <> "lines vs " <> show (length actualLines) <> " lines>"
+        else do
+          let diffGroups = getGroupedDiffBy compareLine goldenLines actualLines
 
-      -- ASSERT: we should not be computing the pretty diff unless
-      -- there is an actual difference, guarded by the comparison
-      let prettyDiff =
-            assert (not (all isBoth diffGroups)) $
-              ppDiff (mapDiff (fmap Text.unpack) <$> diffGroups)
+          -- ASSERT: we should not be computing the pretty diff unless
+          -- there is an actual difference, guarded by the comparison
+          let prettyDiff =
+                assert (not (all isBoth diffGroups)) $
+                  ppDiff (mapDiff (fmap Text.unpack) <$> diffGroups)
 
-      return prettyDiff
+          return prettyDiff
   where
     -- TODO: upstream DiffOutput to work with Text
     isBoth :: Diff a -> Bool

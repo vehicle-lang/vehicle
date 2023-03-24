@@ -7,7 +7,6 @@ module Vehicle.Verify.Specification
     Property,
     traverseProperty,
     MultiProperty (..),
-    MultiPropertyIndices,
     traverseMultiProperty,
     Specification (..),
     traverseSpecification,
@@ -31,7 +30,7 @@ import Vehicle.Verify.Core
 
 data QueryMetaData = QueryData
   { metaNetwork :: MetaNetwork,
-    userVar :: UserVarReconstructionInfo
+    variableInfo :: QueryVariableInfo
   }
   deriving (Show, Generic)
 

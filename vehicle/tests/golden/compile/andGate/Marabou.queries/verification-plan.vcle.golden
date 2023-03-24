@@ -25,40 +25,52 @@
                         1
                       ],
                       {
-                        "userVar": [
-                          [
-                            1,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "3": 1,
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            }
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x1",
+                              []
+                            ],
+                            [
+                              "x2",
+                              []
+                            ]
                           ],
-                          [
-                            0,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "2": 1,
-                                    "0": -1
+                          "normalisedVariableInfo": [
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "3": 1,
+                                      "1": -1
+                                    }
                                   }
                                 }
                               }
-                            }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "2": 1,
+                                      "0": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ]
                           ]
-                        ],
+                        },
                         "metaNetwork": [
                           [
                             "andGate",
@@ -76,40 +88,52 @@
                         2
                       ],
                       {
-                        "userVar": [
-                          [
-                            1,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "3": 1,
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            }
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x1",
+                              []
+                            ],
+                            [
+                              "x2",
+                              []
+                            ]
                           ],
-                          [
-                            0,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "2": 1,
-                                    "0": -1
+                          "normalisedVariableInfo": [
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "3": 1,
+                                      "1": -1
+                                    }
                                   }
                                 }
                               }
-                            }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "2": 1,
+                                      "0": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ]
                           ]
-                        ],
+                        },
                         "metaNetwork": [
                           [
                             "andGate",
@@ -127,40 +151,52 @@
                         3
                       ],
                       {
-                        "userVar": [
-                          [
-                            1,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "3": 1,
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            }
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x1",
+                              []
+                            ],
+                            [
+                              "x2",
+                              []
+                            ]
                           ],
-                          [
-                            0,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "2": 1,
-                                    "0": -1
+                          "normalisedVariableInfo": [
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "3": 1,
+                                      "1": -1
+                                    }
                                   }
                                 }
                               }
-                            }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "2": 1,
+                                      "0": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ]
                           ]
-                        ],
+                        },
                         "metaNetwork": [
                           [
                             "andGate",
@@ -178,40 +214,52 @@
                         4
                       ],
                       {
-                        "userVar": [
-                          [
-                            1,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "3": 1,
-                                    "1": -1
-                                  }
-                                }
-                              }
-                            }
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x1",
+                              []
+                            ],
+                            [
+                              "x2",
+                              []
+                            ]
                           ],
-                          [
-                            0,
-                            {
-                              "tag": "GaussianSolution",
-                              "contents": {
-                                "solutionEquality": {
-                                  "numberOfVars": 6,
-                                  "constantValue": 0,
-                                  "coefficients": {
-                                    "2": 1,
-                                    "0": -1
+                          "normalisedVariableInfo": [
+                            [
+                              1,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "3": 1,
+                                      "1": -1
+                                    }
                                   }
                                 }
                               }
-                            }
+                            ],
+                            [
+                              0,
+                              {
+                                "tag": "GaussianSolution",
+                                "contents": {
+                                  "solutionEquality": {
+                                    "numberOfVars": 6,
+                                    "constantValue": 0,
+                                    "coefficients": {
+                                      "2": 1,
+                                      "0": -1
+                                    }
+                                  }
+                                }
+                              }
+                            ]
                           ]
-                        ],
+                        },
                         "metaNetwork": [
                           [
                             "andGate",

@@ -25,7 +25,10 @@
                         1
                       ],
                       {
-                        "userVar": [],
+                        "variableInfo": {
+                          "unnormalisedVariableInfo": [],
+                          "normalisedVariableInfo": []
+                        },
                         "metaNetwork": [
                           [
                             "f",
