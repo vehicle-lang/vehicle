@@ -27,7 +27,7 @@ genLinePlot <- function(fname){
      labs(y="Constraint satisfaction", x="Constraint weight in loss function", title="Constraint satisfaction with delta=0.02") +
      scale_y_continuous(labels = scales::percent) +
      scale_x_continuous(labels = scales::percent) +
-     theme(legend.position = c(0.2, 0.2))     
+     theme(legend.position = c(0.2, 0.2))
 
   ggsave(fname)
 }

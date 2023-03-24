@@ -1,22 +1,23 @@
-
 import random
+from pathlib import Path
 
+import h5py
 import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 import tensorflow.keras as keras
-import h5py
+from sklearn.model_selection import train_test_split
 
-from pathlib import Path
 if __name__ == "__main__" and __package__ is None:
-    from sys import path
     from os.path import dirname as dir
+    from sys import path
 
     path.append(dir(path[0]))
 
 from vehicle import generate_loss_function
 
-trainingDataFiles = "vehicle-python/tests/TrainingDataHCAS/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
+trainingDataFiles = (
+    "vehicle-python/tests/TrainingDataHCAS/HCAS_rect_TrainingData_v%d_pra%d_tau%02d.h5"
+)
 
 
 def train(
@@ -108,32 +109,31 @@ if __name__ == "__main__":
     alfa = 0
     beta = 1
 
-    pra = 0 #previous advisory
-    pra_range = [0,1,2,3,4]
+    pra = 0  # previous advisory
+    pra_range = [0, 1, 2, 3, 4]
     tau = 0
-    tau_range = [0,5,10,15,20,30,40,60]
-    table_ver = 6 
-    f = h5py.File(trainingDataFiles % (table_ver,pra,tau),'r')
-  
+    tau_range = [0, 5, 10, 15, 20, 30, 40, 60]
+    table_ver = 6
+    f = h5py.File(trainingDataFiles % (table_ver, pra, tau), "r")
 
-    X = np.array(f['X'])
-    y = np.array(f['y'])
-    max_inp = np.array(f['max_inputs'])
-    #print(max_inp)
-    min_inp = np.array(f['min_inputs'])
-    #print(min_inp)
-   
-   #format the output into one-hot encoding because the original data is not
+    X = np.array(f["X"])
+    y = np.array(f["y"])
+    max_inp = np.array(f["max_inputs"])
+    # print(max_inp)
+    min_inp = np.array(f["min_inputs"])
+    # print(min_inp)
+
+    # format the output into one-hot encoding because the original data is not
     for el in y:
-        for i in range (len(el)):
-            if el[i]==np.max(el):
+        for i in range(len(el)):
+            if el[i] == np.max(el):
                 el[i] = 1
             else:
                 el[i] = 0
-    
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.33, random_state=42
+    )
 
     # X_train = np.array([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1]])
     # X_test = np.array([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 0, 0, 1, 1]])
@@ -142,13 +142,12 @@ if __name__ == "__main__":
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
-    
+
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
     test_dataset = test_dataset.batch(batch_size)
-    
 
-    #print(train_dataset)
-    #print(test_dataset)
+    # print(train_dataset)
+    # print(test_dataset)
 
     model = train(
         model,
@@ -162,4 +161,3 @@ if __name__ == "__main__":
         resources,
         quantifier_sampling,
     )
-

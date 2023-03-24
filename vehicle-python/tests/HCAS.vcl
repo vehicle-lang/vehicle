@@ -38,10 +38,7 @@ HorizontalCAS : Vector Rat 5 -> Vector Rat 5
 
 @property
 property6 : Bool
-property6 = (((HorizontalCAS [0, 0, 0, 1, 1]) ! 0  < (HorizontalCAS [0, 0, 0, 1, 1]) ! 1) 
+property6 = (((HorizontalCAS [0, 0, 0, 1, 1]) ! 0  < (HorizontalCAS [0, 0, 0, 1, 1]) ! 1)
                                             and ((HorizontalCAS [0, 0, 0, 1, 1]) ! 0 < (HorizontalCAS [0, 0, 0, 1, 1]) ! 2)
                                             and ((HorizontalCAS [0, 0, 0, 1, 1]) ! 0 < (HorizontalCAS [0, 0, 0, 1, 1]) ! 3)
                                             and ((HorizontalCAS [0, 0, 0, 1, 1]) ! 0 < (HorizontalCAS [0, 0, 0, 1, 1]) ! 4))
-
-
-
