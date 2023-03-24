@@ -14,7 +14,6 @@ import Vehicle.Compile.Type.Subsystem.Standard (TypeCheckedExpr)
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
-import Vehicle.Prelude
 import Vehicle.Verify.Core
 
 class IsVerified a where
