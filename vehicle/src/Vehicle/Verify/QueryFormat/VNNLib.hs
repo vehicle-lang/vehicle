@@ -21,7 +21,8 @@ vnnlibQueryFormat =
         ExternalOutputFormat
           { formatName = pretty VNNLibQueryFormat,
             formatVersion = Nothing,
-            commentToken = ";"
+            commentToken = ";",
+            emptyLines = True
           }
     }
 
