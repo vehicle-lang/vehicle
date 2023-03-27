@@ -80,8 +80,10 @@ class LossFunctionTranslation:
                 "sample_" + var_name: sample
                 for (var_name, sample) in self.quantifier_sampling.items()
             }
-            tensorflow_ctx = {"to_tensor": tf.convert_to_tensor,
-                              "expand": tf.expand_dims}
+            tensorflow_ctx = {
+                "to_tensor": tf.convert_to_tensor,
+                "expand": tf.expand_dims,
+            }
             global_scope = {**decl_ctx, **network_ctx, **sample_ctx, **tensorflow_ctx}
             local_scope = {**result_ctx}
 
@@ -168,23 +170,23 @@ class LossFunctionTranslation:
         loss_2 = self._translate_expression(contents[1])
         return f"max({loss_1}, {loss_2})"
 
-    #NOT WORKING CURRENTLY
+    # NOT WORKING CURRENTLY
     def _translate_exponential_and(self, contents: Dict[Any, Any]) -> str:
-        #translation of conjunction solely for the STL based translation
+        # translation of conjunction solely for the STL based translation
         conjuncts = [self._translate_expression(c) for c in contents]
         a_min = min(conjuncts)
-        v = 3 #a constant to be set by user (refer to Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020)
+        v = 3  # a constant to be set by user (refer to Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020)
         sum = 0
         if (compile(a_min)) == 0:
             sum = 0
         elif a_min < 0:
             for a in conjuncts:
-                a_tilde = (a - a_min)/a_min
-                sum += (a_min*exp(a_tilde)*exp(v*a_tilde))/(exp(v*a_tilde))
+                a_tilde = (a - a_min) / a_min
+                sum += (a_min * exp(a_tilde) * exp(v * a_tilde)) / (exp(v * a_tilde))
         else:
             for a in conjuncts:
-                a_tilde = (a - a_min)/a_min
-                sum += (a*exp(-v*a_tilde))/(exp(-v*a_tilde))
+                a_tilde = (a - a_min) / a_min
+                sum += (a * exp(-v * a_tilde)) / (exp(-v * a_tilde))
         return f"{sum}"
 
     def _translate_addition(self, contents: Dict[Any, Any]) -> str:
@@ -235,7 +237,6 @@ class LossFunctionTranslation:
         return f"{free_var}{input_losses}"
 
     def _translate_quantifier(self, contents: Dict[Any, Any]) -> str:
-        
         quantifier = contents[0]
         variable_name = contents[1]
         domain = contents[2]
@@ -247,7 +248,7 @@ class LossFunctionTranslation:
             raise Exception(
                 "No sampling method provided for variable " + variable_name + "."
             )
-            
+
         # We generate 10 samples, have to change it in the future
         if quantifier == "All":
             op = "max"
@@ -257,7 +258,9 @@ class LossFunctionTranslation:
             internal_error_msg(
                 "Found a quantifier in the generated json that is not All nor Any."
             )
-        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(1)])".format(op, variable_name, body)
+        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(1)])".format(
+            op, variable_name, body
+        )
 
     def _translate_lambda(self, contents: Dict[Any, Any]) -> str:
         var_name = contents[0]

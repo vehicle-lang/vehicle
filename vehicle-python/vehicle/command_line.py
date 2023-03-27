@@ -1,11 +1,12 @@
 import json
+
+# for experiments
+import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
-#for experiments
-import os
 
 # Function that calls vehicle - it takes the options
 # TODO: check if it's None or else
@@ -13,8 +14,10 @@ def call_vehicle(args: List[str]) -> None:
     vehicle = shutil.which("vehicle")
     if vehicle is None:
         raise Exception(f"Could not find vehicle on PATH; is vehicle installed?")
-    command = " ".join([vehicle] + args) #passed as string due to shell=True
-    result = subprocess.run(command, capture_output=True, shell=True) #shell = True is needed for Windows
+    command = " ".join([vehicle] + args)  # passed as string due to shell=True
+    result = subprocess.run(
+        command, capture_output=True, shell=True
+    )  # shell = True is needed for Windows
     if result.returncode != 0:
         errorMessage = f"Problem during compilation: {result.stderr.decode('UTF-8')}"
         commandMessage = f"Command was: {command}"
@@ -40,7 +43,7 @@ def call_vehicle_to_generate_loss_json(
             "compile",
             "--target",
             # use the string below to specify which translation is used. the options are:
-            #LossFunction (uses DL2 by default), LossFunction-DL2, LossFunction-Godel, LossFunction-Lukasiewicz,
+            # LossFunction (uses DL2 by default), LossFunction-DL2, LossFunction-Godel, LossFunction-Lukasiewicz,
             #  LossFunction-Product, LossFunction-STL (in progress, not currently working)
             "LossFunction",
             "--specification",

@@ -183,7 +183,7 @@ compileBuiltinFunction f t args = case f of
   -- Logical operatives
   V.And  ->  case compileAnd t of
       Left binaryAnd -> compileOp2 binaryAnd t args
-      Right naryAnd -> return (naryAnd args)  
+      Right naryAnd -> return (naryAnd args)
   V.Or  ->  case compileOr t of
       Left binaryOr -> compileOp2 binaryOr t args
       Right naryOr -> return (naryOr args)
@@ -306,17 +306,17 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
   where
     builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
-      V.CFunction V.Not 
+      V.CFunction V.Not
         | isNothing (compileNot (implementationOf logic)) ->
             lowerNot p2 (argExpr $ head args)
-      V.CFunction V.And 
+      V.CFunction V.And
         | isRight (compileAnd (implementationOf logic)) ->
           return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
-      V.CFunction V.Or 
+      V.CFunction V.Or
         | isRight (compileOr (implementationOf logic)) ->
           return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
       _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
-      
+
 
     lowerNot :: V.Provenance -> InputExpr -> m InputExpr
     lowerNot notProv arg = case arg of
