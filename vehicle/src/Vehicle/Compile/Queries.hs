@@ -155,7 +155,7 @@ type MonadCompileProperty m =
 -- hits the first quantifier.
 compilePropertyTopLevelStructure ::
   forall m.
-  MonadCompileProperty m =>
+  (MonadCompileProperty m) =>
   StandardNormExpr ->
   m (Property (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
@@ -197,7 +197,7 @@ compilePropertyTopLevelStructure = go
       _ -> unexpectedExprError "compiling top-level property structure" (prettyVerbose expr)
 
 compileQuerySet ::
-  MonadCompileProperty m =>
+  (MonadCompileProperty m) =>
   Bool ->
   StandardNormExpr ->
   m (QuerySet (QueryMetaData, QueryText))
@@ -238,7 +238,7 @@ cumulativeVarsToCtx = concatMap (fmap (Just . userVarName) . (\(_, _, c) -> c))
 
 compileQueryStructure ::
   forall m.
-  MonadCompileProperty m =>
+  (MonadCompileProperty m) =>
   QuantifiedVariables ->
   StandardNormExpr ->
   m (PropositionTree, QuantifiedVariables)
@@ -303,7 +303,7 @@ compileQueryStructure = go False
     wasIfLifted _ = False
 
 compileQuantifierBodyToPropositionTree ::
-  MonadCompileProperty m =>
+  (MonadCompileProperty m) =>
   QuantifiedVariables ->
   QuantifierDomain ->
   StandardNormBinder ->
@@ -330,7 +330,7 @@ compileQuantifierBodyToPropositionTree quantifiedVariables _ binder env body = d
   return (substructure, newQuantifiedVariable : allQuantifiedVariables)
 
 compileSingleQuery ::
-  MonadCompileProperty m =>
+  (MonadCompileProperty m) =>
   QuantifiedVariables ->
   ConjunctAll StandardNormExpr ->
   m (MaybeTrivial (QueryAddress, (QueryMetaData, QueryText)))
@@ -420,7 +420,7 @@ convertToDNF = \case
 
 calculateDimensionsOfQuantifiedVariable ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   PropertyState ->
   StandardNormBinder ->
   m TensorDimensions
@@ -441,7 +441,7 @@ calculateDimensionsOfQuantifiedVariable propertyState binder = go (typeOf binder
         throwError $ UnsupportedVariableType target declIdentifier p baseName variableType baseType [BuiltinType Rat]
 
 calculateEnvEntry ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   DBLevel ->
   Name ->
   TensorDimensions ->

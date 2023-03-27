@@ -21,7 +21,7 @@ import Vehicle.Expr.Normalised
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-eliminateIfs :: MonadCompile m => BoundDBCtx -> StandardNormExpr -> m StandardNormExpr
+eliminateIfs :: (MonadCompile m) => BoundDBCtx -> StandardNormExpr -> m StandardNormExpr
 eliminateIfs ctx e =
   logCompilerPass MaxDetail currentPass $ do
     result <- elimIf <$> recLiftIf e
@@ -44,7 +44,7 @@ liftIf f (VBuiltinFunction If [cond, e1, e2]) =
     ]
 liftIf f e = f e
 
-recLiftIf :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+recLiftIf :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   -- Quantified lambdas should have been caught before now.

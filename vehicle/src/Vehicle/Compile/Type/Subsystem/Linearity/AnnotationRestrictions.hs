@@ -15,7 +15,7 @@ import Vehicle.Expr.Normalised
 
 checkNetworkType ::
   forall m.
-  MonadTypeChecker LinearityType m =>
+  (MonadTypeChecker LinearityType m) =>
   DeclProvenance ->
   GluedType LinearityType ->
   m (CheckedType LinearityType)
@@ -39,7 +39,7 @@ checkNetworkType (ident, p) networkType = case normalised networkType of
   _ -> compilerDeveloperError "Invalid network type should have been caught by the main type system"
 
 assertConstantLinearity ::
-  MonadTypeChecker LinearityType m =>
+  (MonadTypeChecker LinearityType m) =>
   DeclProvenance ->
   GluedType LinearityType ->
   m (CheckedType LinearityType)

@@ -15,7 +15,7 @@ import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 solvePolarityConstraint ::
-  MonadPolaritySolver m =>
+  (MonadPolaritySolver m) =>
   WithContext PolarityTypeClassConstraint ->
   m ()
 solvePolarityConstraint (WithContext constraint ctx) = do
@@ -32,7 +32,7 @@ type MonadPolaritySolver m = TCM PolarityType m
 
 type PolaritySolver =
   forall m.
-  MonadPolaritySolver m =>
+  (MonadPolaritySolver m) =>
   WithContext PolarityTypeClassConstraint ->
   [PolarityNormType] ->
   m PolarityConstraintProgress
@@ -224,7 +224,7 @@ implPolarity p pol1 pol2 =
 -- Other
 
 handleConstraintProgress ::
-  MonadTypeChecker PolarityType m =>
+  (MonadTypeChecker PolarityType m) =>
   WithContext (TypeClassConstraint PolarityType) ->
   ConstraintProgress PolarityType ->
   m ()
@@ -236,7 +236,7 @@ handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \cas
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
     addConstraints newConstraints
 
-getPolarityTypeClass :: MonadCompile m => PolarityType -> m PolarityTypeClass
+getPolarityTypeClass :: (MonadCompile m) => PolarityType -> m PolarityTypeClass
 getPolarityTypeClass = \case
   PolarityTypeClass tc -> return tc
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

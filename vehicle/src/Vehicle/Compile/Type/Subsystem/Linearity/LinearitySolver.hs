@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 solveLinearityConstraint ::
-  MonadLinearitySolver m =>
+  (MonadLinearitySolver m) =>
   WithContext LinearityTypeClassConstraint ->
   m ()
 solveLinearityConstraint (WithContext constraint ctx) = do
@@ -39,7 +39,7 @@ type MonadLinearitySolver m =
 
 type LinearitySolver =
   forall m.
-  MonadLinearitySolver m =>
+  (MonadLinearitySolver m) =>
   WithContext LinearityTypeClassConstraint ->
   [LinearityNormType] ->
   m LinearityConstraintProgress
@@ -131,7 +131,7 @@ mulLinearity p l1 l2 = case (l1, l2) of
 -- Other
 
 handleConstraintProgress ::
-  MonadTypeChecker LinearityType m =>
+  (MonadTypeChecker LinearityType m) =>
   WithContext (TypeClassConstraint LinearityType) ->
   ConstraintProgress LinearityType ->
   m ()
@@ -143,7 +143,7 @@ handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \cas
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
     addConstraints newConstraints
 
-getLinearityTypeClass :: MonadCompile m => LinearityType -> m LinearityTypeClass
+getLinearityTypeClass :: (MonadCompile m) => LinearityType -> m LinearityTypeClass
 getLinearityTypeClass = \case
   LinearityTypeClass tc -> return tc
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

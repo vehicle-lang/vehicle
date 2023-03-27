@@ -139,19 +139,19 @@ typeOfVecLiteral n = go n constant
                 ~~~> li
                 ~> go (i - 1) newMax
 
-handleLinearityTypingError :: MonadCompile m => TypingError LinearityType -> m a
+handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityType -> m a
 handleLinearityTypingError b =
   compilerDeveloperError $ "Linearity type system should not be throwing error:" <+> pretty b
 
-relevanceOfTypeClass :: MonadCompile m => LinearityType -> m Relevance
+relevanceOfTypeClass :: (MonadCompile m) => LinearityType -> m Relevance
 relevanceOfTypeClass _b = return Relevant
 
-freshLinearityMeta :: MonadTypeChecker LinearityType m => Provenance -> m (GluedExpr LinearityType)
+freshLinearityMeta :: (MonadTypeChecker LinearityType m) => Provenance -> m (GluedExpr LinearityType)
 freshLinearityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
 
 convertToLinearityTypes ::
   forall m.
-  MonadTypeChecker LinearityType m =>
+  (MonadTypeChecker LinearityType m) =>
   Provenance ->
   StandardBuiltinType ->
   [UncheckedArg LinearityType] ->

@@ -101,7 +101,7 @@ getNormMetaDependencies = \case
 class HasMetas a where
   findMetas :: (MonadCompile m, MonadWriter MetaSet m) => a -> m ()
 
-  metasIn :: MonadCompile m => a -> m MetaSet
+  metasIn :: (MonadCompile m) => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
 instance HasMetas (CheckedExpr types) where
@@ -130,16 +130,16 @@ instance HasMetas (NormExpr types) where
     VPi binder result -> do findMetas binder; findMetas result
     VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
 
-instance HasMetas expr => HasMetas (GenericArg expr) where
+instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas
 
-instance HasMetas expr => HasMetas (GenericBinder binder expr) where
+instance (HasMetas expr) => HasMetas (GenericBinder binder expr) where
   findMetas = mapM_ findMetas
 
-instance HasMetas a => HasMetas [a] where
+instance (HasMetas a) => HasMetas [a] where
   findMetas = mapM_ findMetas
 
-instance HasMetas a => HasMetas (NonEmpty a) where
+instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
 instance HasMetas (TypeClassConstraint types) where

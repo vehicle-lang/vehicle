@@ -283,7 +283,7 @@ instance Semigroup (ConstraintProgress types) where
 --------------------------------------------------------------------------------
 -- Class for typable builtins
 
-class Eq types => PrintableBuiltin types where
+class (Eq types) => PrintableBuiltin types where
   -- | Convert expressions with the builtin back to expressions with the standard
   -- builtin type. Used for printing.
   convertBuiltin ::
@@ -293,7 +293,7 @@ class Eq types => PrintableBuiltin types where
 
   isTypeClassOp :: types -> Bool
 
-isTypeClassOperation :: PrintableBuiltin types => NormalisableBuiltin types -> Bool
+isTypeClassOperation :: (PrintableBuiltin types) => NormalisableBuiltin types -> Bool
 isTypeClassOperation = \case
   CType t -> isTypeClassOp t
   _ -> False

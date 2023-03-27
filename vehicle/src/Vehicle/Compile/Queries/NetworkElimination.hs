@@ -52,7 +52,7 @@ type InputEqualities = [(DBLevel, StandardNormExpr)]
 --   - equalities relating network input variables to the corresponding expressions
 --   - the final expression.
 replaceNetworkApplications ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   NetworkContext ->
   BoundDBCtx ->
   ConjunctAll StandardNormExpr ->
@@ -77,7 +77,7 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
     return (finalMetaNetwork, networkVariables, finalInputEqualities, normQueryExpr)
   where
     go ::
-      MonadCompile m =>
+      (MonadCompile m) =>
       (Identifier -> StandardNormExpr -> m StandardNormExpr) ->
       StandardNormExpr ->
       m StandardNormExpr
@@ -97,13 +97,13 @@ replaceNetworkApplications networkCtx boundCtx conjunctions = do
               "Network" <+> quotePretty network <+> "seems to have multiple arguments"
 
     goSpine ::
-      MonadCompile m =>
+      (MonadCompile m) =>
       (Identifier -> StandardNormExpr -> m StandardNormExpr) ->
       StandardSpine ->
       m StandardSpine
     goSpine k = traverse (traverse (go k))
 
-reevalute :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+reevalute :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 reevalute expr = runEmptyNormT @StandardBuiltinType (reeval expr)
 
 -- | The current state of the input/output network variables.
@@ -163,7 +163,7 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
         return outputVarsExpr
 
 createInputVarEqualities ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   TensorDimensions ->
   [DBLevel] ->
   StandardNormExpr ->
@@ -180,14 +180,14 @@ createInputVarEqualities dims d xs =
       <+> prettyVerbose xs
 
 mkMagicVariableSeq ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   NetworkBaseType ->
   TensorDimensions ->
   [DBLevel] ->
   m StandardNormExpr
 mkMagicVariableSeq tElem = go
   where
-    go :: MonadCompile m => TensorDimensions -> [DBLevel] -> m StandardNormExpr
+    go :: (MonadCompile m) => TensorDimensions -> [DBLevel] -> m StandardNormExpr
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks
@@ -203,7 +203,7 @@ mkMagicVariableSeq tElem = go
 
 type Applications = Map Name Int
 
-getNetworkVariables :: MonadCompile m => NetworkContext -> MetaNetwork -> m [NetworkVariable]
+getNetworkVariables :: (MonadCompile m) => NetworkContext -> MetaNetwork -> m [NetworkVariable]
 getNetworkVariables networkCtx metaNetwork = do
   let applicationCounts = countNetworkApplications metaNetwork
   metaNetworkDetails <- getTypedMetaNetwork networkCtx metaNetwork
@@ -229,7 +229,7 @@ getNetworkVariables networkCtx metaNetwork = do
 
       (newApplicationsSoFar, result <> inputNames <> outputNames)
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m (FilePath, NetworkType)
+getNetworkDetailsFromCtx :: (MonadCompile m) => NetworkContext -> Name -> m (FilePath, NetworkType)
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just details -> return details
@@ -237,7 +237,7 @@ getNetworkDetailsFromCtx networkCtx name = do
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
-getTypedMetaNetwork :: MonadCompile m => NetworkContext -> MetaNetwork -> m [(Name, NetworkType)]
+getTypedMetaNetwork :: (MonadCompile m) => NetworkContext -> MetaNetwork -> m [(Name, NetworkType)]
 getTypedMetaNetwork ctx = traverse $ \(name, _file) -> do
   (_file, networkType) <- getNetworkDetailsFromCtx ctx name
   return (name, networkType)

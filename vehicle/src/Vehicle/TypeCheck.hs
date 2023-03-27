@@ -57,7 +57,7 @@ parseAndTypeCheckExpr expr = do
   typedExpr <- typeCheckExpr imports (convertToNormalisableBuiltins scopedExpr)
   return typedExpr
 
-parseExprText :: MonadCompile m => Text -> m InputExpr
+parseExprText :: (MonadCompile m) => Text -> m InputExpr
 parseExprText txt =
   case runExcept (parseExpr User =<< readExpr txt) of
     Left err -> throwError $ ParseError err
@@ -104,7 +104,7 @@ typeCheckOrLoadProg modul imports specificationFile = do
       writeObjectFile specificationFile spec result
       return result
 
-parseProgText :: MonadCompile m => Module -> Text -> m InputProg
+parseProgText :: (MonadCompile m) => Module -> Text -> m InputProg
 parseProgText modul txt = do
   case runExcept (readAndParseProg modul txt) of
     Left err -> throwError $ ParseError err
@@ -126,14 +126,14 @@ printPropertyTypes (Main decls) = do
   let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
   programOutput outputDoc
   where
-    propertySummary :: PrintableBuiltin builtin => GluedDecl builtin -> Doc a
+    propertySummary :: (PrintableBuiltin builtin) => GluedDecl builtin -> Doc a
     propertySummary decl = do
       let propertyName = pretty $ identifierName $ identifierOf decl
       let propertyType = prettyExternal (WithContext (unnormalised $ typeOf decl) emptyDBCtx)
       propertyName <+> ":" <+> propertyType
 
 runCompileMonad ::
-  MonadIO m =>
+  (MonadIO m) =>
   LoggingSettings ->
   ExceptT CompileError (ImmediateLoggerT m) a ->
   m a

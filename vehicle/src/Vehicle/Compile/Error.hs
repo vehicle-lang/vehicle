@@ -128,40 +128,40 @@ unexpectedExpr pass name =
 
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
-compilerDeveloperError :: MonadError CompileError m => Doc () -> m b
+compilerDeveloperError :: (MonadError CompileError m) => Doc () -> m b
 compilerDeveloperError message = throwError $ DevError message
 
-unexpectedExprError :: MonadError CompileError m => Doc () -> Doc () -> m b
+unexpectedExprError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 unexpectedExprError pass name = compilerDeveloperError $ unexpectedExpr pass name
 
-normalisationError :: MonadError CompileError m => Doc () -> Doc () -> m b
+normalisationError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 normalisationError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "We should have normalised this out."
 
-unexpectedTypeInExprError :: MonadError CompileError m => Doc () -> Doc () -> m b
+unexpectedTypeInExprError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 unexpectedTypeInExprError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "We should not be processing types."
 
-illTypedError :: MonadError CompileError m => Doc () -> Doc () -> m b
+illTypedError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 illTypedError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: MonadError CompileError m => Doc () -> Doc () -> m b
+visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 visibilityError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "Should not be present as explicit arguments"
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
-resolutionError :: MonadError CompileError m => Doc () -> Doc () -> m b
+resolutionError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 resolutionError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "We should have resolved this during type-checking."
 
-caseError :: MonadError CompileError m => Doc () -> Doc () -> [Doc ()] -> m b
+caseError :: (MonadError CompileError m) => Doc () -> Doc () -> [Doc ()] -> m b
 caseError pass name cases =
   compilerDeveloperError $
     unexpectedExpr pass name
@@ -169,7 +169,7 @@ caseError pass name cases =
       <+> "following cases:"
       <+> list cases
 
-internalScopingError :: MonadError CompileError m => Doc () -> Identifier -> m b
+internalScopingError :: (MonadError CompileError m) => Doc () -> Identifier -> m b
 internalScopingError pass ident =
   compilerDeveloperError $
     "Internal scoping error during"

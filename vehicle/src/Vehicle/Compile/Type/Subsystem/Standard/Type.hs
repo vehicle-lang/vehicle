@@ -246,7 +246,7 @@ typeOfVectorLiteral n = do
   forAll "A" type0 $ \tElem ->
     naryFunc n tElem (tVector tElem (natLit n))
 
-handleStandardTypingError :: MonadCompile m => TypingError StandardBuiltinType -> m a
+handleStandardTypingError :: (MonadCompile m) => TypingError StandardBuiltinType -> m a
 handleStandardTypingError = \case
   MissingExplicitArgument boundCtx expectedBinder actualArg ->
     throwError $ MissingExplicitArg (boundContextOf boundCtx) actualArg (typeOf expectedBinder)
@@ -264,7 +264,7 @@ handleStandardTypingError = \case
   UnsolvableConstraints constraints ->
     throwError $ UnsolvedConstraints constraints
 
-relevanceOfTypeClass :: MonadCompile m => StandardBuiltinType -> m Relevance
+relevanceOfTypeClass :: (MonadCompile m) => StandardBuiltinType -> m Relevance
 relevanceOfTypeClass b = do
   tc <- getTypeClass b
   return $ relevanceOf tc

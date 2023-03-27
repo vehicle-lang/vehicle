@@ -14,7 +14,7 @@ import Vehicle.Expr.Normalised
 
 checkNetworkType ::
   forall m.
-  MonadTypeChecker PolarityType m =>
+  (MonadTypeChecker PolarityType m) =>
   DeclProvenance ->
   GluedType PolarityType ->
   m (CheckedType PolarityType)
@@ -32,7 +32,7 @@ checkNetworkType (_, p) networkType = case normalised networkType of
   _ -> compilerDeveloperError "Invalid network type should have been caught by the main type system"
 
 assertUnquantifiedPolarity ::
-  MonadTypeChecker PolarityType m =>
+  (MonadTypeChecker PolarityType m) =>
   DeclProvenance ->
   GluedType PolarityType ->
   m (CheckedType PolarityType)

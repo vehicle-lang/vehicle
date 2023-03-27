@@ -18,9 +18,9 @@ data BooleanExpr a
   | Query a
   deriving (Show, Generic)
 
-instance ToJSON a => ToJSON (BooleanExpr a)
+instance (ToJSON a) => ToJSON (BooleanExpr a)
 
-instance FromJSON a => FromJSON (BooleanExpr a)
+instance (FromJSON a) => FromJSON (BooleanExpr a)
 
 instance Functor BooleanExpr where
   fmap f = \case
@@ -28,7 +28,7 @@ instance Functor BooleanExpr where
     Disjunct x y -> Disjunct (fmap f x) (fmap f y)
     Conjunct x y -> Conjunct (fmap f x) (fmap f y)
 
-instance Pretty a => Pretty (BooleanExpr a) where
+instance (Pretty a) => Pretty (BooleanExpr a) where
   pretty = \case
     Query x -> pretty x
     Disjunct x y -> "Or[" <> pretty x <+> pretty y <> "]"
@@ -56,16 +56,16 @@ data MaybeTrivial a
   | NonTrivial a
   deriving (Show, Generic, Foldable, Traversable)
 
-instance ToJSON a => ToJSON (MaybeTrivial a)
+instance (ToJSON a) => ToJSON (MaybeTrivial a)
 
-instance FromJSON a => FromJSON (MaybeTrivial a)
+instance (FromJSON a) => FromJSON (MaybeTrivial a)
 
 instance Functor MaybeTrivial where
   fmap f = \case
     Trivial s -> Trivial s
     NonTrivial s -> NonTrivial (f s)
 
-instance Pretty a => Pretty (MaybeTrivial a) where
+instance (Pretty a) => Pretty (MaybeTrivial a) where
   pretty = \case
     Trivial True -> "TriviallyTrue"
     Trivial False -> "TriviallyFalse"
@@ -105,9 +105,9 @@ newtype DisjunctAll a = DisjunctAll
   }
   deriving (Show, Generic, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
 
-instance ToJSON a => ToJSON (DisjunctAll a)
+instance (ToJSON a) => ToJSON (DisjunctAll a)
 
-instance FromJSON a => FromJSON (DisjunctAll a)
+instance (FromJSON a) => FromJSON (DisjunctAll a)
 
 eliminateTrivialDisjunctions :: DisjunctAll (MaybeTrivial a) -> MaybeTrivial (DisjunctAll a)
 eliminateTrivialDisjunctions disjunction = do

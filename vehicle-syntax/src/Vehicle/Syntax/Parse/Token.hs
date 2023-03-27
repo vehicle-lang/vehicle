@@ -26,29 +26,29 @@ mkToken mk s = mk ((0, 0), s)
 type IsToken a = Coercible a Token
 
 -- | Convert from 'Token' to an arbitrary newtype via 'Coercible'.
-toToken :: IsToken a => a -> Token
+toToken :: (IsToken a) => a -> Token
 toToken = coerce
 
 -- | Convert to 'Token' from an arbitrary newtype via 'Coercible'.
-fromToken :: IsToken a => Token -> a
+fromToken :: (IsToken a) => Token -> a
 fromToken = coerce
 
 -- | Get the symbol of a token.
-tkSymbol :: IsToken a => a -> Text
+tkSymbol :: (IsToken a) => a -> Text
 tkSymbol = sym . toToken
 
 -- | Get the length of a token.
-tkLength :: IsToken a => a -> Int
+tkLength :: (IsToken a) => a -> Int
 tkLength = T.length . tkSymbol
 
 -- | Compare the text portion of any two position tokens.
-tkEq :: IsToken a => a -> a -> Bool
+tkEq :: (IsToken a) => a -> a -> Bool
 tkEq = (==) `on` toToken
 
 -- | Get the starting position of a token.
-tkLocation :: IsToken a => a -> (Int, Int)
+tkLocation :: (IsToken a) => a -> (Int, Int)
 tkLocation = pos . toToken
 
 -- | Change name of a token.
-tkUpdateText :: IsToken a => Text -> a -> a
+tkUpdateText :: (IsToken a) => Text -> a -> a
 tkUpdateText txt tk = fromToken (Token {pos = tkLocation tk, sym = txt})

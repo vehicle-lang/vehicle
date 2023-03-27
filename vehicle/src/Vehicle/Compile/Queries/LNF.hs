@@ -10,7 +10,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 
 -- | Converts an arithmetic expression to linear normal form.
-convertToLNF :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+convertToLNF :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 convertToLNF = lnf
 
 {-
@@ -22,7 +22,7 @@ logCompilerPass MinDetail "conversion to linear normal form" $ do
 --------------------------------------------------------------------------------
 -- PNF
 
-lnf :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+lnf :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 lnf expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"

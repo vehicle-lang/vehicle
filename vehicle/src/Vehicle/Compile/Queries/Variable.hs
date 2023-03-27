@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 --------------------------------------------------------------------------------
 -- Variable class
 
-class Pretty variable => IsVariable variable
+class (Pretty variable) => IsVariable variable
 
 --------------------------------------------------------------------------------
 -- User variables

@@ -101,7 +101,7 @@ type CallDepth = Int
 --------------------------------------------------------------------------------
 -- Logging monad
 
-class Monad m => MonadLogger m where
+class (Monad m) => MonadLogger m where
   setCallDepth :: CallDepth -> m ()
   getCallDepth :: m CallDepth
   incrCallDepth :: m ()
@@ -109,7 +109,7 @@ class Monad m => MonadLogger m where
   getDebugLevel :: m LoggingLevel
   logMessage :: Message -> m ()
 
-instance MonadLogger m => MonadLogger (StateT s m) where
+instance (MonadLogger m) => MonadLogger (StateT s m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -117,7 +117,7 @@ instance MonadLogger m => MonadLogger (StateT s m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
 
-instance MonadLogger m => MonadLogger (ReaderT s m) where
+instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -141,7 +141,7 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
 
-instance MonadLogger m => MonadLogger (SupplyT s m) where
+instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -149,10 +149,10 @@ instance MonadLogger m => MonadLogger (SupplyT s m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
 
-logWarning :: MonadLogger m => Doc a -> m ()
+logWarning :: (MonadLogger m) => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
-logDebug :: MonadLogger m => LoggingLevel -> Doc a -> m ()
+logDebug :: (MonadLogger m) => LoggingLevel -> Doc a -> m ()
 logDebug level text = do
   -- traceShow text $ do
   debugLevel <- getDebugLevel
@@ -160,12 +160,12 @@ logDebug level text = do
     depth <- getCallDepth
     logMessage $ Message Debug (layoutAsText (indent depth text))
 
-loggingLevelAtLeast :: MonadLogger m => LoggingLevel -> m Bool
+loggingLevelAtLeast :: (MonadLogger m) => LoggingLevel -> m Bool
 loggingLevelAtLeast level = do
   currentLevel <- getDebugLevel
   return $ currentLevel >= level
 
-logCompilerPass :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
+logCompilerPass :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerPass level passName performPass = do
   logDebug level $ "Starting" <+> passName
   incrCallDepth
@@ -174,7 +174,7 @@ logCompilerPass level passName performPass = do
   logDebug level $ "Finished" <+> passName <> line
   return result
 
-logCompilerSection :: MonadLogger m => LoggingLevel -> Doc a -> m b -> m b
+logCompilerSection :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerSection level sectionName performPass = do
   logDebug level sectionName
   incrCallDepth
@@ -183,7 +183,7 @@ logCompilerSection level sectionName performPass = do
   logDebug level ""
   return result
 
-logCompilerPassOutput :: MonadLogger m => Doc a -> m ()
+logCompilerPassOutput :: (MonadLogger m) => Doc a -> m ()
 logCompilerPassOutput result = do
   logDebug MidDetail "Result:"
   incrCallDepth

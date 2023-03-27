@@ -39,7 +39,7 @@ import Vehicle.Verify.Core
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
 generateCLSTProblem ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   LCSState ->
   InputEqualities ->
   ConjunctAll StandardNormExpr ->
@@ -70,7 +70,7 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   return finalQuery
 
 solveForUserVariables ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   Int ->
   CLSTProblem Variable ->
   m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
@@ -143,7 +143,7 @@ type MonadSMT m =
     MonadReader LCSState m
   )
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
+getNetworkDetailsFromCtx :: (MonadCompile m) => NetworkContext -> Name -> m NetworkType
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just (_file, typ) -> return typ
@@ -151,31 +151,31 @@ getNetworkDetailsFromCtx networkCtx name = do
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
-getNumberOfUserVariables :: MonadSMT m => m Int
+getNumberOfUserVariables :: (MonadSMT m) => m Int
 getNumberOfUserVariables = do
   (_, _, _, userVariables, _) <- ask
   return $ length userVariables
 
-getMetaNetworkType :: MonadSMT m => m [NetworkType]
+getMetaNetworkType :: (MonadSMT m) => m [NetworkType]
 getMetaNetworkType = do
   (networkCtx, _, metaNetwork, _, _) <- ask
   traverse (getNetworkDetailsFromCtx networkCtx . fst) metaNetwork
 
-getNumberOfMagicVariables :: MonadSMT m => m Int
+getNumberOfMagicVariables :: (MonadSMT m) => m Int
 getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkType
 
-getTotalNumberOfVariables :: MonadSMT m => m Int
+getTotalNumberOfVariables :: (MonadSMT m) => m Int
 getTotalNumberOfVariables = do
   numberOfUserVariables <- getNumberOfUserVariables
   numberOfMagicVariables <- getNumberOfMagicVariables
   return $ numberOfUserVariables + numberOfMagicVariables
 
-getExprSize :: MonadSMT m => m Int
+getExprSize :: (MonadSMT m) => m Int
 getExprSize =
   -- Add one more for the constant term.
   (1 +) <$> getTotalNumberOfVariables
 
-getVariables :: MonadSMT m => m [Variable]
+getVariables :: (MonadSMT m) => m [Variable]
 getVariables = do
   (_, _, _, userVariables, networkVariables) <- ask
   return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
@@ -183,10 +183,10 @@ getVariables = do
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+compileAssertions :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
 compileAssertions = go
   where
-    go :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+    go :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -212,7 +212,7 @@ compileAssertions = go
       _ -> unexpectedExprError currentPass (prettyVerbose expr)
 
 compileAssertion ::
-  MonadSMT m =>
+  (MonadSMT m) =>
   Relation ->
   StandardNormExpr ->
   StandardNormExpr ->
@@ -222,7 +222,7 @@ compileAssertion rel lhs rhs = do
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => StandardNormExpr -> m SolvingLinearExpr
+compileLinearExpr :: (MonadSMT m) => StandardNormExpr -> m SolvingLinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   (linearExpr, constant) <- go lnfExpr
@@ -232,7 +232,7 @@ compileLinearExpr expr = do
     singletonVar :: DBLevel -> Coefficient -> HashMap Int Coefficient
     singletonVar v = HashMap.singleton (unLevel v)
 
-    go :: MonadSMT m => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
+    go :: (MonadSMT m) => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
     go e = case e of
       VBoundVar v [] ->
         return (singletonVar v 1, 0)

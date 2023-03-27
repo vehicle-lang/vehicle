@@ -49,7 +49,7 @@ fromEdges outEdges = do
 
 constructGraph ::
   forall m expr binder var builtin.
-  MonadLogger m =>
+  (MonadLogger m) =>
   (expr -> Expr binder var builtin) ->
   GenericProg expr ->
   m DependencyGraph
@@ -57,10 +57,10 @@ constructGraph toExpr prog = do
   depsList <- goProg prog
   return $ fromEdges depsList
   where
-    goProg :: MonadLogger m => GenericProg expr -> m DependencyList
+    goProg :: (MonadLogger m) => GenericProg expr -> m DependencyList
     goProg (Main ds) = traverse goDecl ds
 
-    goDecl :: MonadLogger m => GenericDecl expr -> m (Identifier, Dependencies)
+    goDecl :: (MonadLogger m) => GenericDecl expr -> m (Identifier, Dependencies)
     goDecl d = do
       deps <- execWriterT (traverse_ (go . toExpr) d)
       return (identifierOf d, deps)
@@ -82,7 +82,7 @@ constructGraph toExpr prog = do
       Let _ bound binder body -> do go bound; traverse_ go binder; go body
 
 analyseDependenciesAndPrune ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   (expr -> Expr binder var builtin) ->
   GenericProg expr ->
   DeclarationNames ->

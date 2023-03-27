@@ -33,7 +33,7 @@ import Vehicle.Verify.Verifier (queryFormats)
 --------------------------------------------------------------------------------
 -- Specification
 
-readSpecification :: MonadIO m => FilePath -> m SpecificationText
+readSpecification :: (MonadIO m) => FilePath -> m SpecificationText
 readSpecification inputFile
   | takeExtension inputFile /= vehicleSpecificationFileExtension = do
       fatalError $
@@ -75,7 +75,7 @@ outputVerificationResult queryFormatID maybeOutputLocation (plan, queries) = do
   outputVerificationPlan maybeOutputLocation plan
   writeVerificationQueries queryFormatID maybeOutputLocation queries
 
-outputVerificationPlan :: MonadIO m => Maybe FilePath -> VerificationPlan -> m ()
+outputVerificationPlan :: (MonadIO m) => Maybe FilePath -> VerificationPlan -> m ()
 outputVerificationPlan maybeFolder plan = do
   let planText = encodePretty' prettyJSONConfig plan
   case maybeFolder of
@@ -98,7 +98,7 @@ outputVerificationPlan maybeFolder plan = do
                 <> line
                 <> indent 2 ("error:" <+> pretty (show err))
 
-readVerificationPlan :: MonadIO m => FilePath -> m VerificationPlan
+readVerificationPlan :: (MonadIO m) => FilePath -> m VerificationPlan
 readVerificationPlan planFile = do
   errorOrResult <-
     liftIO $
@@ -150,7 +150,7 @@ verificationPlanFileName folder = folder </> "verification-plan" <.> vehicleVeri
 -- | Uses the verifier to verify the specification. Failure of one property does
 -- not prevent the verification of the other properties.
 verifySpecification ::
-  MonadIO m =>
+  (MonadIO m) =>
   FilePath ->
   Verifier ->
   VerifierExecutable ->
@@ -165,7 +165,7 @@ verifySpecification queryFolder verifier verifierExecutable (Specification named
 
 verifyMultiProperty ::
   forall m.
-  MonadIO m =>
+  (MonadIO m) =>
   Verifier ->
   VerifierExecutable ->
   FilePath ->
@@ -188,7 +188,7 @@ type MonadVerify m =
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
 verifyProperty ::
-  MonadVerify m =>
+  (MonadVerify m) =>
   Property QueryMetaData ->
   m PropertyStatus
 verifyProperty property = do
@@ -196,7 +196,7 @@ verifyProperty property = do
   return $ PropertyStatus negationStatus status
   where
     go ::
-      MonadVerify m =>
+      (MonadVerify m) =>
       BooleanExpr (QuerySet QueryMetaData) ->
       m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
     go = \case
@@ -213,7 +213,7 @@ verifyProperty property = do
           else go y
 
 verifyQuerySet ::
-  MonadVerify m =>
+  (MonadVerify m) =>
   QuerySet QueryMetaData ->
   m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
 verifyQuerySet (QuerySet negated queries) = case queries of
@@ -224,13 +224,13 @@ verifyQuerySet (QuerySet negated queries) = case queries of
 
 verifyDisjunctAll ::
   forall m.
-  MonadVerify m =>
+  (MonadVerify m) =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableCounterexample)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
-      Monad m =>
+      (Monad m) =>
       NonEmpty (QueryAddress, QueryMetaData) ->
       m (QueryResult UserVariableCounterexample)
     go (x :| []) = verifyQuery x
@@ -241,7 +241,7 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
         else go (y :| xs)
 
 verifyQuery ::
-  MonadVerify m =>
+  (MonadVerify m) =>
   (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableCounterexample)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
