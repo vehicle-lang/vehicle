@@ -28,12 +28,12 @@ type MonadRemove m =
   )
 
 class RemoveIrrelevantCode m a where
-  remove :: MonadRemove m => a -> m a
+  remove :: (MonadRemove m) => a -> m a
 
-instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericProg expr) where
+instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericDecl expr) where
+instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
 instance RemoveIrrelevantCode m (CheckedExpr types) where
@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode m (CheckedExpr types) where
     showRemoveExit result
     return result
 
-instance MonadNorm types m => RemoveIrrelevantCode m (NormExpr types) where
+instance (MonadNorm types m) => RemoveIrrelevantCode m (NormExpr types) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VPi binder res
@@ -91,10 +91,10 @@ instance MonadNorm types m => RemoveIrrelevantCode m (NormExpr types) where
 instance (MonadNorm types m) => RemoveIrrelevantCode m (GluedExpr types) where
   remove (Glued u n) = Glued <$> remove u <*> remove n
 
-instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericArg expr) where
+instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m expr => RemoveIrrelevantCode m (GenericBinder binding expr) where
+instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder binding expr) where
   remove = traverse remove
 
 instance (MonadNorm types m) => RemoveIrrelevantCode m (Env types) where
@@ -109,12 +109,12 @@ removeArgs = traverse remove . filter isRelevant
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showRemoveEntry :: MonadRemove m => CheckedExpr types -> m ()
+showRemoveEntry :: (MonadRemove m) => CheckedExpr types -> m ()
 showRemoveEntry _e = do
   -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showRemoveExit :: MonadRemove m => CheckedExpr types -> m ()
+showRemoveExit :: (MonadRemove m) => CheckedExpr types -> m ()
 showRemoveExit _e = do
   decrCallDepth
 

@@ -20,7 +20,7 @@ import Vehicle.Expr.Normalised
 -- meta variables, and then relates the the two by adding a new suitable
 -- constraint.
 addFunctionAuxiliaryInputOutputConstraints ::
-  TCM types m =>
+  (TCM types m) =>
   (FunctionPosition -> types) ->
   CheckedDecl types ->
   m (CheckedDecl types)

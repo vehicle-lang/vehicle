@@ -43,7 +43,7 @@ newtype LoggerT m a = LoggerT
   }
   deriving (Functor, Applicative, Monad)
 
-runLoggerT :: Monad m => LoggingLevel -> LoggerT m a -> m a
+runLoggerT :: (Monad m) => LoggingLevel -> LoggerT m a -> m a
 runLoggerT debugLevel (LoggerT logger) =
   evalStateT (runReaderT logger debugLevel) 0
 
@@ -58,11 +58,11 @@ instance (Monad m, MonadLoggingBackend m) => MonadLogger (LoggerT m) where
 instance MonadTrans LoggerT where
   lift = LoggerT . lift . lift
 
-instance MonadError e m => MonadError e (LoggerT m) where
+instance (MonadError e m) => MonadError e (LoggerT m) where
   throwError = lift . throwError
   catchError m f = LoggerT (catchError (unloggerT m) (unloggerT . f))
 
-instance MonadIO m => MonadIO (LoggerT m) where
+instance (MonadIO m) => MonadIO (LoggerT m) where
   liftIO = lift . liftIO
 
 --------------------------------------------------------------------------------
@@ -73,11 +73,11 @@ type ImmediateLoggerT m = LoggerT (ImmediateBackendT m)
 
 type ImmediateLogger = ImmediateLoggerT IO
 
-runImmediateLoggerT :: MonadIO m => LoggingSettings -> ImmediateLoggerT m a -> m a
+runImmediateLoggerT :: (MonadIO m) => LoggingSettings -> ImmediateLoggerT m a -> m a
 runImmediateLoggerT LoggingSettings {..} value =
   runImmediateBackendT logHandle (runLoggerT loggingLevel value)
 
-runImmediateLogger :: MonadIO m => LoggingSettings -> ImmediateLoggerT m a -> m a
+runImmediateLogger :: (MonadIO m) => LoggingSettings -> ImmediateLoggerT m a -> m a
 runImmediateLogger LoggingSettings {..} value =
   runImmediateBackendT logHandle (runLoggerT loggingLevel value)
 
@@ -89,7 +89,7 @@ type SilentLoggerT m = LoggerT (SilentBackendT m)
 
 type SilentLogger = SilentLoggerT Identity
 
-runSilentLoggerT :: Monad m => SilentLoggerT m a -> m a
+runSilentLoggerT :: (Monad m) => SilentLoggerT m a -> m a
 runSilentLoggerT value = runSilentBackendT (runLoggerT NoDetail value)
 
 runSilentLogger :: SilentLogger a -> a
@@ -103,7 +103,7 @@ type DelayedLoggerT m = LoggerT (DelayedBackendT m)
 
 type DelayedLogger = DelayedLoggerT Identity
 
-runDelayedLoggerT :: Monad m => LoggingLevel -> DelayedLoggerT m a -> m (a, [Message])
+runDelayedLoggerT :: (Monad m) => LoggingLevel -> DelayedLoggerT m a -> m (a, [Message])
 runDelayedLoggerT debugLevel = runDelayedBackendT . runLoggerT debugLevel
 
 runDelayedLogger :: LoggingLevel -> DelayedLogger a -> (a, [Message])

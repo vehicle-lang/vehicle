@@ -33,7 +33,7 @@ marabouQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m QueryText
+compileMarabouQuery :: (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
 compileMarabouQuery (CLSTProblem variables assertions) = do
   let variableNames = sequentialIONetworkVariableNaming "x" "y" variables
   assertionDocs <- forM assertions (compileAssertion variableNames)
@@ -41,7 +41,7 @@ compileMarabouQuery (CLSTProblem variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  MonadLogger m =>
+  (MonadLogger m) =>
   Seq Name ->
   Assertion SolvingLinearExpr ->
   m (Doc a)

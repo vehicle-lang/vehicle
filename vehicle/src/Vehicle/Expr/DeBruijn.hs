@@ -109,12 +109,12 @@ type DBTelescope builtin = [DBBinder builtin]
 type Substitution value = DBIndex -> Either DBIndex value
 
 class Substitutable value target | target -> value where
-  subst :: MonadReader (DBLevel, Substitution value) m => target -> m target
+  subst :: (MonadReader (DBLevel, Substitution value) m) => target -> m target
 
-instance Substitutable expr expr => Substitutable expr (GenericArg expr) where
+instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
   subst = traverse subst
 
-instance Substitutable expr expr => Substitutable expr (GenericBinder binder expr) where
+instance (Substitutable expr expr) => Substitutable expr (GenericBinder binder expr) where
   subst = traverse subst
 
 instance Substitutable (DBExpr builtin) (DBExpr builtin) where
@@ -140,7 +140,7 @@ instance Substitutable (DBExpr builtin) (DBExpr builtin) where
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
-underDBBinder :: MonadReader (DBLevel, c) m => m a -> m a
+underDBBinder :: (MonadReader (DBLevel, c) m) => m a -> m a
 underDBBinder = local (first (+ 1))
 
 --------------------------------------------------------------------------------

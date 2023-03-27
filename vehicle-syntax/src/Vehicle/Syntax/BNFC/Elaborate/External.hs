@@ -48,14 +48,14 @@ type UnparsedProg = V.GenericProg UnparsedExpr
 -- | We elaborate from the simple AST generated automatically by BNFC to our
 -- more complicated internal version of the AST.
 elaborateProg ::
-  MonadError ParseError m =>
+  (MonadError ParseError m) =>
   V.Module ->
   B.Prog ->
   m UnparsedProg
 elaborateProg mod prog = runReaderT (elabProg prog) mod
 
 elaborateDecl ::
-  MonadError ParseError m =>
+  (MonadError ParseError m) =>
   V.Module ->
   UnparsedDecl ->
   m V.InputDecl
@@ -65,7 +65,7 @@ elaborateDecl mod decl = flip runReaderT mod $ case decl of
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
 
 elaborateExpr ::
-  MonadError ParseError m =>
+  (MonadError ParseError m) =>
   V.Module ->
   UnparsedExpr ->
   m V.InputExpr
@@ -74,10 +74,10 @@ elaborateExpr mod (UnparsedExpr expr) = runReaderT (elabExpr expr) mod
 --------------------------------------------------------------------------------
 -- Algorithm
 
-elabProg :: MonadElab m => B.Prog -> m UnparsedProg
+elabProg :: (MonadElab m) => B.Prog -> m UnparsedProg
 elabProg (B.Main decls) = V.Main <$> elabDecls decls
 
-elabDecls :: MonadElab m => [B.Decl] -> m [UnparsedDecl]
+elabDecls :: (MonadElab m) => [B.Decl] -> m [UnparsedDecl]
 elabDecls = \case
   [] -> return []
   decl : decls -> do
@@ -85,7 +85,7 @@ elabDecls = \case
     ds' <- elabDecls ds
     return $ d' : ds'
 
-elabDeclGroup :: MonadElab m => NonEmpty B.Decl -> m (UnparsedDecl, [B.Decl])
+elabDeclGroup :: (MonadElab m) => NonEmpty B.Decl -> m (UnparsedDecl, [B.Decl])
 elabDeclGroup dx = case dx of
   -- Type definition.
   B.DefType n bs t :| ds -> do
@@ -147,13 +147,13 @@ elabDeclGroup dx = case dx of
     throwError $ AnnotationWithNoDeclaration p (annotationSymbol a)
 
 elabDeclType ::
-  MonadElab m =>
+  (MonadElab m) =>
   UnparsedExpr ->
   m V.InputExpr
 elabDeclType (UnparsedExpr expr) = elabExpr expr
 
 elabDeclBody ::
-  MonadElab m =>
+  (MonadElab m) =>
   UnparsedExpr ->
   m V.InputExpr
 elabDeclBody (UnparsedExpr expr) = case expr of
@@ -172,7 +172,7 @@ annotationSymbol = \case
   B.Property tk -> tkSymbol tk
   B.Postulate tk -> tkSymbol tk
 
-annotationProvenance :: MonadElab m => B.DeclAnnName -> m V.Provenance
+annotationProvenance :: (MonadElab m) => B.DeclAnnName -> m V.Provenance
 annotationProvenance = \case
   B.Network tk -> mkProvenance tk
   B.Dataset tk -> mkProvenance tk
@@ -180,7 +180,7 @@ annotationProvenance = \case
   B.Property tk -> mkProvenance tk
   B.Postulate tk -> mkProvenance tk
 
-checkNoAnnotationOptions :: MonadElab m => B.DeclAnnName -> B.DeclAnnOpts -> m ()
+checkNoAnnotationOptions :: (MonadElab m) => B.DeclAnnName -> B.DeclAnnOpts -> m ()
 checkNoAnnotationOptions annName = \case
   B.DeclAnnWithoutOpts -> return ()
   B.DeclAnnWithOpts [] -> return ()
@@ -189,13 +189,13 @@ checkNoAnnotationOptions annName = \case
     p <- mkProvenance paramName
     throwError $ InvalidAnnotationOption p (annotationSymbol annName) (tkSymbol paramName) []
 
-elabResource :: MonadElab m => B.Name -> B.Expr -> V.Resource -> m (V.GenericDecl UnparsedExpr)
+elabResource :: (MonadElab m) => B.Name -> B.Expr -> V.Resource -> m (V.GenericDecl UnparsedExpr)
 elabResource n t r = V.DefResource <$> mkProvenance n <*> elabName n <*> pure r <*> pure (UnparsedExpr t)
 
-elabPostulate :: MonadElab m => B.Name -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabPostulate :: (MonadElab m) => B.Name -> B.Expr -> m (V.GenericDecl UnparsedExpr)
 elabPostulate n t = V.DefPostulate <$> mkProvenance n <*> elabName n <*> pure (UnparsedExpr t)
 
-elabTypeDef :: MonadElab m => B.Name -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabTypeDef :: (MonadElab m) => B.Name -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
 elabTypeDef n binders e = do
   p <- mkProvenance n
   name <- elabName n
@@ -205,7 +205,7 @@ elabTypeDef n binders e = do
   let typeBody = B.Lam tokLambda binders tokArrow e
   return $ V.DefFunction p name False (UnparsedExpr typeTyp) (UnparsedExpr typeBody)
 
-elabDefFun :: MonadElab m => Bool -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabDefFun :: (MonadElab m) => Bool -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
 elabDefFun isProperty n1 n2 t binders e
   | tkSymbol n1 /= tkSymbol n2 = do
       p <- mkProvenance n1
@@ -221,7 +221,7 @@ elabDefFun isProperty n1 n2 t binders e
 --------------------------------------------------------------------------------
 -- Expr elaboration
 
-elabExpr :: MonadElab m => B.Expr -> m V.InputExpr
+elabExpr :: (MonadElab m) => B.Expr -> m V.InputExpr
 elabExpr = \case
   B.Type t -> V.Universe <$> mkProvenance t <*> pure (V.UniverseLevel 0)
   B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
@@ -279,31 +279,31 @@ elabExpr = \case
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
 
-elabArg :: MonadElab m => B.Arg -> m V.InputArg
+elabArg :: (MonadElab m) => B.Arg -> m V.InputArg
 elabArg = \case
   B.ExplicitArg e -> mkArg V.Explicit <$> elabExpr e
   B.ImplicitArg e -> mkArg (V.Implicit False) <$> elabExpr e
   B.InstanceArg e -> mkArg (V.Instance False) <$> elabExpr e
 
-elabName :: MonadElab m => B.Name -> m V.Identifier
+elabName :: (MonadElab m) => B.Name -> m V.Identifier
 elabName n = do
   mod <- ask
   return $ V.Identifier mod $ tkSymbol n
 
-elabBasicBinder :: MonadElab m => Bool -> B.BasicBinder -> m V.InputBinder
+elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m V.InputBinder
 elabBasicBinder folded = \case
   B.ExplicitBinder n _tk typ -> mkBinder folded V.Explicit . These n =<< elabExpr typ
   B.ImplicitBinder n _tk typ -> mkBinder folded (V.Implicit False) . These n =<< elabExpr typ
   B.InstanceBinder n _tk typ -> mkBinder folded (V.Instance False) . These n =<< elabExpr typ
 
-elabNameBinder :: MonadElab m => Bool -> B.NameBinder -> m V.InputBinder
+elabNameBinder :: (MonadElab m) => Bool -> B.NameBinder -> m V.InputBinder
 elabNameBinder folded = \case
   B.ExplicitNameBinder n -> mkBinder folded V.Explicit (This n)
   B.ImplicitNameBinder n -> mkBinder folded (V.Implicit False) (This n)
   B.InstanceNameBinder n -> mkBinder folded (V.Instance False) (This n)
   B.BasicNameBinder b -> elabBasicBinder folded b
 
-elabTypeBinder :: MonadElab m => Bool -> B.TypeBinder -> m V.InputBinder
+elabTypeBinder :: (MonadElab m) => Bool -> B.TypeBinder -> m V.InputBinder
 elabTypeBinder folded = \case
   B.ExplicitTypeBinder t -> mkBinder folded V.Explicit . That =<< elabExpr t
   B.ImplicitTypeBinder t -> mkBinder folded (V.Implicit False) . That =<< elabExpr t
@@ -313,7 +313,7 @@ elabTypeBinder folded = \case
 mkArg :: V.Visibility -> V.InputExpr -> V.InputArg
 mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v V.Relevant e
 
-mkBinder :: MonadElab m => V.BinderFoldingForm -> V.Visibility -> These B.Name V.InputExpr -> m V.InputBinder
+mkBinder :: (MonadElab m) => V.BinderFoldingForm -> V.Visibility -> These B.Name V.InputExpr -> m V.InputBinder
 mkBinder folded v nameTyp = do
   (exprProv, form, typ) <- case nameTyp of
     This nameTk -> do
@@ -337,10 +337,10 @@ mkBinder folded v nameTyp = do
   let displayForm = V.BinderDisplayForm form folded
   return $ V.Binder prov displayForm v V.Relevant () typ
 
-elabLetDecl :: MonadElab m => B.LetDecl -> m (V.InputBinder, V.InputExpr)
+elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.InputBinder, V.InputExpr)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
 
-elabLiteral :: MonadElab m => B.Lit -> m V.InputExpr
+elabLiteral :: (MonadElab m) => B.Lit -> m V.InputExpr
 elabLiteral = \case
   B.UnitLiteral -> return $ V.Builtin mempty $ V.Constructor V.LUnit
   B.BoolLiteral t -> do
@@ -358,12 +358,12 @@ elabLiteral = \case
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.Builtin p $ V.Constructor $ V.LRat r]
 
-elabParameterOptions :: MonadElab m => B.DeclAnnOpts -> m V.Resource
+elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.Resource
 elabParameterOptions = \case
   B.DeclAnnWithoutOpts -> return V.Parameter
   B.DeclAnnWithOpts opts -> foldM parseOpt V.Parameter opts
   where
-    parseOpt :: MonadElab m => V.Resource -> B.DeclAnnOption -> m V.Resource
+    parseOpt :: (MonadElab m) => V.Resource -> B.DeclAnnOption -> m V.Resource
     parseOpt _r (B.BooleanOption nameToken valueToken) = do
       let name = tkSymbol nameToken
       let value = tkSymbol valueToken
@@ -438,7 +438,7 @@ elabVecLiteral tk xs = do
   let lit = app (V.Builtin p $ V.Constructor $ V.LVec n) xs'
   return $ app (V.Builtin p (V.TypeClassOp V.FromVecTC)) [lit]
 
-elabApp :: MonadElab m => B.Expr -> B.Arg -> m V.InputExpr
+elabApp :: (MonadElab m) => B.Expr -> B.Arg -> m V.InputExpr
 elabApp fun arg = do
   fun' <- elabExpr fun
   arg' <- elabArg arg
@@ -468,14 +468,14 @@ elabOrder order tk e1 e2 = do
           V.Gt -> B.Gt e (B.TokGt tkDetails) e2
 
 -- | Unfolds a list of binders into a consecutative forall expressions
-elabForallT :: MonadElab m => B.TokForallT -> [B.NameBinder] -> B.Expr -> m V.InputExpr
+elabForallT :: (MonadElab m) => B.TokForallT -> [B.NameBinder] -> B.Expr -> m V.InputExpr
 elabForallT tk binders body = do
   p <- mkProvenance tk
   binders' <- elabNamedBinders tk binders
   body' <- elabExpr body
   return $ foldr (V.Pi p) body' binders'
 
-elabLam :: MonadElab m => B.TokLambda -> [B.NameBinder] -> B.Expr -> m V.InputExpr
+elabLam :: (MonadElab m) => B.TokLambda -> [B.NameBinder] -> B.Expr -> m V.InputExpr
 elabLam tk binders body = do
   p <- mkProvenance tk
   binders' <- elabNamedBinders tk binders
@@ -554,7 +554,7 @@ elabForeach tk binder body = do
       [ mkArg V.Explicit (V.Lam p' binder' body')
       ]
 
-elabLet :: MonadElab m => B.TokLet -> [B.LetDecl] -> B.Expr -> m V.InputExpr
+elabLet :: (MonadElab m) => B.TokLet -> [B.LetDecl] -> B.Expr -> m V.InputExpr
 elabLet tk decls body = do
   p <- mkProvenance tk
   decls' <- traverse elabLetDecl decls

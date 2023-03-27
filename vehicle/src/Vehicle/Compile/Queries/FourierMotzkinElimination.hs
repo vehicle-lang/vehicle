@@ -68,7 +68,7 @@ solveVar varNames (solutions, inequalities) (iteration, var) = do
 
   return (solution : solutions, newInequalities <> unusedInequalities)
 
-combineInequalities :: LinearExpression linexp => (Assertion linexp, Assertion linexp) -> Assertion linexp
+combineInequalities :: (LinearExpression linexp) => (Assertion linexp, Assertion linexp) -> Assertion linexp
 combineInequalities (Assertion rel1 expr1, Assertion rel2 expr2) =
   let rel = case (rel1, rel2) of
         (LessThan, _) -> LessThan
@@ -85,7 +85,7 @@ combineInequalities (Assertion rel1 expr1, Assertion rel2 expr2) =
 --  3. Those which don't mention the variable at all.
 partition ::
   forall linexp.
-  LinearExpression linexp =>
+  (LinearExpression linexp) =>
   LinearVar ->
   [Assertion linexp] ->
   ([Assertion linexp], [Assertion linexp], [Assertion linexp])

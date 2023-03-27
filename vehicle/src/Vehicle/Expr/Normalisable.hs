@@ -16,15 +16,15 @@ data NormalisableBuiltin types
   | CType types
   deriving (Eq, Show, Generic)
 
-instance Pretty types => Pretty (NormalisableBuiltin types) where
+instance (Pretty types) => Pretty (NormalisableBuiltin types) where
   pretty = \case
     CConstructor f -> pretty f
     CFunction c -> pretty c
     CType t -> pretty t
 
-instance Serialize types => Serialize (NormalisableBuiltin types)
+instance (Serialize types) => Serialize (NormalisableBuiltin types)
 
-instance Hashable types => Hashable (NormalisableBuiltin types)
+instance (Hashable types) => Hashable (NormalisableBuiltin types)
 
 -----------------------------------------------------------------------------
 -- Expressions

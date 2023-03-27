@@ -27,7 +27,7 @@ instance Exception DeveloperError
 -- | Immediately terminates execution. When in the `CompileMonad`, you should
 -- prefer to use the method `compilerDeveloperError` instead of this, as
 -- this method will prevent the logs from being displayed.
-developerError :: HasCallStack => Doc a -> b
+developerError :: (HasCallStack) => Doc a -> b
 developerError message =
   throw $
     DeveloperError $
@@ -61,7 +61,7 @@ readRat str = case readFloat (Text.unpack str) of
 --------------------------------------------------------------------------------
 -- Serialization instances missing from Cereal
 
-instance Serialize a => Serialize (NonEmpty a) where
+instance (Serialize a) => Serialize (NonEmpty a) where
   put = putNonEmptyListOf put
   get = getNonEmptyListOf get
 

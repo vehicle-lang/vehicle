@@ -28,10 +28,10 @@ instance HasBoundCtx (BoundCtx (Maybe Name)) where
 instance HasBoundCtx (BoundCtx Name) where
   boundContextOf = map Just
 
-addToBoundCtx :: MonadReader (BoundCtx b) m => b -> m c -> m c
+addToBoundCtx :: (MonadReader (BoundCtx b) m) => b -> m c -> m c
 addToBoundCtx v = local (v :)
 
-getBoundCtx :: MonadReader (BoundCtx b) m => m (BoundCtx b)
+getBoundCtx :: (MonadReader (BoundCtx b) m) => m (BoundCtx b)
 getBoundCtx = ask
 
 lookupVar :: BoundCtx b -> DBIndex -> Maybe b

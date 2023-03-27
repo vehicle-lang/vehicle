@@ -162,7 +162,7 @@ type ParseContext m a =
 type ElemParser m a = a -> StandardNormType -> m StandardNormExpr
 
 doubleElemParser ::
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   FilePath ->
@@ -174,7 +174,7 @@ doubleElemParser decl datasetType file value expectedElementType = case expected
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VRatType
 
 intElemParser ::
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   FilePath ->
@@ -194,21 +194,21 @@ intElemParser decl datasetType file value expectedElementType = case expectedEle
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VIntType
 
 -- | Split data by the first dimension of the C-Array.
-partitionData :: Vector.Unbox a => Int -> TensorDimensions -> Vector a -> [Vector a]
+partitionData :: (Vector.Unbox a) => Int -> TensorDimensions -> Vector a -> [Vector a]
 partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
 
-variableSizeError :: MonadCompile m => ParseContext m a -> StandardNormExpr -> m b
+variableSizeError :: (MonadCompile m) => ParseContext m a -> StandardNormExpr -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
   throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 
-dimensionMismatchError :: MonadCompile m => ParseContext m a -> m b
+dimensionMismatchError :: (MonadCompile m) => ParseContext m a -> m b
 dimensionMismatchError (decl, file, expectedDatasetType, actualDatasetDims, _) =
   throwError $ DatasetDimensionsMismatch decl file expectedDatasetType actualDatasetDims
 
-typingError :: MonadCompile m => ParseContext m a -> m b
+typingError :: (MonadCompile m) => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) =
   compilerDeveloperError $
     "Invalid parameter type"

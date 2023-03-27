@@ -62,7 +62,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
 
               loop (loopNumber + 1) solvedMetas
 
-blockOn :: MonadCompile m => [MetaID] -> m (ConstraintProgress builtin)
+blockOn :: (MonadCompile m) => [MetaID] -> m (ConstraintProgress builtin)
 blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
@@ -72,7 +72,7 @@ malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
 unify ::
-  MonadTypeChecker types m =>
+  (MonadTypeChecker types m) =>
   ConstraintContext types ->
   NormExpr types ->
   NormExpr types ->
@@ -96,7 +96,7 @@ unifyWithPiType ctx expr = do
 -}
 
 createTC ::
-  TCM types m =>
+  (TCM types m) =>
   ConstraintContext types ->
   types ->
   NonEmpty (NormType types) ->
@@ -111,7 +111,7 @@ createTC c tc argExprs = do
   let newConstraint = TypeClassConstraint (Has meta tc (NonEmpty.toList argExprs))
   return (unnormalised metaExpr, WithContext newConstraint ctx)
 
-solveTypeClassMeta :: TCM types m => ConstraintContext types -> MetaID -> NormExpr types -> m ()
+solveTypeClassMeta :: (TCM types m) => ConstraintContext types -> MetaID -> NormExpr types -> m ()
 solveTypeClassMeta ctx meta solution = do
   quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)

@@ -51,12 +51,12 @@ data QuerySet a = QuerySet
   }
   deriving (Show, Generic, Functor, Foldable, Traversable)
 
-instance ToJSON a => ToJSON (QuerySet a)
+instance (ToJSON a) => ToJSON (QuerySet a)
 
-instance FromJSON a => FromJSON (QuerySet a)
+instance (FromJSON a) => FromJSON (QuerySet a)
 
 traverseQuerySet ::
-  Monad m =>
+  (Monad m) =>
   ((QueryAddress, a) -> m b) ->
   QuerySet a ->
   m (QuerySet b)
@@ -76,7 +76,7 @@ traverseQuerySet f QuerySet {..} = do
 type Property a = BooleanExpr (QuerySet a)
 
 traverseProperty ::
-  Monad m =>
+  (Monad m) =>
   ((QueryAddress, a) -> m b) ->
   Property a ->
   m (Property b)
@@ -96,12 +96,12 @@ data MultiProperty queryData
     MultiProperty [MultiProperty queryData]
   deriving (Show, Functor, Generic)
 
-instance ToJSON queryData => ToJSON (MultiProperty queryData)
+instance (ToJSON queryData) => ToJSON (MultiProperty queryData)
 
-instance FromJSON queryData => FromJSON (MultiProperty queryData)
+instance (FromJSON queryData) => FromJSON (MultiProperty queryData)
 
 traverseMultiProperty ::
-  Monad m =>
+  (Monad m) =>
   ((QueryAddress, a) -> m b) ->
   MultiProperty a ->
   m (MultiProperty b)
@@ -117,15 +117,15 @@ newtype Specification queryData
   = Specification [(Name, MultiProperty queryData)]
   deriving (Show, Generic, Functor)
 
-instance ToJSON queryData => ToJSON (Specification queryData)
+instance (ToJSON queryData) => ToJSON (Specification queryData)
 
-instance FromJSON queryData => FromJSON (Specification queryData)
+instance (FromJSON queryData) => FromJSON (Specification queryData)
 
 specificationPropertyNames :: Specification a -> PropertyNames
 specificationPropertyNames (Specification properties) = fmap fst properties
 
 traverseSpecification ::
-  Monad m =>
+  (Monad m) =>
   ((QueryAddress, a) -> m b) ->
   Specification a ->
   m (Specification b)

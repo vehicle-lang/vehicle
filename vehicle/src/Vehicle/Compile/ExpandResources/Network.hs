@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalised
 
 checkNetwork ::
   forall m.
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   NetworkLocations ->
   DeclProvenance ->
   StandardGluedType ->
@@ -35,7 +35,7 @@ checkNetwork networkLocations decl@(ident, _) networkType = do
 --  binders are explicit and their types are equal.
 getNetworkType ::
   forall m.
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   m NetworkType

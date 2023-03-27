@@ -31,11 +31,11 @@ data GenericDecl expr
       expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance NFData expr => NFData (GenericDecl expr)
+instance (NFData expr) => NFData (GenericDecl expr)
 
-instance ToJSON expr => ToJSON (GenericDecl expr)
+instance (ToJSON expr) => ToJSON (GenericDecl expr)
 
-instance Serialize expr => Serialize (GenericDecl expr)
+instance (Serialize expr) => Serialize (GenericDecl expr)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
@@ -62,7 +62,7 @@ bodyOf = \case
 -- second provided functions respectively.
 -- Use |traverse| if you want to traverse them using the same function.
 traverseDeclTypeAndExpr ::
-  Monad m =>
+  (Monad m) =>
   (expr1 -> m expr2) ->
   (expr1 -> m expr2) ->
   GenericDecl expr1 ->
@@ -74,7 +74,7 @@ traverseDeclTypeAndExpr f1 f2 = \case
 
 -- | Traverses the type of the declaration.
 traverseDeclType ::
-  Monad m =>
+  (Monad m) =>
   (expr -> m expr) ->
   GenericDecl expr ->
   m (GenericDecl expr)

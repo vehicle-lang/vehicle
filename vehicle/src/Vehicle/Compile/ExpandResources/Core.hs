@@ -18,7 +18,7 @@ type MonadExpandResources m =
     MonadState ResourceContext m
   )
 
-isInferableParameter :: MonadExpandResources m => Identifier -> m Bool
+isInferableParameter :: (MonadExpandResources m) => Identifier -> m Bool
 isInferableParameter ident = do
   inferableCtx <- gets inferableParameterContext
   return $ Map.member (nameOf ident) inferableCtx

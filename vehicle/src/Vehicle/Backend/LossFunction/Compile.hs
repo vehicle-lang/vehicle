@@ -76,7 +76,7 @@ type InputArg = V.NamedArg V.StandardBuiltin
 
 -- | Compile entire specification (calls compileDecl)
 compileProg ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   V.NetworkContext ->
   DifferentiableLogic ->
   InputProg ->
@@ -87,7 +87,7 @@ compileProg networkCtx logic (V.Main ds) =
 
 -- | Compile all functions found in spec, save their names (call compileExpr on each)
 compileDecl ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   V.NetworkContext ->
   DifferentiableLogic ->
   InputDecl ->
@@ -108,11 +108,11 @@ type MonadCompileLoss m =
     MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
   )
 
-compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> InputArg -> m LExpr
+compileArg :: (MonadCompileLoss m) => DifferentialLogicImplementation -> InputArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
 -- | Compile a property or single expression
-compileExpr :: MonadCompileLoss m => DifferentialLogicImplementation -> InputExpr -> m LExpr
+compileExpr :: (MonadCompileLoss m) => DifferentialLogicImplementation -> InputExpr -> m LExpr
 compileExpr t expr = showExit $ do
   e' <- showEntry expr
   case e' of
@@ -151,7 +151,7 @@ compileExpr t expr = showExit $ do
 
 type CompileBuiltin =
   forall m.
-  MonadCompileLoss m =>
+  (MonadCompileLoss m) =>
   DifferentialLogicImplementation ->
   [LExpr] ->
   m LExpr
@@ -202,7 +202,7 @@ compileBuiltinFunction f t args = case f of
   V.If -> notYetSupportedBuiltin $ V.CFunction f
 
 compileStdLibFunction ::
-  MonadCompileLoss m =>
+  (MonadCompileLoss m) =>
   StdLibFunction ->
   DifferentialLogicImplementation ->
   NonEmpty InputArg ->
@@ -271,20 +271,20 @@ compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.Forall = All
 compileQuant V.Exists = Any
 
-compileExplicitArgs :: MonadCompileLoss m => DifferentialLogicImplementation -> NonEmpty InputArg -> m [LExpr]
+compileExplicitArgs :: (MonadCompileLoss m) => DifferentialLogicImplementation -> NonEmpty InputArg -> m [LExpr]
 compileExplicitArgs t args = do
   let explicitArgs = argExpr <$> NonEmpty.filter V.isExplicit args
   traverse (compileExpr t) explicitArgs
 
-notYetSupported :: MonadCompile m => Doc () -> m a
+notYetSupported :: (MonadCompile m) => Doc () -> m a
 notYetSupported op =
   unexpectedExprError currentPass $
     op <+> "is not handled at the moment for loss function translation."
 
-notYetSupportedBuiltin :: MonadCompile m => V.StandardBuiltin -> m a
+notYetSupportedBuiltin :: (MonadCompile m) => V.StandardBuiltin -> m a
 notYetSupportedBuiltin op = notYetSupported (quotePretty op)
 
-notYetSupportedStdLibFunction :: MonadCompile m => StdLibFunction -> m a
+notYetSupportedStdLibFunction :: (MonadCompile m) => StdLibFunction -> m a
 notYetSupportedStdLibFunction op = notYetSupported (quotePretty op)
 
 --------------------------------------------------------------------------------
@@ -292,7 +292,7 @@ notYetSupportedStdLibFunction op = notYetSupported (quotePretty op)
 
 lowerNots ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   DifferentiableLogic ->
   InputProg ->
   m InputProg
@@ -331,13 +331,13 @@ lowerNots logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
 -----------------------------------------------------------------------
 -- Debugging options
 
-showEntry :: MonadCompile m => InputExpr -> m InputExpr
+showEntry :: (MonadCompile m) => InputExpr -> m InputExpr
 showEntry e = do
   logDebug MinDetail ("loss-entry " <> prettyFriendly e)
   incrCallDepth
   return e
 
-showExit :: MonadCompile m => m LExpr -> m LExpr
+showExit :: (MonadCompile m) => m LExpr -> m LExpr
 showExit mNew = do
   new <- mNew
   decrCallDepth

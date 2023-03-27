@@ -62,7 +62,7 @@ fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t
 
 logCompileError ::
-  MonadLogger m =>
+  (MonadLogger m) =>
   ExceptT CompileError m a ->
   m (Either CompileError a)
 logCompileError x = do

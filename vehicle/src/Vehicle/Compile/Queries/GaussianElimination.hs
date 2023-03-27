@@ -79,7 +79,7 @@ reduceRow varNames (solvedVars, rows) var = do
           )
   return result
 
-findPivot :: LinearExpression linexp => LinearVar -> [linexp] -> Maybe (linexp, [linexp])
+findPivot :: (LinearExpression linexp) => LinearVar -> [linexp] -> Maybe (linexp, [linexp])
 findPivot _ [] = Nothing
 findPivot var (x : xs)
   | lookupAt x var /= 0 = Just (x, xs)
@@ -103,8 +103,8 @@ currentPhase = "Gaussian elimination of user variables"
 --------------------------------------------------------------------------------
 -- Utilities
 
-prettyExprs :: LinearExpression linexp => [Variable] -> [linexp] -> Doc a
+prettyExprs :: (LinearExpression linexp) => [Variable] -> [linexp] -> Doc a
 prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
 
-prettySolutions :: LinearExpression linexp => [Variable] -> [Solution linexp] -> Doc a
+prettySolutions :: (LinearExpression linexp) => [Variable] -> [Solution linexp] -> Doc a
 prettySolutions varNames solutions = prettyExprs varNames (fmap snd solutions)

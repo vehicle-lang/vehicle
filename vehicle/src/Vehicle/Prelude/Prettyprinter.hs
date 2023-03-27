@@ -46,19 +46,19 @@ type UnAnnDoc = Doc Void
 -- Redefining some pretty printer primitives to work with `Foldable`.
 -- Can remove once https://github.com/quchen/prettyprinter/pull/200 is released.
 
-hsep :: Foldable t => t (Doc ann) -> Doc ann
+hsep :: (Foldable t) => t (Doc ann) -> Doc ann
 hsep = concatWith (<+>)
 
-vsep :: Foldable t => t (Doc ann) -> Doc ann
+vsep :: (Foldable t) => t (Doc ann) -> Doc ann
 vsep = concatWith (\x y -> x <> line <> y)
 
-hcat :: Foldable t => t (Doc ann) -> Doc ann
+hcat :: (Foldable t) => t (Doc ann) -> Doc ann
 hcat = concatWith (<>)
 
-vcat :: Foldable t => t (Doc ann) -> Doc ann
+vcat :: (Foldable t) => t (Doc ann) -> Doc ann
 vcat = concatWith (\x y -> x <> line' <> y)
 
-commaSep :: Foldable t => t (Doc ann) -> Doc ann
+commaSep :: (Foldable t) => t (Doc ann) -> Doc ann
 commaSep = concatWith (surround ", ")
 
 numberedList :: [Doc ann] -> Doc ann
@@ -70,14 +70,14 @@ prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 --------------------------------------------------------------------------------
 -- Useful utility functions
 
-vsep2 :: Foldable t => t (Doc ann) -> Doc ann
+vsep2 :: (Foldable t) => t (Doc ann) -> Doc ann
 vsep2 = concatWith (\x y -> x <> line <> line <> y)
 
 docAnn :: Doc ann -> Maybe ann
 docAnn (Annotated a _) = Just a
 docAnn _ = Nothing
 
-quotePretty :: Pretty a => a -> Doc b
+quotePretty :: (Pretty a) => a -> Doc b
 quotePretty = squotes . pretty
 
 --------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ prettyIntMap = prettyMapEntries . IntMap.toAscList
 prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
 prettyMap = prettyMapEntries . Map.toAscList . fmap pretty
 
-prettyMapEntries :: Pretty key => [(key, Doc a)] -> Doc a
+prettyMapEntries :: (Pretty key) => [(key, Doc a)] -> Doc a
 prettyMapEntries entries = result
   where
     (keys, values) = unzip entries
@@ -104,7 +104,7 @@ prettyMapEntries entries = result
               <> "}"
           )
 
-prettySet :: Pretty value => Set value -> Doc b
+prettySet :: (Pretty value) => Set value -> Doc b
 prettySet xs = prettySetLike (pretty <$> Set.toList xs)
 
 prettySetLike :: [Doc a] -> Doc a
@@ -120,7 +120,7 @@ prettySetLike xs =
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)
 
-instance Pretty a => Pretty (IntMap a) where
+instance (Pretty a) => Pretty (IntMap a) where
   pretty = prettyIntMap . fmap pretty
 
 instance Pretty Version where

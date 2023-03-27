@@ -62,15 +62,15 @@ class HasVisibility a where
 instance HasVisibility Visibility where
   visibilityOf = id
 
-isExplicit :: HasVisibility a => a -> Bool
+isExplicit :: (HasVisibility a) => a -> Bool
 isExplicit x = visibilityOf x == Explicit
 
-isImplicit :: HasVisibility a => a -> Bool
+isImplicit :: (HasVisibility a) => a -> Bool
 isImplicit x = case visibilityOf x of
   Implicit {} -> True
   _ -> False
 
-isInstance :: HasVisibility a => a -> Bool
+isInstance :: (HasVisibility a) => a -> Bool
 isInstance x = case visibilityOf x of
   Instance {} -> True
   _ -> False

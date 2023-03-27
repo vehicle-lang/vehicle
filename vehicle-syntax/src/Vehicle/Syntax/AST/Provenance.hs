@@ -51,7 +51,7 @@ instance ToJSON Position
 instance Serialize Position
 
 -- | Get the starting position of a token.
-tkPosition :: IsToken a => a -> Position
+tkPosition :: (IsToken a) => a -> Position
 tkPosition t = let (l, c) = tkLocation t in Position l c
 
 alterColumn :: (Int -> Int) -> Position -> Position
@@ -151,7 +151,7 @@ instance Hashable Provenance where
 instance Serialize Provenance
 
 -- | Get the provenance for a single token.
-tkProvenance :: IsToken a => Module -> a -> Provenance
+tkProvenance :: (IsToken a) => Module -> a -> Provenance
 tkProvenance mod tk = Provenance (FromSource (Range start end)) mod
   where
     start = tkPosition tk
@@ -197,11 +197,11 @@ class HasProvenance a where
 instance HasProvenance Provenance where
   provenanceOf = id
 
-instance HasProvenance a => HasProvenance [a] where
+instance (HasProvenance a) => HasProvenance [a] where
   provenanceOf = foldMap provenanceOf
 
-instance HasProvenance a => HasProvenance (NonEmpty a) where
+instance (HasProvenance a) => HasProvenance (NonEmpty a) where
   provenanceOf = foldMap provenanceOf
 
-instance HasProvenance a => HasProvenance (a, b) where
+instance (HasProvenance a) => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst

@@ -118,7 +118,7 @@ instance (Monoid w, MonadTypeChecker types m) => MonadTypeChecker types (ReaderT
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
 
-instance MonadTypeChecker types m => MonadTypeChecker types (StateT s m) where
+instance (MonadTypeChecker types m) => MonadTypeChecker types (StateT s m) where
   getDeclContext = lift getDeclContext
   addDeclContext d = mapStateT (addDeclContext d)
   getMetaState = lift getMetaState
@@ -130,9 +130,9 @@ instance MonadTypeChecker types m => MonadTypeChecker types (StateT s m) where
 -- Abstract interface for a type system.
 
 -- | A class that provides an abstract interface for a set of builtins.
-class PrintableBuiltin types => TypableBuiltin types where
+class (PrintableBuiltin types) => TypableBuiltin types where
   convertFromStandardTypes ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     Provenance ->
     StandardBuiltinType ->
     [UncheckedArg types] ->
@@ -146,42 +146,42 @@ class PrintableBuiltin types => TypableBuiltin types where
     Provenance -> NormalisableBuiltin types -> CheckedType types
 
   restrictNetworkType ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     DeclProvenance ->
     GluedType types ->
     m (CheckedType types)
 
   restrictDatasetType ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     DeclProvenance ->
     GluedType types ->
     m (CheckedType types)
 
   restrictParameterType ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     DeclProvenance ->
     GluedType types ->
     m (CheckedType types)
 
   restrictInferableParameterType ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     DeclProvenance ->
     GluedType types ->
     m (CheckedType types)
 
   restrictPropertyType ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     DeclProvenance ->
     GluedType types ->
     m ()
 
-  typeClassRelevancy :: MonadCompile m => types -> m Relevance
+  typeClassRelevancy :: (MonadCompile m) => types -> m Relevance
 
   addAuxiliaryInputOutputConstraints ::
-    MonadTypeChecker types m => CheckedDecl types -> m (CheckedDecl types)
+    (MonadTypeChecker types m) => CheckedDecl types -> m (CheckedDecl types)
 
   generateDefaultConstraint ::
-    MonadTypeChecker types m =>
+    (MonadTypeChecker types m) =>
     Maybe (CheckedDecl types) ->
     m Bool
 
@@ -190,20 +190,20 @@ class PrintableBuiltin types => TypableBuiltin types where
     (MonadNorm types m, MonadTypeChecker types m) => WithContext (TypeClassConstraint types) -> m ()
 
   handleTypingError ::
-    MonadCompile m => TypingError types -> m a
+    (MonadCompile m) => TypingError types -> m a
 
 --------------------------------------------------------------------------------
 -- Operations
 
-getsMetaCtx :: MonadTypeChecker types m => (TypeCheckerState types -> a) -> m a
+getsMetaCtx :: (MonadTypeChecker types m) => (TypeCheckerState types -> a) -> m a
 getsMetaCtx f = f <$> getMetaState
 
-getNumberOfMetasCreated :: forall types m. MonadTypeChecker types m => Proxy types -> m Int
+getNumberOfMetasCreated :: forall types m. (MonadTypeChecker types m) => Proxy types -> m Int
 getNumberOfMetasCreated _ = getsMetaCtx @types (length . metaInfo)
 
 -- | Track the metas solved while performing the provided computation.
 -- Multiple calls can be nested arbitrarily deepily.
-trackSolvedMetas :: forall types m. MonadTypeChecker types m => Proxy types -> m () -> m MetaSet
+trackSolvedMetas :: forall types m. (MonadTypeChecker types m) => Proxy types -> m () -> m MetaSet
 trackSolvedMetas _ performComputation = do
   modifySolvedMetaState enterSolvedMetaTrackingRegion
 
@@ -221,7 +221,7 @@ trackSolvedMetas _ performComputation = do
           ..
         }
 
-getUnsolvedMetas :: forall types m. MonadTypeChecker types m => Proxy types -> m MetaSet
+getUnsolvedMetas :: forall types m. (MonadTypeChecker types m) => Proxy types -> m MetaSet
 getUnsolvedMetas proxy = do
   metasSolved <- MetaMap.keys <$> getMetaSubstitution @types
   numberOfMetasCreated <- getNumberOfMetasCreated proxy
@@ -239,7 +239,7 @@ getUnsolvedMetas proxy = do
 -- It returns the name of the meta and the expression of it applied to every
 -- variable in the context.
 freshMeta ::
-  MonadTypeChecker types m =>
+  (MonadTypeChecker types m) =>
   Provenance ->
   CheckedType types ->
   TypingBoundCtx types ->
@@ -268,7 +268,7 @@ freshMeta p metaType boundCtx = do
 
 -- | Ensures the meta has no dependencies on the bound context. Returns true
 -- if dependencies were removed to achieve this.
-removeMetaDependencies :: forall types m. MonadTypeChecker types m => Proxy types -> MetaID -> m Bool
+removeMetaDependencies :: forall types m. (MonadTypeChecker types m) => Proxy types -> MetaID -> m Bool
 removeMetaDependencies _ m = do
   MetaInfo p t ctx <- getMetaInfo @types m
   if null ctx
@@ -281,7 +281,7 @@ removeMetaDependencies _ m = do
 --------------------------------------------------------------------------------
 -- Meta information retrieval
 
-getMetaInfo :: MonadTypeChecker types m => MetaID -> m (MetaInfo types)
+getMetaInfo :: (MonadTypeChecker types m) => MetaID -> m (MetaInfo types)
 getMetaInfo m = do
   TypeCheckerState {..} <- getMetaState
   case metaInfo !!? getMetaIndex metaInfo m of
@@ -293,20 +293,20 @@ getMetaInfo m = do
 getMetaIndex :: [MetaInfo types] -> MetaID -> Int
 getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
 
-getMetaProvenance :: forall types m. MonadTypeChecker types m => Proxy types -> MetaID -> m Provenance
+getMetaProvenance :: forall types m. (MonadTypeChecker types m) => Proxy types -> MetaID -> m Provenance
 getMetaProvenance _ m = metaProvenance <$> getMetaInfo @types m
 
-getMetaType :: MonadTypeChecker types m => MetaID -> m (CheckedType types)
+getMetaType :: (MonadTypeChecker types m) => MetaID -> m (CheckedType types)
 getMetaType m = metaType <$> getMetaInfo m
 
-getSubstMetaType :: MonadTypeChecker types m => MetaID -> m (CheckedType types)
+getSubstMetaType :: (MonadTypeChecker types m) => MetaID -> m (CheckedType types)
 getSubstMetaType m = substMetas =<< getMetaType m
 
 -- | Get the bound context the meta-variable was created in.
-getMetaCtx :: MonadTypeChecker types m => MetaID -> m (TypingBoundCtx types)
+getMetaCtx :: (MonadTypeChecker types m) => MetaID -> m (TypingBoundCtx types)
 getMetaCtx m = metaCtx <$> getMetaInfo m
 
-extendBoundCtxOfMeta :: MonadTypeChecker types m => MetaID -> CheckedBinder types -> m ()
+extendBoundCtxOfMeta :: (MonadTypeChecker types m) => MetaID -> CheckedBinder types -> m ()
 extendBoundCtxOfMeta m binder =
   modifyMetaCtx
     ( \TypeCheckerState {..} -> do
@@ -323,11 +323,11 @@ extendBoundCtxOfMeta m binder =
               }
     )
 
-clearMetaSubstitution :: forall types m. MonadTypeChecker types m => Proxy types -> m ()
+clearMetaSubstitution :: forall types m. (MonadTypeChecker types m) => Proxy types -> m ()
 clearMetaSubstitution _ = modifyMetaCtx @types $ \TypeCheckerState {..} ->
   TypeCheckerState {currentSubstitution = mempty, ..}
 
-getSubstMetaTypes :: MonadTypeChecker types m => MetaSet -> m [(MetaID, CheckedType types)]
+getSubstMetaTypes :: (MonadTypeChecker types m) => MetaSet -> m [(MetaID, CheckedType types)]
 getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.toList metas)
 
 -- | Computes the set of all metas that are related via constraints to the
@@ -335,7 +335,7 @@ getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.
 -- satisfy the provided predicate.
 getMetasLinkedToMetasIn ::
   forall types m.
-  MonadTypeChecker types m =>
+  (MonadTypeChecker types m) =>
   [WithContext (Constraint types)] ->
   CheckedType types ->
   m MetaSet
@@ -372,7 +372,7 @@ abstractOverCtx ctx body = do
   let lam i@(_, _t) = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
   foldr lam body (reverse ctx)
 
-solveMeta :: forall types m. MonadTypeChecker types m => MetaID -> CheckedExpr types -> TypingBoundCtx types -> m ()
+solveMeta :: forall types m. (MonadTypeChecker types m) => MetaID -> CheckedExpr types -> TypingBoundCtx types -> m ()
 solveMeta m solution solutionCtx = do
   MetaInfo p _ metaCtx <- getMetaInfo m
   let abstractedSolution = abstractOverCtx metaCtx solution
@@ -412,24 +412,24 @@ solveMeta m solution solutionCtx = do
             ..
           }
 
-prettyMetas :: forall types m a. MonadTypeChecker types m => Proxy types -> MetaSet -> m (Doc a)
+prettyMetas :: forall types m a. (MonadTypeChecker types m) => Proxy types -> MetaSet -> m (Doc a)
 prettyMetas _ metas = do
   typedMetaList <- getSubstMetaTypes @types metas
   let docs = fmap (uncurry prettyMetaInternal) typedMetaList
   return $ prettySetLike docs
 
-prettyMeta :: forall types m a. MonadTypeChecker types m => Proxy types -> MetaID -> m (Doc a)
+prettyMeta :: forall types m a. (MonadTypeChecker types m) => Proxy types -> MetaID -> m (Doc a)
 prettyMeta _ meta = prettyMetaInternal meta <$> getMetaType @types meta
 
-prettyMetaInternal :: PrintableBuiltin types => MetaID -> CheckedType types -> Doc a
+prettyMetaInternal :: (PrintableBuiltin types) => MetaID -> CheckedType types -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
-clearMetaCtx :: forall types m. MonadTypeChecker types m => Proxy types -> m ()
+clearMetaCtx :: forall types m. (MonadTypeChecker types m) => Proxy types -> m ()
 clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
   modifyMetaCtx @types (const emptyTypeCheckerState)
 
-getDeclType :: MonadTypeChecker types m => Provenance -> Identifier -> m (CheckedType types)
+getDeclType :: (MonadTypeChecker types m) => Provenance -> Identifier -> m (CheckedType types)
 getDeclType p ident = do
   ctx <- getDeclContext
   case Map.lookup ident ctx of
@@ -448,46 +448,46 @@ getDeclType p ident = do
 --------------------------------------------------------------------------------
 -- Constraints
 
-generateFreshConstraintID :: forall types m. MonadTypeChecker types m => Proxy types -> m ConstraintID
+generateFreshConstraintID :: forall types m. (MonadTypeChecker types m) => Proxy types -> m ConstraintID
 generateFreshConstraintID _ = do
   freshID <- getsMetaCtx @types nextConstraintID
   modifyMetaCtx @types $ \TypeCheckerState {..} ->
     TypeCheckerState {nextConstraintID = nextConstraintID + 1, ..}
   return freshID
 
-getActiveConstraints :: MonadTypeChecker types m => m [WithContext (Constraint types)]
+getActiveConstraints :: (MonadTypeChecker types m) => m [WithContext (Constraint types)]
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
   ts <- fmap (mapObject TypeClassConstraint) <$> getActiveTypeClassConstraints
   return $ us <> ts
 
-getActiveUnificationConstraints :: MonadTypeChecker types m => m [WithContext (UnificationConstraint types)]
+getActiveUnificationConstraints :: (MonadTypeChecker types m) => m [WithContext (UnificationConstraint types)]
 getActiveUnificationConstraints = getsMetaCtx unificationConstraints
 
-getActiveTypeClassConstraints :: MonadTypeChecker types m => m [WithContext (TypeClassConstraint types)]
+getActiveTypeClassConstraints :: (MonadTypeChecker types m) => m [WithContext (TypeClassConstraint types)]
 getActiveTypeClassConstraints = getsMetaCtx typeClassConstraints
 
-setConstraints :: MonadTypeChecker types m => [WithContext (Constraint types)] -> m ()
+setConstraints :: (MonadTypeChecker types m) => [WithContext (Constraint types)] -> m ()
 setConstraints constraints = do
   let (us, ts) = separateConstraints constraints
   setUnificationConstraints us
   setTypeClassConstraints ts
 
-setTypeClassConstraints :: MonadTypeChecker types m => [WithContext (TypeClassConstraint types)] -> m ()
+setTypeClassConstraints :: (MonadTypeChecker types m) => [WithContext (TypeClassConstraint types)] -> m ()
 setTypeClassConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
   TypeCheckerState {typeClassConstraints = newConstraints, ..}
 
-setUnificationConstraints :: MonadTypeChecker types m => [WithContext (UnificationConstraint types)] -> m ()
+setUnificationConstraints :: (MonadTypeChecker types m) => [WithContext (UnificationConstraint types)] -> m ()
 setUnificationConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
   TypeCheckerState {unificationConstraints = newConstraints, ..}
 
-addConstraints :: MonadTypeChecker types m => [WithContext (Constraint types)] -> m ()
+addConstraints :: (MonadTypeChecker types m) => [WithContext (Constraint types)] -> m ()
 addConstraints constraints = do
   let (us, ts) = separateConstraints constraints
   addUnificationConstraints us
   addTypeClassConstraints ts
 
-addUnificationConstraints :: MonadTypeChecker types m => [WithContext (UnificationConstraint types)] -> m ()
+addUnificationConstraints :: (MonadTypeChecker types m) => [WithContext (UnificationConstraint types)] -> m ()
 addUnificationConstraints constraints = do
   unless (null constraints) $ do
     logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
@@ -495,7 +495,7 @@ addUnificationConstraints constraints = do
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
 
-addTypeClassConstraints :: MonadTypeChecker types m => [WithContext (TypeClassConstraint types)] -> m ()
+addTypeClassConstraints :: (MonadTypeChecker types m) => [WithContext (TypeClassConstraint types)] -> m ()
 addTypeClassConstraints constraints = do
   unless (null constraints) $ do
     logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
@@ -507,7 +507,7 @@ addTypeClassConstraints constraints = do
 -- derived from another constraint).
 createFreshUnificationConstraint ::
   forall types m.
-  MonadTypeChecker types m =>
+  (MonadTypeChecker types m) =>
   Provenance ->
   TypingBoundCtx types ->
   ConstraintOrigin types ->
@@ -526,7 +526,7 @@ createFreshUnificationConstraint p ctx origin expectedType actualType = do
   addUnificationConstraints [constraint]
 
 -- | Create a new fresh copy of the context for a new constraint
-copyContext :: forall types m. MonadTypeChecker types m => ConstraintContext types -> m (ConstraintContext types)
+copyContext :: forall types m. (MonadTypeChecker types m) => ConstraintContext types -> m (ConstraintContext types)
 copyContext (ConstraintContext _cid originProv originalConstraint creationProv _blockingStatus ctx) = do
   freshID <- generateFreshConstraintID (Proxy @types)
   return $ ConstraintContext freshID originProv originalConstraint creationProv unknownBlockingStatus ctx
@@ -535,10 +535,10 @@ copyContext (ConstraintContext _cid originProv originalConstraint creationProv _
 -- Constraints
 --------------------------------------------------------------------------------
 
-getBinderNameOrFreshName :: MonadTypeChecker types m => Maybe Name -> CheckedType types -> m Name
+getBinderNameOrFreshName :: (MonadTypeChecker types m) => Maybe Name -> CheckedType types -> m Name
 getBinderNameOrFreshName piName typ = case piName of
   Just x -> return x
   Nothing -> getFreshName typ
 
-glueNBE :: MonadNorm types m => Env types -> CheckedExpr types -> m (GluedExpr types)
+glueNBE :: (MonadNorm types m) => Env types -> CheckedExpr types -> m (GluedExpr types)
 glueNBE env e = Glued e <$> whnf env e

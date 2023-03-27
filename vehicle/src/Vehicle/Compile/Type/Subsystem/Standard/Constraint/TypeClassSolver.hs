@@ -23,7 +23,7 @@ import Vehicle.Libraries.StandardLibrary
 --------------------------------------------------------------------------------
 -- Solver
 
-solveTypeClassConstraint :: MonadInstance m => WithContext StandardTypeClassConstraint -> m ()
+solveTypeClassConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
 solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
   progress <- solve tc constraint spine
   case progress of
@@ -45,7 +45,7 @@ type TypeClassProgress = Either MetaSet ([WithContext StandardConstraint], Stand
 -- search.
 type TypeClassSolver =
   forall m.
-  MonadInstance m =>
+  (MonadInstance m) =>
   WithContext StandardTypeClassConstraint ->
   [StandardNormType] ->
   m TypeClassProgress
@@ -103,7 +103,7 @@ solveHasQuantifier _ c _ = malformedConstraintError c
 
 type HasQuantifierSolver =
   forall m.
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   Quantifier ->
   StandardConstraintContext ->
   StandardNormBinder ->
@@ -173,7 +173,7 @@ solveHasNatLits _ c _ = malformedConstraintError c
 
 type HasFromNatSolver =
   forall m.
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   Int ->
   StandardNormType ->
@@ -217,7 +217,7 @@ solveInDomain _ c _ = malformedConstraintError c
 -- Utilities
 
 unifyWithIndexType ::
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   StandardNormType ->
   m (WithContext StandardConstraint, StandardExpr)
@@ -228,7 +228,7 @@ unifyWithIndexType c t = do
   return (eq, unnormalised indexSize)
 
 unifyWithVectorType ::
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   StandardGluedExpr ->
   StandardNormType ->
@@ -239,13 +239,13 @@ unifyWithVectorType c dim t = do
   eq <- unify c t (VVectorType (normalised elemType) (normalised dim))
   return (eq, elemType)
 
-freshDimMeta :: MonadTypeClass m => StandardConstraintContext -> m StandardGluedExpr
+freshDimMeta :: (MonadTypeClass m) => StandardConstraintContext -> m StandardGluedExpr
 freshDimMeta c = do
   let p = provenanceOf c
   freshMetaExpr p (NatType p) (boundContext c)
 
 solveSimpleComparisonOp ::
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   StandardNormType ->
   StandardNormType ->
@@ -258,7 +258,7 @@ solveSimpleComparisonOp c arg1 arg2 fn = do
   return $ Right ([argEq], solution)
 
 solveIndexComparisonOp ::
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   StandardNormType ->
   StandardNormType ->
@@ -275,7 +275,7 @@ irrelevant :: [WithContext StandardConstraint] -> TypeClassProgress
 irrelevant newConstraints = Right (newConstraints, UnitLiteral mempty)
 
 blockOrThrowErrors ::
-  MonadTypeClass m =>
+  (MonadTypeClass m) =>
   StandardConstraintContext ->
   [StandardNormExpr] ->
   [CompileError] ->
@@ -287,7 +287,7 @@ blockOrThrowErrors ctx args err = do
     then throwError (head err)
     else return $ Left blockingMetas
 
-unless2 :: MonadPlus m => Bool -> a -> m a
+unless2 :: (MonadPlus m) => Bool -> a -> m a
 unless2 p a = if not p then return a else mzero
 
 tcArgError ::
@@ -303,7 +303,7 @@ tcArgError c arg op allowedTypes argIndex numberOfArgs =
     (isNMeta arg)
     (FailedBuiltinConstraintArgument c op arg allowedTypes argIndex numberOfArgs)
 
-blockOnMetas :: MonadCompile m => [StandardNormExpr] -> m TypeClassProgress
+blockOnMetas :: (MonadCompile m) => [StandardNormExpr] -> m TypeClassProgress
 blockOnMetas args = do
   let metas = mapMaybe getNMeta args
   return $ Left $ MetaSet.fromList metas
