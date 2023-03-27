@@ -53,10 +53,7 @@ compile resources logic typedProg = do
   let unnormalisedProg = fmap unnormalised expandedProg
   progWithoutInstanceArgs <- resolveInstanceArguments unnormalisedProg
   let descopedProg = descopeNamed progWithoutInstanceArgs
-  reformattedProg <- reformatLogicalOperators logic descopedProg --case compileNot (implementationOf logic) of
-    --Just {} -> return descopedProg
-    --Nothing -> reformatLogicalOperators logic descopedProg
-
+  reformattedProg <- reformatLogicalOperators logic descopedProg
 
   compileProg networkCtx logic reformattedProg
 
@@ -113,15 +110,6 @@ type MonadCompileLoss m =
     MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
   )
 
-flattenAnds :: InputArg -> NonEmpty InputArg
-flattenAnds arg = case argExpr arg of
-  V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
-  _ -> [arg]
-
-flattenOrs :: InputArg -> NonEmpty InputArg
-flattenOrs arg = case argExpr arg of
-  V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
-  _ -> [arg]
 
 compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> InputArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
@@ -355,6 +343,16 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
         | ident == V.identifierOf StdNotEqualsVector -> return $ V.App p1 (V.FreeVar p2 (V.identifierOf StdEqualsVector)) args
       -- Errors
       e -> throwError $ UnsupportedNegatedOperation logic notProv e
+
+    flattenAnds :: InputArg -> NonEmpty InputArg
+    flattenAnds arg = case argExpr arg of
+      V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
+      _ -> [arg]
+
+    flattenOrs :: InputArg -> NonEmpty InputArg
+    flattenOrs arg = case argExpr arg of
+      V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
+      _ -> [arg]
 
 -----------------------------------------------------------------------
 -- Debugging options
