@@ -122,8 +122,6 @@ flattenOrs :: InputArg -> NonEmpty InputArg
 flattenOrs arg = case argExpr arg of
   V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
   _ -> [arg]
---addToCtx :: MonadCompileLoss m => InputBinder -> m a -> m a
---addToCtx binder = local (\(a, b, c, ctx) -> (a, b, c, V.nameOf binder : ctx))
 
 compileArg :: MonadCompileLoss m => DifferentialLogicImplementation -> InputArg -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
@@ -202,9 +200,6 @@ compileBuiltinFunction f t args = case f of
   V.Or  ->  case compileOr t of
       Left binaryOr -> compileOp2 binaryOr t args
       Right naryOr -> return (naryOr args)
-    
-  --V.And -> compileOp2 (compileAnd t) t args
-  --V.Or -> compileOp2 (compileOr t) t args
   V.At -> compileOp2 At t args
   V.Not -> compileNotOp t args
   V.Implies -> compileOp2 (compileImplies t) t args

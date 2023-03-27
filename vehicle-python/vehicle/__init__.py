@@ -53,7 +53,7 @@ class LossFunctionTranslation:
         self.quantifier_sampling: Dict[str, Callable] = quantifier_sampling
         self.current_decl = None
 
-        self.debug: bool = True
+        self.debug: bool = False
         self.debug_vars: Set[Tuple[str, str]] = set()  # {('boundedByEpsilon', 'x')}
 
     def to_loss_function(
@@ -253,9 +253,6 @@ class LossFunctionTranslation:
             op = "max"
         elif quantifier == "Any":
             op = "min"
-        #elif quantifier == "ForallIn":
-        #    op = "max"
-        #    n = 
         else:
             internal_error_msg(
                 "Found a quantifier in the generated json that is not All nor Any."

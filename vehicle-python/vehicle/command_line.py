@@ -43,8 +43,6 @@ def call_vehicle_to_generate_loss_json(
             #LossFunction (uses DL2 by default), LossFunction-DL2, LossFunction-Godel, LossFunction-Lukasiewicz,
             #  LossFunction-Product, LossFunction-STL (in progress, not currently working)
             "LossFunction",
-             # for experiments,
-            #os.getenv('DLV'),
             "--specification",
             specification,
             "--outputFile",
