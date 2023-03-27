@@ -32,11 +32,11 @@ import Vehicle.Expr.Normalised
 type TypeCheckerTInternals types m =
   ReaderT (TypingDeclCtx types) (StateT (TypeCheckerState types) m)
 
-clearFreshNamesInternal :: Monad m => TypeCheckerTInternals builtin m ()
+clearFreshNamesInternal :: (Monad m) => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
-getFreshNameInternal :: Monad m => DBType builtin -> TypeCheckerTInternals builtin2 m Name
+getFreshNameInternal :: (Monad m) => DBType builtin -> TypeCheckerTInternals builtin2 m Name
 getFreshNameInternal _typ = do
   nameID <- gets freshNameState
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})
@@ -50,7 +50,7 @@ newtype TypeCheckerT types m a = TypeCheckerT
   }
   deriving (Functor, Applicative, Monad)
 
-runTypeCheckerT :: Monad m => TypingDeclCtx types -> TypeCheckerState types -> TypeCheckerT types m a -> m (a, TypeCheckerState types)
+runTypeCheckerT :: (Monad m) => TypingDeclCtx types -> TypeCheckerState types -> TypeCheckerT types m a -> m (a, TypeCheckerState types)
 runTypeCheckerT declCtx metaCtx (TypeCheckerT e) =
   runStateT (runReaderT e declCtx) metaCtx
 
@@ -82,11 +82,11 @@ instance (PrintableBuiltin types, MonadCompile m) => MonadTypeChecker types (Typ
 instance MonadTrans (TypeCheckerT types) where
   lift = TypeCheckerT . lift . lift
 
-instance MonadError e m => MonadError e (TypeCheckerT types m) where
+instance (MonadError e m) => MonadError e (TypeCheckerT types m) where
   throwError = lift . throwError
   catchError m f = TypeCheckerT (catchError (unTypeCheckerT m) (unTypeCheckerT . f))
 
-instance MonadLogger m => MonadLogger (TypeCheckerT types m) where
+instance (MonadLogger m) => MonadLogger (TypeCheckerT types m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -94,6 +94,6 @@ instance MonadLogger m => MonadLogger (TypeCheckerT types m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
 
-instance MonadReader r m => MonadReader r (TypeCheckerT types m) where
+instance (MonadReader r m) => MonadReader r (TypeCheckerT types m) where
   ask = lift ask
   local = mapTypeCheckerT . local

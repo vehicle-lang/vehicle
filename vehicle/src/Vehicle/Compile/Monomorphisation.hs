@@ -41,7 +41,7 @@ import Vehicle.Expr.Hashing ()
 -- http://mrg.doc.ic.ac.uk/publications/featherweight-go/main.pdf
 -- by Wen et al is a good starting point.
 monomorphise ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   Bool ->
   TypeCheckedProg ->
   m TypeCheckedProg
@@ -64,7 +64,7 @@ type CandidateApplications = HashMap Identifier (HashSet [TypeCheckedArg])
 type SubsitutionSolutions = HashMap (Identifier, [TypeCheckedArg]) Identifier
 
 traverseCandidateApplications ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   (Provenance -> Identifier -> [TypeCheckedArg] -> [TypeCheckedArg] -> m TypeCheckedExpr) ->
   TypeCheckedExpr ->
   m TypeCheckedExpr
@@ -101,18 +101,18 @@ type MonadCollect m =
     MonadReader Bool m
   )
 
-monomorphiseProg :: MonadCollect m => TypeCheckedProg -> m TypeCheckedProg
+monomorphiseProg :: (MonadCollect m) => TypeCheckedProg -> m TypeCheckedProg
 monomorphiseProg (Main decls) =
   Main . reverse . concat <$> traverse monomorphiseDecls (reverse decls)
 
-monomorphiseDecls :: MonadCollect m => TypeCheckedDecl -> m [TypeCheckedDecl]
+monomorphiseDecls :: (MonadCollect m) => TypeCheckedDecl -> m [TypeCheckedDecl]
 monomorphiseDecls decl = do
   logCompilerSection MaxDetail ("Checking" <+> quotePretty (identifierOf decl)) $ do
     newDecls <- monomorphiseDecl decl
     forM_ newDecls (traverse collectReferences)
     return newDecls
 
-monomorphiseDecl :: MonadCollect m => TypeCheckedDecl -> m [TypeCheckedDecl]
+monomorphiseDecl :: (MonadCollect m) => TypeCheckedDecl -> m [TypeCheckedDecl]
 monomorphiseDecl decl = case decl of
   DefPostulate {} -> return [decl]
   DefResource {} -> return [decl]
@@ -136,7 +136,7 @@ monomorphiseDecl decl = case decl of
         traverse (performMonomorphisation (p, ident, t, e) createNewName) (Set.toList applications)
 
 performMonomorphisation ::
-  MonadCollect m =>
+  (MonadCollect m) =>
   (Provenance, Identifier, TypeCheckedType, TypeCheckedExpr) ->
   Bool ->
   [TypeCheckedArg] ->
@@ -158,13 +158,13 @@ substituteArgsThrough = \case
     substituteArgsThrough (expr `substDBInto` t, expr `substDBInto` e, args)
   _ -> developerError "Unexpected type/body of function undergoing monomorphisation"
 
-collectReferences :: MonadCollect m => TypeCheckedExpr -> m ()
+collectReferences :: (MonadCollect m) => TypeCheckedExpr -> m ()
 collectReferences expr = do
   _ <- traverseCandidateApplications collectApplication expr
   return ()
 
 collectApplication ::
-  MonadCollect m =>
+  (MonadCollect m) =>
   Provenance ->
   Identifier ->
   [TypeCheckedArg] ->
@@ -183,11 +183,11 @@ type MonadInsert m =
     MonadReader SubsitutionSolutions m
   )
 
-insert :: MonadInsert m => TypeCheckedProg -> m TypeCheckedProg
+insert :: (MonadInsert m) => TypeCheckedProg -> m TypeCheckedProg
 insert = traverse (traverseCandidateApplications replaceCandidateApplication)
 
 replaceCandidateApplication ::
-  MonadInsert m =>
+  (MonadInsert m) =>
   Provenance ->
   Identifier ->
   [TypeCheckedArg] ->

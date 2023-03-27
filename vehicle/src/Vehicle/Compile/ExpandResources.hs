@@ -54,10 +54,10 @@ type MonadReadResources m =
     MonadExpandResources m
   )
 
-readResourcesInProg :: MonadReadResources m => StandardGluedProg -> m ()
+readResourcesInProg :: (MonadReadResources m) => StandardGluedProg -> m ()
 readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 
-readResourcesInDecl :: MonadReadResources m => StandardGluedDecl -> m ()
+readResourcesInDecl :: (MonadReadResources m) => StandardGluedDecl -> m ()
 readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
   DefPostulate {} -> return ()
@@ -95,10 +95,10 @@ type MonadInsertResources m =
     MonadCompile m
   )
 
-insertResourcesInProg :: MonadInsertResources m => StandardGluedProg -> m StandardGluedProg
+insertResourcesInProg :: (MonadInsertResources m) => StandardGluedProg -> m StandardGluedProg
 insertResourcesInProg (Main ds) = Main <$> insertDecls ds
 
-insertDecls :: MonadInsertResources m => [StandardGluedDecl] -> m [StandardGluedDecl]
+insertDecls :: (MonadInsertResources m) => [StandardGluedDecl] -> m [StandardGluedDecl]
 insertDecls [] = return []
 insertDecls (d : ds) = do
   norm <- normDecl d
@@ -113,7 +113,7 @@ insertDecls (d : ds) = do
       return $ decl : ds'
 
 insertDecl ::
-  MonadInsertResources m =>
+  (MonadInsertResources m) =>
   StandardGluedDecl ->
   m (Maybe StandardGluedDecl)
 insertDecl = \case
@@ -143,14 +143,14 @@ insertDecl = \case
     Network ->
       return Nothing
 
-lookupValue :: MonadCompile m => Identifier -> Map Name a -> m a
+lookupValue :: (MonadCompile m) => Identifier -> Map Name a -> m a
 lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
   Nothing ->
     compilerDeveloperError $
       "Somehow missed resource" <+> quotePretty ident <+> "on the first pass"
   Just value -> return value
 
-normDecl :: MonadInsertResources m => StandardGluedDecl -> m StandardGluedDecl
+normDecl :: (MonadInsertResources m) => StandardGluedDecl -> m StandardGluedDecl
 normDecl decl = do
   ctx <- gets (fmap normalised)
   for decl $ \(Glued unnorm norm) -> do

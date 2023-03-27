@@ -22,13 +22,13 @@ import Vehicle.Prelude.Logging.Class
 --------------------------------------------------------------------------------
 -- Class for logging backends
 
-class Monad m => MonadLoggingBackend m where
+class (Monad m) => MonadLoggingBackend m where
   output :: Message -> m ()
 
-instance MonadLoggingBackend m => MonadLoggingBackend (StateT s m) where
+instance (MonadLoggingBackend m) => MonadLoggingBackend (StateT s m) where
   output = lift . output
 
-instance MonadLoggingBackend m => MonadLoggingBackend (ReaderT s m) where
+instance (MonadLoggingBackend m) => MonadLoggingBackend (ReaderT s m) where
   output = lift . output
 
 --------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ newtype ImmediateBackendT m a = ImmediateBackendT
   }
   deriving (Functor, Applicative, Monad)
 
-instance MonadIO m => MonadLoggingBackend (ImmediateBackendT m) where
+instance (MonadIO m) => MonadLoggingBackend (ImmediateBackendT m) where
   output message = ImmediateBackendT $ do
     handle <- ask
     lift $ liftIO $ hPrint handle message
@@ -47,10 +47,10 @@ instance MonadIO m => MonadLoggingBackend (ImmediateBackendT m) where
 instance MonadTrans ImmediateBackendT where
   lift = ImmediateBackendT . lift
 
-instance MonadIO m => MonadIO (ImmediateBackendT m) where
+instance (MonadIO m) => MonadIO (ImmediateBackendT m) where
   liftIO = lift . liftIO
 
-runImmediateBackendT :: MonadIO m => Handle -> ImmediateBackendT m a -> m a
+runImmediateBackendT :: (MonadIO m) => Handle -> ImmediateBackendT m a -> m a
 runImmediateBackendT logHandle v = runReaderT (unImmediateBackendT v) logHandle
 
 --------------------------------------------------------------------------------
@@ -61,16 +61,16 @@ newtype SilentBackendT m a = SilentBackendT
   }
   deriving (Functor, Applicative, Monad)
 
-instance Monad m => MonadLoggingBackend (SilentBackendT m) where
+instance (Monad m) => MonadLoggingBackend (SilentBackendT m) where
   output _message = return ()
 
 instance MonadTrans SilentBackendT where
   lift = SilentBackendT
 
-instance MonadIO m => MonadIO (SilentBackendT m) where
+instance (MonadIO m) => MonadIO (SilentBackendT m) where
   liftIO = lift . liftIO
 
-instance MonadError e m => MonadError e (SilentBackendT m) where
+instance (MonadError e m) => MonadError e (SilentBackendT m) where
   throwError = lift . throwError
   catchError m f = SilentBackendT (catchError (unSilentBackendT m) (unSilentBackendT . f))
 
@@ -85,13 +85,13 @@ newtype DelayedBackendT m a = DelayedBackendT
   }
   deriving (Functor, Applicative, Monad)
 
-instance Monad m => MonadLoggingBackend (DelayedBackendT m) where
+instance (Monad m) => MonadLoggingBackend (DelayedBackendT m) where
   output m = DelayedBackendT $ tell [m]
 
 instance MonadTrans DelayedBackendT where
   lift = DelayedBackendT . lift
 
-instance MonadIO m => MonadIO (DelayedBackendT m) where
+instance (MonadIO m) => MonadIO (DelayedBackendT m) where
   liftIO = lift . liftIO
 
 runDelayedBackendT :: DelayedBackendT m a -> m (a, [Message])

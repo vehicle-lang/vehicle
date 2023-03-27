@@ -28,17 +28,17 @@ import Vehicle.Syntax.Parse.Error (ParseError (..))
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseProg :: MonadError ParseError m => Module -> Text -> m UnparsedProg
+readAndParseProg :: (MonadError ParseError m) => Module -> Text -> m UnparsedProg
 readAndParseProg modul txt =
   castBNFCError (elaborateProg modul) (parseExternalProg txt)
 
-parseDecl :: MonadError ParseError m => Module -> UnparsedDecl -> m InputDecl
+parseDecl :: (MonadError ParseError m) => Module -> UnparsedDecl -> m InputDecl
 parseDecl = elaborateDecl
 
-parseExpr :: MonadError ParseError m => Module -> UnparsedExpr -> m InputExpr
+parseExpr :: (MonadError ParseError m) => Module -> UnparsedExpr -> m InputExpr
 parseExpr = elaborateExpr
 
-readExpr :: MonadError ParseError m => Text -> m UnparsedExpr
+readExpr :: (MonadError ParseError m) => Text -> m UnparsedExpr
 readExpr txt = castBNFCError (return . UnparsedExpr) (parseExternalExpr txt)
 
 --------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ runExternalParser topLevel p t = p (runExternalLexer topLevel t)
 runExternalLexer :: Bool -> Text -> [External.Token]
 runExternalLexer topLevel = External.resolveLayout topLevel . External.myLexer
 
-castBNFCError :: MonadError ParseError m => (a -> m b) -> Either String a -> m b
+castBNFCError :: (MonadError ParseError m) => (a -> m b) -> Either String a -> m b
 castBNFCError f = \case
   Left err -> throwError $ RawParseError err
   Right value -> f value

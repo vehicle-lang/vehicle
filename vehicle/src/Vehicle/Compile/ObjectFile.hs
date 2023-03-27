@@ -53,7 +53,7 @@ readObjectFile specificationFile spec = do
             return $ Just result
 
 writeObjectFile ::
-  MonadIO m =>
+  (MonadIO m) =>
   FilePath ->
   SpecificationText ->
   StandardGluedProg ->

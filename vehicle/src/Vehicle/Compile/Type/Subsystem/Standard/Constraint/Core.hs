@@ -12,7 +12,7 @@ import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 type MonadInstance m = TCM StandardBuiltinType m
 
-getTypeClass :: MonadCompile m => StandardBuiltinType -> m TypeClass
+getTypeClass :: (MonadCompile m) => StandardBuiltinType -> m TypeClass
 getTypeClass = \case
   StandardTypeClass tc -> return tc
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

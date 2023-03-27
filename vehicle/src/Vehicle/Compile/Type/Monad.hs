@@ -64,13 +64,13 @@ type TCM types m =
     TypableBuiltin types
   )
 
-runTypeChecker :: Monad m => TypingDeclCtx types -> TypeCheckerT types m a -> m a
+runTypeChecker :: (Monad m) => TypingDeclCtx types -> TypeCheckerT types m a -> m a
 runTypeChecker declCtx e = fst <$> runTypeCheckerT declCtx emptyTypeCheckerState e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
 runTypeCheckerHypothetically ::
-  TCM types m =>
+  (TCM types m) =>
   TypeCheckerT types (ExceptT CompileError m) a ->
   m (Either CompileError (a, TypeCheckerState types))
 runTypeCheckerHypothetically e = do
@@ -88,12 +88,12 @@ runTypeCheckerHypothetically e = do
         return $ Left err
 
 -- | Accepts the hypothetical outcome of the type-checker.
-adoptHypotheticalState :: TCM types m => TypeCheckerState types -> m ()
+adoptHypotheticalState :: (TCM types m) => TypeCheckerState types -> m ()
 adoptHypotheticalState = modifyMetaCtx . const
 
 freshMetaIdAndExpr ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   Provenance ->
   CheckedType types ->
   TypingBoundCtx types ->
@@ -104,7 +104,7 @@ freshMetaIdAndExpr p t boundCtx = do
 
 freshMetaExpr ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   Provenance ->
   CheckedType types ->
   TypingBoundCtx types ->
@@ -115,7 +115,7 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 -- derived from another constraint).
 createFreshTypeClassConstraint ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   TypingBoundCtx types ->
   (CheckedExpr types, [CheckedArg types]) ->
   CheckedType types ->
@@ -144,7 +144,7 @@ createFreshTypeClassConstraint boundCtx (fun, funArgs) tcExpr = do
   return metaExpr
 
 instantiateArgForNonExplicitBinder ::
-  TCM types m =>
+  (TCM types m) =>
   TypingBoundCtx types ->
   Provenance ->
   (CheckedExpr types, [CheckedArg types]) ->
@@ -158,7 +158,7 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
     Instance {} -> createFreshTypeClassConstraint boundCtx origin binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
-debugError :: forall types m. TCM types m => Proxy types -> Int -> m ()
+debugError :: forall types m. (TCM types m) => Proxy types -> Int -> m ()
 debugError _ limit = do
   idd <- generateFreshConstraintID (Proxy @types)
   when (idd > limit) $ compilerDeveloperError "Hi"

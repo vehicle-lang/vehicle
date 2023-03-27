@@ -36,7 +36,7 @@ import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 --   2) convert the builtin strings into `Builtin`s
 
 class Elab vf vc where
-  elab :: MonadElab m => vf -> m vc
+  elab :: (MonadElab m) => vf -> m vc
 
 instance Elab B.Prog V.InputProg where
   elab (B.Main ds) = V.Main <$> traverse elab ds
@@ -50,7 +50,7 @@ instance Elab B.Decl V.InputDecl where
     B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure False <*> elab t <*> elab e
     B.DeclPost n t -> V.DefPostulate <$> mkProvenance n <*> elab n <*> elab t
 
-elabResource :: MonadElab m => NameToken -> B.Expr -> V.Resource -> m V.InputDecl
+elabResource :: (MonadElab m) => NameToken -> B.Expr -> V.Resource -> m V.InputDecl
 elabResource n t r = V.DefResource <$> mkProvenance n <*> elab n <*> pure r <*> elab t
 
 instance Elab B.Expr V.InputExpr where
@@ -79,7 +79,7 @@ instance Elab B.Binder V.InputBinder where
     B.IrrelevantImplicitBinder n e -> mkBinder n (Implicit False) Irrelevant e
     B.IrrelevantInstanceBinder n e -> mkBinder n (Instance False) Irrelevant e
     where
-      mkBinder :: MonadElab m => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m V.InputBinder
+      mkBinder :: (MonadElab m) => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m V.InputBinder
       mkBinder n v r e = do
         let form = V.BinderDisplayForm (V.NameAndType (tkSymbol n)) False
         p <- mkProvenance n
@@ -109,7 +109,7 @@ instance Elab B.NameToken V.Identifier where
     mod <- ask
     return $ Identifier mod $ tkSymbol n
 
-lookupBuiltin :: MonadElab m => B.BuiltinToken -> m V.Builtin
+lookupBuiltin :: (MonadElab m) => B.BuiltinToken -> m V.Builtin
 lookupBuiltin (BuiltinToken tk) = case V.builtinFromSymbol (tkSymbol tk) of
   Just v -> return v
   Nothing -> do
@@ -149,7 +149,7 @@ elabVec xs = do
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got
 -- the grammar wrong.
-convType :: MonadElab m => TypeToken -> m V.InputExpr
+convType :: (MonadElab m) => TypeToken -> m V.InputExpr
 convType tk = case Text.unpack (tkSymbol tk) of
   ('T' : 'y' : 'p' : 'e' : l) -> do
     p <- mkProvenance tk

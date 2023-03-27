@@ -318,11 +318,11 @@ writeTestSpecsFile :: FilePath -> TestSpecs -> IO ()
 writeTestSpecsFile testSpecFile testSpecs = do
   Text.writeFile testSpecFile (encodeTestSpecsPretty testSpecs)
 
-mergeTestSpecs :: HasCallStack => TestSpecs -> TestSpecs -> TestSpecs
+mergeTestSpecs :: (HasCallStack) => TestSpecs -> TestSpecs -> TestSpecs
 mergeTestSpecs (TestSpecs testSpecs1) testSpecs2 =
   foldr addOrReplaceTestSpec testSpecs2 testSpecs1
 
-addOrReplaceTestSpec :: HasCallStack => TestSpec -> TestSpecs -> TestSpecs
+addOrReplaceTestSpec :: (HasCallStack) => TestSpec -> TestSpecs -> TestSpecs
 addOrReplaceTestSpec newTestSpec (TestSpecs oldTestSpecs)
   | replaced = TestSpecs newTestSpecs
   | otherwise = TestSpecs $ newTestSpec <| oldTestSpecs

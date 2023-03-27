@@ -27,7 +27,7 @@ import Vehicle.Expr.Normalised
 --------------------------------------------------------------------------------
 -- Public interface
 
-solveInstanceConstraint :: MonadInstance m => WithContext StandardTypeClassConstraint -> m ()
+solveInstanceConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
 solveInstanceConstraint (WithContext constraint ctx) = do
   normConstraint@(Has _ b _) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
@@ -39,7 +39,7 @@ solveInstanceConstraint (WithContext constraint ctx) = do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-solve :: MonadInstance m => TypeClass -> WithContext StandardTypeClassConstraint -> m ()
+solve :: (MonadInstance m) => TypeClass -> WithContext StandardTypeClassConstraint -> m ()
 solve tc = case HashMap.lookup tc builtinInstances of
   Just builtinCandidates -> solveInstanceGoal builtinCandidates
   _ -> solveTypeClassConstraint
@@ -48,7 +48,7 @@ solve tc = case HashMap.lookup tc builtinInstances of
 -- https://agda.readthedocs.io/en/v2.6.2.2/language/instance-arguments.html#instance-resolution
 
 solveInstanceGoal ::
-  MonadInstance m =>
+  (MonadInstance m) =>
   [Provenance -> InstanceCandidate] ->
   WithContext StandardTypeClassConstraint ->
   m ()
@@ -105,13 +105,13 @@ solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta b spi
 
 -- | Locates any more candidates that are in the bound context of the constraint
 findCandidatesInBoundCtx ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   InstanceGoal ->
   StandardTypingBoundCtx ->
   m [WithContext InstanceCandidate]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: MonadCompile m => StandardTypingBoundCtx -> m [WithContext InstanceCandidate]
+    go :: (MonadCompile m) => StandardTypingBoundCtx -> m [WithContext InstanceCandidate]
     go = \case
       [] -> return []
       ((_, t) : localCtx) -> do
@@ -130,7 +130,7 @@ findCandidatesInBoundCtx goal ctx = go ctx
 -- Returns `Nothing` if it is definitely not a valid candidate and
 -- `Just` if it might be a valid candidate.
 checkCandidate ::
-  MonadInstance m =>
+  (MonadInstance m) =>
   StandardConstraintContext ->
   MetaID ->
   InstanceGoal ->
@@ -169,7 +169,7 @@ checkCandidate ctx meta goal candidate = do
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
 instantiateCandidateTelescope ::
-  MonadInstance m =>
+  (MonadInstance m) =>
   StandardConstraintContext ->
   WithContext InstanceCandidate ->
   m (StandardNormExpr, StandardExpr)
@@ -183,7 +183,7 @@ instantiateCandidateTelescope ctx (WithContext InstanceCandidate {..} candidateC
     return (normCandidateBody, candidateSol)
   where
     go ::
-      MonadInstance m =>
+      (MonadInstance m) =>
       Provenance ->
       StandardTypingBoundCtx ->
       (StandardExpr, [StandardArg]) ->

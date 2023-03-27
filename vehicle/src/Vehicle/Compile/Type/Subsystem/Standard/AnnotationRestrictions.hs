@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalised
 
 restrictStandardPropertyType ::
   forall m.
-  MonadTypeChecker StandardBuiltinType m =>
+  (MonadTypeChecker StandardBuiltinType m) =>
   DeclProvenance ->
   StandardGluedType ->
   m ()
@@ -35,7 +35,7 @@ restrictStandardPropertyType decl parameterType = go (normalised parameterType)
 -- Parameters
 
 restrictStandardParameterType ::
-  MonadTypeChecker StandardBuiltinType m =>
+  (MonadTypeChecker StandardBuiltinType m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -51,7 +51,7 @@ restrictStandardParameterType decl parameterType = do
   return $ unnormalised parameterType
 
 restrictStandardInferableParameterType ::
-  MonadTypeChecker StandardBuiltinType m =>
+  (MonadTypeChecker StandardBuiltinType m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -64,7 +64,7 @@ restrictStandardInferableParameterType decl parameterType = case normalised para
 
 restrictStandardDatasetType ::
   forall m.
-  MonadTypeChecker StandardBuiltinType m =>
+  (MonadTypeChecker StandardBuiltinType m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -95,7 +95,7 @@ restrictStandardDatasetType decl datasetType = do
 
 restrictStandardNetworkType ::
   forall m.
-  MonadTypeChecker StandardBuiltinType m =>
+  (MonadTypeChecker StandardBuiltinType m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType

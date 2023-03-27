@@ -22,7 +22,7 @@ data NormExpr types
   | VBuiltin (NormalisableBuiltin types) (ExplicitSpine types)
   deriving (Eq, Show, Generic)
 
-instance Serialize types => Serialize (NormExpr types)
+instance (Serialize types) => Serialize (NormExpr types)
 
 type NormArg types = GenericArg (NormExpr types)
 
@@ -131,7 +131,7 @@ data GluedExpr types = Glued
   }
   deriving (Show, Generic)
 
-instance Serialize types => Serialize (GluedExpr types)
+instance (Serialize types) => Serialize (GluedExpr types)
 
 instance HasProvenance (GluedExpr types) where
   provenanceOf = provenanceOf . unnormalised
@@ -144,8 +144,8 @@ type GluedProg types = GenericProg (GluedExpr types)
 
 type GluedDecl types = GenericDecl (GluedExpr types)
 
-traverseNormalised :: Monad m => (NormExpr types -> m (NormExpr types)) -> GluedExpr types -> m (GluedExpr types)
+traverseNormalised :: (Monad m) => (NormExpr types -> m (NormExpr types)) -> GluedExpr types -> m (GluedExpr types)
 traverseNormalised f (Glued u n) = Glued u <$> f n
 
-traverseUnnormalised :: Monad m => (NormalisableExpr types -> m (NormalisableExpr types)) -> GluedExpr types -> m (GluedExpr types)
+traverseUnnormalised :: (Monad m) => (NormalisableExpr types -> m (NormalisableExpr types)) -> GluedExpr types -> m (GluedExpr types)
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

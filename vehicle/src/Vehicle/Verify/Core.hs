@@ -26,7 +26,7 @@ type VerifierExecutable = FilePath
 -- | The type of methods to call a verifier on a query
 type VerifierInvocation =
   forall m.
-  MonadIO m =>
+  (MonadIO m) =>
   VerifierExecutable ->
   MetaNetwork ->
   QueryFile ->
@@ -92,18 +92,20 @@ type UserVariableCounterexample = [UserVariableAssignment]
 
 data QueryFormatID
   = MarabouQueryFormat
+  | VNNLibQueryFormat
   deriving (Show, Eq)
 
 instance Pretty QueryFormatID where
   pretty = \case
     MarabouQueryFormat -> "Marabou query format"
+    VNNLibQueryFormat -> "VNNLib query format"
 
 -- | A format for an output query that verifiers can parse.
 data QueryFormat = QueryFormat
   { queryFormatID :: QueryFormatID,
     queryOutputFormat :: ExternalOutputFormat,
     -- | The command to compile an individual query
-    compileQuery :: forall m. MonadLogger m => CLSTProblem NetworkVariable -> m QueryText
+    compileQuery :: forall m. (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
   }
 
 --------------------------------------------------------------------------------
@@ -114,9 +116,9 @@ data QueryResult witness
   | UnSAT
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
-instance FromJSON witness => FromJSON (QueryResult witness)
+instance (FromJSON witness) => FromJSON (QueryResult witness)
 
-instance ToJSON witness => ToJSON (QueryResult witness)
+instance (ToJSON witness) => ToJSON (QueryResult witness)
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

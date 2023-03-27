@@ -69,12 +69,12 @@ instance ToJSON ResourcesIntegrityInfo
 --------------------------------------------------------------------------------
 -- Hashing
 
-hashFileContents :: MonadIO m => FilePath -> m Int
+hashFileContents :: (MonadIO m) => FilePath -> m Int
 hashFileContents filePath = do
   fileContents <- liftIO $ ByteString.readFile filePath
   return $ hash fileContents
 
-generateResourceIntegrityInfo :: MonadIO m => (Name, FilePath) -> m ResourceIntegrityInfo
+generateResourceIntegrityInfo :: (MonadIO m) => (Name, FilePath) -> m ResourceIntegrityInfo
 generateResourceIntegrityInfo (name, filePath) = do
   fileHash <-
     liftIO $
@@ -96,7 +96,7 @@ generateResourceIntegrityInfo (name, filePath) = do
         fileHash = fileHash
       }
 
-generateResourcesIntegrityInfo :: MonadIO m => Resources -> m ResourcesIntegrityInfo
+generateResourcesIntegrityInfo :: (MonadIO m) => Resources -> m ResourcesIntegrityInfo
 generateResourcesIntegrityInfo Resources {..} = do
   specificationSummary <- generateResourceIntegrityInfo ("specification", specification)
   networkSummaries <- forM (assocs networks) generateResourceIntegrityInfo
@@ -114,7 +114,7 @@ data ResourceIntegrityStatus
   | Altered
   | Missing
 
-checkResourceIntegrity :: MonadIO m => ResourceIntegrityInfo -> m ResourceIntegrityStatus
+checkResourceIntegrity :: (MonadIO m) => ResourceIntegrityInfo -> m ResourceIntegrityStatus
 checkResourceIntegrity ResourceIntegrityInfo {..} = do
   maybeNewHash <-
     liftIO $
@@ -129,7 +129,7 @@ checkResourceIntegrity ResourceIntegrityInfo {..} = do
       | otherwise -> Unchanged
 
 checkResourcesIntegrity ::
-  MonadIO m =>
+  (MonadIO m) =>
   [ResourceIntegrityInfo] ->
   m ([ResourceIntegrityInfo], [ResourceIntegrityInfo])
 checkResourcesIntegrity = \case
@@ -143,7 +143,7 @@ checkResourcesIntegrity = \case
       Missing -> (r : missing, altered)
 
 checkIntegrityOfResources ::
-  MonadIO m =>
+  (MonadIO m) =>
   ResourcesIntegrityInfo ->
   m ([ResourceIntegrityInfo], [ResourceIntegrityInfo])
 checkIntegrityOfResources ResourcesIntegrityInfo {..} =
@@ -165,7 +165,7 @@ reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) me
 -- Others
 
 warnIfUnusedResources ::
-  MonadLogger m =>
+  (MonadLogger m) =>
   Resource ->
   Map Name a ->
   Map Name b ->

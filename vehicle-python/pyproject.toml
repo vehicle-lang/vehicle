@@ -15,7 +15,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
-tensorflow = "^2.10" # TODO: lowest possible tensorflow bound?
+tensorflow = "^2.11" # TODO: lowest possible tensorflow bound?
 numpy = "^1.24" # TODO: lowest possible numpy bound?
 
 [tool.poetry.extras]

@@ -62,7 +62,7 @@ typeCheckExpr imports expr1 =
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: TCM types m => [UncheckedDecl StandardBuiltinType] -> m [GluedDecl types]
+typeCheckDecls :: (TCM types m) => [UncheckedDecl StandardBuiltinType] -> m [GluedDecl types]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +70,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall types m. TCM types m => UncheckedDecl StandardBuiltinType -> m (GluedDecl types)
+typeCheckDecl :: forall types m. (TCM types m) => UncheckedDecl StandardBuiltinType -> m (GluedDecl types)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -102,7 +102,7 @@ convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
         CType t -> convertFromStandardTypes p2 t args
 
 typeCheckPostulate ::
-  TCM types m =>
+  (TCM types m) =>
   Provenance ->
   Identifier ->
   UncheckedType types ->
@@ -113,7 +113,7 @@ typeCheckPostulate p ident typ = do
   return $ DefPostulate p ident gluedType
 
 typeCheckResource ::
-  TCM types m =>
+  (TCM types m) =>
   Provenance ->
   Identifier ->
   Resource ->
@@ -144,7 +144,7 @@ typeCheckResource p ident resource uncheckedType = do
   return gluedDecl
 
 typeCheckFunction ::
-  TCM types m =>
+  (TCM types m) =>
   Provenance ->
   Identifier ->
   Bool ->
@@ -184,7 +184,7 @@ typeCheckFunction p ident isProperty typ body = do
       gluedDecl <- traverse (glueNBE mempty) checkedDecl3
       return gluedDecl
 
-checkDeclType :: TCM types m => Identifier -> UncheckedExpr types -> m (CheckedType types)
+checkDeclType :: (TCM types m) => Identifier -> UncheckedExpr types -> m (CheckedType types)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
@@ -193,7 +193,7 @@ checkDeclType ident declType = do
     return checkedType
 
 restrictResourceType ::
-  TCM types m =>
+  (TCM types m) =>
   Resource ->
   DeclProvenance ->
   GluedType types ->
@@ -207,7 +207,7 @@ restrictResourceType resource decl@(ident, _) resourceType = do
       Dataset -> restrictDatasetType decl resourceType
       Network -> restrictNetworkType decl resourceType
 
-assertDeclTypeIsType :: TCM types m => Identifier -> CheckedType types -> m ()
+assertDeclTypeIsType :: (TCM types m) => Identifier -> CheckedType types -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
@@ -226,11 +226,11 @@ assertDeclTypeIsType ident actualType = do
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: forall types m. TCM types m => Maybe (CheckedDecl types) -> m ()
+solveConstraints :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> m ()
 solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
-    loopOverConstraints :: TCM types m => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()
+    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()
     loopOverConstraints recentlySolvedMetas loopNumber decl = do
       unsolvedConstraints <- getActiveConstraints @types
 
@@ -267,7 +267,7 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runInstanceSolver :: forall types m. TCM types m => Proxy types -> MetaSet -> m ()
+runInstanceSolver :: forall types m. (TCM types m) => Proxy types -> MetaSet -> m ()
 runInstanceSolver _ metasSolved =
   logCompilerPass MaxDetail ("instance solver run" <> line) $
     runConstraintSolver @types
@@ -279,7 +279,7 @@ runInstanceSolver _ metasSolved =
 -- | Attempts to solve as many unification constraints as possible. Takes in
 -- the set of meta-variables solved since unification was last run and outputs
 -- the set of meta-variables solved during this run.
-runUnificationSolver :: forall types m. TCM types m => Proxy types -> MetaSet -> m ()
+runUnificationSolver :: forall types m. (TCM types m) => Proxy types -> MetaSet -> m ()
 runUnificationSolver _ metasSolved =
   logCompilerPass MaxDetail "unification solver run" $
     runConstraintSolver @types
@@ -291,7 +291,7 @@ runUnificationSolver _ metasSolved =
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
 
-checkAllUnknownsSolved :: TCM types m => Proxy types -> m ()
+checkAllUnknownsSolved :: (TCM types m) => Proxy types -> m ()
 checkAllUnknownsSolved proxy = do
   -- First check all user constraints (i.e. unification and type-class
   -- constraints) are solved.
@@ -303,14 +303,14 @@ checkAllUnknownsSolved proxy = do
   -- ...and the fresh names
   clearFreshNames proxy
 
-checkAllConstraintsSolved :: forall types m. TCM types m => Proxy types -> m ()
+checkAllConstraintsSolved :: forall types m. (TCM types m) => Proxy types -> m ()
 checkAllConstraintsSolved _ = do
   constraints <- getActiveConstraints @types
   case constraints of
     [] -> return ()
     (c : cs) -> handleTypingError $ UnsolvableConstraints (c :| cs)
 
-checkAllMetasSolved :: TCM types m => Proxy types -> m ()
+checkAllMetasSolved :: (TCM types m) => Proxy types -> m ()
 checkAllMetasSolved proxy = do
   unsolvedMetas <- getUnsolvedMetas proxy
   case MetaSet.toList unsolvedMetas of
@@ -325,7 +325,7 @@ checkAllMetasSolved proxy = do
           )
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: forall types m. TCM types m => Maybe (CheckedDecl types) -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   whenM (loggingLevelAtLeast MaxDetail) $ do
     newSubstitution <- getMetaSubstitution @types
@@ -375,7 +375,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
             <> indent 2 (prettyExternal decl)
             <> line
 
-prettyBlockedConstraints :: PrintableBuiltin types => [WithContext (Constraint types)] -> Doc a
+prettyBlockedConstraints :: (PrintableBuiltin types) => [WithContext (Constraint types)] -> Doc a
 prettyBlockedConstraints constraints = do
   let pairs = fmap (\c -> prettyFriendly c <> "   " <> pretty (blockedBy $ contextOf c)) constraints
   prettySetLike pairs

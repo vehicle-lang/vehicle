@@ -26,7 +26,7 @@ import Vehicle.Expr.DeBruijn
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   m (CheckedDecl types)
 generaliseOverUnsolvedConstraints decl =
@@ -40,7 +40,7 @@ generaliseOverUnsolvedConstraints decl =
     return generalisedDecl
 
 generaliseOverConstraint ::
-  TCM types m =>
+  (TCM types m) =>
   [WithContext (Constraint types)] ->
   (CheckedDecl types, [WithContext (TypeClassConstraint types)]) ->
   WithContext (TypeClassConstraint types) ->
@@ -64,7 +64,7 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
       return (generalisedDecl, rejected)
 
 prependConstraint ::
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   WithContext (TypeClassConstraint types) ->
   m (CheckedDecl types)
@@ -85,7 +85,7 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 -- type and then solves the meta as that new variable.
 generaliseOverUnsolvedMetaVariables ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   m (CheckedDecl types)
 generaliseOverUnsolvedMetaVariables decl = do
@@ -105,7 +105,7 @@ generaliseOverUnsolvedMetaVariables decl = do
 
 quantifyOverMeta ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   MetaID ->
   m (CheckedDecl types)
@@ -134,7 +134,7 @@ isMeta _ = False
 
 prependBinderAndSolveMeta ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   MetaID ->
   BinderDisplayForm ->
   Visibility ->
@@ -183,7 +183,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 
 removeContextsOfMetasIn ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedType types ->
   CheckedDecl types ->
   m (CheckedType types, CheckedDecl types)

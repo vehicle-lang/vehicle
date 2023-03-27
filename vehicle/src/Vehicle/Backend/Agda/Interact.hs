@@ -20,5 +20,6 @@ agdaOutputFormat =
   ExternalOutputFormat
     { formatName = "Agda",
       formatVersion = Just $ makeVersion [2, 6, 2],
-      commentToken = "--"
+      commentToken = "--",
+      emptyLines = True
     }

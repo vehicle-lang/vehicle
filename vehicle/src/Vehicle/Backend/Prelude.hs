@@ -96,7 +96,9 @@ prependfileHeader doc format = case format of
           ]
       )
       <> line
-      <> line
+      -- Marabou query format doesn't current support empty lines.
+      -- See https://github.com/NeuralNetworkVerification/Marabou/issues/625
+      <> (if emptyLines then line else "")
       <> doc
     where
       targetVersion = maybe "unknown" pretty formatVersion

@@ -26,11 +26,11 @@ data GenericArg expr = Arg
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance NFData expr => NFData (GenericArg expr)
+instance (NFData expr) => NFData (GenericArg expr)
 
-instance ToJSON expr => ToJSON (GenericArg expr)
+instance (ToJSON expr) => ToJSON (GenericArg expr)
 
-instance Serialize expr => Serialize (GenericArg expr)
+instance (Serialize expr) => Serialize (GenericArg expr)
 
 instance HasProvenance (GenericArg expr) where
   provenanceOf = argProvenance
@@ -75,7 +75,7 @@ replaceArgExpr :: expr1 -> GenericArg expr2 -> GenericArg expr1
 replaceArgExpr e = fmap (const e)
 
 traverseNonInstanceArgExpr ::
-  Monad m =>
+  (Monad m) =>
   (expr -> m expr) ->
   GenericArg expr ->
   m (GenericArg expr)

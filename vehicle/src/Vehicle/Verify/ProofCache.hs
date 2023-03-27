@@ -27,7 +27,7 @@ instance FromJSON ProofCache
 
 instance ToJSON ProofCache
 
-writeProofCache :: MonadIO m => FilePath -> ProofCache -> m ()
+writeProofCache :: (MonadIO m) => FilePath -> ProofCache -> m ()
 writeProofCache file status = do
   let filepath = dropExtension file <> vehicleProofCacheFileExtension
   liftIO $ ByteString.writeFile filepath (encodePretty status)

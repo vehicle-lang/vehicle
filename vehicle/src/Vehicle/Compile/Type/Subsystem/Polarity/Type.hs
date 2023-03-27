@@ -141,19 +141,19 @@ typeOfVecLiteral n = go n unquantified
                 ~~~> li
                 ~> go (i - 1) newMax
 
-handlePolarityTypingError :: MonadCompile m => TypingError PolarityType -> m a
+handlePolarityTypingError :: (MonadCompile m) => TypingError PolarityType -> m a
 handlePolarityTypingError b =
   compilerDeveloperError $ "Polarity type system should not be throwing error:" <+> pretty b
 
-relevanceOfTypeClass :: MonadCompile m => PolarityType -> m Relevance
+relevanceOfTypeClass :: (MonadCompile m) => PolarityType -> m Relevance
 relevanceOfTypeClass _b = return Relevant
 
-freshPolarityMeta :: MonadTypeChecker PolarityType m => Provenance -> m (GluedExpr PolarityType)
+freshPolarityMeta :: (MonadTypeChecker PolarityType m) => Provenance -> m (GluedExpr PolarityType)
 freshPolarityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
 
 convertToPolarityTypes ::
   forall m.
-  MonadTypeChecker PolarityType m =>
+  (MonadTypeChecker PolarityType m) =>
   Provenance ->
   StandardBuiltinType ->
   [UncheckedArg PolarityType] ->

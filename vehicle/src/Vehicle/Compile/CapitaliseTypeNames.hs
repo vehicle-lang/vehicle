@@ -34,7 +34,7 @@ isTypeDef t = case t of
     go _ = False
 
 class CapitaliseTypes a where
-  cap :: MonadState (Set Identifier) m => a -> m a
+  cap :: (MonadState (Set Identifier) m) => a -> m a
 
 instance CapitaliseTypes TypeCheckedProg where
   cap (Main ds) = Main <$> traverse cap ds

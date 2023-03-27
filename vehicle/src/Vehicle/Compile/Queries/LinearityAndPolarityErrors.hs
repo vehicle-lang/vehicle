@@ -24,7 +24,7 @@ import Vehicle.Verify.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
@@ -48,7 +48,7 @@ diagnoseNonLinearity queryFormat prog propertyIdentifier = do
 
 diagnoseAlternatingQuantifiers ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
@@ -83,7 +83,7 @@ typeCheckWithSubsystem prog = do
   runTypeChecker @m @types mempty $
     typeCheckProg mempty implicitFreeProg
 
-resolveInstanceArguments :: forall m. MonadCompile m => StandardProg -> m StandardProg
+resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
     result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
@@ -97,7 +97,7 @@ resolveInstanceArguments prog =
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args
 
-removeImplicitAndInstanceArgs :: forall m. MonadCompile m => TypeCheckedProg -> m TypeCheckedProg
+removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =
   logCompilerPass MaxDetail "removal of implicit arguments" $ do
     result <- traverse go prog

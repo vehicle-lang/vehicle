@@ -56,12 +56,12 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: MonadIO m => Doc a -> m b
+fatalError :: (MonadIO m) => Doc a -> m b
 fatalError message = liftIO $ do
   hPrint stderr message
   exitFailure
 
-programOutput :: MonadIO m => Doc a -> m ()
+programOutput :: (MonadIO m) => Doc a -> m ()
 programOutput message = liftIO $ print message
 
 --------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ fallbackVehiclePathVariable = case os of
   -- All other systems
   _ -> "HOME"
 
-getVehiclePath :: MonadIO m => m FilePath
+getVehiclePath :: (MonadIO m) => m FilePath
 getVehiclePath = do
   vehiclePathVar <- liftIO $ lookupEnv vehiclePathVariable
   vehiclePath <- case vehiclePathVar of
@@ -103,5 +103,6 @@ getVehiclePath = do
 data ExternalOutputFormat = ExternalOutputFormat
   { formatName :: forall a. Doc a,
     formatVersion :: Maybe Version,
-    commentToken :: forall a. Doc a
+    commentToken :: forall a. Doc a,
+    emptyLines :: Bool
   }

@@ -21,13 +21,19 @@ module Vehicle.Compile.Queries.LinearExpr
     filterTrivialAssertions,
     eliminateVar,
     prettyCoefficient,
+    convertToSparseFormat,
   )
 where
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
+import Data.List (sortOn)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 import GHC.Generics (Generic)
@@ -54,6 +60,12 @@ instance Pretty Relation where
     LessThan -> "<"
     LessThanOrEqualTo -> "<="
 
+relationToOp :: Relation -> Either () OrderOp
+relationToOp = \case
+  Equal -> Left ()
+  LessThan -> Right Lt
+  LessThanOrEqualTo -> Right Le
+
 --------------------------------------------------------------------------------
 -- Variables
 
@@ -61,7 +73,7 @@ type Coefficient = Double
 
 type LinearVar = Int
 
-prettyVar :: IsVariable variable => Bool -> (Coefficient, Maybe variable) -> Doc a
+prettyVar :: (IsVariable variable) => Bool -> (Coefficient, Maybe variable) -> Doc a
 prettyVar isFirst (coefficient, variable) = do
   let sign
         | coefficient > 0 = if isFirst then "" else "+ "
@@ -97,12 +109,12 @@ class LinearExpression linexp where
   hasVariablesBelow :: LinearVar -> linexp -> Bool
   dropVariablesBelow :: LinearVar -> linexp -> linexp
 
-evaluateExpr :: LinearExpression linExpr => linExpr -> Vector Double -> Double
+evaluateExpr :: (LinearExpression linExpr) => linExpr -> Vector Double -> Double
 evaluateExpr expr values = do
   let (coeff, constant) = splitOutConstant expr
   Vector.sum (Vector.zipWith (*) coeff values) + constant
 
-splitOutConstant :: LinearExpression linExp => linExp -> (Vector Coefficient, Coefficient)
+splitOutConstant :: (LinearExpression linExp) => linExp -> (Vector Coefficient, Coefficient)
 splitOutConstant expr = do
   let Dense coeff = toDense expr
   case Vector.unsnoc coeff of
@@ -119,7 +131,7 @@ prettyLinearExpr variables expr = do
     [] -> "0.0"
     (x : xs) -> hsep (prettyVar True x : fmap (prettyVar False) xs)
 
-eliminateVar :: LinearExpression linexpr => LinearVar -> linexpr -> linexpr -> linexpr
+eliminateVar :: (LinearExpression linexpr) => LinearVar -> linexpr -> linexpr -> linexpr
 eliminateVar var solution row = do
   let varCoefficient = lookupAt row var
   if varCoefficient == 0
@@ -272,15 +284,15 @@ data Assertion linexp = Assertion
   }
   deriving (Show, Functor, Generic)
 
-instance ToJSON linexp => ToJSON (Assertion linexp)
+instance (ToJSON linexp) => ToJSON (Assertion linexp)
 
-instance FromJSON linexp => FromJSON (Assertion linexp)
+instance (FromJSON linexp) => FromJSON (Assertion linexp)
 
 isEquality :: Assertion linexp -> Bool
 isEquality a = assertionRel a == Equal
 
 constructAssertion ::
-  LinearExpression linexp =>
+  (LinearExpression linexp) =>
   (linexp, Relation, linexp) ->
   Assertion linexp
 constructAssertion (lhs, rel, rhs) =
@@ -305,14 +317,14 @@ prettyAssertions ::
 prettyAssertions varNames assertions =
   indent 2 $ vsep (fmap (prettyAssertion varNames) assertions)
 
-substitute :: LinearExpression linexp => Assertion linexp -> LinearVar -> linexp -> Assertion linexp
+substitute :: (LinearExpression linexp) => Assertion linexp -> LinearVar -> linexp -> Assertion linexp
 substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)
 
-hasUserVariables :: LinearExpression linexp => Int -> Assertion linexp -> Bool
+hasUserVariables :: (LinearExpression linexp) => Int -> Assertion linexp -> Bool
 hasUserVariables numberOfUserVariables (Assertion _ e) =
   hasVariablesBelow numberOfUserVariables e
 
-removeUserVariables :: LinearExpression linexp => Int -> Assertion linexp -> Assertion linexp
+removeUserVariables :: (LinearExpression linexp) => Int -> Assertion linexp -> Assertion linexp
 removeUserVariables numberOfUserVariables (Assertion rel e) = do
   Assertion rel (dropVariablesBelow numberOfUserVariables e)
 
@@ -321,7 +333,7 @@ removeUserVariables numberOfUserVariables (Assertion rel e) = do
 -- | Checks whether an assertion is trivial or not. Returns `Nothing` if
 -- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
 -- if it is trivial.
-checkTriviality :: LinearExpression linexp => Assertion linexp -> Maybe Bool
+checkTriviality :: (LinearExpression linexp) => Assertion linexp -> Maybe Bool
 checkTriviality (Assertion rel linexp) =
   case isConstant linexp of
     Nothing -> Nothing
@@ -332,7 +344,7 @@ checkTriviality (Assertion rel linexp) =
 
 filterTrivialAssertions ::
   forall linexp.
-  LinearExpression linexp =>
+  (LinearExpression linexp) =>
   [Assertion linexp] ->
   Maybe [Assertion linexp]
 filterTrivialAssertions = go
@@ -346,6 +358,50 @@ filterTrivialAssertions = go
         Just True -> Just as'
         Just False -> Nothing
 
+-- | Converts an assertion to a sparse format, with various optimisations
+-- to improve readability, including:
+--   1. sorting the variables alphabetically
+--   2. negating everything if all variables have negative coefficients.
+--   3. moving the constant to the RHS.
+convertToSparseFormat ::
+  (LinearExpression linexp) =>
+  Assertion linexp ->
+  Seq Name ->
+  (NonEmpty (Coefficient, Name), Either () OrderOp, Coefficient)
+convertToSparseFormat (Assertion rel linearExpr) variableNames = do
+  let Sparse _ coeffs constant = toSparse linearExpr
+  let varCoeff = sortOn fst $ HashMap.toList coeffs
+  let lookupName (v, c) = (c, variableNames `Seq.index` v)
+  let coeffVars = lookupName <$> varCoeff
+  let op = relationToOp rel
+
+  -- Move constant to RHS
+  let rhsConstant = -constant
+
+  -- Make the properties a tiny bit nicer by checking if all the vars are
+  -- negative and if so negating everything.
+  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffVars
+  let (almostFinalCoeff, finalOp, almostFinalConstant) =
+        if not allCoefficientsNegative
+          then (coeffVars, op, rhsConstant)
+          else do
+            let negCoeffVars = fmap (\(c, v) -> (-c, v)) coeffVars
+            let negOp = second flipOrder op
+            let negConstant = -rhsConstant
+            (negCoeffVars, negOp, negConstant)
+
+  -- Also check for and remove `-0.0`s for cleanliness.
+  let finalConstant =
+        if isNegativeZero almostFinalConstant
+          then 0.0
+          else almostFinalConstant
+
+  let finalCoeff = case almostFinalCoeff of
+        (c : cs) -> c :| cs
+        [] -> developerError "Found trivial assertion"
+
+  (finalCoeff, finalOp, finalConstant)
+
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem
 
@@ -356,7 +412,7 @@ type SolvingLinearExpr = SparseLinearExpr
 -- variables it is over.
 data CLSTProblem var = CLSTProblem [var] [Assertion SolvingLinearExpr]
 
-instance IsVariable variable => Pretty (CLSTProblem variable) where
+instance (IsVariable variable) => Pretty (CLSTProblem variable) where
   pretty (CLSTProblem varNames assertions) = prettyAssertions varNames assertions
 
 type VariableAssignment = Vector Double

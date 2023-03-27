@@ -21,7 +21,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   ImportedModules ->
   UnscopedProg ->
   m ScopedProg
@@ -30,7 +30,7 @@ scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   prog <- runReaderT (scopeProg e) importCtx
   return prog
 
-scopeCheckClosedExpr :: MonadCompile m => UnscopedExpr -> m ScopedExpr
+scopeCheckClosedExpr :: (MonadCompile m) => UnscopedExpr -> m ScopedExpr
 scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 
 --------------------------------------------------------------------------------
@@ -63,10 +63,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: MonadScope m => UnscopedProg -> m ScopedProg
+scopeProg :: (MonadScope m) => UnscopedProg -> m ScopedProg
 scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: MonadScope m => [UnscopedDecl] -> m [ScopedDecl]
+scopeDecls :: (MonadScope m) => [UnscopedDecl] -> m [ScopedDecl]
 scopeDecls = \case
   [] -> return []
   (d : ds) -> do
@@ -108,7 +108,7 @@ scopeDeclExpr generalise expr = do
 
   runReaderT (scopeExpr exprToScope) (declCtx, mempty)
 
-bindDecl :: MonadScope m => Identifier -> m a -> m a
+bindDecl :: (MonadScope m) => Identifier -> m a -> m a
 bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 --------------------------------------------------------------------------------
@@ -116,13 +116,13 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: MonadCompile m => DeclScopeCtx -> UnscopedExpr -> m UnscopedExpr
+generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> UnscopedExpr -> m UnscopedExpr
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
 
 findGeneralisableVariables ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   DeclScopeCtx ->
   UnscopedExpr ->
   m [GeneralisableVariable]
@@ -141,14 +141,14 @@ findGeneralisableVariables declContext expr =
       return $ BoundVar p symbol
 
 generaliseOverVariables ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   [GeneralisableVariable] ->
   UnscopedExpr ->
   m UnscopedExpr
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
-      MonadCompile m =>
+      (MonadCompile m) =>
       (UnscopedExpr, Set Name) ->
       GeneralisableVariable ->
       m (UnscopedExpr, Set Name)
@@ -171,11 +171,11 @@ type MonadScopeExpr m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-scopeExpr :: MonadScopeExpr m => UnscopedExpr -> m ScopedExpr
+scopeExpr :: (MonadScopeExpr m) => UnscopedExpr -> m ScopedExpr
 scopeExpr = traverseVars scopeVar
 
 -- | Find the index for a given name of a given sort.
-scopeVar :: MonadScopeExpr m => VarUpdate m Name DBIndex
+scopeVar :: (MonadScopeExpr m) => VarUpdate m Name DBIndex
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
@@ -198,7 +198,7 @@ type VarUpdate m var1 var2 =
   forall builtin. Provenance -> var1 -> m (Expr NamedBinding var2 builtin)
 
 traverseVars ::
-  MonadTraverse m =>
+  (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
   Expr NamedBinding var1 builtin ->
   m (Expr NamedBinding var2 builtin)
@@ -226,7 +226,7 @@ traverseVars f e = do
   return result
 
 traverseBinder ::
-  MonadTraverse m =>
+  (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
   Binder NamedBinding var1 builtin ->
   (Binder NamedBinding var2 builtin -> m (Expr NamedBinding var2 builtin)) ->
