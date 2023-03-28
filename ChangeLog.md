@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.3.0
+
+- Under development
+
 ## Version 0.2.0
 
 ### General enhancements
@@ -35,6 +39,8 @@
 * The existing `check` command has been renamed `validate`.
 
 * The new `check` command now type-checks the specification.
+
+* The verify command now prints out progress to the command line.
 
 * Removed the `--redirect-output` and `--redirect-error` command line options from all modes.
   This functionality can be replicated via pipes.
