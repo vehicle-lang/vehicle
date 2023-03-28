@@ -40,6 +40,8 @@
 
 * The new `check` command now type-checks the specification.
 
+* The verify command now prints out progress to the command line.
+
 * Removed the `--redirect-output` and `--redirect-error` command line options from all modes.
   This functionality can be replicated via pipes.
 

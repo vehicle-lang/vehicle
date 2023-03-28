@@ -19,8 +19,10 @@ import Data.Map qualified as Map
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
+import Data.Text.Lazy qualified as Text
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeExtension, (<.>), (</>))
+import System.ProgressBar
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.VariableReconstruction (reconstructUserVars)
@@ -157,8 +159,8 @@ verifySpecification ::
   Specification QueryMetaData ->
   m SpecificationStatus
 verifySpecification queryFolder verifier verifierExecutable (Specification namedProperties) = do
+  programOutput "Verifying properties:"
   results <- forM namedProperties $ \(name, property) -> do
-    programOutput $ "Verifying property" <+> quotePretty name
     result <- verifyMultiProperty verifier verifierExecutable queryFolder property
     return (name, result)
   return $ SpecificationStatus (Map.fromList results)
@@ -176,12 +178,14 @@ verifyMultiProperty verifier verifierExecutable queryFolder = go
     go :: MultiProperty QueryMetaData -> m MultiPropertyStatus
     go = \case
       MultiProperty ps -> MultiPropertyStatus <$> traverse go ps
-      SingleProperty _address p -> do
-        result <- runReaderT (verifyProperty p) (verifier, verifierExecutable, queryFolder)
+      SingleProperty address property -> do
+        progressBar <- createPropertyProgressBar address (propertySize property)
+        let readerState = (verifier, verifierExecutable, queryFolder, progressBar)
+        result <- runReaderT (verifyProperty property) readerState
         return $ SinglePropertyStatus result
 
 type MonadVerify m =
-  ( MonadReader (Verifier, VerifierExecutable, FilePath) m,
+  ( MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
     MonadIO m
   )
 
@@ -245,9 +249,10 @@ verifyQuery ::
   (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableCounterexample)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
-  (verifier, verifierExecutable, folder) <- ask
+  (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
   result <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
+  liftIO $ incProgress progressBar 1
   return $ fmap (reconstructUserVars userVar) result
 
 --------------------------------------------------------------------------------
@@ -263,3 +268,22 @@ calculateQueryFileName ((propertyName, propertyIndices), queryID) = do
     <> propertyStr
     <> "-query"
     <> show queryID <.> "txt"
+
+type PropertyProgressBar = ProgressBar ()
+
+createPropertyProgressBar :: (MonadIO m) => PropertyAddress -> Int -> m PropertyProgressBar
+createPropertyProgressBar (name, _indices) numberOfQueries = do
+  let style =
+        defStyle
+          { stylePrefix = msg ("  " <> Text.fromStrict name),
+            stylePostfix = exact <> msg " queries complete",
+            styleWidth = ConstantWidth 80
+          }
+  let initialProgress = Progress 0 numberOfQueries ()
+  liftIO $ newProgressBar style 10 initialProgress
+
+{-
+completeProgress :: MonadIO m => PropertyProgressBar -> m ()
+completeProgress progressBar = liftIO $ updateProgress progressBar $ \Progress{..} ->
+  Progress { progressDone = progressTodo, .. }
+-}
