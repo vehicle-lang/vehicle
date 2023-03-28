@@ -51,7 +51,6 @@ def train(
 
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}")
-        start_time = time.time()
         # Iterate over the batches of the dataset.
         for x_batch_train, y_batch_train in train_dataset:
             # Open a GradientTape to record the operations run during the forward pass, which enables auto-differentiation.
