@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.3.0
+
+- Under development
+
 ## Version 0.2.0
 
 ### General enhancements
