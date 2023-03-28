@@ -16,17 +16,11 @@ data BooleanExpr a
   = Conjunct (BooleanExpr a) (BooleanExpr a)
   | Disjunct (BooleanExpr a) (BooleanExpr a)
   | Query a
-  deriving (Show, Generic)
+  deriving (Show, Functor, Foldable, Generic)
 
 instance (ToJSON a) => ToJSON (BooleanExpr a)
 
 instance (FromJSON a) => FromJSON (BooleanExpr a)
-
-instance Functor BooleanExpr where
-  fmap f = \case
-    Query x -> Query $ f x
-    Disjunct x y -> Disjunct (fmap f x) (fmap f y)
-    Conjunct x y -> Conjunct (fmap f x) (fmap f y)
 
 instance (Pretty a) => Pretty (BooleanExpr a) where
   pretty = \case
