@@ -6,6 +6,7 @@ module Vehicle.Verify.Specification
     QuerySet (..),
     Property,
     traverseProperty,
+    propertySize,
     MultiProperty (..),
     traverseMultiProperty,
     Specification (..),
@@ -64,6 +65,11 @@ traverseQuerySet f QuerySet {..} = do
   queries' <- traverse (traverse (\(address, query) -> (address,) <$> f (address, query))) queries
   return $ QuerySet negated queries'
 
+querySetSize :: QuerySet a -> Int
+querySetSize QuerySet {..} = case queries of
+  Trivial {} -> 0
+  NonTrivial qs -> length qs
+
 --------------------------------------------------------------------------------
 -- Property expression
 
@@ -84,6 +90,9 @@ traverseProperty f = \case
   Query qs -> Query <$> traverseQuerySet f qs
   Disjunct x y -> Disjunct <$> traverseProperty f x <*> traverseProperty f y
   Conjunct x y -> Conjunct <$> traverseProperty f x <*> traverseProperty f y
+
+propertySize :: Property a -> Int
+propertySize p = sum (fmap querySetSize p)
 
 --------------------------------------------------------------------------------
 -- MultiProperty
