@@ -10,7 +10,7 @@ if __name__ == "__main__" and __package__ is None:
     from os.path import dirname as dir
     from sys import path
 
-    path.append(dir(dir(path[0]))+"/vehicle-python")
+    path.append(dir(dir(path[0])) + "/vehicle-python")
 
 from mnist_constraint_accuracy import get_constraint_accuracy
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     path_to_spec = Path(__file__).parent / "mnist.vcl"
     path_to_spec = path_to_spec.__str__()
     function_name = "robust1"
-    #The model of the NN used
+    # The model of the NN used
     model = keras.Sequential(
         [
             keras.Input(shape=(28, 28)),
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     # Set parameters for training
     batch_size = 64
     epochs = 10
-    #alpha and beta set the weight in training of cross entropy and custom loss respectively
+    # alpha and beta set the weight in training of cross entropy and custom loss respectively
     alfa = 1
     beta = 1
 
