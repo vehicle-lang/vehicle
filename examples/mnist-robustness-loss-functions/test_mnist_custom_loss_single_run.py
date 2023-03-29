@@ -10,13 +10,13 @@ if __name__ == "__main__" and __package__ is None:
     from os.path import dirname as dir
     from sys import path
 
-    path.append(dir(path[0]))
+    path.append(dir(dir(path[0]))+"/vehicle-python")
 
 from mnist_constraint_accuracy import get_constraint_accuracy
 
 from vehicle import generate_loss_function
 
-# This file will run a custom-training for a single network, with parameters set throught the file
+# This file will run a custom-training for a single network using mnist dataset and the robustness specification in mnist.vcl
 
 
 def train(
@@ -96,8 +96,8 @@ if __name__ == "__main__":
     print("Starting")
     path_to_spec = Path(__file__).parent / "mnist.vcl"
     path_to_spec = path_to_spec.__str__()
-    # path_to_spec = "vehicle-python/tests/mnist.vcl"
     function_name = "robust1"
+    #The model of the NN used
     model = keras.Sequential(
         [
             keras.Input(shape=(28, 28)),
@@ -112,6 +112,7 @@ if __name__ == "__main__":
     # Set parameters for training
     batch_size = 64
     epochs = 10
+    #alpha and beta set the weight in training of cross entropy and custom loss respectively
     alfa = 1
     beta = 1
 
@@ -134,7 +135,6 @@ if __name__ == "__main__":
     # Specifiy methods of sampling for each of the variables quantified over in specification
     quantifier_sampling = {
         "x": lambda: random.choice(X_train),
-        # "x":
         "j": lambda: random.randint(0, 27),
         "i": lambda: random.randint(0, 27),
         "k": lambda: random.randint(0, 9),
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         quantifier_sampling,
     )
 
-    # comment out if you don't want to to save the trained model
+    # Below line saves the model with a given name - comment out if not necessary
     model.save("dl2_training")
 
     # Below code gets and prints constraint accuracy
