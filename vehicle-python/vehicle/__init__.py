@@ -172,22 +172,26 @@ class LossFunctionTranslation:
 
     # NOT WORKING CURRENTLY
     def _translate_exponential_and(self, contents: Dict[Any, Any]) -> str:
+        raise Exception(
+                "STL translation not currently supported"
+            )
         # translation of conjunction solely for the STL based translation
-        conjuncts = [self._translate_expression(c) for c in contents]
-        a_min = min(conjuncts)
-        v = 3  # a constant to be set by user (refer to Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020)
-        sum = 0
-        if (compile(a_min)) == 0:
-            sum = 0
-        elif a_min < 0:
-            for a in conjuncts:
-                a_tilde = (a - a_min) / a_min
-                sum += (a_min * exp(a_tilde) * exp(v * a_tilde)) / (exp(v * a_tilde))
-        else:
-            for a in conjuncts:
-                a_tilde = (a - a_min) / a_min
-                sum += (a * exp(-v * a_tilde)) / (exp(-v * a_tilde))
-        return f"{sum}"
+        #conjuncts = [self._translate_expression(c) for c in contents]
+        #a_min = min(conjuncts)
+        #v = 3  # a constant to be set by user (refer to Varnai and Dimarogonas, 
+        # "On Robustness Metrics for Learning STL Tasks." 2020)
+        #sum = 0
+        #if (compile(a_min)) == 0:
+        #    sum = 0
+        #elif a_min < 0:
+        #    for a in conjuncts:
+        #        a_tilde = (a - a_min) / a_min
+        #        sum += (a_min * exp(a_tilde) * exp(v * a_tilde)) / (exp(v * a_tilde))
+        #else:
+        #    for a in conjuncts:
+        #        a_tilde = (a - a_min) / a_min
+        #        sum += (a * exp(-v * a_tilde)) / (exp(-v * a_tilde))
+        #return f"{sum}"
 
     def _translate_addition(self, contents: Dict[Any, Any]) -> str:
         loss_1 = self._translate_expression(contents[0])
