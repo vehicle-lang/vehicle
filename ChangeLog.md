@@ -2,7 +2,13 @@
 
 ## Version 0.3.0
 
-- Under development
+### General enhancements
+
+### Language changes
+
+### Bug fixes
+
+* Fixed erroneous error message generated when giving inferable parameters an unsupported type.
 
 ## Version 0.2.0
 

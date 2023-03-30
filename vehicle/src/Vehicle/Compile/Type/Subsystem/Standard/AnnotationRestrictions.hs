@@ -57,7 +57,7 @@ restrictStandardInferableParameterType ::
   m StandardType
 restrictStandardInferableParameterType decl parameterType = case normalised parameterType of
   VNatType {} -> return (unnormalised parameterType)
-  _ -> throwError $ ParameterTypeUnsupported decl parameterType
+  _ -> throwError $ InferableParameterTypeUnsupported decl parameterType
 
 --------------------------------------------------------------------------------
 -- Datasets
