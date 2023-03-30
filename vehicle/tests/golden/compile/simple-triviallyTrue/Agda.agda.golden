@@ -22,11 +22,11 @@ postulate f : Vector ℚ 1 → Vector ℚ 1
 abstract
   p : ∀ x → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
   p = checkSpecification record
-    { proofCache   = "proofcache.vclp"
+    { proofCache   = "proofcache.vcl-cache"
     }
 
 abstract
   multiProperty : (⊤ ∷ᵥ (⊤ ∷ᵥ (⊤ ∷ᵥ []ᵥ))) ∷ᵥ ((⊥ ∷ᵥ (⊤ ∷ᵥ (⊥ ∷ᵥ []ᵥ))) ∷ᵥ []ᵥ)
   multiProperty = checkSpecification record
-    { proofCache   = "proofcache.vclp"
+    { proofCache   = "proofcache.vcl-cache"
     }

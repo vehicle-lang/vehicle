@@ -35,13 +35,13 @@ vehicleSpecificationFileExtension :: String
 vehicleSpecificationFileExtension = baseFileExtension
 
 vehicleVerificationPlanFileExtension :: String
-vehicleVerificationPlanFileExtension = baseFileExtension <> "e"
+vehicleVerificationPlanFileExtension = baseFileExtension <> "-plan"
 
 vehicleObjectFileExtension :: String
 vehicleObjectFileExtension = baseFileExtension <> "o"
 
 vehicleProofCacheFileExtension :: String
-vehicleProofCacheFileExtension = baseFileExtension <> "p"
+vehicleProofCacheFileExtension = baseFileExtension <> "-cache"
 
 vehicleLibraryExtension :: String
 vehicleLibraryExtension = baseFileExtension <> "lib"

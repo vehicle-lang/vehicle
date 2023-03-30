@@ -9,5 +9,15 @@
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --declaration forallInForall --network f:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "ignore":
+    {
+      "matches": ".*\"fileHash\".*"
+    }
   }
 ]

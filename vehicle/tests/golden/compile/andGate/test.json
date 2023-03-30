@@ -6,7 +6,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vclp --network andGate:NO_FILE",
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vcl-cache --network andGate:NO_FILE",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
@@ -14,7 +14,7 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network andGate:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/verification-plan.vcle"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
     "ignore":
     {
       "matches": ".*\"fileHash\".*"
