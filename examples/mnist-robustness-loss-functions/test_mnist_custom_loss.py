@@ -95,7 +95,6 @@ def train(
 if __name__ == "__main__":
     print("Starting")
     path_to_spec = Path(__file__).parent / "mnist.vcl"
-    path_to_spec = path_to_spec.__str__()
     function_name = "robust1"
     # The model of the NN used
     model = keras.Sequential(
@@ -148,7 +147,7 @@ if __name__ == "__main__":
         epochs,
         alfa,
         beta,
-        path_to_spec,
+        path_to_spec.__str__(),
         function_name,
         networks,
         {},
