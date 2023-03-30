@@ -71,8 +71,6 @@ type InputExpr = V.NamedExpr V.StandardBuiltin
 
 type InputArg = V.NamedArg V.StandardBuiltin
 
-type InputBinder = V.NamedBinder V.StandardBuiltin
-
 --------------------------------------------------------------------------------
 -- Main compilation pass
 

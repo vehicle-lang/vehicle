@@ -1,12 +1,12 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle compile -s test-mnist.vcl -t TypeCheck",
+    "run": "vehicle check -s test-mnist.vcl",
     "needs": ["test-mnist.vcl"]
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s test-mnist.vcl -t LossFunction -o test-mnist.loss.json",
+    "run": "vehicle compile -s test-mnist.vcl -t LossFunction -o test-mnist.loss.json --network mnist:fake.onnx",
     "needs": ["test-mnist.vcl"],
     "produces": ["test-mnist.loss.json"]
   }
