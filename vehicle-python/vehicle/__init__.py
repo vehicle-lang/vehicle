@@ -29,7 +29,6 @@ def generate_loss_function(
         parameters = {}
     if quantifier_sampling is None:
         quantifier_sampling = {}
-
     json_dict = call_vehicle_to_generate_loss_json(
         specification, networks, datasets, parameters, function_name
     )
@@ -63,7 +62,6 @@ class LossFunctionTranslation:
         decl_ctx: Dict[str, Callable[..., Any]] = {}
         for [ident, decl] in json_dict:
             self.current_decl = ident
-
             decl_loss_str = self._translate_expression(decl)
             if decl["tag"] != "Lambda":
                 # If the expression that we are translating is not a function in vehicle specification, then translating
@@ -82,7 +80,10 @@ class LossFunctionTranslation:
                 "sample_" + var_name: sample
                 for (var_name, sample) in self.quantifier_sampling.items()
             }
-            tensorflow_ctx = {"to_tensor": tf.convert_to_tensor}
+            tensorflow_ctx = {
+                "to_tensor": tf.convert_to_tensor,
+                "expand": tf.expand_dims,
+            }
             global_scope = {**decl_ctx, **network_ctx, **sample_ctx, **tensorflow_ctx}
             local_scope = {**result_ctx}
 
@@ -97,7 +98,6 @@ class LossFunctionTranslation:
             loss_fn = typing.cast(Callable[..., Any], local_scope["loss_fn"])
 
             decl_ctx[ident] = loss_fn
-
         return decl_ctx[function_name]
 
     def _translate_expression(self, json_dict: Dict[Any, Any]) -> str:
@@ -141,6 +141,8 @@ class LossFunctionTranslation:
             return self._translate_lambda(contents)
         elif tag == "Let":
             return self._translate_let(contents)
+        elif tag == "ExponentialAnd":
+            return self._translate_exponential_and(contents)
         else:
             raise TypeError(f'Unknown tag "{tag}"')
 
@@ -167,6 +169,27 @@ class LossFunctionTranslation:
         loss_1 = self._translate_expression(contents[0])
         loss_2 = self._translate_expression(contents[1])
         return f"max({loss_1}, {loss_2})"
+
+    # NOT WORKING CURRENTLY
+    def _translate_exponential_and(self, contents: Dict[Any, Any]) -> str:
+        raise Exception("STL translation not currently supported")
+        # translation of conjunction solely for the STL based translation
+        # conjuncts = [self._translate_expression(c) for c in contents]
+        # a_min = min(conjuncts)
+        # v = 3  # a constant to be set by user (refer to Varnai and Dimarogonas,
+        # "On Robustness Metrics for Learning STL Tasks." 2020)
+        # sum = 0
+        # if (compile(a_min)) == 0:
+        #    sum = 0
+        # elif a_min < 0:
+        #    for a in conjuncts:
+        #        a_tilde = (a - a_min) / a_min
+        #        sum += (a_min * exp(a_tilde) * exp(v * a_tilde)) / (exp(v * a_tilde))
+        # else:
+        #    for a in conjuncts:
+        #        a_tilde = (a - a_min) / a_min
+        #        sum += (a * exp(-v * a_tilde)) / (exp(-v * a_tilde))
+        # return f"{sum}"
 
     def _translate_addition(self, contents: Dict[Any, Any]) -> str:
         loss_1 = self._translate_expression(contents[0])
@@ -206,7 +229,7 @@ class LossFunctionTranslation:
     def _translate_network(self, contents: Dict[Any, Any]) -> str:
         model = contents[0]
         input_losses = ", ".join([self._translate_expression(c) for c in contents[1]])
-        return f"{model}({input_losses}, training=True)"
+        return f"{model}(expand({input_losses}, axis=0), training=True)[0]"
 
     def _translate_free_variable(self, contents: Dict[Any, Any]) -> str:
         free_var = contents[0]
@@ -228,8 +251,6 @@ class LossFunctionTranslation:
                 "No sampling method provided for variable " + variable_name + "."
             )
 
-        # max_loss = np.NINF
-        # min_loss = np.Inf
         # We generate 10 samples, have to change it in the future
         if quantifier == "All":
             op = "max"
@@ -239,8 +260,7 @@ class LossFunctionTranslation:
             internal_error_msg(
                 "Found a quantifier in the generated json that is not All nor Any."
             )
-
-        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(10)])".format(
+        return "{0}([(lambda {1}: {2})(sample_{1}()) for _ in range(1)])".format(
             op, variable_name, body
         )
 

@@ -18,6 +18,7 @@ data DifferentiableLogic
   | Lukasiewicz
   | Product
   | Yager
+  | STL
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty DifferentiableLogic where
@@ -74,6 +75,7 @@ instance Read Target where
     "LossFunction-Lukasiewicz" -> [(LossFunction Lukasiewicz, [])]
     "LossFunction-Product" -> [(LossFunction Product, [])]
     "LossFunction-Yager" -> [(LossFunction Yager, [])]
+    "LossFunction-STL" -> [(LossFunction STL, [])]
     "Agda" -> [(ITP Agda, [])]
     _ -> []
 

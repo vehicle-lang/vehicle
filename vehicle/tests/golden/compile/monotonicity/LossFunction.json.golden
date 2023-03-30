@@ -14,32 +14,38 @@
             "x2",
             [],
             {
-              "tag": "Max",
+              "tag": "Multiplication",
               "contents": [
                 {
-                  "tag": "Negation",
-                  "contents": {
-                    "tag": "Max",
-                    "contents": [
-                      {
-                        "tag": "Constant",
-                        "contents": 0
-                      },
-                      {
-                        "tag": "Subtraction",
-                        "contents": [
-                          {
-                            "tag": "Variable",
-                            "contents": "x1"
-                          },
-                          {
-                            "tag": "Variable",
-                            "contents": "x2"
-                          }
-                        ]
-                      }
-                    ]
-                  }
+                  "tag": "Max",
+                  "contents": [
+                    {
+                      "tag": "Constant",
+                      "contents": 0
+                    },
+                    {
+                      "tag": "Max",
+                      "contents": [
+                        {
+                          "tag": "Constant",
+                          "contents": 0
+                        },
+                        {
+                          "tag": "Subtraction",
+                          "contents": [
+                            {
+                              "tag": "Variable",
+                              "contents": "x1"
+                            },
+                            {
+                              "tag": "Variable",
+                              "contents": "x2"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
                   "tag": "Max",
