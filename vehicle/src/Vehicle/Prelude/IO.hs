@@ -14,7 +14,7 @@ module Vehicle.Prelude.IO
   )
 where
 
-import Control.Exception (catch, throwIO)
+import Control.Exception (bracket, catch, throwIO)
 -- import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Version (Version)
@@ -59,12 +59,12 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: MonadIO m => Doc a -> m b
+fatalError :: (MonadIO m) => Doc a -> m b
 fatalError message = liftIO $ do
   hPrint stderr message
   exitFailure
 
-programOutput :: MonadIO m => Doc a -> m ()
+programOutput :: (MonadIO m) => Doc a -> m ()
 programOutput message = liftIO $ print message
 
 --------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ fallbackVehiclePathVariable = case os of
   -- All other systems
   _ -> "HOME"
 
-getVehiclePath :: MonadIO m => m FilePath
+getVehiclePath :: (MonadIO m) => m FilePath
 getVehiclePath = do
   vehiclePathVar <- liftIO $ lookupEnv vehiclePathVariable
   vehiclePath <- case vehiclePathVar of
@@ -103,19 +103,26 @@ getVehiclePath = do
 -- | Writes a file atomically by first acquiring a lock on it.
 safeWriteToFile :: (Handle -> a -> IO ()) -> FilePath -> a -> IO ()
 safeWriteToFile writeOp file contents = do
-  handle <- openFile file WriteMode
-  hLock handle ExclusiveLock
-  writeOp handle contents
-  hClose handle
+  let acquireFile = do
+        handle <- openFile file WriteMode
+        hLock handle ExclusiveLock
+        return handle
+  let processFile handle = writeOp handle contents
+  let releaseFile = hClose
+
+  bracket acquireFile releaseFile processFile
 
 -- | Writes a file atomically by first acquiring a lock on it.
 safeReadFromFile :: (Handle -> IO a) -> FilePath -> IO a
 safeReadFromFile readOp file = do
-  handle <- openFile file ReadMode
-  hLock handle SharedLock
-  result <- readOp handle
-  hClose handle
-  return result
+  let acquireFile = do
+        handle <- openFile file ReadMode
+        hLock handle SharedLock
+        return handle
+  let processFile = readOp
+  let releaseFile = hClose
+
+  bracket acquireFile releaseFile processFile
 
 --------------------------------------------------------------------------------
 -- Other
