@@ -110,7 +110,7 @@ verifyTests =
     [ parserTest
         "basic"
         "vehicle verify \
-        \--verificationPlan test/verificationPlan.vcl-plan \
+        \--queryFolder queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
         \--proofCache test/proofCache.vcl-cache"
@@ -120,7 +120,7 @@ verifyTests =
               Just $
                 Verify $
                   VerifyOptions
-                    { verificationPlan = "test/verificationPlan.vcl-plan",
+                    { queryFolder = "queries",
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
                       proofCache = Just "test/proofCache.vcl-cache"
