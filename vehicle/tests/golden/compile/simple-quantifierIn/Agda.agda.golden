@@ -9,19 +9,23 @@
 open import Vehicle
 open import Data.Unit
 open import Data.Integer as ℤ using (ℤ)
+open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Binary.PropositionalEquality
 
 module Agda where
 
-emptyList : List ℤ
-emptyList = []
+postulate f : Vector ℚ 2 → Vector ℚ 1
 
-postulate empty : List.All (λ x → ⊤) emptyList
+dataset : List (Vector ℚ 2)
+dataset = (ℤ.+ 1 ℚ./ 2 ∷ᵥ (ℤ.+ 1 ℚ./ 1 ∷ᵥ []ᵥ)) ∷ []
 
-postulate double : List.All (λ x → List.All (λ y → x ≡ y) emptyList) emptyList
+postulate empty : List.All (λ x → ⊤) dataset
 
-postulate forallForallIn : ∀ x → List.All (λ y → x ≡ y) emptyList
+postulate double : List.All (λ x → List.All (λ y → x ≡ y) dataset) dataset
 
-postulate forallInForall : List.All (λ x → ∀ y → x ≡ y) emptyList
+postulate forallForallIn : ∀ x → List.All (λ y → x ≡ y) dataset
+
+postulate forallInForall : List.All (λ x → ∀ y → f x ≢ y) dataset
