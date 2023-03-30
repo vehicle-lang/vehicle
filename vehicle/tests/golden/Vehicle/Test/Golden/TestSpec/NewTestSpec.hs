@@ -92,7 +92,7 @@ import Vehicle.Validate qualified as ValidateOptions (proofCache)
 import Vehicle.Validate qualified as Vehicle (ValidateOptions)
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions
-  ( VerifyOptions (verificationPlan),
+  ( VerifyOptions (..),
     proofCache,
     verifierID,
   )
@@ -295,7 +295,7 @@ instance TestSpecLike Vehicle.VerifyOptions where
   needs :: Vehicle.VerifyOptions -> [FilePath]
   needs opts = do
     join
-      [ [VerifyOptions.verificationPlan opts]
+      [ [VerifyOptions.queryFolder opts]
       -- TODO the verification plan also references resources and query files
       ]
 

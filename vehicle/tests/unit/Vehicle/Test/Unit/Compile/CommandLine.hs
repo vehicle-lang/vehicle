@@ -91,14 +91,14 @@ validateModeTests =
     "validateMode"
     [ parserTest
         "basic"
-        "vehicle validate --proofCache mpc.vclp"
+        "vehicle validate --proofCache mpc.vcl-cache"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Validate $
                   ValidateOptions
-                    { proofCache = "mpc.vclp"
+                    { proofCache = "mpc.vcl-cache"
                     }
           }
     ]
@@ -110,20 +110,20 @@ verifyTests =
     [ parserTest
         "basic"
         "vehicle verify \
-        \--verificationPlan test/verificationPlan.vcle \
+        \--verificationPlan test/verificationPlan.vcl-plan \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vclp"
+        \--proofCache test/proofCache.vcl-cache"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Verify $
                   VerifyOptions
-                    { verificationPlan = "test/verificationPlan.vcle",
+                    { verificationPlan = "test/verificationPlan.vcl-plan",
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vclp"
+                      proofCache = Just "test/proofCache.vcl-cache"
                     }
           }
     ]

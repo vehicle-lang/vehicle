@@ -22,7 +22,7 @@ vehicle compileAndVerify \
   --specification examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
   --verifier Marabou \
-  --proofCache examples/windController/windController.vclp
+  --proofCache examples/windController/windController.vcl-cache
 ```
 
 where the last line tells Vehicle where to write out the proof cache which can
@@ -48,7 +48,7 @@ The (verified) specification may then be compiled to Agda by running the command
 ```bash
 vehicle export \
   --itp Agda \
-  --proofCache examples/windController/windController.vclp \
+  --proofCache examples/windController/windController.vcl-cache \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 ```
 
