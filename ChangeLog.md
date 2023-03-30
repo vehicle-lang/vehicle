@@ -23,6 +23,9 @@
 
 ### Bug fixes
 
+* Fixed erroneous error message generated when giving inferable parameters an unsupported type.
+
+
 ## Version 0.2.0
 
 ### General enhancements
