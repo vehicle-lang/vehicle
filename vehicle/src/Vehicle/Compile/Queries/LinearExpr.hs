@@ -29,6 +29,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
+import Data.Hashable (Hashable)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
@@ -49,6 +50,8 @@ data Relation
   | LessThan
   | LessThanOrEqualTo
   deriving (Show, Eq, Generic)
+
+instance Hashable Relation
 
 instance ToJSON Relation
 
@@ -148,11 +151,13 @@ data SparseLinearExpr = Sparse
     coefficients :: HashMap LinearVar Coefficient,
     constantValue :: Coefficient
   }
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
 instance ToJSON SparseLinearExpr
 
 instance FromJSON SparseLinearExpr
+
+instance Hashable SparseLinearExpr
 
 instance LinearExpression SparseLinearExpr where
   addExprs ::
@@ -282,7 +287,9 @@ data Assertion linexp = Assertion
     assertionRel :: Relation,
     assertionExpr :: linexp
   }
-  deriving (Show, Functor, Generic)
+  deriving (Show, Eq, Functor, Generic)
+
+instance (Hashable linexp) => Hashable (Assertion linexp)
 
 instance (ToJSON linexp) => ToJSON (Assertion linexp)
 
