@@ -23,10 +23,10 @@ instance Serialize Relevance
 class HasRelevance a where
   relevanceOf :: a -> Relevance
 
-isRelevant :: HasRelevance a => a -> Bool
+isRelevant :: (HasRelevance a) => a -> Bool
 isRelevant x = relevanceOf x == Relevant
 
-isIrrelevant :: HasRelevance a => a -> Bool
+isIrrelevant :: (HasRelevance a) => a -> Bool
 isIrrelevant x = relevanceOf x == Irrelevant
 
 instance HasRelevance TypeClass where

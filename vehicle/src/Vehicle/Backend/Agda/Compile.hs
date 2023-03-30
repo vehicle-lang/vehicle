@@ -42,7 +42,7 @@ data AgdaOptions = AgdaOptions
     moduleName :: Maybe String
   }
 
-compileProgToAgda :: MonadCompile m => StandardGluedProg -> AgdaOptions -> m (Doc a)
+compileProgToAgda :: (MonadCompile m) => StandardGluedProg -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let unnormalisedProg = fmap unnormalised prog
@@ -75,12 +75,12 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logEntry :: MonadAgdaCompile m => OutputExpr -> m ()
+logEntry :: (MonadAgdaCompile m) => OutputExpr -> m ()
 logEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "compile-entry" <+> prettyExternal e
 
-logExit :: MonadAgdaCompile m => Code -> m ()
+logExit :: (MonadAgdaCompile m) => Code -> m ()
 logExit e = do
   logDebug MaxDetail $ "compile-exit " <+> e
   decrCallDepth
@@ -336,26 +336,26 @@ type MonadAgdaCompile m =
     MonadReader (AgdaOptions, BoolLevel) m
   )
 
-getProofCacheLocation :: MonadAgdaCompile m => m (Maybe FilePath)
+getProofCacheLocation :: (MonadAgdaCompile m) => m (Maybe FilePath)
 getProofCacheLocation = do
   (options, _) <- ask
   return $ proofCacheLocation options
 
-getBoolLevel :: MonadAgdaCompile m => m BoolLevel
+getBoolLevel :: (MonadAgdaCompile m) => m BoolLevel
 getBoolLevel = do
   (_, boolLevel) <- ask
   return boolLevel
 
-setBoolLevel :: MonadAgdaCompile m => BoolLevel -> m a -> m a
+setBoolLevel :: (MonadAgdaCompile m) => BoolLevel -> m a -> m a
 setBoolLevel level = local (second (const level))
 
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: MonadAgdaCompile m => OutputProg -> m Code
+compileProg :: (MonadAgdaCompile m) => OutputProg -> m Code
 compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
-compileDecl :: MonadAgdaCompile m => OutputDecl -> m Code
+compileDecl :: (MonadAgdaCompile m) => OutputDecl -> m Code
 compileDecl = \case
   DefResource _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
@@ -370,7 +370,7 @@ compileDecl = \case
           let binders' = mapMaybe compileTopLevelBinder binders
           compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> compileExpr body
 
-compileExpr :: MonadAgdaCompile m => OutputExpr -> m Code
+compileExpr :: (MonadAgdaCompile m) => OutputExpr -> m Code
 compileExpr expr = do
   logEntry expr
   result <- case expr of
@@ -399,14 +399,14 @@ compileExpr expr = do
   logExit result
   return result
 
-compileVar :: MonadAgdaCompile m => InputVar -> m Code
+compileVar :: (MonadAgdaCompile m) => InputVar -> m Code
 compileVar var = return $ case var of
   -- Standard library operators that we would like to compile
   "Tensor" -> annotateConstant [DataTensor] "Tensor"
   -- Other variables
   v -> annotateConstant [] (pretty v)
 
-compileApp :: MonadAgdaCompile m => OutputExpr -> NonEmpty OutputArg -> m Code
+compileApp :: (MonadAgdaCompile m) => OutputExpr -> NonEmpty OutputArg -> m Code
 compileApp fun args = do
   specialResult <- case fun of
     Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
@@ -422,7 +422,7 @@ compileApp fun args = do
       cArgs <- traverse compileExpr (filterOutNonExplicitArgs args)
       return $ annotateApp [] cFun cArgs
 
-compileStdLibFunction :: MonadAgdaCompile m => StdLibFunction -> NonEmpty OutputArg -> m (Maybe Code)
+compileStdLibFunction :: (MonadAgdaCompile m) => StdLibFunction -> NonEmpty OutputArg -> m (Maybe Code)
 compileStdLibFunction fn args = case fn of
   StdTensor -> do
     let fun' = annotateConstant [DataTensor] "Tensor"
@@ -444,7 +444,7 @@ compileStdLibFunction fn args = case fn of
   _ -> return Nothing
 
 compileLetBinder ::
-  MonadAgdaCompile m =>
+  (MonadAgdaCompile m) =>
   LetBinder OutputBinding OutputVar StandardBuiltin ->
   m Code
 compileLetBinder (binder, expr) = do
@@ -452,20 +452,20 @@ compileLetBinder (binder, expr) = do
   cExpr <- compileExpr expr
   return $ binderName <+> "=" <+> cExpr
 
-compileLam :: MonadAgdaCompile m => OutputBinder -> OutputExpr -> m Code
+compileLam :: (MonadAgdaCompile m) => OutputBinder -> OutputExpr -> m Code
 compileLam binder expr = do
   let (binders, body) = foldBinders (FoldableBinder LamFold binder) expr
   cBinders <- traverse compileBinder (binder : binders)
   cBody <- compileExpr body
   return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
-compileArg :: MonadAgdaCompile m => OutputArg -> m Code
+compileArg :: (MonadAgdaCompile m) => OutputArg -> m Code
 compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
 
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t, e]
 
-compileBooleanType :: MonadAgdaCompile m => m Code
+compileBooleanType :: (MonadAgdaCompile m) => m Code
 compileBooleanType = do
   boolLevel <- getBoolLevel
   return $ case boolLevel of
@@ -488,7 +488,7 @@ compileTopLevelBinder binder
       let addBrackets = binderBrackets True (visibilityOf binder)
       Just $ addBrackets binderName
 
-compileBinder :: MonadAgdaCompile m => OutputBinder -> m Code
+compileBinder :: (MonadAgdaCompile m) => OutputBinder -> m Code
 compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
@@ -521,7 +521,7 @@ agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
 agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
-compileBuiltin :: MonadAgdaCompile m => StandardBuiltin -> [OutputArg] -> m Code
+compileBuiltin :: (MonadAgdaCompile m) => StandardBuiltin -> [OutputArg] -> m Code
 compileBuiltin (CType (StandardTypeClassOp op)) allArgs
   | not (isTypeClassInAgda op) = do
       let result = nfTypeClassOp mempty op allArgs
@@ -595,7 +595,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
         <+> parens (pretty $ provenanceOf e)
 
 nfTypeClassOp ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   Provenance ->
   TypeClassOp ->
   [Arg binder var StandardBuiltin] ->
@@ -612,13 +612,13 @@ nfTypeClassOp _p op args = do
         compilerDeveloperError $
           "Type class operation with no further arguments:" <+> pretty op
 
-compileTypeClass :: MonadAgdaCompile m => Code -> OutputExpr -> m Code
+compileTypeClass :: (MonadAgdaCompile m) => Code -> OutputExpr -> m Code
 compileTypeClass name arg = do
   arg' <- compileExpr arg
   return $ annotateApp [] name [arg']
 
 compileTypeLevelQuantifier ::
-  MonadAgdaCompile m =>
+  (MonadAgdaCompile m) =>
   Quantifier ->
   NonEmpty OutputBinder ->
   OutputExpr ->
@@ -631,7 +631,7 @@ compileTypeLevelQuantifier q binders body = do
     Exists -> return $ annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
-compileQuantIn :: MonadAgdaCompile m => Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
+compileQuantIn :: (MonadAgdaCompile m) => Quantifier -> OutputExpr -> OutputExpr -> OutputExpr -> m Code
 compileQuantIn q tCont fn cont = do
   boolLevel <- getBoolLevel
 
@@ -665,7 +665,7 @@ compileRatLiteral r = agdaDivRat [num, denom]
     denom = compileNatLiteral (denominator r)
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
-compileVecLiteral :: MonadAgdaCompile m => [OutputExpr] -> m Code
+compileVecLiteral :: (MonadAgdaCompile m) => [OutputExpr] -> m Code
 compileVecLiteral = \case
   [] -> return $ annotateConstant [DataVector] "[]ᵥ"
   (x : xs) -> do
@@ -680,7 +680,7 @@ compileCons :: [Code] -> Code
 compileCons = annotateInfixOp2 [DataList] 5 id Nothing "∷"
 
 -- | Compiling boolean constants
-compileBoolOp0 :: MonadAgdaCompile m => Bool -> m Code
+compileBoolOp0 :: (MonadAgdaCompile m) => Bool -> m Code
 compileBoolOp0 value = do
   boolLevel <- getBoolLevel
   let (deps, code) = case (value, boolLevel) of
@@ -691,14 +691,14 @@ compileBoolOp0 value = do
   return $ annotateConstant deps code
 
 -- | Compiling boolean negation
-compileNot :: MonadAgdaCompile m => [Code] -> m Code
+compileNot :: (MonadAgdaCompile m) => [Code] -> m Code
 compileNot args = do
   boolLevel <- getBoolLevel
   return $ case boolLevel of
     BoolLevel -> annotateApp [DataBool] "not" args
     TypeLevel -> annotateInfixOp1 [RelNullary] 3 Nothing "¬" args
 
-compileAnd :: MonadAgdaCompile m => [Code] -> m Code
+compileAnd :: (MonadAgdaCompile m) => [Code] -> m Code
 compileAnd args = do
   boolLevel <- getBoolLevel
   let (opDoc, precedence, dependencies) = case boolLevel of
@@ -706,7 +706,7 @@ compileAnd args = do
         TypeLevel -> ("×", 2, [DataProduct])
   return $ annotateInfixOp2 dependencies precedence id Nothing opDoc args
 
-compileOr :: MonadAgdaCompile m => [Code] -> m Code
+compileOr :: (MonadAgdaCompile m) => [Code] -> m Code
 compileOr args = do
   boolLevel <- getBoolLevel
   let (opDoc, precedence, dependencies) = case boolLevel of
@@ -714,7 +714,7 @@ compileOr args = do
         TypeLevel -> ("⊎", 1, [DataSum])
   return $ annotateInfixOp2 dependencies precedence id Nothing opDoc args
 
-compileImplies :: MonadAgdaCompile m => [Code] -> m Code
+compileImplies :: (MonadAgdaCompile m) => [Code] -> m Code
 compileImplies args = do
   boolLevel <- getBoolLevel
   let (opDoc, precedence, dependencies) = case boolLevel of
@@ -785,7 +785,7 @@ isRatType :: Type binder var StandardBuiltin -> Bool
 isRatType RatType {} = True
 isRatType _ = False
 
-compileOrder :: MonadAgdaCompile m => OrderOp -> OutputExpr -> [Code] -> m Code
+compileOrder :: (MonadAgdaCompile m) => OrderOp -> OutputExpr -> [Code] -> m Code
 compileOrder originalOrder elemType originalArgs = do
   boolLevel <- getBoolLevel
 
@@ -816,10 +816,10 @@ compileOrder originalOrder elemType originalArgs = do
   let opDoc = orderDoc <> boolDecDoc
   return $ annotateInfixOp2 dependencies 4 opBraces (Just qualifier) opDoc args
 
-compileAt :: MonadAgdaCompile m => OutputExpr -> OutputExpr -> m Code
+compileAt :: (MonadAgdaCompile m) => OutputExpr -> OutputExpr -> m Code
 compileAt xs i = annotateApp [] <$> compileExpr xs <*> traverse compileExpr [i]
 
-compileEquality :: MonadAgdaCompile m => OutputExpr -> [Code] -> m Code
+compileEquality :: (MonadAgdaCompile m) => OutputExpr -> [Code] -> m Code
 compileEquality tElem args = do
   boolLevel <- getBoolLevel
   case boolLevel of
@@ -830,7 +830,7 @@ compileEquality tElem args = do
       instanceArgDependencies <- equalityDependencies tElem
       return $ annotateInfixOp2 ([RelNullary] <> instanceArgDependencies) 4 boolBraces Nothing "≟" args
 
-compileInequality :: MonadAgdaCompile m => OutputExpr -> [Code] -> m Code
+compileInequality :: (MonadAgdaCompile m) => OutputExpr -> [Code] -> m Code
 compileInequality tElem args = do
   boolLevel <- getBoolLevel
   case boolLevel of
@@ -854,7 +854,7 @@ compilePostulate :: Code -> Code -> Code
 compilePostulate name t =
   "postulate" <+> name <+> ":" <+> align t
 
-compileProperty :: MonadAgdaCompile m => Code -> Code -> m Code
+compileProperty :: (MonadAgdaCompile m) => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
   proofCache <- getProofCacheLocation
   return $
@@ -878,7 +878,7 @@ compileProperty propertyName propertyBody = do
                 )
 
 -- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: MonadAgdaCompile m => OutputExpr -> m [Dependency]
+equalityDependencies :: (MonadAgdaCompile m) => OutputExpr -> m [Dependency]
 equalityDependencies = \case
   NatType _ -> return [DataNatInstances]
   IntType _ -> return [DataIntegerInstances]
@@ -896,7 +896,7 @@ equalityDependencies = \case
   BoundVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p n
   t -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty (identifierName TensorIdent)])
 
-unexpectedTypeError :: MonadCompile m => OutputExpr -> [Doc ()] -> m a
+unexpectedTypeError :: (MonadCompile m) => OutputExpr -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes =
   compilerDeveloperError $
     "Unexpected type found."

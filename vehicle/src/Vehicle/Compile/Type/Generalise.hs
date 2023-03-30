@@ -26,11 +26,11 @@ import Vehicle.Expr.DeBruijn
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   m (CheckedDecl types)
 generaliseOverUnsolvedConstraints decl =
-  logCompilerPass MinDetail "generalisation over unsolved type-class constraints" $ do
+  logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
     unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
 
@@ -40,7 +40,7 @@ generaliseOverUnsolvedConstraints decl =
     return generalisedDecl
 
 generaliseOverConstraint ::
-  TCM types m =>
+  (TCM types m) =>
   [WithContext (Constraint types)] ->
   (CheckedDecl types, [WithContext (TypeClassConstraint types)]) ->
   WithContext (TypeClassConstraint types) ->
@@ -64,7 +64,7 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
       return (generalisedDecl, rejected)
 
 prependConstraint ::
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   WithContext (TypeClassConstraint types) ->
   m (CheckedDecl types)
@@ -85,7 +85,7 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 -- type and then solves the meta as that new variable.
 generaliseOverUnsolvedMetaVariables ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   m (CheckedDecl types)
 generaliseOverUnsolvedMetaVariables decl = do
@@ -99,13 +99,13 @@ generaliseOverUnsolvedMetaVariables decl = do
       unsolvedMetas <- metasIn (typeOf decl)
       if MetaSet.null unsolvedMetas
         then return decl
-        else logCompilerPass MinDetail "generalisation of unsolved metas in declaration type" $ do
+        else logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
           result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
           substMetas result
 
 quantifyOverMeta ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedDecl types ->
   MetaID ->
   m (CheckedDecl types)
@@ -118,7 +118,7 @@ quantifyOverMeta decl meta = do
           <+> "an unsolved meta."
     else do
       metaDoc <- prettyMeta (Proxy @types) meta
-      logCompilerPass MinDetail ("generalisation over" <+> metaDoc) $ do
+      logCompilerPass MidDetail ("generalisation over" <+> metaDoc) $ do
         -- Prepend the implicit binders for the new generalised variable.
         binderName <- getBinderNameOrFreshName Nothing metaType
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
@@ -134,7 +134,7 @@ isMeta _ = False
 
 prependBinderAndSolveMeta ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   MetaID ->
   BinderDisplayForm ->
   Visibility ->
@@ -183,7 +183,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 
 removeContextsOfMetasIn ::
   forall types m.
-  TCM types m =>
+  (TCM types m) =>
   CheckedType types ->
   CheckedDecl types ->
   m (CheckedType types, CheckedDecl types)

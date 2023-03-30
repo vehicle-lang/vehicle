@@ -15,14 +15,14 @@ newtype GenericProg expr
     Main [GenericDecl expr]
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance NFData expr => NFData (GenericProg expr)
+instance (NFData expr) => NFData (GenericProg expr)
 
-instance ToJSON expr => ToJSON (GenericProg expr)
+instance (ToJSON expr) => ToJSON (GenericProg expr)
 
-instance Serialize expr => Serialize (GenericProg expr)
+instance (Serialize expr) => Serialize (GenericProg expr)
 
 traverseDecls ::
-  Monad m =>
+  (Monad m) =>
   (GenericDecl expr1 -> m (GenericDecl expr2)) ->
   GenericProg expr1 ->
   m (GenericProg expr2)

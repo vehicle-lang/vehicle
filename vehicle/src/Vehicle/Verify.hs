@@ -51,7 +51,7 @@ verify _loggingSettings VerifyOptions {..} = do
 -- location and falls back to the PATH variable if none provided. If not
 -- found then the program will error.
 locateVerifierExecutable ::
-  MonadIO m =>
+  (MonadIO m) =>
   Verifier ->
   Maybe VerifierExecutable ->
   m VerifierExecutable

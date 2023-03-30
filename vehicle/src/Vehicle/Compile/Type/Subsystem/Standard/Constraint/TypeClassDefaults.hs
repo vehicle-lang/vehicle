@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalised
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
-  TCM StandardBuiltinType m =>
+  (TCM StandardBuiltinType m) =>
   Maybe StandardDecl ->
   m Bool
 addNewConstraintUsingDefaults maybeDecl = do
@@ -46,7 +46,7 @@ addNewConstraintUsingDefaults maybeDecl = do
 
 getDefaultCandidates ::
   forall m.
-  TCM StandardBuiltinType m =>
+  (TCM StandardBuiltinType m) =>
   Maybe StandardDecl ->
   m [WithContext StandardTypeClassConstraint]
 getDefaultCandidates maybeDecl = do
@@ -116,7 +116,7 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults ::
-  TCM StandardBuiltinType m =>
+  (TCM StandardBuiltinType m) =>
   [WithContext StandardTypeClassConstraint] ->
   m (Maybe (WithContext StandardConstraint))
 generateConstraintUsingDefaults constraints = do
@@ -139,7 +139,7 @@ generateConstraintUsingDefaults constraints = do
       return $ Just newConstraint
 
 findStrongestConstraint ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   [WithContext StandardTypeClassConstraint] ->
   m CandidateStatus
 findStrongestConstraint [] = return None
@@ -153,7 +153,7 @@ findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
     logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
     return newStrongest
 
-strongest :: MonadCompile m => CandidateStatus -> Candidate -> m CandidateStatus
+strongest :: (MonadCompile m) => CandidateStatus -> Candidate -> m CandidateStatus
 strongest Invalid _ = return Invalid
 strongest None x = return $ Valid x
 strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
@@ -167,7 +167,7 @@ strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
           then Valid x
           else y
 
-familyOf :: MonadCompile m => TypeClass -> m DefaultFamily
+familyOf :: (MonadCompile m) => TypeClass -> m DefaultFamily
 familyOf = \case
   HasQuantifier {} -> return BooleanFamily
   HasEq {} -> return $ NumericFamily NatT False 0
@@ -186,7 +186,7 @@ familyOf = \case
   NatInDomainConstraint n -> return $ NumericFamily NatT False n
 
 defaultSolution ::
-  TCM StandardBuiltinType m =>
+  (TCM StandardBuiltinType m) =>
   TypeClass ->
   m StandardNormExpr
 defaultSolution = \case
@@ -207,12 +207,12 @@ defaultSolution = \case
   NatInDomainConstraint n -> return $ VNatLiteral (n + 1)
 
 createDefaultListType ::
-  TCM StandardBuiltinType m =>
+  (TCM StandardBuiltinType m) =>
   m StandardNormType
 createDefaultListType = return $ VBuiltinType List mempty
 
 getCandidatesFromConstraint ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   StandardConstraintContext ->
   StandardTypeClassConstraint ->
   m [Candidate]

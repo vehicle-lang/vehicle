@@ -4,109 +4,163 @@
       "p",
       {
         "tag": "SingleProperty",
-        "contents": {
-          "tag": "Conjunct",
-          "contents": [
-            {
-              "tag": "Conjunct",
-              "contents": [
-                {
-                  "tag": "Query",
-                  "contents": {
-                    "queries": {
-                      "tag": "NonTrivial",
-                      "contents": {
-                        "unDisjunctAll": [
-                          {
-                            "userVar": [],
-                            "metaNetwork": [
+        "contents": [
+          [
+            "p",
+            []
+          ],
+          {
+            "tag": "Conjunct",
+            "contents": [
+              {
+                "tag": "Conjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
+                            [
                               [
-                                "f",
-                                "fake.onnx"
-                              ]
+                                [
+                                  "p",
+                                  []
+                                ],
+                                1
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
-                          }
-                        ]
-                      }
-                    },
-                    "negated": false
-                  }
-                },
-                {
-                  "tag": "Query",
-                  "contents": {
-                    "queries": {
-                      "tag": "NonTrivial",
-                      "contents": {
-                        "unDisjunctAll": [
-                          {
-                            "userVar": [],
-                            "metaNetwork": [
+                          ]
+                        }
+                      },
+                      "negated": false
+                    }
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
+                            [
                               [
-                                "f",
-                                "fake.onnx"
-                              ]
+                                [
+                                  "p",
+                                  []
+                                ],
+                                2
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
-                          }
-                        ]
-                      }
-                    },
-                    "negated": false
+                          ]
+                        }
+                      },
+                      "negated": false
+                    }
                   }
-                }
-              ]
-            },
-            {
-              "tag": "Conjunct",
-              "contents": [
-                {
-                  "tag": "Query",
-                  "contents": {
-                    "queries": {
-                      "tag": "NonTrivial",
-                      "contents": {
-                        "unDisjunctAll": [
-                          {
-                            "userVar": [],
-                            "metaNetwork": [
+                ]
+              },
+              {
+                "tag": "Conjunct",
+                "contents": [
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
+                            [
                               [
-                                "f",
-                                "fake.onnx"
-                              ]
+                                [
+                                  "p",
+                                  []
+                                ],
+                                3
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
-                          }
-                        ]
-                      }
-                    },
-                    "negated": false
-                  }
-                },
-                {
-                  "tag": "Query",
-                  "contents": {
-                    "queries": {
-                      "tag": "NonTrivial",
-                      "contents": {
-                        "unDisjunctAll": [
-                          {
-                            "userVar": [],
-                            "metaNetwork": [
+                          ]
+                        }
+                      },
+                      "negated": false
+                    }
+                  },
+                  {
+                    "tag": "Query",
+                    "contents": {
+                      "queries": {
+                        "tag": "NonTrivial",
+                        "contents": {
+                          "unDisjunctAll": [
+                            [
                               [
-                                "f",
-                                "fake.onnx"
-                              ]
+                                [
+                                  "p",
+                                  []
+                                ],
+                                4
+                              ],
+                              {
+                                "variableInfo": {
+                                  "unnormalisedVariableInfo": [],
+                                  "normalisedVariableInfo": []
+                                },
+                                "metaNetwork": [
+                                  [
+                                    "f",
+                                    "fake.onnx"
+                                  ]
+                                ]
+                              }
                             ]
-                          }
-                        ]
-                      }
-                    },
-                    "negated": false
+                          ]
+                        }
+                      },
+                      "negated": false
+                    }
                   }
-                }
-              ]
-            }
-          ]
-        }
+                ]
+              }
+            ]
+          }
+        ]
       }
     ]
   ],

@@ -43,9 +43,3 @@ The table below contains the full list of possible arguments:
     ``Polarity`` which means are used by Vehicle to diagnose errors with how
     quantified variables are used
     (see this `paper <https://dl.acm.org/doi/10.1145/3573105.3575674>`_ for details).
-
-.. option:: --declaration, -y
-
-    The name of the declaration of which to type-check. You may provide this
-    option multiple times to type-check multiple declarations at once. If not provided,
-    by default all declarations in the specification are type-checked.

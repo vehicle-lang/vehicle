@@ -54,17 +54,17 @@ type PrettyFriendly a = PrettyWith FriendlyTags a
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.
-prettyVerbose :: PrettyVerbose a => a -> Doc b
+prettyVerbose :: (PrettyVerbose a) => a -> Doc b
 prettyVerbose = prettyWith @VerboseTags
 
 -- | Prints to the internal language in all it's gory detail. Does not convert
 --  (Co)DeBruijn indices back to names. Useful for debugging.
-prettyExternal :: PrettyExternal a => a -> Doc b
+prettyExternal :: (PrettyExternal a) => a -> Doc b
 prettyExternal = prettyWith @ExternalTags
 
 -- | Prints to the external language for things that need to be displayed to
 --  the user. Must provide the context of the thing being printed.
-prettyFriendly :: PrettyFriendly a => a -> Doc b
+prettyFriendly :: (PrettyFriendly a) => a -> Doc b
 prettyFriendly = prettyWith @FriendlyTags
 
 --------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ type PrettyWith tags a = PrettyUsing (StrategyFor tags a) a
 class PrettyUsing (strategy :: Strategy) a where
   prettyUsing :: a -> Doc b
 
-prettyWith :: forall tags a b. PrettyWith tags a => a -> Doc b
+prettyWith :: forall tags a b. (PrettyWith tags a) => a -> Doc b
 prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 
 --------------------------------------------------------------------------------
@@ -240,19 +240,19 @@ instance PrettyUsing ('PrintAs 'External) InputBinder where
 --------------------------------------------------------------------------------
 -- Converting the basic builtins
 
-instance PrettyUsing rest InputProg => PrettyUsing ('ConvertBuiltins rest) InputProg where
+instance (PrettyUsing rest InputProg) => PrettyUsing ('ConvertBuiltins rest) InputProg where
   prettyUsing = prettyUsing @rest
 
-instance PrettyUsing rest InputDecl => PrettyUsing ('ConvertBuiltins rest) InputDecl where
+instance (PrettyUsing rest InputDecl) => PrettyUsing ('ConvertBuiltins rest) InputDecl where
   prettyUsing = prettyUsing @rest
 
-instance PrettyUsing rest InputExpr => PrettyUsing ('ConvertBuiltins rest) InputExpr where
+instance (PrettyUsing rest InputExpr) => PrettyUsing ('ConvertBuiltins rest) InputExpr where
   prettyUsing = prettyUsing @rest
 
-instance PrettyUsing rest InputArg => PrettyUsing ('ConvertBuiltins rest) InputArg where
+instance (PrettyUsing rest InputArg) => PrettyUsing ('ConvertBuiltins rest) InputArg where
   prettyUsing = prettyUsing @rest
 
-instance PrettyUsing rest InputBinder => PrettyUsing ('ConvertBuiltins rest) InputBinder where
+instance (PrettyUsing rest InputBinder) => PrettyUsing ('ConvertBuiltins rest) InputBinder where
   prettyUsing = prettyUsing @rest
 
 --------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ instance
 
 convertExprBuiltins ::
   forall types binder var.
-  PrintableBuiltin types =>
+  (PrintableBuiltin types) =>
   Expr binder var (NormalisableBuiltin types) ->
   Expr binder var Builtin
 convertExprBuiltins = traverseBuiltins $ \p1 p2 b args -> do
@@ -304,53 +304,53 @@ convertExprBuiltins = traverseBuiltins $ \p1 p2 b args -> do
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance PrettyUsing rest (NamedProg builtin) => PrettyUsing ('DescopeNaively rest) (DBProg builtin) where
+instance (PrettyUsing rest (NamedProg builtin)) => PrettyUsing ('DescopeNaively rest) (DBProg builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedDecl builtin) => PrettyUsing ('DescopeNaively rest) (DBDecl builtin) where
+instance (PrettyUsing rest (NamedDecl builtin)) => PrettyUsing ('DescopeNaively rest) (DBDecl builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedExpr builtin) => PrettyUsing ('DescopeNaively rest) (DBExpr builtin) where
+instance (PrettyUsing rest (NamedExpr builtin)) => PrettyUsing ('DescopeNaively rest) (DBExpr builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedArg builtin) => PrettyUsing ('DescopeNaively rest) (DBArg builtin) where
+instance (PrettyUsing rest (NamedArg builtin)) => PrettyUsing ('DescopeNaively rest) (DBArg builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedBinder builtin) => PrettyUsing ('DescopeNaively rest) (DBBinder builtin) where
+instance (PrettyUsing rest (NamedBinder builtin)) => PrettyUsing ('DescopeNaively rest) (DBBinder builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedExpr (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormExpr types) where
+instance (PrettyUsing rest (NamedExpr (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (NormExpr types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedArg (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormArg types) where
+instance (PrettyUsing rest (NamedArg (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (NormArg types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance PrettyUsing rest (NamedBinder (NormalisableBuiltin types)) => PrettyUsing ('DescopeNaively rest) (NormBinder types) where
+instance (PrettyUsing rest (NamedBinder (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (NormBinder types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
-instance PrettyUsing rest (NamedProg builtin) => PrettyUsing ('DescopeWithNames rest) (DBProg builtin) where
+instance (PrettyUsing rest (NamedProg builtin)) => PrettyUsing ('DescopeWithNames rest) (DBProg builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
-instance PrettyUsing rest (NamedDecl builtin) => PrettyUsing ('DescopeWithNames rest) (DBDecl builtin) where
+instance (PrettyUsing rest (NamedDecl builtin)) => PrettyUsing ('DescopeWithNames rest) (DBDecl builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest (NamedExpr builtin) =>
+  (PrettyUsing rest (NamedExpr builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (DBExpr builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest (NamedArg builtin) =>
+  (PrettyUsing rest (NamedArg builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (DBArg builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  PrettyUsing rest (NamedBinder builtin) =>
+  (PrettyUsing rest (NamedBinder builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (DBBinder builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
@@ -374,20 +374,20 @@ instance
 -- Other
 
 instance
-  PrettyUsing rest a =>
+  (PrettyUsing rest a) =>
   PrettyUsing ('MapList rest) [a]
   where
   prettyUsing es = list (prettyUsing @rest <$> es)
 
 instance
-  PrettyUsing rest a =>
+  (PrettyUsing rest a) =>
   PrettyUsing ('MapMaybe rest) (Maybe a)
   where
   prettyUsing = \case
     Nothing -> ""
     Just x -> prettyUsing @rest x
 
-instance PrettyUsing rest a => PrettyUsing ('MapIntMap rest) (IntMap a) where
+instance (PrettyUsing rest a) => PrettyUsing ('MapIntMap rest) (IntMap a) where
   prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
 
 instance (PrettyUsing resta a, PrettyUsing restb b) => PrettyUsing ('MapTuple2 resta restb) (a, b) where
@@ -409,24 +409,24 @@ instance
 --------------------------------------------------------------------------------
 -- Instances which defer to primitive pretty instances
 
-instance Pretty a => PrettyUsing 'Pretty a where
+instance (Pretty a) => PrettyUsing 'Pretty a where
   prettyUsing = pretty
 
 --------------------------------------------------------------------------------
 -- Instances for normalised types
 
 instance
-  PrettyUsing rest (Contextualised (DBExpr (NormalisableBuiltin types)) BoundDBCtx) =>
+  (PrettyUsing rest (Contextualised (DBExpr (NormalisableBuiltin types)) BoundDBCtx)) =>
   PrettyUsing ('Denormalise rest) (Contextualised (NormExpr types) BoundDBCtx)
   where
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) (DBLevel $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance PrettyUsing rest (DBExpr (NormalisableBuiltin types)) => PrettyUsing ('Denormalise rest) (NormExpr types) where
+instance (PrettyUsing rest (DBExpr (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (NormExpr types) where
   prettyUsing e = prettyUsing @rest (unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) 0 e)
 
-instance PrettyUsing rest (DBArg (NormalisableBuiltin types)) => PrettyUsing ('Denormalise rest) (NormArg types) where
+instance (PrettyUsing rest (DBArg (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (NormArg types) where
   prettyUsing e = prettyUsing @rest (unnormalise @(NormArg types) @(DBArg (NormalisableBuiltin types)) 0 e)
 
 --------------------------------------------------------------------------------
@@ -443,7 +443,7 @@ prettyConstraintContext constraint ctx =
   "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty (originalProvenance ctx)
 
 instance
-  PrettyUsing rest (NormExpr types) =>
+  (PrettyUsing rest (NormExpr types)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Unify e1 e2) ctx) = do
@@ -452,7 +452,7 @@ instance
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  PrettyUsing rest (NormExpr types) =>
+  (PrettyUsing rest (NormExpr types)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (TypeClassConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Has m tc args) ctx) = do
@@ -461,7 +461,7 @@ instance
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx) =>
+  (PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Unify e1 e2) ctx) = do
@@ -470,7 +470,7 @@ instance
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx) =>
+  (PrettyUsing rest (Contextualised (NormExpr types) BoundDBCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (TypeClassConstraint types) (ConstraintContext types))
   where
   prettyUsing (WithContext (Has m tc args) ctx) = do
@@ -491,28 +491,28 @@ instance
 --------------------------------------------------------------------------------
 -- Instances for opaque types
 
-instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MetaMap a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MetaMap a) where
   prettyUsing (MetaMap m) = prettyMapEntries entries
     where
       entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
 
-instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (ConjunctAll a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (ConjunctAll a) where
   prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> "and" <> y) docs
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
 
-instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (DisjunctAll a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (DisjunctAll a) where
   prettyUsing (DisjunctAll cs) = concatWith (\x y -> x <> line <> "or" <> y) docs
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
 
-instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (MaybeTrivial a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MaybeTrivial a) where
   prettyUsing = \case
     Trivial True -> "True"
     Trivial False -> "False"
     NonTrivial x -> prettyUsing @rest x
 
-instance PrettyUsing rest a => PrettyUsing ('Opaque rest) (BooleanExpr a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (BooleanExpr a) where
   prettyUsing = \case
     Query x -> prettyUsing @rest x
     Disjunct x y -> prettyUsing @('Opaque rest) x <+> "or" <+> prettyUsing @('Opaque rest) y

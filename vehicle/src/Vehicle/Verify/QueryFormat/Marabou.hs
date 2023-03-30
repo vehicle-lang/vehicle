@@ -4,17 +4,16 @@ module Vehicle.Verify.QueryFormat.Marabou
 where
 
 import Control.Monad (forM)
-import Data.HashMap.Strict qualified as HashMap
-import Data.List (sortOn)
+import Data.Bifunctor (Bifunctor (..))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
--- Query format
+-- Marabou query format
 
 -- | The query format accepted by the Marabou verifier.
 marabouQueryFormat :: QueryFormat
@@ -26,29 +25,15 @@ marabouQueryFormat =
         ExternalOutputFormat
           { formatName = pretty MarabouQueryFormat,
             formatVersion = Nothing,
-            commentToken = "//"
+            commentToken = "//",
+            emptyLines = False
           }
     }
-
-{-
-commentTokenOf :: Task -> Maybe (Doc a)
-commentTokenOf = \case
-  TypeCheck {} -> Nothing
-
-  CompileToQueryFormat format -> case format of
-    MarabouFormat -> Just "//"
-    VNNLib -> ";"
-
-  CompileToITP itp -> case itp of
-    Agda -> Just "--"
-
-  CompileToLossFunction {} -> Nothing
--}
 
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: MonadLogger m => CLSTProblem NetworkVariable -> m QueryText
+compileMarabouQuery :: (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
 compileMarabouQuery (CLSTProblem variables assertions) = do
   let variableNames = sequentialIONetworkVariableNaming "x" "y" variables
   assertionDocs <- forM assertions (compileAssertion variableNames)
@@ -56,42 +41,37 @@ compileMarabouQuery (CLSTProblem variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  MonadLogger m =>
+  (MonadLogger m) =>
   Seq Name ->
   Assertion SolvingLinearExpr ->
   m (Doc a)
-compileAssertion variableNames (Assertion rel linearExpr) = do
-  let Sparse _ coeffs constant = toSparse linearExpr
-  let varCoeff = sortOn fst $ HashMap.toList coeffs
-  let lookupName (v, c) = (c, variableNames `Seq.index` v)
-  let coeffVars = lookupName <$> varCoeff
+compileAssertion variableNames assertion = do
+  let (coeffVars, rel, constant) = convertToSparseFormat assertion variableNames
+  let (coeffVars', rel', constant', multipleVariables) =
+        case coeffVars of
+          (coeff, var) :| [] -> do
+            -- Workaround for bug
+            -- https://github.com/NeuralNetworkVerification/Marabou/issues/625
+            let newCoeffVars = (1, var) :| []
+            let newRel = if coeff < 0 then second flipOrder rel else rel
+            let newConstant = constant / coeff
+            (newCoeffVars, newRel, newConstant, False)
+          _ -> (coeffVars, rel, constant, True)
 
-  -- Make the properties a tiny bit nicer by checking if all the vars are
-  -- negative and if so negating everything.
-  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffVars
-  let (finalCoefVars, constant', flipRel) =
-        if allCoefficientsNegative
-          then (fmap (\(c, v) -> (-c, v)) coeffVars, -constant, True)
-          else (coeffVars, constant, False)
-
-  -- Marabou always has the constants on the RHS so we need to negate the constant.
-  let negatedConstant = -constant'
-  -- Also check for and remove `-0.0`s for cleanliness.
-  let finalConstant = if isNegativeZero negatedConstant then 0.0 else negatedConstant
-
-  let compiledRel = compileRel flipRel rel
-  let compiledLHS = hsep (fmap (compileVar (length finalCoefVars > 1)) finalCoefVars)
-  let compiledRHS = prettyCoefficient finalConstant
+  let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
+  let compiledRel = compileRel rel'
+  let compiledRHS = prettyCoefficient constant'
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: Bool -> Relation -> Doc a
-compileRel _ Equal = "="
-compileRel False LessThanOrEqualTo = "<="
-compileRel True LessThanOrEqualTo = ">="
--- Suboptimal. Marabou doesn't currently support strict inequalities.
--- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-compileRel False LessThan = "<="
-compileRel True LessThan = ">="
+compileRel :: Either () OrderOp -> Doc a
+compileRel = \case
+  Left () -> "="
+  Right Le -> "<="
+  Right Ge -> ">="
+  -- Suboptimal. Marabou doesn't currently support strict inequalities.
+  -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
+  Right Lt -> "<="
+  Right Gt -> ">="
 
 compileVar :: Bool -> (Double, Name) -> Doc a
 compileVar False (1, var) = pretty var

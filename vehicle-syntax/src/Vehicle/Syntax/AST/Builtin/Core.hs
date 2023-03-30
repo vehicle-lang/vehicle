@@ -74,7 +74,7 @@ equalityOpName = \case
   Eq -> "equals"
   Neq -> "notEquals"
 
-equalityOp :: Eq a => EqualityOp -> (a -> a -> Bool)
+equalityOp :: (Eq a) => EqualityOp -> (a -> a -> Bool)
 equalityOp Eq = (==)
 equalityOp Neq = (/=)
 
@@ -125,7 +125,7 @@ instance Pretty OrderOp where
     Ge -> ">="
     Gt -> ">"
 
-orderOp :: Ord a => OrderOp -> (a -> a -> Bool)
+orderOp :: (Ord a) => OrderOp -> (a -> a -> Bool)
 orderOp Le = (<=)
 orderOp Lt = (<)
 orderOp Ge = (>=)

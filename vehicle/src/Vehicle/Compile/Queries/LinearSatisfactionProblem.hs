@@ -39,13 +39,13 @@ import Vehicle.Verify.Core
 
 -- | Generates a constraint satisfication problem in the magic network variables only.
 generateCLSTProblem ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   LCSState ->
   InputEqualities ->
   ConjunctAll StandardNormExpr ->
-  m (MaybeTrivial (CLSTProblem NetworkVariable, MetaNetwork, UserVarReconstructionInfo))
+  m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
 generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
-  (_, _, metaNetwork, userVariables, _) <- ask
+  (_, _, _, userVariables, _) <- ask
   variables <- getVariables
 
   inputEqualityAssertions <- forM inputEqualities $ \(i, expr) -> do
@@ -65,15 +65,15 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     solveForUserVariables (length userVariables) clst
 
   let finalQuery = flip fmap networkVarQuery $
-        \(solvedCLST, varReconst) -> (solvedCLST, metaNetwork, varReconst)
+        \(solvedCLST, varReconst) -> (solvedCLST, varReconst)
 
   return finalQuery
 
 solveForUserVariables ::
-  MonadCompile m =>
+  (MonadCompile m) =>
   Int ->
   CLSTProblem Variable ->
-  m (MaybeTrivial (CLSTProblem NetworkVariable, UserVarReconstructionInfo))
+  m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
 solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
   logCompilerPass MinDetail "elimination of user variables" $ do
     let allUserVars = Set.fromList [0 .. numberOfUserVars - 1]
@@ -92,7 +92,7 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second (id . solutionEquality)) gaussianSolutions
+    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
             foldl (uncurry . substitute) assertion gaussianSolutionEqualities
@@ -143,7 +143,7 @@ type MonadSMT m =
     MonadReader LCSState m
   )
 
-getNetworkDetailsFromCtx :: MonadCompile m => NetworkContext -> Name -> m NetworkType
+getNetworkDetailsFromCtx :: (MonadCompile m) => NetworkContext -> Name -> m NetworkType
 getNetworkDetailsFromCtx networkCtx name = do
   case Map.lookup name networkCtx of
     Just (_file, typ) -> return typ
@@ -151,31 +151,31 @@ getNetworkDetailsFromCtx networkCtx name = do
       compilerDeveloperError $
         "Either" <+> squotes (pretty name) <+> "is not a network or it is not in scope"
 
-getNumberOfUserVariables :: MonadSMT m => m Int
+getNumberOfUserVariables :: (MonadSMT m) => m Int
 getNumberOfUserVariables = do
   (_, _, _, userVariables, _) <- ask
   return $ length userVariables
 
-getMetaNetworkType :: MonadSMT m => m [NetworkType]
+getMetaNetworkType :: (MonadSMT m) => m [NetworkType]
 getMetaNetworkType = do
   (networkCtx, _, metaNetwork, _, _) <- ask
   traverse (getNetworkDetailsFromCtx networkCtx . fst) metaNetwork
 
-getNumberOfMagicVariables :: MonadSMT m => m Int
+getNumberOfMagicVariables :: (MonadSMT m) => m Int
 getNumberOfMagicVariables = sum . fmap networkSize <$> getMetaNetworkType
 
-getTotalNumberOfVariables :: MonadSMT m => m Int
+getTotalNumberOfVariables :: (MonadSMT m) => m Int
 getTotalNumberOfVariables = do
   numberOfUserVariables <- getNumberOfUserVariables
   numberOfMagicVariables <- getNumberOfMagicVariables
   return $ numberOfUserVariables + numberOfMagicVariables
 
-getExprSize :: MonadSMT m => m Int
+getExprSize :: (MonadSMT m) => m Int
 getExprSize =
   -- Add one more for the constant term.
   (1 +) <$> getTotalNumberOfVariables
 
-getVariables :: MonadSMT m => m [Variable]
+getVariables :: (MonadSMT m) => m [Variable]
 getVariables = do
   (_, _, _, userVariables, networkVariables) <- ask
   return $ fmap UserVar userVariables <> fmap NetworkVar networkVariables
@@ -183,10 +183,10 @@ getVariables = do
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+compileAssertions :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
 compileAssertions = go
   where
-    go :: MonadSMT m => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+    go :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -212,7 +212,7 @@ compileAssertions = go
       _ -> unexpectedExprError currentPass (prettyVerbose expr)
 
 compileAssertion ::
-  MonadSMT m =>
+  (MonadSMT m) =>
   Relation ->
   StandardNormExpr ->
   StandardNormExpr ->
@@ -222,7 +222,7 @@ compileAssertion rel lhs rhs = do
   rhsLinExpr <- compileLinearExpr rhs
   return $ constructAssertion (lhsLinExpr, rel, rhsLinExpr)
 
-compileLinearExpr :: MonadSMT m => StandardNormExpr -> m SolvingLinearExpr
+compileLinearExpr :: (MonadSMT m) => StandardNormExpr -> m SolvingLinearExpr
 compileLinearExpr expr = do
   lnfExpr <- convertToLNF expr
   (linearExpr, constant) <- go lnfExpr
@@ -232,7 +232,7 @@ compileLinearExpr expr = do
     singletonVar :: DBLevel -> Coefficient -> HashMap Int Coefficient
     singletonVar v = HashMap.singleton (unLevel v)
 
-    go :: MonadSMT m => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
+    go :: (MonadSMT m) => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
     go e = case e of
       VBoundVar v [] ->
         return (singletonVar v 1, 0)
@@ -248,7 +248,15 @@ compileLinearExpr expr = do
         case (e1, e2) of
           (VRatLiteral l, VBoundVar v []) -> return (singletonVar v (fromRational l), 0)
           (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational l), 0)
-          _ -> throwError temporaryUnsupportedNonLinearConstraint
+          _ -> do
+            logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
+            throwError temporaryUnsupportedNonLinearConstraint
+      VBuiltinFunction (Div DivRat) [e1, e2] ->
+        case (e1, e2) of
+          (VBoundVar v [], VRatLiteral l) -> return (singletonVar v (fromRational (1 / l)), 0)
+          _ -> do
+            logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
+            throwError temporaryUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
 currentPass :: Doc a

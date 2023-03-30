@@ -137,7 +137,6 @@ typeCheckParser =
   TypeCheckOptions
     <$> specificationParser
     <*> typeSystemParser
-    <*> declarationParser
 
 typeCheckParserInfo :: ParserInfo ModeOptions
 typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription

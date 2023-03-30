@@ -4,12 +4,13 @@ module Vehicle.Compile.Queries.LNF
 where
 
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (evalMul)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 
 -- | Converts an arithmetic expression to linear normal form.
-convertToLNF :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+convertToLNF :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 convertToLNF = lnf
 
 {-
@@ -21,39 +22,52 @@ logCompilerPass MinDetail "conversion to linear normal form" $ do
 --------------------------------------------------------------------------------
 -- PNF
 
-lnf :: MonadCompile m => StandardNormExpr -> m StandardNormExpr
+lnf :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
 lnf expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   VMeta {} -> resolutionError currentPass "Meta"
   VLam {} -> caseError currentPass "Lam" ["QuantifierExpr"]
   VFreeVar {} -> normalisationError currentPass "FreeVar"
-  -- Elimination cases
-  VBuiltinFunction (Neg dom) [arg] ->
-    lnf $ lowerNeg dom arg
-  VBuiltinFunction (Sub dom) [arg1, arg2] -> do
-    let negDom = subToNegDomain dom
-    let addDom = subToAddDomain dom
-    lnf $ VBuiltinFunction (Add addDom) [arg1, lowerNeg negDom arg2]
-
-  -- Inductive cases
-  VBuiltinFunction (Add dom) args ->
-    VBuiltinFunction (Add dom) <$> traverse lnf args
-  VBuiltinFunction (Mul dom) args@[arg1, arg2] -> case (arg1, arg2) of
-    (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
-      let e1 = VBuiltinFunction (Mul dom) [arg1, v1]
-      let e2 = VBuiltinFunction (Mul dom) [arg1, v2]
-      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
-    (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
-      let e1 = VBuiltinFunction (Mul dom) [v1, arg1]
-      let e2 = VBuiltinFunction (Mul dom) [v2, arg2]
-      lnf $ VBuiltinFunction (Add addDom) [e1, e2]
-    _ -> do
-      VBuiltinFunction (Mul dom) <$> traverse lnf args
-
-  -- Anything else is a base case.
+  VBuiltinFunction fun args -> do
+    args' <- traverse lnf args
+    case (fun, args') of
+      (Neg dom, [e1]) -> return $ lowerNeg dom e1
+      (Add dom, [e1, e2]) -> return $ VBuiltinFunction (Add dom) [e1, e2]
+      (Sub dom, [e1, e2]) -> return $ normSub dom e1 e2
+      (Mul dom, [e1, e2]) -> return $ normMul dom e1 e2
+      (Div dom, [e1, e2]) -> return $ normDiv dom e1 e2
+      _ -> return $ VBuiltinFunction fun args'
   VBuiltin {} -> return expr
   VBoundVar {} -> return expr
+
+normMul :: MulDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+normMul dom e1 e2 = case (e1, e2) of
+  (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
+    let r1 = normMul dom e1 v1
+    let r2 = normMul dom e1 v2
+    VBuiltinFunction (Add addDom) [r1, r2]
+  (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
+    let r1 = normMul dom v1 e2
+    let r2 = normMul dom v2 e2
+    VBuiltinFunction (Add addDom) [r1, r2]
+  _ -> case evalMul dom [e1, e2] of
+    Nothing -> VBuiltinFunction (Mul dom) [e1, e2]
+    Just r -> r
+
+normSub :: SubDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+normSub dom e1 e2 = do
+  let negDom = subToNegDomain dom
+  let addDom = subToAddDomain dom
+  VBuiltinFunction (Add addDom) [e1, lowerNeg negDom e2]
+
+normDiv :: DivDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+normDiv dom e1 e2 = case (e1, e2) of
+  (_, VRatLiteral l) -> do
+    let mulDom = divToMulDomain dom
+    normMul mulDom e1 (VRatLiteral (1 / l))
+  _ -> do
+    VBuiltinFunction (Div dom) [e1, e2]
 
 lowerNeg :: NegDomain -> StandardNormExpr -> StandardNormExpr
 lowerNeg dom = \case

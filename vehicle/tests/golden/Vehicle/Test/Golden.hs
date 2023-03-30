@@ -82,7 +82,9 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testDirectory = do
         )
 
   -- Combine all test trees:
-  return $ testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
+  let result = testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
+
+  return result
 
 -- | Read a test specification and return a TestTree.
 makeTestTreesFromFile :: FilePath -> IO [TestTree]

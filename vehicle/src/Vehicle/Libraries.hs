@@ -37,7 +37,7 @@ data Library = Library
     libraryContent :: Text
   }
 
-getLibraryPath :: MonadIO m => LibraryName -> m FilePath
+getLibraryPath :: (MonadIO m) => LibraryName -> m FilePath
 getLibraryPath name = do
   vehiclePath <- getVehiclePath
   return $ vehiclePath </> "libraries" </> name

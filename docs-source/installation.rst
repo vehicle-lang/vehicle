@@ -29,9 +29,11 @@ Now we can install Vehicle itself.
 1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-2. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
+2. Run ``git checkout v0.2.0`` to check out the latest version (change the version as required).
 
-3. Run ``vehicle -h`` to check that Vehicle has been installed.
+3. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
+
+4. Run ``vehicle -h`` to check that Vehicle has been installed.
   (If this doesn't work then check that check that `~/.cabal/bin` has
    been added to your system path.)
 
@@ -41,6 +43,17 @@ Now we can install Vehicle itself.
 
 * Check if you have any other installations of GHC and Cabal not managed by GHCUp.
   Either remove those installations or make sure that GHCUp is earlier in the PATH environment variable.
+
+**Updating Vehicle**
+
+To update an existing Vehicle installation:
+
+1. Navigate to the existing Vehicle repository.
+
+2. Run ``git checkout vX`` to check out the latest version (choose the version as required).
+
+3. Run ``cabal install exe:vehicle --overwrite-policy=always`` to re-install the new Vehicle
+executable on your system.
 
 On Windows
 **********

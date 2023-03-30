@@ -79,7 +79,7 @@ parseContainer ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   Bool ->
-  [Int] ->
+  TensorDimensions ->
   Vector a ->
   StandardNormType ->
   m StandardNormExpr
@@ -94,7 +94,7 @@ parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
 parseVector ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  [Int] ->
+  TensorDimensions ->
   Vector a ->
   StandardNormType ->
   StandardNormExpr ->
@@ -128,7 +128,7 @@ parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   StandardNormType ->
-  [Int] ->
+  TensorDimensions ->
   Vector a ->
   m StandardNormExpr
 parseList ctx expectedElemType actualDims actualElems =
@@ -142,7 +142,7 @@ parseList ctx expectedElemType actualDims actualElems =
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  [Int] ->
+  TensorDimensions ->
   Vector a ->
   StandardNormType ->
   m StandardNormExpr
@@ -155,14 +155,14 @@ type ParseContext m a =
   ( DeclProvenance, -- The provenance of the dataset declaration
     FilePath, -- The path of the dataset
     StandardGluedType, -- The overall dataset type
-    [Int], -- Actual dimensions of dataset
+    TensorDimensions, -- Actual dimensions of dataset
     ElemParser m a
   )
 
 type ElemParser m a = a -> StandardNormType -> m StandardNormExpr
 
 doubleElemParser ::
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   FilePath ->
@@ -174,7 +174,7 @@ doubleElemParser decl datasetType file value expectedElementType = case expected
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VRatType
 
 intElemParser ::
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   FilePath ->
@@ -194,21 +194,21 @@ intElemParser decl datasetType file value expectedElementType = case expectedEle
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VIntType
 
 -- | Split data by the first dimension of the C-Array.
-partitionData :: Vector.Unbox a => Int -> [Int] -> Vector a -> [Vector a]
+partitionData :: (Vector.Unbox a) => Int -> TensorDimensions -> Vector a -> [Vector a]
 partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
 
-variableSizeError :: MonadCompile m => ParseContext m a -> StandardNormExpr -> m b
+variableSizeError :: (MonadCompile m) => ParseContext m a -> StandardNormExpr -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
   throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 
-dimensionMismatchError :: MonadCompile m => ParseContext m a -> m b
+dimensionMismatchError :: (MonadCompile m) => ParseContext m a -> m b
 dimensionMismatchError (decl, file, expectedDatasetType, actualDatasetDims, _) =
   throwError $ DatasetDimensionsMismatch decl file expectedDatasetType actualDatasetDims
 
-typingError :: MonadCompile m => ParseContext m a -> m b
+typingError :: (MonadCompile m) => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) =
   compilerDeveloperError $
     "Invalid parameter type"

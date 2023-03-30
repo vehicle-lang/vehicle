@@ -5,7 +5,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Text.IO (hPutStrLn)
 import Data.Vector.Unboxed (Vector)
@@ -14,7 +14,6 @@ import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.VariableReconstruction
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
@@ -33,11 +32,13 @@ marabouVerifier =
 -- Invoking Marabou
 
 invokeMarabou :: VerifierInvocation
-invokeMarabou marabouExecutable networkLocations varReconstruction queryFile =
+invokeMarabou marabouExecutable networkLocations queryFile =
   liftIO $ do
     networkArg <- prepareNetworkArg networkLocations
-    marabouOutput <- readProcessWithExitCode marabouExecutable [networkArg, queryFile] ""
-    parseMarabouOutput varReconstruction marabouOutput
+    let args = [networkArg, queryFile]
+    marabouOutput <- readProcessWithExitCode marabouExecutable args ""
+    let command = unwords (marabouExecutable : args)
+    parseMarabouOutput command marabouOutput
 
 prepareNetworkArg :: MetaNetwork -> IO String
 prepareNetworkArg [(_name, file)] = return file
@@ -47,19 +48,18 @@ prepareNetworkArg _ = do
       <> "multiple neural networks or multiple applications of the same network."
   exitFailure
 
-parseMarabouOutput ::
-  UserVarReconstructionInfo ->
-  (ExitCode, String, String) ->
-  IO QueryResult
-parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
+parseMarabouOutput :: String -> (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)
+parseMarabouOutput command (exitCode, out, _err) = case exitCode of
   ExitFailure _ -> do
     -- Marabou seems to output its error messages to stdout rather than stderr...
-    hPutStrLn
-      stderr
-      ( "Marabou threw the following error:\n"
-          <> "  "
-          <> pack out
-      )
+    let errorDoc =
+          "Marabou threw the following error:"
+            <> line
+            <> indent 2 (pretty out)
+            <> "when running the command:"
+            <> line
+            <> indent 2 (pretty command)
+    hPutStrLn stderr (layoutAsText errorDoc)
     exitFailure
   ExitSuccess -> do
     let outputLines = fmap Text.pack (lines out)
@@ -72,24 +72,20 @@ parseMarabouOutput reconstructionInfo (exitCode, out, _err) = case exitCode of
         | otherwise -> do
             let assignmentOutput = drop (i + 1) outputLines
             let ioVarAssignment = parseSATAssignment assignmentOutput
-            let maybeLinearVars = reconstructUserVars reconstructionInfo ioVarAssignment
-            case maybeLinearVars of
-              Nothing -> return $ SAT Nothing
-              -- TODO reverse normalisation of quantified user tensor variables
-              Just _x -> return $ SAT Nothing
+            return $ SAT $ Just ioVarAssignment
 
 parseSATAssignment :: [Text] -> Vector Double
-parseSATAssignment output =
+parseSATAssignment output = do
   let mInputIndex = elemIndex "Input assignment:" output
-   in let mOutputIndex = elemIndex "Output:" output
-       in case (mInputIndex, mOutputIndex) of
-            (Just inputIndex, Just outputIndex) ->
-              let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
-               in let outputVarLines = drop (outputIndex + 1) output
-                   in let inputValues = parseSATAssignmentLine Input <$> inputVarLines
-                       in let outputValues = parseSATAssignmentLine Output <$> outputVarLines
-                           in Vector.fromList (inputValues <> outputValues)
-            _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
+  let mOutputIndex = elemIndex "Output:" output
+  case (mInputIndex, mOutputIndex) of
+    (Just inputIndex, Just outputIndex) -> do
+      let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
+      let outputVarLines = drop (outputIndex + 1) output
+      let inputValues = parseSATAssignmentLine Input <$> inputVarLines
+      let outputValues = parseSATAssignmentLine Output <$> outputVarLines
+      Vector.fromList (inputValues <> outputValues)
+    _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine :: InputOrOutput -> Text -> Double
 parseSATAssignmentLine _ txt =

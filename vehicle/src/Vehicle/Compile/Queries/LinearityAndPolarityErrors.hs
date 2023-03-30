@@ -24,14 +24,14 @@ import Vehicle.Verify.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
   m CompileError
 diagnoseNonLinearity queryFormat prog propertyIdentifier = do
   setCallDepth 0
-  logDebug MaxDetail $
+  logDebug MinDetail $
     "ERROR: found non-linear property. Switching to linearity type-checking mode for"
       <+> quotePretty propertyIdentifier <> line
 
@@ -48,14 +48,14 @@ diagnoseNonLinearity queryFormat prog propertyIdentifier = do
 
 diagnoseAlternatingQuantifiers ::
   forall m.
-  MonadCompile m =>
+  (MonadCompile m) =>
   QueryFormatID ->
   StandardGluedProg ->
   Identifier ->
   m CompileError
 diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
   setCallDepth 0
-  logDebug MaxDetail $
+  logDebug MinDetail $
     "ERROR: found property with alterating quantifiers. Switching to polarity type-checking mode for"
       <+> quotePretty propertyIdentifier <> line
 
@@ -83,7 +83,7 @@ typeCheckWithSubsystem prog = do
   runTypeChecker @m @types mempty $
     typeCheckProg mempty implicitFreeProg
 
-resolveInstanceArguments :: forall m. MonadCompile m => StandardProg -> m StandardProg
+resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
     result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
@@ -97,7 +97,7 @@ resolveInstanceArguments prog =
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args
 
-removeImplicitAndInstanceArgs :: forall m. MonadCompile m => TypeCheckedProg -> m TypeCheckedProg
+removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =
   logCompilerPass MaxDetail "removal of implicit arguments" $ do
     result <- traverse go prog

@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Vehicle.Compile.Dependency.Graph as X
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Prelude as X
@@ -69,7 +68,7 @@ type BuiltinUpdate m binder var builtin1 builtin2 =
 -- applying the provided update function when it finds them (or a space
 -- where they should be).
 traverseBuiltinsM ::
-  Monad m =>
+  (Monad m) =>
   BuiltinUpdate m binder var builtin1 builtin2 ->
   Expr binder var builtin1 ->
   m (Expr binder var builtin2)
@@ -89,10 +88,10 @@ traverseBuiltinsM f expr = case expr of
   Hole p n -> return $ Hole p n
   Meta p m -> return $ Meta p m
 
-traverseBuiltinsArg :: Monad m => BuiltinUpdate m binder var builtin1 builtin2 -> Arg binder var builtin1 -> m (Arg binder var builtin2)
+traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m binder var builtin1 builtin2 -> Arg binder var builtin1 -> m (Arg binder var builtin2)
 traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
 
-traverseBuiltinsBinder :: Monad m => BuiltinUpdate m binder var builtin1 builtin2 -> Binder binder var builtin1 -> m (Binder binder var builtin2)
+traverseBuiltinsBinder :: (Monad m) => BuiltinUpdate m binder var builtin1 builtin2 -> Binder binder var builtin1 -> m (Binder binder var builtin2)
 traverseBuiltinsBinder f = traverse (traverseBuiltinsM f)
 
 traverseBuiltins ::

@@ -34,7 +34,7 @@ type PropertyNames = [Name]
 -- | A set of declarations in the specification.
 type DeclarationNames = [Name]
 
-(!?) :: Eq a => [(a, b)] -> a -> Maybe b
+(!?) :: (Eq a) => [(a, b)] -> a -> Maybe b
 [] !? _ = Nothing
 ((k, v) : xs) !? k'
   | k == k' = Just v
@@ -49,7 +49,10 @@ repeatN :: (a -> a) -> Int -> a -> a
 repeatN _ 0 = id
 repeatN f n = f . repeatN f (n - 1)
 
-partitionMaybeM :: Monad m => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
+unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
+unzipWith f = unzip . map f
+
+partitionMaybeM :: (Monad m) => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
 partitionMaybeM _ [] = return ([], [])
 partitionMaybeM f (x : xs) = do
   res <- f x
@@ -61,7 +64,7 @@ partitionMaybeM f (x : xs) = do
 partitionMaybe :: (a -> Maybe b) -> [a] -> ([b], [a])
 partitionMaybe f xs = runIdentity (partitionMaybeM (return . f) xs)
 
-partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
+partitionM :: (Monad m) => (a -> m Bool) -> [a] -> m ([a], [a])
 partitionM f = partitionMaybeM (\v -> do r <- f v; return $ if r then Just v else Nothing)
 
 duplicate :: String -> Int -> String
@@ -145,7 +148,7 @@ enumerate = [minBound .. maxBound]
 supportedOptions :: [String] -> String
 supportedOptions opts = "Supported options: " <> List.intercalate ", " opts
 
-whenM :: Monad m => m Bool -> m () -> m ()
+whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do
   c <- cond
   when c action
@@ -158,3 +161,7 @@ prettyJSONConfig =
       confNumFormat = Generic,
       confTrailingNewline = False
     }
+
+type TensorDimensions = [Int]
+
+type TensorIndices = [Int]

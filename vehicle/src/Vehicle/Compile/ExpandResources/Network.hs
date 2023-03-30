@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalised
 
 checkNetwork ::
   forall m.
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   NetworkLocations ->
   DeclProvenance ->
   StandardGluedType ->
@@ -35,7 +35,7 @@ checkNetwork networkLocations decl@(ident, _) networkType = do
 --  binders are explicit and their types are equal.
 getNetworkType ::
   forall m.
-  MonadExpandResources m =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   StandardGluedType ->
   m NetworkType
@@ -55,7 +55,7 @@ getNetworkType decl networkType = case normalised networkType of
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> StandardNormType -> m (NetworkBaseType, [Int])
+        go :: Bool -> StandardNormType -> m (NetworkBaseType, TensorDimensions)
         go topLevel = \case
           VTensorType _ dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
           VVectorType tElem dim -> do

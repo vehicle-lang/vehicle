@@ -32,7 +32,7 @@ type MonadDelab m = Monad m
 -- * Conversion
 
 class Delaborate t bnfc | t -> bnfc, bnfc -> t where
-  delabM :: MonadDelab m => t -> m bnfc
+  delabM :: (MonadDelab m) => t -> m bnfc
 
 -- | Elaborate programs.
 instance Delaborate V.InputProg B.Prog where
@@ -90,7 +90,7 @@ delabUniverse :: V.UniverseLevel -> B.Expr
 delabUniverse = \case
   V.UniverseLevel l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
   where
-    mkBuiltinToken :: Pretty a => a -> B.BuiltinToken
+    mkBuiltinToken :: (Pretty a) => a -> B.BuiltinToken
     mkBuiltinToken a = mkToken B.BuiltinToken $ layoutAsText (pretty a)
 
 delabBoolLit :: Bool -> B.Expr

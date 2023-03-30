@@ -55,6 +55,7 @@ import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty ((:|)), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)
@@ -209,6 +210,7 @@ testSpecDiffTestOutput testSpec golden actual = do
         [ printf "Extraneous output file %s" extraFile
           | extraFile <- HashSet.toList $ HashSet.difference actualFiles goldenFiles
         ]
+
   -- Compare output & error stream content:
   let differentStdoutError =
         printf "Contents of stdout differ:\n%s"
@@ -216,7 +218,9 @@ testSpecDiffTestOutput testSpec golden actual = do
   let differentStderrError =
         printf "Contents of stderr differ:\n%s"
           <$> testSpecDiffText testSpec (testOutputStderr golden) (testOutputStderr actual)
+
   -- Compare file content:
+  let sharedFiles = sort $ HashSet.toList $ HashSet.intersection goldenFiles actualFiles
   let differentOutputFileErrors =
         catMaybes
           [ printf "Content of %s differs:\n%s" file
@@ -224,7 +228,7 @@ testSpecDiffTestOutput testSpec golden actual = do
                 testSpec
                 (testOutputFiles golden HashMap.! file)
                 (testOutputFiles actual HashMap.! file)
-            | file <- HashSet.toList $ HashSet.intersection goldenFiles actualFiles
+            | file <- sharedFiles
           ]
   -- Combine all messages:
   let messages =
@@ -239,28 +243,32 @@ testSpecDiffTestOutput testSpec golden actual = do
 
 -- | Compare two texts using the options set in DiffSpec.
 testSpecDiffText :: TestSpec -> Text -> Text -> Maybe String
-testSpecDiffText testSpec golden actual
-  -- First try direct comparison
-  | goldenLines == actualLines = Nothing
-  -- If this fails then try comparing with the DiffSpecIgnore
-  | testSpecCompareLines testSpec goldenLines actualLines = Nothing
-  -- Otherwise return the diff
-  | otherwise = return prettyDiff
+testSpecDiffText testSpec golden actual = do
+  let compareLine = maybe (==) testSpecCompareLine (testSpecDiffSpec testSpec)
+  let goldenLines = Text.lines golden
+  let actualLines = Text.lines actual
+  let linesEqual =
+        length goldenLines == length actualLines
+          && and (zipWith compareLine goldenLines actualLines)
+  let lineTotal = length goldenLines + length actualLines
+  if linesEqual
+    then Nothing
+    else
+      if lineTotal > 20000
+        then
+          Just $
+            "<too big to diff (" <> show (length goldenLines) <> "lines vs " <> show (length actualLines) <> " lines>"
+        else do
+          let diffGroups = getGroupedDiffBy compareLine goldenLines actualLines
+
+          -- ASSERT: we should not be computing the pretty diff unless
+          -- there is an actual difference, guarded by the comparison
+          let prettyDiff =
+                assert (not (all isBoth diffGroups)) $
+                  ppDiff (mapDiff (fmap Text.unpack) <$> diffGroups)
+
+          return prettyDiff
   where
-    goldenLines, actualLines :: [Text]
-    goldenLines = Text.lines golden
-    actualLines = Text.lines actual
-
-    diffGroups :: [Diff [Text]]
-    diffGroups = getGroupedDiffBy (testSpecCompareLine testSpec) goldenLines actualLines
-
-    prettyDiff :: String
-    prettyDiff =
-      -- ASSERT: we should not be computing the pretty diff unless
-      -- there is an actual difference, guarded by the comparison
-      assert (not (all isBoth diffGroups)) $
-        ppDiff (mapDiff (fmap Text.unpack) <$> diffGroups)
-
     -- TODO: upstream DiffOutput to work with Text
     isBoth :: Diff a -> Bool
     isBoth (Both _ _) = True
@@ -271,21 +279,16 @@ testSpecDiffText testSpec golden actual
     mapDiff f (Second y) = Second (f y)
     mapDiff f (Both x y) = Both (f x) (f y)
 
--- | Compares two sets of lines using the options set in DiffSpec.
-testSpecCompareLines :: TestSpec -> [Text] -> [Text] -> Bool
-testSpecCompareLines spec xs ys =
-  all (uncurry (testSpecCompareLine spec)) (zip xs ys)
-
 -- | Compare two lines using the options set in DiffSpec.
-testSpecCompareLine :: TestSpec -> Text -> Text -> Bool
-testSpecCompareLine testSpec =
-  (==) `on` testSpecDiffSpecStrikeOut testSpec
+testSpecCompareLine :: DiffSpec -> Text -> Text -> Bool
+testSpecCompareLine testDiffSpec =
+  (==) `on` testSpecDiffSpecStrikeOut testDiffSpec
 
 -- | Strike out matches for the DiffSpecIgnore expression.
-testSpecDiffSpecStrikeOut :: TestSpec -> Text -> Text
-testSpecDiffSpecStrikeOut testSpec = maybe id strikeOut maybeRegex
+testSpecDiffSpecStrikeOut :: DiffSpec -> Text -> Text
+testSpecDiffSpecStrikeOut testDiffSpec = maybe id strikeOut maybeRegex
   where
-    maybeRegex = diffSpecIgnoreRegex <$> (diffSpecIgnore =<< testSpecDiffSpec testSpec)
+    maybeRegex = diffSpecIgnoreRegex <$> diffSpecIgnore testDiffSpec
 
 -- | Strike out matches for a regular expression.
 strikeOut :: Regex -> Text -> Text
@@ -315,11 +318,11 @@ writeTestSpecsFile :: FilePath -> TestSpecs -> IO ()
 writeTestSpecsFile testSpecFile testSpecs = do
   Text.writeFile testSpecFile (encodeTestSpecsPretty testSpecs)
 
-mergeTestSpecs :: HasCallStack => TestSpecs -> TestSpecs -> TestSpecs
+mergeTestSpecs :: (HasCallStack) => TestSpecs -> TestSpecs -> TestSpecs
 mergeTestSpecs (TestSpecs testSpecs1) testSpecs2 =
   foldr addOrReplaceTestSpec testSpecs2 testSpecs1
 
-addOrReplaceTestSpec :: HasCallStack => TestSpec -> TestSpecs -> TestSpecs
+addOrReplaceTestSpec :: (HasCallStack) => TestSpec -> TestSpecs -> TestSpecs
 addOrReplaceTestSpec newTestSpec (TestSpecs oldTestSpecs)
   | replaced = TestSpecs newTestSpecs
   | otherwise = TestSpecs $ newTestSpec <| oldTestSpecs
