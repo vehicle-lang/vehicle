@@ -13,9 +13,7 @@ inputs:
     required: false
     description: 'The build type.'
     default: "Production"
-defaults:
-  run:
-    shell: sh
+
 runs:
   using: "composite"
   steps:
@@ -24,6 +22,7 @@ runs:
       run: |
         echo "Cannot install Marabou on Windows or macOS"
         exit 1
+      shell: sh
 
     - name: Cache Marabou
       id: cache-Marabou
@@ -57,10 +56,12 @@ runs:
             libprotoc-dev
           echo "/usr/lib/ccache" >> $GITHUB_PATH
       working-directory: Marabou
+      shell: sh
 
     - name: Create Build Environment
       run: cmake -E make_directory build
       working-directory: Marabou
+      shell: sh
 
     - name: Configure ccache
       run: |
@@ -70,6 +71,7 @@ runs:
         ccache -M 500M
         ccache -z
       working-directory: Marabou
+      shell: sh
 
     - name: Configure CMake
       # Note the current convention is to use the -S and -B options here to specify source
@@ -93,14 +95,17 @@ runs:
     - name: ccache statistics
       run: ccache -s
       working-directory: Marabou
+      shell: sh
 
     - name: Run system tests
       run: ctest -L system -j 2
       working-directory: Marabou/build
+      shell: sh
 
     - name: Run regression tests
       run: ctest -L regress[0-1] -j 2
       working-directory: Marabou/build
+      shell: sh
 
 
 
@@ -112,7 +117,9 @@ runs:
         mkdir -p ~/.Marabou/bin
         cp build/bin/Marabou ~/.Marabou/bin/Marabou
       working-directory: Marabou
+      shell: sh
 
     - name: Add Marabou to PATH
       run: |
         echo "~/.Marabou/bin" >> $GITHUB_PATH
+      shell: sh

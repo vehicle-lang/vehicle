@@ -83,7 +83,7 @@ jobs:
   #           python-version: "3.8.0"
 
   build-vehicle-marabou:
-    name: ${{ matrix.os_and_name[1] }} / Marabou ${{ matrix.marabou-commit }}
+    name: ${{ matrix.os_and_name[1] }} / Marabou
     # needs: [ormolu, build-vehicle]
     uses: ./.github/workflows/build-vehicle-marabou.yml
     with:
