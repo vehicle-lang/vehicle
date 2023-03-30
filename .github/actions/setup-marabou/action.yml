@@ -1,0 +1,118 @@
+name: "Setup Marabou"
+description: "Setup Marabou"
+inputs:
+  marabou-commit:
+    required: false
+    description: 'The Version of Marabou to use. If set to "HEAD", it will always get the latest version.'
+    default: "HEAD"
+  compiler:
+    required: false
+    description: 'The C/C++ compiler to use.'
+    default: "g++"
+  build-type:
+    required: false
+    description: 'The build type.'
+    default: "Production"
+defaults:
+  run:
+    shell: sh
+runs:
+  using: "composite"
+  steps:
+    - name: os-check
+      if: runner.os == 'Windows' || runner.os == 'macOS'
+      run: |
+        echo "Cannot install Marabou on Windows or macOS"
+        exit 1
+
+    - name: Cache Marabou
+      id: cache-Marabou
+      uses: actions/cache@v3
+      with:
+        path: ~/.Marabou/bin/Marabou
+        key: ${{ runner.os }}-Marabou-${{ inputs.marabou-commit }}
+
+    - name: Checkout Marabou repo
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
+      with:
+        repository: NeuralNetworkVerification/Marabou
+        path: Marabou
+        fetch-depth: 1
+        ref: ${{ inputs.marabou-commit }}
+
+    # - name: Install cmake
+    #   if: steps.cache-Marabou.outputs.cache-hit != 'true'
+    #   uses: jwlawson/actions-setup-cmake@v1.13
+    #   with:
+    #     cmake-version: '3.16.x'
+
+    - name: Install Packages
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ccache \
+            cxxtest \
+            protobuf-compiler \
+            libprotoc-dev
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+      working-directory: Marabou
+
+    - name: Create Build Environment
+      run: cmake -E make_directory build
+      working-directory: Marabou
+
+    - name: Configure ccache
+      run: |
+        ccache --set-config=cache_dir=${{ github.workspace }}/ccache-dir
+        ccache --set-config=compression=true
+        ccache --set-config=compression_level=6
+        ccache -M 500M
+        ccache -z
+      working-directory: Marabou
+
+    - name: Configure CMake
+      # Note the current convention is to use the -S and -B options here to specify source
+      # and build directories, but this is only available with CMake 3.13 and higher.
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: |
+        cmake ${{ github.workspace }}/Marabou \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+          -DBUILD_PYTHON=OFF \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER=${{ inputs.compiler }}
+      # Use a bash shell so we can use the same syntax for environment variable bb
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: Marabou/build
+
+    - name: Build
+      run: make -j2
+      working-directory: Marabou/build
+
+    - name: ccache statistics
+      run: ccache -s
+      working-directory: Marabou
+
+    - name: Run system tests
+      run: ctest -L system -j 2
+      working-directory: Marabou/build
+
+    - name: Run regression tests
+      run: ctest -L regress[0-1] -j 2
+      working-directory: Marabou/build
+
+
+
+
+
+    - name: Install Marabou
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ~/.Marabou/bin
+        cp build/bin/Marabou ~/.Marabou/bin/Marabou
+      working-directory: Marabou
+
+    - name: Add Marabou to PATH
+      run: |
+        echo "~/.Marabou/bin" >> $GITHUB_PATH

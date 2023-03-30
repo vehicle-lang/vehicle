@@ -1,0 +1,42 @@
+name: build vehicle-marabou
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: "The type of machine to run the job on."
+        required: true
+        type: string
+      marabou-commit:
+        description: "The Marabou commit to run the job with."
+        required: true
+        type: string
+
+env:
+  DEFAULT_GHC_VERSION: "9.0.2"
+
+jobs:
+  build-vehicle-marabou:
+    name: Build vehicle-marabou
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      # - name: Setup Vehicle
+      #   uses: ./.github/actions/setup-vehicle
+      #   with:
+      #     vehicle-artifact-name: |
+      #       vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
+
+      - name: Setup Marabou
+        uses: ./.github/actions/setup-marabou
+        with:
+          marabou-commit: ${{ inputs.marabou-commit }}
+
+      - name: Test
+        run: |
+          Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+        shell: sh
+        working-directory: vehicle/tests/golden/compile/windController

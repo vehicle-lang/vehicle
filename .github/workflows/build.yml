@@ -81,3 +81,18 @@ jobs:
           - # Earliest supported version:
             os_and_name: [ubuntu-20.04, Linux]
             python-version: "3.8.0"
+
+  build-vehicle-marabou:
+    name: ${{ matrix.os_and_name[1] }} / Marabou ${{ matrix.marabou-commit }}
+    # needs: [ormolu, build-vehicle]
+    uses: ./.github/workflows/build-vehicle-marabou.yml
+    with:
+      runs-on: ${{ matrix.os_and_name[0] }}
+      marabou-commit: ${{ matrix.marabou-commit }}
+    strategy:
+      matrix:
+        os_and_name:
+          - [ubuntu-latest, Linux]
+          # - [macos-latest, macOS]
+          # - [windows-latest, Windows]
+        marabou-commit: ["663835df7b56be42af94b3d2723bf1b69494c0d5"]
