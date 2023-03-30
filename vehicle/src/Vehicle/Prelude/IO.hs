@@ -14,8 +14,10 @@ module Vehicle.Prelude.IO
   )
 where
 
-import Control.Exception (bracket, catch, throwIO)
 -- import Control.Monad (forM_)
+
+import Control.DeepSeq (NFData, deepseq)
+import Control.Exception (bracket, catch, throwIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Version (Version)
 import GHC.IO.Handle (LockMode (..), hLock)
@@ -113,13 +115,15 @@ safeWriteToFile writeOp file contents = do
   bracket acquireFile releaseFile processFile
 
 -- | Writes a file atomically by first acquiring a lock on it.
-safeReadFromFile :: (Handle -> IO a) -> FilePath -> IO a
+safeReadFromFile :: (NFData a) => (Handle -> IO a) -> FilePath -> IO a
 safeReadFromFile readOp file = do
   let acquireFile = do
         handle <- openFile file ReadMode
         hLock handle SharedLock
         return handle
-  let processFile = readOp
+  let processFile handle = do
+        result <- readOp handle
+        result `deepseq` return result
   let releaseFile = hClose
 
   bracket acquireFile releaseFile processFile
