@@ -5,9 +5,7 @@ inputs:
     required: false
     description: 'The Version of Marabou to use. If set to "HEAD", it will always get the latest version.'
     default: "HEAD"
-defaults:
-  run:
-    shell: sh
+
 runs:
   using: "composite"
   steps:
@@ -16,6 +14,7 @@ runs:
       run: |
         echo "Cannot install Marabou on Windows"
         exit 1
+      shell: sh
 
     - name: Cache Marabou
       id: cache-Marabou
@@ -62,6 +61,7 @@ runs:
           -DBoost_LIBRARY_DIRS=${{steps.install-boost.outputs.BOOST_ROOT}}/lib
         cmake --build .
       working-directory: Marabou
+      shell: sh
       env:
           BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
 
@@ -71,7 +71,9 @@ runs:
         mkdir -p ~/.Marabou/bin
         cp build/bin/Marabou ~/.Marabou/bin/Marabou
       working-directory: Marabou
+      shell: sh
 
     - name: Add Marabou to PATH
       run: |
         echo "~/.Marabou/bin" >> $GITHUB_PATH
+      shell: sh
