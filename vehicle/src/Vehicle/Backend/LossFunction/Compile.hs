@@ -8,9 +8,11 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Either (isRight)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
+import Data.Maybe (isNothing)
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
     Domain (..),
@@ -35,8 +37,6 @@ import Vehicle.Libraries.StandardLibrary
 import Vehicle.Prelude
 import Vehicle.Resource (Resources (..))
 import Vehicle.Syntax.AST (HasName (nameOf), argExpr)
-import Data.Maybe (isNothing)
-import Data.Either (isRight)
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -181,12 +181,12 @@ compileBuiltinFunction f t args = case f of
   V.FromNat {} -> compileOp1 id t args
   V.FromRat {} -> compileOp1 id t args
   -- Logical operatives
-  V.And  ->  case compileAnd t of
-      Left binaryAnd -> compileOp2 binaryAnd t args
-      Right naryAnd -> return (naryAnd args)
-  V.Or  ->  case compileOr t of
-      Left binaryOr -> compileOp2 binaryOr t args
-      Right naryOr -> return (naryOr args)
+  V.And -> case compileAnd t of
+    Left binaryAnd -> compileOp2 binaryAnd t args
+    Right naryAnd -> return (naryAnd args)
+  V.Or -> case compileOr t of
+    Left binaryOr -> compileOp2 binaryOr t args
+    Right naryOr -> return (naryOr args)
   V.At -> compileOp2 At t args
   V.Not -> compileNotOp t args
   V.Implies -> compileOp2 (compileImplies t) t args
@@ -311,12 +311,11 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
             lowerNot p2 (argExpr $ head args)
       V.CFunction V.And
         | isRight (compileAnd (implementationOf logic)) ->
-          return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
+            return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
       V.CFunction V.Or
         | isRight (compileOr (implementationOf logic)) ->
-          return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
+            return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
       _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
-
 
     lowerNot :: V.Provenance -> InputExpr -> m InputExpr
     lowerNot notProv arg = case arg of

@@ -46,8 +46,8 @@ data LExpr
   | Power LExpr LExpr
   | Range LExpr
   | Map LExpr LExpr
-  -- |and for the STL translation specifics of which are handled on the Python side
-  | ExponentialAnd [LExpr]
+  | -- | and for the STL translation specifics of which are handled on the Python side
+    ExponentialAnd [LExpr]
   deriving (Eq, Ord, Generic, Show)
 
 instance FromJSON LExpr
@@ -126,7 +126,7 @@ dl2Translation =
     { compileAnd = Left Addition,
       compileOr = Left Multiplication,
       compileNot = Nothing,
-      compileImplies = \arg1 arg2 -> Multiplication (Max (Constant 0) arg1) arg2,--Max (Negation arg1) arg2,
+      compileImplies = \arg1 arg2 -> Multiplication (Max (Constant 0) arg1) arg2, -- Max (Negation arg1) arg2,
       compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
       compileLt = \arg1 arg2 -> Addition (Max (Constant 0) (Subtraction arg1 arg2)) (IndicatorFunction arg1 arg2),
       compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
@@ -199,34 +199,49 @@ yagerTranslation = parameterisedYagerTranslation 1 -- change constant here
 parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
 parameterisedYagerTranslation p =
   DifferentialLogicImplementation
-    { compileAnd = Left (\arg1 arg2 -> Subtraction (Constant 1)
-        (Max
-          ( Subtraction
-              (Constant 1)
+    { compileAnd =
+        Left
+          ( \arg1 arg2 ->
+              Subtraction
+                (Constant 1)
+                ( Max
+                    ( Subtraction
+                        (Constant 1)
+                        ( Power
+                            ( Addition
+                                (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p)))
+                                (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p)))
+                            )
+                            (Division (Constant 1) (Constant (fromRational p)))
+                        )
+                    )
+                    (Constant 0)
+                )
+          ),
+      compileNot = Just (\arg -> Subtraction (Constant 1) arg),
+      compileOr =
+        Left
+          ( \arg1 arg2 ->
+              Subtraction
+                (Constant 1)
+                ( Min
+                    ( Power
+                        (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
+                        (Division (Constant 1) (Constant (fromRational p)))
+                    )
+                    (Constant 1)
+                )
+          ),
+      compileImplies = \arg1 arg2 ->
+        Subtraction
+          (Constant 1)
+          ( Min
               ( Power
-                  ( Addition
-                      (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p)))
-                      (Power (Subtraction (Constant 1) arg2) (Constant (fromRational p)))
-                  )
+                  (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
                   (Division (Constant 1) (Constant (fromRational p)))
               )
-          )
-          (Constant 0))),
-      compileNot = Just (\arg -> Subtraction (Constant 1) arg),
-      compileOr = Left (\arg1 arg2 -> Subtraction (Constant 1)
-        (Min
-          ( Power
-              (Addition (Power arg1 (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
-              (Division (Constant 1) (Constant (fromRational p)))
-          )
-          (Constant 1))),
-      compileImplies = \arg1 arg2 -> Subtraction (Constant 1) (
-        Min
-          ( Power
-              (Addition (Power (Subtraction (Constant 1) arg1) (Constant (fromRational p))) (Power arg2 (Constant (fromRational p))))
-              (Division (Constant 1) (Constant (fromRational p)))
-          )
-          (Constant 1)),
+              (Constant 1)
+          ),
       compileLe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
       compileLt = \arg1 arg2 -> Max (Constant 0) (Subtraction arg1 arg2),
       compileGe = \arg1 arg2 -> Max (Constant 0) (Subtraction arg2 arg1),
