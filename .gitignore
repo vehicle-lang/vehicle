@@ -44,7 +44,7 @@ __pycache__/
 .mypy_cache/
 
 # Vehicle files
-*.vclp
+*.vcl-cache
 *.vclo
 
 # Example folders

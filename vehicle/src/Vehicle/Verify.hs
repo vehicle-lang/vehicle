@@ -9,7 +9,6 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Text.IO (hPutStrLn)
 import System.Directory (doesFileExist, findExecutable)
 import System.Exit (exitFailure)
-import System.FilePath (takeDirectory)
 import System.IO (stderr)
 import Vehicle.Prelude
 import Vehicle.Verify.Core
@@ -19,7 +18,7 @@ import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 
 data VerifyOptions = VerifyOptions
-  { verificationPlan :: FilePath,
+  { queryFolder :: FilePath,
     verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable,
     proofCache :: Maybe FilePath
@@ -31,9 +30,9 @@ verify _loggingSettings VerifyOptions {..} = do
   let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
-  VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlan
-  let verificationFolder = takeDirectory verificationPlan
-  status <- verifySpecification verificationFolder verifierImpl verifierExecutable specificationPlan
+  let verificationPlanFile = verificationPlanFileName queryFolder
+  VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlanFile
+  status <- verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan
 
   programOutput $ pretty status
   case proofCache of
