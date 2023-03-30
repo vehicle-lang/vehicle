@@ -91,6 +91,7 @@ runs:
     - name: Build
       run: make -j2
       working-directory: Marabou/build
+      shell: sh
 
     - name: ccache statistics
       run: ccache -s
