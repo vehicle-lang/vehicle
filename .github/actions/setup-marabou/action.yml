@@ -33,7 +33,6 @@ runs:
             protobuf-compiler \
             libprotoc-dev
           echo "/usr/lib/ccache" >> $GITHUB_PATH
-      working-directory: Marabou
       shell: sh
 
     - name: Cache Marabou
