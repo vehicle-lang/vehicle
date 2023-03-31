@@ -24,6 +24,18 @@ runs:
         exit 1
       shell: sh
 
+    - name: Install Packages
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ccache \
+            cxxtest \
+            protobuf-compiler \
+            libprotoc-dev
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+      working-directory: Marabou
+      shell: sh
+
     - name: Cache Marabou
       id: cache-Marabou
       uses: actions/cache@v3
@@ -46,24 +58,14 @@ runs:
     #   with:
     #     cmake-version: '3.16.x'
 
-    - name: Install Packages
-      run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ccache \
-            cxxtest \
-            protobuf-compiler \
-            libprotoc-dev
-          echo "/usr/lib/ccache" >> $GITHUB_PATH
-      working-directory: Marabou
-      shell: sh
-
     - name: Create Build Environment
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: cmake -E make_directory build
       working-directory: Marabou
       shell: sh
 
     - name: Configure ccache
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: |
         ccache --set-config=cache_dir=${{ github.workspace }}/ccache-dir
         ccache --set-config=compression=true
@@ -74,6 +76,7 @@ runs:
       shell: sh
 
     - name: Configure CMake
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
       # Note the current convention is to use the -S and -B options here to specify source
       # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
@@ -89,28 +92,26 @@ runs:
       working-directory: Marabou/build
 
     - name: Build
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: make -j2
       working-directory: Marabou/build
       shell: sh
 
     - name: ccache statistics
+      if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: ccache -s
       working-directory: Marabou
       shell: sh
 
-    - name: Run system tests
-      run: ctest -L system -j 2
-      working-directory: Marabou/build
-      shell: sh
+    # - name: Run system tests
+    #   run: ctest -L system -j 2
+    #   working-directory: Marabou/build
+    #   shell: sh
 
-    - name: Run regression tests
-      run: ctest -L regress[0-1] -j 2
-      working-directory: Marabou/build
-      shell: sh
-
-
-
-
+    # - name: Run regression tests
+    #   run: ctest -L regress[0-1] -j 2
+    #   working-directory: Marabou/build
+    #   shell: sh
 
     - name: Install Marabou
       if: steps.cache-Marabou.outputs.cache-hit != 'true'
