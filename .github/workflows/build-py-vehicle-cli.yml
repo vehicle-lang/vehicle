@@ -114,5 +114,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: wheelhouse-GHC-${{ matrix.ghc.version }}
+          name: wheelhouse
           path: ./py-vehicle-cli/wheelhouse/*.whl
