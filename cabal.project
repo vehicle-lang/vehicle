@@ -24,3 +24,17 @@ packages:
 -- See: https://github.com/vehicle-lang/vehicle/issues/191
 
 allow-newer: linkedhashmap-0.4.0.0:containers
+
+-- 03-04-2023:
+-- The package terminal-size, which is a dependency of terminal-progress-bar,
+-- requires Win32>=2.13.2.0 && <2.14 since version 0.3.4. Unfortunately, the
+-- version that ships with GHC 9.2.7 is Win32-2.12.0.1.
+if impl(ghc < 9.4)
+  constraints:
+    terminal-size <= 0.3.3
+
+-- 03-04-2023:
+-- The package recursion-schemes has not yet been updated for GHC 9.6.1,
+-- but appears to work fine with the latest template-haskell.
+if impl(ghc >= 9.6)
+  allow-newer: recursion-schemes-5.2.2.4:template-haskell

@@ -3,9 +3,3 @@
 -- See `cabal.project` for details.
 
 import: cabal.project
-
--- 03-04-2023:
--- The package recursion-schemes has not yet been updated for GHC 9.6.1,
--- but appears to work fine with the latest template-haskell.
-if impl(ghc >= 9.6)
-  allow-newer: recursion-schemes-5.2.2.4:template-haskell
