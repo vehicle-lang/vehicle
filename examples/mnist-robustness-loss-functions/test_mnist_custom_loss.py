@@ -10,11 +10,11 @@ if __name__ == "__main__" and __package__ is None:
     from os.path import dirname as dir
     from sys import path
 
-    path.append(dir(dir(path[0])) + "/vehicle-python")
+    path.append(dir(dir(path[0])) + "/vehicle_tensorflow")
 
 from mnist_constraint_accuracy import get_constraint_accuracy
 
-from vehicle import generate_loss_function
+from vehicle_tensorflow import generate_loss_function
 
 # This file will run a custom-training for a single network using mnist dataset and the robustness specification in mnist.vcl
 
