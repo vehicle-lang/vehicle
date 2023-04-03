@@ -40,9 +40,9 @@ foreign-library _binding
 
   if os(windows)
     options:      standalone
-    mod-def-file: src/vehicle/core/binding.def
+    mod-def-file: src/vehicle_core/binding.def
 
-  c-sources:        src/vehicle/core/binding_wrap.c
+  c-sources:        src/vehicle_core/binding_wrap.c
   hs-source-dirs:   src
   other-modules:    VehiclePythonCore
   build-depends:

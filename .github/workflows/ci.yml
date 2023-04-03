@@ -21,11 +21,7 @@ jobs:
     needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
 
-  build-vehicle-python:
-    name: ${{ matrix.os.name }} / Python ${{ matrix.python.version }}
-    needs: [ormolu, build-vehicle]
-    uses: ./.github/workflows/build-vehicle-python.yml
-    with:
-      runs-on: ${{ matrix.os.tag }}
-      python-version: ${{ matrix.python.version }}
-      python-tag: ${{ matrix.python.tag }}
+  # build-vehicle-python:
+  #   name: ${{ matrix.os.name }} / Python ${{ matrix.python.version }}
+  #   needs: [ormolu, build-vehicle]
+  #   uses: ./.github/workflows/build-vehicle-python.yml

@@ -4,6 +4,7 @@ module Vehicle.Compile.Scope
   )
 where
 
+import Control.Monad (foldM, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
@@ -18,7 +19,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
-import Control.Monad (when, foldM)
 
 scopeCheck ::
   (MonadCompile m) =>

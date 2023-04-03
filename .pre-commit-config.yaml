@@ -50,8 +50,11 @@ repos:
     rev: "v1.1.1"
     hooks:
       - id: mypy
-        args: ["--config-file", "vehicle-python/pyproject.toml"]
-        additional_dependencies: [numpy]
+        args: ["--config-file", "vehicle-python-tensorflow/pyproject.toml"]
+        additional_dependencies: ["numpy"]
+      - id: mypy
+        args: ["--config-file", "vehicle-python-core/pyproject.toml"]
+        additional_dependencies: ["types-setuptools >=45"]
   - repo: local
     hooks:
       - id: cabal-fmt

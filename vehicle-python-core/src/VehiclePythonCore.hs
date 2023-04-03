@@ -15,8 +15,9 @@ import Vehicle.CommandLine (commandLineOptionsParserInfo)
 defaultMain :: [String] -> IO ()
 defaultMain args = do
   setLocaleEncoding utf8
-  options <- handleParseResult $
-    execParserPure defaultPrefs commandLineOptionsParserInfo args
+  options <-
+    handleParseResult $
+      execParserPure defaultPrefs commandLineOptionsParserInfo args
   run options
 
 hs_defaultMain :: CInt -> Ptr CString -> IO ()

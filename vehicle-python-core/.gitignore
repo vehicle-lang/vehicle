@@ -1,9 +1,9 @@
 # Specific to this project
 /build/
-/src/vehicle/core/binding.py
-/src/vehicle/core/binding_wrap.c
-/src/vehicle/core/_binding*.so
-/src/vehicle/core/_binding*.pyd
+/src/vehicle_core/binding.py
+/src/vehicle_core/binding_wrap.c
+/src/vehicle_core/_binding*.so
+/src/vehicle_core/_binding*.pyd
 /wheelhouse/
 /wheelhouselocal/
 

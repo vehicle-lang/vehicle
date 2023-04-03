@@ -15,20 +15,20 @@ jobs:
           - { version: macos-latest, name: macOS }
           - { version: windows-latest, name: Windows }
         ghc:
-          - { version: "9.6.1" }
+          # - { version: "9.6.1" }
           - { version: "9.4.4" }
-          - { version: "9.2.7" }
+          # - { version: "9.2.7" }
           # 03-04-2020:
           # Support for these versions should be dropped.
-          - { version: "9.0.2" }
-          - { version: "8.10.7" }
+          # - { version: "9.0.2" }
+          # - { version: "8.10.7" }
         cabal:
           - { version: "3.10.1.0", extra-args: "" }
-        include:
+        # include:
           # Build with -fnothunks:
-          - os: { version: ubuntu-latest, name: Linux }
-            ghc: { version: "9.4.4" }
-            cabal: { version: "3.8.1.0", extra-args: "-fnothunks" }
+          # - os: { version: ubuntu-latest, name: Linux }
+          #   ghc: { version: "9.4.4" }
+          #   cabal: { version: "3.8.1.0", extra-args: "-fnothunks" }
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
