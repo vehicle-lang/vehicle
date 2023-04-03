@@ -53,8 +53,8 @@ jobs:
       - name: Setup Haskell
         uses: ./.github/actions/setup-haskell
         with:
-          ghc-version: ${{ inputs.ghc.version }}
-          cabal-version: ${{ inputs.cabal.version }}
+          ghc-version: ${{ matrix.ghc.version }}
+          cabal-version: ${{ matrix.cabal.version }}
           cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
           cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
 
