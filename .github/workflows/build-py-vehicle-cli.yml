@@ -118,14 +118,14 @@ jobs:
           pipx run auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
         shell: sh
         working-directory: py-vehicle-cli
-        
+
       - name: Install & Test
         run: |
           pip install wheelhouse/*.whl
           pip install pytest
           pytest tests
         shell: sh
-        working-directory: py-vehicle-cli 
+        working-directory: py-vehicle-cli
 
       - uses: actions/upload-artifact@v3
         with:
