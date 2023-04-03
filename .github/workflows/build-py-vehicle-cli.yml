@@ -1,4 +1,4 @@
-name: Build vehicle-python-cli
+name: Build py-vehicle-cli
 
 on:
   workflow_call:
@@ -9,8 +9,8 @@ env:
   DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
-  build-vehicle-python-cli:
-    name: vehicle-python-cli / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+  build-py-vehicle-cli:
+    name: py-vehicle-cli / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
