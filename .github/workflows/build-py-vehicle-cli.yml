@@ -33,7 +33,11 @@ jobs:
           # import platform
           # print(platform.libc_ver())
           # ```
-          - { tag: ubuntu-22.04, name: Linux, manylinux: manylinux_2_35_x86_64 }
+          # 03-04-2023:
+          # Builds fail on Linux due to the fact that `standalone` is unsupported,
+          # and `auditwheel` does not know where to find the intermediate libraries
+          # `libHSvehicle-0.2.0.so` and `libHSvehicle-syntax-0.2.0.so`.
+          # - { tag: ubuntu-22.04, name: Linux, manylinux: manylinux_2_35_x86_64 }
           # 01-04-2023:
           # Ubuntu 20.04 has patchelf version 0.10, but the latest auditwheel
           # requires at least version 0.14.
@@ -71,12 +75,7 @@ jobs:
         shell: sh
         working-directory: py-vehicle-cli
 
-      - name: Build
-        run: python setup.py build_ext
-        shell: sh
-        working-directory: py-vehicle-cli
-
-      - name: Test
+      - name: Build & Test
         run: pipx run tox run -e py${{ matrix.python.tag }}
         shell: sh
         working-directory: py-vehicle-cli
