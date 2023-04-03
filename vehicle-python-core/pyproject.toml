@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'vehicle_core'
+version = '0.2.0a1'
+authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
+description = 'Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>'
+readme = 'README.md'
+license = { file = 'LICENSE' }
+
+[project.optional-dependencies]
+test = ["pytest >=7.1,<8"]
+
+[project.scripts]
+vehicle = "vehicle.core:main"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py37, py38, py39, py310, py311
+isolated_build = true
+skip_missing_interpreters = true
+
+[testenv]
+extras =
+  test
+commands =
+  {envpython} -m pytest tests
+"""

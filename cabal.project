@@ -16,6 +16,7 @@
 packages:
   vehicle/vehicle.cabal
   vehicle-syntax/vehicle-syntax.cabal
+  vehicle-python-core/vehicle-python-core.cabal
 
 -- Workaround for linkedhashmap:
 --

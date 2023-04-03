@@ -1,0 +1,15 @@
+cradle:
+  multi:
+
+    - path: "./src"
+      config:
+        cradle:
+          cabal:
+
+    - path: "./"
+      config:
+        cradle:
+          direct:
+            arguments:
+            - "-package Cabal"
+            - "-package base"

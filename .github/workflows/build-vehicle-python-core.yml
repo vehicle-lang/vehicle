@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: ${{ matrix.os.name }} / GHC ${{ matrix.ghc.version }} / Python ${{ matrix.python.version }}
+    runs-on: ${{ matrix.os.tag }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          # 01-04-2023:
+          # All GitHub-hosted runners use an x86_64 architecture. If this changes,
+          # the manylinux platform tags below must take this into account.
+          - { tag: ubuntu-22.04, name: Linux, manylinux: manylinux_2_35_x86_64 }
+          # 01-04-2023:
+          # Ubuntu 20.04 has patchelf version 0.10, but the latest auditwheel
+          # requires at least version 0.14.
+          # - { tag: ubuntu-20.04, name: Linux, manylinux: manylinux_2_31_x86_64 }
+          - { tag: macos-latest, name: macOS }
+          - { tag: windows-latest, name: Windows }
+        ghc:
+          - { version: "9.6.1" }
+          - { version: "9.4.4" }
+          # - { version: "9.2.7" }
+        cabal:
+          - { version: "3.10.1.0" }
+        python:
+          - { version: "3.11", tag: "311" }
+          - { version: "3.10", tag: "310" }
+          - { version: "3.9", tag: "39" }
+          - { version: "3.8", tag: "38" }
+          - { version: "3.7", tag: "37" }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup GHC ${{ matrix.ghc.version }}
+        if: runner.os == 'macOS' || runner.os == 'Windows'
+        uses: haskell/actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc.version }}
+          cabal-version: ${{ matrix.cabal.version }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python.version }}
+          cache: "pip"
+          cache-dependency-path: "requirements-ci.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ci.txt
+        shell: sh
+
+      - name: Build
+        run: python setup.py build_ext
+        shell: sh
+
+      - name: Test
+        run: pipx run --spec tox run -e py${{ matrix.python.tag }}
+        shell: sh
+
+      - name: Build wheel (macOS)
+        if: runner.os == 'macOS'
+        uses: pypa/cibuildwheel@v2.12.1
+        env:
+          CIBW_BUILD: "cp${{ matrix.python.tag }}-*"
+          CIBW_TEST_COMMAND: "pytest {package}/tests"
+          CIBW_TEST_EXTRAS: "test"
+        with:
+          package-dir: .
+          output-dir: wheelhouse
+          config-file: "{package}/pyproject.toml"
+
+      - # 01-04-2023:
+        # Windows builds with cibuildwheel cannot find pythonXY.lib from the venv
+        name: Build wheel (Window)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p wheelhouse
+          pipx run --spec build pyproject-build --wheel --outdir=wheelhouse
+          pipx run delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
+        shell: sh
+
+      - # 01-04-2023:
+        # Linux builds with cibuildwheel on Linux use the manylinux docker images,
+        # which do not come with GHC, and should be installed with CIBW_BEFORE_ALL.
+        # The manylinux platform tags take architecture into account, so we check
+        # that we're definitely running on an x86_64 architecture before building.
+        name: Build wheel (Linux)
+        if: runner.os == 'Linux' && runner.arch == 'X64'
+        run: |
+          mkdir -p wheelhouse
+          pipx run --spec build pyproject-build --wheel --outdir=wheelhouselocal
+          pipx run auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
+        shell: sh
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wheelhouse-GHC-${{ matrix.ghc.version }}
+          path: ./wheelhouse/*.whl
