@@ -77,7 +77,7 @@ jobs:
         working-directory: vehicle-python-core
 
       - name: Test
-        run: pipx run --spec tox run -e py${{ matrix.python.tag }}
+        run: pipx run tox run -e py${{ matrix.python.tag }}
         shell: sh
         working-directory: vehicle-python-core
 
