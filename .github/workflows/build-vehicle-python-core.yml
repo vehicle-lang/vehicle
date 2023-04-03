@@ -2,10 +2,15 @@ name: build vehicle-python-core
 
 on:
   workflow_call:
+  workflow_dispatch:
+
+env:
+  DEFAULT_GHC_VERSION: "9.4.4"
+  DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
   test:
-    name: ${{ matrix.os.name }} / GHC ${{ matrix.ghc.version }} / Python ${{ matrix.python.version }}
+    name: vehicle-python-core / ${{ matrix.os.name }} / GHC ${{ env.DEFAULT_GHC_VERSION }} / Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
@@ -41,10 +46,6 @@ jobs:
           - { version: "3.9", tag: "39" }
           - { version: "3.8", tag: "38" }
           - { version: "3.7", tag: "37" }
-
-    env:
-      DEFAULT_GHC_VERSION: "9.4.4"
-      DEFAULT_CABAL_VERSION: "3.10.1.0"
 
     steps:
       - name: Checkout

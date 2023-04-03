@@ -1,11 +1,16 @@
-name: build vehicle-python
+name: build vehicle-python-tensorflow
 
 on:
   workflow_call:
+  workflow_dispatch:
+
+env:
+  DEFAULT_GHC_VERSION: "9.4.4"
+  DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
   build-vehicle-python:
-    name: Build vehicle-python
+    name: vehicle-python-tensorflow / ${{ matrix.os.name }} / GHC ${{ env.DEFAULT_GHC_VERSION }} / Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.version }}
 
     strategy:
@@ -20,10 +25,6 @@ jobs:
           - { version: "3.8", tag: "38" }
           - { version: "3.9", tag: "39" }
           - { version: "3.10", tag: "311" }
-
-    env:
-      DEFAULT_GHC_VERSION: "9.4.4"
-      DEFAULT_CABAL_VERSION: "3.10.1.0"
 
     steps:
       - uses: actions/checkout@v3
@@ -46,4 +47,4 @@ jobs:
           python -m pip install .[test]
           python -m unittest tests/test_LossFunctionTranslation.py
         shell: sh
-        working-directory: vehicle-python
+        working-directory: vehicle-python-tensorflow
