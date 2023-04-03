@@ -57,7 +57,8 @@ class cabal_build_ext(build_ext):
         self.mkpath(self.build_temp)
         self.check_ghc_version()
         self.check_cabal_version()
-        self.cabal_configure_ext()
+        self.cabal_update()
+        self.cabal_configure_ext(ext)
         self.cabal_build_ext(ext)
 
         # Taken from setuptools:
@@ -66,7 +67,10 @@ class cabal_build_ext(build_ext):
             build_lib = self.get_finalized_command("build_py").build_lib  # type: ignore[attr-defined]
             self.write_stub(build_lib, ext)
 
-    def cabal_configure_ext(self):
+    def cabal_update(self):
+        self.cabal(["update"])
+
+    def cabal_configure_ext(self, ext: Extension):
         self.cabal(
             [
                 "configure",
