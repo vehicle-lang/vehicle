@@ -1,4 +1,4 @@
-name: build vehicle-python-core
+name: Build vehicle-python-core
 
 on:
   workflow_call:
@@ -10,7 +10,7 @@ env:
 
 jobs:
   test:
-    name: vehicle-python-core / ${{ matrix.os.name }} / GHC ${{ env.DEFAULT_GHC_VERSION }} / Python ${{ matrix.python.version }}
+    name: vehicle-python-core / ${{ matrix.os.name }} / Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
