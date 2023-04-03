@@ -10,7 +10,7 @@ env:
 
 jobs:
   test:
-    name: vehicle-python-core / ${{ matrix.os.name }} / Python ${{ matrix.python.version }}
+    name: vehicle-python-core / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
