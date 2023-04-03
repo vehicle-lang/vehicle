@@ -3,6 +3,7 @@ import subprocess
 import sys
 from typing import Optional
 
+from packaging.version import Version
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -54,6 +55,8 @@ class cabal_build_ext(build_ext):
         # Next, build the sources with Cabal.
         # NOTE: This requires a valid .cabal file that defines a foreign library called _binding.
         self.mkpath(self.build_temp)
+        self.check_ghc_version()
+        self.check_cabal_version()
         self.cabal_configure_ext()
         self.cabal_build_ext(ext)
 
@@ -113,11 +116,40 @@ class cabal_build_ext(build_ext):
             self._cabal = distutils.spawn.find_executable("cabal")
             if self._cabal is None:
                 raise distutils.errors.DistutilsExecError(
-                    "Could not find executable 'cabal'."
-                    "Building vehicle_compiler requires GHC and Cabal."
+                    "Could not find executable 'cabal'. "
+                    "Building vehicle_compiler requires GHC and Cabal. "
                     "See http://github.com/vehicle-lang/vehicle#readme"
                 )
         return self._cabal
+
+    def check_cabal_version(self):
+        cabal_version = subprocess.getoutput(f"{self.find_cabal()} --numeric-version")
+        if Version(cabal_version) < Version("3.8"):
+            raise distutils.errors.DistutilsExecError(
+                "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                "See https://www.haskell.org/ghcup/"
+            )
+
+    _ghc: Optional[str] = None
+
+    def find_ghc(self):
+        if self._ghc is None:
+            self._ghc = distutils.spawn.find_executable("ghc")
+            if self._ghc is None:
+                raise distutils.errors.DistutilsExecError(
+                    "Could not find executable 'ghc'. "
+                    "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                    "See https://www.haskell.org/ghcup/"
+                )
+        return self._ghc
+
+    def check_ghc_version(self):
+        ghc_version = subprocess.getoutput(f"{self.find_ghc()} --numeric-version")
+        if Version(ghc_version) < Version("8.10"):
+            raise distutils.errors.DistutilsExecError(
+                "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                "See https://www.haskell.org/ghcup/"
+            )
 
 
 def main():
