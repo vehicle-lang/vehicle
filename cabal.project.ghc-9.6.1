@@ -3,3 +3,9 @@
 -- See `cabal.project` for details.
 
 import: cabal.project
+
+-- Workaround for recursion-schemes:
+--
+-- * The package recursion-schemes has not yet been updated for GHC 9.6.1.
+
+allow-newer: recursion-schemes-5.2.2.4:template-haskell

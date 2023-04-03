@@ -3,12 +3,13 @@ module Vehicle.Compile.CapitaliseTypeNames
   )
 where
 
-import Control.Monad.State (MonadState (..), evalState, modify, when)
+import Control.Monad.State (MonadState (..), evalState, modify)
 import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Control.Monad (when)
 
 --------------------------------------------------------------------------------
 -- Capitalise type names

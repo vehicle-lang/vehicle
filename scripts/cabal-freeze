@@ -12,6 +12,12 @@ cabal=$(which cabal || echo > "$fail")
 # Get the project file from the environment:
 PROJECT_FILE_BASE="${PROJECT_FILE-cabal.project}"
 
+if [ ! -f "${PROJECT_FILE_BASE}" ]
+then
+    echo "Error: cannot find '${PROJECT_FILE_BASE}'"
+    exit 1
+fi
+
 # Get the GHC version from the arguments:
 GHC_VERSION="$1"
 if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
@@ -24,14 +30,22 @@ if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
 
     # Create cabal.project.ghc-X.Y.Z
     PROJECT_FILE="${PROJECT_FILE_BASE}.ghc-${GHC_VERSION}"
-    echo "Linking ${PROJECT_FILE_BASE} to ${PROJECT_FILE}"
-    [ ! -f "${PROJECT_FILE}" ] && ln -s "${PROJECT_FILE_BASE}" "${PROJECT_FILE}"
+    if [ ! -f "${PROJECT_FILE}" ]
+    then
+        echo "Creating ${PROJECT_FILE}"
+        echo "-- Cabal project configuration file for GHC ${GHC_VERSION}" > "${PROJECT_FILE}"
+        echo "--" >> "${PROJECT_FILE}"
+        echo "-- See \`${PROJECT_FILE_BASE}\` for details." >> "${PROJECT_FILE}"
+        echo >> "${PROJECT_FILE}"
+        echo "import: ${PROJECT_FILE_BASE}" >> "${PROJECT_FILE}"
+    fi
 
     # Update Cabal package list
+    echo "Updating cabal package list"
     $cabal update
 
     # Create cabal.project.ghc-X.Y.Z.freeze
-    echo "Generating ${PROJECT_FILE}.freeze"
+    echo "Creating ${PROJECT_FILE}.freeze"
     [ ! -f "${PROJECT_FILE}.freeze" ] && $cabal v2-freeze --project-file="${PROJECT_FILE}"
 
     # Switch back to previous GHC version

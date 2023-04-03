@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
-import Control.Monad.State
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (elemIndex)
@@ -19,6 +18,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
+import Control.Monad (when, foldM)
 
 scopeCheck ::
   (MonadCompile m) =>

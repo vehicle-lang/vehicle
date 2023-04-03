@@ -10,7 +10,7 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   )
 where
 
-import Control.Monad.Except (MonadError (..), foldM, throwError)
+import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -35,6 +35,7 @@ import Vehicle.Syntax.Parse.Error (ParseError (..))
 import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 import Vehicle.Syntax.Sugar
+import Control.Monad (foldM)
 
 --------------------------------------------------------------------------------
 -- Public interface

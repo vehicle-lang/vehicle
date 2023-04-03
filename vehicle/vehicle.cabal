@@ -239,9 +239,9 @@ library
     , temporary              >=1.3     && <1.4
     , terminal-progress-bar  >=0.4.1   && <1
     , text                   >=1.2     && <3
-    , transformers           >=0.4     && <0.6
+    , transformers           >=0.4     && <0.7
     , unordered-containers   >=0.2.19  && <0.3
-    , vector                 >=0.12.3  && <0.13
+    , vector                 >=0.12.3  && <0.14
     , vehicle-syntax
 
 executable vehicle
