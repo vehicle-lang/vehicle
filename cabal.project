@@ -28,7 +28,9 @@ allow-newer: linkedhashmap-0.4.0.0:containers
 -- 03-04-2023:
 -- The package terminal-size, which is a dependency of terminal-progress-bar,
 -- requires Win32>=2.13.2.0 && <2.14 since version 0.3.4. Unfortunately, the
--- version that ships with GHC 9.2.7 is Win32-2.12.0.1.
+-- version that ships with GHC 9.2.7 is Win32-2.12.0.1. While this constraint
+-- is only needed on Windows, `cabal freeze` is not clever enough to consider
+-- optional dependencies.
 if impl(ghc < 9.4)
   constraints:
     terminal-size <= 0.3.3
