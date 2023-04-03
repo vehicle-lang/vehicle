@@ -29,7 +29,7 @@ do
         exit 1
     else
         echo "$(python --version)"
-        python -m pip install -r "${ROOT_DIR}/requirements-ci.txt"
+        python -m pip install pipx
         python -m pipx run --spec build pyproject-build --wheel --outdir="${ROOT_DIR}/wheelhouselocal"
     fi
 done
@@ -48,13 +48,13 @@ PLATFORM="$(python -c 'import sys; print(sys.platform)')"
 mkdir -p "${ROOT_DIR}/wheelhouse"
 case "${PLATFORM}" in
     'darwin')
-        python -m pip install -r "${ROOT_DIR}/requirements-ci.txt"
+        python -m pip install pipx
         python -m pipx run --spec delocate delocate-wheel --wheel-dir="${ROOT_DIR}/wheelhouse" "${ROOT_DIR}/wheelhouselocal"/*.whl
     ;;
     'linux')
         LIBC="$(python -c 'import platform; print(platform.libc_ver()[1].replace(".","_"))')"
         ARCH="$(python -c 'import platform; print(platform.machine())')"
-        python -m pip install -r "${ROOT_DIR}/requirements-ci.txt"
+        python -m pip install pipx
         python -m pipx run auditwheel repair --wheel-dir="${ROOT_DIR}/wheelhouse" --plat="manylinux_${LIBC}_${ARCH}" "${ROOT_DIR}/wheelhouselocal"/*.whl
     ;;
     'win32')

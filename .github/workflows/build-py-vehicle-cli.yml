@@ -33,11 +33,7 @@ jobs:
           # import platform
           # print(platform.libc_ver())
           # ```
-          # 03-04-2023:
-          # Builds fail on Linux due to the fact that `standalone` is unsupported,
-          # and `auditwheel` does not know where to find the intermediate libraries
-          # `libHSvehicle-0.2.0.so` and `libHSvehicle-syntax-0.2.0.so`.
-          # - { tag: ubuntu-22.04, name: Linux, manylinux: manylinux_2_35_x86_64 }
+          - { tag: ubuntu-22.04, name: Linux, manylinux: manylinux_2_35_x86_64 }
           # 01-04-2023:
           # Ubuntu 20.04 has patchelf version 0.10, but the latest auditwheel
           # requires at least version 0.14.
@@ -75,13 +71,6 @@ jobs:
         shell: sh
         working-directory: "py-vehicle-cli"
 
-      # 03-04-2023:
-      # Running tox builds the package from source, which means this job builds vehicle twice.
-      # - name: Build & Test
-      #   run: pipx run tox run -e py${{ matrix.python.tag }}
-      #  shell: sh
-      #  working-directory: "py-vehicle-cli"
-
       - name: Build wheel (macOS)
         if: runner.os == 'macOS'
         uses: pypa/cibuildwheel@v2.12.1
@@ -100,9 +89,9 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           mkdir -p wheelhouse
-          pipx run --spec build pyproject-build --wheel --outdir=wheelhouse
-          pipx run delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
-          pip install pytest wheelhouse/vehicle_cli-*.whl
+          python -m build --wheel --outdir=wheelhouse
+          delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
+          pip install wheelhouse/vehicle_cli-*.whl
           pytest tests
         shell: sh
         working-directory: "py-vehicle-cli"
@@ -116,9 +105,9 @@ jobs:
         if: runner.os == 'Linux' && runner.arch == 'X64'
         run: |
           mkdir -p wheelhouse
-          pipx run --spec build pyproject-build --wheel --outdir=wheelhouselocal
-          pipx run auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
-          pip install pytest wheelhouse/vehicle_cli-*.whl
+          python -m build --wheel --outdir=wheelhouselocal
+          auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
+          pip install wheelhouse/vehicle_cli-*.whl
           pytest tests
         shell: sh
         working-directory: "py-vehicle-cli"
