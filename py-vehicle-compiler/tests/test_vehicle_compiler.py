@@ -1,4 +1,4 @@
 def test_main():
-    import vehicle_core
+    import vehicle_compiler
 
-    vehicle_core.main()
+    vehicle_compiler.main()

@@ -113,7 +113,9 @@ class cabal_build_ext(build_ext):
             self._cabal = distutils.spawn.find_executable("cabal")
             if self._cabal is None:
                 raise distutils.errors.DistutilsExecError(
-                    "could not find executable 'cabal'"
+                    "Could not find executable 'cabal'."
+                    "Building vehicle_compiler requires GHC and Cabal."
+                    "See http://github.com/vehicle-lang/vehicle#readme"
                 )
         return self._cabal
 
