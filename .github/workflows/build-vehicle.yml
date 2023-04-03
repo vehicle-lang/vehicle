@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-vehicle:
-    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.ghc.version }}
+    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.ghc.version }} ${{ matrix.cabal.extra-args }}
     runs-on: ${{ matrix.os.version }}
 
     strategy:
