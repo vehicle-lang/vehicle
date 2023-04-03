@@ -12,7 +12,7 @@ if __name__ == "__main__" and __package__ is None:
 
     path.append(dir(path[0]))
 
-from vehicle import generate_loss_function
+from vehicle_tensorflow import generate_loss_function
 
 
 class TestLossFunctionTranslation(unittest.TestCase):
