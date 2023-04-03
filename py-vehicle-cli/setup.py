@@ -17,8 +17,8 @@ import distutils.spawn
 
 ext_modules = [
     Extension(
-        name="vehicle_compiler._binding",
-        sources=["src/vehicle_compiler/binding.i"],
+        name="vehicle_cli._binding",
+        sources=["src/vehicle_cli/binding.i"],
     ),
 ]
 
@@ -117,7 +117,7 @@ class cabal_build_ext(build_ext):
             if self._cabal is None:
                 raise distutils.errors.DistutilsExecError(
                     "Could not find executable 'cabal'. "
-                    "Building vehicle_compiler requires GHC and Cabal. "
+                    "Building vehicle-cli requires GHC and Cabal. "
                     "See http://github.com/vehicle-lang/vehicle#readme"
                 )
         return self._cabal
@@ -126,7 +126,7 @@ class cabal_build_ext(build_ext):
         cabal_version = subprocess.getoutput(f"{self.find_cabal()} --numeric-version")
         if Version(cabal_version) < Version("3.8"):
             raise distutils.errors.DistutilsExecError(
-                "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                "Building vehicle-cli requires GHC (>=8.10) and Cabal (>=3.8). "
                 "See https://www.haskell.org/ghcup/"
             )
 
@@ -138,7 +138,7 @@ class cabal_build_ext(build_ext):
             if self._ghc is None:
                 raise distutils.errors.DistutilsExecError(
                     "Could not find executable 'ghc'. "
-                    "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                    "Building vehicle-cli requires GHC (>=8.10) and Cabal (>=3.8). "
                     "See https://www.haskell.org/ghcup/"
                 )
         return self._ghc
@@ -147,7 +147,7 @@ class cabal_build_ext(build_ext):
         ghc_version = subprocess.getoutput(f"{self.find_ghc()} --numeric-version")
         if Version(ghc_version) < Version("8.10"):
             raise distutils.errors.DistutilsExecError(
-                "Building vehicle_compiler requires GHC (>=8.10) and Cabal (>=3.8). "
+                "Building vehicle-cli requires GHC (>=8.10) and Cabal (>=3.8). "
                 "See https://www.haskell.org/ghcup/"
             )
 

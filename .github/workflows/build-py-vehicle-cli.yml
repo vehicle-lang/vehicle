@@ -1,4 +1,4 @@
-name: Build vehicle-python-core
+name: Build vehicle-python-cli
 
 on:
   workflow_call:
@@ -9,8 +9,8 @@ env:
   DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
-  test:
-    name: vehicle-python-core / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+  build-vehicle-python-cli:
+    name: vehicle-python-cli / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
@@ -62,24 +62,24 @@ jobs:
         with:
           python-version: ${{ matrix.python.version }}
           cache: "pip"
-          cache-dependency-path: "vehicle-python-core/requirements-ci.txt"
+          cache-dependency-path: "py-vehicle-cli/requirements-ci.txt"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-ci.txt
         shell: sh
-        working-directory: vehicle-python-core
+        working-directory: py-vehicle-cli
 
       - name: Build
         run: python setup.py build_ext
         shell: sh
-        working-directory: vehicle-python-core
+        working-directory: py-vehicle-cli
 
       - name: Test
         run: pipx run tox run -e py${{ matrix.python.tag }}
         shell: sh
-        working-directory: vehicle-python-core
+        working-directory: py-vehicle-cli
 
       - name: Build wheel (macOS)
         if: runner.os == 'macOS'
@@ -89,7 +89,7 @@ jobs:
           CIBW_TEST_COMMAND: "pytest {package}/tests"
           CIBW_TEST_EXTRAS: "test"
         with:
-          package-dir: vehicle-python-core
+          package-dir: py-vehicle-cli
           output-dir: wheelhouse
           config-file: "{package}/pyproject.toml"
 
@@ -102,7 +102,7 @@ jobs:
           pipx run --spec build pyproject-build --wheel --outdir=wheelhouse
           pipx run delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
         shell: sh
-        working-directory: vehicle-python-core
+        working-directory: py-vehicle-cli
 
       - # 01-04-2023:
         # Linux builds with cibuildwheel on Linux use the manylinux docker images,
@@ -116,9 +116,9 @@ jobs:
           pipx run --spec build pyproject-build --wheel --outdir=wheelhouselocal
           pipx run auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
         shell: sh
-        working-directory: vehicle-python-core
+        working-directory: py-vehicle-cli
 
       - uses: actions/upload-artifact@v3
         with:
           name: wheelhouse-GHC-${{ matrix.ghc.version }}
-          path: ./vehicle-python-core/wheelhouse/*.whl
+          path: ./py-vehicle-cli/wheelhouse/*.whl
