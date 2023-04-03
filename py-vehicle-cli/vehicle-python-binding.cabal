@@ -11,9 +11,7 @@ maintainer:      wenkokke@users.noreply.github.com}
 copyright:       © 2023-2023 Wen Kokke
 license:         MIT
 build-type:      Custom
-extra-doc-files:
-  ChangeLog.md
-  README.md
+extra-doc-files: README.md
 
 source-repository head
   type:     git
