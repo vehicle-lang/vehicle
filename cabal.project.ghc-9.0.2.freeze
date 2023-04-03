@@ -13,7 +13,7 @@ constraints: any.BNFC ==2.9.4.1,
              aeson-pretty -lib-only,
              any.alex ==3.2.7.1,
              any.ansi-terminal ==0.11.5,
-             ansi-terminal -example +win32-2-13-1,
+             ansi-terminal -example -win32-2-13-1,
              any.ansi-terminal-types ==0.11.5,
              any.ansi-wl-pprint ==0.6.9,
              ansi-wl-pprint -example,
@@ -143,4 +143,4 @@ constraints: any.BNFC ==2.9.4.1,
              vehicle -ghc-debug -nothunks,
              vehicle-syntax -ghc-debug -nothunks,
              any.witherable ==0.4.2
-index-state: hackage.haskell.org 2023-04-03T15:28:06Z
+index-state: hackage.haskell.org 2023-04-03T17:27:20Z

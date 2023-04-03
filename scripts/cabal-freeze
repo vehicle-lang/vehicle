@@ -46,7 +46,7 @@ if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
 
     # Create cabal.project.ghc-X.Y.Z.freeze
     echo "Creating ${PROJECT_FILE}.freeze"
-    [ ! -f "${PROJECT_FILE}.freeze" ] && $cabal v2-freeze --project-file="${PROJECT_FILE}"
+    $cabal v2-freeze --project-file="${PROJECT_FILE}"
 
     # Switch back to previous GHC version
     if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
