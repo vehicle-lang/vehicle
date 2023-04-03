@@ -1,6 +1,6 @@
 %module binding
 %{
-#include "VehiclePythonCore_stub.h"
+#include "VehiclePythonBinding_stub.h"
 
 extern void hs_defaultMain(HsInt32 argc, HsPtr argv);
 
