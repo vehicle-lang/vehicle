@@ -1,13 +1,20 @@
--- Cabal project file
+-- Cabal project configuration file
 --
--- 03-04-2023:
--- This `cabal.project` file exists so that the Python source distribution for
--- Vehicle can include the source code for the `vehicle` and `vehicle-syntax`
--- projects via the symlinks under vendor.
--- If we have working source distributions for `vehicle` and `vehicle-syntax`,
--- we should graft the source distributions onto the Python sdist instead.
+-- TL;DR
+--   The `cabal.project` is the basic configuration file for Cabal projects.
+--   This file just points Cabal to the .cabal file for your project.
+--   Any configuration that is shared by all configurations of Vehicle should
+--   be put into `cabal.project.config`.
 --
--- See the `cabal.project` file in the parent directory for more details.
+--   Each supported GHC version has its own version of this file, which is
+--   named `cabal.project.ghc-X.Y`. If no changes are needed, that file simply
+--   imports this file.
+--
+--   For each project file `cabal.project.ghc-X.Y` there is a corresponding
+--   freeze file `cabal.project.ghc-X.Y.freeze` which records the package
+--   versions and flags with which the project is known to compile.
+--
+-- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
 
 import: cabal.project.config
 

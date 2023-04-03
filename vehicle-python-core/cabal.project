@@ -1,0 +1,17 @@
+-- Cabal project file
+--
+-- 03-04-2023:
+-- This `cabal.project` file exists so that the Python source distribution for
+-- Vehicle can include the source code for the `vehicle` and `vehicle-syntax`
+-- projects via the symlinks under vendor.
+-- If we have working source distributions for `vehicle` and `vehicle-syntax`,
+-- we should graft the source distributions onto the Python sdist instead.
+--
+-- See the `cabal.project` file in the parent directory for more details.
+
+import: cabal.project.config
+
+packages:
+  vendor/vehicle.cabal
+  vendor/vehicle-syntax.cabal
+  vehicle-python-core.cabal
