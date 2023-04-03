@@ -1,7 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module VehiclePythonCore where
+module VehiclePythonBinding where
 
 import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CInt (..))

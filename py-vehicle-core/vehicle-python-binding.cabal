@@ -1,5 +1,5 @@
 cabal-version:   3.0
-name:            vehicle-python-core
+name:            vehicle-python-binding
 version:         0.2.0
 description:
   Please see the README on GitHub at <https://github.com/wenkokke/vehicle#readme>
@@ -44,7 +44,7 @@ foreign-library _binding
 
   c-sources:        src/vehicle_core/binding_wrap.c
   hs-source-dirs:   src
-  other-modules:    VehiclePythonCore
+  other-modules:    VehiclePythonBinding
   build-depends:
     , base                  >=4.7  && <5
     , optparse-applicative  >=0.16 && <1

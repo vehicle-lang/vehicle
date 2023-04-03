@@ -21,4 +21,4 @@ import: cabal.project.config
 packages:
   vehicle/vehicle.cabal
   vehicle-syntax/vehicle-syntax.cabal
-  vehicle-python-core/vehicle-python-core.cabal
+  py-vehicle-core/vehicle-core.cabal
