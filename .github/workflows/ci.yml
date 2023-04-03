@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    types:
+      - opened
+      - synchronize
+  merge_group:
+
+jobs:
+  ormolu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: mrkkrp/ormolu-action@v11
+
+  build-vehicle:
+    needs: [ormolu]
+    uses: ./.github/workflows/build-vehicle.yml
+
+  build-vehicle-python:
+    name: ${{ matrix.os.name }} / Python ${{ matrix.python.version }}
+    needs: [ormolu, build-vehicle]
+    uses: ./.github/workflows/build-vehicle-python.yml
+    with:
+      runs-on: ${{ matrix.os.tag }}
+      python-version: ${{ matrix.python.version }}
+      python-tag: ${{ matrix.python.tag }}

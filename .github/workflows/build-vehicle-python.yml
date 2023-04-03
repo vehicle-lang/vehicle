@@ -2,23 +2,29 @@ name: build vehicle-python
 
 on:
   workflow_call:
-    inputs:
-      runs-on:
-        description: "The type of machine to run the job on."
-        required: true
-        type: string
-      python-version:
-        description: "The Python version to run the job with."
-        required: true
-        type: string
-
-env:
-  DEFAULT_GHC_VERSION: "9.0.2"
 
 jobs:
   build-vehicle-python:
     name: Build vehicle-python
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ matrix.os.version }}
+
+    strategy:
+      matrix:
+        os:
+          - { version: ubuntu-latest, name: Linux }
+          - { version: macos-latest, name: macOS }
+          # ??-??-????:
+          # This test is disabled on Windows due to some unspecified issue.
+          # - { version: windows-latest, name: Windows }
+        python:
+          - { version: "3.8", tag: "38" }
+          - { version: "3.9", tag: "39" }
+          - { version: "3.10", tag: "311" }
+
+    env:
+      DEFAULT_GHC_VERSION: "9.4.4"
+      DEFAULT_CABAL_VERSION: "3.10.1.0"
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -33,11 +39,11 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ inputs.python-version }}
+          python-version: ${{ matrix.python.version }}
 
       - name: Test
         run: |
-          pip install .[test]
+          python -m pip install .[test]
           python -m unittest tests/test_LossFunctionTranslation.py
         shell: sh
         working-directory: vehicle-python

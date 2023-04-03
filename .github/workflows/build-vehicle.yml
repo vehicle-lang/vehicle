@@ -2,33 +2,50 @@ name: build vehicle
 
 on:
   workflow_call:
-    inputs:
-      runs-on:
-        description: "The type of machine to run the job on."
-        required: true
-        type: string
-      ghc-version:
-        description: "The GHC version to run the job with."
-        required: true
-        type: string
-      cabal-version:
-        description: "The Cabal version to run the job with."
-        required: true
-        type: string
-      cabal-extra-args:
-        description: "Extra arguments to pass to Cabal."
-        required: false
-        type: string
-        default: ""
-
-env:
-  CABAL_PROJECT_FILE: cabal.project.ghc-${{ inputs.ghc-version }}
-  CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ inputs.ghc-version }}.freeze
 
 jobs:
   build-vehicle:
     name: Build vehicle
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ matrix.os.version }}
+
+    strategy:
+      matrix:
+        os:
+          - { version: ubuntu-latest, name: Linux }
+          - { version: macos-latest, name: macOS }
+          - { version: windows-latest, name: Windows }
+        ghc:
+          - { version: "9.6.1" }
+          - { version: "9.4.4" }
+          - { version: "9.2.7" }
+          # 03-04-2020:
+          # These versions are no longer supported.
+          # - { version: "9.0.2" }
+          # - { version: "8.10.7" }
+        cabal:
+          - { version: "3.10.1.0", extra-args: "" }
+        include:
+          # Build with -fnothunks:
+          - os: { version: ubuntu-latest, name: Linux }
+            ghc: { version: "9.4.4" }
+            cabal: { version: "3.8.1.0", extra-args: "-fnothunks" }
+          # 20-12-2022:
+          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
+          # Build with -fghc-debug:
+          # - os: { tag: ubuntu-latest, name: Linux }
+          #   ghc: { version: "9.4.4" }
+          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug" }
+          # 20-12-2022:
+          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
+          # Build with -fghc-debug and -fnothunks:
+          # - os: { tag: ubuntu-latest, name: Linux }
+          #   ghc: { version: "9.4.4" }
+          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug -fnothunks" }
+
+    env:
+      CABAL_PROJECT_FILE: cabal.project.ghc-${{ matrix.ghc.version }}
+      CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ matrix.ghc.version }}.freeze
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -36,8 +53,8 @@ jobs:
       - name: Setup Haskell
         uses: ./.github/actions/setup-haskell
         with:
-          ghc-version: ${{ inputs.ghc-version }}
-          cabal-version: ${{ inputs.cabal-version }}
+          ghc-version: ${{ inputs.ghc.version }}
+          cabal-version: ${{ inputs.cabal.version }}
           cabal-project-file: ${{ env.CABAL_PROJECT_FILE }}
           cabal-project-freeze-file: ${{ env.CABAL_PROJECT_FREEZE_FILE }}
 
@@ -48,7 +65,7 @@ jobs:
             --test-option=--num-threads=1 \
             --test-show-details=always    \
             --project-file=${{ env.CABAL_PROJECT_FILE }} \
-            ${{ inputs.cabal-extra-args }}
+            ${{ matrix.cabal.extra-args }}
         shell: sh
 
       - name: Build Vehicle
@@ -64,6 +81,6 @@ jobs:
       - name: Upload Vehicle
         uses: actions/upload-artifact@v3
         with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ inputs.ghc-version }}-${{ github.sha }}
+          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc.version }}-${{ github.sha }}
           path: bin
           if-no-files-found: error
