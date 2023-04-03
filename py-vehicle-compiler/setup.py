@@ -16,8 +16,8 @@ import distutils.spawn
 
 ext_modules = [
     Extension(
-        name="vehicle_core._binding",
-        sources=["src/vehicle_core/binding.i"],
+        name="vehicle_compiler._binding",
+        sources=["src/vehicle_compiler/binding.i"],
     ),
 ]
 

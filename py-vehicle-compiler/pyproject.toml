@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = 'vehicle_core'
+name = 'vehicle_compiler'
 version = '0.2.0a1'
 authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
 description = 'Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>'
@@ -15,12 +15,12 @@ test = ["pytest >=7.1,<8"]
 mypy = ["types-setuptools >=45"]
 
 [project.scripts]
-vehicle = "vehicle_core:main"
+vehicle = "vehicle_compiler:main"
 
 [tool.mypy]
 python_version = 3.7
 ignore_missing_imports = true
-exclude = ['^src\/vehicle_core\/binding\.py$']
+exclude = ['^src\/vehicle_compiler\/binding\.py$']
 
 [tool.tox]
 legacy_tox_ini = """

@@ -53,7 +53,7 @@ repos:
         args: ["--config-file", "py-vehicle-tensorflow/pyproject.toml"]
         additional_dependencies: ["numpy"]
       - id: mypy
-        args: ["--config-file", "py-vehicle-core/pyproject.toml"]
+        args: ["--config-file", "py-vehicle-compiler/pyproject.toml"]
         additional_dependencies: ["types-setuptools >=45"]
   - repo: local
     hooks:
