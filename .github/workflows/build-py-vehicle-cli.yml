@@ -73,14 +73,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-ci.txt
         shell: sh
-        working-directory: py-vehicle-cli
+        working-directory: "py-vehicle-cli"
 
       # 03-04-2023:
       # Running tox builds the package from source, which means this job builds vehicle twice.
       # - name: Build & Test
       #   run: pipx run tox run -e py${{ matrix.python.tag }}
       #  shell: sh
-      #  working-directory: py-vehicle-cli
+      #  working-directory: "py-vehicle-cli"
 
       - name: Build wheel (macOS)
         if: runner.os == 'macOS'
@@ -102,8 +102,10 @@ jobs:
           mkdir -p wheelhouse
           pipx run --spec build pyproject-build --wheel --outdir=wheelhouse
           pipx run delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
+          pip install pytest wheelhouse/vehicle_cli-*.whl
+          pytest tests
         shell: sh
-        working-directory: py-vehicle-cli
+        working-directory: "py-vehicle-cli"
 
       - # 01-04-2023:
         # Linux builds with cibuildwheel on Linux use the manylinux docker images,
@@ -116,16 +118,10 @@ jobs:
           mkdir -p wheelhouse
           pipx run --spec build pyproject-build --wheel --outdir=wheelhouselocal
           pipx run auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
-        shell: sh
-        working-directory: py-vehicle-cli
-
-      - name: Install & Test
-        run: |
-          pip install wheelhouse/*.whl
-          pip install pytest
+          pip install pytest wheelhouse/vehicle_cli-*.whl
           pytest tests
         shell: sh
-        working-directory: py-vehicle-cli
+        working-directory: "py-vehicle-cli"
 
       - uses: actions/upload-artifact@v3
         with:
