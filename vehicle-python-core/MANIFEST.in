@@ -2,3 +2,14 @@ global-include *.cabal
 global-include *.def
 global-include *.hs
 global-include *.i
+
+include cabal.project
+include cabal.project.config
+graft vendor/vehicle
+graft vendor/vehicle-syntax
+
+prune .github
+prune build
+prune dist
+prune dist-newstyle
+prune scripts

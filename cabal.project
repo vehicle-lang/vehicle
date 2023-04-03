@@ -1,42 +1,14 @@
--- Cabal project configuration file
+-- Cabal project file
 --
--- TL;DR
---  The cabal.project is the basic configuration file for Cabal projects.
---  Usually, this just points to the .cabal file for your project, but it
---  may contain additional configuration options.
---  Each supported GHC version has its own version of this file, which is
---  named `cabal.project.ghc-X.Y`. If no changes are needed, that file is
---  a symlink to this file.
---  For each project file `cabal.project.ghc-X.Y` there is a corresponding
---  freeze file `cabal.project.ghc-X.Y.freeze` which records the package
---  versions and flags with which the project is known to compile.
+-- This `cabal.project` file exists so that the Python source distribution for
+-- Vehicle can include the source code for the `vehicle` and `vehicle-syntax`
+-- projects via the symlinks under vendor.
 --
--- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
+-- See the `cabal.project` file in the parent directory for more details.
+
+import: cabal.project.config
 
 packages:
-  vehicle/vehicle.cabal
-  vehicle-syntax/vehicle-syntax.cabal
-  vehicle-python-core/vehicle-python-core.cabal
-
--- 03-11-2022:
--- The package linkedhashmap seems unmaintained. The latest update seems to
--- have been in 2015. Unfortunately, it requires containers <0.6.
--- See: https://github.com/vehicle-lang/vehicle/issues/191
-
-allow-newer: linkedhashmap-0.4.0.0:containers
-
--- 03-04-2023:
--- The package terminal-size, which is a dependency of terminal-progress-bar,
--- requires Win32>=2.13.2.0 && <2.14 since version 0.3.4. Unfortunately, the
--- version that ships with GHC 9.2.7 is Win32-2.12.0.1. While this constraint
--- is only needed on Windows, `cabal freeze` is not clever enough to consider
--- optional dependencies.
-if impl(ghc < 9.4)
-  constraints:
-    terminal-size <= 0.3.3
-
--- 03-04-2023:
--- The package recursion-schemes has not yet been updated for GHC 9.6.1,
--- but appears to work fine with the latest template-haskell.
-if impl(ghc >= 9.6)
-  allow-newer: recursion-schemes-5.2.2.4:template-haskell
+  vendor/vehicle/vehicle.cabal
+  vendor/vehicle-syntax/vehicle-syntax.cabal
+  vehicle-python-core.cabal
