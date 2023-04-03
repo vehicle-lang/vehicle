@@ -1,1 +1,1 @@
-# vehicle-core
+# Python bindings for the Vehicle CLI
