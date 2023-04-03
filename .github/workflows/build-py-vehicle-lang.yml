@@ -1,4 +1,4 @@
-name: Build py-vehicle-cli
+name: Build py-vehicle-lang
 
 on:
   workflow_call:
@@ -9,8 +9,8 @@ env:
   DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
-  build-py-vehicle-cli:
-    name: py-vehicle-cli / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+  build-py-vehicle-lang:
+    name: py-vehicle-lang / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
@@ -62,14 +62,14 @@ jobs:
         with:
           python-version: ${{ matrix.python.version }}
           cache: "pip"
-          cache-dependency-path: "py-vehicle-cli/requirements-ci.txt"
+          cache-dependency-path: "py-vehicle-lang/requirements-ci.txt"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-ci.txt
         shell: sh
-        working-directory: "py-vehicle-cli"
+        working-directory: "py-vehicle-lang"
 
       - name: Build wheel (macOS)
         if: runner.os == 'macOS'
@@ -79,8 +79,8 @@ jobs:
           CIBW_TEST_COMMAND: "pytest {package}/tests"
           CIBW_TEST_EXTRAS: "test"
         with:
-          package-dir: "py-vehicle-cli"
-          output-dir: "py-vehicle-cli/wheelhouse"
+          package-dir: "py-vehicle-lang"
+          output-dir: "py-vehicle-lang/wheelhouse"
           config-file: "{package}/pyproject.toml"
 
       - # 01-04-2023:
@@ -91,10 +91,10 @@ jobs:
           mkdir -p wheelhouse
           python -m build --wheel --outdir=wheelhouse
           delvewheel repair --wheel-dir=wheelhouse wheelhouse/*.whl
-          pip install wheelhouse/vehicle_cli-*.whl
+          pip install wheelhouse/vehicle_lang-*.whl
           pytest tests
         shell: sh
-        working-directory: "py-vehicle-cli"
+        working-directory: "py-vehicle-lang"
 
       - # 01-04-2023:
         # Linux builds with cibuildwheel on Linux use the manylinux docker images,
@@ -107,12 +107,12 @@ jobs:
           mkdir -p wheelhouse
           python -m build --wheel --outdir=wheelhouselocal
           auditwheel repair --wheel-dir=wheelhouse --plat=${{ matrix.os.manylinux }} wheelhouselocal/*.whl
-          pip install wheelhouse/vehicle_cli-*.whl
+          pip install wheelhouse/vehicle_lang-*.whl
           pytest tests
         shell: sh
-        working-directory: "py-vehicle-cli"
+        working-directory: "py-vehicle-lang"
 
       - uses: actions/upload-artifact@v3
         with:
           name: wheelhouse
-          path: ./py-vehicle-cli/wheelhouse/*.whl
+          path: ./py-vehicle-lang/wheelhouse/*.whl

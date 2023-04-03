@@ -38,9 +38,9 @@ foreign-library _binding
 
   if os(windows)
     options:      standalone
-    mod-def-file: src/vehicle_cli/binding.def
+    mod-def-file: src/vehicle_lang/binding.def
 
-  c-sources:        src/vehicle_cli/binding_wrap.c
+  c-sources:        src/vehicle_lang/binding_wrap.c
   hs-source-dirs:   src
   other-modules:    VehiclePythonBinding
   build-depends:

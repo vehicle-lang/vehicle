@@ -21,10 +21,10 @@ jobs:
     needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
 
-  build-py-vehicle-cli:
+  build-py-vehicle-lang:
     needs: [ormolu]
-    uses: ./.github/workflows/build-py-vehicle-cli.yml
+    uses: ./.github/workflows/build-py-vehicle-lang.yml
 
-  build-py-vehicle-tensorflow:
+  build-py-vehicle-lang-tensorflow:
     needs: [ormolu, build-vehicle]
-    uses: ./.github/workflows/build-py-vehicle-tensorflow.yml
+    uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml

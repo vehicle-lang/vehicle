@@ -50,10 +50,10 @@ repos:
     rev: "v1.1.1"
     hooks:
       - id: mypy
-        args: ["--config-file", "py-vehicle-tensorflow/pyproject.toml"]
+        args: ["--config-file", "py-vehicle-lang-tensorflow/pyproject.toml"]
         additional_dependencies: ["numpy"]
       - id: mypy
-        args: ["--config-file", "py-vehicle-cli/pyproject.toml"]
+        args: ["--config-file", "py-vehicle-lang/pyproject.toml"]
         additional_dependencies: ["types-setuptools >=45"]
   - repo: local
     hooks:

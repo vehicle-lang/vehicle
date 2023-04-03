@@ -13,14 +13,14 @@ updates:
     schedule:
       interval: "weekly"
 
-  # Maintain dependencies for py-vehicle-cli
+  # Maintain dependencies for py-vehicle-lang
   - package-ecosystem: "pip"
-    directory: "/py-vehicle-cli"
+    directory: "/py-vehicle-lang"
     schedule:
       interval: "weekly"
 
-  # Maintain dependencies for py-vehicle-tensorflow
+  # Maintain dependencies for py-vehicle-lang-tensorflow
   - package-ecosystem: "pip"
-    directory: "/py-vehicle-tensorflow"
+    directory: "/py-vehicle-lang-tensorflow"
     schedule:
       interval: "weekly"

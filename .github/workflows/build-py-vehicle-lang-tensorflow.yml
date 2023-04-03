@@ -1,4 +1,4 @@
-name: Build py-vehicle-tensorflow
+name: Build py-vehicle-lang-tensorflow
 
 on:
   workflow_call:
@@ -9,8 +9,8 @@ env:
   DEFAULT_CABAL_VERSION: "3.10.1.0"
 
 jobs:
-  build-py-vehicle-tensorflow:
-    name: py-vehicle-tensorflow / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+  build-py-vehicle-lang-tensorflow:
+    name: py-vehicle-lang-tensorflow / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
     runs-on: ${{ matrix.os.version }}
 
     strategy:
@@ -42,11 +42,11 @@ jobs:
         with:
           python-version: ${{ matrix.python.version }}
           cache: "pip"
-          cache-dependency-path: "py-vehicle-tensorflow/pyproject.toml"
+          cache-dependency-path: "py-vehicle-lang-tensorflow/pyproject.toml"
 
       - name: Test
         run: |
           python -m pip install .[test]
           python -m unittest tests/test_LossFunctionTranslation.py
         shell: sh
-        working-directory: py-vehicle-tensorflow
+        working-directory: py-vehicle-lang-tensorflow

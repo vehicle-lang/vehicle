@@ -24,6 +24,6 @@ packages:
 
   -- 03-04-2023:
   -- Cabal refuses to do an install of the unrelated component `vehicle:exe:vehicle`
-  -- without building a full sdist for `py-vehicle-cli`. To avoid this, py-vehicle-cli
+  -- without building a full sdist for `py-vehicle-lang`. To avoid this, py-vehicle-lang
   -- is not included in the main `cabal.project` file.
-  -- py-vehicle-cli/vehicle-python-binding.cabal
+  -- py-vehicle-lang/vehicle-python-binding.cabal
