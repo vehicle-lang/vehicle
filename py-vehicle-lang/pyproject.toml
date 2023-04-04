@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'vehicle_lang'
-version = '0.2.0a1'
+version = '0.2.0a2'
 authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
-description = 'Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>'
+description = 'A high-level functional language for writing mathematically-precise specifications for neural networks.'
 readme = 'README.md'
 license = { file = 'LICENSE' }
 
