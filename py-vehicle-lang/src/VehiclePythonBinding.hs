@@ -7,23 +7,14 @@ import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CInt (..))
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (Ptr)
-import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import Options.Applicative (defaultPrefs, execParserPure, handleParseResult)
-import Vehicle (run)
-import Vehicle.CommandLine (commandLineOptionsParserInfo)
+import Vehicle (mainWithArgsAndExitCode)
 
-defaultMain :: [String] -> IO ()
-defaultMain args = do
-  setLocaleEncoding utf8
-  options <-
-    handleParseResult $
-      execParserPure defaultPrefs commandLineOptionsParserInfo args
-  run options
+hs_vehicleMain :: CInt -> Ptr CString -> IO CInt
+hs_vehicleMain argc argv = do
+  -- Convert from `Ptr CString` to `[String]`
+  args <- mapM peekCString =<< peekArray (fromIntegral argc) argv
+  -- Call Vehicle.main and return the exit code
+  exitCode <- mainWithArgsAndExitCode args
+  return (fromIntegral exitCode)
 
-hs_defaultMain :: CInt -> Ptr CString -> IO ()
-hs_defaultMain argc argv =
-  peekArray (fromIntegral argc) argv
-    >>= mapM peekCString
-    >>= defaultMain
-
-foreign export ccall hs_defaultMain :: CInt -> Ptr CString -> IO ()
+foreign export ccall hs_vehicleMain :: CInt -> Ptr CString -> IO CInt

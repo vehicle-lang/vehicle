@@ -1,5 +1,9 @@
 module Vehicle.CommandLine
-  ( commandLineOptionsParserInfo,
+  ( Options (..),
+    GlobalOptions (..),
+    ModeOptions (..),
+    defaultGlobalOptions,
+    commandLineOptionsParserInfo,
   )
 where
 
@@ -34,7 +38,6 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle (GlobalOptions (..), ModeOptions (..), Options (..))
 import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..))
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
@@ -50,6 +53,44 @@ import Vehicle.Prelude
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))
+
+--------------------------------------------------------------------------------
+-- Options objects
+--------------------------------------------------------------------------------
+
+data Options = Options
+  { globalOptions :: GlobalOptions,
+    modeOptions :: Maybe ModeOptions
+  }
+  deriving (Eq, Show)
+
+data GlobalOptions = GlobalOptions
+  { version :: Bool,
+    outFile :: Maybe FilePath,
+    errFile :: Maybe FilePath,
+    logFile :: Maybe FilePath,
+    loggingLevel :: LoggingLevel
+  }
+  deriving (Eq, Show)
+
+defaultGlobalOptions :: GlobalOptions
+defaultGlobalOptions =
+  GlobalOptions
+    { version = False,
+      outFile = Nothing,
+      errFile = Nothing,
+      logFile = Nothing,
+      loggingLevel = defaultLoggingLevel
+    }
+
+data ModeOptions
+  = Check TypeCheckOptions
+  | Compile CompileOptions
+  | Verify VerifyOptions
+  | CompileAndVerify CompileAndVerifyOptions
+  | Validate ValidateOptions
+  | Export ExportOptions
+  deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 -- List of all options
@@ -106,6 +147,8 @@ globalOptionsParser :: Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> showVersionParser
+    <*> redirectOutputParser
+    <*> redirectErrorParser
     <*> redirectLogsParser
     <*> loggingLevelParser
 
@@ -283,11 +326,34 @@ showVersionParser =
       <> short 'V'
       <> help "Show version information."
 
+redirectOutputParser :: Parser (Maybe FilePath)
+redirectOutputParser =
+  optional $
+    strOption $
+      long "redirect-output"
+        <> long "ro"
+        <> metavar "FILE"
+        <> help
+          "Redirects the standard output to the provided file. \
+          \ If no argument is provided will default to stdout."
+
+redirectErrorParser :: Parser (Maybe FilePath)
+redirectErrorParser =
+  optional $
+    strOption $
+      long "redirect-error"
+        <> long "re"
+        <> metavar "FILE"
+        <> help
+          "Redirects the standard error to the provided file. \
+          \ If no argument is provided will default to stderr."
+
 redirectLogsParser :: Parser (Maybe FilePath)
 redirectLogsParser =
   optional $
     strOption $
-      long "redirectLogs"
+      long "redirect-logs"
+        <> long "rl"
         <> metavar "FILE"
         <> help
           "Redirects logs to the provided file. \

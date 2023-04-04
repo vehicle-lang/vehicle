@@ -1,16 +1,16 @@
 import sys
 from typing import List, Optional
 
-from vehicle_lang._binding import hs_defaultMain as _hs_defaultMain
-from vehicle_lang._binding import hs_rts_exit as _hs_rts_exit
-from vehicle_lang._binding import hs_rts_init as _hs_rts_init
+from vehicle_lang._binding import hs_rts_exit, hs_rts_init, hs_vehicleMain
 
 
-def cli(args: Optional[List[str]] = None):
-    _hs_rts_init(["vehicle"])
-    _hs_defaultMain(args or [])
-    _hs_rts_exit()
+def cli(args: Optional[List[str]] = None) -> int:
+    hs_rts_init(["vehicle"])
+    exitCode = hs_vehicleMain(args or [])
+    hs_rts_exit()
+    return exitCode
 
 
 def main():
-    cli(sys.argv[1:])
+    exitCode = cli(sys.argv[1:])
+    exit(exitCode)
