@@ -14,7 +14,6 @@ jobs:
     runs-on: ${{ matrix.os.tag }}
 
     strategy:
-      fail-fast: false
       matrix:
         os:
           # 01-04-2023:
