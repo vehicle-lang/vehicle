@@ -45,7 +45,7 @@ noModeTests =
     "noMode"
     [ parserTest
         "redirectLogs"
-        "vehicle --redirectLogs myLogs/test.txt"
+        "vehicle --redirect-logs myLogs/test.txt"
         $ Options
           { globalOptions =
               defaultGlobalOptions
