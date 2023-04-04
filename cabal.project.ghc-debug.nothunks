@@ -1,0 +1,8 @@
+-- Cabal project configuration file for DEBUGGING
+--
+-- Use this configuration in one of two ways:
+-- * pass `--project-file=cabal.project.ghc-debug.nothunks` to Cabal
+-- * run Vehicle via `./scripts/vehicle-ghc-debug-nothunks`
+
+import: cabal.project.ghc-debug
+import: cabal.project.nothunks

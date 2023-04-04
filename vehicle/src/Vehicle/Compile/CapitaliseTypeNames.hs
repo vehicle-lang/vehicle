@@ -3,7 +3,8 @@ module Vehicle.Compile.CapitaliseTypeNames
   )
 where
 
-import Control.Monad.State (MonadState (..), evalState, modify, when)
+import Control.Monad (when)
+import Control.Monad.State (MonadState (..), evalState, modify)
 import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude

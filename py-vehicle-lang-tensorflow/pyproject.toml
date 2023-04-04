@@ -1,0 +1,65 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "vehicle-lang-tensorflow"
+version = "0.2.0"
+description = "Python bindings for the Vehicle language."
+authors = [
+  "Marco Casadio <tgl70@users.noreply.github.com>",
+  "Wen Kokke <wenkokke@users.noreply.github.com>"
+]
+license = "BSD-3-Clause"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.11"
+tensorflow = "^2.11" # TODO: lowest possible tensorflow bound?
+numpy = "^1.24" # TODO: lowest possible numpy bound?
+
+[tool.poetry.extras]
+test = []
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.1"
+tox = "^4.4.8"
+black = "^23.3.0"
+isort = "^5.12.0"
+flake8 = "^5.0.4"
+
+[tool.pytest.ini_options]
+enable_assertion_pass_hook = true
+filterwarnings = ["ignore::DeprecationWarning:.*:"]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = 3.8
+ignore_missing_imports = true
+no_implicit_optional = false
+plugins = "numpy.typing.mypy_plugin"
+namespace_packages = false
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38,py39,py310
+isolated_build = True
+skip_missing_interpreters = True
+
+[gh-actions]
+python =
+  3.8: py38
+  3.9: py39
+  3.10: py310
+[testenv]
+extras =
+  test
+commands =
+  {envpython} -m unittest tests/test_LossFunctionTranslation.py
+passenv =
+  APPDATA
+  HOME
+"""
+# The environment variables above are passed because they are needed
+# to install the Vehicle standard library.

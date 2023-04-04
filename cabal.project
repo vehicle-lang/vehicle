@@ -1,26 +1,29 @@
 -- Cabal project configuration file
 --
 -- TL;DR
---  The cabal.project is the basic configuration file for Cabal projects.
---  Usually, this just points to the .cabal file for your project, but it
---  may contain additional configuration options.
---  Each supported GHC version has its own version of this file, which is
---  named `cabal.project.ghc-X.Y`. If no changes are needed, that file is
---  a symlink to this file.
---  For each project file `cabal.project.ghc-X.Y` there is a corresponding
---  freeze file `cabal.project.ghc-X.Y.freeze` which records the package
---  versions and flags with which the project is known to compile.
+--   The `cabal.project` is the basic configuration file for Cabal projects.
+--   This file just points Cabal to the .cabal file for your project.
+--   Any configuration that is shared by all configurations of Vehicle should
+--   be put into `cabal.project.config`.
+--
+--   Each supported GHC version has its own version of this file, which is
+--   named `cabal.project.ghc-X.Y`. If no changes are needed, that file simply
+--   imports this file.
+--
+--   For each project file `cabal.project.ghc-X.Y` there is a corresponding
+--   freeze file `cabal.project.ghc-X.Y.freeze` which records the package
+--   versions and flags with which the project is known to compile.
 --
 -- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
+
+import: cabal.project.config
 
 packages:
   vehicle/vehicle.cabal
   vehicle-syntax/vehicle-syntax.cabal
 
--- Workaround for linkedhashmap:
---
--- * The package linkedhashmap seems unmaintained. The latest update seems to
---   have been in 2015. Unfortunately, it requires containers <0.6:
---   See: https://github.com/vehicle-lang/vehicle/issues/191
-
-allow-newer: linkedhashmap-0.4.0.0:containers
+  -- 03-04-2023:
+  -- Cabal refuses to do an install of the unrelated component `vehicle:exe:vehicle`
+  -- without building a full sdist for `py-vehicle-lang`. To avoid this, py-vehicle-lang
+  -- is not included in the main `cabal.project` file.
+  -- py-vehicle-lang/vehicle-python-binding.cabal
