@@ -5,6 +5,7 @@ global-include *.i
 
 include cabal.project
 include cabal.project.config
+include cabal.project.freeze
 graft vendor/vehicle
 graft vendor/vehicle-syntax
 
