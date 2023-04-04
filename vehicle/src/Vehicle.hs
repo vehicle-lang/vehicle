@@ -6,9 +6,7 @@ module Vehicle
   )
 where
 
-import Control.Exception (bracket, finally, handle)
-import Control.Monad (when)
-import Data.Maybe (fromMaybe)
+import Control.Exception (bracket, handle)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Handle (hDuplicate, hDuplicateTo)
@@ -65,24 +63,22 @@ runVehicle Options {..} = do
           Export options -> export ioSettings options
 
 redirections :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-redirections globalOptions action = do
-  redirectOutput globalOptions $
-    redirectError globalOptions $
-      withLogger globalOptions action
+redirections go = redirectStdout go . redirectStderr go . withLogger go
 
-redirectOutput :: GlobalOptions -> IO a -> IO a
-redirectOutput GlobalOptions {outFile} action =
+redirectStdout :: GlobalOptions -> IO a -> IO a
+redirectStdout GlobalOptions {outFile} action =
   flip (maybe action) outFile $ \fp -> do
     createDirectoryIfMissing True (takeDirectory fp)
-    withFile fp AppendMode $ \fh -> do
-      bracket (redirectTo stdout fh) (restore stdout) (const action)
+    result <- withFile fp AppendMode $ \fh -> do
+      bracket (redirectHandleTo stdout fh) (restoreHandleFrom stdout) (const action)
+    return result
 
-redirectError :: GlobalOptions -> IO a -> IO a
-redirectError GlobalOptions {errFile} action =
+redirectStderr :: GlobalOptions -> IO a -> IO a
+redirectStderr GlobalOptions {errFile} action =
   flip (maybe action) errFile $ \fp -> do
     createDirectoryIfMissing True (takeDirectory fp)
     withFile fp AppendMode $ \fh -> do
-      bracket (redirectTo stderr fh) (restore stderr) (const action)
+      bracket (redirectHandleTo stderr fh) (restoreHandleFrom stderr) (const action)
 
 withLogger :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingLevel} action =
@@ -93,15 +89,15 @@ withLogger GlobalOptions {logFile, loggingLevel} action =
       withFile fp AppendMode $ \logHandle -> do
         action LoggingSettings {logHandle, loggingLevel}
 
-redirectTo :: Handle -> Handle -> IO Handle
-redirectTo source target = do
+redirectHandleTo :: Handle -> Handle -> IO Handle
+redirectHandleTo source target = do
   backup <- hDuplicate source
-  hDuplicateTo source target
+  hDuplicateTo target source
   return backup
 
-restore :: Handle -> Handle -> IO ()
-restore source backup = do
-  hDuplicateTo source backup
+restoreHandleFrom :: Handle -> Handle -> IO ()
+restoreHandleFrom source backup = do
+  hDuplicateTo backup source
 
 toExitCode :: Int -> ExitCode
 toExitCode exitCode

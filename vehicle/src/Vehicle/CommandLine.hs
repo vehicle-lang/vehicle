@@ -147,8 +147,8 @@ globalOptionsParser :: Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> showVersionParser
-    <*> redirectOutputParser
-    <*> redirectErrorParser
+    <*> redirectStdoutParser
+    <*> redirectStderrParser
     <*> redirectLogsParser
     <*> loggingLevelParser
 
@@ -326,22 +326,22 @@ showVersionParser =
       <> short 'V'
       <> help "Show version information."
 
-redirectOutputParser :: Parser (Maybe FilePath)
-redirectOutputParser =
+redirectStdoutParser :: Parser (Maybe FilePath)
+redirectStdoutParser =
   optional $
     strOption $
-      long "redirect-output"
+      long "redirect-stdout"
         <> long "ro"
         <> metavar "FILE"
         <> help
           "Redirects the standard output to the provided file. \
           \ If no argument is provided will default to stdout."
 
-redirectErrorParser :: Parser (Maybe FilePath)
-redirectErrorParser =
+redirectStderrParser :: Parser (Maybe FilePath)
+redirectStderrParser =
   optional $
     strOption $
-      long "redirect-error"
+      long "redirect-stderr"
         <> long "re"
         <> metavar "FILE"
         <> help

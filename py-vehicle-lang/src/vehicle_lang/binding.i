@@ -2,14 +2,14 @@
 %{
 #include "VehiclePythonBinding_stub.h"
 
-extern HsInt32 hs_vehicleMain(HsInt32 argc, HsPtr argv);
+HsInt32 _unsafeVehicleMain(HsInt32 argc, HsPtr argv);
 
-void hs_rts_init(int argc, char **argv)
+void _hs_rts_init(int argc, char **argv)
 {
   hs_init(&argc, &argv);
 }
 
-void hs_rts_exit()
+void _hs_rts_exit()
 {
   void hs_exit();
 }
@@ -41,6 +41,6 @@ void hs_rts_exit()
   free((char *) $2);
 }
 
-int hs_vehicleMain(int argc, char **argv);
-void hs_rts_init(int argc, char **argv);
-void hs_rts_exit();
+int _unsafeVehicleMain(int argc, char **argv);
+void _hs_rts_init(int argc, char **argv);
+void _hs_rts_exit();
