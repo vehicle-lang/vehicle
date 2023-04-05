@@ -19,7 +19,7 @@ mypy = ["types-setuptools >=45", "types-pygments >=2.14, <3"]
 vehicle = "vehicle_lang:main"
 
 [project.entry-points.'pygments.lexers']
-external = "vehicle_lang.pygments:VehicleLexer"
+vehicle = "vehicle_lang.pygments:VehicleLexer"
 
 [tool.mypy]
 python_version = 3.7
