@@ -13,7 +13,7 @@ import Distribution.Simple.Utils (die', info)
 import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Verbosity (Verbosity, normal)
-import System.Directory (copyFile, doesDirectoryExist, removeFile)
+import System.Directory (copyFile, doesDirectoryExist, removeFile, renameDirectory)
 import System.Environment (getEnv)
 import System.FilePath ((<.>))
 import System.FilePath.Posix ((</>))
@@ -92,7 +92,10 @@ generatePygmentsLexer verbosity programDb = do
       "src" </> "vehicle_lang" </> "pygments",
       "vendor" </> "vehicle-syntax" </> "src" </> "Vehicle" </> "Syntax" </> "External.cf"
     ]
-  removeFile $ "src" </> "vehicle_lang" </> "pygments" </> "setup.py"
+  renameDirectory
+    ("src" </> "vehicle_lang" </> "pygments" </> "external")
+    ("src" </> "vehicle_lang" </> "pygments" </> "_external")
+  removeFile ("src" </> "vehicle_lang" </> "pygments" </> "setup.py")
 
 bnfcProgram :: Program
 bnfcProgram = simpleProgram "bnfc"

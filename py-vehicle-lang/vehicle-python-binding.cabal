@@ -49,4 +49,4 @@ foreign-library _binding
     , vehicle
 
   default-language:   Haskell2010
-  build-tool-depends: BNFC:bnfc >=2.9.4
+  build-tool-depends: BNFC:bnfc
