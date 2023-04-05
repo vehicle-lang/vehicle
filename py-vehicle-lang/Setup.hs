@@ -6,13 +6,14 @@ import Data.Foldable (for_)
 import Data.Traversable (for)
 import Distribution.PackageDescription (ComponentName (..), ForeignLib (..), PackageDescription (..))
 import Distribution.Simple (UserHooks (..), defaultMainWithHooks, simpleUserHooks)
-import Distribution.Simple.LocalBuildInfo (componentBuildDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), componentBuildDir)
+import Distribution.Simple.Program (Program, ProgramDb, runDbProgram, simpleProgram)
 import Distribution.Simple.Setup (BuildFlags (..), fromFlagOrDefault)
 import Distribution.Simple.Utils (die', info)
 import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Verbosity (Verbosity, normal)
-import System.Directory (copyFile, doesDirectoryExist)
+import System.Directory (copyFile, doesDirectoryExist, removeFile)
 import System.Environment (getEnv)
 import System.FilePath ((<.>))
 import System.FilePath.Posix ((</>))
@@ -23,22 +24,35 @@ main :: IO ()
 main =
   defaultMainWithHooks
     simpleUserHooks
-      { postBuild = \args buildFlags packageDescription localBuildInfo -> do
+      { hookedPrograms = [bnfcProgram] <> hookedPrograms simpleUserHooks,
+        postBuild = \args buildFlags packageDescription localBuildInfo -> do
           let verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
-          maybeInstallDir <- getInstallDir verbosity
-          for_ maybeInstallDir $ \installDir -> do
-            let PackageDescription {foreignLibs} = packageDescription
-            for_ foreignLibs $ \foreignLib -> do
-              let ForeignLib {foreignLibName} = foreignLib
-              let foreignLibCLBIs = componentNameCLBIs localBuildInfo (CFLibName foreignLibName)
-              for_ foreignLibCLBIs $ \foreignLibCLBI -> do
-                let foreignLibBuildDir = componentBuildDir localBuildInfo foreignLibCLBI
-                let foreignLibFileName = getForeignLibFileName foreignLibName
-                let foreignLibBuildPath = foreignLibBuildDir </> foreignLibFileName
-                let foreignLibInstallPath = installDir </> foreignLibFileName
-                info verbosity $ "Installing " <> foreignLibFileName <> " to " <> installDir
-                copyFile foreignLibBuildPath foreignLibInstallPath
+          installForeignLibs verbosity packageDescription localBuildInfo
+          let LocalBuildInfo {withPrograms} = localBuildInfo
+          generatePygmentsLexer verbosity withPrograms
       }
+
+--------------------------------------------------------------------------------
+-- Install foreign libraries
+--------------------------------------------------------------------------------
+
+-- | Installs the built foreign library components to the path in
+--   the `INSTALLDIR` environment variable, if set.
+installForeignLibs :: Verbosity -> PackageDescription -> LocalBuildInfo -> IO ()
+installForeignLibs verbosity packageDescription localBuildInfo = do
+  maybeInstallDir <- getInstallDir verbosity
+  for_ maybeInstallDir $ \installDir -> do
+    let PackageDescription {foreignLibs} = packageDescription
+    for_ foreignLibs $ \foreignLib -> do
+      let ForeignLib {foreignLibName} = foreignLib
+      let foreignLibCLBIs = componentNameCLBIs localBuildInfo (CFLibName foreignLibName)
+      for_ foreignLibCLBIs $ \foreignLibCLBI -> do
+        let foreignLibBuildDir = componentBuildDir localBuildInfo foreignLibCLBI
+        let foreignLibFileName = getForeignLibFileName foreignLibName
+        let foreignLibBuildPath = foreignLibBuildDir </> foreignLibFileName
+        let foreignLibInstallPath = installDir </> foreignLibFileName
+        info verbosity $ "Installing " <> foreignLibFileName <> " to " <> installDir
+        copyFile foreignLibBuildPath foreignLibInstallPath
 
 getForeignLibFileName :: UnqualComponentName -> FilePath
 getForeignLibFileName foreignLibName
@@ -62,3 +76,23 @@ getInstallDir verbosity =
 
     doesNotExistErrorHandler e =
       if isDoesNotExistError e then return Nothing else throwIO e
+
+--------------------------------------------------------------------------------
+-- Build pygments lexer
+--------------------------------------------------------------------------------
+
+generatePygmentsLexer :: Verbosity -> ProgramDb -> IO ()
+generatePygmentsLexer verbosity programDb = do
+  runDbProgram
+    verbosity
+    bnfcProgram
+    programDb
+    [ "--pygments",
+      "-o",
+      "src" </> "vehicle_lang" </> "pygments",
+      "vendor" </> "vehicle-syntax" </> "src" </> "Vehicle" </> "Syntax" </> "External.cf"
+    ]
+  removeFile $ "src" </> "vehicle_lang" </> "pygments" </> "setup.py"
+
+bnfcProgram :: Program
+bnfcProgram = simpleProgram "bnfc"

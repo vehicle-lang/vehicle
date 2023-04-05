@@ -11,19 +11,26 @@ license = { file = 'LICENSE' }
 dynamic = ["version"]
 
 [project.optional-dependencies]
+pygments = ["pygments >=2.14, <3"]
 test = ["pytest >=7.1,<8", "packaging>=23"]
-mypy = ["types-setuptools >=45"]
+mypy = ["types-setuptools >=45", "types-pygments >=2.14, <3"]
 
 [project.scripts]
 vehicle = "vehicle_lang:main"
 
+[project.entry-points.'pygments.lexers']
+external = "vehicle_lang.pygments:VehicleLexer"
+
 [tool.mypy]
 python_version = 3.7
 ignore_missing_imports = true
-exclude = ['^src\/vehicle_lang\/binding\.py$']
+exclude = [
+  '^src\/vehicle_lang\/binding\.py$',
+  '^src\/vehicle_lang\/pygments\/external\/__init__\.py$',
+]
 
 [tool.setuptools.dynamic]
-version = {attr = "vehicle_lang._version.VERSION"}
+version = { attr = "vehicle_lang._version.VERSION" }
 
 [tool.tox]
 legacy_tox_ini = """
