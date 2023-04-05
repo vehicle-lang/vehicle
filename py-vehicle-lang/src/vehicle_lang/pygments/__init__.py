@@ -1,0 +1,90 @@
+from typing import Any
+
+from pygments import token
+
+from ._external import ExternalLexer
+
+__all__ = ["VehicleLexer"]
+
+
+class VehicleLexer(ExternalLexer):
+    name = "Vehicle"
+    aliases = ["vehicle"]
+    filenames = ["*.vcl"]
+    tokens = {
+        "root": [
+            (r"--.*\n", token.Comment),
+            (r"\{-((.)(?<!-))*-((.)(?<![-\}])((.)(?<!-))*-|-)*\}", token.Comment),
+            (r"True|False", token.Name.Builtin),
+            (r"(\d)+", token.Number.Integer),
+            (r"(\d)+\.(\d)+", token.Number.Float),
+            (r"@network", token.Keyword.Declaration),
+            (r"@dataset", token.Keyword.Declaration),
+            (r"@parameter", token.Keyword.Declaration),
+            (r"@property", token.Keyword.Declaration),
+            (r"@postulate", token.Keyword.Declaration),
+            (r"->", token.Operator),
+            (r"forallT", token.Keyword),
+            (r"if", token.Keyword),
+            (r"then", token.Keyword),
+            (r"else", token.Keyword),
+            (r"\.", token.Punctuation),
+            (r":", token.Punctuation),
+            (r"\\", token.Punctuation),
+            (r"let", token.Keyword),
+            (r"Type", token.Keyword.Type),
+            (r"Unit", token.Keyword.Type),
+            (r"Bool", token.Keyword.Type),
+            (r"Nat", token.Keyword.Type),
+            (r"Int", token.Keyword.Type),
+            (r"Rat", token.Keyword.Type),
+            (r"Vector", token.Keyword.Type),
+            (r"List", token.Keyword.Type),
+            (r"Index", token.Keyword.Type),
+            (r"forall", token.Keyword),
+            (r"exists", token.Keyword),
+            (r"foreach", token.Keyword),
+            (r"=>", token.Operator),
+            (r"and", token.Operator.Word),
+            (r"or", token.Operator.Word),
+            (r"not", token.Operator.Word),
+            (r"==", token.Operator),
+            (r"!=", token.Operator),
+            (r"<=", token.Operator),
+            (r"<", token.Operator),
+            (r">=", token.Operator),
+            (r">", token.Operator),
+            (r"\*", token.Operator),
+            (r"/", token.Operator),
+            (r"\+", token.Operator),
+            (r"-", token.Operator),
+            (r"nil", token.Operator),
+            (r"::", token.Operator),
+            (r"\[", token.Operator),
+            (r"\]", token.Operator),
+            (r"::v", token.Operator),
+            (r"!", token.Operator),
+            (r"map", token.Name.Builtin),
+            (r"fold", token.Name.Builtin),
+            (r"dfold", token.Name.Builtin),
+            (r"indices", token.Name.Builtin),
+            (r"HasEq", token.Keyword.Type),
+            (r"HasNotEq", token.Keyword.Type),
+            (r"HasAdd", token.Keyword.Type),
+            (r"HasSub", token.Keyword.Type),
+            (r"HasMul", token.Keyword.Type),
+            (r"HasFold", token.Keyword.Type),
+            (r"HasMap", token.Keyword.Type),
+            (r"[a-zA-Z](_|\d|[a-zA-Z])*", token.Name),
+            (r"\?(_|\d|[a-zA-Z])*", token.Name),
+            (r"(\d|[a-zA-Z])+", token.Name),
+            (r"[a-zA-Z]([a-zA-Z]|\d|_|\')*", token.Name),
+            (r"\(|\)|\{|\}|\{\{|\}\}|=|,|\(\)|;", token.Punctuation),
+            (r"(\d)+", token.Number.Integer),
+            (r"(\d)+\.(\d)+(e(-)?(\d)+)?", token.Number.Float),
+            (r'"((.)(?<!["\\])|\\["\\nt])*"', token.String.Double),
+            (r"\'((.)(?<![\'\\])|\\[\'\\nt])\'", token.String.Char),
+            (r"\s+", token.Token.Space),
+            *ExternalLexer.tokens["root"],
+        ]
+    }
