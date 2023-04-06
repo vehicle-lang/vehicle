@@ -42,26 +42,22 @@ jobs:
                 project-file: "cabal.project.nothunks.ghc-9.4.4",
               }
             cabal: { version: "3.8.1.0", extra-args: "-fnothunks" }
-          # 20-12-2022:
-          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
-          # - os: { tag: ubuntu-latest, name: Linux }
-          #   ghc:
-          #     {
-          #       version: "9.4.4",
-          #       project-file: "cabal.project.ghc-debug.ghc-9.4.4",
-          #     }
-          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug" }
-          # 20-12-2022:
-          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
+          - os: { tag: ubuntu-latest, name: Linux }
+            ghc:
+              {
+                version: "9.4.4",
+                project-file: "cabal.project.ghc-debug.ghc-9.4.4",
+              }
+            cabal: { version: "3.8.1.0", extra-args: "-fghc-debug" }
           # Build with -fghc-debug and -fnothunks:
-          # - os: { tag: ubuntu-latest, name: Linux }
-          #   ghc:
-          #     {
-          #       version: "9.4.4",
-          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4",
-          #     }
-          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug -fnothunks" }
+          - os: { tag: ubuntu-latest, name: Linux }
+            ghc:
+              {
+                version: "9.4.4",
+                project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4",
+              }
+            cabal: { version: "3.8.1.0", extra-args: "-fghc-debug -fnothunks" }
 
     steps:
       - name: Checkout
