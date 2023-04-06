@@ -3,7 +3,8 @@ module Vehicle.Compile.ExpandResources.Dataset
   )
 where
 
-import Control.Monad.Except (MonadError (..), MonadIO)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO)
 import Data.Map qualified as Map
 import System.FilePath (takeExtension)
 import Vehicle.Compile.Error

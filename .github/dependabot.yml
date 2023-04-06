@@ -7,14 +7,20 @@ updates:
     schedule:
       interval: "weekly"
 
-  # Maintain dependencies for Python
+  # Maintain dependencies for the documentation
   - package-ecosystem: "pip"
     directory: "/docs-source"
     schedule:
       interval: "weekly"
 
-  # Maintain dependencies for Python
+  # Maintain dependencies for py-vehicle-lang
   - package-ecosystem: "pip"
-    directory: "/vehicle-python"
+    directory: "/py-vehicle-lang"
+    schedule:
+      interval: "weekly"
+
+  # Maintain dependencies for py-vehicle-lang-tensorflow
+  - package-ecosystem: "pip"
+    directory: "/py-vehicle-lang-tensorflow"
     schedule:
       interval: "weekly"

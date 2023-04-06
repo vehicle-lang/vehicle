@@ -34,7 +34,7 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/ikamensh/flynt/
-    rev: "0.77"
+    rev: "0.78"
     hooks:
       - id: flynt
   - repo: https://github.com/pycqa/isort
@@ -43,15 +43,22 @@ repos:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/psf/black
-    rev: "23.1.0"
+    rev: "23.3.0"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.1.1"
     hooks:
       - id: mypy
-        args: ["--config-file", "vehicle-python/pyproject.toml"]
-        additional_dependencies: [numpy]
+        name: mypy (py-vehicle-lang)
+        args: ["--config-file", "py-vehicle-lang/pyproject.toml"]
+        additional_dependencies: ["types-setuptools >=45", "types-pygments >=2.14"]
+        files: "^py-vehicle-lang\\/.*\\.py$"
+      - id: mypy
+        name: mypy (py-vehicle-lang-tensorflow)
+        args: ["--config-file", "py-vehicle-lang-tensorflow/pyproject.toml"]
+        additional_dependencies: ["numpy"]
+        files: "^py-vehicle-lang-tensorflow\\/.*\\.py$"
   - repo: local
     hooks:
       - id: cabal-fmt

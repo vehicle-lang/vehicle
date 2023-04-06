@@ -8,9 +8,11 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Either (isRight)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
+import Data.Maybe (isNothing)
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
     Domain (..),
@@ -51,11 +53,9 @@ compile resources logic typedProg = do
   let unnormalisedProg = fmap unnormalised expandedProg
   progWithoutInstanceArgs <- resolveInstanceArguments unnormalisedProg
   let descopedProg = descopeNamed progWithoutInstanceArgs
-  possiblyNotNormalisedProg <- case compileNot (implementationOf logic) of
-    Just {} -> return descopedProg
-    Nothing -> lowerNots logic descopedProg
+  reformattedProg <- reformatLogicalOperators logic descopedProg
 
-  compileProg networkCtx logic possiblyNotNormalisedProg
+  compileProg networkCtx logic reformattedProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -179,8 +179,12 @@ compileBuiltinFunction f t args = case f of
   V.FromNat {} -> compileOp1 id t args
   V.FromRat {} -> compileOp1 id t args
   -- Logical operatives
-  V.And -> compileOp2 (compileAnd t) t args
-  V.Or -> compileOp2 (compileOr t) t args
+  V.And -> case compileAnd t of
+    Left binaryAnd -> compileOp2 binaryAnd t args
+    Right naryAnd -> return (naryAnd args)
+  V.Or -> case compileOr t of
+    Left binaryOr -> compileOp2 binaryOr t args
+    Right naryOr -> return (naryOr args)
   V.At -> compileOp2 At t args
   V.Not -> compileNotOp t args
   V.Implies -> compileOp2 (compileImplies t) t args
@@ -290,17 +294,25 @@ notYetSupportedStdLibFunction op = notYetSupported (quotePretty op)
 --------------------------------------------------------------------------------
 -- Lowering nots
 
-lowerNots ::
+reformatLogicalOperators ::
   forall m.
   (MonadCompile m) =>
   DifferentiableLogic ->
   InputProg ->
   m InputProg
-lowerNots logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
+reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
     builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
-      V.CFunction V.Not -> lowerNot p2 (argExpr $ head args)
+      V.CFunction V.Not
+        | isNothing (compileNot (implementationOf logic)) ->
+            lowerNot p2 (argExpr $ head args)
+      V.CFunction V.And
+        | isRight (compileAnd (implementationOf logic)) ->
+            return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
+      V.CFunction V.Or
+        | isRight (compileOr (implementationOf logic)) ->
+            return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
       _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
 
     lowerNot :: V.Provenance -> InputExpr -> m InputExpr
@@ -327,6 +339,16 @@ lowerNots logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
         | ident == V.identifierOf StdNotEqualsVector -> return $ V.App p1 (V.FreeVar p2 (V.identifierOf StdEqualsVector)) args
       -- Errors
       e -> throwError $ UnsupportedNegatedOperation logic notProv e
+
+    flattenAnds :: InputArg -> NonEmpty InputArg
+    flattenAnds arg = case argExpr arg of
+      V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
+      _ -> [arg]
+
+    flattenOrs :: InputArg -> NonEmpty InputArg
+    flattenOrs arg = case argExpr arg of
+      V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
+      _ -> [arg]
 
 -----------------------------------------------------------------------
 -- Debugging options

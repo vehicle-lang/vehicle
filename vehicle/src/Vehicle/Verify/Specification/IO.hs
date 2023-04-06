@@ -144,7 +144,7 @@ writeVerificationQueries queryFormatID maybeFolder verificationQueries = do
   return ()
 
 verificationPlanFileName :: FilePath -> FilePath
-verificationPlanFileName folder = folder </> "verification-plan" <.> vehicleVerificationPlanFileExtension
+verificationPlanFileName folder = folder </> "" <.> vehicleVerificationPlanFileExtension
 
 --------------------------------------------------------------------------------
 -- Verification

@@ -44,11 +44,11 @@ import System.FilePath
 import Test.Tasty (Timeout)
 import Test.Tasty.Options (IsOption (optionHelp, parseValue))
 import Text.Printf (printf)
-import Vehicle qualified (ModeOptions, Options (..))
-import Vehicle qualified as ModeOptions (ModeOptions (..))
 import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Backend.Prelude qualified as Backend
 import Vehicle.CommandLine (commandLineOptionsParserInfo)
+import Vehicle.CommandLine qualified as ModeOptions (ModeOptions (..))
+import Vehicle.CommandLine qualified as Vehicle (ModeOptions, Options (..))
 import Vehicle.Compile qualified as CompileOptions
   ( datasetLocations,
     networkLocations,
@@ -92,7 +92,7 @@ import Vehicle.Validate qualified as ValidateOptions (proofCache)
 import Vehicle.Validate qualified as Vehicle (ValidateOptions)
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions
-  ( VerifyOptions (verificationPlan),
+  ( VerifyOptions (..),
     proofCache,
     verifierID,
   )
@@ -295,7 +295,7 @@ instance TestSpecLike Vehicle.VerifyOptions where
   needs :: Vehicle.VerifyOptions -> [FilePath]
   needs opts = do
     join
-      [ [VerifyOptions.verificationPlan opts]
+      [ [VerifyOptions.queryFolder opts]
       -- TODO the verification plan also references resources and query files
       ]
 
