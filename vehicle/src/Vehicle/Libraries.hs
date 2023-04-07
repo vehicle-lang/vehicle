@@ -60,11 +60,11 @@ installLibrary Library {..} = do
   -- Write the library info file out
   let libraryInfoFile = getLibraryInfoFile libraryFolder
   let libraryInfoFileContent = encodePretty libraryInfo
-  liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
+  liftIO $ safeWriteToFile BIO.hPut libraryInfoFile libraryInfoFileContent
 
   -- Write the contents of the library out
   let libraryContentFile = libraryFolder </> name <.> vehicleSpecificationFileExtension
-  liftIO $ TIO.writeFile libraryContentFile libraryContent
+  liftIO $ safeWriteToFile TIO.hPutStr libraryContentFile libraryContent
 
 -- | Finds the file path to the library content. At the moment
 -- this is very hacky, as it assumes there's a single file per library
@@ -79,7 +79,7 @@ findLibraryContentFile library = do
   errorOrContents <-
     liftIO $
       catch
-        (Right <$> BIO.readFile libraryInfoFile)
+        (Right <$> safeReadFromFile BIO.hGetContents libraryInfoFile)
         (\(e :: IOException) -> return (Left e))
 
   libraryUpToDate <- case errorOrContents of

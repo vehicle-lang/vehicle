@@ -53,7 +53,7 @@ readObjectFile specificationFile spec = do
             return $ Just result
 
 writeObjectFile ::
-  (MonadIO m) =>
+  (MonadLogger m, MonadIO m) =>
   FilePath ->
   SpecificationText ->
   StandardGluedProg ->
@@ -61,5 +61,18 @@ writeObjectFile ::
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   let specHash = hash spec
-  let contents = ObjectFileContents specHash result
-  liftIO $ BIO.writeFile interfaceFile (encode contents)
+  let contents = encode $ ObjectFileContents specHash result
+
+  maybeErr <-
+    liftIO $
+      catch
+        (do safeWriteToFile BIO.hPut interfaceFile contents; return Nothing)
+        (\(err :: IOException) -> return $ Just err)
+
+  case maybeErr of
+    Nothing -> return ()
+    Just err -> do
+      -- If there's an error writing the interface file out then we don't care
+      -- as we'll simply re-type-check next time.
+      logDebug MinDetail $
+        "Writing interface file failed with error:" <+> line <> indent 2 (pretty $ show err)

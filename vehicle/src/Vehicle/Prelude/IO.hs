@@ -5,6 +5,8 @@ module Vehicle.Prelude.IO
     vehicleProofCacheFileExtension,
     vehicleLibraryExtension,
     removeFileIfExists,
+    safeWriteToFile,
+    safeReadFromFile,
     fatalError,
     programOutput,
     getVehiclePath,
@@ -12,16 +14,19 @@ module Vehicle.Prelude.IO
   )
 where
 
-import Control.Exception (catch, throwIO)
 -- import Control.Monad (forM_)
+
+import Control.DeepSeq (NFData, deepseq)
+import Control.Exception (bracket, catch, throwIO)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Version (Version)
+import GHC.IO.Handle (LockMode (..), hLock)
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
-import System.IO (hPrint, stderr)
+import System.IO (Handle, IOMode (..), hClose, hPrint, openFile, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 
@@ -96,6 +101,32 @@ getVehiclePath = do
               <> show env
   liftIO $ createDirectoryIfMissing False vehiclePath
   return vehiclePath
+
+-- | Writes a file atomically by first acquiring a lock on it.
+safeWriteToFile :: (Handle -> a -> IO ()) -> FilePath -> a -> IO ()
+safeWriteToFile writeOp file contents = do
+  let acquireFile = do
+        handle <- openFile file WriteMode
+        hLock handle ExclusiveLock
+        return handle
+  let processFile handle = writeOp handle contents
+  let releaseFile = hClose
+
+  bracket acquireFile releaseFile processFile
+
+-- | Writes a file atomically by first acquiring a lock on it.
+safeReadFromFile :: (NFData a) => (Handle -> IO a) -> FilePath -> IO a
+safeReadFromFile readOp file = do
+  let acquireFile = do
+        handle <- openFile file ReadMode
+        hLock handle SharedLock
+        return handle
+  let processFile handle = do
+        result <- readOp handle
+        result `deepseq` return result
+  let releaseFile = hClose
+
+  bracket acquireFile releaseFile processFile
 
 --------------------------------------------------------------------------------
 -- Other
