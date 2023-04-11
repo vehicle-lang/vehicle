@@ -39,7 +39,7 @@ jobs:
       - name: Test
         run: |
           ls ~/.Marabou/bin/
-          ~/.Marabou/bin/ controller.onnx
-          Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+          ~/.Marabou/bin/Marabou examples/windController/controller.onnx tests/golden/compile/windController/Marabou.queries/safe-query1.txt.golden
+          which Marabou
         shell: sh
         working-directory: vehicle/tests/golden/compile/windController

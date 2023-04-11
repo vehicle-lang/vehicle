@@ -39,7 +39,7 @@ runs:
       id: cache-Marabou
       uses: actions/cache@v3
       with:
-        path: ~/.Marabou/bin/Marabou
+        path: ~/.Marabou/bin/
         key: ${{ runner.os }}-Marabou-${{ inputs.marabou-commit }}
 
     - name: Checkout Marabou repo
