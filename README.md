@@ -14,7 +14,7 @@ its third input.
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
 After training, the same specification can be compiled down to low-level neural network verifiers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
-the specifiation holds for _all_ inputs.
+the specification holds for _all_ inputs.
 Verified specifications can also be exported to interactive theorem provers (ITPs)
 such as Agda.
 This in turn allows for the formal verification of larger software systems
