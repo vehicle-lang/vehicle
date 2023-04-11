@@ -11,7 +11,6 @@ import Vehicle.Prelude
 import Vehicle.Resource
 import Vehicle.Verify (VerifyOptions (..), verify)
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 
 data CompileAndVerifyOptions = CompileAndVerifyOptions
@@ -45,7 +44,7 @@ compileAndVerify loggingSettings CompileAndVerifyOptions {..} = do
 
     verify loggingSettings $
       VerifyOptions
-        { verificationPlan = verificationPlanFileName tempDir,
+        { queryFolder = tempDir,
           verifierID = verifierID,
           verifierLocation = verifierLocation,
           proofCache = proofCache

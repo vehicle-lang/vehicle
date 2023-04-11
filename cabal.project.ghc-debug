@@ -4,8 +4,7 @@
 -- * pass `--project-file=cabal.project.ghc-debug` to Cabal
 -- * run Vehicle via `./scripts/vehicle-ghc-debug`
 
-
-import: cabal.project.nothunks
+import: cabal.project
 
 package vehicle-syntax
   flags:
@@ -19,10 +18,21 @@ package vehicle
     +ghc-debug
 
   ghc-options:
-    -- Necessary for vehicle:exe:vehicle to support creating an eventlog,
-    -- which is used by scripts/vehicle-profile
-    -eventlog
-
     -- Necessary for vehicle:exe:vehicle to support info table profiling,
     -- which is used by scripts/vehicle-profile if HEAP_PROFILE_TYPE=-hi
     -finfo-table-map -fdistinct-constructor-tables
+
+-- 03-04-2023:
+-- Eventlog was deprecated in GHC 9.4.
+-- https://downloads.haskell.org/ghc/latest/docs/users_guide/phases.html#ghc-flag--eventlog
+if impl(ghc < 9.4)
+  package vehicle
+    ghc-options:
+      -- Necessary for vehicle:exe:vehicle to support creating an eventlog,
+      -- which is used by scripts/vehicle-profile
+      -eventlog
+
+-- 03-04-2023:
+-- The package ghc-debug-stub has not yet been updated for GHC 9.4.4.
+if impl(ghc >= 9.4)
+  allow-newer: ghc-debug-stub-0.4.0.0:ghc-prim

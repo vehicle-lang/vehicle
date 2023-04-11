@@ -1,5 +1,5 @@
-name: "Setup Marabou"
-description: "Setup Marabou"
+name: "Setup Marabou3"
+description: "Setup Marabou3"
 inputs:
   marabou-commit:
     required: false

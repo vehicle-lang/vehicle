@@ -7,14 +7,14 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle
+import Vehicle.Backend.Prelude (TypingSystem (..))
+import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
     Options (..),
+    commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
-import Vehicle.Backend.Prelude (TypingSystem (..))
-import Vehicle.CommandLine (commandLineOptionsParserInfo)
 import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Prelude
   ( LoggingLevel (MinDetail),
@@ -45,7 +45,7 @@ noModeTests =
     "noMode"
     [ parserTest
         "redirectLogs"
-        "vehicle --redirectLogs myLogs/test.txt"
+        "vehicle --redirect-logs myLogs/test.txt"
         $ Options
           { globalOptions =
               defaultGlobalOptions
@@ -91,14 +91,14 @@ validateModeTests =
     "validateMode"
     [ parserTest
         "basic"
-        "vehicle validate --proofCache mpc.vclp"
+        "vehicle validate --proofCache mpc.vcl-cache"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Validate $
                   ValidateOptions
-                    { proofCache = "mpc.vclp"
+                    { proofCache = "mpc.vcl-cache"
                     }
           }
     ]
@@ -110,20 +110,20 @@ verifyTests =
     [ parserTest
         "basic"
         "vehicle verify \
-        \--verificationPlan test/verificationPlan.vcle \
+        \--queryFolder queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vclp"
+        \--proofCache test/proofCache.vcl-cache"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Verify $
                   VerifyOptions
-                    { verificationPlan = "test/verificationPlan.vcle",
+                    { queryFolder = "queries",
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vclp"
+                      proofCache = Just "test/proofCache.vcl-cache"
                     }
           }
     ]

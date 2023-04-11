@@ -6,6 +6,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.State (MonadState, StateT, evalStateT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (mapMaybe)
 import Data.Map qualified as Map
@@ -17,7 +18,7 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Compile.Queries.LinearSatisfactionProblem (generateCLSTProblem)
+import Vehicle.Compile.Queries.LinearSatisfactionProblem (UserVariableEliminationCache, generateCLSTProblem)
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors
 import Vehicle.Compile.Queries.NetworkElimination
 import Vehicle.Compile.Queries.Variable (UserVariable (..))
@@ -130,7 +131,7 @@ compileProgToQueries queryFormat resources prog = do
               let propertyAddress = (nameOf ident, indices)
               let state = PropertyState queryFormat declCtx networkCtx p ident indices
               let compileProperty = compilePropertyTopLevelStructure expr
-              property <- runSupplyT (runReaderT compileProperty state) [1 :: QueryID ..]
+              property <- runMonadCompileProperty state compileProperty
               return $ SingleProperty propertyAddress property
 
 --------------------------------------------------------------------------------
@@ -148,8 +149,17 @@ data PropertyState = PropertyState
 type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
-    MonadSupply QueryID m
+    MonadSupply QueryID m,
+    MonadState UserVariableEliminationCache m
   )
+
+runMonadCompileProperty ::
+  (Monad m) =>
+  PropertyState ->
+  ReaderT PropertyState (SupplyT QueryID (StateT UserVariableEliminationCache m)) a ->
+  m a
+runMonadCompileProperty state r =
+  evalStateT (runSupplyT (runReaderT r state) [1 :: QueryID ..]) mempty
 
 -- | Compiles the top-level structure of a property of type `Bool` until it
 -- hits the first quantifier.

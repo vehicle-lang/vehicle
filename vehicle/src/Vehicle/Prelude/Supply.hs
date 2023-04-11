@@ -58,3 +58,7 @@ instance (MonadError e m) => MonadError e (SupplyT s m) where
 instance (MonadReader e m) => MonadReader e (SupplyT s m) where
   ask = lift ask
   local f x = SupplyT $ local f $ unsupplyT x
+
+instance (MonadState e m) => MonadState e (SupplyT s m) where
+  get = lift get
+  put = lift . put

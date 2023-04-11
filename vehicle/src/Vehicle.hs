@@ -1,116 +1,116 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Vehicle
-  ( run,
-    Options (..),
-    GlobalOptions (..),
-    defaultGlobalOptions,
-    ModeOptions (..),
+  ( main,
+    mainWithArgsAndExitCode,
   )
 where
 
-import Control.Exception (bracket)
-import Control.Monad (when)
-import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.Exit (exitSuccess)
+import Control.Exception (bracket, handle)
+import Data.Version (showVersion)
+import GHC.IO.Encoding (setLocaleEncoding)
+import GHC.IO.Handle (hDuplicate, hDuplicateTo)
+import Options.Applicative (ParserInfo, defaultPrefs, execParserPure, handleParseResult)
+import System.Directory (createDirectoryIfMissing)
+import System.Environment (getArgs)
+import System.Exit (ExitCode (..), exitSuccess, exitWith)
 import System.FilePath (takeDirectory)
 import System.IO
-import Vehicle.Compile (CompileOptions (..), compile)
-import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..), compileAndVerify)
-import Vehicle.Export (ExportOptions, export)
+import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
+import Vehicle.Compile (compile)
+import Vehicle.CompileAndVerify (compileAndVerify)
+import Vehicle.Export (export)
 import Vehicle.Prelude
-import Vehicle.TypeCheck (TypeCheckOptions, typeCheck)
-import Vehicle.Validate (ValidateOptions (..), validate)
-import Vehicle.Verify (VerifyOptions (..), verify)
+import Vehicle.TypeCheck (typeCheck)
+import Vehicle.Validate (validate)
+import Vehicle.Verify (verify)
 
 --------------------------------------------------------------------------------
 -- Main command
 
-data Options = Options
-  { globalOptions :: GlobalOptions,
-    modeOptions :: Maybe ModeOptions
-  }
-  deriving (Eq, Show)
+main :: IO ()
+main = do
+  args <- getArgs
+  exitCode <- mainWithArgsAndExitCode args
+  exitWith (toExitCode exitCode)
 
-data GlobalOptions = GlobalOptions
-  { version :: Bool,
-    logFile :: Maybe FilePath,
-    loggingLevel :: LoggingLevel
-  }
-  deriving (Eq, Show)
-
-defaultGlobalOptions :: GlobalOptions
-defaultGlobalOptions =
-  GlobalOptions
-    { version = False,
-      logFile = Nothing,
-      loggingLevel = defaultLoggingLevel
-    }
-
-data ModeOptions
-  = Check TypeCheckOptions
-  | Compile CompileOptions
-  | Verify VerifyOptions
-  | CompileAndVerify CompileAndVerifyOptions
-  | Validate ValidateOptions
-  | Export ExportOptions
-  deriving (Eq, Show)
-
-run :: Options -> IO ()
-run Options {..} = do
-  let GlobalOptions {..} = globalOptions
-  when version $ do
-    print vehicleVersion
+mainWithArgsAndExitCode :: [String] -> IO Int
+mainWithArgsAndExitCode args = do
+  setLocaleEncoding utf8
+  -- Catch any exits and return the exit code, which is important when using
+  -- the main function from a library, because exits are uncaught exceptions.
+  handle handleExitCode $ do
+    options <- execParserWithArgs commandLineOptionsParserInfo args
+    runVehicle options
     exitSuccess
 
-  let acquireHandles = createLoggingSettings (logFile, loggingLevel)
-  let releaseHandles = destroyLoggingSettings logFile
+runVehicle :: Options -> IO ()
+runVehicle Options {..} = do
+  redirections globalOptions $ \ioSettings -> do
+    -- Handle --version
+    if version globalOptions
+      then putStrLn $ showVersion vehicleVersion
+      else case modeOptions of
+        Nothing ->
+          fatalError
+            "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
+        Just mode -> case mode of
+          Check options -> typeCheck ioSettings options
+          Compile options -> compile ioSettings options
+          Verify options -> verify ioSettings options
+          CompileAndVerify options -> compileAndVerify ioSettings options
+          Validate options -> validate ioSettings options
+          Export options -> export ioSettings options
 
-  bracket acquireHandles releaseHandles $ \ioSettings ->
-    case modeOptions of
-      Nothing ->
-        fatalError
-          "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
-      Just mode -> case mode of
-        Check options -> typeCheck ioSettings options
-        Compile options -> compile ioSettings options
-        Verify options -> verify ioSettings options
-        CompileAndVerify options -> compileAndVerify ioSettings options
-        Validate options -> validate ioSettings options
-        Export options -> export ioSettings options
+redirections :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
+redirections go = redirectStdout go . redirectStderr go . withLogger go
 
-createLoggingSettings ::
-  (Maybe FilePath, LoggingLevel) ->
-  IO LoggingSettings
-createLoggingSettings (logFile, logLevel) = do
-  logHandle <- case logFile of
-    Nothing -> return stdout
-    Just file -> openHandle file
+redirectStdout :: GlobalOptions -> IO a -> IO a
+redirectStdout GlobalOptions {outFile} action =
+  flip (maybe action) outFile $ \fp -> do
+    createDirectoryIfMissing True (takeDirectory fp)
+    result <- withFile fp AppendMode $ \fh -> do
+      bracket (redirectHandleTo stdout fh) (restoreHandleFrom stdout) (const action)
+    return result
 
-  return
-    LoggingSettings
-      { logHandle = logHandle,
-        loggingLevel = logLevel
-      }
+redirectStderr :: GlobalOptions -> IO a -> IO a
+redirectStderr GlobalOptions {errFile} action =
+  flip (maybe action) errFile $ \fp -> do
+    createDirectoryIfMissing True (takeDirectory fp)
+    withFile fp AppendMode $ \fh -> do
+      bracket (redirectHandleTo stderr fh) (restoreHandleFrom stderr) (const action)
 
-destroyLoggingSettings ::
-  Maybe FilePath ->
-  LoggingSettings ->
-  IO ()
-destroyLoggingSettings logFile LoggingSettings {..} = do
+withLogger :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
+withLogger GlobalOptions {logFile, loggingLevel} action =
   case logFile of
-    Nothing -> return ()
-    Just _ -> hClose logHandle
+    Nothing -> action LoggingSettings {logHandle = stderr, loggingLevel}
+    Just fp -> do
+      createDirectoryIfMissing True (takeDirectory fp)
+      withFile fp AppendMode $ \logHandle -> do
+        action LoggingSettings {logHandle, loggingLevel}
 
-openHandle :: FilePath -> IO Handle
-openHandle file = do
-  exists <- doesFileExist file
-  if exists
-    then openFile file AppendMode
-    else do
-      -- Must be a better way of doing this...
-      createEmptyFile file
-      openFile file WriteMode
+redirectHandleTo :: Handle -> Handle -> IO Handle
+redirectHandleTo source target = do
+  backup <- hDuplicate source
+  hDuplicateTo target source
+  return backup
 
-createEmptyFile :: FilePath -> IO ()
-createEmptyFile path = do
-  createDirectoryIfMissing True $ takeDirectory path
-  writeFile path ""
+restoreHandleFrom :: Handle -> Handle -> IO ()
+restoreHandleFrom source backup = do
+  hDuplicateTo backup source
+
+toExitCode :: Int -> ExitCode
+toExitCode exitCode
+  | exitCode == 0 = ExitSuccess
+  | otherwise = ExitFailure exitCode
+
+execParserWithArgs :: ParserInfo a -> [String] -> IO a
+execParserWithArgs parserInfo args =
+  handleParseResult (execParserPure defaultPrefs parserInfo args)
+
+handleExitCode :: ExitCode -> IO Int
+handleExitCode = return . fromExitCode
+  where
+    fromExitCode :: ExitCode -> Int
+    fromExitCode ExitSuccess = 0
+    fromExitCode (ExitFailure exitCode) = exitCode

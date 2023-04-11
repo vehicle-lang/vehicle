@@ -2,13 +2,15 @@
 
 {-# HLINT ignore "Use section" #-}
 module Vehicle.Compile.Queries.LinearSatisfactionProblem
-  ( generateCLSTProblem,
+  ( UserVariableEliminationCache,
+    generateCLSTProblem,
   )
 where
 
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Control.Monad.State (MonadState (get), modify)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
@@ -37,9 +39,14 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Core
 
+type MonadCLST m =
+  ( MonadCompile m,
+    MonadState UserVariableEliminationCache m
+  )
+
 -- | Generates a constraint satisfication problem in the magic network variables only.
 generateCLSTProblem ::
-  (MonadCompile m) =>
+  (MonadCLST m) =>
   LCSState ->
   InputEqualities ->
   ConjunctAll StandardNormExpr ->
@@ -70,7 +77,7 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
   return finalQuery
 
 solveForUserVariables ::
-  (MonadCompile m) =>
+  (MonadCLST m) =>
   Int ->
   CLSTProblem Variable ->
   m (MaybeTrivial (CLSTProblem NetworkVariable, QueryNormalisedVariableInfo))
@@ -81,44 +88,55 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
     -- First remove those assertions that don't have any user variables in them.
     let (withUserVars, withoutUserVars) =
           partition (hasUserVariables numberOfUserVars) assertions
+    let originallyWithoutUserVars = fmap (removeUserVariables numberOfUserVars) withoutUserVars
 
-    -- Then split out the equalities from the inequalities.
-    let (equalitiesWithUserVars, inequalitiesWithUserVars) =
-          partition isEquality withUserVars
+    cache <- get
+    (newlyWithoutUserVars, varSolutions) <- case HashMap.lookup withUserVars cache of
+      Just result -> do
+        logDebug MinDetail "Cache hit for query user variable solutions"
+        return result
+      Nothing -> do
+        -- Then split out the equalities from the inequalities.
+        let (equalitiesWithUserVars, inequalitiesWithUserVars) =
+              partition isEquality withUserVars
 
-    -- Try to solve for user variables using Gaussian elimination.
-    (gaussianSolutions, unusedEqualityExprs) <-
-      gaussianElimination variables (map assertionExpr equalitiesWithUserVars) numberOfUserVars
-    let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
+        -- Try to solve for user variables using Gaussian elimination.
+        (gaussianSolutions, unusedEqualityExprs) <-
+          gaussianElimination variables (map assertionExpr equalitiesWithUserVars) numberOfUserVars
+        let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
-    -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
-    let reducedInequalities =
-          flip fmap inequalitiesWithUserVars $ \assertion ->
-            foldl (uncurry . substitute) assertion gaussianSolutionEqualities
+        -- Eliminate the solved user variables in the inequalities
+        let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
+        let reducedInequalities =
+              flip fmap inequalitiesWithUserVars $ \assertion ->
+                foldl (uncurry . substitute) assertion gaussianSolutionEqualities
 
-    -- Calculate the set of unsolved user variables
-    let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
-    let varsUnsolvedByGaussianElim = Set.difference allUserVars varsSolvedByGaussianElim
+        -- Calculate the set of unsolved user variables
+        let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
+        let varsUnsolvedByGaussianElim = Set.difference allUserVars varsSolvedByGaussianElim
 
-    -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
-    (fourierMotzkinSolutions, fmElimOutputInequalities) <-
-      fourierMotzkinElimination variables varsUnsolvedByGaussianElim reducedInequalities
+        -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
+        (fourierMotzkinSolutions, fmElimOutputInequalities) <-
+          fourierMotzkinElimination variables varsUnsolvedByGaussianElim reducedInequalities
 
-    -- Calculate the way to reconstruct the user variables
-    let varSolutions =
-          fmap (second FourierMotzkinSolution) fourierMotzkinSolutions
-            <> fmap (second GaussianSolution) gaussianSolutions
+        -- Calculate the way to reconstruct the user variables
+        let varSolutions =
+              fmap (second FourierMotzkinSolution) fourierMotzkinSolutions
+                <> fmap (second GaussianSolution) gaussianSolutions
+
+        let finalAssertions = unusedEqualities <> fmElimOutputInequalities
+        let finalAssertionsWithoutUserVars = fmap (removeUserVariables numberOfUserVars) finalAssertions
+
+        let result = (finalAssertionsWithoutUserVars, varSolutions)
+        modify (HashMap.insert withUserVars result)
+        return result
 
     -- Calculate the final set of (user-variable free) assertions
-    let resultingAssertions = withoutUserVars <> unusedEqualities <> fmElimOutputInequalities
-
-    -- Remove all user variables
+    let allAssertions = originallyWithoutUserVars <> newlyWithoutUserVars
     let networkVariables = mapMaybe getNetworkVariable variables
-    let networkAssertions = fmap (removeUserVariables numberOfUserVars) resultingAssertions
 
     -- Check for trivial assertions
-    let maybeAssertions = filterTrivialAssertions networkAssertions
+    let maybeAssertions = filterTrivialAssertions allAssertions
 
     return $ case maybeAssertions of
       Nothing -> Trivial False
@@ -126,6 +144,11 @@ solveForUserVariables numberOfUserVars (CLSTProblem variables assertions) =
       Just finalAssertions -> do
         let clstProblem = CLSTProblem networkVariables finalAssertions
         NonTrivial (clstProblem, varSolutions)
+
+type UserVariableEliminationCache =
+  HashMap
+    [Assertion SolvingLinearExpr]
+    ([Assertion SolvingLinearExpr], [(LinearVar, VariableSolution)])
 
 --------------------------------------------------------------------------------
 -- Monad

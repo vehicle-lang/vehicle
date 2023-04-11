@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=67", "packaging>=23"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'vehicle_lang'
+authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
+description = 'A high-level functional language for writing mathematically-precise specifications for neural networks.'
+readme = 'README.md'
+license = { file = 'LICENSE' }
+dynamic = ["version"]
+
+[project.optional-dependencies]
+pygments = ["pygments >=2.14, <3"]
+test = ["pytest >=7.1,<8", "packaging>=23"]
+mypy = ["types-setuptools >=45", "types-pygments >=2.14, <3"]
+
+[project.scripts]
+vehicle = "vehicle_lang:main"
+
+[project.entry-points.'pygments.lexers']
+vehicle = "vehicle_lang.pygments:VehicleLexer"
+
+[tool.mypy]
+python_version = 3.7
+ignore_missing_imports = true
+exclude = [
+  '^src\/vehicle_lang\/binding\.py$',
+  '^src\/vehicle_lang\/pygments\/_external\/__init__\.py$',
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "vehicle_lang._version.VERSION" }
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py37, py38, py39, py310, py311
+isolated_build = true
+skip_missing_interpreters = true
+
+[testenv]
+extras =
+  test
+commands =
+  {envpython} -m pytest tests
+"""

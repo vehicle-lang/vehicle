@@ -4,9 +4,9 @@ module Vehicle.Compile.Scope
   )
 where
 
+import Control.Monad (foldM, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
-import Control.Monad.State
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (elemIndex)

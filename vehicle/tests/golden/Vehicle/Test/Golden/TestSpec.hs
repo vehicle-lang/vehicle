@@ -203,12 +203,12 @@ testSpecDiffTestOutput testSpec golden actual = do
   -- Compute missing files:
   let missingOutputFileErrors =
         [ printf "Missing output file %s" missingFile
-          | missingFile <- HashSet.toList $ HashSet.difference goldenFiles actualFiles
+          | missingFile <- sort $ HashSet.toList $ HashSet.difference goldenFiles actualFiles
         ]
   -- Compute extraneous files:
   let extraOutputFileErrors =
         [ printf "Extraneous output file %s" extraFile
-          | extraFile <- HashSet.toList $ HashSet.difference actualFiles goldenFiles
+          | extraFile <- sort $ HashSet.toList $ HashSet.difference actualFiles goldenFiles
         ]
 
   -- Compare output & error stream content:
