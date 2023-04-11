@@ -1,7 +1,8 @@
-name: build vehicle-marabou
+name: Build vehicle-marabou
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 env:
   DEFAULT_GHC_VERSION: "9.4.2"
