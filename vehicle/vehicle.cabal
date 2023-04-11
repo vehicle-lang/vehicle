@@ -291,16 +291,25 @@ library vehicle-golden-tests-common
     , unordered-containers  >=0.2.19 && <0.3
     , vehicle
 
-test-suite vehicle-golden-tests
+test-suite vehicle-compiler-tests
   import:             common-test
   type:               exitcode-stdio-1.0
-  main-is:            tests/golden/Tests.hs
+  main-is:            tests/golden/CompilerTests.hs
   build-depends:
-    , base                                 >=4.13   && <5
-    , containers
+    , base                                 >=4.13 && <5
     , filepath
-    , Glob                                 >=0.10.2 && <0.11
-    , regex-tdfa
+    , tasty
+    , vehicle:vehicle-golden-tests-common
+
+  build-tool-depends: vehicle:vehicle
+
+test-suite vehicle-integration-tests
+  import:             common-test
+  type:               exitcode-stdio-1.0
+  main-is:            tests/golden/IntegrationTests.hs
+  build-depends:
+    , base                                 >=4.13 && <5
+    , filepath
     , tasty
     , vehicle:vehicle-golden-tests-common
 

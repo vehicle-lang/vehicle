@@ -79,7 +79,7 @@ jobs:
         run: |
           cabal test                                      \
             vehicle:test:vehicle-unit-tests               \
-            vehicle:test:vehicle-golden-tests             \
+            vehicle:test:vehicle-compiler-tests             \
             --test-option=--color=always                  \
             --test-option=--num-threads=1                 \
             --test-show-details=always                    \

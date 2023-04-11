@@ -38,11 +38,15 @@ There are currently three types of tests for Vehicle. The build system for Vehic
 various utility commands for running the various test suites (these simply wrap the `cabal test`
 command in various ways).
 
+- Adding `--test-option="-p /X/"` to any of the test commands will only run tests
+  with `X` in their name. If you only want to run a test for a particular backend `Y` change the `X` to `X-Y`, e.g. `quantifier-Agda`.
+
+- Adding `--test-option="--accept"` to the command will accept the output of golden tests.
+  _Warning_: Only run this if you are okay with the changes to the output!
+
 ### Unit tests
 
-These test the functionality of the Vehicle library, unit tests etc.
-The build system contains the following commands (which simply wrap the `cabal test`
-command in various ways):
+These test the internal functionality of the Vehicle library etc.
 
 - `cabal test vehicle-unit-tests --test-show-details=always` will run the tests.
 
@@ -51,15 +55,12 @@ command in various ways):
 - Adding `--test-option="--vehicle-logging X"` to the command will set the logging level to
   `X` where the various levels can be found with the `vehicle --help` command.
 
-### Golden tests
+### Compiler tests
 
-- `cabal test vehicle-golden-tests --test-show-details=always` will run the tests.
+These golden tests check the output of the Vehicle compiler. They therefore do not
+depend on any external programs being installed.
 
-- Adding `--test-option="-p /X/"` to the command will only run tests with `X` in their name.
-  If you only want to run a test for a particular backend `Y` change the `X` to `X-Y`, e.g. `quantifier-Agda`.
-
-- Adding `--test-option="--accept"` to the command will accept the output of the tests.
-  _Warning_: Only run this if you are okay with the changes to the output!
+- `cabal test vehicle-compiler-tests --test-show-details=always` will run the tests.
 
 - The logging level can be changed for the golden tests by changing the vehicle command
   in the `test.json` files in the golden test suite.
@@ -73,7 +74,13 @@ command in various ways):
 
 ### Integration tests
 
-Currently disabled.
+These golden tests check how Vehicle interacts with external tools. They therefore
+rely on `Marabou` being available on the system path.
+
+- `cabal test vehicle-integration-tests --test-show-details=always` will run the tests.
+
+- The logging level can be changed for the golden tests by changing the vehicle command
+  in the `test.json` files in the golden test suite.
 
 ### Performance tests
 
