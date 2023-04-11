@@ -5,7 +5,11 @@
 # Vehicle
 
 Vehicle is a system for embedding logical specifications into neural networks.
-At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks.
+At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks. For example, the following simple
+specification says that a network's output should be monotonically increasing with respect to
+its third input.
+
+![Example specification](./docs-source/example-spec.png)
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
