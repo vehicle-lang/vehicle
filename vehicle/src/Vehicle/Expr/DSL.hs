@@ -20,6 +20,7 @@ module Vehicle.Expr.DSL
     implLam,
     instLam,
     naryFunc,
+    forAllExpl,
     forAll,
     forAllInstance,
     forAllNat,
@@ -212,6 +213,9 @@ infixl 6 @@@@
 naryFunc :: Int -> DSLExpr types -> DSLExpr types -> DSLExpr types
 naryFunc n a b = foldr (\_ r -> a ~> r) b ([0 .. n - 1] :: [Int])
 
+forAllExpl :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+forAllExpl name = pi (Just name) Explicit Relevant
+
 forAll :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
 forAll name = pi (Just name) (Implicit False) Relevant
 
@@ -323,8 +327,8 @@ hasFold tCont = typeClass HasFold [tCont]
 hasQuantifierIn :: Quantifier -> StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
 hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
 
-hasNatLits :: Int -> StandardDSLExpr -> StandardDSLExpr
-hasNatLits n t = typeClass (HasNatLits n) [t]
+hasNatLits :: StandardDSLExpr -> StandardDSLExpr
+hasNatLits t = typeClass HasNatLits [t]
 
 hasRatLits :: StandardDSLExpr -> StandardDSLExpr
 hasRatLits t = typeClass HasRatLits [t]
@@ -332,8 +336,8 @@ hasRatLits t = typeClass HasRatLits [t]
 hasVecLits :: StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
 hasVecLits n d = typeClass HasVecLits [n, d]
 
-natInDomainConstraint :: Int -> StandardDSLExpr -> StandardDSLExpr
-natInDomainConstraint n t = typeClass (NatInDomainConstraint n) [t]
+natInDomainConstraint :: StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
+natInDomainConstraint n t = typeClass NatInDomainConstraint [n, t]
 
 --------------------------------------------------------------------------------
 -- Constructors

@@ -295,7 +295,7 @@ evalBuiltinFunction b args
             At -> return <$> evalAt args
             ConsVector -> return <$> evalConsVector args
             Fold dom -> evalFold dom args
-            FromNat _ dom -> return <$> evalFromNat dom args
+            FromNat dom -> return <$> evalFromNat dom args
             FromRat dom -> return <$> evalFromRat dom args
             Indices -> return <$> evalIndices args
             Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b

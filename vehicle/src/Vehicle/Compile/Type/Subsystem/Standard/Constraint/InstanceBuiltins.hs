@@ -49,6 +49,23 @@ candidates =
             builtin (FromRat FromRatToRat)
           ),
           ----------------
+          -- HasNatLits --
+          ----------------
+          ( forAllNat $ \n ->
+              hasNatLits (tIndex n),
+            implLam "n" tNat $ \n ->
+              builtin (FromNat FromNatToIndex) @@@ [n]
+          ),
+          ( hasNatLits tNat,
+            builtin (FromNat FromNatToNat)
+          ),
+          ( hasNatLits tInt,
+            builtin (FromNat FromNatToInt)
+          ),
+          ( hasNatLits tRat,
+            builtin (FromNat FromNatToRat)
+          ),
+          ----------------
           -- HasVecLits --
           ----------------
           ( forAll "n" tNat $ \n ->

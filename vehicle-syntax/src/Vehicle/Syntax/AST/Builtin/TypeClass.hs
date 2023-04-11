@@ -26,12 +26,11 @@ data TypeClass
   | HasQuantifierIn Quantifier
   | -- Literal type-classes
 
-    -- | The parameter is the value (needed for Index).
-    HasNatLits Int
+    HasNatLits
   | HasRatLits
   | HasVecLits
   | -- Utility constraints
-    NatInDomainConstraint Int
+    NatInDomainConstraint
   deriving (Eq, Generic, Show)
 
 instance NFData TypeClass
@@ -54,14 +53,14 @@ instance Pretty TypeClass where
     HasNeg -> "HasNeg"
     HasMap -> "HasMap"
     HasFold -> "HasFold"
-    HasNatLits n -> "HasNatLiterals[" <> pretty n <> "]"
+    HasNatLits -> "HasNatLiterals"
     HasRatLits -> "HasRatLiterals"
     HasVecLits -> "HasVecLiterals"
     NatInDomainConstraint {} -> "NatInDomainConstraint"
 
 -- Builtin operations for type-classes
 data TypeClassOp
-  = FromNatTC Int
+  = FromNatTC
   | FromRatTC
   | FromVecTC
   | NegTC
@@ -91,7 +90,7 @@ instance Pretty TypeClassOp where
     SubTC -> "-"
     MulTC -> "*"
     DivTC -> "/"
-    FromNatTC n -> "fromNat[" <> pretty n <> "]"
+    FromNatTC -> "fromNat"
     FromRatTC -> "fromRat"
     FromVecTC -> "fromVec"
     EqualsTC op -> pretty op
@@ -112,7 +111,7 @@ opOfTypeClass = \case
   HasNeg -> NegTC
   HasFold -> FoldTC
   HasMap -> MapTC
-  HasNatLits n -> FromNatTC n
+  HasNatLits -> FromNatTC
   HasRatLits -> FromRatTC
   HasVecLits -> FromVecTC
-  NatInDomainConstraint n -> error "`NatInDomainConstraint` has no corresponding type class."
+  NatInDomainConstraint -> error "`NatInDomainConstraint` has no corresponding type class."
