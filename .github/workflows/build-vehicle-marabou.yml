@@ -9,15 +9,15 @@ env:
 
 jobs:
   build-vehicle-marabou:
-    name: Build vehicle-marabou-${{ matrix.os_and_name[1] }}
-    runs-on: ${{ inputs.runs-on }}
+    name: Build vehicle-marabou-${{ matrix.os.name }}
+    runs-on: ${{ matrix.os.tag }}
 
     strategy:
       matrix:
         os_and_name:
-          - [ubuntu-latest, Linux]
-          # - [macos-latest, macOS]
-          # - [windows-latest, Windows]
+          - { tag: ubuntu-22.04, name: Linux }
+          # - { tag: macos-latest, name: macOS }
+          # - { tag: windows-latest, name: Windows }
         marabou-commit: ["663835df7b56be42af94b3d2723bf1b69494c0d5"]
 
     steps:
