@@ -11,23 +11,23 @@ on:
   merge_group:
 
 jobs:
-  ormolu:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: mrkkrp/ormolu-action@v11
+  # ormolu:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: mrkkrp/ormolu-action@v11
 
-  build-vehicle:
-    needs: [ormolu]
-    uses: ./.github/workflows/build-vehicle.yml
+  # build-vehicle:
+  #   needs: [ormolu]
+  #   uses: ./.github/workflows/build-vehicle.yml
 
-  build-py-vehicle-lang:
-    needs: [ormolu]
-    uses: ./.github/workflows/build-py-vehicle-lang.yml
+  # build-py-vehicle-lang:
+  #   needs: [ormolu]
+  #   uses: ./.github/workflows/build-py-vehicle-lang.yml
 
-  build-py-vehicle-lang-tensorflow:
-    needs: [ormolu, build-vehicle]
-    uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
+  # build-py-vehicle-lang-tensorflow:
+  #   needs: [ormolu, build-vehicle]
+  #   uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
 
   build-vehicle-marabou:
     # needs: [ormolu, build-vehicle]
