@@ -540,7 +540,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   ListType _ tElem -> annotateApp [DataList] listQualifier <$> traverse compileExpr [tElem]
   VectorType _ tElem tDim -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
   IndexType _ size -> annotateApp [DataFin] finQualifier <$> traverse compileExpr [size]
-  FromNatExpr _ _n dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
+  FromNatExpr _ dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
   FromRatExpr _ dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
   IfExpr _ _ [e1, e2, e3] -> do
     ce1 <- setBoolLevel BoolLevel $ compileArg e1
@@ -582,7 +582,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   HasSubExpr _ t _ _ -> compileTypeClass "HasSub" t
   HasDivExpr _ t _ _ -> compileTypeClass "HasDiv" t
   HasNegExpr _ t _ -> compileTypeClass "HasNeg" t
-  HasNatLitsExpr _ _ t -> compileTypeClass "HasNatLits" t
+  HasNatLitsExpr _ t -> compileTypeClass "HasNatLits" t
   HasRatLitsExpr _ t -> compileTypeClass "HasRatLits" t
   HasVecLitsExpr {} ->
     compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
@@ -733,10 +733,12 @@ compileNeg dom args = do
 
 compileFromNat :: FromNatDomain -> [Code] -> Code
 compileFromNat dom args = case dom of
-  FromNatToIndex -> agdaNatToFin [last args]
-  FromNatToNat -> last args
+  FromNatToIndex -> agdaNatToFin [value]
+  FromNatToNat -> value
   FromNatToInt -> agdaPosInt args
-  FromNatToRat -> agdaDivRat [agdaPosInt [last args], "1"]
+  FromNatToRat -> agdaDivRat [agdaPosInt [value], "1"]
+  where
+    value = args !! (length args - 2)
 
 compileFromRat :: FromRatDomain -> [Code] -> Code
 compileFromRat dom args = case dom of

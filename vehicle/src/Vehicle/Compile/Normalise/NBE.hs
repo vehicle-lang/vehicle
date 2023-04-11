@@ -295,7 +295,7 @@ evalBuiltinFunction b args
             At -> return <$> evalAt args
             ConsVector -> return <$> evalConsVector args
             Fold dom -> evalFold dom args
-            FromNat _ dom -> return <$> evalFromNat dom args
+            FromNat dom -> return <$> evalFromNat dom args
             FromRat dom -> return <$> evalFromRat dom args
             Indices -> return <$> evalIndices args
             Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
@@ -418,7 +418,7 @@ evalDiv = \case
 
 evalDivRat :: EvalSimpleBuiltin types
 evalDivRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x * y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x / y)
   _ -> Nothing
 
 evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin types

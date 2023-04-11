@@ -177,13 +177,13 @@ familyOf = \case
   HasMul -> return $ NumericFamily NatT True 0
   HasDiv -> return $ NumericFamily RatT True 0
   HasNeg -> return $ NumericFamily IntT True 0
-  (HasNatLits n) -> return $ NumericFamily NatT False n
+  HasNatLits -> return $ NumericFamily NatT False 0
   HasRatLits -> return $ NumericFamily RatT False 0
   HasVecLits {} -> return $ ContainerFamily True
   HasMap -> return $ ContainerFamily False
   HasFold -> return $ ContainerFamily False
   HasQuantifierIn {} -> return $ ContainerFamily False
-  NatInDomainConstraint n -> return $ NumericFamily NatT False n
+  NatInDomainConstraint -> return $ NumericFamily NatT False 0
 
 defaultSolution ::
   (TCM StandardBuiltinType m) =>
@@ -198,13 +198,13 @@ defaultSolution = \case
   HasMul -> return VNatType
   HasDiv -> return VRatType
   HasNeg -> return VIntType
-  HasNatLits n -> return $ VIndexType (VNatLiteral (n + 1))
+  HasNatLits -> return VNatType
   HasRatLits -> return VRatType
   HasVecLits {} -> createDefaultListType
   HasMap -> createDefaultListType
   HasFold -> createDefaultListType
   HasQuantifierIn {} -> createDefaultListType
-  NatInDomainConstraint n -> return $ VNatLiteral (n + 1)
+  NatInDomainConstraint -> return VNatType
 
 createDefaultListType ::
   (TCM StandardBuiltinType m) =>
@@ -224,13 +224,13 @@ getCandidatesFromConstraint ctx (Has _ b args) = case b of
       (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
       (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
       (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
-      (HasNatLits n, [t]) -> getCandidate [t] (HasNatLits n)
+      (HasNatLits, [t]) -> getCandidate [t] HasNatLits
       (HasRatLits, [t]) -> getCandidate [t] HasRatLits
       (HasVecLits, [_n, t]) -> getCandidate [t] HasVecLits
       (HasMap, [t]) -> getCandidate [t] HasMap
       (HasFold, [t]) -> getCandidate [t] HasFold
-      (NatInDomainConstraint n, [t]) -> case t of
-        VIndexType size -> getCandidate [size] (NatInDomainConstraint n)
+      (NatInDomainConstraint, [t]) -> case t of
+        VIndexType size -> getCandidate [size] NatInDomainConstraint
         _ -> []
       _ -> []
   _ -> return []

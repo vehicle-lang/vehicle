@@ -76,11 +76,11 @@ typeOfBuiltinFunction = \case
     OrderInt {} -> tInt ~> tInt ~> tBool
     OrderRat {} -> tInt ~> tInt ~> tBool
   -- Conversion functions
-  FromNat n dom -> case dom of
-    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat n (tIndex s)
-    FromNatToNat -> typeOfFromNat n tNat
-    FromNatToInt -> typeOfFromNat n tInt
-    FromNatToRat -> typeOfFromNat n tRat
+  FromNat dom -> case dom of
+    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat (tIndex s)
+    FromNatToNat -> typeOfFromNat tNat
+    FromNatToInt -> typeOfFromNat tInt
+    FromNatToRat -> typeOfFromNat tRat
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat tRat
   -- Container functions
@@ -108,7 +108,7 @@ typeOfConstructor = \case
   Cons -> typeOfCons
   LUnit -> tUnit
   LBool _ -> tBool
-  LIndex x -> forAllNat $ \n -> natInDomainConstraint x n .~~~> tIndex n
+  LIndex x -> forAllNat $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
   LNat {} -> tNat
   LInt {} -> tInt
   LRat {} -> tRat
@@ -130,7 +130,7 @@ typeOfTypeClass tc = case tc of
   HasNatLits {} -> type0 ~> type0
   HasRatLits -> type0 ~> type0
   HasVecLits {} -> tNat ~> type0 ~> type0
-  NatInDomainConstraint {} -> forAll "A" type0 $ \t -> t ~> type0
+  NatInDomainConstraint {} -> forAll "A" type0 $ \t -> tNat ~> t ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> StandardDSLExpr
 typeOfTypeClassOp b = case b of
@@ -141,7 +141,7 @@ typeOfTypeClassOp b = case b of
   DivTC -> typeOfTCOp2 hasDiv
   EqualsTC op -> typeOfTCComparisonOp $ hasEq op
   OrderTC op -> typeOfTCComparisonOp $ hasOrd op
-  FromNatTC n -> forAll "A" type0 $ \t -> hasNatLits n t ~~~> typeOfFromNat n t
+  FromNatTC -> forAll "A" type0 $ \t -> hasNatLits t ~~~> typeOfFromNat t
   FromRatTC -> forAll "A" type0 $ \t -> hasRatLits t ~~~> typeOfFromRat t
   FromVecTC -> forAll "n" tNat $ \n -> forAll "f" (type0 ~> type0) $ \f -> hasVecLits n f ~~~> typeOfFromVec n f
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
@@ -230,8 +230,8 @@ typeOfFoldVector =
 typeOfQuantifier :: StandardDSLExpr -> StandardDSLExpr
 typeOfQuantifier t = t ~> tBool
 
-typeOfFromNat :: Int -> StandardDSLExpr -> StandardDSLExpr
-typeOfFromNat n t = natInDomainConstraint n t .~~~> tNat ~> t
+typeOfFromNat :: StandardDSLExpr -> StandardDSLExpr
+typeOfFromNat t = forAllExpl "n" tNat $ \n -> natInDomainConstraint n t .~~~> t
 
 typeOfFromRat :: StandardDSLExpr -> StandardDSLExpr
 typeOfFromRat t = tRat ~> t

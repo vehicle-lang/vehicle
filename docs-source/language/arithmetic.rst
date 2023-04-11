@@ -29,6 +29,10 @@ The available operations over naturals are:
      - :code:`*`
      - :code:`Nat -> Nat -> Nat`
      - :code:`x * y`
+   * - Division
+     - :code:`/`
+     - :code:`Nat -> Nat -> Rat`
+     - :code:`x / y`
    * - Less than or equal
      - :code:`<=`
      - :code:`Nat -> Nat -> Bool`

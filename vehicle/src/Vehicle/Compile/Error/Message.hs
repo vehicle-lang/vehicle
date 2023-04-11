@@ -584,7 +584,7 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "unable to determine if"
-                <+> squotes (pretty v)
+                <+> squotes (prettyFriendly (WithContext v (boundContextOf ctx)))
                 <+> "is a valid index of size"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
                   <> ".",

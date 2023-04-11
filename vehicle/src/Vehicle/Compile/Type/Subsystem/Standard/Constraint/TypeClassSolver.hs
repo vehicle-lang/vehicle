@@ -54,8 +54,7 @@ solve :: StandardBuiltinType -> TypeClassSolver
 solve (StandardTypeClass tc) = case tc of
   HasOrd ord -> solveHasOrd ord
   HasQuantifier q -> solveHasQuantifier q
-  HasNatLits n -> solveHasNatLits n
-  NatInDomainConstraint n -> solveInDomain n
+  NatInDomainConstraint -> solveInDomain
   _ -> \_ _ ->
     compilerDeveloperError $
       "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
@@ -156,62 +155,28 @@ solveVectorQuantifier q c domainBinder body = do
   return $ Right ([domainEq, recTC], solution)
 
 --------------------------------------------------------------------------------
--- HasNatLits
+-- InDomain
 
-solveHasNatLits :: Int -> TypeClassSolver
-solveHasNatLits n c [arg]
-  | isNMeta arg = blockOnMetas [arg]
-  | isIndexType arg = solveFromNatToIndex ctx n arg
-  | isNatType arg = solveSimpleFromNat FromNatToNat ctx n arg
-  | isIntType arg = solveSimpleFromNat FromNatToInt ctx n arg
-  | isRatType arg = solveSimpleFromNat FromNatToRat ctx n arg
-  | otherwise = blockOrThrowErrors ctx [arg] [tcError]
-  where
-    ctx = contextOf c
-    tcError = FailedNatLitConstraint ctx n arg
-solveHasNatLits _ c _ = malformedConstraintError c
-
-type HasFromNatSolver =
-  forall m.
-  (MonadTypeClass m) =>
-  StandardConstraintContext ->
-  Int ->
-  StandardNormType ->
-  m TypeClassProgress
-
-solveSimpleFromNat :: FromNatDomain -> HasFromNatSolver
-solveSimpleFromNat dom c n _arg = do
-  let solution = NullaryBuiltinFunctionExpr (provenanceOf c) (FromNat n dom)
-  return $ Right ([], solution)
-
-solveFromNatToIndex :: HasFromNatSolver
-solveFromNatToIndex c n arg = do
-  let p = provenanceOf c
-  (indexEq, index) <- unifyWithIndexType c arg
-  let solutionArgs = [ImplicitArg mempty index]
-  let solution = BuiltinFunctionExpr p (FromNat n FromNatToIndex) solutionArgs
-  return $ Right ([indexEq], solution)
-
---------------------------------------------------------------------------------
--- LessThan
-
-solveInDomain :: Int -> TypeClassSolver
-solveInDomain n c [arg] = case arg of
-  (getNMeta -> Just {}) -> blockOnMetas [arg]
-  VIndexType size -> case size of
-    (getNMeta -> Just {}) -> blockOnMetas [size]
-    VNatLiteral m
-      | m > n -> return $ irrelevant []
-      | otherwise -> throwError $ FailedNatLitConstraintTooBig ctx n m
-    _ -> throwError $ FailedNatLitConstraintUnknown ctx n size
+solveInDomain :: TypeClassSolver
+solveInDomain c [value, typ] = case typ of
+  (getNMeta -> Just {}) -> blockOnMetas [typ]
   VNatType {} -> return $ Right ([], UnitLiteral p)
   VIntType {} -> return $ Right ([], UnitLiteral p)
   VRatType {} -> return $ Right ([], UnitLiteral p)
+  VIndexType size -> case size of
+    (getNMeta -> Just {}) -> blockOnMetas [size]
+    VNatLiteral m -> case value of
+      (getNMeta -> Just {}) -> blockOnMetas [value]
+      VNatLiteral n
+        | m > n -> return $ irrelevant []
+        | otherwise -> throwError $ FailedNatLitConstraintTooBig ctx n m
+      _ -> malformedConstraintError c
+    _ -> throwError $ FailedNatLitConstraintUnknown ctx value size
   _ -> malformedConstraintError c
   where
     ctx = contextOf c
     p = provenanceOf ctx
-solveInDomain _ c _ = malformedConstraintError c
+solveInDomain c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
 -- Utilities
