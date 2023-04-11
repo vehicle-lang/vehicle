@@ -29,6 +29,6 @@ jobs:
   #   needs: [ormolu, build-vehicle]
   #   uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
 
-  build-vehicle-marabou:
+  test-marabou-integration:
     # needs: [ormolu, build-vehicle]
-    uses: ./.github/workflows/build-vehicle-marabou.yml
+    uses: ./.github/workflows/test-marabou-integration.yml
