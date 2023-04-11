@@ -418,7 +418,7 @@ evalDiv = \case
 
 evalDivRat :: EvalSimpleBuiltin types
 evalDivRat = \case
-  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x * y)
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x / y)
   _ -> Nothing
 
 evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin types

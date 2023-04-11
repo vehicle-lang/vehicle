@@ -21,10 +21,14 @@
 
 ### Language changes
 
+* Added additional overload for division operator `/`. Dividing two `Nat`s together now results in
+  a `Rat`.
+
 ### Bug fixes
 
 * Fixed erroneous error message generated when giving inferable parameters an unsupported type.
 
+* Fixed erroneous evaluation of when dividing two rationals together.
 
 ## Version 0.2.0
 

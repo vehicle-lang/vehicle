@@ -16,6 +16,7 @@ module Vehicle.Expr.DSL
     (@@),
     (@@@),
     (@@@@),
+    (.@@@@),
     explLam,
     implLam,
     instLam,
@@ -209,6 +210,11 @@ infixl 6 @@@@
 
 (@@@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
 (@@@@) f args = app f (fmap (Instance True,Relevant,) args)
+
+infixl 6 .@@@@
+
+(.@@@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
+(.@@@@) f args = app f (fmap (Instance True,Irrelevant,) args)
 
 naryFunc :: Int -> DSLExpr types -> DSLExpr types -> DSLExpr types
 naryFunc n a b = foldr (\_ r -> a ~> r) b ([0 .. n - 1] :: [Int])
