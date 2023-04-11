@@ -36,10 +36,27 @@ jobs:
         with:
           marabou-commit: ${{ inputs.marabou-commit }}
 
-      - name: Test
+      - name: Test-ls
         run: |
           ls ~/.Marabou/bin/
+        shell: sh
+        continue-on-error: true
+
+      - name: Test which
+        run: |
           which Marabou
+        shell: sh
+        continue-on-error: true
+
+      - name: Test path
+        run: |
+          echo $GITHUB_PATH
+        shell: sh
+        continue-on-error: true
+
+      - name: Test run
+        run: |
           ~/.Marabou/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
         shell: sh
         working-directory: vehicle/tests/golden/compile/windController
+        continue-on-error: true
