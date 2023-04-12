@@ -312,7 +312,7 @@ data BuiltinFunction
   | Quantifier Quantifier QuantifierDomain
   | If
   | -- Numeric conversion
-    FromNat Int FromNatDomain
+    FromNat FromNatDomain
   | FromRat FromRatDomain
   | -- Numeric operations
     Neg NegDomain
@@ -352,7 +352,7 @@ instance Pretty BuiltinFunction where
     Sub dom -> "sub" <> pretty dom
     Mul dom -> "mul" <> pretty dom
     Div dom -> "div" <> pretty dom
-    FromNat n dom -> "fromNat[" <> pretty n <> "]To" <> pretty dom
+    FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
