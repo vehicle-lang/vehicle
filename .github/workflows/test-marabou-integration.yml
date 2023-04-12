@@ -38,7 +38,7 @@ jobs:
 
       - name: Test-ls
         run: |
-          ls /usr/local/.Marabou/bin
+          ls ${{ github.workspace }}/bin/
         shell: sh
         continue-on-error: true
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Test run2
         run: |
-          /usr/local/.Marabou/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+          ${{ github.workspace }}/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
         shell: sh
         working-directory: vehicle/tests/golden/compile/windController
         continue-on-error: true
