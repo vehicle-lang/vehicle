@@ -48,7 +48,13 @@ jobs:
         shell: sh
         continue-on-error: true
 
-      - name: Test which
+      - name: Test which echo
+        run: |
+          which echo
+        shell: sh
+        continue-on-error: true
+
+      - name: Test which Marabou
         run: |
           which Marabou
         shell: sh
