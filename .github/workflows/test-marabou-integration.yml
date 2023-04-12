@@ -54,7 +54,14 @@ jobs:
         shell: sh
         continue-on-error: true
 
-      - name: Test run
+      - name: Test run1
+        run: |
+          Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+        shell: sh
+        working-directory: vehicle/tests/golden/compile/windController
+        continue-on-error: true
+
+      - name: Test run2
         run: |
           ~/.Marabou/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
         shell: sh
