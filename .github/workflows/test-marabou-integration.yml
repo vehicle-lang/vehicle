@@ -34,11 +34,11 @@ jobs:
       - name: Setup Marabou
         uses: ./.github/actions/setup-marabou
         with:
-          marabou-commit: ${{ inputs.marabou-commit }}
+          marabou-commit: ${{ matrix.marabou-commit }}
 
       - name: Test-ls
         run: |
-          ls ~/.Marabou/bin/
+          ls /usr/local/.Marabou/bin
         shell: sh
         continue-on-error: true
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Test run2
         run: |
-          ~/.Marabou/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+          /usr/local/.Marabou/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
         shell: sh
         working-directory: vehicle/tests/golden/compile/windController
         continue-on-error: true

@@ -39,7 +39,7 @@ runs:
       id: cache-Marabou
       uses: actions/cache@v3
       with:
-        path: ~/.Marabou/bin/
+        path: /usr/local/.Marabou/bin
         key: ${{ runner.os }}-Marabou-${{ inputs.marabou-commit }}
 
     - name: Checkout Marabou repo
@@ -115,12 +115,12 @@ runs:
     - name: Install Marabou
       if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: |
-        mkdir -p ~/.Marabou/bin
-        cp build/bin/Marabou ~/.Marabou/bin/Marabou
+        mkdir -p /usr/local/.Marabou/bin
+        cp build/bin/Marabou /usr/local/.Marabou/bin/Marabou
       working-directory: Marabou
       shell: sh
 
     - name: Add Marabou to PATH
       run: |
-        echo "~/.Marabou/bin" >> $GITHUB_PATH
+        echo "/usr/local/.Marabou/bin" >> $GITHUB_PATH
       shell: sh
