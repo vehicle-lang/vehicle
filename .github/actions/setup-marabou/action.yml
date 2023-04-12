@@ -105,6 +105,7 @@ runs:
     - name: Install Marabou
       if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: |
+        mkdir -p ${{ github.workspace }}/bin
         cp build/bin/Marabou ${{ github.workspace }}/bin/Marabou
       working-directory: Marabou
       shell: sh
