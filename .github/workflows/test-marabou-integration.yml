@@ -42,15 +42,15 @@ jobs:
         shell: sh
         continue-on-error: true
 
-      - name: Test which
+      - name: Test path
         run: |
-          which Marabou
+          echo $PATH
         shell: sh
         continue-on-error: true
 
-      - name: Test path
+      - name: Test which
         run: |
-          echo $GITHUB_PATH
+          which Marabou
         shell: sh
         continue-on-error: true
 
