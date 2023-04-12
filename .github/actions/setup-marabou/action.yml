@@ -28,7 +28,6 @@ runs:
       run: |
           sudo apt-get update
           sudo apt-get install -y \
-            ccache \
             cxxtest \
             protobuf-compiler \
             libprotoc-dev
@@ -51,28 +50,22 @@ runs:
         fetch-depth: 1
         ref: ${{ inputs.marabou-commit }}
 
-    # - name: Install cmake
-    #   if: steps.cache-Marabou.outputs.cache-hit != 'true'
-    #   uses: jwlawson/actions-setup-cmake@v1.13
-    #   with:
-    #     cmake-version: '3.16.x'
-
     - name: Create Build Environment
       if: steps.cache-Marabou.outputs.cache-hit != 'true'
       run: cmake -E make_directory build
       working-directory: Marabou
       shell: sh
 
-    - name: Configure ccache
-      if: steps.cache-Marabou.outputs.cache-hit != 'true'
-      run: |
-        ccache --set-config=cache_dir=${{ github.workspace }}/ccache-dir
-        ccache --set-config=compression=true
-        ccache --set-config=compression_level=6
-        ccache -M 500M
-        ccache -z
-      working-directory: Marabou
-      shell: sh
+    # - name: Configure ccache
+    #   if: steps.cache-Marabou.outputs.cache-hit != 'true'
+    #   run: |
+    #     ccache --set-config=cache_dir=${{ github.workspace }}/ccache-dir
+    #     ccache --set-config=compression=true
+    #     ccache --set-config=compression_level=6
+    #     ccache -M 500M
+    #     ccache -z
+    #   working-directory: Marabou
+    #   shell: sh
 
     - name: Configure CMake
       if: steps.cache-Marabou.outputs.cache-hit != 'true'
@@ -85,8 +78,6 @@ runs:
           -DBUILD_PYTHON=OFF \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_COMPILER=${{ inputs.compiler }}
-      # Use a bash shell so we can use the same syntax for environment variable bb
-      # access regardless of the host operating system
       shell: bash
       working-directory: Marabou/build
 
@@ -96,11 +87,11 @@ runs:
       working-directory: Marabou/build
       shell: sh
 
-    - name: ccache statistics
-      if: steps.cache-Marabou.outputs.cache-hit != 'true'
-      run: ccache -s
-      working-directory: Marabou
-      shell: sh
+    # - name: ccache statistics
+    #   if: steps.cache-Marabou.outputs.cache-hit != 'true'
+    #   run: ccache -s
+    #   working-directory: Marabou
+    #   shell: sh
 
     - name: Install Marabou
       if: steps.cache-Marabou.outputs.cache-hit != 'true'

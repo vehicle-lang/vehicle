@@ -36,40 +36,9 @@ jobs:
         with:
           marabou-commit: ${{ matrix.marabou-commit }}
 
-      - name: Test-ls
-        run: |
-          ls ${{ github.workspace }}/bin/
-        shell: sh
-        continue-on-error: true
-
-      - name: Test path
-        run: |
-          echo $PATH
-        shell: sh
-        continue-on-error: true
-
-      - name: Test which echo
-        run: |
-          which echo
-        shell: sh
-        continue-on-error: true
-
-      - name: Test which Marabou
-        run: |
-          which Marabou
-        shell: sh
-        continue-on-error: true
-
       - name: Test run1
         run: |
           Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
-        shell: sh
-        working-directory: vehicle/tests/golden/compile/windController
-        continue-on-error: true
-
-      - name: Test run2
-        run: |
-          ${{ github.workspace }}/bin/Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
         shell: sh
         working-directory: vehicle/tests/golden/compile/windController
         continue-on-error: true
