@@ -1,9 +1,9 @@
 FROM ubuntu:22.04
 
 # Configure versions for dependencies
-ARG GHC_VERSION=9.4.4
-ARG CABAL_VERSION=3.8.1.0
-ARG PYTHON_VERSION=3.7 3.8 3.9 3.10 3.11
+ENV GHC_VERSION 9.4.4
+ENV CABAL_VERSION 3.8.1.0
+ENV PYTHON_VERSION 3.7 3.8 3.9 3.10 3.11
 
 # Install GHC & Cabal (via GHCup)
 RUN apt-get update -y
@@ -21,7 +21,7 @@ ENV PATH /root/.pyenv/bin:$PATH
 RUN command -v pyenv >/dev/null || echo "export PATH=/root/.pyenv/bin:$PATH" >> /root/.profile
 RUN eval "$(pyenv init -)"
 RUN pyenv update
-RUN pyenv install $PYTHON_VERSIONS
+RUN pyenv install $PYTHON_VERSION
 
 # Copy project to container
 RUN mkdir -p         /vehicle/
