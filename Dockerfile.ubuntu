@@ -1,18 +1,9 @@
 FROM ubuntu:22.04
 
-# Copy project to container
-RUN mkdir -p        /vehicle/
-ADD cabal.project*  /vehicle/
-ADD README.md       /vehicle/
-ADD examples        /vehicle/
-ADD py-vehicle-lang /vehicle/
-ADD vehicle         /vehicle/
-ADD vehicle-syntax  /vehicle/
-
-# Configure versions
-ENV GHC_VERSION 9.4.4
-ENV CABAL_VERSION 3.8.1.0
-ENV PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
+# Configure versions for dependencies
+ARG GHC_VERSION 9.4.4
+ARG CABAL_VERSION 3.8.1.0
+ARG PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
 
 # Install GHC & Cabal (via GHCup)
 RUN apt-get update -y
@@ -31,6 +22,15 @@ RUN command -v pyenv >/dev/null || echo "export PATH=/root/.pyenv/bin:$PATH" >> 
 RUN eval "$(pyenv init -)"
 RUN pyenv update
 RUN pyenv install $PYTHON_VERSIONS
+
+# Copy project to container
+RUN mkdir -p         /vehicle/
+ADD cabal.project*   /vehicle/
+ADD README.md        /vehicle/
+ADD examples/        /vehicle/
+ADD py-vehicle-lang/ /vehicle/
+ADD vehicle/         /vehicle/
+ADD vehicle-syntax/  /vehicle/
 
 # Build Vehicle
 RUN apt-get install patchelf swig -y
