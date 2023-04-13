@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 import Control.Exception (catch, handle, throwIO)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Foldable (for_)
 import Data.Traversable (for)
 import Distribution.PackageDescription (ComponentName (..), ForeignLib (..), PackageDescription (..))
