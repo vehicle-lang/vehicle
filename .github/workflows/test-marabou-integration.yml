@@ -36,9 +36,10 @@ jobs:
         with:
           marabou-commit: ${{ matrix.marabou-commit }}
 
-      - name: Test run1
+      - name: Test Vehicle-Marabou interaction
         run: |
-          Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+          cabal test                                      \
+            vehicle:test:vehicle-integration-tests        \
+            --test-option=--color=always                  \
+            --test-show-details=always
         shell: sh
-        working-directory: vehicle/tests/golden/compile/windController
-        continue-on-error: true
