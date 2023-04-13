@@ -9,7 +9,8 @@ At its heart is the Vehicle specification language, a high-level, functional lan
 specification says that a network's output should be monotonically increasing with respect to
 its third input.
 
-![Example specification](./docs-source/example-spec.png)
+<!-- This must be a direct link, because the same README is used on PyPI -->
+![Example specification](https://github.com/vehicle-lang/vehicle/blob/4d985c962eab317fd00fbf07da5846374e6b0b35/docs-source/example-spec.png)
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
