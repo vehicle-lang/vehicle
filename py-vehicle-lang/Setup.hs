@@ -13,7 +13,7 @@ import Distribution.Simple.Utils (die', info)
 import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
 import Distribution.Verbosity (Verbosity, normal)
-import System.Directory (copyFile, doesDirectoryExist, removeFile, renameDirectory)
+import System.Directory (copyFile, doesDirectoryExist, removeDirectoryRecursive, removeFile, renameDirectory)
 import System.Environment (getEnv)
 import System.FilePath ((<.>))
 import System.FilePath.Posix ((</>))
@@ -92,9 +92,11 @@ generatePygmentsLexer verbosity programDb = do
       "src" </> "vehicle_lang" </> "pygments",
       "vendor" </> "vehicle-syntax" </> "src" </> "Vehicle" </> "Syntax" </> "External.cf"
     ]
-  renameDirectory
-    ("src" </> "vehicle_lang" </> "pygments" </> "external")
-    ("src" </> "vehicle_lang" </> "pygments" </> "_external")
+  let source = ("src" </> "vehicle_lang" </> "pygments" </> "external")
+  let target = ("src" </> "vehicle_lang" </> "pygments" </> "_external")
+  targetExists <- doesDirectoryExist target
+  when targetExists $ removeDirectoryRecursive target
+  renameDirectory source target
   removeFile ("src" </> "vehicle_lang" </> "pygments" </> "setup.py")
 
 bnfcProgram :: Program
