@@ -1,9 +1,9 @@
 FROM ubuntu:22.04
 
 # Configure versions for dependencies
-ARG GHC_VERSION 9.4.4
-ARG CABAL_VERSION 3.8.1.0
-ARG PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
+ARG GHC_VERSION=9.4.4
+ARG CABAL_VERSION=3.8.1.0
+ARG PYTHON_VERSION=3.7 3.8 3.9 3.10 3.11
 
 # Install GHC & Cabal (via GHCup)
 RUN apt-get update -y
