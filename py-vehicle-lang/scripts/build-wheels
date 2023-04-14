@@ -28,7 +28,7 @@ do
         >&2 echo "pyenv: install with \`pyenv install ${python_version}'"
         exit 1
     else
-        echo "$(python --version)"
+        python --version
         python -m pip install pipx
         python -m pipx run --spec build pyproject-build --wheel --outdir="${ROOT_DIR}/wheelhouselocal"
     fi
@@ -54,8 +54,13 @@ case "${PLATFORM}" in
     'linux')
         LIBC="$(python -c 'import platform; print(platform.libc_ver()[1].replace(".","_"))')"
         ARCH="$(python -c 'import platform; print(platform.machine())')"
-        python -m pip install pipx
-        python -m pipx run auditwheel repair --wheel-dir="${ROOT_DIR}/wheelhouse" --plat="manylinux_${LIBC}_${ARCH}" "${ROOT_DIR}/wheelhouselocal"/*.whl
+        MANYLINUX_PLATFORM_TAGS="${MANYLINUX_PLATFORM_TAGS:-"manylinux_${LIBC}"}"
+        set -- $MANYLINUX_PLATFORM_TAGS
+        for MANYLINUX_PLATFORM_TAG in "$@"
+        do
+            python -m pip install pipx
+            python -m pipx run auditwheel repair --wheel-dir="${ROOT_DIR}/wheelhouse" --plat="${MANYLINUX_PLATFORM_TAG}_${ARCH}" "${ROOT_DIR}/wheelhouselocal"/*.whl
+        done
     ;;
     'win32')
         # 03-04-2023:
