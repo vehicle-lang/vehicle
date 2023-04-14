@@ -25,12 +25,12 @@ RUN pyenv install $PYTHON_VERSION
 
 # Copy project to container
 RUN mkdir -p         /vehicle/
-ADD cabal.project*   /vehicle/
-ADD README.md        /vehicle/
-ADD examples/        /vehicle/
-ADD py-vehicle-lang/ /vehicle/
-ADD vehicle/         /vehicle/
-ADD vehicle-syntax/  /vehicle/
+COPY cabal.project*   /vehicle/
+COPY README.md        /vehicle/
+COPY examples/        /vehicle/
+COPY py-vehicle-lang/ /vehicle/
+COPY vehicle/         /vehicle/
+COPY vehicle-syntax/  /vehicle/
 
 # Build Vehicle
 RUN apt-get install patchelf swig -y
