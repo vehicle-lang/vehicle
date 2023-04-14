@@ -17,15 +17,10 @@ ENV GHC_VERSION 9.4.4
 ENV CABAL_VERSION 3.8.1.0
 ENV PYTHON_VERSION 3.11
 
-# Configure manylinux platform tags
-#
-# NOTE: The build scripts automatically adds the current architecture,
-#       because GHC and Cabal do not support cross-compilation.
-#
-ENV MANYLINUX_PLATFORM_TAGS "manylinux_2_31" "manylinux_2_34" "manylinux_2_35"
+# Update Package List
+RUN apt-get update -y
 
 # Install GHC & Cabal (via GHCup)
-RUN apt-get update -y
 RUN apt-get install curl -y
 RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 sh
 RUN apt-get install build-essential curl libffi-dev libffi8ubuntu1 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 -y
