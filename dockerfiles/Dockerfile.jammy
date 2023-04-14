@@ -9,8 +9,10 @@ FROM ubuntu:22.04
 #   docker build --tag vehicle-jammy --file dockerfiles/Dockerfile.jammy .
 #
 #   # Export the built wheels
+#   mkdir -p py-vehicle-lang/wheelhouse
+#   docker cp vehicle-jammy:/vehicle/py-vehicle-lang/wheelhouse/*.whl py-vehicle-lang/wheelhouse/
 #
-#
+ARG SNAPSHOT="HEAD.tar.gz"
 
 # Configure manylinux platform tags
 #
@@ -46,7 +48,7 @@ RUN pyenv install --skip-existing $PYTHON_VERSION
 #
 #   git archive --format=tar.gz --output=HEAD.tar.gz HEAD
 #
-ADD HEAD.tar.gz /vehicle/
+ADD $SNAPSHOT /vehicle/
 
 # Build Vehicle
 RUN apt-get install patchelf swig -y
