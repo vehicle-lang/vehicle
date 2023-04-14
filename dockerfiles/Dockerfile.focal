@@ -53,4 +53,6 @@ ADD snapshot.tar.gz /vehicle/
 # Build Vehicle
 ENV PATH /root/.cabal/bin:$PATH
 ENV PATH /root/.local/bin:$PATH
-RUN cabal install vehicle:exe:vehicle
+WORKDIR /vehicle
+RUN cabal update
+RUN cabal install vehicle:exe:vehicle --project-file=cabal.project.ghc-$GHC_VERSION
