@@ -129,13 +129,12 @@ pattern HasQuantifierInExpr p q tElem tCont <-
 
 pattern HasNatLitsExpr ::
   Provenance ->
-  Int ->
   Expr binder var StandardBuiltin ->
   Expr binder var StandardBuiltin
-pattern HasNatLitsExpr p n t <-
+pattern HasNatLitsExpr p t <-
   BuiltinTypeClass
     p
-    (HasNatLits n)
+    HasNatLits
     [ ExplicitArg _ t
       ]
 
@@ -554,11 +553,10 @@ pattern IfExpr p tRes args <-
 
 pattern FromNatExpr ::
   Provenance ->
-  Int ->
   FromNatDomain ->
   NonEmpty (Arg binder var StandardBuiltin) ->
   Expr binder var StandardBuiltin
-pattern FromNatExpr p n dom args <- BuiltinFunctionExpr p (FromNat n dom) args
+pattern FromNatExpr p dom args <- BuiltinFunctionExpr p (FromNat dom) args
 
 pattern FromRatExpr ::
   Provenance ->

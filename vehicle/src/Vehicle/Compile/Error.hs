@@ -69,7 +69,7 @@ data CompileError
   | FailedQuantInConstraintContainer StandardConstraintContext StandardNormType Quantifier
   | FailedNatLitConstraint StandardConstraintContext Int StandardNormType
   | FailedNatLitConstraintTooBig StandardConstraintContext Int Int
-  | FailedNatLitConstraintUnknown StandardConstraintContext Int StandardNormType
+  | FailedNatLitConstraintUnknown StandardConstraintContext StandardNormExpr StandardNormType
   | FailedIntLitConstraint StandardConstraintContext StandardNormType
   | FailedRatLitConstraint StandardConstraintContext StandardNormType
   | FailedConLitConstraint StandardConstraintContext StandardNormType

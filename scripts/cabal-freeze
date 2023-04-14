@@ -15,29 +15,36 @@ PROJECT_FILE_BASE="${PROJECT_FILE-cabal.project}"
 if [ ! -f "${PROJECT_FILE_BASE}" ]
 then
     echo "Error: cannot find '${PROJECT_FILE_BASE}'"
+    rm "$fail"
     exit 1
 fi
 
-# Get the GHC version from the arguments:
-GHC_VERSION="$1"
-if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
+# Freeze a cabal.project file
+cabal_freeze() {
+    GHC_VERSION="$1"
+    PROJECT_FILE_BASE="$2"
+    PROJECT_FILE="${PROJECT_FILE_BASE}.ghc-${GHC_VERSION}"
+    echo "Freezing dependencies for ${GHC_VERSION} (with ${PROJECT_FILE})"
+
     # Switch to correct GHC version
     OLD_GHC_VERSION=$(ghc --numeric-version)
-    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
+    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]
+    then
         echo "Switching to GHC ${GHC_VERSION}"
         $ghcup set ghc "${GHC_VERSION}"
     fi
 
     # Create cabal.project.ghc-X.Y.Z
-    PROJECT_FILE="${PROJECT_FILE_BASE}.ghc-${GHC_VERSION}"
     if [ ! -f "${PROJECT_FILE}" ]
     then
         echo "Creating ${PROJECT_FILE}"
-        echo "-- Cabal project configuration file for GHC ${GHC_VERSION}" > "${PROJECT_FILE}"
-        echo "--" >> "${PROJECT_FILE}"
-        echo "-- See \`${PROJECT_FILE_BASE}\` for details." >> "${PROJECT_FILE}"
-        echo >> "${PROJECT_FILE}"
-        echo "import: ${PROJECT_FILE_BASE}" >> "${PROJECT_FILE}"
+        {
+            echo "-- Cabal project configuration file for GHC ${GHC_VERSION}";
+            echo "--"
+            echo "-- See \`${PROJECT_FILE_BASE}\` for details."
+            echo
+            echo "import: ${PROJECT_FILE_BASE}"
+        } >> "${PROJECT_FILE}"
     fi
 
     # Update Cabal package list
@@ -49,21 +56,41 @@ if expr "${GHC_VERSION}" : "[0-9]*\.[0-9]*\.[0-9]*" > /dev/null; then
     $cabal v2-freeze --project-file="${PROJECT_FILE}"
 
     # Switch back to previous GHC version
-    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]; then
+    if [ "${GHC_VERSION}" != "${OLD_GHC_VERSION}" ]
+    then
         echo "Switching to GHC ${OLD_GHC_VERSION}"
         $ghcup set ghc "${OLD_GHC_VERSION}"
     fi
+}
 
-    # Check whether or not any subcommand failed:
-    if [ -s "$fail" ]; then
-        rm "$fail"
-        exit 1
-    else
-        rm "$fail"
-        exit 0
-    fi
+# Get the GHC version from the arguments:
+GHC_VERSION="$1"
+if [ "${GHC_VERSION}" = "all" ]
+then
+    set -- "${PROJECT_FILE_BASE}.ghc-"*
+    for PROJECT_FILE in "$@"
+    do
+        if expr "${PROJECT_FILE}" : "^${PROJECT_FILE_BASE}.ghc-[0-9]*\.[0-9]*\.[0-9]*$" > /dev/null
+        then
+            GHC_VERSION="${PROJECT_FILE#"${PROJECT_FILE_BASE}.ghc-"}"
+            cabal_freeze "${GHC_VERSION}" "${PROJECT_FILE_BASE}"
+        fi
+    done
+elif expr "${GHC_VERSION}" : "^[0-9]*\.[0-9]*\.[0-9]*$" > /dev/null
+then
+    cabal_freeze "${GHC_VERSION}" "${PROJECT_FILE_BASE}"
+else
+    echo "Usage: cabal-freeze [all or X.Y.Z]"
+    rm "$fail"
+    exit 1
+fi
+
+# Check whether or not any subcommand failed:
+if [ -s "$fail" ]
+then
+    rm "$fail"
+    exit 1
 else
     rm "$fail"
-    echo "Usage: cabal-freeze [X.Y.Z]"
-    exit 1
+    exit 0
 fi

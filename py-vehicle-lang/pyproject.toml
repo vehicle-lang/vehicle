@@ -4,23 +4,33 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'vehicle_lang'
-version = '0.2.0a2'
 authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
 description = 'A high-level functional language for writing mathematically-precise specifications for neural networks.'
 readme = 'README.md'
 license = { file = 'LICENSE' }
+dynamic = ["version"]
 
 [project.optional-dependencies]
-test = ["pytest >=7.1,<8"]
-mypy = ["types-setuptools >=45"]
+pygments = ["pygments >=2.14, <3"]
+test = ["pytest >=7.1,<8", "packaging>=23"]
+mypy = ["types-setuptools >=45", "types-pygments >=2.14, <3"]
 
 [project.scripts]
 vehicle = "vehicle_lang:main"
 
+[project.entry-points.'pygments.lexers']
+vehicle = "vehicle_lang.pygments:VehicleLexer"
+
 [tool.mypy]
 python_version = 3.7
 ignore_missing_imports = true
-exclude = ['^src\/vehicle_lang\/binding\.py$']
+exclude = [
+  '^src\/vehicle_lang\/binding\.py$',
+  '^src\/vehicle_lang\/pygments\/_external\/__init__\.py$',
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "vehicle_lang._version.VERSION" }
 
 [tool.tox]
 legacy_tox_ini = """

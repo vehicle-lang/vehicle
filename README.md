@@ -5,12 +5,17 @@
 # Vehicle
 
 Vehicle is a system for embedding logical specifications into neural networks.
-At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks.
+At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks. For example, the following simple
+specification says that a network's output should be monotonically increasing with respect to
+its third input.
+
+<!-- This must be a direct link, because the same README is used on PyPI -->
+![Example specification](https://github.com/vehicle-lang/vehicle/blob/4d985c962eab317fd00fbf07da5846374e6b0b35/docs-source/example-spec.png)
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
 After training, the same specification can be compiled down to low-level neural network verifiers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
-the specifiation holds for _all_ inputs.
+the specification holds for _all_ inputs.
 Verified specifications can also be exported to interactive theorem provers (ITPs)
 such as Agda.
 This in turn allows for the formal verification of larger software systems

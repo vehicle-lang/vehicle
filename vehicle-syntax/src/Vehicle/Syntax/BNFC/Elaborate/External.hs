@@ -351,7 +351,7 @@ elabLiteral = \case
   B.NatLiteral t -> do
     p <- mkProvenance t
     let n = readNat (tkSymbol t)
-    let fromNat = V.Builtin p (V.TypeClassOp $ V.FromNatTC n)
+    let fromNat = V.Builtin p (V.TypeClassOp V.FromNatTC)
     return $ app fromNat [V.Builtin p $ V.Constructor $ V.LNat n]
   B.RatLiteral t -> do
     p <- mkProvenance t

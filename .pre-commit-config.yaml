@@ -47,14 +47,18 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.1.1"
+    rev: "v1.2.0"
     hooks:
       - id: mypy
+        name: mypy (py-vehicle-lang)
+        args: ["--config-file", "py-vehicle-lang/pyproject.toml"]
+        additional_dependencies: ["types-setuptools >=45", "types-pygments >=2.14"]
+        files: "^py-vehicle-lang\\/.*\\.py$"
+      - id: mypy
+        name: mypy (py-vehicle-lang-tensorflow)
         args: ["--config-file", "py-vehicle-lang-tensorflow/pyproject.toml"]
         additional_dependencies: ["numpy"]
-      - id: mypy
-        args: ["--config-file", "py-vehicle-lang/pyproject.toml"]
-        additional_dependencies: ["types-setuptools >=45"]
+        files: "^py-vehicle-lang-tensorflow\\/.*\\.py$"
   - repo: local
     hooks:
       - id: cabal-fmt

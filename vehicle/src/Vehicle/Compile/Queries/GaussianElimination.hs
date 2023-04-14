@@ -23,7 +23,7 @@ gaussianElimination ::
   Int ->
   m ([(LinearVar, GaussianVariableSolution)], [linexp])
 gaussianElimination varNames exprs numberOfRowsToReduce =
-  logCompilerPass MinDetail currentPhase $ do
+  logCompilerPass MidDetail currentPhase $ do
     logDebug MaxDetail $ prettyExprs varNames exprs
     let maxIterations = min (length exprs) numberOfRowsToReduce
     let iterations :: [Int] = [0 .. maxIterations - 1]

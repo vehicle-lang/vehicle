@@ -64,6 +64,8 @@ position token TokMap        {"map"};
 position token TokFold       {"fold"};
 position token TokDepFold    {"dfold"};
 position token TokIndices    {"indices"};
+position token TokFromNat    {"fromNat"};
+position token TokFromInt    {"fromInt"};
 
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
