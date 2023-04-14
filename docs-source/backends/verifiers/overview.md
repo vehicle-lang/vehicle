@@ -22,6 +22,8 @@ Further information:
 - The tool has continuous integration [on GitHub Actions](https://github.com/NeuralNetworkVerification/Marabou/blob/663835df7b56be42af94b3d2723bf1b69494c0d5/.github/workflows/ci-with-production.yml).
 - The tool lists its dependencies in [README.md](https://github.com/NeuralNetworkVerification/Marabou#build-and-dependencies)
 
+---
+
 ## Under consideration
 
 ### [auto_LiPRA](https://github.com/Verified-Intelligence/auto_LiRPA)
