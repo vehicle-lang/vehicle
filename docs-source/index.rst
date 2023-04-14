@@ -22,7 +22,8 @@ Contents
    installation
    language/index.rst
    typeChecking.rst
-   training
-   verification
+   training.rst
+   verification.rst
    exportingToITP.rst
    other/index.rst
+   backends/verifiers/overview.md
