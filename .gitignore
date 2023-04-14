@@ -58,3 +58,6 @@ benchmarks.json
 # Wheels
 wheelhouselocal/
 wheelhouse/
+
+# Docker
+.docker/
