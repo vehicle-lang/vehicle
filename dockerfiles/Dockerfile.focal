@@ -3,18 +3,19 @@ FROM ubuntu:focal
 # Usage:
 #
 #   # Generate a snapshot of the repository
-#   git archive --format=tar.gz --output=snapshot.tar.gz HEAD
+#   mkdir -p .docker/focal/HEAD
+#   git archive --format=tar.gz --output=.docker/focal/HEAD/snapshot.tar.gz HEAD "$(git rev-parse --show-toplevel)"
 #
 #   # Build the container
-#   docker build --tag vehicle-jammy --file dockerfiles/Dockerfile.jammy .
+#   docker build --tag vehicle:focal --file dockerfiles/Dockerfile.focal .docker/focal/HEAD
 #
-# For further information, see `./scripts/docker-build-wheels`.
-#
+#   # Run the container
+#   docker run -it vehicle:focal
 
 # Configure versions for dependencies
 ENV GHC_VERSION 9.4.4
 ENV CABAL_VERSION 3.8.1.0
-ENV PYTHON_VERSION 3.7 3.8 3.9 3.10 3.11
+ENV PYTHON_VERSION 3.11
 
 # Configure manylinux platform tags
 #
@@ -41,6 +42,7 @@ RUN command -v pyenv >/dev/null || echo "export PATH=/root/.pyenv/bin:$PATH" >> 
 RUN eval "$(pyenv init -)"
 RUN pyenv update
 RUN pyenv install --skip-existing $PYTHON_VERSION
+RUN pyenv global "$(echo "$PYTHON_VERSION" | head -n1 | cut -d " " -f1)"
 
 # Copies the files in the repository to the container. Generate HEAD.tar.gz with:
 #
@@ -49,6 +51,6 @@ RUN pyenv install --skip-existing $PYTHON_VERSION
 ADD snapshot.tar.gz /vehicle/
 
 # Build Vehicle
-RUN apt-get install patchelf swig -y
-WORKDIR /vehicle/py-vehicle-lang
-RUN ./scripts/build-wheels
+ENV PATH /root/.cabal/bin:$PATH
+ENV PATH /root/.local/bin:$PATH
+RUN cabal install vehicle:exe:vehicle

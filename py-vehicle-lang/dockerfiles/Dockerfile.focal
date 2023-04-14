@@ -1,16 +1,10 @@
-FROM ubuntu:jammy
+FROM ubuntu:focal
 
-# Usage:
+# NOTE:
 #
-#   # Generate a snapshot of the repository
-#   mkdir -p .docker/jammy/HEAD
-#   git archive --format=tar.gz --output=.docker/jammy/HEAD/snapshot.tar.gz HEAD
+#   This Dockerfile is primarily for use by `py-vehicle-lang/scripts/docker-build-wheels`.
+#   If you are looking to try Vehicle in a container, use the dockerfiles in `dockerfiles/`.
 #
-#   # Build the container
-#   docker build --tag vehicle:jammy --file dockerfiles/Dockerfile.jammy .docker/jammy/HEAD
-#
-#   # Run the container
-#   docker run -it vehicle:jammy
 
 # Configure versions for dependencies
 ENV GHC_VERSION 9.4.4
@@ -28,7 +22,7 @@ ENV MANYLINUX_PLATFORM_TAGS "manylinux_2_31" "manylinux_2_34" "manylinux_2_35"
 RUN apt-get update -y
 RUN apt-get install curl -y
 RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 sh
-RUN apt-get install build-essential curl libffi-dev libffi8ubuntu1 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 -y
+RUN apt-get install build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 -y
 ENV PATH /root/.ghcup/bin:$PATH
 RUN command -v ghcup >/dev/null || echo "export PATH=/root/.ghcup/bin:$PATH" >> /root/.profile
 RUN ghcup install ghc $GHC_VERSION --set
@@ -50,8 +44,6 @@ RUN pyenv install --skip-existing $PYTHON_VERSION
 ADD snapshot.tar.gz /vehicle/
 
 # Build Vehicle
-ENV PATH /root/.cabal/bin:$PATH
-ENV PATH /root/.local/bin:$PATH
-WORKDIR /vehicle
-RUN cabal update
-RUN cabal install vehicle:exe:vehicle --project-file=cabal.project.ghc-$GHC_VERSION
+RUN apt-get install patchelf swig -y
+WORKDIR /vehicle/py-vehicle-lang
+RUN ./scripts/build-wheels
