@@ -6,7 +6,7 @@ FROM ubuntu:22.04
 #   git archive --format=tar.gz --output=HEAD.tar.gz HEAD
 #
 #   # Build the container
-#   docker build --tag vehicle-jammy --file Dockerfile.jammy .
+#   docker build --tag vehicle-jammy --file dockerfiles/Dockerfile.jammy .
 #
 #   # Export the built wheels
 #
