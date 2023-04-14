@@ -1,0 +1,29 @@
+FROM ubuntu:jammy
+
+# Configure versions for dependencies
+ENV MARABOU_VERSION 663835df7b56be42af94b3d2723bf1b69494c0d5
+ENV PYTHON_VERSION 3.8
+
+# Update Package List
+RUN apt-get update -y
+
+# Install Python (via PyEnv)
+RUN apt-get install build-essential curl git libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev libssl-dev zlib1g-dev -y
+RUN curl https://pyenv.run | bash
+ENV PATH /root/.pyenv/bin:$PATH
+RUN command -v pyenv >/dev/null || echo "export PATH=/root/.pyenv/bin:$PATH" >> /root/.profile
+RUN eval "$(pyenv init -)"
+RUN pyenv update
+RUN pyenv install --skip-existing $PYTHON_VERSION
+RUN pyenv global "$(echo "$PYTHON_VERSION" | head -n1 | cut -d " " -f1)"
+
+# Build Marabou
+RUN apt-get install build-essential cmake cxxtest git protobuf-compiler libprotoc-dev wget -y
+RUN python -m pip install pytest
+RUN git clone https://github.com/NeuralNetworkVerification/Marabou.git /Marabou --depth=1
+WORKDIR /Marabou
+RUN cmake -E make_directory build
+WORKDIR /Marabou/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=ON -DPYTHON_EXECUTABLE=$(pyenv which python) -DRUN_UNIT_TEST=OFF -DRUN_PYTHON_TEST=OFF ..
+RUN make
+WORKDIR /Marabou
