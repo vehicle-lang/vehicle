@@ -58,10 +58,7 @@ SNAPSHOT="snapshot.tar.gz"
 
 # Generate a snapshot of the repository
 mkdir -p "${CACHEDIR}"
-(
-    cd "${ROOT_DIR}" && \
-    $git archive --format=tar.gz --output="${CACHEDIR}/${SNAPSHOT}" "${GIT_REVISION}"
-)
+(cd "${ROOT_DIR}" && $git archive --format=tar.gz --output="${CACHEDIR}/${SNAPSHOT}" "${GIT_REVISION}")
 
 # Build the container
 IMAGE_ID="$(echo "vehicle-python-${TARGET}:${GIT_REVISION}" | tr '[:upper:]' '[:lower:]')"
