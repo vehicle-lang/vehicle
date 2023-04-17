@@ -1,88 +1,61 @@
 [
-  [
-    "reachable",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "Any",
-        "x",
-        [],
-        {
-          "tag": "Addition",
-          "contents": [
-            {
-              "tag": "Max",
-              "contents": [
+  {
+    "declaration_name": "reachable",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "binary_operator_name": "addition",
+        "binary_operator_arg2": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "sequence": [
                 {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": "x"
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "TensorLiteral",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
+                  "constant_value": 0
                 }
               ]
             },
-            {
-              "tag": "Max",
-              "contents": [
+            "binary_operator_arg1": {
+              "network_name": "f",
+              "network_args": [
                 {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": "x"
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "TensorLiteral",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
+                  "variable_name": "x"
                 }
               ]
             }
-          ]
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
+        },
+        "binary_operator_arg1": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "sequence": [
+                {
+                  "constant_value": 0
+                }
+              ]
+            },
+            "binary_operator_arg1": {
+              "network_name": "f",
+              "network_args": [
+                {
+                  "variable_name": "x"
+                }
+              ]
+            }
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
         }
-      ]
+      },
+      "quantifier": "any"
     }
-  ]
+  }
 ]

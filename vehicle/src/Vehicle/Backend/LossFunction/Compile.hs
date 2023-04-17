@@ -18,12 +18,12 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
-    Domain (..),
-    LDecl (..),
-    LExpr (..),
-    Quantifier (..),
+    LDecl,
+    LExpr,
+    Quantifier,
     implementationOf,
   )
+import Vehicle.Backend.LossFunction.Logics qualified as L
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
@@ -91,7 +91,7 @@ compileDecl logic = \case
     logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
       let logicImplementation = implementationOf logic
       expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
-      return $ Just $ DefFunction (nameOf ident) expr'
+      return $ Just $ L.DefFunction (nameOf ident) expr'
 
 type MonadCompileLoss m =
   ( MonadCompile m,
@@ -109,12 +109,12 @@ compileExpr t expr = showExit $ do
   case e' of
     V.Ann _ e _ -> compileExpr t e
     V.Let _ x binder expression ->
-      Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
+      L.Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
     V.Lam _ binder body -> do
       body' <- compileExpr t body
-      return $ Lambda (V.getBinderName binder) body'
-    V.BoundVar _ v -> return $ Variable v
-    V.FreeVar _ ident -> return $ FreeVariable (nameOf ident) []
+      return $ L.Lambda (V.getBinderName binder) body'
+    V.BoundVar _ v -> return $ L.Variable v
+    V.FreeVar _ ident -> return $ L.FreeVariable (nameOf ident) []
     V.App _ fun args -> do
       case fun of
         V.FreeVar _ ident -> do
@@ -123,12 +123,12 @@ compileExpr t expr = showExit $ do
           if name `Set.member` networkCtx
             then do
               args' <- traverse (compileArg t) args
-              return $ NetworkApplication name args'
+              return $ L.NetworkApplication name args'
             else case findStdLibFunction ident of
               Just fn -> compileStdLibFunction fn t args
               Nothing -> do
                 args' <- traverse (compileArg t) args
-                return $ FreeVariable name args'
+                return $ L.FreeVariable name args'
         V.Builtin _ b -> do
           explicitArgs' <- compileExplicitArgs t args
           compileBuiltin b t explicitArgs'
@@ -156,11 +156,11 @@ compileBuiltin b = case b of
 compileBuiltinConstructor :: V.BuiltinConstructor -> CompileBuiltin
 compileBuiltinConstructor c t args = case c of
   V.LUnit {} -> compilerDeveloperError "Loss Function should not encounter LUnit"
-  V.LBool b -> return $ Constant $ (if b then compileTrue else compileFalse) t
-  V.LIndex l -> return $ Constant $ fromIntegral l
-  V.LNat l -> return $ Constant $ fromIntegral l
-  V.LInt l -> return $ Constant $ fromIntegral l
-  V.LRat l -> return $ Constant $ fromRational l
+  V.LBool b -> return $ L.Constant $ (if b then compileTrue else compileFalse) t
+  V.LIndex l -> return $ L.Constant $ fromIntegral l
+  V.LNat l -> return $ L.Constant $ fromIntegral l
+  V.LInt l -> return $ L.Constant $ fromIntegral l
+  V.LRat l -> return $ L.Constant $ fromRational l
   V.LVec _ -> compileVecLiteral t args
   V.Nil -> notYetSupportedBuiltin $ V.CConstructor c
   V.Cons -> notYetSupportedBuiltin $ V.CConstructor c
@@ -176,21 +176,21 @@ compileBuiltinFunction f t args = case f of
   V.Or -> case compileOr t of
     Left binaryOr -> compileOp2 binaryOr t args
     Right naryOr -> return (naryOr args)
-  V.At -> compileOp2 At t args
+  V.At -> compileOp2 L.At t args
   V.Not -> compileNotOp t args
   V.Implies -> compileOp2 (compileImplies t) t args
   V.Quantifier q _ -> compileQuantifier q t args
   -- Arithmetic operations
-  V.Neg {} -> compileOp1 Negation t args
-  V.Add {} -> compileOp2 Addition t args
-  V.Sub {} -> compileOp2 Subtraction t args
-  V.Mul {} -> compileOp2 Multiplication t args
-  V.Div {} -> compileOp2 Division t args
+  V.Neg {} -> compileOp1 L.Negation t args
+  V.Add {} -> compileOp2 L.Addition t args
+  V.Sub {} -> compileOp2 L.Subtraction t args
+  V.Mul {} -> compileOp2 L.Multiplication t args
+  V.Div {} -> compileOp2 L.Division t args
   -- Comparison operations
   V.Equals _ eq -> compileEquality eq t args
   V.Order _ ord -> compileOrder ord t args
   -- Container operations
-  V.Indices {} -> compileOp1 Range t args
+  V.Indices {} -> compileOp1 L.Range t args
   -- Not supported
   V.Fold {} -> notYetSupportedBuiltin $ V.CFunction f
   V.ConsVector {} -> notYetSupportedBuiltin $ V.CFunction f
@@ -207,17 +207,17 @@ compileStdLibFunction fn t args = case fn of
   StdNotEqualsBool -> compileEquality V.Neq t =<< compileExplicitArgs t args
   StdEqualsVector -> compileEquality V.Eq t =<< compileExplicitArgs t args
   StdNotEqualsVector -> compileEquality V.Neq t =<< compileExplicitArgs t args
-  StdAddVector -> compileOp2 Addition t =<< compileExplicitArgs t args
-  StdSubVector -> compileOp2 Subtraction t =<< compileExplicitArgs t args
+  StdAddVector -> compileOp2 L.Addition t =<< compileExplicitArgs t args
+  StdSubVector -> compileOp2 L.Subtraction t =<< compileExplicitArgs t args
   StdVectorToVector -> compileOp1 id t =<< compileExplicitArgs t args
-  StdMapVector -> compileOp2 Map t =<< compileExplicitArgs t args
-  StdMapList -> compileOp2 Map t =<< compileExplicitArgs t args
+  StdMapVector -> compileOp2 L.Map t =<< compileExplicitArgs t args
+  StdMapList -> compileOp2 L.Map t =<< compileExplicitArgs t args
   StdForeach -> case args of
     _ :| [V.ImplicitArg _ size, V.ExplicitArg _ f] -> do
       size' <- compileExpr t size
       indices <- compileBuiltin (V.CFunction V.Indices) t [size']
       f' <- compileExpr t f
-      compileOp2 Map t [f', indices]
+      compileOp2 L.Map t [f', indices]
     _ -> unexpectedExprError currentPass "partially applied binary operation"
   StdExistsIndex -> notYetSupportedStdLibFunction fn
   StdForallIndex -> notYetSupportedStdLibFunction fn
@@ -227,7 +227,7 @@ compileStdLibFunction fn t args = case fn of
   StdTensor -> notYetSupportedStdLibFunction fn
 
 compileVecLiteral :: CompileBuiltin
-compileVecLiteral _t args = return $ TensorLiteral args
+compileVecLiteral _t args = return $ L.TensorLiteral args
 
 compileOp1 :: (LExpr -> LExpr) -> CompileBuiltin
 compileOp1 f _t = \case
@@ -258,13 +258,13 @@ compileOrder ord t args = case ord of
   V.Gt -> compileOp2 (compileGt t) t args
 
 compileQuantifier :: V.Quantifier -> CompileBuiltin
-compileQuantifier q _t [Lambda varName body] =
-  return $ Quantifier (compileQuant q) varName (Domain ()) body
+compileQuantifier q _t [L.Lambda varName body] =
+  return $ L.Quantifier (compileQuant q) varName (L.Domain ()) body
 compileQuantifier _ _ _ = unexpectedExprError currentPass "partially applied quantifier"
 
 compileQuant :: V.Quantifier -> Quantifier
-compileQuant V.Forall = All
-compileQuant V.Exists = Any
+compileQuant V.Forall = L.All
+compileQuant V.Exists = L.Any
 
 compileExplicitArgs :: (MonadCompileLoss m) => DifferentialLogicImplementation -> NonEmpty (V.Arg () V.Name V.StandardBuiltin) -> m [LExpr]
 compileExplicitArgs t args = do

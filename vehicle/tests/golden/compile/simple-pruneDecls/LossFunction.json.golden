@@ -1,132 +1,90 @@
 [
-  [
-    "add1",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Addition",
-          "contents": [
-            {
-              "tag": "Variable",
-              "contents": "x"
-            },
-            {
-              "tag": "Constant",
-              "contents": 1
-            }
-          ]
+  {
+    "declaration_name": "add1",
+    "declaration_body": {
+      "lambda_bound_name": "x",
+      "lambda_body": {
+        "binary_operator_name": "addition",
+        "binary_operator_arg2": {
+          "constant_value": 1
+        },
+        "binary_operator_arg1": {
+          "variable_name": "x"
         }
-      ]
+      }
     }
-  ],
-  [
-    "p1",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
+  },
+  {
+    "declaration_name": "p1",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "binary_operator_name": "max",
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg2": {
+            "binary_operator_name": "at",
+            "binary_operator_arg2": {
+              "constant_value": 0
             },
-            {
-              "tag": "Subtraction",
-              "contents": [
+            "binary_operator_arg1": {
+              "network_name": "f",
+              "network_args": [
                 {
-                  "tag": "FreeVariable",
-                  "contents": [
-                    "add1",
-                    [
-                      {
-                        "tag": "Constant",
-                        "contents": 0
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": "x"
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
+                  "variable_name": "x"
                 }
               ]
             }
-          ]
+          },
+          "binary_operator_arg1": {
+            "function_name": "add1",
+            "function_args": [
+              {
+                "constant_value": 0
+              }
+            ]
+          }
+        },
+        "binary_operator_arg1": {
+          "constant_value": 0
         }
-      ]
+      },
+      "quantifier": "all"
     }
-  ],
-  [
-    "p2",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
+  },
+  {
+    "declaration_name": "p2",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "binary_operator_name": "max",
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg2": {
+            "binary_operator_name": "at",
+            "binary_operator_arg2": {
+              "constant_value": 0
             },
-            {
-              "tag": "Subtraction",
-              "contents": [
+            "binary_operator_arg1": {
+              "network_name": "g",
+              "network_args": [
                 {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "g",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": "x"
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
+                  "variable_name": "x"
                 }
               ]
             }
-          ]
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
+        },
+        "binary_operator_arg1": {
+          "constant_value": 0
         }
-      ]
+      },
+      "quantifier": "all"
     }
-  ]
+  }
 ]

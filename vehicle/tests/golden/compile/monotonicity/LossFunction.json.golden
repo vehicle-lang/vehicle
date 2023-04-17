@@ -1,123 +1,84 @@
 [
-  [
-    "monotonic",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x1",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "x2",
-            [],
-            {
-              "tag": "Multiplication",
-              "contents": [
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "Variable",
-                              "contents": "x1"
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "x2"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
+  {
+    "declaration_name": "monotonic",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x1",
+      "quantifier_body": {
+        "quantifier_domain": [],
+        "quantifier_bound_name": "x2",
+        "quantifier_body": {
+          "binary_operator_name": "multiplication",
+          "binary_operator_arg2": {
+            "binary_operator_name": "max",
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg2": {
+                "binary_operator_name": "at",
+                "binary_operator_arg2": {
+                  "constant_value": 0
                 },
-                {
-                  "tag": "Max",
-                  "contents": [
+                "binary_operator_arg1": {
+                  "network_name": "f",
+                  "network_args": [
                     {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
+                      "sequence": [
                         {
-                          "tag": "At",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x1"
-                                      }
-                                    ]
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "At",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x2"
-                                      }
-                                    ]
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
+                          "variable_name": "x2"
                         }
                       ]
                     }
                   ]
                 }
-              ]
+              },
+              "binary_operator_arg1": {
+                "binary_operator_name": "at",
+                "binary_operator_arg2": {
+                  "constant_value": 0
+                },
+                "binary_operator_arg1": {
+                  "network_name": "f",
+                  "network_args": [
+                    {
+                      "sequence": [
+                        {
+                          "variable_name": "x1"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            "binary_operator_arg1": {
+              "constant_value": 0
             }
-          ]
-        }
-      ]
+          },
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg2": {
+              "binary_operator_name": "max",
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg2": {
+                  "variable_name": "x2"
+                },
+                "binary_operator_arg1": {
+                  "variable_name": "x1"
+                }
+              },
+              "binary_operator_arg1": {
+                "constant_value": 0
+              }
+            },
+            "binary_operator_arg1": {
+              "constant_value": 0
+            }
+          }
+        },
+        "quantifier": "all"
+      },
+      "quantifier": "all"
     }
-  ]
+  }
 ]

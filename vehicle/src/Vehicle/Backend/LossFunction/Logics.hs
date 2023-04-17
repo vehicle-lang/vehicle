@@ -1,5 +1,16 @@
 module Vehicle.Backend.LossFunction.Logics
   ( LExpr (..),
+    pattern Negation,
+    pattern Min,
+    pattern Max,
+    pattern Addition,
+    pattern Subtraction,
+    pattern Multiplication,
+    pattern Division,
+    pattern IndicatorFunction,
+    pattern At,
+    pattern Power,
+    pattern Map,
     LDecl (..),
     Domain (..),
     Quantifier (..),
@@ -14,58 +25,174 @@ module Vehicle.Backend.LossFunction.Logics
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), Options (..), SumEncoding (..), ToJSON (..), Value, camelTo2, defaultOptions, genericParseJSON, genericToJSON)
+import Data.Aeson.Types (Parser)
+import Data.List (stripPrefix)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Prelude qualified as V
 
+jsonOptions :: String -> String -> Options
+jsonOptions fieldLabelPrefix constructorTagPrefix =
+  defaultOptions
+    { fieldLabelModifier = modifier fieldLabelPrefix,
+      constructorTagModifier = modifier constructorTagPrefix,
+      allNullaryToStringTag = True,
+      sumEncoding = UntaggedValue
+    }
+  where
+    modifier prefix name = camelTo2 '_' (fromMaybe name (stripPrefix prefix name))
+
+data UnaryOperator
+  = OpNegation
+  deriving (Eq, Ord, Generic, Show)
+
+data BinaryOperator
+  = OpMin
+  | OpMax
+  | OpAddition
+  | OpSubtraction
+  | OpMultiplication
+  | OpDivision
+  | OpIndicatorFunction
+  | OpAt
+  | OpPower
+  | OpMap
+  deriving (Eq, Ord, Generic, Show)
+
+instance FromJSON UnaryOperator where
+  parseJSON :: Value -> Parser UnaryOperator
+  parseJSON = genericParseJSON (jsonOptions "" "Op")
+
+instance ToJSON UnaryOperator where
+  toJSON :: UnaryOperator -> Value
+  toJSON = genericToJSON (jsonOptions "" "Op")
+
+instance FromJSON BinaryOperator where
+  parseJSON :: Value -> Parser BinaryOperator
+  parseJSON = genericParseJSON (jsonOptions "" "Op")
+
+instance ToJSON BinaryOperator where
+  toJSON :: BinaryOperator -> Value
+  toJSON = genericToJSON (jsonOptions "" "Op")
+
+pattern Negation :: LExpr -> LExpr
+pattern Negation e1 = UnaryOperator OpNegation e1
+
+pattern Min :: LExpr -> LExpr -> LExpr
+pattern Min e1 e2 = BinaryOperator OpMin e1 e2
+
+pattern Max :: LExpr -> LExpr -> LExpr
+pattern Max e1 e2 = BinaryOperator OpMax e1 e2
+
+pattern Addition :: LExpr -> LExpr -> LExpr
+pattern Addition e1 e2 = BinaryOperator OpAddition e1 e2
+
+pattern Subtraction :: LExpr -> LExpr -> LExpr
+pattern Subtraction e1 e2 = BinaryOperator OpSubtraction e1 e2
+
+pattern Multiplication :: LExpr -> LExpr -> LExpr
+pattern Multiplication e1 e2 = BinaryOperator OpMultiplication e1 e2
+
+pattern Division :: LExpr -> LExpr -> LExpr
+pattern Division e1 e2 = BinaryOperator OpDivision e1 e2
+
+pattern IndicatorFunction :: LExpr -> LExpr -> LExpr
+pattern IndicatorFunction e1 e2 = BinaryOperator OpIndicatorFunction e1 e2
+
+pattern At :: LExpr -> LExpr -> LExpr
+pattern At e1 e2 = BinaryOperator OpAt e1 e2
+
+pattern Power :: LExpr -> LExpr -> LExpr
+pattern Power e1 e2 = BinaryOperator OpPower e1 e2
+
+pattern Map :: LExpr -> LExpr -> LExpr
+pattern Map e1 e2 = BinaryOperator OpMap e1 e2
+
 -- | Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
   = -- | this is minus, not the logical operation of negation
-    Negation LExpr
-  | Constant Double
-  | Min LExpr LExpr
-  | Max LExpr LExpr
-  | Addition LExpr LExpr
-  | Subtraction LExpr LExpr
-  | Multiplication LExpr LExpr
-  | Division LExpr LExpr
-  | IndicatorFunction LExpr LExpr
+    UnaryOperator
+      { _unaryOperatorName :: UnaryOperator,
+        _unaryOperatorArg :: LExpr
+      }
+  | BinaryOperator
+      { _binaryOperatorName :: BinaryOperator,
+        _binaryOperatorArg1 :: LExpr,
+        _binaryOperatorArg2 :: LExpr
+      }
+  | Constant
+      { _constantValue :: Double
+      }
   | -- | variable (bound)
-    Variable V.Name
+    Variable
+      { _variableName :: V.Name
+      }
   | -- | variable (free)
-    FreeVariable V.Name (NonEmpty LExpr)
-  | NetworkApplication V.Name (NonEmpty LExpr)
+    FreeVariable
+      { _functionName :: V.Name,
+        _functionArgs :: NonEmpty LExpr
+      }
+  | NetworkApplication
+      { _networkName :: V.Name,
+        _networkArgs :: NonEmpty LExpr
+      }
   | -- | quantifiers forall, exists
-    Quantifier Quantifier V.Name Domain LExpr
-  | At LExpr LExpr
-  | TensorLiteral [LExpr]
-  | Lambda V.Name LExpr
-  | Let V.Name LExpr LExpr
-  | Power LExpr LExpr
-  | Range LExpr
-  | Map LExpr LExpr
+    Quantifier
+      { _quantifier :: Quantifier,
+        _quantifierBoundName :: V.Name,
+        _quantifierDomain :: Domain,
+        _quantifierBody :: LExpr
+      }
+  | TensorLiteral
+      { _sequence :: [LExpr]
+      }
+  | Let
+      { _letBoundName :: V.Name,
+        _letBoundExpr :: LExpr,
+        _letBody :: LExpr
+      }
+  | Lambda
+      { _lambdaBoundName :: V.Name,
+        _lambdaBody :: LExpr
+      }
+  | Range
+      { _rangeExpr :: LExpr
+      }
   | -- | and for the STL translation specifics of which are handled on the Python side
-    ExponentialAnd [LExpr]
+    ExponentialAnd
+      { _exponentialAndExpr :: [LExpr]
+      }
   deriving (Eq, Ord, Generic, Show)
 
-instance FromJSON LExpr
+instance FromJSON LExpr where
+  parseJSON :: Value -> Parser LExpr
+  parseJSON = genericParseJSON (jsonOptions "_" "")
 
-instance ToJSON LExpr
+instance ToJSON LExpr where
+  toJSON :: LExpr -> Value
+  toJSON = genericToJSON (jsonOptions "_" "")
 
 --------------------------------------------------------------------------------
 -- Declaration definition
 
-data LDecl
-  = DefFunction
-      V.Name -- Bound function name.
-      LExpr -- Bound function body.
+data LDecl = DefFunction
+  { -- | Bound function name.
+    _declarationName :: V.Name,
+    -- | Bound function body.
+    _declarationBody :: LExpr
+  }
   deriving (Eq, Show, Generic)
 
-instance FromJSON LDecl
+instance FromJSON LDecl where
+  parseJSON :: Value -> Parser LDecl
+  parseJSON = genericParseJSON (jsonOptions "_" "")
 
-instance ToJSON LDecl
+instance ToJSON LDecl where
+  toJSON :: LDecl -> Value
+  toJSON = genericToJSON (jsonOptions "_" "")
 
 --------------------------------------------------------------------------------
 -- other definitions
@@ -75,9 +202,13 @@ data Quantifier
   | Any
   deriving (Eq, Ord, Generic, Show)
 
-instance FromJSON Quantifier
+instance FromJSON Quantifier where
+  parseJSON :: Value -> Parser Quantifier
+  parseJSON = genericParseJSON (jsonOptions "" "")
 
-instance ToJSON Quantifier
+instance ToJSON Quantifier where
+  toJSON :: Quantifier -> Value
+  toJSON = genericToJSON (jsonOptions "" "")
 
 newtype Domain = Domain ()
   deriving (Eq, Ord, Generic, Show)

@@ -1,253 +1,171 @@
 [
-  [
-    "unused",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Constant",
-          "contents": 0
-        }
-      ]
+  {
+    "declaration_name": "unused",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "constant_value": 0
+      },
+      "quantifier": "all"
     }
-  ],
-  [
-    "expandedExpr",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
+  },
+  {
+    "declaration_name": "expandedExpr",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "binary_operator_name": "max",
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg2": {
+            "binary_operator_name": "at",
+            "binary_operator_arg2": {
+              "constant_value": 0
             },
-            {
-              "tag": "Subtraction",
-              "contents": [
+            "binary_operator_arg1": {
+              "variable_name": "x"
+            }
+          },
+          "binary_operator_arg1": {
+            "binary_operator_name": "at",
+            "binary_operator_arg2": {
+              "constant_value": 0
+            },
+            "binary_operator_arg1": {
+              "network_name": "f",
+              "network_args": [
                 {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
-                          {
-                            "tag": "Variable",
-                            "contents": "x"
-                          }
-                        ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
-                },
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "Variable",
-                      "contents": "x"
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
+                  "variable_name": "x"
                 }
               ]
             }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "sequential",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "y",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "y"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "parallel",
-    {
-      "tag": "Addition",
-      "contents": [
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "x",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+          }
         },
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "Any",
-            "x",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 5
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+        "binary_operator_arg1": {
+          "constant_value": 0
         }
-      ]
+      },
+      "quantifier": "all"
     }
-  ]
+  },
+  {
+    "declaration_name": "sequential",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "quantifier_domain": [],
+        "quantifier_bound_name": "y",
+        "quantifier_body": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "binary_operator_name": "at",
+              "binary_operator_arg2": {
+                "constant_value": 0
+              },
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "variable_name": "x"
+                  }
+                ]
+              }
+            },
+            "binary_operator_arg1": {
+              "binary_operator_name": "at",
+              "binary_operator_arg2": {
+                "constant_value": 0
+              },
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "variable_name": "y"
+                  }
+                ]
+              }
+            }
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
+        },
+        "quantifier": "all"
+      },
+      "quantifier": "all"
+    }
+  },
+  {
+    "declaration_name": "parallel",
+    "declaration_body": {
+      "binary_operator_name": "addition",
+      "binary_operator_arg2": {
+        "quantifier_domain": [],
+        "quantifier_bound_name": "x",
+        "quantifier_body": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "binary_operator_name": "at",
+              "binary_operator_arg2": {
+                "constant_value": 0
+              },
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "variable_name": "x"
+                  }
+                ]
+              }
+            },
+            "binary_operator_arg1": {
+              "constant_value": 5
+            }
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
+        },
+        "quantifier": "any"
+      },
+      "binary_operator_arg1": {
+        "quantifier_domain": [],
+        "quantifier_bound_name": "x",
+        "quantifier_body": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "binary_operator_name": "at",
+              "binary_operator_arg2": {
+                "constant_value": 0
+              },
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "variable_name": "x"
+                  }
+                ]
+              }
+            },
+            "binary_operator_arg1": {
+              "constant_value": 0
+            }
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
+        },
+        "quantifier": "all"
+      }
+    }
+  }
 ]

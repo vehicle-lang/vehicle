@@ -1,63 +1,41 @@
 [
-  [
-    "precedence",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Lambda",
-          "contents": [
-            "y",
-            {
-              "tag": "Lambda",
-              "contents": [
-                "z",
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Variable",
-                          "contents": "x"
-                        },
-                        {
-                          "tag": "Multiplication",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 2
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "y"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Division",
-                      "contents": [
-                        {
-                          "tag": "Variable",
-                          "contents": "z"
-                        },
-                        {
-                          "tag": "Variable",
-                          "contents": "y"
-                        }
-                      ]
-                    }
-                  ]
+  {
+    "declaration_name": "precedence",
+    "declaration_body": {
+      "lambda_bound_name": "x",
+      "lambda_body": {
+        "lambda_bound_name": "y",
+        "lambda_body": {
+          "lambda_bound_name": "z",
+          "lambda_body": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg2": {
+              "binary_operator_name": "division",
+              "binary_operator_arg2": {
+                "variable_name": "y"
+              },
+              "binary_operator_arg1": {
+                "variable_name": "z"
+              }
+            },
+            "binary_operator_arg1": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg2": {
+                "binary_operator_name": "multiplication",
+                "binary_operator_arg2": {
+                  "variable_name": "y"
+                },
+                "binary_operator_arg1": {
+                  "constant_value": 2
                 }
-              ]
+              },
+              "binary_operator_arg1": {
+                "variable_name": "x"
+              }
             }
-          ]
+          }
         }
-      ]
+      }
     }
-  ]
+  }
 ]

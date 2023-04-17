@@ -1,285 +1,193 @@
 [
-  [
-    "bounded",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Multiplication",
-          "contents": [
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
+  {
+    "declaration_name": "bounded",
+    "declaration_body": {
+      "quantifier_domain": [],
+      "quantifier_bound_name": "x",
+      "quantifier_body": {
+        "binary_operator_name": "multiplication",
+        "binary_operator_arg2": {
+          "binary_operator_name": "addition",
+          "binary_operator_arg2": {
+            "binary_operator_name": "addition",
+            "binary_operator_arg2": {
+              "binary_operator_name": "indicator_function",
+              "binary_operator_arg2": {
+                "constant_value": 1
+              },
+              "binary_operator_arg1": {
+                "binary_operator_name": "at",
+                "binary_operator_arg2": {
+                  "constant_value": 0
                 },
-                {
-                  "tag": "Addition",
-                  "contents": [
+                "binary_operator_arg1": {
+                  "network_name": "f",
+                  "network_args": [
                     {
-                      "tag": "Addition",
-                      "contents": [
+                      "sequence": [
                         {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                },
-                                {
-                                  "tag": "Variable",
-                                  "contents": "x"
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "IndicatorFunction",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "x"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "Variable",
-                                  "contents": "x"
-                                },
-                                {
-                                  "tag": "Constant",
-                                  "contents": 1
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "IndicatorFunction",
-                          "contents": [
-                            {
-                              "tag": "Variable",
-                              "contents": "x"
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 1
-                            }
-                          ]
+                          "variable_name": "x"
                         }
                       ]
                     }
                   ]
                 }
-              ]
+              }
             },
-            {
-              "tag": "Addition",
-              "contents": [
-                {
-                  "tag": "Addition",
-                  "contents": [
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "At",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x"
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                },
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "IndicatorFunction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "At",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x"
-                                      }
-                                    ]
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
+            "binary_operator_arg1": {
+              "binary_operator_name": "max",
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg2": {
+                  "constant_value": 1
                 },
-                {
-                  "tag": "Addition",
-                  "contents": [
+                "binary_operator_arg1": {
+                  "binary_operator_name": "at",
+                  "binary_operator_arg2": {
+                    "constant_value": 0
+                  },
+                  "binary_operator_arg1": {
+                    "network_name": "f",
+                    "network_args": [
+                      {
+                        "sequence": [
+                          {
+                            "variable_name": "x"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "binary_operator_arg1": {
+                "constant_value": 0
+              }
+            }
+          },
+          "binary_operator_arg1": {
+            "binary_operator_name": "addition",
+            "binary_operator_arg2": {
+              "binary_operator_name": "indicator_function",
+              "binary_operator_arg2": {
+                "binary_operator_name": "at",
+                "binary_operator_arg2": {
+                  "constant_value": 0
+                },
+                "binary_operator_arg1": {
+                  "network_name": "f",
+                  "network_args": [
                     {
-                      "tag": "Max",
-                      "contents": [
+                      "sequence": [
                         {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "At",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "f",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x"
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                },
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 1
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "IndicatorFunction",
-                      "contents": [
-                        {
-                          "tag": "At",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x"
-                                      }
-                                    ]
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 1
+                          "variable_name": "x"
                         }
                       ]
                     }
                   ]
                 }
-              ]
+              },
+              "binary_operator_arg1": {
+                "constant_value": 0
+              }
+            },
+            "binary_operator_arg1": {
+              "binary_operator_name": "max",
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg2": {
+                  "binary_operator_name": "at",
+                  "binary_operator_arg2": {
+                    "constant_value": 0
+                  },
+                  "binary_operator_arg1": {
+                    "network_name": "f",
+                    "network_args": [
+                      {
+                        "sequence": [
+                          {
+                            "variable_name": "x"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                }
+              },
+              "binary_operator_arg1": {
+                "constant_value": 0
+              }
             }
-          ]
+          }
+        },
+        "binary_operator_arg1": {
+          "binary_operator_name": "max",
+          "binary_operator_arg2": {
+            "binary_operator_name": "addition",
+            "binary_operator_arg2": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg2": {
+                "binary_operator_name": "indicator_function",
+                "binary_operator_arg2": {
+                  "constant_value": 1
+                },
+                "binary_operator_arg1": {
+                  "variable_name": "x"
+                }
+              },
+              "binary_operator_arg1": {
+                "binary_operator_name": "max",
+                "binary_operator_arg2": {
+                  "binary_operator_name": "subtraction",
+                  "binary_operator_arg2": {
+                    "constant_value": 1
+                  },
+                  "binary_operator_arg1": {
+                    "variable_name": "x"
+                  }
+                },
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                }
+              }
+            },
+            "binary_operator_arg1": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg2": {
+                "binary_operator_name": "indicator_function",
+                "binary_operator_arg2": {
+                  "variable_name": "x"
+                },
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                }
+              },
+              "binary_operator_arg1": {
+                "binary_operator_name": "max",
+                "binary_operator_arg2": {
+                  "binary_operator_name": "subtraction",
+                  "binary_operator_arg2": {
+                    "variable_name": "x"
+                  },
+                  "binary_operator_arg1": {
+                    "constant_value": 0
+                  }
+                },
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                }
+              }
+            }
+          },
+          "binary_operator_arg1": {
+            "constant_value": 0
+          }
         }
-      ]
+      },
+      "quantifier": "all"
     }
-  ]
+  }
 ]
