@@ -2,248 +2,248 @@
   {
     "declaration_name": "test1",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "a",
+      "quantifier_domain": [],
       "quantifier_body": {
         "binary_operator_name": "addition",
-        "binary_operator_arg2": {
-          "binary_operator_name": "addition",
-          "binary_operator_arg2": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "sequence": [
-                  {
-                    "constant_value": 0
-                  }
-                ]
-              },
-              "binary_operator_arg1": {
-                "network_name": "f",
-                "network_args": [
-                  {
-                    "sequence": [
-                      {
-                        "binary_operator_name": "addition",
-                        "binary_operator_arg2": {
-                          "constant_value": 2
-                        },
-                        "binary_operator_arg1": {
-                          "variable_name": "a"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
-            }
-          },
+        "binary_operator_arg1": {
+          "binary_operator_name": "max",
           "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "sequence": [
-                  {
-                    "constant_value": 0
-                  }
-                ]
-              },
-              "binary_operator_arg1": {
-                "network_name": "f",
-                "network_args": [
-                  {
-                    "sequence": [
-                      {
-                        "binary_operator_name": "addition",
-                        "binary_operator_arg2": {
-                          "constant_value": 2
-                        },
-                        "binary_operator_arg1": {
-                          "variable_name": "a"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
             "binary_operator_arg1": {
               "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "variable_name": "a"
             }
           }
         },
-        "binary_operator_arg1": {
-          "binary_operator_name": "max",
-          "binary_operator_arg2": {
-            "binary_operator_name": "subtraction",
-            "binary_operator_arg2": {
-              "variable_name": "a"
-            },
+        "binary_operator_arg2": {
+          "binary_operator_name": "addition",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
             "binary_operator_arg1": {
               "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "sequence": [
+                      {
+                        "binary_operator_name": "addition",
+                        "binary_operator_arg1": {
+                          "variable_name": "a"
+                        },
+                        "binary_operator_arg2": {
+                          "constant_value": 2
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "binary_operator_arg2": {
+                "sequence": [
+                  {
+                    "constant_value": 0
+                  }
+                ]
+              }
             }
           },
-          "binary_operator_arg1": {
-            "constant_value": 0
+          "binary_operator_arg2": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "sequence": [
+                      {
+                        "binary_operator_name": "addition",
+                        "binary_operator_arg1": {
+                          "variable_name": "a"
+                        },
+                        "binary_operator_arg2": {
+                          "constant_value": 2
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "binary_operator_arg2": {
+                "sequence": [
+                  {
+                    "constant_value": 0
+                  }
+                ]
+              }
+            }
           }
         }
-      },
-      "quantifier": "any"
+      }
     }
   },
   {
     "declaration_name": "test2",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "a",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "any",
         "quantifier_bound_name": "b",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "addition",
-          "binary_operator_arg2": {
-            "binary_operator_name": "addition",
-            "binary_operator_arg2": {
-              "binary_operator_name": "addition",
-              "binary_operator_arg2": {
-                "binary_operator_name": "max",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "subtraction",
-                  "binary_operator_arg2": {
-                    "sequence": [
-                      {
-                        "constant_value": 0
-                      }
-                    ]
-                  },
-                  "binary_operator_arg1": {
-                    "network_name": "g",
-                    "network_args": [
-                      {
-                        "sequence": [
-                          {
-                            "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "variable_name": "b"
-                            },
-                            "binary_operator_arg1": {
-                              "variable_name": "a"
-                            }
-                          },
-                          {
-                            "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "binary_operator_name": "multiplication",
-                              "binary_operator_arg2": {
-                                "variable_name": "b"
-                              },
-                              "binary_operator_arg1": {
-                                "constant_value": 2
-                              }
-                            },
-                            "binary_operator_arg1": {
-                              "variable_name": "a"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 0
-                }
-              },
-              "binary_operator_arg1": {
-                "binary_operator_name": "max",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "subtraction",
-                  "binary_operator_arg2": {
-                    "sequence": [
-                      {
-                        "constant_value": 0
-                      }
-                    ]
-                  },
-                  "binary_operator_arg1": {
-                    "network_name": "g",
-                    "network_args": [
-                      {
-                        "sequence": [
-                          {
-                            "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "variable_name": "b"
-                            },
-                            "binary_operator_arg1": {
-                              "variable_name": "a"
-                            }
-                          },
-                          {
-                            "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "binary_operator_name": "multiplication",
-                              "binary_operator_arg2": {
-                                "variable_name": "b"
-                              },
-                              "binary_operator_arg1": {
-                                "constant_value": 2
-                              }
-                            },
-                            "binary_operator_arg1": {
-                              "variable_name": "a"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 0
-                }
-              }
-            },
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
             "binary_operator_arg1": {
-              "binary_operator_name": "max",
-              "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
-                "binary_operator_arg2": {
-                  "variable_name": "b"
-                },
-                "binary_operator_arg1": {
-                  "variable_name": "a"
-                }
-              },
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
               "binary_operator_arg1": {
-                "constant_value": 0
+                "constant_value": 1
+              },
+              "binary_operator_arg2": {
+                "variable_name": "a"
               }
             }
           },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "variable_name": "a"
-              },
+          "binary_operator_arg2": {
+            "binary_operator_name": "addition",
+            "binary_operator_arg1": {
+              "binary_operator_name": "max",
               "binary_operator_arg1": {
-                "constant_value": 1
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "variable_name": "a"
+                },
+                "binary_operator_arg2": {
+                  "variable_name": "b"
+                }
               }
             },
-            "binary_operator_arg1": {
-              "constant_value": 0
+            "binary_operator_arg2": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg1": {
+                "binary_operator_name": "max",
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "subtraction",
+                  "binary_operator_arg1": {
+                    "network_name": "g",
+                    "network_args": [
+                      {
+                        "sequence": [
+                          {
+                            "binary_operator_name": "addition",
+                            "binary_operator_arg1": {
+                              "variable_name": "a"
+                            },
+                            "binary_operator_arg2": {
+                              "variable_name": "b"
+                            }
+                          },
+                          {
+                            "binary_operator_name": "addition",
+                            "binary_operator_arg1": {
+                              "variable_name": "a"
+                            },
+                            "binary_operator_arg2": {
+                              "binary_operator_name": "multiplication",
+                              "binary_operator_arg1": {
+                                "constant_value": 2
+                              },
+                              "binary_operator_arg2": {
+                                "variable_name": "b"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binary_operator_arg2": {
+                    "sequence": [
+                      {
+                        "constant_value": 0
+                      }
+                    ]
+                  }
+                }
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "max",
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "subtraction",
+                  "binary_operator_arg1": {
+                    "network_name": "g",
+                    "network_args": [
+                      {
+                        "sequence": [
+                          {
+                            "binary_operator_name": "addition",
+                            "binary_operator_arg1": {
+                              "variable_name": "a"
+                            },
+                            "binary_operator_arg2": {
+                              "variable_name": "b"
+                            }
+                          },
+                          {
+                            "binary_operator_name": "addition",
+                            "binary_operator_arg1": {
+                              "variable_name": "a"
+                            },
+                            "binary_operator_arg2": {
+                              "binary_operator_name": "multiplication",
+                              "binary_operator_arg1": {
+                                "constant_value": 2
+                              },
+                              "binary_operator_arg2": {
+                                "variable_name": "b"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binary_operator_arg2": {
+                    "sequence": [
+                      {
+                        "constant_value": 0
+                      }
+                    ]
+                  }
+                }
+              }
             }
           }
-        },
-        "quantifier": "any"
-      },
-      "quantifier": "any"
+        }
+      }
     }
   }
 ]

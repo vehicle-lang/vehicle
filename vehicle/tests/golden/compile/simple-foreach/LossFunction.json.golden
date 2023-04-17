@@ -3,22 +3,20 @@
     "declaration_name": "index",
     "declaration_body": {
       "binary_operator_name": "map",
-      "binary_operator_arg2": {
-        "range_expr": {
-          "constant_value": 2
-        }
-      },
       "binary_operator_arg1": {
         "lambda_bound_name": "i",
         "lambda_body": {
           "binary_operator_name": "max",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "subtraction",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
             "binary_operator_arg2": {
               "binary_operator_name": "at",
-              "binary_operator_arg2": {
-                "variable_name": "i"
-              },
               "binary_operator_arg1": {
                 "network_name": "f",
                 "network_args": [
@@ -33,15 +31,17 @@
                     ]
                   }
                 ]
+              },
+              "binary_operator_arg2": {
+                "variable_name": "i"
               }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
           }
+        }
+      },
+      "binary_operator_arg2": {
+        "range_expr": {
+          "constant_value": 2
         }
       }
     }

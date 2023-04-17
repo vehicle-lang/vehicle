@@ -1,19 +1,33 @@
 {
+  "resourceIntegrityInfo": {
+    "datasetSummaries": [],
+    "networkSummaries": [
+      {
+        "fileHash": -6969277137687631667,
+        "filePath": "fake.onnx",
+        "name": "f"
+      }
+    ],
+    "parameterSummaries": {},
+    "specificationSummary": {
+      "fileHash": 3084303642094311496,
+      "filePath": "spec.vcl",
+      "name": "specification"
+    }
+  },
   "specificationPlan": [
     [
       "increasing",
       {
-        "tag": "SingleProperty",
         "contents": [
           [
             "increasing",
             []
           ],
           {
-            "tag": "Query",
             "contents": {
+              "negated": true,
               "queries": {
-                "tag": "NonTrivial",
                 "contents": {
                   "unDisjunctAll": [
                     [
@@ -25,64 +39,50 @@
                         1
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              0,
-                              {
-                                "tag": "GaussianSolution",
-                                "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 4,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "1": 1,
-                                      "0": -1
-                                    }
-                                  }
-                                }
-                              }
-                            ]
-                          ]
-                        },
                         "metaNetwork": [
                           [
                             "f",
                             "fake.onnx"
                           ]
-                        ]
+                        ],
+                        "variableInfo": {
+                          "normalisedVariableInfo": [
+                            [
+                              0,
+                              {
+                                "contents": {
+                                  "solutionEquality": {
+                                    "coefficients": {
+                                      "0": -1,
+                                      "1": 1
+                                    },
+                                    "constantValue": 0,
+                                    "numberOfVars": 4
+                                  }
+                                },
+                                "tag": "GaussianSolution"
+                              }
+                            ]
+                          ],
+                          "unnormalisedVariableInfo": [
+                            [
+                              "x",
+                              []
+                            ]
+                          ]
+                        }
                       }
                     ]
                   ]
-                }
-              },
-              "negated": true
-            }
+                },
+                "tag": "NonTrivial"
+              }
+            },
+            "tag": "Query"
           }
-        ]
+        ],
+        "tag": "SingleProperty"
       }
     ]
-  ],
-  "resourceIntegrityInfo": {
-    "specificationSummary": {
-      "name": "specification",
-      "filePath": "spec.vcl",
-      "fileHash": 3084303642094311496
-    },
-    "parameterSummaries": {},
-    "networkSummaries": [
-      {
-        "name": "f",
-        "filePath": "fake.onnx",
-        "fileHash": -6969277137687631667
-      }
-    ],
-    "datasetSummaries": []
-  }
+  ]
 }

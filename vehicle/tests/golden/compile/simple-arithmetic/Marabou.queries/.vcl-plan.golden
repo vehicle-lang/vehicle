@@ -1,19 +1,33 @@
 {
+  "resourceIntegrityInfo": {
+    "datasetSummaries": [],
+    "networkSummaries": [
+      {
+        "fileHash": -4193105834029876598,
+        "filePath": "fake.onnx",
+        "name": "f"
+      }
+    ],
+    "parameterSummaries": {},
+    "specificationSummary": {
+      "fileHash": -760293435080544488,
+      "filePath": "spec.vcl",
+      "name": "specification"
+    }
+  },
   "specificationPlan": [
     [
       "property",
       {
-        "tag": "SingleProperty",
         "contents": [
           [
             "property",
             []
           ],
           {
-            "tag": "Query",
             "contents": {
+              "negated": false,
               "queries": {
-                "tag": "NonTrivial",
                 "contents": {
                   "unDisjunctAll": [
                     [
@@ -25,42 +39,28 @@
                         1
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [],
-                          "normalisedVariableInfo": []
-                        },
                         "metaNetwork": [
                           [
                             "f",
                             "fake.onnx"
                           ]
-                        ]
+                        ],
+                        "variableInfo": {
+                          "normalisedVariableInfo": [],
+                          "unnormalisedVariableInfo": []
+                        }
                       }
                     ]
                   ]
-                }
-              },
-              "negated": false
-            }
+                },
+                "tag": "NonTrivial"
+              }
+            },
+            "tag": "Query"
           }
-        ]
+        ],
+        "tag": "SingleProperty"
       }
     ]
-  ],
-  "resourceIntegrityInfo": {
-    "specificationSummary": {
-      "name": "specification",
-      "filePath": "spec.vcl",
-      "fileHash": -760293435080544488
-    },
-    "parameterSummaries": {},
-    "networkSummaries": [
-      {
-        "name": "f",
-        "filePath": "fake.onnx",
-        "fileHash": -4193105834029876598
-      }
-    ],
-    "datasetSummaries": []
-  }
+  ]
 }

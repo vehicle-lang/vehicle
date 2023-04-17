@@ -5,11 +5,11 @@
       "lambda_bound_name": "x",
       "lambda_body": {
         "binary_operator_name": "addition",
-        "binary_operator_arg2": {
-          "constant_value": 1
-        },
         "binary_operator_arg1": {
           "variable_name": "x"
+        },
+        "binary_operator_arg2": {
+          "constant_value": 1
         }
       }
     }
@@ -17,26 +17,16 @@
   {
     "declaration_name": "p1",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "all",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
         "binary_operator_name": "max",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
         "binary_operator_arg2": {
           "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "binary_operator_name": "at",
-            "binary_operator_arg2": {
-              "constant_value": 0
-            },
-            "binary_operator_arg1": {
-              "network_name": "f",
-              "network_args": [
-                {
-                  "variable_name": "x"
-                }
-              ]
-            }
-          },
           "binary_operator_arg1": {
             "function_name": "add1",
             "function_args": [
@@ -44,29 +34,43 @@
                 "constant_value": 0
               }
             ]
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "at",
+            "binary_operator_arg1": {
+              "network_name": "f",
+              "network_args": [
+                {
+                  "variable_name": "x"
+                }
+              ]
+            },
+            "binary_operator_arg2": {
+              "constant_value": 0
+            }
           }
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
         }
-      },
-      "quantifier": "all"
+      }
     }
   },
   {
     "declaration_name": "p2",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "all",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
         "binary_operator_name": "max",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
         "binary_operator_arg2": {
           "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "at",
-            "binary_operator_arg2": {
-              "constant_value": 0
-            },
             "binary_operator_arg1": {
               "network_name": "g",
               "network_args": [
@@ -74,17 +78,13 @@
                   "variable_name": "x"
                 }
               ]
+            },
+            "binary_operator_arg2": {
+              "constant_value": 0
             }
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
           }
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
         }
-      },
-      "quantifier": "all"
+      }
     }
   }
 ]

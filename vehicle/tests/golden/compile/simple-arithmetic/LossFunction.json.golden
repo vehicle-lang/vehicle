@@ -9,28 +9,28 @@
           "lambda_bound_name": "z",
           "lambda_body": {
             "binary_operator_name": "subtraction",
-            "binary_operator_arg2": {
-              "binary_operator_name": "division",
-              "binary_operator_arg2": {
-                "variable_name": "y"
-              },
-              "binary_operator_arg1": {
-                "variable_name": "z"
-              }
-            },
             "binary_operator_arg1": {
               "binary_operator_name": "addition",
-              "binary_operator_arg2": {
-                "binary_operator_name": "multiplication",
-                "binary_operator_arg2": {
-                  "variable_name": "y"
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 2
-                }
-              },
               "binary_operator_arg1": {
                 "variable_name": "x"
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "multiplication",
+                "binary_operator_arg1": {
+                  "constant_value": 2
+                },
+                "binary_operator_arg2": {
+                  "variable_name": "y"
+                }
+              }
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "division",
+              "binary_operator_arg1": {
+                "variable_name": "z"
+              },
+              "binary_operator_arg2": {
+                "variable_name": "y"
               }
             }
           }

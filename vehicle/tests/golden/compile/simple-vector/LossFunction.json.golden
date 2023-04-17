@@ -9,13 +9,16 @@
     "declaration_name": "p",
     "declaration_body": {
       "binary_operator_name": "max",
+      "binary_operator_arg1": {
+        "constant_value": 0
+      },
       "binary_operator_arg2": {
         "binary_operator_name": "subtraction",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
         "binary_operator_arg2": {
           "binary_operator_name": "at",
-          "binary_operator_arg2": {
-            "constant_value": 0
-          },
           "binary_operator_arg1": {
             "network_name": "f",
             "network_args": [
@@ -27,14 +30,11 @@
                 ]
               }
             ]
+          },
+          "binary_operator_arg2": {
+            "constant_value": 0
           }
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
         }
-      },
-      "binary_operator_arg1": {
-        "constant_value": 0
       }
     }
   }

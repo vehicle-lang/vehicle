@@ -5,17 +5,17 @@
       "lambda_bound_name": "x",
       "lambda_body": {
         "binary_operator_name": "max",
-        "binary_operator_arg2": {
-          "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "variable_name": "x"
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0.5
-          }
-        },
         "binary_operator_arg1": {
           "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "constant_value": 0.5
+          },
+          "binary_operator_arg2": {
+            "variable_name": "x"
+          }
         }
       }
     }
@@ -26,17 +26,17 @@
       "lambda_bound_name": "x",
       "lambda_body": {
         "binary_operator_name": "max",
-        "binary_operator_arg2": {
-          "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "constant_value": 0.5
-          },
-          "binary_operator_arg1": {
-            "variable_name": "x"
-          }
-        },
         "binary_operator_arg1": {
           "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "variable_name": "x"
+          },
+          "binary_operator_arg2": {
+            "constant_value": 0.5
+          }
         }
       }
     }
@@ -47,34 +47,34 @@
       "lambda_bound_name": "x",
       "lambda_body": {
         "binary_operator_name": "addition",
-        "binary_operator_arg2": {
-          "binary_operator_name": "max",
-          "binary_operator_arg2": {
-            "binary_operator_name": "subtraction",
-            "binary_operator_arg2": {
-              "constant_value": 1
-            },
-            "binary_operator_arg1": {
-              "variable_name": "x"
-            }
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
-          }
-        },
         "binary_operator_arg1": {
           "binary_operator_name": "max",
-          "binary_operator_arg2": {
-            "binary_operator_name": "subtraction",
-            "binary_operator_arg2": {
-              "variable_name": "x"
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
-            }
-          },
           "binary_operator_arg1": {
             "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "variable_name": "x"
+            }
+          }
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "max",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg1": {
+              "variable_name": "x"
+            },
+            "binary_operator_arg2": {
+              "constant_value": 1
+            }
           }
         }
       }
@@ -90,9 +90,6 @@
           "let_bound_name": "y",
           "let_bound_expr": {
             "binary_operator_name": "at",
-            "binary_operator_arg2": {
-              "constant_value": 0
-            },
             "binary_operator_arg1": {
               "network_name": "andGate",
               "network_args": [
@@ -107,146 +104,22 @@
                   ]
                 }
               ]
+            },
+            "binary_operator_arg2": {
+              "constant_value": 0
             }
           },
           "let_body": {
             "binary_operator_name": "addition",
-            "binary_operator_arg2": {
-              "binary_operator_name": "addition",
-              "binary_operator_arg2": {
-                "binary_operator_name": "addition",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "multiplication",
-                  "binary_operator_arg2": {
-                    "function_name": "falsey",
-                    "function_args": [
-                      {
-                        "variable_name": "y"
-                      }
-                    ]
-                  },
-                  "binary_operator_arg1": {
-                    "binary_operator_name": "max",
-                    "binary_operator_arg2": {
-                      "binary_operator_name": "addition",
-                      "binary_operator_arg2": {
-                        "function_name": "falsey",
-                        "function_args": [
-                          {
-                            "variable_name": "x2"
-                          }
-                        ]
-                      },
-                      "binary_operator_arg1": {
-                        "function_name": "falsey",
-                        "function_args": [
-                          {
-                            "variable_name": "x1"
-                          }
-                        ]
-                      }
-                    },
-                    "binary_operator_arg1": {
-                      "constant_value": 0
-                    }
-                  }
-                },
-                "binary_operator_arg1": {
-                  "binary_operator_name": "multiplication",
-                  "binary_operator_arg2": {
-                    "function_name": "falsey",
-                    "function_args": [
-                      {
-                        "variable_name": "y"
-                      }
-                    ]
-                  },
-                  "binary_operator_arg1": {
-                    "binary_operator_name": "max",
-                    "binary_operator_arg2": {
-                      "binary_operator_name": "addition",
-                      "binary_operator_arg2": {
-                        "function_name": "truthy",
-                        "function_args": [
-                          {
-                            "variable_name": "x2"
-                          }
-                        ]
-                      },
-                      "binary_operator_arg1": {
-                        "function_name": "falsey",
-                        "function_args": [
-                          {
-                            "variable_name": "x1"
-                          }
-                        ]
-                      }
-                    },
-                    "binary_operator_arg1": {
-                      "constant_value": 0
-                    }
-                  }
-                }
-              },
-              "binary_operator_arg1": {
-                "binary_operator_name": "multiplication",
-                "binary_operator_arg2": {
-                  "function_name": "falsey",
-                  "function_args": [
-                    {
-                      "variable_name": "y"
-                    }
-                  ]
-                },
-                "binary_operator_arg1": {
-                  "binary_operator_name": "max",
-                  "binary_operator_arg2": {
-                    "binary_operator_name": "addition",
-                    "binary_operator_arg2": {
-                      "function_name": "falsey",
-                      "function_args": [
-                        {
-                          "variable_name": "x2"
-                        }
-                      ]
-                    },
-                    "binary_operator_arg1": {
-                      "function_name": "truthy",
-                      "function_args": [
-                        {
-                          "variable_name": "x1"
-                        }
-                      ]
-                    }
-                  },
-                  "binary_operator_arg1": {
-                    "constant_value": 0
-                  }
-                }
-              }
-            },
             "binary_operator_arg1": {
               "binary_operator_name": "multiplication",
-              "binary_operator_arg2": {
-                "function_name": "truthy",
-                "function_args": [
-                  {
-                    "variable_name": "y"
-                  }
-                ]
-              },
               "binary_operator_arg1": {
                 "binary_operator_name": "max",
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                },
                 "binary_operator_arg2": {
                   "binary_operator_name": "addition",
-                  "binary_operator_arg2": {
-                    "function_name": "truthy",
-                    "function_args": [
-                      {
-                        "variable_name": "x2"
-                      }
-                    ]
-                  },
                   "binary_operator_arg1": {
                     "function_name": "truthy",
                     "function_args": [
@@ -254,10 +127,137 @@
                         "variable_name": "x1"
                       }
                     ]
+                  },
+                  "binary_operator_arg2": {
+                    "function_name": "truthy",
+                    "function_args": [
+                      {
+                        "variable_name": "x2"
+                      }
+                    ]
+                  }
+                }
+              },
+              "binary_operator_arg2": {
+                "function_name": "truthy",
+                "function_args": [
+                  {
+                    "variable_name": "y"
+                  }
+                ]
+              }
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg1": {
+                "binary_operator_name": "multiplication",
+                "binary_operator_arg1": {
+                  "binary_operator_name": "max",
+                  "binary_operator_arg1": {
+                    "constant_value": 0
+                  },
+                  "binary_operator_arg2": {
+                    "binary_operator_name": "addition",
+                    "binary_operator_arg1": {
+                      "function_name": "truthy",
+                      "function_args": [
+                        {
+                          "variable_name": "x1"
+                        }
+                      ]
+                    },
+                    "binary_operator_arg2": {
+                      "function_name": "falsey",
+                      "function_args": [
+                        {
+                          "variable_name": "x2"
+                        }
+                      ]
+                    }
                   }
                 },
+                "binary_operator_arg2": {
+                  "function_name": "falsey",
+                  "function_args": [
+                    {
+                      "variable_name": "y"
+                    }
+                  ]
+                }
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "addition",
                 "binary_operator_arg1": {
-                  "constant_value": 0
+                  "binary_operator_name": "multiplication",
+                  "binary_operator_arg1": {
+                    "binary_operator_name": "max",
+                    "binary_operator_arg1": {
+                      "constant_value": 0
+                    },
+                    "binary_operator_arg2": {
+                      "binary_operator_name": "addition",
+                      "binary_operator_arg1": {
+                        "function_name": "falsey",
+                        "function_args": [
+                          {
+                            "variable_name": "x1"
+                          }
+                        ]
+                      },
+                      "binary_operator_arg2": {
+                        "function_name": "truthy",
+                        "function_args": [
+                          {
+                            "variable_name": "x2"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "binary_operator_arg2": {
+                    "function_name": "falsey",
+                    "function_args": [
+                      {
+                        "variable_name": "y"
+                      }
+                    ]
+                  }
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "multiplication",
+                  "binary_operator_arg1": {
+                    "binary_operator_name": "max",
+                    "binary_operator_arg1": {
+                      "constant_value": 0
+                    },
+                    "binary_operator_arg2": {
+                      "binary_operator_name": "addition",
+                      "binary_operator_arg1": {
+                        "function_name": "falsey",
+                        "function_args": [
+                          {
+                            "variable_name": "x1"
+                          }
+                        ]
+                      },
+                      "binary_operator_arg2": {
+                        "function_name": "falsey",
+                        "function_args": [
+                          {
+                            "variable_name": "x2"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "binary_operator_arg2": {
+                    "function_name": "falsey",
+                    "function_args": [
+                      {
+                        "variable_name": "y"
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -269,13 +269,40 @@
   {
     "declaration_name": "andGateCorrect",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "all",
       "quantifier_bound_name": "x1",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "all",
         "quantifier_bound_name": "x2",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "multiplication",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "addition",
+              "binary_operator_arg1": {
+                "function_name": "validInput",
+                "function_args": [
+                  {
+                    "variable_name": "x1"
+                  }
+                ]
+              },
+              "binary_operator_arg2": {
+                "function_name": "validInput",
+                "function_args": [
+                  {
+                    "variable_name": "x2"
+                  }
+                ]
+              }
+            }
+          },
           "binary_operator_arg2": {
             "function_name": "correctOutput",
             "function_args": [
@@ -286,36 +313,9 @@
                 "variable_name": "x2"
               }
             ]
-          },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "addition",
-              "binary_operator_arg2": {
-                "function_name": "validInput",
-                "function_args": [
-                  {
-                    "variable_name": "x2"
-                  }
-                ]
-              },
-              "binary_operator_arg1": {
-                "function_name": "validInput",
-                "function_args": [
-                  {
-                    "variable_name": "x1"
-                  }
-                ]
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
-            }
           }
-        },
-        "quantifier": "all"
-      },
-      "quantifier": "all"
+        }
+      }
     }
   }
 ]

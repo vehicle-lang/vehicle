@@ -3,34 +3,34 @@
     "declaration_name": "eqIndex",
     "declaration_body": {
       "binary_operator_name": "addition",
-      "binary_operator_arg2": {
-        "binary_operator_name": "max",
-        "binary_operator_arg2": {
-          "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "constant_value": 1
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
-          }
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
-        }
-      },
       "binary_operator_arg1": {
         "binary_operator_name": "max",
-        "binary_operator_arg2": {
-          "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "constant_value": 1
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
-          }
-        },
         "binary_operator_arg1": {
           "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "constant_value": 1
+          }
+        }
+      },
+      "binary_operator_arg2": {
+        "binary_operator_name": "max",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "constant_value": 1
+          }
         }
       }
     }
@@ -39,11 +39,11 @@
     "declaration_name": "neqIndex",
     "declaration_body": {
       "binary_operator_name": "indicator_function",
-      "binary_operator_arg2": {
-        "constant_value": 1
-      },
       "binary_operator_arg1": {
         "constant_value": 0
+      },
+      "binary_operator_arg2": {
+        "constant_value": 1
       }
     }
   },
@@ -51,17 +51,17 @@
     "declaration_name": "leqIndex",
     "declaration_body": {
       "binary_operator_name": "max",
-      "binary_operator_arg2": {
-        "binary_operator_name": "subtraction",
-        "binary_operator_arg2": {
-          "constant_value": 1
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
-        }
-      },
       "binary_operator_arg1": {
         "constant_value": 0
+      },
+      "binary_operator_arg2": {
+        "binary_operator_name": "subtraction",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "constant_value": 1
+        }
       }
     }
   },
@@ -69,28 +69,28 @@
     "declaration_name": "ltIndex",
     "declaration_body": {
       "binary_operator_name": "addition",
-      "binary_operator_arg2": {
-        "binary_operator_name": "indicator_function",
-        "binary_operator_arg2": {
-          "constant_value": 1
-        },
-        "binary_operator_arg1": {
-          "constant_value": 0
-        }
-      },
       "binary_operator_arg1": {
         "binary_operator_name": "max",
-        "binary_operator_arg2": {
-          "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "constant_value": 1
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
-          }
-        },
         "binary_operator_arg1": {
           "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "binary_operator_name": "subtraction",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "constant_value": 1
+          }
+        }
+      },
+      "binary_operator_arg2": {
+        "binary_operator_name": "indicator_function",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
+        "binary_operator_arg2": {
+          "constant_value": 1
         }
       }
     }
@@ -99,17 +99,17 @@
     "declaration_name": "geqIndex",
     "declaration_body": {
       "binary_operator_name": "max",
-      "binary_operator_arg2": {
-        "binary_operator_name": "subtraction",
-        "binary_operator_arg2": {
-          "constant_value": 0
-        },
-        "binary_operator_arg1": {
-          "constant_value": 1
-        }
-      },
       "binary_operator_arg1": {
         "constant_value": 0
+      },
+      "binary_operator_arg2": {
+        "binary_operator_name": "subtraction",
+        "binary_operator_arg1": {
+          "constant_value": 1
+        },
+        "binary_operator_arg2": {
+          "constant_value": 0
+        }
       }
     }
   },
@@ -117,27 +117,27 @@
     "declaration_name": "gtIndex",
     "declaration_body": {
       "binary_operator_name": "addition",
-      "binary_operator_arg2": {
-        "binary_operator_name": "indicator_function",
-        "binary_operator_arg2": {
-          "constant_value": 0
-        },
-        "binary_operator_arg1": {
-          "constant_value": 1
-        }
-      },
       "binary_operator_arg1": {
         "binary_operator_name": "max",
+        "binary_operator_arg1": {
+          "constant_value": 0
+        },
         "binary_operator_arg2": {
           "binary_operator_name": "subtraction",
-          "binary_operator_arg2": {
-            "constant_value": 0
-          },
           "binary_operator_arg1": {
             "constant_value": 1
+          },
+          "binary_operator_arg2": {
+            "constant_value": 0
           }
-        },
+        }
+      },
+      "binary_operator_arg2": {
+        "binary_operator_name": "indicator_function",
         "binary_operator_arg1": {
+          "constant_value": 1
+        },
+        "binary_operator_arg2": {
           "constant_value": 0
         }
       }

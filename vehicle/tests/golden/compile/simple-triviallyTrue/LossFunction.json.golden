@@ -3,43 +3,24 @@
     "declaration_name": "p",
     "declaration_body": {
       "binary_operator_name": "multiplication",
-      "binary_operator_arg2": {
-        "constant_value": 0
-      },
       "binary_operator_arg1": {
-        "quantifier_domain": [],
+        "quantifier": "all",
         "quantifier_bound_name": "x",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "addition",
-          "binary_operator_arg2": {
-            "binary_operator_name": "indicator_function",
-            "binary_operator_arg2": {
-              "binary_operator_name": "at",
-              "binary_operator_arg2": {
-                "constant_value": 0
-              },
-              "binary_operator_arg1": {
-                "network_name": "f",
-                "network_args": [
-                  {
-                    "variable_name": "x"
-                  }
-                ]
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
-            }
-          },
           "binary_operator_arg1": {
             "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
             "binary_operator_arg2": {
               "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
               "binary_operator_arg2": {
                 "binary_operator_name": "at",
-                "binary_operator_arg2": {
-                  "constant_value": 0
-                },
                 "binary_operator_arg1": {
                   "network_name": "f",
                   "network_args": [
@@ -47,18 +28,37 @@
                       "variable_name": "x"
                     }
                   ]
+                },
+                "binary_operator_arg2": {
+                  "constant_value": 0
                 }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
               }
-            },
+            }
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "indicator_function",
             "binary_operator_arg1": {
               "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "at",
+              "binary_operator_arg1": {
+                "network_name": "f",
+                "network_args": [
+                  {
+                    "variable_name": "x"
+                  }
+                ]
+              },
+              "binary_operator_arg2": {
+                "constant_value": 0
+              }
             }
           }
-        },
-        "quantifier": "all"
+        }
+      },
+      "binary_operator_arg2": {
+        "constant_value": 0
       }
     }
   },

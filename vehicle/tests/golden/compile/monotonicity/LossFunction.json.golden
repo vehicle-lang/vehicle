@@ -2,40 +2,45 @@
   {
     "declaration_name": "monotonic",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "all",
       "quantifier_bound_name": "x1",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "all",
         "quantifier_bound_name": "x2",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "multiplication",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "variable_name": "x1"
+                },
+                "binary_operator_arg2": {
+                  "variable_name": "x2"
+                }
+              }
+            }
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
             "binary_operator_arg2": {
               "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "binary_operator_name": "at",
-                "binary_operator_arg2": {
-                  "constant_value": 0
-                },
-                "binary_operator_arg1": {
-                  "network_name": "f",
-                  "network_args": [
-                    {
-                      "sequence": [
-                        {
-                          "variable_name": "x2"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              },
               "binary_operator_arg1": {
                 "binary_operator_name": "at",
-                "binary_operator_arg2": {
-                  "constant_value": 0
-                },
                 "binary_operator_arg1": {
                   "network_name": "f",
                   "network_args": [
@@ -47,38 +52,33 @@
                       ]
                     }
                   ]
-                }
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
-            }
-          },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "max",
-              "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
-                "binary_operator_arg2": {
-                  "variable_name": "x2"
                 },
-                "binary_operator_arg1": {
-                  "variable_name": "x1"
+                "binary_operator_arg2": {
+                  "constant_value": 0
                 }
               },
-              "binary_operator_arg1": {
-                "constant_value": 0
+              "binary_operator_arg2": {
+                "binary_operator_name": "at",
+                "binary_operator_arg1": {
+                  "network_name": "f",
+                  "network_args": [
+                    {
+                      "sequence": [
+                        {
+                          "variable_name": "x2"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "binary_operator_arg2": {
+                  "constant_value": 0
+                }
               }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
           }
-        },
-        "quantifier": "all"
-      },
-      "quantifier": "all"
+        }
+      }
     }
   }
 ]

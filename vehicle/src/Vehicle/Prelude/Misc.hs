@@ -160,7 +160,7 @@ prettyJSONConfig :: Config
 prettyJSONConfig =
   Config
     { confIndent = Spaces 2,
-      confCompare = \t1 t2 -> compare t2 t1,
+      confCompare = mempty,
       confNumFormat = Generic,
       confTrailingNewline = False
     }

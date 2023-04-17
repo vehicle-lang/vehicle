@@ -1,37 +1,50 @@
 {
+  "resourceIntegrityInfo": {
+    "datasetSummaries": [],
+    "networkSummaries": [
+      {
+        "fileHash": -6969277137687631667,
+        "filePath": "fake.onnx",
+        "name": "f"
+      }
+    ],
+    "parameterSummaries": {},
+    "specificationSummary": {
+      "fileHash": 1163255927841296261,
+      "filePath": "spec.vcl",
+      "name": "specification"
+    }
+  },
   "specificationPlan": [
     [
       "p",
       {
-        "tag": "SingleProperty",
         "contents": [
           [
             "p",
             []
           ],
           {
-            "tag": "Query",
             "contents": {
+              "negated": false,
               "queries": {
-                "tag": "Trivial",
-                "contents": true
-              },
-              "negated": false
-            }
+                "contents": true,
+                "tag": "Trivial"
+              }
+            },
+            "tag": "Query"
           }
-        ]
+        ],
+        "tag": "SingleProperty"
       }
     ],
     [
       "multiProperty",
       {
-        "tag": "MultiProperty",
         "contents": [
           {
-            "tag": "MultiProperty",
             "contents": [
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -41,19 +54,19 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": true
-                      },
-                      "negated": false
-                    }
+                        "contents": true,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               },
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -63,19 +76,19 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": true
-                      },
-                      "negated": false
-                    }
+                        "contents": true,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               },
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -85,24 +98,24 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": true
-                      },
-                      "negated": false
-                    }
+                        "contents": true,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               }
-            ]
+            ],
+            "tag": "MultiProperty"
           },
           {
-            "tag": "MultiProperty",
             "contents": [
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -112,19 +125,19 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": false
-                      },
-                      "negated": false
-                    }
+                        "contents": false,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               },
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -134,19 +147,19 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": true
-                      },
-                      "negated": false
-                    }
+                        "contents": true,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               },
               {
-                "tag": "SingleProperty",
                 "contents": [
                   [
                     "multiProperty",
@@ -156,37 +169,24 @@
                     ]
                   ],
                   {
-                    "tag": "Query",
                     "contents": {
+                      "negated": false,
                       "queries": {
-                        "tag": "Trivial",
-                        "contents": false
-                      },
-                      "negated": false
-                    }
+                        "contents": false,
+                        "tag": "Trivial"
+                      }
+                    },
+                    "tag": "Query"
                   }
-                ]
+                ],
+                "tag": "SingleProperty"
               }
-            ]
+            ],
+            "tag": "MultiProperty"
           }
-        ]
+        ],
+        "tag": "MultiProperty"
       }
     ]
-  ],
-  "resourceIntegrityInfo": {
-    "specificationSummary": {
-      "name": "specification",
-      "filePath": "spec.vcl",
-      "fileHash": 1163255927841296261
-    },
-    "parameterSummaries": {},
-    "networkSummaries": [
-      {
-        "name": "f",
-        "filePath": "fake.onnx",
-        "fileHash": -6969277137687631667
-      }
-    ],
-    "datasetSummaries": []
-  }
+  ]
 }

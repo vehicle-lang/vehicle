@@ -2,20 +2,25 @@
   {
     "declaration_name": "unusedVar",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "any",
         "quantifier_bound_name": "y",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "max",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "subtraction",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
             "binary_operator_arg2": {
               "binary_operator_name": "at",
-              "binary_operator_arg2": {
-                "constant_value": 0
-              },
               "binary_operator_arg1": {
                 "network_name": "f",
                 "network_args": [
@@ -27,42 +32,72 @@
                     ]
                   }
                 ]
+              },
+              "binary_operator_arg2": {
+                "constant_value": 0
               }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
           }
-        },
-        "quantifier": "any"
-      },
-      "quantifier": "any"
+        }
+      }
     }
   },
   {
     "declaration_name": "underConstrainedVar1",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "any",
         "quantifier_bound_name": "y",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "addition",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "constant_value": 1
+              },
+              "binary_operator_arg2": {
+                "variable_name": "x"
+              }
+            }
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "addition",
-            "binary_operator_arg2": {
+            "binary_operator_arg1": {
               "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
               "binary_operator_arg2": {
                 "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 2
+                },
+                "binary_operator_arg2": {
+                  "variable_name": "y"
+                }
+              }
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                },
                 "binary_operator_arg2": {
                   "binary_operator_name": "at",
-                  "binary_operator_arg2": {
-                    "constant_value": 0
-                  },
                   "binary_operator_arg1": {
                     "network_name": "f",
                     "network_args": [
@@ -70,84 +105,90 @@
                         "sequence": [
                           {
                             "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "variable_name": "y"
-                            },
                             "binary_operator_arg1": {
                               "variable_name": "x"
+                            },
+                            "binary_operator_arg2": {
+                              "variable_name": "y"
                             }
                           }
                         ]
                       }
                     ]
+                  },
+                  "binary_operator_arg2": {
+                    "constant_value": 0
                   }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 0
                 }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
               }
-            },
-            "binary_operator_arg1": {
-              "binary_operator_name": "max",
-              "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
-                "binary_operator_arg2": {
-                  "variable_name": "y"
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 2
-                }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
-              }
-            }
-          },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "variable_name": "x"
-              },
-              "binary_operator_arg1": {
-                "constant_value": 1
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
           }
-        },
-        "quantifier": "any"
-      },
-      "quantifier": "any"
+        }
+      }
     }
   },
   {
     "declaration_name": "underConstrainedVar2",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
-        "quantifier_domain": [],
+        "quantifier": "any",
         "quantifier_bound_name": "y",
+        "quantifier_domain": [],
         "quantifier_body": {
           "binary_operator_name": "addition",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "constant_value": 1
+              },
+              "binary_operator_arg2": {
+                "variable_name": "x"
+              }
+            }
+          },
           "binary_operator_arg2": {
             "binary_operator_name": "addition",
-            "binary_operator_arg2": {
+            "binary_operator_arg1": {
               "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
               "binary_operator_arg2": {
                 "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 2
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "multiplication",
+                  "binary_operator_arg1": {
+                    "constant_value": 2
+                  },
+                  "binary_operator_arg2": {
+                    "variable_name": "y"
+                  }
+                }
+              }
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 0
+                },
                 "binary_operator_arg2": {
                   "binary_operator_name": "at",
-                  "binary_operator_arg2": {
-                    "constant_value": 0
-                  },
                   "binary_operator_arg1": {
                     "network_name": "f",
                     "network_args": [
@@ -155,95 +196,145 @@
                         "sequence": [
                           {
                             "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "variable_name": "y"
-                            },
                             "binary_operator_arg1": {
                               "binary_operator_name": "multiplication",
-                              "binary_operator_arg2": {
-                                "variable_name": "x"
-                              },
                               "binary_operator_arg1": {
                                 "constant_value": 2
+                              },
+                              "binary_operator_arg2": {
+                                "variable_name": "x"
                               }
+                            },
+                            "binary_operator_arg2": {
+                              "variable_name": "y"
                             }
                           }
                         ]
                       }
                     ]
-                  }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 0
-                }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
-              }
-            },
-            "binary_operator_arg1": {
-              "binary_operator_name": "max",
-              "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "multiplication",
-                  "binary_operator_arg2": {
-                    "variable_name": "y"
                   },
-                  "binary_operator_arg1": {
-                    "constant_value": 2
+                  "binary_operator_arg2": {
+                    "constant_value": 0
                   }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 2
                 }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
               }
-            }
-          },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "variable_name": "x"
-              },
-              "binary_operator_arg1": {
-                "constant_value": 1
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
           }
-        },
-        "quantifier": "any"
-      },
-      "quantifier": "any"
+        }
+      }
     }
   },
   {
     "declaration_name": "underConstrainedVars",
     "declaration_body": {
-      "quantifier_domain": [],
+      "quantifier": "any",
       "quantifier_bound_name": "x",
+      "quantifier_domain": [],
       "quantifier_body": {
         "binary_operator_name": "addition",
+        "binary_operator_arg1": {
+          "binary_operator_name": "max",
+          "binary_operator_arg1": {
+            "constant_value": 0
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "subtraction",
+            "binary_operator_arg1": {
+              "constant_value": 2
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "at",
+              "binary_operator_arg1": {
+                "variable_name": "x"
+              },
+              "binary_operator_arg2": {
+                "constant_value": 3
+              }
+            }
+          }
+        },
         "binary_operator_arg2": {
           "binary_operator_name": "addition",
-          "binary_operator_arg2": {
-            "binary_operator_name": "addition",
+          "binary_operator_arg1": {
+            "binary_operator_name": "max",
+            "binary_operator_arg1": {
+              "constant_value": 0
+            },
             "binary_operator_arg2": {
-              "binary_operator_name": "max",
+              "binary_operator_name": "subtraction",
+              "binary_operator_arg1": {
+                "constant_value": 1
+              },
               "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
+                "binary_operator_name": "addition",
+                "binary_operator_arg1": {
+                  "binary_operator_name": "at",
+                  "binary_operator_arg1": {
+                    "variable_name": "x"
+                  },
+                  "binary_operator_arg2": {
+                    "constant_value": 2
+                  }
+                },
                 "binary_operator_arg2": {
                   "binary_operator_name": "at",
-                  "binary_operator_arg2": {
-                    "constant_value": 0
+                  "binary_operator_arg1": {
+                    "variable_name": "x"
                   },
+                  "binary_operator_arg2": {
+                    "constant_value": 3
+                  }
+                }
+              }
+            }
+          },
+          "binary_operator_arg2": {
+            "binary_operator_name": "addition",
+            "binary_operator_arg1": {
+              "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 2.5
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "addition",
+                  "binary_operator_arg1": {
+                    "binary_operator_name": "at",
+                    "binary_operator_arg1": {
+                      "variable_name": "x"
+                    },
+                    "binary_operator_arg2": {
+                      "constant_value": 1
+                    }
+                  },
+                  "binary_operator_arg2": {
+                    "binary_operator_name": "at",
+                    "binary_operator_arg1": {
+                      "variable_name": "x"
+                    },
+                    "binary_operator_arg2": {
+                      "constant_value": 0
+                    }
+                  }
+                }
+              }
+            },
+            "binary_operator_arg2": {
+              "binary_operator_name": "max",
+              "binary_operator_arg1": {
+                "constant_value": 0
+              },
+              "binary_operator_arg2": {
+                "binary_operator_name": "subtraction",
+                "binary_operator_arg1": {
+                  "constant_value": 2
+                },
+                "binary_operator_arg2": {
+                  "binary_operator_name": "at",
                   "binary_operator_arg1": {
                     "network_name": "f",
                     "network_args": [
@@ -251,129 +342,38 @@
                         "sequence": [
                           {
                             "binary_operator_name": "addition",
-                            "binary_operator_arg2": {
-                              "binary_operator_name": "at",
-                              "binary_operator_arg2": {
-                                "constant_value": 1
-                              },
-                              "binary_operator_arg1": {
-                                "variable_name": "x"
-                              }
-                            },
                             "binary_operator_arg1": {
                               "binary_operator_name": "at",
-                              "binary_operator_arg2": {
-                                "constant_value": 0
-                              },
                               "binary_operator_arg1": {
                                 "variable_name": "x"
+                              },
+                              "binary_operator_arg2": {
+                                "constant_value": 0
+                              }
+                            },
+                            "binary_operator_arg2": {
+                              "binary_operator_name": "at",
+                              "binary_operator_arg1": {
+                                "variable_name": "x"
+                              },
+                              "binary_operator_arg2": {
+                                "constant_value": 1
                               }
                             }
                           }
                         ]
                       }
                     ]
-                  }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 2
-                }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
-              }
-            },
-            "binary_operator_arg1": {
-              "binary_operator_name": "max",
-              "binary_operator_arg2": {
-                "binary_operator_name": "subtraction",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "addition",
-                  "binary_operator_arg2": {
-                    "binary_operator_name": "at",
-                    "binary_operator_arg2": {
-                      "constant_value": 0
-                    },
-                    "binary_operator_arg1": {
-                      "variable_name": "x"
-                    }
                   },
-                  "binary_operator_arg1": {
-                    "binary_operator_name": "at",
-                    "binary_operator_arg2": {
-                      "constant_value": 1
-                    },
-                    "binary_operator_arg1": {
-                      "variable_name": "x"
-                    }
-                  }
-                },
-                "binary_operator_arg1": {
-                  "constant_value": 2.5
-                }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 0
-              }
-            }
-          },
-          "binary_operator_arg1": {
-            "binary_operator_name": "max",
-            "binary_operator_arg2": {
-              "binary_operator_name": "subtraction",
-              "binary_operator_arg2": {
-                "binary_operator_name": "addition",
-                "binary_operator_arg2": {
-                  "binary_operator_name": "at",
                   "binary_operator_arg2": {
-                    "constant_value": 3
-                  },
-                  "binary_operator_arg1": {
-                    "variable_name": "x"
-                  }
-                },
-                "binary_operator_arg1": {
-                  "binary_operator_name": "at",
-                  "binary_operator_arg2": {
-                    "constant_value": 2
-                  },
-                  "binary_operator_arg1": {
-                    "variable_name": "x"
+                    "constant_value": 0
                   }
                 }
-              },
-              "binary_operator_arg1": {
-                "constant_value": 1
               }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 0
             }
-          }
-        },
-        "binary_operator_arg1": {
-          "binary_operator_name": "max",
-          "binary_operator_arg2": {
-            "binary_operator_name": "subtraction",
-            "binary_operator_arg2": {
-              "binary_operator_name": "at",
-              "binary_operator_arg2": {
-                "constant_value": 3
-              },
-              "binary_operator_arg1": {
-                "variable_name": "x"
-              }
-            },
-            "binary_operator_arg1": {
-              "constant_value": 2
-            }
-          },
-          "binary_operator_arg1": {
-            "constant_value": 0
           }
         }
-      },
-      "quantifier": "any"
+      }
     }
   }
 ]
