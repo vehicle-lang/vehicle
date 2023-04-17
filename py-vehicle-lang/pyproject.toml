@@ -9,6 +9,7 @@ description = 'A high-level functional language for writing mathematically-preci
 readme = 'README.md'
 license = { file = 'LICENSE' }
 dynamic = ["version"]
+requires-python = ">=3.7,<3.12"
 
 [project.optional-dependencies]
 pygments = ["pygments >=2.14, <3"]
@@ -20,6 +21,17 @@ vehicle = "vehicle_lang:main"
 
 [project.entry-points.'pygments.lexers']
 vehicle = "vehicle_lang.pygments:VehicleLexer"
+
+[tool.cibuildwheel]
+skip = ["pp*", "*musllinux*"]
+before-test = ["python {package}/setup.py build_ext --inplace"]
+test-command = "pytest {package}/tests"
+test-extras = "test"
+
+[tool.cibuildwheel.macos]
+# 17-04-2023:
+# Cross-compilation with cibuildwheel does not work with Cabal.
+archs = ["x86_64"]
 
 [tool.mypy]
 python_version = 3.7

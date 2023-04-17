@@ -73,10 +73,6 @@ jobs:
       - name: Build wheel (macOS)
         if: runner.os == 'macOS'
         uses: pypa/cibuildwheel@v2.12.1
-        env:
-          CIBW_BUILD: "cp${{ matrix.python.tag }}-*"
-          CIBW_TEST_COMMAND: "pytest {package}/tests"
-          CIBW_TEST_EXTRAS: "test"
         with:
           package-dir: "py-vehicle-lang"
           output-dir: "py-vehicle-lang/wheelhouse"
