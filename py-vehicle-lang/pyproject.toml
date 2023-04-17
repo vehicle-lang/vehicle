@@ -24,7 +24,6 @@ vehicle = "vehicle_lang.pygments:VehicleLexer"
 
 [tool.cibuildwheel]
 skip = ["pp*", "*musllinux*"]
-before-test = ["python {package}/setup.py build_ext --inplace"]
 test-command = "pytest {package}/tests"
 test-extras = "test"
 
