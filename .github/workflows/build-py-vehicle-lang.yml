@@ -49,7 +49,7 @@ jobs:
           # On macOS, cibuildwheel compiles wheels for all supported Python versions,
           # so we do not have to include different Python versions in the matrix.
           - os: { tag: macos-latest, name: macOS }
-          - python: { version: "3.7", tag: "37" }
+            python: { version: "3.7", tag: "37" }
 
     steps:
       - name: Checkout
