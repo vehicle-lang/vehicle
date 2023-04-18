@@ -16,6 +16,6 @@ if __name__ == '__main__':
     model.compile(optimizer='adam',
               loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-    model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test))
-    model.save(f'examples/fashion-robustness/fashion_base_new')
+    model.fit(X_train, y_train, batch_size=1, epochs=10, validation_data=(X_test, y_test))
+    model.save(f'examples/fashion-robustness/fashion_base_new_1')
     
