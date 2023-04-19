@@ -1,46 +1,51 @@
 module Vehicle.Compile.Queries.LinearExpr
   ( Relation (..),
     Coefficient,
-    LinearVar,
-    LinearExpression (..),
     Assertion (..),
+    UnreducedAssertion (..),
+    VectorEquality (..),
+    originalVectorEqualityExpr,
+    isVectorEqualityAssertion,
+    assertionToVectorEquality,
     CLSTProblem (..),
-    VariableAssignment,
-    DenseLinearExpr (Dense),
-    SparseLinearExpr (Sparse),
-    SolvingLinearExpr,
+    SparseLinearExpr (..),
+    lookupCoefficient,
     evaluateExpr,
-    constructAssertion,
-    splitOutConstant,
+    addExprs,
+    scaleExpr,
+    constructReducedAssertion,
     isEquality,
-    prettyLinearExpr,
     prettyAssertions,
-    hasUserVariables,
-    removeUserVariables,
+    referencesVariables,
     substitute,
     filterTrivialAssertions,
     eliminateVar,
     prettyCoefficient,
     convertToSparseFormat,
+    mapAssertionVariables,
+    ordToRelation,
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Control.Monad (foldM)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
-import Data.Vector.Unboxed (Vector)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Vector.Unboxed qualified as Vector
 import GHC.Generics (Generic)
 import Numeric qualified
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardNormExpr)
 
 --------------------------------------------------------------------------------
 -- Relation
@@ -59,7 +64,7 @@ instance FromJSON Relation
 
 instance Pretty Relation where
   pretty = \case
-    Equal -> "="
+    Equal -> "=="
     LessThan -> "<"
     LessThanOrEqualTo -> "<="
 
@@ -69,28 +74,37 @@ relationToOp = \case
   LessThan -> Right Lt
   LessThanOrEqualTo -> Right Le
 
+ordToRelation ::
+  StandardNormExpr ->
+  OrderOp ->
+  StandardNormExpr ->
+  (StandardNormExpr, Relation, StandardNormExpr)
+ordToRelation e1 op e2 = case op of
+  Lt -> (e1, LessThan, e2)
+  Le -> (e1, LessThanOrEqualTo, e2)
+  Gt -> (e2, LessThan, e1)
+  Ge -> (e2, LessThanOrEqualTo, e1)
+
 --------------------------------------------------------------------------------
 -- Variables
 
 type Coefficient = Double
 
-type LinearVar = Int
-
-prettyVar :: (IsVariable variable) => Bool -> (Coefficient, Maybe variable) -> Doc a
-prettyVar isFirst (coefficient, variable) = do
+prettyCoefficientVar ::
+  (Variable variable) =>
+  Bool ->
+  (variable, Coefficient) ->
+  Doc a
+prettyCoefficientVar isFirst (variable, coefficient) = do
   let sign
         | coefficient > 0 = if isFirst then "" else "+ "
         | otherwise = if isFirst then "-" else "- "
 
-  let value = case variable of
-        Nothing
-          | coefficient > 0 -> prettyCoefficient coefficient
-          | otherwise -> prettyCoefficient (-coefficient)
-        Just var
-          | coefficient == 1 -> pretty var
-          | coefficient == -1 -> pretty var
-          | coefficient > 0 -> prettyCoefficient coefficient <> pretty var
-          | otherwise -> prettyCoefficient (-coefficient) <> pretty var
+  let value
+        | coefficient == 1 = pretty variable
+        | coefficient == -1 = pretty variable
+        | coefficient > 0 = prettyCoefficient coefficient <> pretty variable
+        | otherwise = prettyCoefficient (-coefficient) <> pretty variable
 
   sign <> value
 
@@ -98,265 +112,157 @@ prettyCoefficient :: Coefficient -> Doc a
 prettyCoefficient v = pretty $ Numeric.showFFloat Nothing v ""
 
 --------------------------------------------------------------------------------
--- Linear expressions
+-- Sparse representations of linear expressions
 
-class LinearExpression linexp where
-  addExprs :: Coefficient -> linexp -> Coefficient -> linexp -> linexp
-  scale :: Coefficient -> linexp -> linexp
-  lookupAt :: linexp -> LinearVar -> Coefficient
-  toDense :: linexp -> DenseLinearExpr
-  toSparse :: linexp -> SparseLinearExpr
-  fromSparse :: SparseLinearExpr -> linexp
-  fromDense :: DenseLinearExpr -> linexp
-  isConstant :: linexp -> Maybe Coefficient
-  hasVariablesBelow :: LinearVar -> linexp -> Bool
-  dropVariablesBelow :: LinearVar -> linexp -> linexp
-
-evaluateExpr :: (LinearExpression linExpr) => linExpr -> Vector Double -> Double
-evaluateExpr expr values = do
-  let (coeff, constant) = splitOutConstant expr
-  Vector.sum (Vector.zipWith (*) coeff values) + constant
-
-splitOutConstant :: (LinearExpression linExp) => linExp -> (Vector Coefficient, Coefficient)
-splitOutConstant expr = do
-  let Dense coeff = toDense expr
-  case Vector.unsnoc coeff of
-    Nothing -> developerError "Invalid empty linear expression"
-    Just x -> x
-
-prettyLinearExpr :: (LinearExpression linexp, IsVariable variable) => [variable] -> linexp -> Doc a
-prettyLinearExpr variables expr = do
-  let Dense coefficents = toDense expr
-  -- Append an empty variable name for the constant at the end
-  let allNames = fmap Just variables <> [Nothing]
-  let coeffVarPairs = Vector.toList coefficents
-  case zip coeffVarPairs allNames of
-    [] -> "0.0"
-    (x : xs) -> hsep (prettyVar True x : fmap (prettyVar False) xs)
-
-eliminateVar :: (LinearExpression linexpr) => LinearVar -> linexpr -> linexpr -> linexpr
-eliminateVar var solution row = do
-  let varCoefficient = lookupAt row var
-  if varCoefficient == 0
-    then row
-    else do
-      let scaleFactor = varCoefficient / lookupAt solution var
-      addExprs 1 row (-scaleFactor) solution
-
---------------------------------------------------------------------------------
--- Sparse representations of linear vectors
-
-data SparseLinearExpr = Sparse
-  { numberOfVars :: Int,
-    coefficients :: HashMap LinearVar Coefficient,
-    constantValue :: Coefficient
+data SparseLinearExpr variable = Sparse
+  { dimensions :: TensorDimensions,
+    coefficients :: HashMap variable Coefficient,
+    constantValue :: Constant
   }
   deriving (Show, Eq, Generic)
 
-instance ToJSON SparseLinearExpr
+instance (Variable variable, ToJSONKey variable) => ToJSON (SparseLinearExpr variable)
 
-instance FromJSON SparseLinearExpr
+instance (Variable variable, FromJSONKey variable) => FromJSON (SparseLinearExpr variable)
 
-instance Hashable SparseLinearExpr
+instance (Variable variable) => Pretty (SparseLinearExpr variable) where
+  pretty (Sparse dims coefficients constant) = do
+    -- Append an empty variable name for the constant at the end
+    let coeffVars = HashMap.toList coefficients
+    case coeffVars of
+      [] -> prettyConstant True dims constant
+      (x : xs) -> do
+        let varDocs = prettyCoefficientVar True x : fmap (prettyCoefficientVar False) xs
+        let constDoc = prettyConstant False dims constant
+        hsep varDocs <> constDoc
 
-instance LinearExpression SparseLinearExpr where
-  addExprs ::
-    Coefficient ->
-    SparseLinearExpr ->
-    Coefficient ->
-    SparseLinearExpr ->
-    SparseLinearExpr
-  addExprs c1 (Sparse size coeff1 const1) c2 (Sparse _ coeff2 const2) = do
-    -- We should really be able to do this in one operation, but the API isn't flexible enough.
-    let coeff1' = if c1 == 1 then coeff1 else HashMap.map (c1 *) coeff1
-    let coeff2' = if c2 == 1 then coeff2 else HashMap.map (c2 *) coeff2
-    let rcoeff = HashMap.filter (/= 0) (HashMap.unionWith (+) coeff1' coeff2')
-    let rconst = c1 * const1 + c2 * const2
-    Sparse size rcoeff rconst
+addExprs ::
+  (Variable variable) =>
+  Coefficient ->
+  SparseLinearExpr variable ->
+  Coefficient ->
+  SparseLinearExpr variable ->
+  SparseLinearExpr variable
+addExprs c1 (Sparse dims coeff1 const1) c2 (Sparse _ coeff2 const2) = do
+  -- We should really be able to do this in one operation, but the API isn't flexible enough.
+  let coeff1' = if c1 == 1 then coeff1 else HashMap.map (c1 *) coeff1
+  let coeff2' = if c2 == 1 then coeff2 else HashMap.map (c2 *) coeff2
+  let rcoeff = HashMap.filter (/= 0) (HashMap.unionWith (+) coeff1' coeff2')
+  let rconst = addConstants c1 const1 c2 const2
+  Sparse dims rcoeff rconst
 
-  scale :: Coefficient -> SparseLinearExpr -> SparseLinearExpr
-  scale c (Sparse size coefficients constant) =
-    Sparse size (HashMap.map (c *) coefficients) (c * constant)
+scaleExpr :: Coefficient -> SparseLinearExpr variable -> SparseLinearExpr variable
+scaleExpr c (Sparse dims coefficients constant) =
+  Sparse dims (HashMap.map (c *) coefficients) (scaleConstant c constant)
 
-  lookupAt :: SparseLinearExpr -> LinearVar -> Coefficient
-  lookupAt (Sparse _ coefficients _) v = fromMaybe 0 $ HashMap.lookup v coefficients
+lookupCoefficient :: (Hashable variable) => SparseLinearExpr variable -> variable -> Coefficient
+lookupCoefficient (Sparse _ coefficients _) v = fromMaybe 0 $ HashMap.lookup v coefficients
 
-  toSparse :: SparseLinearExpr -> SparseLinearExpr
-  toSparse = id
+isConstant :: SparseLinearExpr variable -> Maybe Constant
+isConstant (Sparse _ coeff constant)
+  | HashMap.null coeff = Just constant
+  | otherwise = Nothing
 
-  fromSparse :: SparseLinearExpr -> SparseLinearExpr
-  fromSparse = id
+toSparse :: SparseLinearExpr variable -> SparseLinearExpr variable
+toSparse = id
 
-  toDense :: SparseLinearExpr -> DenseLinearExpr
-  toDense = sparseToDense
+evaluateExpr ::
+  forall variable.
+  (Variable variable) =>
+  SparseLinearExpr variable ->
+  VariableAssignment variable ->
+  Either variable Constant
+evaluateExpr expr assignment = do
+  let Sparse _ coefficients constant = toSparse expr
+  foldM op constant (HashMap.toList coefficients)
+  where
+    op :: Constant -> (variable, Coefficient) -> Either variable Constant
+    op total (var, coeff) = case Map.lookup var assignment of
+      Nothing -> Left var
+      Just value -> Right (addConstants 1 total coeff value)
 
-  fromDense :: DenseLinearExpr -> SparseLinearExpr
-  fromDense = denseToSparse
+eliminateVar ::
+  (Variable variable) =>
+  variable ->
+  SparseLinearExpr variable ->
+  SparseLinearExpr variable ->
+  SparseLinearExpr variable
+eliminateVar var solution row = do
+  let varCoefficient = lookupCoefficient row var
+  if varCoefficient == 0
+    then row
+    else do
+      let scaleFactor = varCoefficient / lookupCoefficient solution var
+      addExprs 1 row (-scaleFactor) solution
 
-  isConstant :: SparseLinearExpr -> Maybe Coefficient
-  isConstant (Sparse _ coeff constant)
-    | HashMap.null coeff = Just constant
-    | otherwise = Nothing
-
-  hasVariablesBelow :: LinearVar -> SparseLinearExpr -> Bool
-  hasVariablesBelow var (Sparse _ coeff _) =
-    any (< var) (HashMap.keys coeff)
-
-  dropVariablesBelow :: LinearVar -> SparseLinearExpr -> SparseLinearExpr
-  dropVariablesBelow var (Sparse size coeff constant) = do
-    let coeffAbove = HashMap.filterWithKey (\k _v -> k >= var) coeff
-    let newCoeff = HashMap.mapKeys (\k -> k - var) coeffAbove
-    Sparse (size - var) newCoeff constant
-
---------------------------------------------------------------------------------
--- Dense representations of linear expressions
-
--- | Stores a linear expression `ax + by + ... + cz + d`
--- as <a,b,...,c,d>
-newtype DenseLinearExpr = Dense
-  { unDense :: Vector Coefficient
-  }
-  deriving (Show, Generic)
-
-instance ToJSON DenseLinearExpr
-
-instance FromJSON DenseLinearExpr
-
-instance LinearExpression DenseLinearExpr where
-  addExprs ::
-    Coefficient ->
-    DenseLinearExpr ->
-    Coefficient ->
-    DenseLinearExpr ->
-    DenseLinearExpr
-  addExprs c1 (Dense e1) c2 (Dense e2) =
-    Dense $ Vector.zipWith (\a b -> c1 * a + c2 * b) e1 e2
-
-  scale :: Coefficient -> DenseLinearExpr -> DenseLinearExpr
-  scale c (Dense e) = Dense $ Vector.map (c *) e
-
-  lookupAt :: DenseLinearExpr -> LinearVar -> Coefficient
-  lookupAt (Dense e) var = e Vector.! var
-
-  toSparse :: DenseLinearExpr -> SparseLinearExpr
-  toSparse = denseToSparse
-
-  fromSparse :: SparseLinearExpr -> DenseLinearExpr
-  fromSparse = sparseToDense
-
-  toDense :: DenseLinearExpr -> DenseLinearExpr
-  toDense = id
-
-  fromDense :: DenseLinearExpr -> DenseLinearExpr
-  fromDense = id
-
-  isConstant :: DenseLinearExpr -> Maybe Coefficient
-  isConstant (Dense e) = do
-    let numberOfVars = Vector.length e - 1
-    if Vector.all (== 0) (Vector.take numberOfVars e)
-      then Just (e Vector.! numberOfVars)
-      else Nothing
-
-  hasVariablesBelow :: LinearVar -> DenseLinearExpr -> Bool
-  hasVariablesBelow v (Dense e) = Vector.any (/= 0) (Vector.take v e)
-
-  dropVariablesBelow :: LinearVar -> DenseLinearExpr -> DenseLinearExpr
-  dropVariablesBelow v (Dense e) = Dense (Vector.drop v e)
-
-sparseToDense :: SparseLinearExpr -> DenseLinearExpr
-sparseToDense (Sparse size coeffMap constant) = Dense $
-  Vector.generate (size + 1) $
-    \i ->
-      if i == size
-        then constant
-        else fromMaybe 0 (HashMap.lookup i coeffMap)
-
-denseToSparse :: DenseLinearExpr -> SparseLinearExpr
-denseToSparse (Dense e) = do
-  let size = Vector.length e - 1
-  let coeff = zip [0 ..] (Vector.toList $ Vector.take size e)
-  let nonZeroCoeff = HashMap.fromList $ filter (\(_, c) -> c /= 0) coeff
-  let constant = Vector.last e
-  Sparse size nonZeroCoeff constant
+mapExprVariables :: (Variable variable2) => (variable1 -> variable2) -> SparseLinearExpr variable1 -> SparseLinearExpr variable2
+mapExprVariables f Sparse {..} =
+  Sparse
+    { coefficients = HashMap.mapKeys f coefficients,
+      ..
+    }
 
 --------------------------------------------------------------------------------
 -- Assertion
 
-data Assertion linexp = Assertion
+data Assertion variable = Assertion
   { -- | How the sum of the terms in the linear expression are related.
     assertionRel :: Relation,
-    assertionExpr :: linexp
+    assertionExpr :: SparseLinearExpr variable
   }
-  deriving (Show, Eq, Functor, Generic)
+  deriving (Show, Eq, Generic)
 
-instance (Hashable linexp) => Hashable (Assertion linexp)
+instance (Variable variable, ToJSONKey variable) => ToJSON (Assertion variable)
 
-instance (ToJSON linexp) => ToJSON (Assertion linexp)
+instance (Variable variable, FromJSONKey variable) => FromJSON (Assertion variable)
 
-instance (FromJSON linexp) => FromJSON (Assertion linexp)
+instance (Variable variable) => Pretty (Assertion variable) where
+  pretty (Assertion rel linearExpr) =
+    pretty linearExpr <+> pretty rel <+> "0.0"
 
-isEquality :: Assertion linexp -> Bool
+isEquality :: Assertion variable -> Bool
 isEquality a = assertionRel a == Equal
 
-constructAssertion ::
-  (LinearExpression linexp) =>
-  (linexp, Relation, linexp) ->
-  Assertion linexp
-constructAssertion (lhs, rel, rhs) =
+constructReducedAssertion ::
+  (Variable variable) =>
+  (SparseLinearExpr variable, Relation, SparseLinearExpr variable) ->
+  Assertion variable
+constructReducedAssertion (lhs, rel, rhs) =
   Assertion
     { assertionExpr = addExprs 1 lhs (-1) rhs,
       assertionRel = rel
     }
 
-prettyAssertion ::
-  (LinearExpression linexp, IsVariable variable) =>
-  [variable] ->
-  Assertion linexp ->
-  Doc a
-prettyAssertion varNames (Assertion rel linearExpr) =
-  prettyLinearExpr varNames linearExpr <+> pretty rel <+> "0.0"
+prettyAssertions :: (Variable variable) => [Assertion variable] -> Doc a
+prettyAssertions assertions =
+  indent 2 $ vsep (fmap pretty assertions)
 
-prettyAssertions ::
-  (LinearExpression linexp, IsVariable variable) =>
-  [variable] ->
-  [Assertion linexp] ->
-  Doc a
-prettyAssertions varNames assertions =
-  indent 2 $ vsep (fmap (prettyAssertion varNames) assertions)
-
-substitute :: (LinearExpression linexp) => Assertion linexp -> LinearVar -> linexp -> Assertion linexp
+substitute :: (Variable variable) => Assertion variable -> variable -> SparseLinearExpr variable -> Assertion variable
 substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)
 
-hasUserVariables :: (LinearExpression linexp) => Int -> Assertion linexp -> Bool
-hasUserVariables numberOfUserVariables (Assertion _ e) =
-  hasVariablesBelow numberOfUserVariables e
-
-removeUserVariables :: (LinearExpression linexp) => Int -> Assertion linexp -> Assertion linexp
-removeUserVariables numberOfUserVariables (Assertion rel e) = do
-  Assertion rel (dropVariablesBelow numberOfUserVariables e)
-
--- Assertion rel (LinearExpr (Vector.drop numberOfUserVariables e))
+referencesVariables :: (Variable variable) => Assertion variable -> Set variable -> Bool
+referencesVariables (Assertion _ e) variables = do
+  let presentVariables = Set.fromList $ HashMap.keys $ coefficients e
+  not $ Set.null $ variables `Set.intersection` presentVariables
 
 -- | Checks whether an assertion is trivial or not. Returns `Nothing` if
 -- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
 -- if it is trivial.
-checkTriviality :: (LinearExpression linexp) => Assertion linexp -> Maybe Bool
+checkTriviality :: Assertion variable -> Maybe Bool
 checkTriviality (Assertion rel linexp) =
   case isConstant linexp of
     Nothing -> Nothing
     Just c -> Just $ case rel of
-      Equal -> c == 0.0
-      LessThan -> c < 0.0
-      LessThanOrEqualTo -> c <= 0.0
+      Equal -> Vector.all (== 0.0) c
+      LessThan -> Vector.all (< 0.0) c
+      LessThanOrEqualTo -> Vector.all (<= 0.0) c
 
 filterTrivialAssertions ::
-  forall linexp.
-  (LinearExpression linexp) =>
-  [Assertion linexp] ->
-  Maybe [Assertion linexp]
+  [Assertion variable] ->
+  Maybe [Assertion variable]
 filterTrivialAssertions = go
   where
-    go :: [Assertion linexp] -> Maybe [Assertion linexp]
+    go :: [Assertion variable] -> Maybe [Assertion variable]
     go [] = Just []
     go (a : as) = case go as of
       Nothing -> Nothing
@@ -371,31 +277,31 @@ filterTrivialAssertions = go
 --   2. negating everything if all variables have negative coefficients.
 --   3. moving the constant to the RHS.
 convertToSparseFormat ::
-  (LinearExpression linexp) =>
-  Assertion linexp ->
-  Seq Name ->
-  (NonEmpty (Coefficient, Name), Either () OrderOp, Coefficient)
-convertToSparseFormat (Assertion rel linearExpr) variableNames = do
-  let Sparse _ coeffs constant = toSparse linearExpr
-  let varCoeff = sortOn fst $ HashMap.toList coeffs
-  let lookupName (v, c) = (c, variableNames `Seq.index` v)
-  let coeffVars = lookupName <$> varCoeff
+  Map NetworkVariable Name ->
+  Assertion NetworkVariable ->
+  (NonEmpty (Coefficient, Name), Either () OrderOp, Double)
+convertToSparseFormat nameMap (Assertion rel linearExpr) = do
+  let Sparse _ coeffs vectConstant = toSparse linearExpr
+  let varCoeff = sortVarCoeffs coeffs
+  let missingErr v = developerError $ "Unknown variable" <+> pretty v <+> "when converting to sparse format"
+  let coeffName = fmap (\(v, c) -> (c, Map.findWithDefault (missingErr v) v nameMap)) varCoeff
   let op = relationToOp rel
+  let constant = vectConstant Vector.! 0
 
   -- Move constant to RHS
   let rhsConstant = -constant
 
   -- Make the properties a tiny bit nicer by checking if all the vars are
   -- negative and if so negating everything.
-  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffVars
+  let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffName
   let (almostFinalCoeff, finalOp, almostFinalConstant) =
         if not allCoefficientsNegative
-          then (coeffVars, op, rhsConstant)
+          then (coeffName, op, rhsConstant)
           else do
-            let negCoeffVars = fmap (\(c, v) -> (-c, v)) coeffVars
+            let negCoeffNames = fmap (\(c, v) -> (-c, v)) coeffName
             let negOp = second flipOrder op
             let negConstant = -rhsConstant
-            (negCoeffVars, negOp, negConstant)
+            (negCoeffNames, negOp, negConstant)
 
   -- Also check for and remove `-0.0`s for cleanliness.
   let finalConstant =
@@ -409,17 +315,55 @@ convertToSparseFormat (Assertion rel linearExpr) variableNames = do
 
   (finalCoeff, finalOp, finalConstant)
 
+sortVarCoeffs :: HashMap NetworkVariable Coefficient -> [(NetworkVariable, Coefficient)]
+sortVarCoeffs coeffs = do
+  let coeffsList = HashMap.toList coeffs
+  let getKey (var, _) = (inputOrOutput var, networkVarIndices var)
+  sortOn getKey coeffsList
+
+mapAssertionVariables :: (Variable variable2) => (variable1 -> variable2) -> Assertion variable1 -> Assertion variable2
+mapAssertionVariables f Assertion {..} =
+  Assertion
+    { assertionExpr = mapExprVariables f assertionExpr,
+      ..
+    }
+
+--------------------------------------------------------------------------------
+-- Unreduced assertions
+
+-- | A not fully reduced assertion, but none the less only represents
+-- conjunctions.
+data UnreducedAssertion
+  = VectorEqualityAssertion VectorEquality
+  | NonVectorEqualityAssertion StandardNormExpr
+
+-- | An encoding of a vector equality.
+data VectorEquality = VectorEquality
+  { assertionLHS :: StandardNormExpr,
+    assertionRHS :: StandardNormExpr,
+    assertionDims :: TensorDimensions,
+    assertionOriginalRel :: StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+  }
+
+originalVectorEqualityExpr :: VectorEquality -> StandardNormExpr
+originalVectorEqualityExpr VectorEquality {..} = assertionOriginalRel assertionLHS assertionRHS
+
+assertionToVectorEquality :: UnreducedAssertion -> Maybe VectorEquality
+assertionToVectorEquality = \case
+  VectorEqualityAssertion eq -> Just eq
+  NonVectorEqualityAssertion {} -> Nothing
+
+isVectorEqualityAssertion :: UnreducedAssertion -> Bool
+isVectorEqualityAssertion = \case
+  VectorEqualityAssertion {} -> True
+  NonVectorEqualityAssertion {} -> False
+
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem
 
--- | The representation used for solving for user variables.
-type SolvingLinearExpr = SparseLinearExpr
-
 -- | Conjunctive linear satisfaction problem, parameterised by the type of
 -- variables it is over.
-data CLSTProblem var = CLSTProblem [var] [Assertion SolvingLinearExpr]
+data CLSTProblem = CLSTProblem (BoundCtx NetworkVariable) [Assertion NetworkVariable]
 
-instance (IsVariable variable) => Pretty (CLSTProblem variable) where
-  pretty (CLSTProblem varNames assertions) = prettyAssertions varNames assertions
-
-type VariableAssignment = Vector Double
+instance Pretty CLSTProblem where
+  pretty (CLSTProblem _varNames assertions) = pretty assertions

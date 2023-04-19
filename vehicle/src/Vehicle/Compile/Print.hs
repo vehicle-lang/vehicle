@@ -26,6 +26,7 @@ import Prettyprinter (list)
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
@@ -99,9 +100,6 @@ data Strategy
   | KeepConstraintCtx Strategy
   | UninsertArgsAndBinders Strategy
   | ShortenVectors Strategy
-  | MapList Strategy
-  | MapMaybe Strategy
-  | MapIntMap Strategy
   | MapTuple2 Strategy Strategy
   | MapTuple3 Strategy Strategy Strategy
   | Opaque Strategy
@@ -148,9 +146,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
   StrategyFor ('Named tags) (Contextualised (Value types) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix (NormalisableBuiltin types)) BoundDBCtx))
+  -- To convert an assertion simply defer to normalised expressions
+  StrategyFor tags UnreducedAssertion = StrategyFor tags StandardNormExpr
+  StrategyFor tags (Contextualised UnreducedAssertion BoundDBCtx) = StrategyFor tags (Contextualised StandardNormExpr BoundDBCtx)
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
+  StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
   StrategyFor ('Named tags) (Contextualised (Constraint types) (ConstraintContext types)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised (TypeClassConstraint types) (ConstraintContext types)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
@@ -163,18 +165,25 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
   StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
   -- Things were we just print the structure and recursively print through.
-  StrategyFor tags (Maybe a) = 'MapMaybe (StrategyFor tags a)
-  StrategyFor tags (IntMap a) = 'MapIntMap (StrategyFor tags a)
-  StrategyFor tags [a] = 'MapList (StrategyFor tags a)
   StrategyFor tags (a, b) = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
   StrategyFor tags (a, b, c) = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
+  StrategyFor tags (IntMap a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags [a] = 'Opaque (StrategyFor tags a)
+  StrategyFor tags (Maybe a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (BooleanExpr a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (ConjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (DisjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (MaybeTrivial a) = 'Opaque (StrategyFor tags a)
-  -- StrategyFor tags (Contextualised (ConjunctAll a) BoundDBCtx) = StrategyFor tags (ConjunctAll (Contextualised a BoundDBCtx))
-  -- StrategyFor tags (Contextualised (DisjunctAll a) BoundDBCtx) = StrategyFor tags (DisjunctAll (Contextualised a BoundDBCtx))
-  -- StrategyFor tags (Contextualised (MaybeTrivial a) BoundDBCtx) = StrategyFor tags (MaybeTrivial (Contextualised a BoundDBCtx))
+  StrategyFor tags (Contextualised (a, b) ctx) =
+    'MapTuple2 (StrategyFor tags (Contextualised a ctx)) (StrategyFor tags (Contextualised b ctx))
+  StrategyFor tags (Contextualised [a] ctx) =
+    StrategyFor tags [Contextualised a ctx]
+  StrategyFor tags (Contextualised (BooleanExpr a) ctx) =
+    StrategyFor tags (BooleanExpr (Contextualised a ctx))
+  StrategyFor tags (Contextualised (Maybe a) ctx) =
+    StrategyFor tags (Maybe (Contextualised a ctx))
+  StrategyFor tags (Contextualised (ConjunctAll a) ctx) =
+    StrategyFor tags (ConjunctAll (Contextualised a ctx))
   -- Otherwise if we cannot compute an error then throw an informative error
   -- at type-checking time.
   StrategyFor tags a =
@@ -375,23 +384,30 @@ instance
 
 instance
   (PrettyUsing rest a) =>
-  PrettyUsing ('MapList rest) [a]
+  PrettyUsing ('Opaque rest) [a]
   where
   prettyUsing es = list (prettyUsing @rest <$> es)
 
 instance
   (PrettyUsing rest a) =>
-  PrettyUsing ('MapMaybe rest) (Maybe a)
+  PrettyUsing ('Opaque rest) (Maybe a)
   where
   prettyUsing = \case
     Nothing -> ""
     Just x -> prettyUsing @rest x
 
-instance (PrettyUsing rest a) => PrettyUsing ('MapIntMap rest) (IntMap a) where
+instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (IntMap a) where
   prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
 
 instance (PrettyUsing resta a, PrettyUsing restb b) => PrettyUsing ('MapTuple2 resta restb) (a, b) where
   prettyUsing (e1, e2) = "(" <> prettyUsing @resta e1 <> "," <+> prettyUsing @restb e2 <> ")"
+
+instance
+  (PrettyUsing resta (Contextualised a ctx), PrettyUsing restb (Contextualised b ctx)) =>
+  PrettyUsing ('MapTuple2 resta restb) (Contextualised (a, b) ctx)
+  where
+  prettyUsing (WithContext (e1, e2) ctx) =
+    parens (prettyUsing @resta (WithContext e1 ctx) <> "," <+> prettyUsing @restb (WithContext e2 ctx))
 
 instance
   (PrettyUsing resta a, PrettyUsing restb b, PrettyUsing restc c) =>
@@ -409,8 +425,17 @@ instance
 --------------------------------------------------------------------------------
 -- Instances which defer to primitive pretty instances
 
-instance (Pretty a) => PrettyUsing 'Pretty a where
+instance PrettyUsing 'Pretty Int where
   prettyUsing = pretty
+
+instance PrettyUsing 'Pretty Text where
+  prettyUsing = pretty
+
+instance
+  (PrettyUsing rest Text) =>
+  (PrettyUsing rest (Contextualised Text ctx))
+  where
+  prettyUsing = prettyUsing @rest . objectIn
 
 --------------------------------------------------------------------------------
 -- Instances for normalised types
@@ -428,6 +453,40 @@ instance (PrettyUsing rest (Expr Ix (NormalisableBuiltin types))) => PrettyUsing
 
 instance (PrettyUsing rest (Arg Ix (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (VArg types) where
   prettyUsing e = prettyUsing @rest (unnormalise @(VArg types) @(Arg Ix (NormalisableBuiltin types)) 0 e)
+
+--------------------------------------------------------------------------------
+-- Instances for unreduced assertions
+
+instance
+  (PrettyUsing rest StandardNormExpr) =>
+  PrettyUsing rest UnreducedAssertion
+  where
+  prettyUsing = \case
+    VectorEqualityAssertion VectorEquality {..} -> do
+      let lhs = prettyUsing @rest assertionLHS
+      let rhs = prettyUsing @rest assertionRHS
+      prettyVectorEquality lhs rhs assertionDims
+    NonVectorEqualityAssertion expr -> prettyUsing @rest expr
+
+instance
+  (PrettyUsing rest (Contextualised StandardNormExpr BoundDBCtx)) =>
+  PrettyUsing rest (Contextualised UnreducedAssertion BoundDBCtx)
+  where
+  prettyUsing (WithContext assertion ctx) = case assertion of
+    VectorEqualityAssertion VectorEquality {..} -> do
+      let lhs = prettyUsing @rest (WithContext assertionLHS ctx)
+      let rhs = prettyUsing @rest (WithContext assertionRHS ctx)
+      prettyVectorEquality lhs rhs assertionDims
+    NonVectorEqualityAssertion expr -> prettyUsing @rest (WithContext expr ctx)
+
+prettyVectorEquality ::
+  Doc a ->
+  Doc a ->
+  TensorDimensions ->
+  Doc a
+prettyVectorEquality lhs rhs _dims = do
+  -- let dimsDoc = if null dims then "Rat" else "Tensor Rat" <+> pretty dims
+  lhs <+> pretty Eq <+> rhs -- <> "     " <> parens dimsDoc
 
 --------------------------------------------------------------------------------
 -- Instances for constraints
@@ -497,7 +556,7 @@ instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MetaMap a) where
       entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
 
 instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (ConjunctAll a) where
-  prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> "and" <> y) docs
+  prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> y) docs
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
 
@@ -517,3 +576,9 @@ instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (BooleanExpr a) wher
     Query x -> prettyUsing @rest x
     Disjunct x y -> prettyUsing @('Opaque rest) x <+> "or" <+> prettyUsing @('Opaque rest) y
     Conjunct x y -> prettyUsing @('Opaque rest) x <+> "and" <+> prettyUsing @('Opaque rest) y
+
+instance
+  (Functor f, PrettyUsing ('Opaque rest) (f (Contextualised a ctx))) =>
+  PrettyUsing ('Opaque rest) (Contextualised (f a) ctx)
+  where
+  prettyUsing (WithContext cs ctx) = prettyUsing @('Opaque rest) $ fmap (`WithContext` ctx) cs

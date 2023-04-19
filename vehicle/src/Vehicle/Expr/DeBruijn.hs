@@ -11,6 +11,7 @@ module Vehicle.Expr.DeBruijn
     liftDBIndices,
     underDBBinder,
     dbLevelToIndex,
+    dbIndexToLevel,
     shiftDBIndex,
   )
 where
@@ -70,6 +71,11 @@ instance Pretty Lv where
 -- level `l`.
 dbLevelToIndex :: Lv -> Lv -> Ix
 dbLevelToIndex l x = Ix (unLv l - unLv x - 1)
+
+-- | Converts a `Lv` x to a `Ix` given that we're currently at
+-- level `l`.
+dbIndexToLevel :: Lv -> Ix -> Lv
+dbIndexToLevel l x = Lv (unLv l - unIx x - 1)
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)

@@ -42,7 +42,8 @@ splitResourceCtx ResourceContext {..} = do
   let mkEntry expr =
         NormDeclCtxEntry
           { declExpr = expr,
-            declAnns = []
+            declAnns = [],
+            declArity = 0
           }
   let declCtx = fmap mkEntry parameterContext <> fmap mkEntry datasetContext
   (networkContext, declCtx)

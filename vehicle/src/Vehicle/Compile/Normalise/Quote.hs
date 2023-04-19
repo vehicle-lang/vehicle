@@ -52,7 +52,7 @@ quoteApp :: (MonadCompile m) => Lv -> Provenance -> NormalisableExpr types -> Sp
 quoteApp l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
 envSubst :: BoundCtx (NormalisableExpr types) -> Substitution (NormalisableExpr types)
-envSubst env i = case lookupVar env i of
+envSubst env i = case lookupIx env i of
   Just v -> Right v
   Nothing ->
     developerError $

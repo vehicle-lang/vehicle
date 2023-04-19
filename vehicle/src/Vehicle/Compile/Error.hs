@@ -109,11 +109,12 @@ data CompileError
     NoPropertiesFound
   | UnsupportedInequality QueryFormatID DeclProvenance
   | UnsupportedPolymorphicEquality ITP Provenance Name
-  | NoNetworkUsedInProperty QueryFormatID Provenance Identifier
+  | NoNetworkUsedInProperty DeclProvenance
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | UnsupportedNegatedOperation DifferentiableLogic Provenance (Expr Name StandardBuiltin)
+  | DuplicateQuantifierNames DeclProvenance Name
   deriving (Show)
 
 --------------------------------------------------------------------------------

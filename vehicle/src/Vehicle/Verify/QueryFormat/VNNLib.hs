@@ -2,7 +2,8 @@ module Vehicle.Verify.QueryFormat.VNNLib where
 
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Sequence (Seq)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
@@ -29,11 +30,12 @@ vnnlibQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileVNNLibQuery :: (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
+compileVNNLibQuery :: (MonadLogger m) => CLSTProblem -> m QueryText
 compileVNNLibQuery (CLSTProblem variables assertions) = do
-  let variableNames = sequentialIONetworkVariableNaming "X_" "Y_" variables
+  let variableNames = sequentialNetworkVariableNaming "X_" "Y_" variables
+  let variableNamesMap = Map.fromList (zip variables variableNames)
   variableDocs <- forM variableNames compileVariable
-  assertionDocs <- forM assertions (compileAssertion variableNames)
+  assertionDocs <- forM assertions (compileAssertion variableNamesMap)
   let assertionsDoc = vsep assertionDocs <> line <> vsep variableDocs
   return $ layoutAsText assertionsDoc
 
@@ -42,11 +44,11 @@ compileVariable varName = return $ parens ("declare-fun" <+> pretty varName <+> 
 
 compileAssertion ::
   (MonadLogger m) =>
-  Seq Name ->
-  Assertion SolvingLinearExpr ->
+  Map NetworkVariable Name ->
+  Assertion NetworkVariable ->
   m (Doc a)
-compileAssertion variableNames assertion = do
-  let (coeffVars, rel, constant) = convertToSparseFormat assertion variableNames
+compileAssertion varNames assertion = do
+  let (coeffVars, rel, constant) = convertToSparseFormat varNames assertion
 
   let compiledRel = compileRel rel
   let compiledLHS = foldl compileVar "" (NonEmpty.tail coeffVars)

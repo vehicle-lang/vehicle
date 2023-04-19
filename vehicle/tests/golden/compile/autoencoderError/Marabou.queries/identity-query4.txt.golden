@@ -3,6 +3,6 @@
 // Metadata:
 //  - Marabou query format version: unknown
 //  - Vehicle version: 0.4.0+dev
--y3 +x2 = 0.0
--y4 +x3 = 0.0
-+x1 -x5 <= -0.1
++x5 -y0 = 0.0
++x6 -y1 = 0.0
++x1 -y3 <= -0.1

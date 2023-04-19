@@ -9,6 +9,8 @@ where
 import Control.Monad (foldM, unless)
 import Data.Bifunctor
 import Data.Coerce (coerce)
+import Data.IntSet (IntSet)
+import Data.IntSet qualified as IntSet
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -16,32 +18,36 @@ import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Verify.Core
 
+-- | Performs Gaussian elimination. Returns a list of solved variables, the remaining
+-- unused assertions and the indices of the solved assertions.
 gaussianElimination ::
-  (MonadCompile m, LinearExpression linexp) =>
-  [Variable] ->
-  [linexp] ->
-  Int ->
-  m ([(LinearVar, GaussianVariableSolution)], [linexp])
-gaussianElimination varNames exprs numberOfRowsToReduce =
+  (MonadCompile m) =>
+  [MixedVariable] ->
+  [GaussianAssertion] ->
+  m ([(MixedVariable, GaussianVariableSolution)], [GaussianAssertion], IntSet)
+gaussianElimination variablesToEliminate exprs =
   logCompilerPass MidDetail currentPhase $ do
-    logDebug MaxDetail $ prettyExprs varNames exprs
-    let maxIterations = min (length exprs) numberOfRowsToReduce
-    let iterations :: [Int] = [0 .. maxIterations - 1]
-    (solvedVars, reducedRows) <- foldM (reduceRow varNames) (mempty, exprs) iterations
+    logDebug MaxDetail $ prettyExprs exprs
+    let numberedExprs = zip [0 ..] exprs
+    (solvedVars, reducedRows, usedRows) <- foldM reduceRow (mempty, numberedExprs, mempty) variablesToEliminate
 
-    let unusedExprs = coerce reducedRows
-    let solvedExprs = fmap (second (GaussianVariableSolution . toSparse)) solvedVars
+    let unusedExprs = coerce (fmap snd reducedRows)
+    let solvedExprs = fmap (second GaussianVariableSolution) solvedVars
 
     unless (null unusedExprs) $
       logDebug MidDetail $
-        line <> pretty ("Unused:" :: String) <> line <> prettyExprs varNames unusedExprs
+        line <> pretty ("Unused:" :: String) <> line <> prettyExprs unusedExprs
 
-    return (solvedExprs, unusedExprs)
+    return (solvedExprs, unusedExprs, usedRows)
 
 --------------------------------------------------------------------------------
 -- Interface
 
-type Solution linexp = (LinearVar, linexp)
+type GaussianAssertion = SparseLinearExpr MixedVariable
+
+type Solution = (MixedVariable, SparseLinearExpr MixedVariable)
+
+type RowID = Int
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -49,63 +55,69 @@ type Solution linexp = (LinearVar, linexp)
 -- | Tries to reduce the provided row in the matrix.
 -- If unable to reduce it, then it returns the matrix unchanged.
 reduceRow ::
-  (MonadCompile m, LinearExpression linexp) =>
-  [Variable] ->
-  ([Solution linexp], [linexp]) ->
-  LinearVar ->
-  m ([Solution linexp], [linexp])
-reduceRow varNames (solvedVars, rows) var = do
-  let result = fromMaybe (solvedVars, rows) $ do
-        (pivotRow, remainingRows) <- findPivot var rows
+  (MonadCompile m) =>
+  ([Solution], [(RowID, GaussianAssertion)], IntSet) ->
+  MixedVariable ->
+  m ([Solution], [(RowID, GaussianAssertion)], IntSet)
+reduceRow (solvedVars, rows, usedRows) var = do
+  let result@(newSolvedVars', newRows', _) = fromMaybe (solvedVars, rows, usedRows) $ do
+        ((pivotRowID, pivotRow), remainingRows) <- findPivot var rows
         -- Eliminate the row from the remaining rows
-        let newRows = eliminateVar var pivotRow <$> remainingRows
+        let newRows = fmap (second (eliminateVar var pivotRow)) remainingRows
         -- Add the newly solved row (TODO remove this?)
         let normSolvedVars = second (eliminateVar var pivotRow) <$> solvedVars
         let newSolvedVars = (var, pivotRow) : normSolvedVars
-        return (newSolvedVars, newRows)
+        let newUsedRows = IntSet.insert pivotRowID usedRows
+        return (newSolvedVars, newRows, newUsedRows)
 
   logDebug MaxDetail $
     line
-      <> "After iteration"
-        <+> pretty (var + 1)
+      <> "After solving for"
+        <+> quotePretty var
       <> ":"
       <> line
       <> indent
         2
         ( "Solutions:"
-            <> prettySolutions varNames (fst result)
+            <> prettySolutions newSolvedVars'
             <> line
             <> "Equations:"
-            <> prettyExprs varNames (snd result)
+            <> prettyExprs (fmap snd newRows')
         )
   return result
 
-findPivot :: (LinearExpression linexp) => LinearVar -> [linexp] -> Maybe (linexp, [linexp])
+-- | Given a variable, tries to find a row with a suitable pivot element to
+-- eliminate it.
+findPivot ::
+  MixedVariable ->
+  [(RowID, GaussianAssertion)] ->
+  Maybe ((RowID, GaussianAssertion), [(RowID, GaussianAssertion)])
 findPivot _ [] = Nothing
-findPivot var (x : xs)
-  | lookupAt x var /= 0 = Just (x, xs)
-  | otherwise = second (x :) <$> findPivot var xs
+findPivot var ((rowID, row) : rows)
+  | lookupCoefficient row var /= 0 = Just ((rowID, row), rows)
+  | otherwise = second ((rowID, row) :) <$> findPivot var rows
 
 --------------------------------------------------------------------------------
 -- Solutions
 
 -- | Tries to reconstruct the value of the variable that is
--- consistent with the current assignment of variables.
+-- consistent with the current assignment of variables. Returns either a
+-- variable that is missing in the assignment of the reconstructed value.
 reconstructGaussianVariableValue ::
-  VariableAssignment ->
+  VariableAssignment MixedVariable ->
   GaussianVariableSolution ->
-  Double
+  Either MixedVariable VariableValue
 reconstructGaussianVariableValue assignment solution =
   evaluateExpr (solutionEquality solution) assignment
-
-currentPhase :: Doc ()
-currentPhase = "Gaussian elimination of user variables"
 
 --------------------------------------------------------------------------------
 -- Utilities
 
-prettyExprs :: (LinearExpression linexp) => [Variable] -> [linexp] -> Doc a
-prettyExprs varNames exprs = prettyAssertions varNames (fmap (Assertion Equal) exprs)
+currentPhase :: Doc ()
+currentPhase = "Gaussian elimination of user variables"
 
-prettySolutions :: (LinearExpression linexp) => [Variable] -> [Solution linexp] -> Doc a
-prettySolutions varNames solutions = prettyExprs varNames (fmap snd solutions)
+prettyExprs :: [GaussianAssertion] -> Doc a
+prettyExprs exprs = prettyAssertions (fmap (Assertion Equal) exprs)
+
+prettySolutions :: [Solution] -> Doc a
+prettySolutions solutions = prettyExprs (fmap snd solutions)

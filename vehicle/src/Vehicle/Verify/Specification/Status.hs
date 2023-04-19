@@ -9,9 +9,11 @@ import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Subsystem.Standard (TypeCheckedExpr)
+import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean (MaybeTrivial (..))
+import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -34,7 +36,7 @@ evaluateQuery negated q =
 -- Verification status of a single property
 
 data PropertyStatus
-  = PropertyStatus QuerySetNegationStatus (MaybeTrivial (QueryResult UserVariableAssignments))
+  = PropertyStatus QuerySetNegationStatus (MaybeTrivial (QueryResult UserVariableAssignment))
   deriving (Generic)
 
 instance FromJSON PropertyStatus
@@ -52,7 +54,7 @@ instance Pretty PropertyStatus where
           NonTrivial status -> case status of
             UnSAT -> (negated, Nothing)
             SAT Nothing -> (not negated, Just $ witnessText <> ": none")
-            SAT (Just {}) -> (not negated, Just $ witnessText <> ": found")
+            SAT Just {} -> (not negated, Just $ witnessText <> ": found")
     pretty (statusSymbol verified) <> maybe "" (line <>) evidenceText
 
 --------------------------------------------------------------------------------
@@ -89,14 +91,14 @@ prettyNameAndStatus :: Text -> Bool -> Doc a
 prettyNameAndStatus name verified = do
   pretty (statusSymbol verified) <+> pretty name
 
-prettyUserVariableAssignment :: UserVariableAssignment -> Doc a
-prettyUserVariableAssignment UserVariableAssignment {..} = do
-  let name = pretty variableName
-  let valueExpr = assignmentToExpr variableDimensions (Vector.toList variableValue)
+prettyUserVariableAssignment :: (UserVariable, VariableValue) -> Doc a
+prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
+  let name = pretty userVarName
+  let valueExpr = assignmentToExpr userVarDimensions (Vector.toList variableValue)
   let value = prettyFriendly (WithContext valueExpr emptyDBCtx)
   name <> ":" <+> value
 
-assignmentToExpr :: TensorDimensions -> [Double] -> TypeCheckedExpr
+assignmentToExpr :: TensorDimensions -> [Double] -> Expr Ix StandardBuiltin
 assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (CConstructor $ LVec dim)
@@ -107,7 +109,7 @@ assignmentToExpr (dim : dims) xs = do
 traverseMultiPropertySATResults ::
   forall m.
   (Monad m) =>
-  (PropertyAddress -> QuerySetNegationStatus -> Maybe UserVariableAssignments -> m ()) ->
+  (PropertyAddress -> QuerySetNegationStatus -> Maybe UserVariableAssignment -> m ()) ->
   MultiPropertyStatus ->
   m ()
 traverseMultiPropertySATResults f = go

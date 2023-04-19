@@ -5,6 +5,9 @@ module Vehicle.Libraries.StandardLibrary
     findStdLibFunction,
     pattern TensorIdent,
     StdLibFunction (..),
+    isFiniteQuantifier,
+    toFiniteQuantifier,
+    fromFiniteQuantifier,
   )
 where
 
@@ -12,6 +15,7 @@ import Data.ByteString (ByteString)
 import Data.FileEmbed (embedFile, makeRelativeToProject)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (isJust)
 import Data.Text (pack)
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Libraries
@@ -84,3 +88,17 @@ stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. ma
 
 findStdLibFunction :: Identifier -> Maybe StdLibFunction
 findStdLibFunction ident = Map.lookup (nameOf ident) stdLibFunctions
+
+isFiniteQuantifier :: Identifier -> Bool
+isFiniteQuantifier = isJust . toFiniteQuantifier
+
+toFiniteQuantifier :: Identifier -> Maybe Quantifier
+toFiniteQuantifier ident
+  | ident == identifierOf StdForallIndex = Just Forall
+  | ident == identifierOf StdExistsIndex = Just Exists
+  | otherwise = Nothing
+
+fromFiniteQuantifier :: Quantifier -> Identifier
+fromFiniteQuantifier = \case
+  Forall -> identifierOf StdForallIndex
+  Exists -> identifierOf StdExistsIndex

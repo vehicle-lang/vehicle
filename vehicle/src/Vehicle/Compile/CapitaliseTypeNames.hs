@@ -13,11 +13,10 @@ import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 --------------------------------------------------------------------------------
 -- Capitalise type names
 
--- In Agda types (i.e. functions whose result type is `Set`) are capitalised by
+-- | In Agda types (i.e. functions whose result type is `Set`) are capitalised by
 -- convention. This pass identifies all such defined functions and capitalises
 -- all references to them. Cannot be done during the main compilation pass as we
 -- need to be able to distinguish between free and bound variables.
-
 capitaliseTypeNames :: TypeCheckedProg -> TypeCheckedProg
 capitaliseTypeNames prog = evalState (cap prog) mempty
 

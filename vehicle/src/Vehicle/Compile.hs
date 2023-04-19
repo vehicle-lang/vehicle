@@ -77,7 +77,7 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = d
   let (queryStructure, queryText) = (NonEmpty.unzip . fmap (NonEmpty.unzip . fmap NonEmpty.unzip)) queryData
   integrityInfo <- generateResourcesIntegrityInfo resources
   let verificationPlan = VerificationPlan queryStructure integrityInfo
-  outputVerificationResult queryFormatID outputFile (verificationPlan, queryText)
+  outputCompilationResults queryFormatID outputFile (verificationPlan, queryText)
 
 mergeImports :: ImportedModules -> StandardGluedProg -> StandardGluedProg
 mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])

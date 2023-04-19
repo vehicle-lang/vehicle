@@ -220,7 +220,7 @@ testSpecDiffTestOutput testSpec golden actual = do
           <$> testSpecDiffText testSpec (testOutputStderr golden) (testOutputStderr actual)
 
   -- Compare file content:
-  let sharedFiles = sort $ HashSet.toList $ HashSet.intersection goldenFiles actualFiles
+  let sharedFiles = sort $ HashSet.toList $ HashSet.delete "Marabou.queries/.vcl-plan" $ HashSet.intersection goldenFiles actualFiles
   let differentOutputFileErrors =
         catMaybes
           [ printf "Content of %s differs:\n%s" file

@@ -2,13 +2,43 @@ module Vehicle.Verify.Core where
 
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Vector.Unboxed (Vector)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (Name)
-import Vehicle.Compile.Queries.LinearExpr
+import Vehicle.Compile.Queries.LinearExpr (Assertion, CLSTProblem, SparseLinearExpr)
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Resource
 import Vehicle.Prelude
+
+--------------------------------------------------------------------------------
+-- Assignments to variables
+
+-- | A (satisfying) assignment to a set of reduced network-level variables.
+newtype NetworkVariableAssignment
+  = NetworkVariableAssignment (Vector Double)
+
+-- | A (satisfying) assignment to a set of user-level variables.
+newtype UserVariableAssignment
+  = UserVariableAssignment [(UserVariable, VariableValue)]
+  deriving (Generic)
+
+instance ToJSON UserVariableAssignment
+
+instance FromJSON UserVariableAssignment
+
+instance Pretty UserVariableAssignment where
+  pretty :: UserVariableAssignment -> Doc a
+  pretty (UserVariableAssignment assignment) = do
+    vsep (fmap prettyVariable assignment)
+    where
+      prettyVariable :: (UserVariable, VariableValue) -> Doc a
+      prettyVariable (var, value) = do
+        let name = pretty $ userVarName var
+        let valueDoc = prettyConstant True (userVarDimensions var) value
+        name <> ":" <+> valueDoc
 
 --------------------------------------------------------------------------------
 -- Verifiers
@@ -30,7 +60,7 @@ type VerifierInvocation =
   VerifierExecutable ->
   MetaNetwork ->
   QueryFile ->
-  m (Either Text (QueryResult NetworkVariableAssignments))
+  m (Either Text (QueryResult NetworkVariableAssignment))
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -68,6 +98,32 @@ instance Pretty PropertyAddress where
     concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
 
 --------------------------------------------------------------------------------
+-- Meta-network
+
+data MetaNetworkEntry = MetaNetworkEntry
+  { metaNetworkEntryName :: Name,
+    metaNetworkEntryType :: NetworkType,
+    metaNetworkEntryFilePath :: FilePath
+  }
+  deriving (Show, Generic)
+
+instance ToJSON MetaNetworkEntry
+
+instance FromJSON MetaNetworkEntry
+
+instance Pretty MetaNetworkEntry where
+  pretty MetaNetworkEntry {..} =
+    pretty metaNetworkEntryName
+      <> ":"
+      <> softline
+      <> pretty metaNetworkEntryType
+
+-- <> softline <> parens (pretty metaNetworkEntryFilePath)
+
+-- | A list of neural networks used in a given query.
+type MetaNetwork = [MetaNetworkEntry]
+
+--------------------------------------------------------------------------------
 -- Queries misc
 
 -- | Location of a verifier query file.
@@ -81,28 +137,36 @@ type QueryText = Text
 -- query sets. e.g. prop = (forall x . P x) and (exists x . Q y).
 type QuerySetNegationStatus = Bool
 
--- | A list of neural networks used in a given query.
-type MetaNetwork = [(Name, FilePath)]
+metaNetworkEntryVariables ::
+  Bool ->
+  MetaNetworkEntry ->
+  (Map Name Int, [[NetworkVariable]]) ->
+  (Map Name Int, [[NetworkVariable]])
+metaNetworkEntryVariables reduced MetaNetworkEntry {..} (applications, vars) = do
+  let applicationNumber = Map.findWithDefault 0 metaNetworkEntryName applications
+  let newApplications = Map.insert metaNetworkEntryName (applicationNumber + 1) applications
 
---------------------------------------------------------------------------------
--- Variable assignments
+  let (inputIndices, outputIndices, inputDimensions, outputDimensions)
+        | not reduced = do
+            let inputDims = dimensions $ inputTensor metaNetworkEntryType
+            let outputDims = dimensions $ outputTensor metaNetworkEntryType
+            ([Nothing], [Nothing], inputDims, outputDims)
+        | otherwise = do
+            let inputs = Just <$> [0 .. tensorSize (inputTensor metaNetworkEntryType) - 1]
+            let outputs = Just <$> [0 .. tensorSize (outputTensor metaNetworkEntryType) - 1]
+            (inputs, outputs, [], [])
+  let mkVariable = NetworkVariable metaNetworkEntryName applicationNumber
+  let mkInputVariable = mkVariable inputDimensions Input
+  let mkOutputVariable = mkVariable outputDimensions Output
+  let inputVariables = [mkInputVariable i | i <- inputIndices]
+  let outputVariables = [mkOutputVariable i | i <- outputIndices]
 
-data UserVariableAssignment = UserVariableAssignment
-  { variableName :: Name,
-    variableDimensions :: TensorDimensions,
-    variableValue :: Vector Double
-  }
-  deriving (Generic)
+  (newApplications, (inputVariables <> outputVariables) : vars)
 
-instance ToJSON UserVariableAssignment
-
-instance FromJSON UserVariableAssignment
-
--- An assignment to network variables ordered sequentially.
-type NetworkVariableAssignments = Vector Double
-
--- An assignment to user variables ordered sequentially.
-type UserVariableAssignments = [UserVariableAssignment]
+metaNetworkVariables :: Bool -> MetaNetwork -> [NetworkVariable]
+metaNetworkVariables reduced metaNetwork = do
+  let (_, result) = foldr (metaNetworkEntryVariables reduced) (mempty, mempty) metaNetwork
+  concat (reverse result)
 
 --------------------------------------------------------------------------------
 -- Query formats
@@ -122,7 +186,7 @@ data QueryFormat = QueryFormat
   { queryFormatID :: QueryFormatID,
     queryOutputFormat :: ExternalOutputFormat,
     -- | The command to compile an individual query
-    compileQuery :: forall m. (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
+    compileQuery :: forall m. (MonadLogger m) => CLSTProblem -> m QueryText
   }
 
 --------------------------------------------------------------------------------
@@ -140,41 +204,10 @@ instance (ToJSON witness) => ToJSON (QueryResult witness)
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
--- | Information for mapping normalised user variables back to
--- unnormalised user variables. These are stored in reverse order, i.e. the
--- deepest variables are at the head of the list.
-type QueryUnnormalisedVariableInfo = [(Name, TensorDimensions)]
-
--- | Information for mapping network variables back to normalised
--- user variables.
-type QueryNormalisedVariableInfo = [(LinearVar, VariableSolution)]
-
--- | Information for mapping network variables back to unnormalise user variables.
-data QueryVariableInfo = QueryVariableInfo
-  { unnormalisedVariableInfo :: QueryUnnormalisedVariableInfo,
-    normalisedVariableInfo :: QueryNormalisedVariableInfo
-  }
-  deriving (Show, Generic)
-
-instance ToJSON QueryVariableInfo
-
-instance FromJSON QueryVariableInfo
-
--- | Information neccesary to reconstruct the user variables from the magic
--- input/output variables.
-data VariableSolution
-  = GaussianSolution GaussianVariableSolution
-  | FourierMotzkinSolution FourierMotzkinVariableSolution
-  deriving (Show, Generic)
-
-instance ToJSON VariableSolution
-
-instance FromJSON VariableSolution
-
 -- | A solution for a normalised user variable that is an equation
 -- where the coefficient for that variable is 1.
 newtype GaussianVariableSolution = GaussianVariableSolution
-  { solutionEquality :: SparseLinearExpr
+  { solutionEquality :: SparseLinearExpr MixedVariable
   }
   deriving (Show, Generic)
 
@@ -182,15 +215,40 @@ instance ToJSON GaussianVariableSolution
 
 instance FromJSON GaussianVariableSolution
 
+instance Pretty GaussianVariableSolution where
+  pretty = pretty . solutionEquality
+
 -- | A FM solution for an normalised user variable is two lists of constraints.
 -- The variable value must be greater than the first set of assertions, and less than
 -- the second set of assertions.
 data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [Assertion SparseLinearExpr],
-    upperBounds :: [Assertion SparseLinearExpr]
+  { lowerBounds :: [Assertion MixedVariable],
+    upperBounds :: [Assertion MixedVariable]
   }
   deriving (Show, Generic)
 
 instance ToJSON FourierMotzkinVariableSolution
 
 instance FromJSON FourierMotzkinVariableSolution
+
+-- | One step in the process for transforming unreduced user variables into
+-- reduced network input and output variables.
+data VariableNormalisationStep
+  = EliminateViaGaussian MixedVariable GaussianVariableSolution
+  | EliminateViaFourierMotzkin MixedVariable FourierMotzkinVariableSolution
+  | Reduce MixedVariable
+  | Introduce MixedVariable
+  deriving (Show, Generic)
+
+instance ToJSON VariableNormalisationStep
+
+instance FromJSON VariableNormalisationStep
+
+-- | The steps for transforming unreduced user variables into reduced network
+-- input and output varibles.
+-- These are used to recreate a satisfying assignment for the user variables
+-- from the satisfying assignment for the network variables spat out by the
+-- verifier.
+--
+-- The steps are stored in the same order they occured during compilation.
+type VariableNormalisationSteps = [VariableNormalisationStep]

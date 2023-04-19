@@ -62,10 +62,9 @@ getDefaultCandidates maybeDecl = do
       constraints <- getActiveConstraints
       typeMetas <- getMetasLinkedToMetasIn constraints declType
 
-      whenM (loggingLevelAtLeast MaxDetail) $ do
+      logDebugM MaxDetail $ do
         unsolvedMetasInTypeDoc <- prettyMetas (Proxy @StandardBuiltinType) typeMetas
-        logDebug MaxDetail $
-          "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
+        return $ "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
       flip filterM typeClassConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)

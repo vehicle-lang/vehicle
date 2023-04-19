@@ -1302,17 +1302,14 @@ instance MeaningfulError CompileError where
             problem = "No properties found in file.",
             fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
           }
-    NoNetworkUsedInProperty target p ident ->
+    NoNetworkUsedInProperty (ident, p) ->
       UError $
         UserError
           { provenance = p,
             problem =
               "After normalisation, the property"
                 <+> prettyIdentName ident
-                <+> "does not contain any neural networks and"
-                <+> "therefore"
-                <+> pretty target
-                <+> "is the wrong compilation target",
+                <+> "does not contain any neural networks.",
             fix = Just "choose a different compilation target than VNNLib"
           }
     UnsupportedNegatedOperation logic notProv expr ->
@@ -1334,6 +1331,18 @@ instance MeaningfulError CompileError where
                 <+> pretty (provenanceOf expr)
                 <> ".",
             fix = Just "choose a different differential logic"
+          }
+    DuplicateQuantifierNames (identifier, p) name ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "The property"
+                <+> quotePretty identifier
+                <+> "contains multiple quantified variables with the name"
+                <+> quotePretty name
+                <> ".",
+            fix = Just "change the specification so that all quantified variables have unique names"
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a

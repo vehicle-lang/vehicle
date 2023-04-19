@@ -6,7 +6,8 @@ where
 import Control.Monad (forM)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Sequence (Seq)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
@@ -33,20 +34,21 @@ marabouQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: (MonadLogger m) => CLSTProblem NetworkVariable -> m QueryText
+compileMarabouQuery :: (MonadLogger m) => CLSTProblem -> m QueryText
 compileMarabouQuery (CLSTProblem variables assertions) = do
-  let variableNames = sequentialIONetworkVariableNaming "x" "y" variables
-  assertionDocs <- forM assertions (compileAssertion variableNames)
+  let variableNames = sequentialNetworkVariableNaming "x" "y" variables
+  let variableNamesMap = Map.fromList (zip variables variableNames)
+  assertionDocs <- forM assertions (compileAssertion variableNamesMap)
   let assertionsDoc = vsep assertionDocs
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
   (MonadLogger m) =>
-  Seq Name ->
-  Assertion SolvingLinearExpr ->
+  Map NetworkVariable Name ->
+  Assertion NetworkVariable ->
   m (Doc a)
-compileAssertion variableNames assertion = do
-  let (coeffVars, rel, constant) = convertToSparseFormat assertion variableNames
+compileAssertion varNames assertion = do
+  let (coeffVars, rel, constant) = convertToSparseFormat varNames assertion
   let (coeffVars', rel', constant', multipleVariables) =
         case coeffVars of
           (coeff, var) :| [] -> do
@@ -61,6 +63,7 @@ compileAssertion variableNames assertion = do
   let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
   let compiledRel = compileRel rel'
   let compiledRHS = prettyCoefficient constant'
+
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
 compileRel :: Either () OrderOp -> Doc a

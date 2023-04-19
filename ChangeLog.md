@@ -1,5 +1,12 @@
 # Changelog for Vehicle
 
+## Version 0.5.0
+
+### General improvements
+
+* Massive speedup when compiling many specifications with very large tensors in them and a
+  corresponding reduction in size of the `.vcl-plan` files being generated.
+
 ## Version 0.4.0
 
 ### Command-line changes

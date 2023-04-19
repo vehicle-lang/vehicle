@@ -6,11 +6,11 @@ module Vehicle.Prelude.Logging.Class
     defaultLoggingLevel,
     logWarning,
     logDebug,
+    logDebugM,
     showMessages,
     setTextColour,
     setBackgroundColour,
     allLoggingLevels,
-    loggingLevelAtLeast,
     loggingLevelHelp,
     logCompilerPass,
     logCompilerPassOutput,
@@ -152,6 +152,16 @@ instance (MonadLogger m) => MonadLogger (SupplyT s m) where
 logWarning :: (MonadLogger m) => Doc a -> m ()
 logWarning text = logMessage $ Message Warning (layoutAsText text)
 
+logDebugM :: (MonadLogger m) => LoggingLevel -> m (Doc a) -> m ()
+logDebugM level getText = do
+  -- traceShow text $ do
+  debugLevel <- getDebugLevel
+  when (level <= debugLevel) $ do
+    text <- getText
+    depth <- getCallDepth
+    logMessage $ Message Debug (layoutAsText (indent depth text))
+
+-- TODO try implement via logDebugM but check performance first.
 logDebug :: (MonadLogger m) => LoggingLevel -> Doc a -> m ()
 logDebug level text = do
   -- traceShow text $ do
@@ -159,11 +169,6 @@ logDebug level text = do
   when (level <= debugLevel) $ do
     depth <- getCallDepth
     logMessage $ Message Debug (layoutAsText (indent depth text))
-
-loggingLevelAtLeast :: (MonadLogger m) => LoggingLevel -> m Bool
-loggingLevelAtLeast level = do
-  currentLevel <- getDebugLevel
-  return $ currentLevel >= level
 
 logCompilerPass :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerPass level passName performPass = do

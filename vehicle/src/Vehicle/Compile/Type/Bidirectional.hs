@@ -160,7 +160,7 @@ inferExpr e = do
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
       ctx <- getBoundCtx
-      case lookupVar ctx i of
+      case lookupIx ctx i of
         Just (_, checkedType) -> do
           let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) checkedType
           return (BoundVar p i, liftedCheckedType)
