@@ -73,10 +73,19 @@ acasXu : InputVector -> OutputVector
 -- for unnormalised input vectors which are in the problem space.
 type UnnormalisedInputVector = Vector Rat 5
 
--- Next we define the maximum values that each input can take.
--- (The minimum values are all implicitly assumed to be 0).
+-- Next we define the minimum and maximum values that each input can take.
+-- These correspond to the range of the inputs that the network is designed
+-- to work over.
+minimumInputValues : UnnormalisedInputVector
+minimumInputValues = [0,0,0,0,0]
+
 maximumInputValues : UnnormalisedInputVector
 maximumInputValues = [60261.0, 2*pi, 2*pi, 1100.0, 1200.0]
+
+-- We can therefore define a simple predicate saying whether a given input
+-- vector is in the right range.
+validInput : UnnormalisedInputVector -> Bool
+validInput x = forall i . minimumInputValues ! i <= x ! i <= maximumInputValues ! i
 
 -- Then the mean values that will be used to scale the inputs.
 meanScalingValues : UnnormalisedInputVector
@@ -116,7 +125,7 @@ intruderDistantAndSlower x =
 
 @property
 property1 : Bool
-property1 = forall x . intruderDistantAndSlower x =>
+property1 = forall x . validInput x and intruderDistantAndSlower x =>
   normAcasXu x ! clearOfConflict <= 1500
 
 --------------------------------------------------------------------------------
@@ -129,7 +138,7 @@ property1 = forall x . intruderDistantAndSlower x =>
 
 @property
 property2 : Bool
-property2 = forall x . intruderDistantAndSlower x =>
+property2 = forall x . validInput x and intruderDistantAndSlower x =>
   (exists j . (normAcasXu x ! j) > (normAcasXu x ! clearOfConflict))
 
 --------------------------------------------------------------------------------
@@ -153,7 +162,7 @@ movingTowards x =
 
 @property
 property3 : Bool
-property3 = forall x . directlyAhead x and movingTowards x =>
+property3 = forall x . validInput x and directlyAhead x and movingTowards x =>
   not (advises clearOfConflict x)
 
 --------------------------------------------------------------------------------
@@ -173,7 +182,7 @@ movingAway x =
 
 @property
 property4 : Bool
-property4 = forall x . directlyAhead x and movingAway x =>
+property4 = forall x . validInput x and directlyAhead x and movingAway x =>
   not (advises clearOfConflict x)
 
 --------------------------------------------------------------------------------
@@ -194,7 +203,7 @@ nearAndApproachingFromLeft x =
 
 @property
 property5 : Bool
-property5 = forall x . nearAndApproachingFromLeft x => advises strongRight x
+property5 = forall x . validInput x and nearAndApproachingFromLeft x => advises strongRight x
 
 --------------------------------------------------------------------------------
 -- Property 6
@@ -213,7 +222,7 @@ intruderFarAway x =
 
 @property
 property6 : Bool
-property6 = forall x . intruderFarAway x => advises clearOfConflict x
+property6 = forall x . validInput x and intruderFarAway x => advises clearOfConflict x
 
 --------------------------------------------------------------------------------
 -- Property 7
@@ -232,7 +241,7 @@ largeVerticalSeparation x =
 
 @property
 property7 : Bool
-property7 = forall x . largeVerticalSeparation x =>
+property7 = forall x . validInput x and largeVerticalSeparation x =>
   not (advises strongLeft x) and not (advises strongRight x)
 
 --------------------------------------------------------------------------------
@@ -253,7 +262,7 @@ largeVerticalSeparationAndPreviousWeakLeft x =
 
 @property
 property8 : Bool
-property8 = forall x . largeVerticalSeparationAndPreviousWeakLeft x =>
+property8 = forall x . validInput x and largeVerticalSeparationAndPreviousWeakLeft x =>
   (advises clearOfConflict x) or (advises weakLeft x)
 
 --------------------------------------------------------------------------------
@@ -274,7 +283,7 @@ previousWeakRightAndNearbyIntruder x =
 
 @property
 property9 : Bool
-property9 = forall x . previousWeakRightAndNearbyIntruder x =>
+property9 = forall x . validInput x and previousWeakRightAndNearbyIntruder x =>
   advises strongLeft x
 
 --------------------------------------------------------------------------------
@@ -294,4 +303,4 @@ intruderFarAway2 x =
 
 @property
 property10 : Bool
-property10 = forall x . intruderFarAway2 x => advises clearOfConflict x
+property10 = forall x . validInput x and intruderFarAway2 x => advises clearOfConflict x
