@@ -62,6 +62,7 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
     hPutStrLn stderr (layoutAsText errorDoc)
     exitFailure
   ExitSuccess -> do
+    -- print (layoutAsString $ pretty (lines out))
     let outputLines = fmap Text.pack (lines out)
     let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
     case resultIndex of
@@ -71,10 +72,10 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
             return UnSAT
         | otherwise -> do
             let assignmentOutput = drop (i + 1) outputLines
-            let ioVarAssignment = parseSATAssignment assignmentOutput
+            ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
             return $ SAT $ Just ioVarAssignment
 
-parseSATAssignment :: [Text] -> Vector Double
+parseSATAssignment :: [Text] -> IO (Vector Double)
 parseSATAssignment output = do
   let mInputIndex = elemIndex "Input assignment:" output
   let mOutputIndex = elemIndex "Output:" output
@@ -84,7 +85,7 @@ parseSATAssignment output = do
       let outputVarLines = drop (outputIndex + 1) output
       let inputValues = parseSATAssignmentLine Input <$> inputVarLines
       let outputValues = parseSATAssignmentLine Output <$> outputVarLines
-      Vector.fromList (inputValues <> outputValues)
+      return $ Vector.fromList (inputValues <> outputValues)
     _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine :: InputOrOutput -> Text -> Double
@@ -92,7 +93,9 @@ parseSATAssignmentLine _ txt =
   let parts = Text.strip <$> Text.splitOn "=" txt
    in case parts of
         [_namePart, valuePart] -> read (Text.unpack valuePart)
-        _ -> malformedOutputError "could not split assignment line on '=' sign"
+        _ ->
+          malformedOutputError $
+            "could not split assignment line" <+> squotes (pretty txt) <+> "on '=' sign"
 
 malformedOutputError :: Doc a -> b
 malformedOutputError x =
