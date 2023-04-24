@@ -15,9 +15,6 @@ env:
 
 jobs:
   build-py-vehicle-lang:
-    name: py-vehicle-lang / ${{ matrix.os.name }}
-    runs-on: ${{ matrix.os.type }}
-
     strategy:
       matrix:
         os:
@@ -26,7 +23,10 @@ jobs:
           - name: "Linux"
             type: ubuntu-latest
           - name: "Windows"
-            type: windows-latest
+            type: "windows-latest"
+
+    name: py-vehicle-lang / ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os.type }}
 
     steps:
       - name: Get source
