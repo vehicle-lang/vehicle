@@ -71,29 +71,29 @@ jobs:
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.4.4"
-              cabal:
-                version: "3.8.1.0"
-                project-file: "cabal.project.ghc-debug.ghc-9.4.4"
-                extra-args: "-fghc-debug"
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.4.4"
+          #     cabal:
+          #       version: "3.8.1.0"
+          #       project-file: "cabal.project.ghc-debug.ghc-9.4.4"
+          #       extra-args: "-fghc-debug"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug and -fnothunks:
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.4.4"
-              cabal:
-                version: "3.8.1.0"
-                project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4"
-                extra-args: "-fghc-debug -fnothunks"
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.4.4"
+          #     cabal:
+          #       version: "3.8.1.0"
+          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4"
+          #       extra-args: "-fghc-debug -fnothunks"
 
     name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
     runs-on: ${{ matrix.os.type }}
