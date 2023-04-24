@@ -39,14 +39,17 @@ jobs:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
-      - name: Build wheel (macOS)
+      - name: Build wheel
         uses: pypa/cibuildwheel@v2.12.1
         with:
           package-dir: "./py-vehicle-lang"
           output-dir: "./py-vehicle-lang/wheelhouse"
           config-file: "{package}/pyproject.toml"
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "10.10"
 
-      - uses: actions/upload-artifact@v3
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
         with:
           name: wheelhouse
           path: ./py-vehicle-lang/wheelhouse/*.whl
