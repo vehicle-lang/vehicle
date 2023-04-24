@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-py-vehicle-lang:
-    name: py-vehicle-lang / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+    name: py-vehicle-lang / ${{ matrix.os.name }}
     runs-on: ${{ matrix.os.type }}
 
     strategy:
