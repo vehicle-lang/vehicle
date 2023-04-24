@@ -1,5 +1,10 @@
 [build-system]
-requires = ["setuptools>=67", "packaging>=23"]
+requires = [
+  "find_libpython>=0.3; sys_platform == 'win32'",
+  "packaging>=23",
+  "setuptools>=45",
+  "swig>=4",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,14 +28,23 @@ vehicle = "vehicle_lang:main"
 vehicle = "vehicle_lang.pygments:VehicleLexer"
 
 [tool.cibuildwheel]
-skip = ["pp*", "*musllinux*"]
+# 18-04-2023:
+# Cross-compilation does not work with GHC and Cabal.
+archs = ["native"]
+build-frontend = "build"
+skip = [
+  # 18-04-2023:
+  # PyPy builds do not work.
+  "pp*",
+  # 18-04-2023:
+  # GHC distributions for Alpine Linux do not include dynamic builds for libraries.
+  "*musllinux*"
+]
 test-command = "pytest {package}/tests"
 test-extras = "test"
 
-[tool.cibuildwheel.macos]
-# 17-04-2023:
-# Cross-compilation with cibuildwheel does not work with Cabal.
-archs = ["x86_64"]
+[tool.cibuildwheel.linux]
+before-all = "source /etc/os-release && {package}/scripts/before-all-$ID.sh"
 
 [tool.mypy]
 python_version = 3.7
