@@ -29,7 +29,7 @@ runs:
 
     - id: haskell-cache
       name: Cache ~/.cabal/store and dist-newstyle
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}

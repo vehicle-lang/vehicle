@@ -8,6 +8,7 @@ on:
     types:
       - opened
       - synchronize
+      - reopened
   merge_group:
 
 jobs:
