@@ -12,7 +12,7 @@ authors = [
 ]
 license = { file = 'LICENSE' }
 readme = "README.md"
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.8,<3.12"
 dependencies = [
   "vehicle_lang>=0.2.0a4",
   # TODO: lowest possible tensorflow bound?
