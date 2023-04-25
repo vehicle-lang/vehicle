@@ -7,7 +7,7 @@ on:
 defaults:
   run:
     shell: sh
-    
+
 env:
   MARABOU_BASEURL: "https://github.com/vehicle-lang/Marabou/releases/download/v2023.1001/"
   MARABOU_MACOS: "maraboupy-2023.1001-cp311-cp311-macosx_10_9_x86_64.whl"
