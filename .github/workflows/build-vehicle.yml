@@ -4,6 +4,10 @@ on:
   workflow_call:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: sh
+
 jobs:
   build-vehicle:
     strategy:
@@ -120,7 +124,6 @@ jobs:
             --test-show-details=always                              \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
-        shell: sh
 
       - name: Build Vehicle
         run: |
@@ -131,4 +134,3 @@ jobs:
             --installdir=bin                                        \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
-        shell: sh

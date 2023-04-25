@@ -7,6 +7,10 @@ on:
   workflow_call:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: sh
+
 env:
   # NOTE: cibuildwheel builds manylinux wheels in a container, and the versions
   #       of GHC and Cabal are hardcoded in the `before-all-$ID.sh` scripts.

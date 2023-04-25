@@ -16,6 +16,10 @@ on:
         required: true
         type: string
 
+defaults:
+  run:
+    shell: sh
+
 env:
   CABAL_PROJECT_FILE: cabal.project.ghc-${{ inputs.ghc-version }}
   CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ inputs.ghc-version }}.freeze
@@ -44,4 +48,3 @@ jobs:
             --overwrite-policy=always
           ./scripts/hie-bios-check     \
             $(git ls-files -- '*.hs')
-        shell: sh
