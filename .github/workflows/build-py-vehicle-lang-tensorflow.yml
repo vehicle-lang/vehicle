@@ -37,12 +37,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Setup Vehicle
-        uses: ./.github/actions/setup-vehicle
-        with:
-          vehicle-artifact-name: |
-            vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
-
       - name: Setup Python
         uses: actions/setup-python@v4
         with:

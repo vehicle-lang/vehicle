@@ -132,10 +132,3 @@ jobs:
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
         shell: sh
-
-      - name: Upload Vehicle
-        uses: actions/upload-artifact@v3
-        with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.haskell.ghc.version }}-${{ github.sha }}
-          path: bin
-          if-no-files-found: error
