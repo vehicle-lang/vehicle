@@ -18,10 +18,10 @@ jobs:
     strategy:
       matrix:
         os:
+          - name: "Linux"
+            type: "ubuntu-latest"
           - name: "macOS"
             type: "macos-latest"
-          - name: "Linux"
-            type: ubuntu-latest
           - name: "Windows"
             type: "windows-latest"
 

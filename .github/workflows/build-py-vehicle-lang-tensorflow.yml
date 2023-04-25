@@ -13,10 +13,10 @@ jobs:
     strategy:
       matrix:
         os:
-          - name: "macOS"
-            type: "macos-latest"
           - name: "Linux"
             type: "ubuntu-latest"
+          - name: "macOS"
+            type: "macos-latest"
           # 21-11-2022:
           # This test is disabled on Windows due to an issue with TensorFlow.
           # See: https://github.com/vehicle-lang/vehicle/pull/255#issuecomment-1320985019
