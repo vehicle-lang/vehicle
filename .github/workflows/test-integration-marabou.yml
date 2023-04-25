@@ -25,7 +25,7 @@ jobs:
 
     name: marabou / ${{ matrix.os.name }} - Python ${{ matrix.python.version }} - Marabou ${{ matrix.marabou.version }}
     runs-on: ${{ matrix.os.type }}
-    
+
     env:
       MARABOU_URL_BASE: "https://github.com/vehicle-lang/Marabou/releases/download/v${{ matrix.marabou.version }}"
       MARABOU_WHL_MACOS: "maraboupy-${{ matrix.marabou.version }}-${{ matrix.python.tag }}-${{ matrix.python.tag }}-macosx_10_9_x86_64.whl"
