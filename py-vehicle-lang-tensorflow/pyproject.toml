@@ -48,8 +48,6 @@ python =
   3.11: py311
 
 [testenv]
-extras =
-  test
 commands =
   {envpython} -m unittest tests/test_LossFunctionTranslation.py
 passenv =
