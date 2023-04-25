@@ -30,7 +30,7 @@ jobs:
           - version: "2023.1001"
 
     name: marabou / ${{ matrix.os.name }} - Marabou ${{ matrix.marabou.version }} - Python ${{ matrix.python.version }}
-    runs-on: ${{ matrix.os.tag }}
+    runs-on: ${{ matrix.os.type }}
 
     steps:
       - uses: actions/checkout@v3
