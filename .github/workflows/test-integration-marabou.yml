@@ -12,9 +12,6 @@ env:
   PYTHON_VERSION: "3.11"
   PYTHON_TAG: "cp311"
   MARABOU_VERSION: "2023.1001"
-  MARABOU_URL_BASE: "https://github.com/vehicle-lang/Marabou/releases/download/v${{ env.MARABOU_VERSION }}"
-  MARABOU_URL_MACOS: "${{ env.MARABOU_URL_BASE }}/maraboupy-${{ env.MARABOU_VERSION }}-${{ env.PYTHON_TAG }}-${{ env.PYTHON_TAG }}-macosx_10_9_x86_64.whl"
-  MARABOU_URL_LINUX: "${{ env.MARABOU_URL_BASE }}/maraboupy-${{ env.MARABOU_VERSION }}-${{ env.PYTHON_TAG }}-${{ env.PYTHON_TAG }}-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 
 jobs:
   test-vehicle-marabou:
@@ -28,6 +25,11 @@ jobs:
 
     name: marabou / ${{ matrix.os.name }} - Python ${{ env.PYTHON_VERSION }} - Marabou ${{ env.MARABOU_VERSION }}
     runs-on: ${{ matrix.os.type }}
+    
+    env:
+      MARABOU_URL_BASE: "https://github.com/vehicle-lang/Marabou/releases/download/v${{ env.MARABOU_VERSION }}"
+      MARABOU_WHL_MACOS: "maraboupy-${{ env.MARABOU_VERSION }}-${{ env.PYTHON_TAG }}-${{ env.PYTHON_TAG }}-macosx_10_9_x86_64.whl"
+      MARABOU_WHL_LINUX: "maraboupy-${{ env.MARABOU_VERSION }}-${{ env.PYTHON_TAG }}-${{ env.PYTHON_TAG }}-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 
     steps:
       - uses: actions/checkout@v3
@@ -39,11 +41,11 @@ jobs:
 
       - name: Setup Marabou (Linux)
         if: runner.os == 'Linux'
-        run: pip install "${{ env.MARABOU_URL_LINUX }}"
+        run: pip install "${{ env.MARABOU_URL_BASE }}/${{ env.MARABOU_WHL_LINUX }}"
 
       - name: Setup Marabou (macOS)
         if: runner.os == 'macOS'
-        run: pip install "${{ env.MARABOU_URL_MACOS }}"
+        run: pip install "${{ env.MARABOU_URL_BASE }}/${{ env.MARABOU_WHL_MACOS }}"
 
       - name: Test windController - safe-query1.txt
         run: Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
