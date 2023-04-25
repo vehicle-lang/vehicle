@@ -2,7 +2,7 @@ import json
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
-from vehicle_lang import main as call_vehicle
+from vehicle_lang import vehicleSync as call_vehicle
 
 
 def load_json(path_to_json: str) -> Dict[Any, Any]:
