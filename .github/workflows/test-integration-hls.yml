@@ -1,4 +1,4 @@
-name: test editor integration
+name: Test HLS
 
 on:
   workflow_call:
