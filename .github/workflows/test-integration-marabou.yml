@@ -9,6 +9,7 @@ defaults:
     shell: sh
 
 env:
+  PYTHON_VERSION: "3.11"
   MARABOU_BASEURL: "https://github.com/vehicle-lang/Marabou/releases/download/v2023.1001/"
   MARABOU_MACOS: "maraboupy-2023.1001-cp311-cp311-macosx_10_9_x86_64.whl"
   MARABOU_LINUX: "maraboupy-2023.1001-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
@@ -23,7 +24,7 @@ jobs:
           - name: macOS
             type: macos-latest
 
-    name: marabou / ${{ matrix.os.name }}
+    name: marabou / ${{ matrix.os.name }} - Python ${{ env.PYTHON_VERSION }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
@@ -32,15 +33,15 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Setup Marabou (Linux)
         if: runner.os == 'Linux'
-        run: pip install "${{ env.MARABOU_BASEURL }}/${{ env.MARABOU_MACOS }}"
+        run: pip install "${{ env.MARABOU_BASEURL }}/${{ env.MARABOU_LINUX }}"
 
       - name: Setup Marabou (macOS)
         if: runner.os == 'macOS'
-        run: pip install "${{ env.MARABOU_BASEURL }}/${{ env.MARABOU_LINUX }}"
+        run: pip install "${{ env.MARABOU_BASEURL }}/${{ env.MARABOU_MACOS }}"
 
       - name: Test windController - safe-query1.txt
         run: Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
