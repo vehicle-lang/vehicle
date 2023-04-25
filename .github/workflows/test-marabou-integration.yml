@@ -24,6 +24,8 @@ jobs:
             tag: "cp39"
           - version: "3.10"
             tag: "cp310"
+          - version: "3.11"
+            tag: "cp311"
         marabou:
           - version: "2023.1001"
 
