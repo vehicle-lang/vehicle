@@ -14,11 +14,8 @@ license-file:  LICENSE
 build-type:    Simple
 tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
 
--- Generated with `script/extra-source-files`:
--- extra-source-files:
-
--- Generated with `script/extra-doc-files`:
--- extra-doc-files:
+extra-source-files:
+  lib/std.vcl
 
 source-repository head
   type:     git
