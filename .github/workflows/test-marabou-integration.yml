@@ -40,9 +40,6 @@ jobs:
         with:
           python-version: ${{ matrix.python.version }}
 
-      - name: Setup Vehicle
-        run: pip install vehicle_lang
-
       - name: Setup Marabou (Linux)
         if: runner.os == 'Linux'
         run: pip install "https://github.com/vehicle-lang/Marabou/releases/download/v${{ matrix.marabou.version }}/${{ env.MARABOU_WHEEL }}"
