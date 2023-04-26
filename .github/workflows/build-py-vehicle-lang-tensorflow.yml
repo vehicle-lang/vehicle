@@ -4,55 +4,41 @@ on:
   workflow_call:
   workflow_dispatch:
 
-env:
-  DEFAULT_GHC_VERSION: "9.4.4"
-  DEFAULT_CABAL_VERSION: "3.10.1.0"
+defaults:
+  run:
+    shell: sh
 
 jobs:
   build-py-vehicle-lang-tensorflow:
     strategy:
       matrix:
         os:
+          - name: "Linux"
+            type: "ubuntu-latest"
           - name: "macOS"
             type: "macos-latest"
-          - name: "Linux"
-            type: ubuntu-latest
           # 21-11-2022:
           # This test is disabled on Windows due to an issue with TensorFlow.
           # See: https://github.com/vehicle-lang/vehicle/pull/255#issuecomment-1320985019
-          # - { version: windows-latest, name: Windows }
-        python:
-          - version: "3.8"
-            tag: "38"
-          - version: "3.9"
-            tag: "39"
-          - version: "3.10"
-            tag: "311"
+          # - name: "Windows"
+          #   type: "windows-latest"
 
-    name: py-vehicle-lang-tensorflow / ${{ matrix.os.name }} - Python ${{ matrix.python.version }}
+    name: py-vehicle-lang-tensorflow / ${{ matrix.os.name }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Setup Vehicle
-        uses: ./.github/actions/setup-vehicle
-        with:
-          vehicle-artifact-name: |
-            vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ env.DEFAULT_GHC_VERSION }}-${{ github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python.version }}
           cache: "pip"
           cache-dependency-path: "py-vehicle-lang-tensorflow/pyproject.toml"
+          python-version: |
+            3.8
+            3.9
+            3.10
 
       - name: Test
-        run: |
-          python -m pip install .[test]
-          python -m unittest tests/test_LossFunctionTranslation.py
-        shell: sh
+        run: pipx run tox
         working-directory: py-vehicle-lang-tensorflow

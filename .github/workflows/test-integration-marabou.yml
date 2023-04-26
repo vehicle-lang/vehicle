@@ -1,0 +1,45 @@
+name: Test Marabou
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-vehicle-marabou:
+    strategy:
+      matrix:
+        os:
+          - name: "Linux"
+            type: "ubuntu-latest"
+            plat: "manylinux_2_17_x86_64.manylinux2014_x86_64"
+          - name: "macOS"
+            type: "macos-latest"
+            plat: "macosx_10_9_x86_64"
+        python:
+          - version: "3.11"
+            tag: "cp311"
+        marabou:
+          - version: "2023.1001"
+
+    name: marabou / ${{ matrix.os.name }} - Python ${{ matrix.python.version }} - Marabou ${{ matrix.marabou.version }}
+    runs-on: ${{ matrix.os.type }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "${{ matrix.python.version }}"
+
+      - name: Setup Marabou
+        run: pip install "https://github.com/vehicle-lang/Marabou/releases/download/v${{ matrix.marabou.version }}/maraboupy-${{ matrix.marabou.version }}-${{ matrix.python.tag }}-${{ matrix.python.tag }}-${{ matrix.os.plat }}.whl"
+
+      - name: Test windController - safe-query1.txt
+        run: Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
+        working-directory: vehicle/tests/golden/compile/windController
+        continue-on-error: true
