@@ -1,4 +1,4 @@
-name: test editor integration
+name: Test HLS
 
 on:
   workflow_call:
@@ -15,6 +15,10 @@ on:
         description: "The Cabal version to run the job with."
         required: true
         type: string
+
+defaults:
+  run:
+    shell: sh
 
 env:
   CABAL_PROJECT_FILE: cabal.project.ghc-${{ inputs.ghc-version }}
@@ -44,4 +48,3 @@ jobs:
             --overwrite-policy=always
           ./scripts/hie-bios-check     \
             $(git ls-files -- '*.hs')
-        shell: sh

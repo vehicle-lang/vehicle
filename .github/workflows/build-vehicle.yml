@@ -4,15 +4,19 @@ on:
   workflow_call:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: sh
+
 jobs:
   build-vehicle:
     strategy:
       matrix:
         os:
-          - name: "macOS"
-            type: "macos-latest"
           - name: "Linux"
             type: ubuntu-latest
+          - name: "macOS"
+            type: "macos-latest"
           - name: "Windows"
             type: "windows-latest"
         haskell:
@@ -120,7 +124,6 @@ jobs:
             --test-show-details=always                              \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
-        shell: sh
 
       - name: Build Vehicle
         run: |
@@ -131,11 +134,3 @@ jobs:
             --installdir=bin                                        \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
-        shell: sh
-
-      - name: Upload Vehicle
-        uses: actions/upload-artifact@v3
-        with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.haskell.ghc.version }}-${{ github.sha }}
-          path: bin
-          if-no-files-found: error
