@@ -4,19 +4,23 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as ByteString
-import Data.Version (Version)
 import GHC.Generics (Generic)
 import System.Exit (exitFailure)
 import System.FilePath (dropExtension)
 import System.IO (hPutStrLn, stderr)
-import Vehicle.Compile.Prelude
+import Vehicle.Prelude
+  ( PropertyNames,
+    VersionString,
+    vehicleProofCacheFileExtension,
+  )
+import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Verify.Specification.Status (SpecificationStatus)
 
 --------------------------------------------------------------------------------
 -- Overall status of the specification
 
 data ProofCache = ProofCache
-  { proofCacheVersion :: Version,
+  { proofCacheVersion :: VersionString,
     status :: SpecificationStatus,
     resourcesIntegrityInfo :: ResourcesIntegrityInfo,
     originalProperties :: PropertyNames

@@ -14,13 +14,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Version (Version)
-import Paths_vehicle qualified as Cabal (version)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST
-
-vehicleVersion :: Version
-vehicleVersion = Cabal.version
 
 data VehicleLang = External | Internal
   deriving (Show)

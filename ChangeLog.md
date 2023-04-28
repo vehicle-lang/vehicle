@@ -30,6 +30,9 @@
 
 * Fixed erroneous evaluation of when dividing two rationals together.
 
+* Fixed bug where the compiler would sometimes hang when reading `.vclo` files created with an
+  older version of Vehicle.
+
 ## Version 0.2.0
 
 ### General enhancements

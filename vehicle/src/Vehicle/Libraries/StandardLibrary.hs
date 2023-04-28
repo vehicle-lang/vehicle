@@ -14,9 +14,8 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (pack)
 import Data.Text.Encoding (decodeUtf8)
-import Paths_vehicle (version)
-import Prettyprinter (Pretty (..))
 import Vehicle.Libraries
+import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
 standardLibraryContentBS :: ByteString
@@ -28,7 +27,7 @@ standardLibrary =
     { libraryInfo =
         LibraryInfo
           { libraryName = "std",
-            libraryVersion = version
+            libraryVersion = preciseVehicleVersion
           },
       libraryContent = decodeUtf8 standardLibraryContentBS
     }
