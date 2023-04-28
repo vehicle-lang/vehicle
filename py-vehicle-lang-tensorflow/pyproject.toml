@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vehicle_lang_tensorflow"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python bindings for the Vehicle language."
 authors = [
   { name = "Marco Casadio", email = "tgl70@users.noreply.github.com" },
@@ -14,7 +14,7 @@ license = { file = 'LICENSE' }
 readme = "README.md"
 requires-python = ">=3.8,<3.12"
 dependencies = [
-  "vehicle_lang>=0.2.0a4",
+  "vehicle_lang>=0.3.0a4",
   # TODO: lowest possible tensorflow bound?
   "tensorflow>=2.11",
   # TODO: lowest possible numpy bound?

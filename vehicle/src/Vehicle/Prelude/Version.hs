@@ -36,7 +36,7 @@ impreciseVehicleVersion :: String
 impreciseVehicleVersion = showVersion Cabal.version
 #if releaseBuild
 #else
-  <> "-dev"
+  <> "+dev"
 #endif
 
 -- | The precise current version of Vehicle. This should be used whenever the
@@ -49,7 +49,9 @@ preciseVehicleVersion :: String
 preciseVehicleVersion = showVersion Cabal.version
 #if releaseBuild
 #else
-  <> maybe "" ("-" ++) commitInfo
+  -- Note this needs to be compliant with
+  -- https://peps.python.org/pep-0440/#local-version-identifiers
+  <> maybe "" ("+" ++) commitInfo
   where
   -- Taken from src/full/Agda/VersionCommit.hs
   commitInfo :: Maybe String
@@ -60,7 +62,7 @@ preciseVehicleVersion = showVersion Cabal.version
       hash = $(gitHash)
 
       -- Check if any tracked files have uncommitted changes
-      dirty | $(gitDirtyTracked) = "-dirty"
+      dirty | $(gitDirtyTracked) = ".dirty"
             | otherwise          = ""
 
       -- Abbreviate a commit hash while keeping it unambiguous
