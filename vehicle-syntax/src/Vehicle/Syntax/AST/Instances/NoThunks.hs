@@ -2,6 +2,8 @@
 
 module Vehicle.Syntax.AST.Instances.NoThunks where
 
+import Vehicle.Compile.Prelude (DefAbstractSort)
+
 #if nothunks
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
@@ -67,6 +69,8 @@ instance NoThunks Resource
 
 -- Vehicle.Syntax.AST.Decl
 instance NoThunks expr => NoThunks (GenericDecl expr)
+instance NoThunks DefAbstractSort
+instance NoThunks Annotation
 
 -- Vehicle.Syntax.AST.Expr
 instance NoThunks UniverseLevel
