@@ -63,7 +63,6 @@ instance NoThunks FromRatDomain
 instance NoThunks FoldDomain
 instance NoThunks QuantifierDomain
 instance NoThunks Builtin
-instance NoThunks Resource
 
 -- Vehicle.Syntax.AST.Decl
 instance NoThunks expr => NoThunks (GenericDecl expr)
