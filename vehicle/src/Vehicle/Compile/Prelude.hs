@@ -50,9 +50,8 @@ instance HasType (GenericBinder binder expr) expr where
 
 instance HasType (GenericDecl expr) expr where
   typeOf = \case
-    DefResource _ _ _ t -> t
+    DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
-    DefPostulate _ _ t -> t
 
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}

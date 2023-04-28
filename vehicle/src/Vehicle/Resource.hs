@@ -17,10 +17,25 @@ import Prettyprinter
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
-supportedFileFormats :: Resource -> [String]
+--------------------------------------------------------------------------------
+-- The different types of resources supported
+
+data ExternalResource
+  = Network
+  | Dataset
+  | Parameter
+  deriving (Eq, Show, Generic)
+
+instance Pretty ExternalResource where
+  pretty = \case
+    Network -> "network"
+    Dataset -> "dataset"
+    Parameter -> "parameter"
+
+supportedFileFormats :: ExternalResource -> [String]
 supportedFileFormats Network = [".onnx"]
 supportedFileFormats Dataset = [".idx"]
-supportedFileFormats _ = []
+supportedFileFormats Parameter = []
 
 --------------------------------------------------------------------------------
 -- Resource locations
@@ -166,7 +181,7 @@ reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) me
 
 warnIfUnusedResources ::
   (MonadLogger m) =>
-  Resource ->
+  ExternalResource ->
   Map Name a ->
   Map Name b ->
   m ()

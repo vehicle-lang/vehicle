@@ -14,21 +14,19 @@ import Vehicle.Syntax.AST.Provenance
 
 -- | Type of top-level declarations.
 data GenericDecl expr
-  = DefResource
+  = -- | Abstract definitions that require no body
+    DefAbstract
       Provenance -- Location in source file.
-      Identifier -- Name of resource.
-      Resource -- Type of resource.
-      expr -- Vehicle type of the resource.
-  | DefFunction
+      Identifier -- Name of definition.
+      DefAbstractSort -- The sort of abstract definition.
+      expr -- Type of the definition.
+  | -- | Function definitions with a body
+    DefFunction
       Provenance -- Location in source file.
-      Identifier -- Bound function name.
-      Bool -- Is it a property.
-      expr -- Bound function type.
-      expr -- Bound function body.
-  | DefPostulate
-      Provenance
-      Identifier
-      expr
+      Identifier -- Name of definition.
+      [Annotation] -- List of annotations.
+      expr -- Type of the definition.
+      expr -- Body of the definition.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericDecl expr)
@@ -39,15 +37,13 @@ instance (Serialize expr) => Serialize (GenericDecl expr)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
-    DefResource p _ _ _ -> p
+    DefAbstract p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
-    DefPostulate p _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
-    DefResource _ i _ _ -> i
+    DefAbstract _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
-    DefPostulate _ i _ -> i
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
@@ -55,8 +51,7 @@ instance HasName (GenericDecl expr) Name where
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
-  DefResource {} -> Nothing
-  DefPostulate {} -> Nothing
+  DefAbstract {} -> Nothing
 
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
@@ -68,9 +63,8 @@ traverseDeclTypeAndExpr ::
   GenericDecl expr1 ->
   m (GenericDecl expr2)
 traverseDeclTypeAndExpr f1 f2 = \case
-  DefResource p n r t -> DefResource p n r <$> f1 t
+  DefAbstract p n r t -> DefAbstract p n r <$> f1 t
   DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
-  DefPostulate p n t -> DefPostulate p n <$> f1 t
 
 -- | Traverses the type of the declaration.
 traverseDeclType ::
@@ -82,47 +76,51 @@ traverseDeclType f = traverseDeclTypeAndExpr f return
 
 isPropertyDecl :: GenericDecl expr -> Bool
 isPropertyDecl = \case
-  DefResource {} -> False
-  DefPostulate {} -> False
-  DefFunction _ _ b _ _ -> b
+  DefAbstract {} -> False
+  DefFunction _ _ anns _ _ -> AnnProperty `elem` anns
+
+--------------------------------------------------------------------------------
+-- Abstract definition types options
+
+data DefAbstractSort
+  = NetworkDef
+  | DatasetDef
+  | ParameterDef
+  | InferableParameterDef
+  | PostulateDef
+  deriving (Eq, Show, Generic)
+
+instance NFData DefAbstractSort
+
+instance ToJSON DefAbstractSort
+
+instance Serialize DefAbstractSort
+
+instance Pretty DefAbstractSort where
+  pretty t =
+    "@" <> case t of
+      NetworkDef -> "network"
+      DatasetDef -> "dataset"
+      ParameterDef -> "parameter"
+      InferableParameterDef -> "inferable parameter"
+      PostulateDef -> "property"
 
 --------------------------------------------------------------------------------
 -- Annotations options
 
-pattern InferableOption :: Text
-pattern InferableOption = "infer"
-
 data Annotation
-  = PropertyAnnotation
-  | ResourceAnnotation Resource
-
-instance Pretty Annotation where
-  pretty annotation =
-    "@" <> case annotation of
-      PropertyAnnotation -> "property"
-      ResourceAnnotation resource -> pretty resource
-
---------------------------------------------------------------------------------
--- The different types of resources supported
-
-data Resource
-  = Network
-  | Dataset
-  | Parameter
-  | InferableParameter
+  = AnnProperty
   deriving (Eq, Show, Generic)
 
-instance NFData Resource
+instance NFData Annotation
 
-instance ToJSON Resource
+instance ToJSON Annotation
 
-instance FromJSON Resource
+instance Serialize Annotation
 
-instance Serialize Resource
-
-instance Pretty Resource where
+instance Pretty Annotation where
   pretty = \case
-    Network -> "network"
-    Dataset -> "dataset"
-    Parameter -> "parameter"
-    InferableParameter -> "inferable parameter"
+    AnnProperty -> "@property"
+
+isProperty :: [Annotation] -> Bool
+isProperty anns = AnnProperty `elem` anns

@@ -357,14 +357,12 @@ compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
 compileDecl :: (MonadAgdaCompile m) => OutputDecl -> m Code
 compileDecl = \case
-  DefResource _ n _ t ->
+  DefAbstract _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
-  DefPostulate _ n t ->
-    compilePostulate (compileIdentifier n) <$> compileExpr t
-  DefFunction _ n isProperty t e -> do
+  DefFunction _ n anns t e -> do
     let (binders, body) = foldBinders FunFold e
     setBoolLevel TypeLevel $ do
-      if isProperty
+      if isProperty anns
         then compileProperty (compileIdentifier n) =<< compileExpr e
         else do
           let binders' = mapMaybe compileTopLevelBinder binders

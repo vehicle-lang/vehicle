@@ -95,36 +95,48 @@ instance MeaningfulError CompileError where
           ExternalError
             -- TODO need to revamp this error, BNFC must provide some more
             -- information than a simple string surely?
-            (pack text) --
-      UnknownBuiltin p symbol ->
+            (pack text)
+      UnannotatedAbstractDef p name ->
         UError $
           UserError
             { provenance = p,
-              problem = "Unknown symbol" <+> quotePretty symbol,
+              problem =
+                "no definition provided for the declaration"
+                  <+> quotePretty name <> ".",
               fix =
                 Just $
-                  "Please consult the documentation for a description"
-                    <+> "of Vehicle syntax"
-            }
-      FunctionNotGivenBody p name ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "no definition found for the declaration" <+> quotePretty name <+> ".",
-              fix =
-                Just $
-                  "add a definition for"
+                  "either provide a definition for"
                     <+> quotePretty name
-                    <+> "or mark it with an annotation, e.g. '@network'"
+                    <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
+                    <+> pretty NetworkDef <> ","
+                    <+> pretty DatasetDef
+                    <+> "or"
+                    <+> pretty ParameterDef <> "."
             }
-      PropertyNotGivenBody p name ->
+      MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
         UError $
           UserError
             { provenance = p,
-              problem = "missing definition for property" <+> quotePretty name <> ".",
-              fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+              problem =
+                "abstract declaration"
+                  <+> quotePretty name
+                  <+> "cannot simulataneously be annotated with both"
+                  <+> quotePretty ann1
+                  <+> "and"
+                  <+> quotePretty ann2 <> ".",
+              fix =
+                Just "remove one of annotations."
             }
-      ResourceGivenBody p resource name ->
+      AbstractDefWithNonAbstractAnnotation p name ann ->
+        case ann of
+          AnnProperty ->
+            UError $
+              UserError
+                { provenance = p,
+                  problem = "missing definition for property" <+> quotePretty name <> ".",
+                  fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+                }
+      NonAbstractDefWithAbstractAnnotation p name resource ->
         UError $
           UserError
             { provenance = p,
@@ -143,7 +155,7 @@ instance MeaningfulError CompileError where
                     <+> quotePretty resource
                     <+> "annotation."
             }
-      AnnotationWithNoDeclaration p name ->
+      AnnotationWithNoDef p name ->
         UError $
           UserError
             { provenance = p,
@@ -200,6 +212,16 @@ instance MeaningfulError CompileError where
                   <+> "for option"
                   <+> quotePretty parameterName,
               fix = Nothing
+            }
+      UnknownBuiltin p symbol ->
+        UError $
+          UserError
+            { provenance = p,
+              problem = "Unknown symbol" <+> quotePretty symbol,
+              fix =
+                Just $
+                  "Please consult the documentation for a description"
+                    <+> "of Vehicle syntax"
             }
     -------------
     -- Scoping --
@@ -714,7 +736,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf networkType,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as it is not a function.",
             fix =
               Just $
@@ -726,7 +748,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf networkType,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as the"
                 <+> pretty io
                 <+> squotes (prettyFriendly (WithContext nonTensorType emptyDBCtx))
@@ -744,7 +766,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf binder,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as it contains the non-explicit argument of type"
                 <+> squotes (prettyFriendly (WithContext (typeOf binder) emptyDBCtx))
                   <> ".",
@@ -758,7 +780,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf networkType,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as"
                 <+> pretty io <> "s of type"
                 <+> squotes (prettyFriendly (WithContext elementType emptyDBCtx))
@@ -776,7 +798,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf networkType,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as the size of the"
                 <+> pretty io
                 <+> "tensor"
@@ -794,14 +816,14 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Network ident networkType
-                <+> "as the use of the"
-                <+> prettyResource InferableParameter implIdent
+              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+                <+> "as the use of the inferable parameter"
+                <+> quotePretty implIdent
                 <+> "in the type of network declarations is not currently supported.",
             fix =
               Just $
-                "instanstiate the"
-                  <+> prettyResource InferableParameter implIdent
+                "instanstiate inferable parameter"
+                  <+> quotePretty implIdent
                   <+> "to an explicit value"
           }
     -- Dataset errors
@@ -811,7 +833,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Dataset ident datasetType <> "."
+              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType <> "."
                 <+> "Only the following types are allowed for"
                 <+> pretty Dataset
                   <> "s:"
@@ -830,7 +852,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Dataset ident datasetType
+              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
                 <+> "as it has elements of an unsupported type:"
                   <> line
                   <> indent 2 (prettyFriendly (WithContext elementType emptyDBCtx))
@@ -853,7 +875,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Parameter ident datasetType
+              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident datasetType
                 <+> "as the dimension size"
                   <> line
                   <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
@@ -964,7 +986,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Parameter ident expectedType <> "."
+              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident expectedType <> "."
                 <+> "Only the following types are allowed for"
                 <+> pretty Parameter
                   <> "s:"
@@ -1000,7 +1022,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription Parameter ident parameterType
+              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident parameterType
                 <> "as the size of the"
                 <+> pretty Index
                 <+> "type is not a known constant.",
@@ -1050,10 +1072,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              "The use of an"
-                <+> pretty InferableParameter
-                <+> "for the size of"
-                <+> "an"
+              "The use of an inferable parameter for the size of an"
                 <+> pretty Index
                 <+> "in the type of"
                 <+> prettyResource Parameter ident
@@ -1068,7 +1087,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedResourceTypeDescription InferableParameter ident expectedType
+              unsupportedAnnotationTypeDescription (pretty InferableParameterDef) ident expectedType
                 <> "."
                 <+> "Inferable parameters must be of type 'Nat'.",
             fix =
@@ -1082,8 +1101,8 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p2,
             problem =
-              "Found contradictory values for"
-                <+> prettyResource InferableParameter ident
+              "Found contradictory values for inferable parameter"
+                <+> quotePretty ident
                   <> "."
                   <> "Inferred the value"
                 <+> squotes (pretty v1)
@@ -1115,9 +1134,9 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription PropertyAnnotation ident actualType <> "."
+              unsupportedAnnotationTypeDescription (pretty AnnProperty) ident actualType <> "."
                 <+> "Only the following types are allowed for"
-                <+> quotePretty PropertyAnnotation
+                <+> quotePretty AnnProperty
                   <> "s:"
                   <> line
                   <> indent 2 (prettyAllowedBuiltins supportedTypes),
@@ -1126,7 +1145,7 @@ instance MeaningfulError CompileError where
                 "either change the type of"
                   <+> prettyIdentName ident
                   <+> "to a supported type or remove the"
-                  <+> quotePretty PropertyAnnotation
+                  <+> quotePretty AnnProperty
                   <+> "annotation."
           }
       where
@@ -1284,11 +1303,11 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-unsupportedAnnotationTypeDescription :: Annotation -> Identifier -> StandardGluedType -> Doc a
+unsupportedAnnotationTypeDescription :: Doc a -> Identifier -> StandardGluedType -> Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType =
   "The type of"
-    <+> pretty annotation
-    <+> squotes (pretty (nameOf ident :: Text))
+    <+> annotation
+    <+> quotePretty (nameOf ident :: Text)
       <> ":"
       <> line
       <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
@@ -1305,10 +1324,6 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
   where
     unreducedResourceType = unnormalised resourceType
     reducedResourceType = unnormalise 0 (normalised resourceType)
-
-unsupportedResourceTypeDescription :: Resource -> Identifier -> StandardGluedType -> Doc a
-unsupportedResourceTypeDescription resource =
-  unsupportedAnnotationTypeDescription (ResourceAnnotation resource)
 
 supportedNetworkTypeDescription :: Doc a
 supportedNetworkTypeDescription =
@@ -1330,7 +1345,7 @@ implementationLimitation issue =
         "If you would like this to be fixed, please comment at"
           <+> squotes (githubIssues <+> pretty issueNumber) <> "."
 
-prettyResource :: Resource -> Identifier -> Doc a
+prettyResource :: ExternalResource -> Identifier -> Doc a
 prettyResource resourceType ident =
   pretty resourceType <+> prettyIdentName ident
 

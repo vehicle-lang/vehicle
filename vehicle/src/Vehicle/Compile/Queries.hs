@@ -75,11 +75,10 @@ compileProgToQueries queryFormat resources prog = do
       m [(Name, MultiProperty (QueryMetaData, QueryText))]
     compileDecls _ _ [] = return []
     compileDecls networkCtx declCtx (d : ds) = case d of
-      DefResource _ r _ _ -> normalisationError currentPass (pretty r <+> "declarations")
-      DefPostulate {} -> normalisationError currentPass "postulates"
-      DefFunction p ident isProperty typ body -> do
+      DefAbstract {} -> normalisationError currentPass "postulates"
+      DefFunction p ident anns typ body -> do
         maybeProperty <-
-          if not isProperty
+          if not (isProperty anns)
             then return Nothing
             else Just <$> compilePropertyDecl networkCtx declCtx p ident typ body
 

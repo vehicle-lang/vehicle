@@ -1,8 +1,8 @@
 module Vehicle.Syntax.Parse
   ( ParseError (..),
     UnparsedExpr,
-    UnparsedProg,
-    UnparsedDecl,
+    PartiallyParsedProg,
+    PartiallyParsedDecl,
     readAndParseProg,
     parseDecl,
     parseExpr,
@@ -28,11 +28,11 @@ import Vehicle.Syntax.Parse.Error (ParseError (..))
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseProg :: (MonadError ParseError m) => Module -> Text -> m UnparsedProg
+readAndParseProg :: (MonadError ParseError m) => Module -> Text -> m PartiallyParsedProg
 readAndParseProg modul txt =
-  castBNFCError (elaborateProg modul) (parseExternalProg txt)
+  castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
 
-parseDecl :: (MonadError ParseError m) => Module -> UnparsedDecl -> m InputDecl
+parseDecl :: (MonadError ParseError m) => Module -> PartiallyParsedDecl -> m InputDecl
 parseDecl = elaborateDecl
 
 parseExpr :: (MonadError ParseError m) => Module -> UnparsedExpr -> m InputExpr

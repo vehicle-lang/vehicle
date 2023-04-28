@@ -154,12 +154,10 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   let bodyBinderForm = BinderDisplayForm (OnlyName (fromMaybe "_" (nameOf f))) True
   let bodyBinder = Binder (provenanceOf decl) bodyBinderForm v r () substBinderType
   prependedDecl <- case substDecl of
-    DefResource p rt ident t ->
-      return $ DefResource p rt ident (Pi p typeBinder t)
-    DefFunction p ident isProperty t e ->
-      return $ DefFunction p ident isProperty (Pi p typeBinder t) (Lam p bodyBinder e)
-    DefPostulate {} ->
-      compilerDeveloperError "Generalisation over postulates not yet supported"
+    DefAbstract p rt ident t ->
+      return $ DefAbstract p rt ident (Pi p typeBinder t)
+    DefFunction p ident anns t e ->
+      return $ DefFunction p ident anns (Pi p typeBinder t) (Lam p bodyBinder e)
 
   -- Then we add i) the new binder to the context of the meta-variable being
   -- solved, and ii) a new argument to all uses of the meta-variable so

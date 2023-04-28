@@ -84,12 +84,10 @@ scopeDecls = \case
 scopeDecl :: (MonadScope m) => UnscopedDecl -> m ScopedDecl
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
-    DefResource p ident r t ->
-      DefResource p ident r <$> scopeDeclExpr False t
-    DefFunction p ident isProperty t e ->
-      DefFunction p ident isProperty <$> scopeDeclExpr True t <*> scopeDeclExpr False e
-    DefPostulate p ident t ->
-      DefPostulate p ident <$> scopeDeclExpr False t
+    DefAbstract p ident r t ->
+      DefAbstract p ident r <$> scopeDeclExpr False t
+    DefFunction p ident anns t e ->
+      DefFunction p ident anns <$> scopeDeclExpr True t <*> scopeDeclExpr False e
   logCompilerPassOutput (prettyFriendly result)
   return result
 

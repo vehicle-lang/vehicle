@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Syntax.BNFC.Elaborate.External
-  ( UnparsedExpr (..),
-    UnparsedProg,
-    UnparsedDecl,
-    elaborateProg,
+  ( PartiallyParsedProg,
+    PartiallyParsedDecl,
+    UnparsedExpr (..),
+    partiallyElabProg,
     elaborateDecl,
     elaborateExpr,
   )
@@ -14,6 +14,8 @@ import Control.Monad (foldM)
 import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bitraversable (bitraverse)
+import Data.Either (partitionEithers)
+import Data.List (group)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -30,6 +32,7 @@ import Vehicle.Syntax.BNFC.Utils
     tokForallT,
     tokLambda,
     tokType,
+    pattern InferableOption,
   )
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
@@ -40,112 +43,213 @@ import Vehicle.Syntax.Sugar
 --------------------------------------------------------------------------------
 -- Public interface
 
+type PartiallyParsedProg = V.GenericProg UnparsedExpr
+
+type PartiallyParsedDecl = V.GenericDecl UnparsedExpr
+
 newtype UnparsedExpr = UnparsedExpr B.Expr
 
-type UnparsedDecl = V.GenericDecl UnparsedExpr
+--------------------------------------------------------------------------------
+-- Partially elaborating declarations
 
-type UnparsedProg = V.GenericProg UnparsedExpr
-
--- | We elaborate from the simple AST generated automatically by BNFC to our
--- more complicated internal version of the AST.
-elaborateProg ::
+-- | We partially elaborate from the simple AST generated automatically by BNFC
+-- to our more complicated internal version of the AST. We stop when we get
+-- to the expression level. In theory this should allow us to read the
+-- declaration signatures from the file without actually having to parse their
+-- types and definitions.
+partiallyElabProg ::
   (MonadError ParseError m) =>
   V.Module ->
   B.Prog ->
-  m UnparsedProg
-elaborateProg mod prog = runReaderT (elabProg prog) mod
+  m PartiallyParsedProg
+partiallyElabProg mod (B.Main decls) = flip runReaderT mod $ do
+  V.Main <$> partiallyElabDecls decls
 
-elaborateDecl ::
-  (MonadError ParseError m) =>
-  V.Module ->
-  UnparsedDecl ->
-  m V.InputDecl
-elaborateDecl mod decl = flip runReaderT mod $ case decl of
-  V.DefResource p n r t -> V.DefResource p n r <$> elabDeclType t
-  V.DefPostulate p n t -> V.DefPostulate p n <$> elabDeclType t
-  V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
-
-elaborateExpr ::
-  (MonadError ParseError m) =>
-  V.Module ->
-  UnparsedExpr ->
-  m V.InputExpr
-elaborateExpr mod (UnparsedExpr expr) = runReaderT (elabExpr expr) mod
-
---------------------------------------------------------------------------------
--- Algorithm
-
-elabProg :: (MonadElab m) => B.Prog -> m UnparsedProg
-elabProg (B.Main decls) = V.Main <$> elabDecls decls
-
-elabDecls :: (MonadElab m) => [B.Decl] -> m [UnparsedDecl]
-elabDecls = \case
+partiallyElabDecls :: (MonadElab m) => [B.Decl] -> m [PartiallyParsedDecl]
+partiallyElabDecls = \case
   [] -> return []
   decl : decls -> do
-    (d', ds) <- elabDeclGroup (decl :| decls)
-    ds' <- elabDecls ds
+    (d', ds) <- elabDeclGroup [] (decl :| decls)
+    ds' <- partiallyElabDecls ds
     return $ d' : ds'
 
-elabDeclGroup :: (MonadElab m) => NonEmpty B.Decl -> m (UnparsedDecl, [B.Decl])
-elabDeclGroup dx = case dx of
+type Annotation = (B.DeclAnnName, B.DeclAnnOpts)
+
+elabDeclGroup ::
+  (MonadElab m) =>
+  [Annotation] ->
+  NonEmpty B.Decl ->
+  m (PartiallyParsedDecl, [B.Decl])
+elabDeclGroup anns = \case
   -- Type definition.
   B.DefType n bs t :| ds -> do
-    d' <- elabTypeDef n bs t
+    d' <- elabTypeDef anns n bs t
     return (d', ds)
 
   -- Function declaration and body.
   B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
-    d' <- elabDefFun False typeName exprName t bs e
+    d' <- elabDefFun anns typeName exprName t bs e
     return (d', ds)
 
   -- Function body without a declaration.
   B.DefFunExpr n bs e :| ds -> do
     let unknownType = constructUnknownDefType n bs
-    d' <- elabDefFun False n n unknownType bs e
+    d' <- elabDefFun anns n n unknownType bs e
     return (d', ds)
 
-  -- ERROR: Function declaration with no body
-  B.DefFunType n _tk _t :| _ -> do
-    p <- mkProvenance n
-    throwError $ FunctionNotGivenBody p (tkSymbol n)
-  -- Property declaration.
-  B.DefAnn a@B.Property {} opts :| B.DefFunType typeName _tk t : B.DefFunExpr exprName bs e : ds -> do
-    checkNoAnnotationOptions a opts
-    d' <- elabDefFun True typeName exprName t bs e
+  -- Abstract function declaration with no body
+  B.DefFunType n _tk t :| ds -> do
+    abstractType <- elabDefAbstractSort n anns
+    d' <- elabDefAbstract n t abstractType
     return (d', ds)
 
-  -- ERROR: Property with no body
-  B.DefAnn B.Property {} _ :| B.DefFunType n _ _ : _ -> do
-    p <- mkProvenance n
-    throwError $ PropertyNotGivenBody p (tkSymbol n)
-  -- ERROR: Other annotation with body
-  B.DefAnn a _ :| B.DefFunType typeName _ _ : B.DefFunExpr bodyName _ _ : _
-    | tkSymbol typeName == tkSymbol bodyName -> do
-        p <- mkProvenance typeName
-        throwError $ ResourceGivenBody p (annotationSymbol a) (tkSymbol typeName)
-  -- Network declaration.
-  B.DefAnn a@B.Network {} opts :| B.DefFunType n _ t : ds -> do
-    checkNoAnnotationOptions a opts
-    d' <- elabResource n t V.Network
-    return (d', ds)
+  -- Annotation declaration.
+  B.DefAnn ann annOpts :| (d : ds) -> do
+    elabDeclGroup ((ann, annOpts) : anns) (d :| ds)
 
-  -- Dataset declaration.
-  B.DefAnn a@B.Dataset {} opts :| B.DefFunType n _ t : ds -> do
-    checkNoAnnotationOptions a opts
-    d' <- elabResource n t V.Dataset
-    return (d', ds)
+  -- ERROR: Annotation with no body
+  B.DefAnn ann annOpts :| [] -> do
+    p <- annotationProvenance ann
+    throwError $ AnnotationWithNoDef p (annotationSymbol ann)
 
-  -- Parameter declaration.
-  (B.DefAnn B.Parameter {} opts :| B.DefFunType n _ t : ds) -> do
-    r <- elabParameterOptions opts
-    d' <- elabResource n t r
-    return (d', ds)
-  (B.DefAnn B.Postulate {} opts :| B.DefFunType n _ t : ds) -> do
-    d' <- elabPostulate n t
-    return (d', ds)
-  (B.DefAnn a _ :| _) -> do
-    p <- annotationProvenance a
-    throwError $ AnnotationWithNoDeclaration p (annotationSymbol a)
+elabDefAbstractSort ::
+  (MonadElab m) =>
+  B.Name ->
+  [Annotation] ->
+  m V.DefAbstractSort
+elabDefAbstractSort defName anns = do
+  (sorts, annotations) <- partitionEithers <$> traverse (parseAnnotation defName) anns
+  case annotations of
+    ann : _ -> do
+      p <- mkProvenance defName
+      throwError $ AbstractDefWithNonAbstractAnnotation p (tkSymbol defName) ann
+    [] -> case sorts of
+      [] -> do
+        p <- mkProvenance defName
+        throwError $ UnannotatedAbstractDef p (tkSymbol defName)
+      [ann] -> return ann
+      ann1 : ann2 : _ -> do
+        p <- mkProvenance defName
+        throwError $ MultiplyAnnotatedAbstractDef p (tkSymbol defName) ann1 ann2
+
+elabDefAbstract ::
+  (MonadElab m) =>
+  B.Name ->
+  B.Expr ->
+  V.DefAbstractSort ->
+  m (V.GenericDecl UnparsedExpr)
+elabDefAbstract n t r =
+  V.DefAbstract <$> mkProvenance n <*> elabName n <*> pure r <*> pure (UnparsedExpr t)
+
+elabTypeDef ::
+  (MonadElab m) =>
+  [Annotation] ->
+  B.Name ->
+  [B.NameBinder] ->
+  B.Expr ->
+  m (V.GenericDecl UnparsedExpr)
+elabTypeDef anns n binders e = do
+  p <- mkProvenance n
+  name <- elabName n
+  let typeTyp
+        | null binders = tokType 0
+        | otherwise = B.ForallT tokForallT binders tokDot (tokType 0)
+  let typeBody
+        | null binders = e
+        | otherwise = B.Lam tokLambda binders tokArrow e
+  elabDefFun anns n n typeTyp binders typeBody
+
+elabDefFun :: (MonadElab m) => [Annotation] -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
+elabDefFun anns n1 n2 t binders e
+  | tkSymbol n1 /= tkSymbol n2 = do
+      p <- mkProvenance n1
+      throwError $ FunctionWithMismatchedNames p (tkSymbol n1) (tkSymbol n2)
+  | otherwise = do
+      p <- mkProvenance n1
+      name <- elabName n1
+      -- This is a bit evil, we don't normally store possibly empty set of
+      -- binders, but we will use this to indicate the set of LHS variables.
+      let body = B.Lam tokLambda binders tokArrow e
+      annotations <- elabDefFunctionAnnotations n1 anns
+      return $ V.DefFunction p name annotations (UnparsedExpr t) (UnparsedExpr body)
+
+elabDefFunctionAnnotations ::
+  (MonadElab m) =>
+  B.Name ->
+  [Annotation] ->
+  m [V.Annotation]
+elabDefFunctionAnnotations defName anns = do
+  (abstractSorts, annotations) <- partitionEithers <$> traverse (parseAnnotation defName) anns
+  case abstractSorts of
+    s : _ -> do
+      p <- mkProvenance defName
+      throwError $ NonAbstractDefWithAbstractAnnotation p (tkSymbol defName) s
+    [] -> return annotations
+
+parseAnnotation :: (MonadElab m) => B.Name -> Annotation -> m (Either V.DefAbstractSort V.Annotation)
+parseAnnotation defName (name, opts) = case name of
+  B.Network {} -> do checkNoAnnotationOptions name opts; return $ Left V.NetworkDef
+  B.Dataset {} -> do checkNoAnnotationOptions name opts; return $ Left V.DatasetDef
+  B.Parameter {} -> Left <$> elabParameterOptions opts
+  B.Postulate {} -> do checkNoAnnotationOptions name opts; return $ Left V.PostulateDef
+  B.Property {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnProperty
+
+elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.DefAbstractSort
+elabParameterOptions = \case
+  B.DeclAnnWithoutOpts -> return V.ParameterDef
+  B.DeclAnnWithOpts opts -> foldM parseOpt V.ParameterDef opts
+  where
+    parseOpt :: (MonadElab m) => V.DefAbstractSort -> B.DeclAnnOption -> m V.DefAbstractSort
+    parseOpt _r (B.BooleanOption nameToken valueToken) = do
+      let name = tkSymbol nameToken
+      let value = tkSymbol valueToken
+      if name /= InferableOption
+        then do
+          p <- mkProvenance nameToken
+          throwError $ InvalidAnnotationOption p "@parameter" name [InferableOption]
+        else case readMaybe (unpack value) of
+          Just True -> return V.InferableParameterDef
+          Just False -> return V.ParameterDef
+          Nothing -> do
+            p <- mkProvenance nameToken
+            throwError $ InvalidAnnotationOptionValue p name value
+
+checkNoAnnotationOptions :: (MonadElab m) => B.DeclAnnName -> B.DeclAnnOpts -> m ()
+checkNoAnnotationOptions annName = \case
+  B.DeclAnnWithoutOpts -> return ()
+  B.DeclAnnWithOpts [] -> return ()
+  B.DeclAnnWithOpts (o : _) -> do
+    let B.BooleanOption paramName _ = o
+    p <- mkProvenance paramName
+    throwError $ InvalidAnnotationOption p (annotationSymbol annName) (tkSymbol paramName) []
+
+annotationSymbol :: B.DeclAnnName -> Text
+annotationSymbol = \case
+  B.Network tk -> tkSymbol tk
+  B.Dataset tk -> tkSymbol tk
+  B.Parameter tk -> tkSymbol tk
+  B.Property tk -> tkSymbol tk
+  B.Postulate tk -> tkSymbol tk
+
+annotationProvenance :: (MonadElab m) => B.DeclAnnName -> m V.Provenance
+annotationProvenance = \case
+  B.Network tk -> mkProvenance tk
+  B.Dataset tk -> mkProvenance tk
+  B.Parameter tk -> mkProvenance tk
+  B.Property tk -> mkProvenance tk
+  B.Postulate tk -> mkProvenance tk
+
+--------------------------------------------------------------------------------
+-- Full elaboration
+
+elaborateDecl ::
+  (MonadError ParseError m) =>
+  V.Module ->
+  PartiallyParsedDecl ->
+  m V.InputDecl
+elaborateDecl mod decl = flip runReaderT mod $ case decl of
+  V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
+  V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
 
 elabDeclType ::
   (MonadElab m) =>
@@ -165,62 +269,12 @@ elabDeclBody (UnparsedExpr expr) = case expr of
     return $ foldr (V.Lam p) body' binders'
   _ -> developerError "Invalid declaration body - no lambdas found"
 
-annotationSymbol :: B.DeclAnnName -> Text
-annotationSymbol = \case
-  B.Network tk -> tkSymbol tk
-  B.Dataset tk -> tkSymbol tk
-  B.Parameter tk -> tkSymbol tk
-  B.Property tk -> tkSymbol tk
-  B.Postulate tk -> tkSymbol tk
-
-annotationProvenance :: (MonadElab m) => B.DeclAnnName -> m V.Provenance
-annotationProvenance = \case
-  B.Network tk -> mkProvenance tk
-  B.Dataset tk -> mkProvenance tk
-  B.Parameter tk -> mkProvenance tk
-  B.Property tk -> mkProvenance tk
-  B.Postulate tk -> mkProvenance tk
-
-checkNoAnnotationOptions :: (MonadElab m) => B.DeclAnnName -> B.DeclAnnOpts -> m ()
-checkNoAnnotationOptions annName = \case
-  B.DeclAnnWithoutOpts -> return ()
-  B.DeclAnnWithOpts [] -> return ()
-  B.DeclAnnWithOpts (o : _) -> do
-    let B.BooleanOption paramName _ = o
-    p <- mkProvenance paramName
-    throwError $ InvalidAnnotationOption p (annotationSymbol annName) (tkSymbol paramName) []
-
-elabResource :: (MonadElab m) => B.Name -> B.Expr -> V.Resource -> m (V.GenericDecl UnparsedExpr)
-elabResource n t r = V.DefResource <$> mkProvenance n <*> elabName n <*> pure r <*> pure (UnparsedExpr t)
-
-elabPostulate :: (MonadElab m) => B.Name -> B.Expr -> m (V.GenericDecl UnparsedExpr)
-elabPostulate n t = V.DefPostulate <$> mkProvenance n <*> elabName n <*> pure (UnparsedExpr t)
-
-elabTypeDef :: (MonadElab m) => B.Name -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
-elabTypeDef n binders e = do
-  p <- mkProvenance n
-  name <- elabName n
-  let typeTyp
-        | null binders = tokType 0
-        | otherwise = B.ForallT tokForallT binders tokDot (tokType 0)
-  let typeBody = B.Lam tokLambda binders tokArrow e
-  return $ V.DefFunction p name False (UnparsedExpr typeTyp) (UnparsedExpr typeBody)
-
-elabDefFun :: (MonadElab m) => Bool -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
-elabDefFun isProperty n1 n2 t binders e
-  | tkSymbol n1 /= tkSymbol n2 = do
-      p <- mkProvenance n1
-      throwError $ FunctionWithMismatchedNames p (tkSymbol n1) (tkSymbol n2)
-  | otherwise = do
-      p <- mkProvenance n1
-      name <- elabName n1
-      -- This is a bit evil, we don't normally store possibly empty set of
-      -- binders, but we will use this to indicate the set of LHS variables.
-      let body = B.Lam tokLambda binders tokArrow e
-      return $ V.DefFunction p name isProperty (UnparsedExpr t) (UnparsedExpr body)
-
---------------------------------------------------------------------------------
--- Expr elaboration
+elaborateExpr ::
+  (MonadError ParseError m) =>
+  V.Module ->
+  UnparsedExpr ->
+  m V.InputExpr
+elaborateExpr mod (UnparsedExpr expr) = runReaderT (elabExpr expr) mod
 
 elabExpr :: (MonadElab m) => B.Expr -> m V.InputExpr
 elabExpr = \case
@@ -358,26 +412,6 @@ elabLiteral = \case
     let r = readRat (tkSymbol t)
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.Builtin p $ V.Constructor $ V.LRat r]
-
-elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.Resource
-elabParameterOptions = \case
-  B.DeclAnnWithoutOpts -> return V.Parameter
-  B.DeclAnnWithOpts opts -> foldM parseOpt V.Parameter opts
-  where
-    parseOpt :: (MonadElab m) => V.Resource -> B.DeclAnnOption -> m V.Resource
-    parseOpt _r (B.BooleanOption nameToken valueToken) = do
-      let name = tkSymbol nameToken
-      let value = tkSymbol valueToken
-      if name /= V.InferableOption
-        then do
-          p <- mkProvenance nameToken
-          throwError $ InvalidAnnotationOption p "@parameter" name [V.InferableOption]
-        else case readMaybe (unpack value) of
-          Just True -> return V.InferableParameter
-          Just False -> return V.Parameter
-          Nothing -> do
-            p <- mkProvenance nameToken
-            throwError $ InvalidAnnotationOptionValue p name value
 
 parseTypeLevel :: B.TokType -> Int
 parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
