@@ -33,6 +33,8 @@ parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
 
 propertyAnn = B.Property $ mkToken B.TokProperty "@property"
 
+noInlineAnn = B.Property $ mkToken B.TokProperty "@noinline"
+
 postulateAnn = B.Dataset $ mkToken B.TokDataset "@postulate"
 
 tokArrow = mkToken B.TokArrow "->"

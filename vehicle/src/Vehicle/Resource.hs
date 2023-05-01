@@ -180,10 +180,10 @@ reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) me
 -- Others
 
 warnIfUnusedResources ::
-  (MonadLogger m) =>
+  (MonadLogger m, HasName ident Name) =>
   ExternalResource ->
   Map Name a ->
-  Map Name b ->
+  Map ident b ->
   m ()
 warnIfUnusedResources resourceType given found = do
   when (null found) $
@@ -191,7 +191,7 @@ warnIfUnusedResources resourceType given found = do
       "No" <+> pretty resourceType <> "s found in program"
 
   let givenNames = Map.keysSet given
-  let foundNames = Map.keysSet found
+  let foundNames = Set.map nameOf $ Map.keysSet found
   let unusedParams = givenNames `Set.difference` foundNames
   when (Set.size unusedParams > 0) $
     logWarning $

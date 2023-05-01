@@ -190,8 +190,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
-      ParameterDef -> restrictParameterType decl defType
-      InferableParameterDef -> restrictInferableParameterType decl defType
+      ParameterDef sort -> restrictParameterType sort decl defType
       DatasetDef -> restrictDatasetType decl defType
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
@@ -383,4 +382,4 @@ createDeclCtx imports =
     getEntry :: GluedDecl types -> (Identifier, TypingDeclCtxEntry types)
     getEntry d = do
       let ident = identifierOf d
-      (ident, toDeclCtxEntry d)
+      (ident, mkTypingDeclCtxEntry d)

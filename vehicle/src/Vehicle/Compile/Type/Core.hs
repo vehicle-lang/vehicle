@@ -74,27 +74,52 @@ instance Pretty (TypingError types) where
     UnsolvableConstraints {} -> "UnsolvableConstraints"
 
 --------------------------------------------------------------------------------
--- Declaration context
+-- Typing declaration context
 
-type MetaSubstitution types = MetaMap (GluedExpr types)
-
-type DeclSubstitution types = DeclCtx (NormExpr types)
-
-type TypingDeclCtxEntry types = (CheckedType types, Maybe (GluedExpr types))
+data TypingDeclCtxEntry types = TypingDeclCtxEntry
+  { declAnns :: [Annotation],
+    declType :: CheckedType types,
+    declBody :: Maybe (GluedExpr types)
+  }
 
 type TypingDeclCtx types = DeclCtx (TypingDeclCtxEntry types)
 
-toNormalisationDeclContext :: TypingDeclCtx types -> DeclCtx (CheckedExpr types)
-toNormalisationDeclContext = Map.mapMaybe (fmap unnormalised . snd)
+mkTypingDeclCtxEntry :: GluedDecl types -> TypingDeclCtxEntry types
+mkTypingDeclCtxEntry decl =
+  TypingDeclCtxEntry
+    { declAnns = annotationsOf decl,
+      declType = unnormalised $ typeOf decl,
+      declBody = bodyOf decl
+    }
 
-toDeclCtxEntry :: GluedDecl types -> TypingDeclCtxEntry types
-toDeclCtxEntry decl = do
-  let declType = unnormalised $ typeOf decl
-  let declBody = bodyOf decl
-  (declType, declBody)
+addToTypingDeclCtx :: GluedDecl types -> TypingDeclCtx types -> TypingDeclCtx types
+addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry decl)
 
-addToDeclCtx :: GluedDecl types -> TypingDeclCtx types -> TypingDeclCtx types
-addToDeclCtx decl = Map.insert (identifierOf decl) (toDeclCtxEntry decl)
+--------------------------------------------------------------------------------
+-- Typing declaration context
+
+data NormDeclCtxEntry types = NormDeclCtxEntry
+  { declExpr :: NormExpr types,
+    declAnns :: [Annotation]
+  }
+
+type NormDeclCtx types = DeclCtx (NormDeclCtxEntry types)
+
+typingDeclCtxToNormDeclCtx :: TypingDeclCtx types -> NormDeclCtx types
+typingDeclCtxToNormDeclCtx = Map.mapMaybe $ \TypingDeclCtxEntry {..} ->
+  fmap
+    ( \body ->
+        NormDeclCtxEntry
+          { declExpr = normalised body,
+            declAnns = declAnns
+          }
+    )
+    declBody
+
+--------------------------------------------------------------------------------
+-- Meta variable substitution
+
+type MetaSubstitution types = MetaMap (GluedExpr types)
 
 --------------------------------------------------------------------------------
 -- Bound variable context

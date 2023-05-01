@@ -53,6 +53,11 @@ bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
   DefAbstract {} -> Nothing
 
+annotationsOf :: GenericDecl expr -> [Annotation]
+annotationsOf = \case
+  DefFunction _ _ anns _ e -> anns
+  DefAbstract {} -> []
+
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
 -- Use |traverse| if you want to traverse them using the same function.
@@ -82,11 +87,26 @@ isPropertyDecl = \case
 --------------------------------------------------------------------------------
 -- Abstract definition types options
 
+data ParameterSort
+  = Inferable
+  | NonInferable
+  deriving (Eq, Show, Generic)
+
+instance NFData ParameterSort
+
+instance ToJSON ParameterSort
+
+instance Serialize ParameterSort
+
+instance Pretty ParameterSort where
+  pretty = \case
+    Inferable -> "(infer=True)"
+    NonInferable -> ""
+
 data DefAbstractSort
   = NetworkDef
   | DatasetDef
-  | ParameterDef
-  | InferableParameterDef
+  | ParameterDef ParameterSort
   | PostulateDef
   deriving (Eq, Show, Generic)
 
@@ -101,8 +121,7 @@ instance Pretty DefAbstractSort where
     "@" <> case t of
       NetworkDef -> "network"
       DatasetDef -> "dataset"
-      ParameterDef -> "parameter"
-      InferableParameterDef -> "inferable parameter"
+      ParameterDef paramTyp -> "parameter"
       PostulateDef -> "property"
 
 --------------------------------------------------------------------------------
@@ -110,6 +129,7 @@ instance Pretty DefAbstractSort where
 
 data Annotation
   = AnnProperty
+  | AnnNoInline
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
@@ -124,3 +144,6 @@ instance Pretty Annotation where
 
 isProperty :: [Annotation] -> Bool
 isProperty anns = AnnProperty `elem` anns
+
+isInlinable :: [Annotation] -> Bool
+isInlinable anns = AnnNoInline `notElem` anns

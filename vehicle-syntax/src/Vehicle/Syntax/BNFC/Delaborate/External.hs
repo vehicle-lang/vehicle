@@ -51,8 +51,9 @@ instance Delaborate V.InputDecl [B.Decl] where
             V.PostulateDef -> delabAnn postulateAnn []
             V.NetworkDef -> delabAnn networkAnn []
             V.DatasetDef -> delabAnn datasetAnn []
-            V.ParameterDef -> delabAnn parameterAnn []
-            V.InferableParameterDef -> delabAnn parameterAnn [mkDeclAnnOption InferableOption True]
+            V.ParameterDef sort -> case sort of
+              V.NonInferable -> delabAnn parameterAnn []
+              V.Inferable -> delabAnn parameterAnn [mkDeclAnnOption InferableOption True]
 
       return [defAnn, defFun]
     V.DefFunction _ n anns t e -> do
@@ -97,6 +98,7 @@ instance Delaborate V.InputBinder B.BasicBinder where
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
+    V.AnnNoInline -> return $ delabAnn noInlineAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr

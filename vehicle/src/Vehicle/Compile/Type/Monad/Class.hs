@@ -159,12 +159,7 @@ class (PrintableBuiltin types) => TypableBuiltin types where
 
   restrictParameterType ::
     (MonadTypeChecker types m) =>
-    DeclProvenance ->
-    GluedType types ->
-    m (CheckedType types)
-
-  restrictInferableParameterType ::
-    (MonadTypeChecker types m) =>
+    ParameterSort ->
     DeclProvenance ->
     GluedType types ->
     m (CheckedType types)
@@ -433,7 +428,8 @@ getDeclType :: (MonadTypeChecker types m) => Provenance -> Identifier -> m (Chec
 getDeclType p ident = do
   ctx <- getDeclContext
   case Map.lookup ident ctx of
-    Just (checkedType, _) -> return checkedType
+    Just TypingDeclCtxEntry {..} ->
+      return declType
     -- This should have been caught during scope checking
     Nothing ->
       compilerDeveloperError $
