@@ -7,7 +7,6 @@ module Vehicle
 where
 
 import Control.Exception (bracket, handle)
-import Data.Version (showVersion)
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Handle (hDuplicate, hDuplicateTo)
 import Options.Applicative (ParserInfo, defaultPrefs, execParserPure, handleParseResult)
@@ -49,7 +48,7 @@ runVehicle Options {..} = do
   redirections globalOptions $ \ioSettings -> do
     -- Handle --version
     if version globalOptions
-      then putStrLn $ showVersion vehicleVersion
+      then putStrLn preciseVehicleVersion
       else case modeOptions of
         Nothing ->
           fatalError

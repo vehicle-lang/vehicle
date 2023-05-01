@@ -42,6 +42,7 @@ MAlonzo/**
 # Python
 __pycache__/
 .mypy_cache/
+.tox/
 
 # Vehicle files
 *.vcl-cache
@@ -53,3 +54,10 @@ examples/windController/agdaProof/WindControllerSpec.agda
 # Benchmarks
 .benchmarks/
 benchmarks.json
+
+# Wheels
+wheelhouselocal/
+wheelhouse/
+
+# Docker
+.docker/

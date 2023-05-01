@@ -1,11 +1,11 @@
 import os.path
 import subprocess
 import sys
-from typing import Optional
+import typing
 
-from packaging.version import Version
-from setuptools import Extension, setup
-from setuptools.command.build_ext import build_ext
+import packaging.version
+import setuptools
+import setuptools.command.build_ext
 
 # 03-04-2023:
 # The imports from distutils must come AFTER the imports from setuptools,
@@ -15,22 +15,26 @@ from setuptools.command.build_ext import build_ext
 import distutils.errors
 import distutils.spawn
 
-ext_modules = [
-    Extension(
-        name="vehicle_lang._binding",
-        sources=["src/vehicle_lang/binding.i"],
-    ),
-]
+ext_module = setuptools.Extension(
+    name="vehicle_lang._binding",
+    sources=["src/vehicle_lang/binding.i"],
+)
 
 
-class cabal_build_ext(build_ext):
+class cabal_build_ext(setuptools.command.build_ext.build_ext):
     def finalize_options(self):
         super().finalize_options()
 
         if sys.platform in ["win32", "cygwin"]:
-            self.libraries.append("python%d%d" % sys.version_info[:2])
+            import find_libpython
 
-    def build_extension(self, ext: Extension):
+            library_dir, library = os.path.split(find_libpython.find_libpython())
+            libname, _libext = os.path.splitext(library)
+            libname = libname[3:] if libname.startswith("lib") else libname
+            self.libraries.append(libname)
+            self.library_dirs.append(library_dir)
+
+    def build_extension(self, ext: setuptools.Extension):
         # Taken from setuptools:
         # https://github.com/pypa/setuptools/blob/245d72a8aa4d47e1811425213aba2a06a0bb64fa/setuptools/command/build_ext.py#L240-L241
         ext._convert_pyx_sources_to_lang()  # type: ignore[attr-defined]
@@ -55,9 +59,6 @@ class cabal_build_ext(build_ext):
         # Next, build the sources with Cabal.
         # NOTE: This requires a valid .cabal file that defines a foreign library called _binding.
         self.mkpath(self.build_temp)
-        self.check_ghc_version()
-        self.check_cabal_version()
-        self.cabal_update()
         self.cabal_configure_ext(ext)
         self.cabal_build_ext(ext)
 
@@ -67,20 +68,24 @@ class cabal_build_ext(build_ext):
             build_lib = self.get_finalized_command("build_py").build_lib  # type: ignore[attr-defined]
             self.write_stub(build_lib, ext)
 
-    def cabal_update(self):
-        self.cabal(["update"])
-
-    def cabal_configure_ext(self, ext: Extension):
+    def cabal_configure_ext(self, ext: setuptools.Extension):
+        library_dirs = [*(self.library_dirs or []), *(ext.library_dirs or [])]
+        include_dirs = [*(self.include_dirs or []), *(ext.include_dirs or [])]
+        libraries = [*(self.libraries or []), *(ext.libraries or [])]
+        define = [*(self.define or []), *(ext.define_macros or [])]
+        undef = [*(self.undef or []), *(ext.undef_macros or [])]
         self.cabal(
             [
                 "configure",
-                *(f"--extra-lib-dirs={dir}" for dir in self.library_dirs),
-                *(f"--extra-include-dirs={dir}" for dir in self.include_dirs),
-                *(f"--ghc-options=-optl-l{library}" for library in self.libraries),
+                *(f"--extra-lib-dirs={dir}" for dir in library_dirs),
+                *(f"--extra-include-dirs={dir}" for dir in include_dirs),
+                *(f"--ghc-options=-optl-l{library}" for library in libraries),
+                *(f"--ghc-options=-D{symbol}={value}" for symbol, value in define),
+                *(f"--ghc-options=-U{symbol}" for symbol in undef),
             ]
         )
 
-    def cabal_build_ext(self, ext: Extension):
+    def cabal_build_ext(self, ext: setuptools.Extension):
         self.mkpath(self.build_temp)
         self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
         lib_filename = self.get_cabal_foreign_library_filename(ext)
@@ -113,7 +118,7 @@ class cabal_build_ext(build_ext):
                 f"error occurred when running '{cmd}'"
             )
 
-    _cabal: Optional[str] = None
+    _cabal: typing.Optional[str] = None
 
     def find_cabal(self):
         if self._cabal is None:
@@ -128,13 +133,13 @@ class cabal_build_ext(build_ext):
 
     def check_cabal_version(self):
         cabal_version = subprocess.getoutput(f"{self.find_cabal()} --numeric-version")
-        if Version(cabal_version) < Version("3.8"):
+        if packaging.version.Version(cabal_version) < packaging.version.Version("3.8"):
             raise distutils.errors.DistutilsExecError(
                 "Building vehicle-lang requires GHC (>=8.10) and Cabal (>=3.8). "
                 "See https://www.haskell.org/ghcup/"
             )
 
-    _ghc: Optional[str] = None
+    _ghc: typing.Optional[str] = None
 
     def find_ghc(self):
         if self._ghc is None:
@@ -149,7 +154,7 @@ class cabal_build_ext(build_ext):
 
     def check_ghc_version(self):
         ghc_version = subprocess.getoutput(f"{self.find_ghc()} --numeric-version")
-        if Version(ghc_version) < Version("8.10"):
+        if packaging.version.Version(ghc_version) < packaging.version.Version("8.10"):
             raise distutils.errors.DistutilsExecError(
                 "Building vehicle-lang requires GHC (>=8.10) and Cabal (>=3.8). "
                 "See https://www.haskell.org/ghcup/"
@@ -157,8 +162,8 @@ class cabal_build_ext(build_ext):
 
 
 def main():
-    setup(
-        ext_modules=ext_modules,
+    setuptools.setup(
+        ext_modules=[ext_module],
         cmdclass={"build_ext": cabal_build_ext},
     )
 

@@ -80,7 +80,7 @@ prettyPropertyStatus name = \case
               let witnessDoc = witnessText <> line <> indent 2 assignments
               (not negated, witnessDoc)
 
-    prettyNameAndStatus name verified <> evidenceText
+    prettyNameAndStatus name verified <> line <> evidenceText
 
 prettyNameAndStatus :: Text -> Bool -> Doc a
 prettyNameAndStatus name verified = do
@@ -118,7 +118,7 @@ instance IsVerified SpecificationStatus where
 
 instance Pretty SpecificationStatus where
   pretty spec@(SpecificationStatus properties) = do
-    let result = "Result:" <> (if isVerified spec then "verified" else "unverified")
+    let result = "Result:" <+> (if isVerified spec then "true" else "false")
     let propertiesByName = Map.toList properties
     result
       <> line

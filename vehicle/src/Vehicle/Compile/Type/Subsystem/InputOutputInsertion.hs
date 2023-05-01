@@ -25,10 +25,10 @@ addFunctionAuxiliaryInputOutputConstraints ::
   CheckedDecl types ->
   m (CheckedDecl types)
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
-  DefFunction p ident isProperty t e -> do
+  DefFunction p ident anns t e -> do
     logCompilerPass MaxDetail "insertion of input/output constraints" $ do
       t' <- evalStateT (decomposePiType mkConstraint (ident, p) 0 t) mempty
-      return $ DefFunction p ident isProperty t' e
+      return $ DefFunction p ident anns t' e
   d -> return d
 
 decomposePiType ::

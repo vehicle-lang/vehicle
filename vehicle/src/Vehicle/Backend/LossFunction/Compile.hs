@@ -93,10 +93,8 @@ compileDecl ::
   InputDecl ->
   m LDecl
 compileDecl networkCtx logic = \case
-  V.DefResource _ _ r _ ->
+  V.DefAbstract _ _ r _ ->
     normalisationError currentPass (pretty r <+> "declaration")
-  V.DefPostulate {} ->
-    normalisationError currentPass "postulates"
   V.DefFunction p ident _ _ expr ->
     logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
       let logicImplementation = implementationOf logic

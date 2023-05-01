@@ -14,7 +14,6 @@ import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BIO
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-import Data.Version (Version)
 import GHC.Generics (Generic)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((<.>), (</>))
@@ -24,7 +23,7 @@ type LibraryName = String
 
 data LibraryInfo = LibraryInfo
   { libraryName :: LibraryName,
-    libraryVersion :: Version
+    libraryVersion :: VersionString
   }
   deriving (Generic)
 

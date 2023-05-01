@@ -44,22 +44,21 @@ instance Delaborate V.InputProg B.Prog where
 
 instance Delaborate V.InputDecl [B.Decl] where
   delabM = \case
-    V.DefResource _ n r t -> do
+    V.DefAbstract _ n a t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
-      let defAnn = case r of
-            V.Network -> delabAnn networkAnn []
-            V.Dataset -> delabAnn datasetAnn []
-            V.Parameter -> delabAnn parameterAnn []
-            V.InferableParameter -> delabAnn parameterAnn [mkDeclAnnOption V.InferableOption True]
+      let defAnn = case a of
+            V.PostulateDef -> delabAnn postulateAnn []
+            V.NetworkDef -> delabAnn networkAnn []
+            V.DatasetDef -> delabAnn datasetAnn []
+            V.ParameterDef -> delabAnn parameterAnn []
+            V.InferableParameterDef -> delabAnn parameterAnn [mkDeclAnnOption InferableOption True]
 
       return [defAnn, defFun]
-    V.DefFunction _ n isProperty t e ->
-      delabFun isProperty n t e
-    V.DefPostulate _ n t -> do
-      defPost <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
-      let defAnn = delabAnn postulateAnn []
-      return [defAnn, defPost]
+    V.DefFunction _ n anns t e -> do
+      annDecls <- traverse delabM anns
+      funDecls <- delabFun n t e
+      return $ annDecls <> funDecls
 
 instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of
@@ -94,6 +93,10 @@ instance Delaborate V.InputBinder B.BasicBinder where
       V.Explicit -> B.ExplicitBinder n' tokElemOf t'
       V.Implicit {} -> B.ImplicitBinder n' tokElemOf t'
       V.Instance {} -> B.InstanceBinder n' tokElemOf t'
+
+instance Delaborate V.Annotation B.Decl where
+  delabM = \case
+    V.AnnProperty -> return $ delabAnn propertyAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr
@@ -324,8 +327,8 @@ delabLam binder body = do
   body' <- delabM foldedBody
   return $ B.Lam tokLambda binders' tokArrow body'
 
-delabFun :: (MonadDelab m) => Bool -> V.Identifier -> V.InputExpr -> V.InputExpr -> m [B.Decl]
-delabFun isProperty name typ expr = do
+delabFun :: (MonadDelab m) => V.Identifier -> V.InputExpr -> V.InputExpr -> m [B.Decl]
+delabFun name typ expr = do
   let n' = delabIdentifier name
   let (binders, body) = foldBinders FunFold expr
   if V.isTypeSynonym typ
@@ -335,11 +338,7 @@ delabFun isProperty name typ expr = do
     else do
       defType <- B.DefFunType n' tokElemOf <$> delabM typ
       defExpr <- B.DefFunExpr n' <$> traverse delabNameBinder binders <*> delabM body
-      let decl = [defType, defExpr]
-      return $
-        if isProperty
-          then delabAnn propertyAnn [] : decl
-          else decl
+      return [defType, defExpr]
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.InputArg] -> m B.Expr
 delabQuantifier q args = case reverse args of

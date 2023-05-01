@@ -43,15 +43,15 @@ instance Elab B.Prog V.InputProg where
 
 instance Elab B.Decl V.InputDecl where
   elab = \case
-    B.DeclNetw n t -> elabResource n t V.Network
-    B.DeclData n t -> elabResource n t V.Dataset
-    B.DeclParam n t -> elabResource n t V.Parameter
-    B.DeclImplParam n t -> elabResource n t V.InferableParameter
-    B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure False <*> elab t <*> elab e
-    B.DeclPost n t -> V.DefPostulate <$> mkProvenance n <*> elab n <*> elab t
+    B.DeclNetw n t -> elabDefAbstract n t V.NetworkDef
+    B.DeclData n t -> elabDefAbstract n t V.DatasetDef
+    B.DeclParam n t -> elabDefAbstract n t V.ParameterDef
+    B.DeclImplParam n t -> elabDefAbstract n t V.InferableParameterDef
+    B.DeclPost n t -> elabDefAbstract n t V.PostulateDef
+    B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure mempty <*> elab t <*> elab e
 
-elabResource :: (MonadElab m) => NameToken -> B.Expr -> V.Resource -> m V.InputDecl
-elabResource n t r = V.DefResource <$> mkProvenance n <*> elab n <*> pure r <*> elab t
+elabDefAbstract :: (MonadElab m) => NameToken -> B.Expr -> V.DefAbstractSort -> m V.InputDecl
+elabDefAbstract n t r = V.DefAbstract <$> mkProvenance n <*> elab n <*> pure r <*> elab t
 
 instance Elab B.Expr V.InputExpr where
   elab = \case

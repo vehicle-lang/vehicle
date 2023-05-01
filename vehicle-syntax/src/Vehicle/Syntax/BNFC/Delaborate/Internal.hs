@@ -41,15 +41,18 @@ instance Delaborate V.InputProg B.Prog where
 -- | Elaborate declarations.
 instance Delaborate V.InputDecl B.Decl where
   delabM = \case
-    V.DefPostulate _ n t -> B.DeclPost (delabIdentifier n) <$> delabM t
     V.DefFunction _ n _ t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
-    V.DefResource _ n r t -> do
-      let constructor = case r of
-            V.Network -> B.DeclNetw
-            V.Dataset -> B.DeclData
-            V.Parameter -> B.DeclParam
-            V.InferableParameter -> B.DeclImplParam
+    V.DefAbstract _ n s t -> do
+      constructor <- delabM s
       constructor (delabIdentifier n) <$> delabM t
+
+instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
+  delabM sort = return $ case sort of
+    V.PostulateDef -> B.DeclPost
+    V.NetworkDef -> B.DeclNetw
+    V.DatasetDef -> B.DeclData
+    V.ParameterDef -> B.DeclParam
+    V.InferableParameterDef -> B.DeclImplParam
 
 instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of

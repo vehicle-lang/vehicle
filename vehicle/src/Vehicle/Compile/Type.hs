@@ -76,9 +76,8 @@ typeCheckDecl uncheckedDecl =
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
 
     gluedDecl <- case convertedDecl of
-      DefPostulate p n t -> typeCheckPostulate p n t
-      DefResource p n r t -> typeCheckResource p n r t
-      DefFunction p n b r t -> typeCheckFunction p n b r t
+      DefAbstract p n r t -> typeCheckAbstractDef p n r t
+      DefFunction p n b t e -> typeCheckFunction p n b t e
 
     -- when (nameOf gluedDecl == "vectorToList") $ developerError "Hi"
     checkAllUnknownsSolved (Proxy @types)
@@ -101,37 +100,26 @@ convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
         CFunction f -> return $ normAppList p1 (Builtin p2 (CFunction f)) args
         CType t -> convertFromStandardTypes p2 t args
 
-typeCheckPostulate ::
+typeCheckAbstractDef ::
   (TCM types m) =>
   Provenance ->
   Identifier ->
+  DefAbstractSort ->
   UncheckedType types ->
   m (GluedDecl types)
-typeCheckPostulate p ident typ = do
-  checkedType <- checkDeclType ident typ
-  gluedType <- glueNBE mempty checkedType
-  return $ DefPostulate p ident gluedType
-
-typeCheckResource ::
-  (TCM types m) =>
-  Provenance ->
-  Identifier ->
-  Resource ->
-  UncheckedType types ->
-  m (GluedDecl types)
-typeCheckResource p ident resource uncheckedType = do
+typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
-  let checkedDecl = DefResource p ident resource checkedType
+  let checkedDecl = DefAbstract p ident defSort checkedType
   solveConstraints (Just checkedDecl)
   substCheckedType <- substMetas checkedType
 
-  -- Add extra constraints from the resource type. Need to have called
+  -- Add extra constraints on the type. Need to have called
   -- solve constraints beforehand in order to allow for normalisation,
   -- but really only need to have solved type-class constraints.
   logDebug MaxDetail $ prettyVerbose substCheckedType
   gluedType <- glueNBE mempty substCheckedType
-  updatedCheckedType <- restrictResourceType resource (ident, p) gluedType
-  let updatedCheckedDecl = DefResource p ident resource updatedCheckedType
+  updatedCheckedType <- restrictAbstractDefType defSort (ident, p) gluedType
+  let updatedCheckedDecl = DefAbstract p ident defSort updatedCheckedType
 
   solveConstraints (Just updatedCheckedDecl)
 
@@ -147,11 +135,11 @@ typeCheckFunction ::
   (TCM types m) =>
   Provenance ->
   Identifier ->
-  Bool ->
+  [Annotation] ->
   UncheckedType types ->
   UncheckedExpr types ->
   m (GluedDecl types)
-typeCheckFunction p ident isProperty typ body = do
+typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
 
   -- Type check the body.
@@ -160,13 +148,13 @@ typeCheckFunction p ident isProperty typ body = do
     runReaderT (checkExpr checkedType body) mempty
 
   -- Reconstruct the function.
-  let checkedDecl = DefFunction p ident isProperty checkedType checkedBody
+  let checkedDecl = DefFunction p ident anns checkedType checkedBody
 
   -- Solve constraints and substitute through.
   solveConstraints (Just checkedDecl)
   substDecl <- substMetas checkedDecl
 
-  if isProperty
+  if isProperty anns
     then do
       gluedDecl <- traverse (glueNBE mempty) substDecl
       restrictPropertyType (ident, p) (typeOf gluedDecl)
@@ -192,20 +180,21 @@ checkDeclType ident declType = do
     assertDeclTypeIsType ident typeOfType
     return checkedType
 
-restrictResourceType ::
+restrictAbstractDefType ::
   (TCM types m) =>
-  Resource ->
+  DefAbstractSort ->
   DeclProvenance ->
   GluedType types ->
   m (CheckedType types)
-restrictResourceType resource decl@(ident, _) resourceType = do
+restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
-      Parameter -> restrictParameterType decl resourceType
-      InferableParameter -> restrictInferableParameterType decl resourceType
-      Dataset -> restrictDatasetType decl resourceType
-      Network -> restrictNetworkType decl resourceType
+      ParameterDef -> restrictParameterType decl defType
+      InferableParameterDef -> restrictInferableParameterType decl defType
+      DatasetDef -> restrictDatasetType decl defType
+      NetworkDef -> restrictNetworkType decl defType
+      PostulateDef -> return $ unnormalised defType
 
 assertDeclTypeIsType :: (TCM types m) => Identifier -> CheckedType types -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe

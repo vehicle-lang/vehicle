@@ -26,7 +26,7 @@ isInferableParameter ident = do
 --------------------------------------------------------------------------------
 -- Resource contexts
 
-type InferableParameterEntry = (DeclProvenance, Resource, Int)
+type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
 
 type InferableParameterContext = Map Name (Maybe InferableParameterEntry)
 

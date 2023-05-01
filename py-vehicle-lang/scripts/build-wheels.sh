@@ -28,7 +28,7 @@ do
         >&2 echo "pyenv: install with \`pyenv install ${python_version}'"
         exit 1
     else
-        echo "$(python --version)"
+        python --version
         python -m pip install pipx
         python -m pipx run --spec build pyproject-build --wheel --outdir="${ROOT_DIR}/wheelhouselocal"
     fi
@@ -45,24 +45,31 @@ done
 PLATFORM="$(python -c 'import sys; print(sys.platform)')"
 
 # Delocate the wheels
-mkdir -p "${ROOT_DIR}/wheelhouse"
+WHEELHOUSE="${ROOT_DIR}/wheelhouse"
+WHEELHOUSE_TEMP="${WHEELHOUSE}_temp"
+mkdir -p "${WHEELHOUSE}"
 case "${PLATFORM}" in
     'darwin')
         python -m pip install pipx
-        python -m pipx run --spec delocate delocate-wheel --wheel-dir="${ROOT_DIR}/wheelhouse" "${ROOT_DIR}/wheelhouselocal"/*.whl
+        python -m pipx run --spec delocate delocate-wheel --wheel-dir="${WHEELHOUSE}" "${WHEELHOUSE_TEMP}"/*.whl
     ;;
     'linux')
         LIBC="$(python -c 'import platform; print(platform.libc_ver()[1].replace(".","_"))')"
         ARCH="$(python -c 'import platform; print(platform.machine())')"
-        python -m pip install pipx
-        python -m pipx run auditwheel repair --wheel-dir="${ROOT_DIR}/wheelhouse" --plat="manylinux_${LIBC}_${ARCH}" "${ROOT_DIR}/wheelhouselocal"/*.whl
+        MANYLINUX_PLATFORM_TAGS="${MANYLINUX_PLATFORM_TAGS:-"manylinux_${LIBC}"}"
+        set -- $MANYLINUX_PLATFORM_TAGS
+        for MANYLINUX_PLATFORM_TAG in "$@"
+        do
+            python -m pip install pipx
+            python -m pipx run auditwheel repair --wheel-dir="${WHEELHOUSE}" --plat="${MANYLINUX_PLATFORM_TAG}_${ARCH}" "${WHEELHOUSE_TEMP}"/*.whl
+        done
     ;;
     'win32')
         # 03-04-2023:
         # At the moment, delvewheel does not copy wheels if there is nothing to delocate,
         # which means that we cannot simply run it to future-proof our builds. Therefore,
         # we simply copy the wheels from wheelhouselocal to wheelhouse.
-        cp "${ROOT_DIR}/wheelhouselocal"/*.whl "${ROOT_DIR}/wheelhouse/"
+        cp "${WHEELHOUSE_TEMP}"/*".whl" "${WHEELHOUSE}/"
     ;;
 esac
-echo "The built wheels are located in ${ROOT_DIR}/wheelhouse"
+echo "The built wheels are located in ${WHEELHOUSE}"

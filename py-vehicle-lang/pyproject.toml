@@ -1,5 +1,10 @@
 [build-system]
-requires = ["setuptools>=67", "packaging>=23"]
+requires = [
+  "find_libpython>=0.3; sys_platform == 'win32'",
+  "packaging>=23",
+  "setuptools>=45",
+  "swig>=4",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,6 +14,7 @@ description = 'A high-level functional language for writing mathematically-preci
 readme = 'README.md'
 license = { file = 'LICENSE' }
 dynamic = ["version"]
+requires-python = ">=3.7,<3.12"
 
 [project.optional-dependencies]
 pygments = ["pygments >=2.14, <3"]
@@ -20,6 +26,25 @@ vehicle = "vehicle_lang:main"
 
 [project.entry-points.'pygments.lexers']
 vehicle = "vehicle_lang.pygments:VehicleLexer"
+
+[tool.cibuildwheel]
+# 18-04-2023:
+# Cross-compilation does not work with GHC and Cabal.
+archs = ["native"]
+build-frontend = "build"
+skip = [
+  # 18-04-2023:
+  # PyPy builds do not work.
+  "pp*",
+  # 18-04-2023:
+  # GHC distributions for Alpine Linux do not include dynamic builds for libraries.
+  "*musllinux*"
+]
+test-command = "pytest {package}/tests"
+test-extras = "test"
+
+[tool.cibuildwheel.linux]
+before-all = "source /etc/os-release && {package}/scripts/before-all-$ID.sh"
 
 [tool.mypy]
 python_version = 3.7

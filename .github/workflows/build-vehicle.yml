@@ -4,64 +4,103 @@ on:
   workflow_call:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: sh
+
 jobs:
   build-vehicle:
-    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.ghc.version }} ${{ matrix.cabal.extra-args }}
-    runs-on: ${{ matrix.os.version }}
-
     strategy:
       matrix:
         os:
-          - { version: ubuntu-latest, name: Linux }
-          - { version: macos-latest, name: macOS }
-          - { version: windows-latest, name: Windows }
-        ghc:
-          - { version: "9.6.1", project-file: "cabal.project.ghc-9.6.1" }
-          - { version: "9.4.4", project-file: "cabal.project.ghc-9.4.4" }
-          - { version: "9.2.7", project-file: "cabal.project.ghc-9.2.7" }
-          # 03-04-2020:
-          # These versions of GHC are no longer supported.
-          # - { version: "9.0.2", project-file: "cabal.project.ghc-9.0.2" }
-          # - { version: "8.10.7", project-file: "cabal.project.ghc-8.10.7" }
-        cabal:
-          - { version: "3.10.1.0", extra-args: "" }
+          - name: "Linux"
+            type: ubuntu-latest
+          - name: "macOS"
+            type: "macos-latest"
+          - name: "Windows"
+            type: "windows-latest"
+        haskell:
+          - ghc:
+              version: "9.6.1"
+            cabal:
+              version: "3.10.1.0"
+              project-file: "cabal.project.ghc-9.6.1"
+              extra-args: ""
+          - ghc:
+              version: "9.4.4"
+            cabal:
+              version: "3.8.1.0"
+              project-file: "cabal.project.ghc-9.4.4"
+              extra-args: ""
+          - ghc:
+              version: "9.2.7"
+            cabal:
+              version: "3.8.1.0"
+              project-file: "cabal.project.ghc-9.2.7"
+              extra-args: ""
         include:
           # Build with GHC 9.0.2
-          - os: { version: ubuntu-latest, name: Linux }
-            ghc: { version: "9.0.2", project-file: "cabal.project.ghc-9.0.2" }
-            cabal: { version: "3.8.1.0", extra-args: "" }
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.0.2"
+              cabal:
+                version: "3.8.1.0"
+                project-file: "cabal.project.ghc-9.0.2"
+                extra-args: ""
           # Build with GHC 8.10.7
-          - os: { version: ubuntu-latest, name: Linux }
-            ghc: { version: "8.10.7", project-file: "cabal.project.ghc-8.10.7" }
-            cabal: { version: "3.8.1.0", extra-args: "" }
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "8.10.7"
+              cabal:
+                version: "3.8.1.0"
+                project-file: "cabal.project.ghc-8.10.7"
+                extra-args: ""
           # Build with -fnothunks:
-          - os: { version: ubuntu-latest, name: Linux }
-            ghc:
-              {
-                version: "9.4.4",
-                project-file: "cabal.project.nothunks.ghc-9.4.4",
-              }
-            cabal: { version: "3.8.1.0", extra-args: "-fnothunks" }
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.4.4"
+              cabal:
+                version: "3.8.1.0"
+                project-file: "cabal.project.nothunks.ghc-9.4.4"
+                extra-args: "-fnothunks"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
-          # - os: { tag: ubuntu-latest, name: Linux }
-          #   ghc:
-          #     {
-          #       version: "9.4.4",
-          #       project-file: "cabal.project.ghc-debug.ghc-9.4.4",
-          #     }
-          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug" }
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.4.4"
+          #     cabal:
+          #       version: "3.8.1.0"
+          #       project-file: "cabal.project.ghc-debug.ghc-9.4.4"
+          #       extra-args: "-fghc-debug"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug and -fnothunks:
-          # - os: { tag: ubuntu-latest, name: Linux }
-          #   ghc:
-          #     {
-          #       version: "9.4.4",
-          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4",
-          #     }
-          #   cabal: { version: "3.8.1.0", extra-args: "-fghc-debug -fnothunks" }
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.4.4"
+          #     cabal:
+          #       version: "3.8.1.0"
+          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4"
+          #       extra-args: "-fghc-debug -fnothunks"
+
+    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
+    runs-on: ${{ matrix.os.type }}
 
     steps:
       - name: Checkout
@@ -70,37 +109,27 @@ jobs:
       - name: Setup Haskell
         uses: ./.github/actions/setup-haskell
         with:
-          ghc-version: ${{ matrix.ghc.version }}
-          cabal-version: ${{ matrix.cabal.version }}
-          cabal-project-file: ${{ matrix.ghc.project-file }}
-          cabal-project-freeze-file: ${{ matrix.ghc.project-file }}.freeze
+          ghc-version: ${{ matrix.haskell.ghc.version }}
+          cabal-version: ${{ matrix.haskell.cabal.version }}
+          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
+          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
       - name: Test Vehicle
         run: |
           cabal test                                      \
             vehicle:test:vehicle-unit-tests               \
-            vehicle:test:vehicle-compiler-tests             \
-            --test-option=--color=always                  \
-            --test-option=--num-threads=1                 \
+            vehicle:test:vehicle-compiler-tests           \
             --test-show-details=always                    \
-            --project-file=${{ matrix.ghc.project-file }} \
+            --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.cabal.extra-args }}
         shell: sh
 
       - name: Build Vehicle
         run: |
           mkdir -p bin
-          cabal install vehicle:exe:vehicle               \
-            --overwrite-policy=always                     \
-            --install-method=copy                         \
-            --installdir=bin                              \
-            --project-file=${{ matrix.ghc.project-file }} \
-            ${{ matrix.cabal.extra-args }}
-        shell: sh
-
-      - name: Upload Vehicle
-        uses: actions/upload-artifact@v3
-        with:
-          name: vehicle-${{ runner.arch }}-${{ runner.os }}-ghc-${{ matrix.ghc.version }}-${{ github.sha }}
-          path: bin
-          if-no-files-found: error
+          cabal install vehicle:exe:vehicle                         \
+            --overwrite-policy=always                               \
+            --install-method=copy                                   \
+            --installdir=bin                                        \
+            --project-file=${{ matrix.haskell.cabal.project-file }} \
+            ${{ matrix.haskell.cabal.extra-args }}

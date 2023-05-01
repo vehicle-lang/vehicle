@@ -114,15 +114,14 @@ monomorphiseDecls decl = do
 
 monomorphiseDecl :: (MonadCollect m) => TypeCheckedDecl -> m [TypeCheckedDecl]
 monomorphiseDecl decl = case decl of
-  DefPostulate {} -> return [decl]
-  DefResource {} -> return [decl]
-  DefFunction p ident isProperty t e -> do
+  DefAbstract {} -> return [decl]
+  DefFunction p ident anns t e -> do
     freeVarApplications <- get
     keepUnused <- ask
     case Map.lookup ident freeVarApplications of
       Nothing -> do
         logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
-        if keepUnused || isProperty
+        if keepUnused || isProperty anns
           then do
             logDebug MaxDetail "Keeping declaration as it is a property"
             return [decl]
@@ -133,21 +132,21 @@ monomorphiseDecl decl = case decl of
         let numberOfApplications = Set.size applications
         let createNewName = numberOfApplications > 1
         logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications"
-        traverse (performMonomorphisation (p, ident, t, e) createNewName) (Set.toList applications)
+        traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) (Set.toList applications)
 
 performMonomorphisation ::
   (MonadCollect m) =>
-  (Provenance, Identifier, TypeCheckedType, TypeCheckedExpr) ->
+  (Provenance, Identifier, [Annotation], TypeCheckedType, TypeCheckedExpr) ->
   Bool ->
   [TypeCheckedArg] ->
   m TypeCheckedDecl
-performMonomorphisation (p, ident, typ, body) createNewName args = do
+performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   let newIdent
         | createNewName = Identifier (moduleOf ident) $ nameOf ident <> getMonomorphisedSuffix args
         | otherwise = ident
   let (newType, newBody) = substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
-  let newDecl = DefFunction p newIdent False newType newBody
+  let newDecl = DefFunction p newIdent anns newType newBody
   return newDecl
 
 substituteArgsThrough :: (TypeCheckedType, TypeCheckedExpr, [TypeCheckedArg]) -> (TypeCheckedType, TypeCheckedExpr)
