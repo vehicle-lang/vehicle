@@ -2,6 +2,7 @@ module Vehicle.Compile.Resource where
 
 import Data.Map (Map)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -40,4 +41,17 @@ instance Pretty NetworkBaseType where
   pretty = \case
     NetworkRatType -> pretty Rat
 
+--------------------------------------------------------------------------------
+-- Context
+
+type ParameterContext = Map Identifier StandardNormExpr
+
+type DatasetContext = Map Identifier StandardNormExpr
+
 type NetworkContext = Map Name (FilePath, NetworkType)
+
+data ResourceContext = ResourceContext
+  { parameterContext :: ParameterContext,
+    datasetContext :: DatasetContext,
+    networkContext :: NetworkContext
+  }

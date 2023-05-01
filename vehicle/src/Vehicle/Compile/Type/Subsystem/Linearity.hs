@@ -25,8 +25,7 @@ instance TypableBuiltin LinearityType where
   typeBuiltin = typeLinearityBuiltin
   restrictNetworkType = checkNetworkType
   restrictDatasetType = assertConstantLinearity
-  restrictParameterType = assertConstantLinearity
-  restrictInferableParameterType = assertConstantLinearity
+  restrictParameterType = const assertConstantLinearity
   restrictPropertyType _ _ = return ()
   handleTypingError = handleLinearityTypingError
   typeClassRelevancy = const $ return Relevant

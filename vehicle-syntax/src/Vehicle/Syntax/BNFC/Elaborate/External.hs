@@ -193,11 +193,12 @@ parseAnnotation defName (name, opts) = case name of
   B.Parameter {} -> Left <$> elabParameterOptions opts
   B.Postulate {} -> do checkNoAnnotationOptions name opts; return $ Left V.PostulateDef
   B.Property {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnProperty
+  B.NoInline {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnNoInline
 
 elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.DefAbstractSort
 elabParameterOptions = \case
-  B.DeclAnnWithoutOpts -> return V.ParameterDef
-  B.DeclAnnWithOpts opts -> foldM parseOpt V.ParameterDef opts
+  B.DeclAnnWithoutOpts -> return $ V.ParameterDef V.NonInferable
+  B.DeclAnnWithOpts opts -> foldM parseOpt (V.ParameterDef V.NonInferable) opts
   where
     parseOpt :: (MonadElab m) => V.DefAbstractSort -> B.DeclAnnOption -> m V.DefAbstractSort
     parseOpt _r (B.BooleanOption nameToken valueToken) = do
@@ -208,8 +209,8 @@ elabParameterOptions = \case
           p <- mkProvenance nameToken
           throwError $ InvalidAnnotationOption p "@parameter" name [InferableOption]
         else case readMaybe (unpack value) of
-          Just True -> return V.InferableParameterDef
-          Just False -> return V.ParameterDef
+          Just True -> return $ V.ParameterDef V.Inferable
+          Just False -> return $ V.ParameterDef V.NonInferable
           Nothing -> do
             p <- mkProvenance nameToken
             throwError $ InvalidAnnotationOptionValue p name value

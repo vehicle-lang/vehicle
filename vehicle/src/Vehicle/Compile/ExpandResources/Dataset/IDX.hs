@@ -6,7 +6,6 @@ where
 import Control.Exception (try)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (..))
-import Control.Monad.State (gets, modify)
 import Data.IDX
   ( IDXData,
     decodeIDXFile,
@@ -107,14 +106,14 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
         then return actualDim
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
     VFreeVar dimIdent _ -> do
-      implicitParams <- gets inferableParameterContext
+      implicitParams <- getInferableParameterContext
       let newEntry = (decl, Dataset, actualDim)
-      case Map.lookup (nameOf dimIdent) implicitParams of
+      case Map.lookup dimIdent implicitParams of
         Nothing -> variableSizeError ctx expectedDim
-        Just Nothing -> do
-          modify (addPossibleInferableParameterSolution dimIdent newEntry)
+        Just Left {} -> do
+          addPossibleInferableParameterSolution dimIdent newEntry
           return actualDim
-        Just (Just existingEntry@(_, _, value)) ->
+        Just (Right existingEntry@(_, _, value)) ->
           if value == actualDim
             then return value
             else throwError $ InferableParameterContradictory dimIdent existingEntry newEntry

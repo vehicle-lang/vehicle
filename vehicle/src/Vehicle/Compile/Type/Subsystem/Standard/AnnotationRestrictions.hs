@@ -1,6 +1,5 @@
 module Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
   ( restrictStandardParameterType,
-    restrictStandardInferableParameterType,
     restrictStandardDatasetType,
     restrictStandardNetworkType,
     restrictStandardPropertyType,
@@ -36,10 +35,20 @@ restrictStandardPropertyType decl parameterType = go (normalised parameterType)
 
 restrictStandardParameterType ::
   (MonadTypeChecker StandardBuiltinType m) =>
+  ParameterSort ->
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
-restrictStandardParameterType decl parameterType = do
+restrictStandardParameterType sort = case sort of
+  NonInferable -> restrictStandardNonInferableParameterType
+  Inferable -> restrictStandardInferableParameterType
+
+restrictStandardNonInferableParameterType ::
+  (MonadTypeChecker StandardBuiltinType m) =>
+  DeclProvenance ->
+  StandardGluedType ->
+  m StandardType
+restrictStandardNonInferableParameterType decl parameterType = do
   case normalised parameterType of
     VIndexType {} -> return ()
     VNatType {} -> return ()
@@ -55,9 +64,10 @@ restrictStandardInferableParameterType ::
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
-restrictStandardInferableParameterType decl parameterType = case normalised parameterType of
-  VNatType {} -> return (unnormalised parameterType)
-  _ -> throwError $ InferableParameterTypeUnsupported decl parameterType
+restrictStandardInferableParameterType decl parameterType =
+  case normalised parameterType of
+    VNatType {} -> return (unnormalised parameterType)
+    _ -> throwError $ InferableParameterTypeUnsupported decl parameterType
 
 --------------------------------------------------------------------------------
 -- Datasets

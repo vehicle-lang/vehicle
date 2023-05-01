@@ -111,7 +111,7 @@ instance MeaningfulError CompileError where
                     <+> pretty NetworkDef <> ","
                     <+> pretty DatasetDef
                     <+> "or"
-                    <+> pretty ParameterDef <> "."
+                    <+> pretty (ParameterDef NonInferable) <> "."
             }
       MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
         UError $
@@ -134,6 +134,16 @@ instance MeaningfulError CompileError where
               UserError
                 { provenance = p,
                   problem = "missing definition for property" <+> quotePretty name <> ".",
+                  fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+                }
+          AnnNoInline ->
+            UError $
+              UserError
+                { provenance = p,
+                  problem =
+                    "the annotation"
+                      <+> pretty AnnNoInline
+                        <> "must be attached to a declaration with a definition.",
                   fix = Just $ "add a definition for" <+> quotePretty name <+> "."
                 }
       NonAbstractDefWithAbstractAnnotation p name resource ->
@@ -875,7 +885,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident datasetType
+              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
                 <+> "as the dimension size"
                   <> line
                   <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
@@ -986,7 +996,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident expectedType <> "."
+              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident expectedType <> "."
                 <+> "Only the following types are allowed for"
                 <+> pretty Parameter
                   <> "s:"
@@ -1022,7 +1032,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty ParameterDef) ident parameterType
+              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
                 <> "as the size of the"
                 <+> pretty Index
                 <+> "type is not a known constant.",
@@ -1087,7 +1097,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty InferableParameterDef) ident expectedType
+              unsupportedAnnotationTypeDescription (pretty (ParameterDef Inferable)) ident expectedType
                 <> "."
                 <+> "Inferable parameters must be of type 'Nat'.",
             fix =

@@ -30,12 +30,15 @@ foreachVector {A} {n} f = map f (indices n)
 zipWith : (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n
 zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)
 
+@noinline
 addVector : {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n
 addVector = zipWith (\x y -> x + y)
 
+@noinline
 subVector : {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n
 subVector = zipWith (\x y -> x - y)
 
+@noinline
 equalsVector : {{HasEq A B}} -> Vector A n -> Vector B n -> Bool
 equalsVector xs ys = bigAnd (zipWith (\x y -> x == y) xs ys)
 
