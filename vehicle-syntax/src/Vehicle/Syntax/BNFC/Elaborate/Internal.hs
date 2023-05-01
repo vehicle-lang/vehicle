@@ -45,8 +45,8 @@ instance Elab B.Decl V.InputDecl where
   elab = \case
     B.DeclNetw n t -> elabDefAbstract n t V.NetworkDef
     B.DeclData n t -> elabDefAbstract n t V.DatasetDef
-    B.DeclParam n t -> elabDefAbstract n t V.ParameterDef
-    B.DeclImplParam n t -> elabDefAbstract n t V.InferableParameterDef
+    B.DeclParam n t -> elabDefAbstract n t (V.ParameterDef V.NonInferable)
+    B.DeclImplParam n t -> elabDefAbstract n t (V.ParameterDef V.Inferable)
     B.DeclPost n t -> elabDefAbstract n t V.PostulateDef
     B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure mempty <*> elab t <*> elab e
 

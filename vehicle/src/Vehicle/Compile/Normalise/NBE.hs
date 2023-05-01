@@ -55,7 +55,7 @@ whnf = eval
 -- Normalisation monad
 
 class (MonadCompile m, PrintableBuiltin types) => MonadNorm types m where
-  getDeclSubstitution :: m (DeclSubstitution types)
+  getDeclSubstitution :: m (NormDeclCtx types)
   getMetaSubstitution :: m (MetaSubstitution types)
 
 instance (MonadNorm types m) => MonadNorm types (StateT s m) where
@@ -71,11 +71,11 @@ instance (MonadNorm types m) => MonadNorm types (ReaderT s m) where
   getMetaSubstitution = lift getMetaSubstitution
 
 newtype NormT types m a = NormT
-  { unnormT :: ReaderT (DeclSubstitution types, MetaSubstitution types) m a
+  { unnormT :: ReaderT (NormDeclCtx types, MetaSubstitution types) m a
   }
   deriving (Functor, Applicative, Monad)
 
-runNormT :: DeclSubstitution types -> MetaSubstitution types -> NormT types m a -> m a
+runNormT :: NormDeclCtx types -> MetaSubstitution types -> NormT types m a -> m a
 runNormT declSubst metaSubst x = runReaderT (unnormT x) (declSubst, metaSubst)
 
 runEmptyNormT :: NormT types m a -> m a
@@ -124,10 +124,10 @@ eval env expr = do
     BoundVar p i -> lookupIn p i env
     FreeVar _ ident -> do
       declSubst <- getDeclSubstitution
-      let declExpr = Map.lookup ident declSubst
-      return $ case declExpr of
-        Just x -> x
-        Nothing -> VFreeVar ident []
+      let entry = Map.lookup ident declSubst
+      return $ case entry of
+        Just NormDeclCtxEntry {..} -> declExpr
+        _ -> VFreeVar ident []
     Let _ bound binder body -> do
       boundNormExpr <- eval env bound
       let newEnv = extendEnv binder boundNormExpr env
@@ -149,8 +149,8 @@ evalApp fun (arg : args) = do
   showApp fun (arg : args)
   case fun of
     VMeta v spine -> return $ VMeta v (spine <> (arg : args))
-    VFreeVar v spine -> return $ VFreeVar v (spine <> (arg : args))
     VBoundVar v spine -> return $ VBoundVar v (spine <> (arg : args))
+    VFreeVar v spine -> return $ VFreeVar v (spine <> (arg : args))
     VLam binder env body
       | not (visibilityMatches binder arg) ->
           compilerDeveloperError $ "Mismatch in visibilities" <+> prettyVerbose binder <+> prettyVerbose arg

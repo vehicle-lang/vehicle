@@ -75,3 +75,6 @@ class HasName a name | a -> name where
 
 instance HasName Identifier Name where
   nameOf (Identifier mod name) = name
+
+instance HasName Name Name where
+  nameOf = id

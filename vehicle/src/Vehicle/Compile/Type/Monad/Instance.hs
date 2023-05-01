@@ -17,14 +17,12 @@ import Control.Monad.State
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
-import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Expr.DeBruijn (DBType)
-import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Implementation
@@ -64,13 +62,13 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 -- Instances that TypeCheckerT satisfies
 
 instance (PrintableBuiltin types, MonadCompile m) => MonadNorm types (TypeCheckerT types m) where
-  getDeclSubstitution = TypeCheckerT $ asks $ Map.mapMaybe (fmap normalised . snd)
+  getDeclSubstitution = TypeCheckerT $ asks typingDeclCtxToNormDeclCtx
 
   getMetaSubstitution = TypeCheckerT (gets currentSubstitution)
 
 instance (PrintableBuiltin types, MonadCompile m) => MonadTypeChecker types (TypeCheckerT types m) where
   getDeclContext = TypeCheckerT ask
-  addDeclContext d s = TypeCheckerT $ local (addToDeclCtx d) (unTypeCheckerT s)
+  addDeclContext d s = TypeCheckerT $ local (addToTypingDeclCtx d) (unTypeCheckerT s)
   getMetaState = TypeCheckerT get
   modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ

@@ -4,7 +4,6 @@ module Vehicle.Compile.ExpandResources.Parameter
 where
 
 import Control.Monad.Except
-import Control.Monad.State
 import Data.Map qualified as Map
 import Data.Text (pack)
 import Data.Text.Read (rational)
@@ -26,7 +25,7 @@ parseParameterValue ::
   StandardGluedType ->
   m StandardNormExpr
 parseParameterValue parameterValues decl@(ident, _) parameterType = do
-  implicitParams <- gets inferableParameterContext
+  implicitParams <- getInferableParameterContext
 
   parser <- case normalised parameterType of
     VBoolType {} -> return parseBool
@@ -38,7 +37,7 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     VIndexType (VNatLiteral n) ->
       return (parseIndex n)
     VIndexType (VFreeVar varIdent _)
-      | Map.member (nameOf varIdent) implicitParams ->
+      | Map.member varIdent implicitParams ->
           throwError $
             ParameterTypeInferableParameterIndex decl varIdent
     VIndexType {} ->

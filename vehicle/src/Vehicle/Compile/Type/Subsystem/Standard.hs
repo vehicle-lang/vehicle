@@ -27,7 +27,6 @@ instance TypableBuiltin StandardBuiltinType where
   restrictNetworkType = restrictStandardNetworkType
   restrictDatasetType = restrictStandardDatasetType
   restrictParameterType = restrictStandardParameterType
-  restrictInferableParameterType = restrictStandardInferableParameterType
   restrictPropertyType = restrictStandardPropertyType
   handleTypingError = handleStandardTypingError
   typeClassRelevancy = relevanceOfTypeClass

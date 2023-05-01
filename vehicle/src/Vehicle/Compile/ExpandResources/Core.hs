@@ -2,6 +2,7 @@ module Vehicle.Compile.ExpandResources.Core where
 
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Bifunctor (Bifunctor (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
@@ -10,70 +11,80 @@ import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 --------------------------------------------------------------------------------
+-- Resource contexts
+
+type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
+
+type InferableParameterContext = Map Identifier (Either Provenance InferableParameterEntry)
+
+--------------------------------------------------------------------------------
 -- The resource monad
 
 type MonadExpandResources m =
   ( MonadCompile m,
     MonadReader Resources m,
-    MonadState ResourceContext m
+    MonadState (ResourceContext, InferableParameterContext) m
   )
 
-isInferableParameter :: (MonadExpandResources m) => Identifier -> m Bool
-isInferableParameter ident = do
-  inferableCtx <- gets inferableParameterContext
-  return $ Map.member (nameOf ident) inferableCtx
+getInferableParameterContext ::
+  (MonadExpandResources m) =>
+  m InferableParameterContext
+getInferableParameterContext = gets snd
 
---------------------------------------------------------------------------------
--- Resource contexts
+isInferableParameter ::
+  (MonadExpandResources m) =>
+  Identifier ->
+  m Bool
+isInferableParameter ident =
+  Map.member ident <$> getInferableParameterContext
 
-type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
+noteInferableParameter ::
+  (MonadExpandResources m) =>
+  Provenance ->
+  Identifier ->
+  m ()
+noteInferableParameter p ident =
+  modify (second $ Map.insert ident (Left p))
 
-type InferableParameterContext = Map Name (Maybe InferableParameterEntry)
-
-type ParameterContext = Map Name StandardGluedExpr
-
-type DatasetContext = Map Name StandardGluedExpr
-
-data ResourceContext = ResourceContext
-  { inferableParameterContext :: InferableParameterContext,
-    parameterContext :: ParameterContext,
-    datasetContext :: DatasetContext,
-    networkContext :: NetworkContext
-  }
+addPossibleInferableParameterSolution ::
+  (MonadExpandResources m) =>
+  Identifier ->
+  InferableParameterEntry ->
+  m ()
+addPossibleInferableParameterSolution ident entry =
+  modify (second $ Map.insert ident (Right entry))
 
 emptyResourceCtx :: ResourceContext
-emptyResourceCtx = ResourceContext mempty mempty mempty mempty
+emptyResourceCtx = ResourceContext mempty mempty mempty
 
-noteInferableParameter :: Identifier -> ResourceContext -> ResourceContext
-noteInferableParameter ident ResourceContext {..} =
+addParameter ::
+  (MonadExpandResources m) =>
+  Identifier ->
+  StandardNormExpr ->
+  m ()
+addParameter ident value = modify $ first $ \ResourceContext {..} ->
   ResourceContext
-    { inferableParameterContext = Map.insert (nameOf ident) Nothing inferableParameterContext,
+    { parameterContext = Map.insert ident value parameterContext,
       ..
     }
 
-addPossibleInferableParameterSolution :: Identifier -> InferableParameterEntry -> ResourceContext -> ResourceContext
-addPossibleInferableParameterSolution ident entry ResourceContext {..} =
+addDataset ::
+  (MonadExpandResources m) =>
+  Identifier ->
+  StandardNormExpr ->
+  m ()
+addDataset ident value = modify $ first $ \ResourceContext {..} ->
   ResourceContext
-    { inferableParameterContext = Map.insert (nameOf ident) (Just entry) inferableParameterContext,
+    { datasetContext = Map.insert ident value datasetContext,
       ..
     }
 
-addParameter :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
-addParameter ident value ResourceContext {..} =
-  ResourceContext
-    { parameterContext = Map.insert (nameOf ident) value parameterContext,
-      ..
-    }
-
-addDataset :: Identifier -> StandardGluedExpr -> ResourceContext -> ResourceContext
-addDataset ident value ResourceContext {..} =
-  ResourceContext
-    { datasetContext = Map.insert (nameOf ident) value datasetContext,
-      ..
-    }
-
-addNetworkType :: Identifier -> (FilePath, NetworkType) -> ResourceContext -> ResourceContext
-addNetworkType ident details ResourceContext {..} =
+addNetworkType ::
+  (MonadExpandResources m) =>
+  Identifier ->
+  (FilePath, NetworkType) ->
+  m ()
+addNetworkType ident details = modify $ first $ \ResourceContext {..} ->
   ResourceContext
     { networkContext = Map.insert (nameOf ident) details networkContext,
       ..
