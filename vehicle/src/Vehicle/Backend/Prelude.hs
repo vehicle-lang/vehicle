@@ -2,7 +2,6 @@ module Vehicle.Backend.Prelude where
 
 import Control.Monad.IO.Class
 import Data.Text.IO qualified as TIO
-import Paths_vehicle qualified as VehiclePath
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 import Vehicle.Prelude
@@ -92,7 +91,7 @@ prependfileHeader doc format = case format of
             "and should not be modified manually!",
             "Metadata:",
             " -" <+> formatName <> " version:" <+> targetVersion,
-            " - Vehicle version:" <+> pretty VehiclePath.version
+            " - Vehicle version:" <+> pretty impreciseVehicleVersion
           ]
       )
       <> line

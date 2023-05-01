@@ -1,21 +1,19 @@
-cabal-version: 3.4
-name:          vehicle
-version:       0.2.0
+cabal-version:      3.4
+name:               vehicle
+version:            0.3.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
-homepage:      https://github.com/vehicle-lang/vehicle#readme
-bug-reports:   https://github.com/vehicle-lang/vehicle/issues
-author:        Matthew Daggitt and Wen Kokke
-maintainer:    wenkokke@users.noreply.github.com
-copyright:     © Matthew Daggitt and Wen Kokke
-license:       BSD-3-Clause
-license-file:  LICENSE
-build-type:    Simple
-tested-with:   GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
-
-extra-source-files:
-  lib/std.vcl
+homepage:           https://github.com/vehicle-lang/vehicle#readme
+bug-reports:        https://github.com/vehicle-lang/vehicle/issues
+author:             Matthew Daggitt and Wen Kokke
+maintainer:         wenkokke@users.noreply.github.com
+copyright:          © Matthew Daggitt and Wen Kokke
+license:            BSD-3-Clause
+license-file:       LICENSE
+build-type:         Simple
+tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.2
+extra-source-files: lib/std.vcl
 
 source-repository head
   type:     git
@@ -28,6 +26,11 @@ flag ghc-debug
 
 flag nothunks
   description: Add NoThunks instrumentation
+  manual:      True
+  default:     False
+
+flag release-build
+  description: Marks this as an official release build
   manual:      True
   default:     False
 
@@ -77,6 +80,9 @@ common common-library
   if flag(nothunks)
     build-depends: nothunks >=0.1.3 && <0.2
     cpp-options:   -Dnothunks
+
+  if flag(release-build)
+    cpp-options: -DreleaseBuild
 
 common common-executable
   import:      common-language
@@ -207,6 +213,7 @@ library
     Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
+    Vehicle.Prelude.Version
     Vehicle.Verify.Verifier
     Vehicle.Verify.Verifier.Marabou
 
@@ -226,6 +233,7 @@ library
     , directory              >=1.3.6    && <1.4
     , file-embed             >=0.0.15.0 && <0.1
     , filepath               >=1.4      && <2
+    , gitrev                 >=1.3      && <2
     , hashable               >=1.3      && <2
     , linkedhashmap          >=0.4      && <1
     , mnist-idx              >=0.1.3.1  && <0.2

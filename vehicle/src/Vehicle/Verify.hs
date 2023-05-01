@@ -40,7 +40,7 @@ verify _loggingSettings VerifyOptions {..} = do
     Just proofCachePath ->
       writeProofCache proofCachePath $
         ProofCache
-          { proofCacheVersion = vehicleVersion,
+          { proofCacheVersion = preciseVehicleVersion,
             resourcesIntegrityInfo = resourceIntegrity,
             originalProperties = specificationPropertyNames specificationPlan,
             status = status
