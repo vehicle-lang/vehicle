@@ -77,10 +77,10 @@ data CompileError
   | QuantifiedIfCondition PolarityConstraintContext
   | NonLinearIfCondition LinearityConstraintContext
   | -- Resource typing errors
-    ResourceNotProvided DeclProvenance Resource
-  | ResourceIOError DeclProvenance Resource IOException
-  | UnsupportedResourceFormat DeclProvenance Resource String
-  | UnableToParseResource DeclProvenance Resource String
+    ResourceNotProvided DeclProvenance ExternalResource
+  | ResourceIOError DeclProvenance ExternalResource IOException
+  | UnsupportedResourceFormat DeclProvenance ExternalResource String
+  | UnableToParseResource DeclProvenance ExternalResource String
   | NetworkTypeIsNotAFunction DeclProvenance StandardGluedType
   | NetworkTypeIsNotOverTensors DeclProvenance StandardGluedType StandardNormType InputOrOutput
   | NetworkTypeHasNonExplicitArguments DeclProvenance StandardGluedType StandardNormBinder
@@ -102,7 +102,7 @@ data CompileError
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterTypeUnsupported DeclProvenance StandardGluedType
-  | InferableParameterContradictory Identifier (DeclProvenance, Resource, Int) (DeclProvenance, Resource, Int)
+  | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParameterUninferrable DeclProvenance
   | PropertyTypeUnsupported DeclProvenance StandardGluedType
   | -- Backend errors

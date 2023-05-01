@@ -1,0 +1,2 @@
+Error at Line 3, Columns 1-5: abstract declaration 'test' cannot simulataneously be annotated with both '@dataset' and '@parameter'.
+Fix: remove one of annotations.

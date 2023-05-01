@@ -60,25 +60,25 @@ readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 readResourcesInDecl :: (MonadReadResources m) => StandardGluedDecl -> m ()
 readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
-  DefPostulate {} -> return ()
-  DefResource p ident resourceType declType ->
-    case resourceType of
-      InferableParameter ->
+  DefAbstract p ident defType declType ->
+    case defType of
+      InferableParameterDef ->
         modify (noteInferableParameter ident)
-      Parameter -> do
+      ParameterDef -> do
         parameterValues <- asks parameters
         normParameterExpr <- parseParameterValue parameterValues (ident, p) declType
         let parameterExpr = mkTyped normParameterExpr
         modify (addParameter ident parameterExpr)
-      Dataset -> do
+      DatasetDef -> do
         datasetLocations <- asks datasets
         normDatasetExpr <- parseDataset datasetLocations (ident, p) declType
         let datasetExpr = mkTyped normDatasetExpr
         modify (addDataset ident datasetExpr)
-      Network -> do
+      NetworkDef -> do
         networkLocations <- asks networks
         networkDetails <- checkNetwork networkLocations (ident, p) declType
         modify (addNetworkType ident networkDetails)
+      PostulateDef -> return ()
 
 mkTyped :: StandardNormExpr -> StandardGluedExpr
 mkTyped expr = Glued (unnormalise 0 expr) expr
@@ -116,11 +116,10 @@ insertDecl ::
   (MonadInsertResources m) =>
   StandardGluedDecl ->
   m (Maybe StandardGluedDecl)
-insertDecl = \case
-  r@DefFunction {} -> return (Just r)
-  r@DefPostulate {} -> return (Just r)
-  DefResource p ident resource declType -> case resource of
-    InferableParameter -> do
+insertDecl d = case d of
+  DefFunction {} -> return (Just d)
+  DefAbstract p ident defType declType -> case defType of
+    InferableParameterDef -> do
       implicitParams <- asks inferableParameterContext
       paramValue <- lookupValue ident implicitParams
       case paramValue of
@@ -129,19 +128,21 @@ insertDecl = \case
           let normParameterExpr = VNatLiteral v
           let parameterExpr = mkTyped normParameterExpr
           modify (Map.insert ident parameterExpr)
-          return $ Just $ DefFunction p ident False declType parameterExpr
-    Parameter -> do
+          return $ Just $ DefFunction p ident [] declType parameterExpr
+    ParameterDef -> do
       parameters <- asks parameterContext
       parameterExpr <- lookupValue ident parameters
       modify (Map.insert ident parameterExpr)
-      return $ Just $ DefFunction p ident False declType parameterExpr
-    Dataset -> do
+      return $ Just $ DefFunction p ident [] declType parameterExpr
+    DatasetDef -> do
       datasets <- asks datasetContext
       datasetExpr <- lookupValue ident datasets
       modify (Map.insert ident datasetExpr)
-      return $ Just $ DefFunction p ident False declType datasetExpr
-    Network ->
+      return $ Just $ DefFunction p ident [] declType datasetExpr
+    NetworkDef ->
       return Nothing
+    PostulateDef ->
+      return $ Just d
 
 lookupValue :: (MonadCompile m) => Identifier -> Map Name a -> m a
 lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of

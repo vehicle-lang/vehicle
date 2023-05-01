@@ -2,7 +2,7 @@ module Vehicle.Syntax.BNFC.Utils where
 
 import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader (..))
-import Data.Text (pack)
+import Data.Text (Text, pack)
 import Vehicle.Syntax.AST.Name (Module)
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.External.Abs qualified as B
@@ -13,6 +13,9 @@ type MonadElab m =
   ( MonadError ParseError m,
     MonadReader Module m
   )
+
+pattern InferableOption :: Text
+pattern InferableOption = "infer"
 
 mkProvenance :: (MonadElab m, IsToken tk) => tk -> m Provenance
 mkProvenance tk = do

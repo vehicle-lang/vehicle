@@ -19,14 +19,18 @@ import Vehicle.Syntax.Parse.Token
 data ParseError
   = -- Parse errors
     RawParseError String
-  | UnknownBuiltin Provenance Text
-  | FunctionNotGivenBody Provenance Name
-  | PropertyNotGivenBody Provenance Name
-  | ResourceGivenBody Provenance Name Name
-  | AnnotationWithNoDeclaration Provenance Name
+  | -- Declarations
+    UnannotatedAbstractDef Provenance Name
+  | MultiplyAnnotatedAbstractDef Provenance Name DefAbstractSort DefAbstractSort
+  | NonAbstractDefWithAbstractAnnotation Provenance Name DefAbstractSort
+  | AbstractDefWithNonAbstractAnnotation Provenance Name Annotation
+  | AnnotationWithNoDef Provenance Name
   | FunctionWithMismatchedNames Provenance Name Name
+  | -- Annotations
+    InvalidAnnotationOption Provenance Name Name [Name]
+  | InvalidAnnotationOptionValue Provenance Name Name
+  | -- Other
+    UnknownBuiltin Provenance Text
   | MissingVariables Provenance Name
   | UnchainableOrders Provenance OrderOp OrderOp
-  | InvalidAnnotationOption Provenance Name Name [Name]
-  | InvalidAnnotationOptionValue Provenance Name Name
   deriving (Show)

@@ -1,5 +1,0 @@
-{
-  "name": "TypeCheck",
-  "run": "vehicle check -s propertyNotGivenBody.vcl",
-  "needs": ["propertyNotGivenBody.vcl"]
-}
