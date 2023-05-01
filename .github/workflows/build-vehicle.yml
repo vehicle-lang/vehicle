@@ -120,6 +120,8 @@ jobs:
             vehicle:test:vehicle-unit-tests                         \
             vehicle:test:vehicle-compiler-tests                     \
             --test-show-details=always                              \
+            --test-option=--color=always                            \
+            --test-option=--num-threads=1                           \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
         shell: sh
