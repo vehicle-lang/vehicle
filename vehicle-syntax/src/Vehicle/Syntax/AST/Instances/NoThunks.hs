@@ -66,6 +66,7 @@ instance NoThunks Builtin
 
 -- Vehicle.Syntax.AST.Decl
 instance NoThunks expr => NoThunks (GenericDecl expr)
+instance NoThunks ParameterSort
 instance NoThunks DefAbstractSort
 instance NoThunks Annotation
 

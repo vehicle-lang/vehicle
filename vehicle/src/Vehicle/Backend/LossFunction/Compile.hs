@@ -5,14 +5,17 @@ module Vehicle.Backend.LossFunction.Compile
   )
 where
 
+import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Either (isRight)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as Map
-import Data.Maybe (isNothing)
+import Data.Maybe (catMaybes, isNothing)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
     Domain (..),
@@ -24,11 +27,9 @@ import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
-import Vehicle.Compile.Resource qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
 import Vehicle.Expr.Normalisable qualified as V
@@ -48,14 +49,13 @@ compile ::
   DifferentiableLogic ->
   V.StandardGluedProg ->
   m [LDecl]
-compile resources logic typedProg = do
-  (networkCtx, expandedProg) <- expandResources resources typedProg
-  let unnormalisedProg = fmap unnormalised expandedProg
+compile _resources logic typedProg = do
+  let unnormalisedProg = fmap unnormalised typedProg
   progWithoutInstanceArgs <- resolveInstanceArguments unnormalisedProg
   let descopedProg = descopeNamed progWithoutInstanceArgs
   reformattedProg <- reformatLogicalOperators logic descopedProg
 
-  compileProg networkCtx logic reformattedProg
+  compileProg logic reformattedProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -77,33 +77,34 @@ type InputArg = V.NamedArg V.StandardBuiltin
 -- | Compile entire specification (calls compileDecl)
 compileProg ::
   (MonadCompile m) =>
-  V.NetworkContext ->
   DifferentiableLogic ->
   InputProg ->
   m [LDecl]
-compileProg networkCtx logic (V.Main ds) =
+compileProg logic (V.Main ds) =
   logCompilerPass MinDetail "compilation to loss function" $
-    traverse (compileDecl networkCtx logic) ds
+    catMaybes <$> evalStateT (traverse (compileDecl logic) ds) mempty
 
 -- | Compile all functions found in spec, save their names (call compileExpr on each)
 compileDecl ::
-  (MonadCompile m) =>
-  V.NetworkContext ->
+  (MonadCompile m, MonadState (Set V.Name) m) =>
   DifferentiableLogic ->
   InputDecl ->
-  m LDecl
-compileDecl networkCtx logic = \case
-  V.DefAbstract _ _ r _ ->
-    normalisationError currentPass (pretty r <+> "declaration")
+  m (Maybe LDecl)
+compileDecl logic = \case
+  V.DefAbstract _ ident r _ -> do
+    when (r == V.NetworkDef) $
+      modify (Set.insert (nameOf ident))
+    return Nothing
   V.DefFunction p ident _ _ expr ->
     logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
       let logicImplementation = implementationOf logic
-      expr' <- runReaderT (compileExpr logicImplementation expr) (networkCtx, logic, (ident, p))
-      return (DefFunction (nameOf ident) expr')
+      expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
+      return $ Just $ DefFunction (nameOf ident) expr'
 
 type MonadCompileLoss m =
   ( MonadCompile m,
-    MonadReader (V.NetworkContext, DifferentiableLogic, V.DeclProvenance) m
+    MonadReader (DifferentiableLogic, V.DeclProvenance) m,
+    MonadState (Set V.Name) m
   )
 
 compileArg :: (MonadCompileLoss m) => DifferentialLogicImplementation -> InputArg -> m LExpr
@@ -125,9 +126,9 @@ compileExpr t expr = showExit $ do
     V.App _ fun args -> do
       case fun of
         V.FreeVar _ ident -> do
-          (networkCtx, _, _) <- ask
+          networkCtx <- get
           let name = V.nameOf ident
-          if name `Map.member` networkCtx
+          if name `Set.member` networkCtx
             then do
               args' <- traverse (compileArg t) args
               return $ NetworkApplication name args'

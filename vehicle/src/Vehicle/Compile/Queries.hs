@@ -8,12 +8,11 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState, StateT, evalStateT)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map (mapMaybe)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text (pack)
 import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources (expandResources)
+import Vehicle.Compile.ExpandResources (expandResources, splitResourceCtx)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
@@ -64,31 +63,34 @@ compileProgToQueries ::
   GenericProg StandardGluedExpr ->
   m [(Name, MultiProperty (QueryMetaData, QueryText))]
 compileProgToQueries queryFormat resources prog = do
-  (networkCtx, expandedProg) <- expandResources resources prog
-  let Main decls = expandedProg
-  compileDecls networkCtx mempty decls
+  resourceCtx <- expandResources resources prog
+  let (networkCtx, declCtx) = splitResourceCtx resourceCtx
+  let Main decls = prog
+  compileDecls networkCtx declCtx decls
   where
     compileDecls ::
       NetworkContext ->
-      DeclCtx StandardGluedDecl ->
+      StandardNormDeclCtx ->
       [StandardGluedDecl] ->
       m [(Name, MultiProperty (QueryMetaData, QueryText))]
     compileDecls _ _ [] = return []
     compileDecls networkCtx declCtx (d : ds) = case d of
-      DefAbstract {} -> normalisationError currentPass "postulates"
+      DefAbstract {} -> compileDecls networkCtx declCtx ds
       DefFunction p ident anns typ body -> do
         maybeProperty <-
           if not (isProperty anns)
             then return Nothing
             else Just <$> compilePropertyDecl networkCtx declCtx p ident typ body
 
-        properties <- compileDecls networkCtx (Map.insert ident d declCtx) ds
+        let declCtxEntry = NormDeclCtxEntry (normalised body) anns
+        let newDeclCtx = Map.insert ident declCtxEntry declCtx
+        properties <- compileDecls networkCtx newDeclCtx ds
 
         return $ maybeToList maybeProperty ++ properties
 
     compilePropertyDecl ::
       NetworkContext ->
-      DeclCtx StandardGluedDecl ->
+      StandardNormDeclCtx ->
       Provenance ->
       Identifier ->
       StandardGluedType ->
@@ -96,8 +98,10 @@ compileProgToQueries queryFormat resources prog = do
       m (Name, MultiProperty (QueryMetaData, QueryText))
     compilePropertyDecl networkCtx declCtx p ident _typ expr = do
       logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-        let declSubst = mapMaybe (fmap normalised . bodyOf) declCtx
-        let computeProperty = compileMultiProperty networkCtx declSubst p ident (normalised expr)
+        -- We can't use the `normalised` part of the glued expression here because
+        -- the external resources have been added since it was normalised during type-checking.
+        normalisedExpr <- runNormT declCtx mempty $ eval mempty (unnormalised expr)
+        let computeProperty = compileMultiProperty networkCtx declCtx p ident normalisedExpr
         property <-
           computeProperty `catchError` \e -> do
             let formatID = queryFormatID queryFormat
@@ -113,7 +117,7 @@ compileProgToQueries queryFormat resources prog = do
     -- type `Bool`.
     compileMultiProperty ::
       NetworkContext ->
-      DeclSubstitution StandardBuiltinType ->
+      StandardNormDeclCtx ->
       Provenance ->
       Identifier ->
       StandardNormExpr ->
@@ -138,7 +142,7 @@ compileProgToQueries queryFormat resources prog = do
 
 data PropertyState = PropertyState
   { queryFormat :: QueryFormat,
-    declSubst :: DeclSubstitution StandardBuiltinType,
+    declSubst :: StandardNormDeclCtx,
     networkCtx :: NetworkContext,
     declProvenance :: Provenance,
     declIdentifier :: Identifier,
@@ -203,7 +207,7 @@ compilePropertyTopLevelStructure = go
 
           let negatedExpr = VQuantifierExpr Exists dom args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
-      _ -> unexpectedExprError "compiling top-level property structure" (prettyVerbose expr)
+      _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
 
 compileQuerySet ::
   (MonadCompileProperty m) =>

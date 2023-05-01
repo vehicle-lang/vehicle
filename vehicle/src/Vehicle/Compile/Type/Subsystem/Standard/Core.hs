@@ -90,6 +90,8 @@ type StandardExplicitSpine = ExplicitSpine StandardBuiltinType
 
 type StandardEnv = Env StandardBuiltinType
 
+type StandardNormDeclCtx = NormDeclCtx StandardBuiltinType
+
 -----------------------------------------------------------------------------
 -- Glued expressions
 

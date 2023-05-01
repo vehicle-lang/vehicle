@@ -25,8 +25,7 @@ instance TypableBuiltin PolarityType where
   typeBuiltin = typePolarityBuiltin
   restrictNetworkType = checkNetworkType
   restrictDatasetType = assertUnquantifiedPolarity
-  restrictParameterType = assertUnquantifiedPolarity
-  restrictInferableParameterType = assertUnquantifiedPolarity
+  restrictParameterType = const assertUnquantifiedPolarity
   restrictPropertyType _ _ = return ()
   handleTypingError = handlePolarityTypingError
   typeClassRelevancy = const $ return Relevant

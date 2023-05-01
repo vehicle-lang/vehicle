@@ -1,59 +1,60 @@
 module Vehicle.Compile.ExpandResources
   ( expandResources,
+    splitResourceCtx,
   )
 where
 
+import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Foldable (traverse_)
-import Data.Map (Map)
-import Data.Map qualified as Map (insert, lookup)
-import Data.Traversable (for)
+import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Normalise.NBE (runNormT, whnf)
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalised
+import Vehicle.Expr.Normalised (pattern VNatLiteral)
 
--- | Expands datasets and parameters, and attempts to infer the values of
--- inferable parameters. Also checks the resulting types of networks.
+-- | Calculates the context for external resources, reading them from disk and
+-- inferring the values of inferable parameters.
 expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
   StandardGluedProg ->
-  m (NetworkContext, StandardGluedProg)
-expandResources resources@Resources {..} prog =
+  m ResourceContext
+expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    resourcesCtx@ResourceContext {..} <-
-      execStateT (runReaderT (readResourcesInProg prog) resources) emptyResourceCtx
+    (intermediateResourcesCtx, inferableParameterCtx) <-
+      execStateT (runReaderT (readResourcesInProg prog) resources) (emptyResourceCtx, mempty)
 
-    finalProg <-
-      evalStateT (runReaderT (insertResourcesInProg prog) resourcesCtx) mempty
+    checkForUnusedResources resources intermediateResourcesCtx
 
-    warnIfUnusedResources Parameter parameters parameterContext
-    warnIfUnusedResources Dataset datasets datasetContext
-    warnIfUnusedResources Network networks networkContext
+    fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
 
-    return (networkContext, finalProg)
+splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
+splitResourceCtx ResourceContext {..} = do
+  let mkEntry expr =
+        NormDeclCtxEntry
+          { declExpr = expr,
+            declAnns = []
+          }
+  let declCtx = fmap mkEntry parameterContext <> fmap mkEntry datasetContext
+  (networkContext, declCtx)
 
---------------------------------------------------------------------------------
--- First pass
-
--- | The first pass of expanding resources goes through the program finding all
--- the resources, comparing the data against the type in the spec, and making
--- note of the values for implicit parameters.
 type MonadReadResources m =
   ( MonadIO m,
     MonadExpandResources m
   )
 
+-- | Goes through the program finding all
+-- the resources, comparing the data against the type in the spec, and making
+-- note of the values for implicit parameters.
 readResourcesInProg :: (MonadReadResources m) => StandardGluedProg -> m ()
 readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
 
@@ -62,99 +63,43 @@ readResourcesInDecl decl = case decl of
   DefFunction {} -> return ()
   DefAbstract p ident defType declType ->
     case defType of
-      InferableParameterDef ->
-        modify (noteInferableParameter ident)
-      ParameterDef -> do
-        parameterValues <- asks parameters
-        normParameterExpr <- parseParameterValue parameterValues (ident, p) declType
-        let parameterExpr = mkTyped normParameterExpr
-        modify (addParameter ident parameterExpr)
+      ParameterDef sort -> case sort of
+        Inferable ->
+          noteInferableParameter p ident
+        NonInferable -> do
+          parameterValues <- asks parameters
+          parameterExpr <- parseParameterValue parameterValues (ident, p) declType
+          addParameter ident parameterExpr
       DatasetDef -> do
         datasetLocations <- asks datasets
-        normDatasetExpr <- parseDataset datasetLocations (ident, p) declType
-        let datasetExpr = mkTyped normDatasetExpr
-        modify (addDataset ident datasetExpr)
+        datasetExpr <- parseDataset datasetLocations (ident, p) declType
+        addDataset ident datasetExpr
       NetworkDef -> do
         networkLocations <- asks networks
         networkDetails <- checkNetwork networkLocations (ident, p) declType
-        modify (addNetworkType ident networkDetails)
+        addNetworkType ident networkDetails
       PostulateDef -> return ()
 
-mkTyped :: StandardNormExpr -> StandardGluedExpr
-mkTyped expr = Glued (unnormalise 0 expr) expr
+checkForUnusedResources ::
+  (MonadLogger m) =>
+  Resources ->
+  ResourceContext ->
+  m ()
+checkForUnusedResources Resources {..} ResourceContext {..} = do
+  warnIfUnusedResources Parameter parameters parameterContext
+  warnIfUnusedResources Dataset datasets datasetContext
+  warnIfUnusedResources Network networks networkContext
 
---------------------------------------------------------------------------------
--- Second pass
-
--- | The second pass of expanding resources goes through the program finding all
--- substituting in the resources and making sure to normalise the program with
--- the new values now inserted.
-type MonadInsertResources m =
-  ( MonadReader ResourceContext m,
-    MonadState (DeclCtx StandardGluedExpr) m,
-    MonadCompile m
-  )
-
-insertResourcesInProg :: (MonadInsertResources m) => StandardGluedProg -> m StandardGluedProg
-insertResourcesInProg (Main ds) = Main <$> insertDecls ds
-
-insertDecls :: (MonadInsertResources m) => [StandardGluedDecl] -> m [StandardGluedDecl]
-insertDecls [] = return []
-insertDecls (d : ds) = do
-  norm <- normDecl d
-  maybeDecl <- insertDecl norm
-  case maybeDecl of
-    Nothing -> insertDecls ds
-    Just decl -> do
-      case bodyOf decl of
-        Nothing -> return ()
-        Just body -> modify (Map.insert (identifierOf decl) body)
-      ds' <- insertDecls ds
-      return $ decl : ds'
-
-insertDecl ::
-  (MonadInsertResources m) =>
-  StandardGluedDecl ->
-  m (Maybe StandardGluedDecl)
-insertDecl d = case d of
-  DefFunction {} -> return (Just d)
-  DefAbstract p ident defType declType -> case defType of
-    InferableParameterDef -> do
-      implicitParams <- asks inferableParameterContext
-      paramValue <- lookupValue ident implicitParams
-      case paramValue of
-        Nothing -> throwError $ InferableParameterUninferrable (ident, p)
-        Just (_, _, v) -> do
-          let normParameterExpr = VNatLiteral v
-          let parameterExpr = mkTyped normParameterExpr
-          modify (Map.insert ident parameterExpr)
-          return $ Just $ DefFunction p ident [] declType parameterExpr
-    ParameterDef -> do
-      parameters <- asks parameterContext
-      parameterExpr <- lookupValue ident parameters
-      modify (Map.insert ident parameterExpr)
-      return $ Just $ DefFunction p ident [] declType parameterExpr
-    DatasetDef -> do
-      datasets <- asks datasetContext
-      datasetExpr <- lookupValue ident datasets
-      modify (Map.insert ident datasetExpr)
-      return $ Just $ DefFunction p ident [] declType datasetExpr
-    NetworkDef ->
-      return Nothing
-    PostulateDef ->
-      return $ Just d
-
-lookupValue :: (MonadCompile m) => Identifier -> Map Name a -> m a
-lookupValue ident ctx = case Map.lookup (nameOf ident) ctx of
-  Nothing ->
-    compilerDeveloperError $
-      "Somehow missed resource" <+> quotePretty ident <+> "on the first pass"
-  Just value -> return value
-
-normDecl :: (MonadInsertResources m) => StandardGluedDecl -> m StandardGluedDecl
-normDecl decl = do
-  ctx <- gets (fmap normalised)
-  for decl $ \(Glued unnorm norm) -> do
-    -- Ugh, horrible. We really need to be able to renormalise.
-    norm' <- runNormT ctx mempty (whnf mempty (unnormalise 0 norm))
-    return $ Glued unnorm norm'
+fillInInferableParameters :: (MonadCompile m) => ResourceContext -> InferableParameterContext -> m ResourceContext
+fillInInferableParameters ResourceContext {..} inferableCtx = do
+  newParameterCtx <- foldM insertInferableParameter parameterContext (Map.assocs inferableCtx)
+  return $ ResourceContext {parameterContext = newParameterCtx, ..}
+  where
+    insertInferableParameter ::
+      (MonadCompile m) =>
+      ParameterContext ->
+      (Identifier, Either Provenance InferableParameterEntry) ->
+      m ParameterContext
+    insertInferableParameter ctx (param, maybeValue) = case maybeValue of
+      Left p -> throwError $ InferableParameterUninferrable (param, p)
+      Right (_, _, v) -> return $ Map.insert param (VNatLiteral v) ctx

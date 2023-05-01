@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Vehicle.Syntax.BNFC.Delaborate.Internal
@@ -51,8 +52,9 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
     V.PostulateDef -> B.DeclPost
     V.NetworkDef -> B.DeclNetw
     V.DatasetDef -> B.DeclData
-    V.ParameterDef -> B.DeclParam
-    V.InferableParameterDef -> B.DeclImplParam
+    V.ParameterDef sort -> case sort of
+      V.NonInferable -> B.DeclParam
+      V.Inferable -> B.DeclImplParam
 
 instance Delaborate V.InputExpr B.Expr where
   delabM expr = case expr of
@@ -69,6 +71,7 @@ instance Delaborate V.InputExpr B.Expr where
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
 instance Delaborate V.InputArg B.Arg where
+  delabM :: (MonadDelab m) => V.InputArg -> m B.Arg
   delabM (V.Arg _ v r e) = case (v, r) of
     (V.Explicit {}, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
     (V.Implicit {}, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
