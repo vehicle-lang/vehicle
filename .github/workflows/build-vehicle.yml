@@ -116,12 +116,12 @@ jobs:
 
       - name: Test Vehicle
         run: |
-          cabal test                                      \
-            vehicle:test:vehicle-unit-tests               \
-            vehicle:test:vehicle-compiler-tests           \
-            --test-show-details=always                    \
+          cabal test                                                \
+            vehicle:test:vehicle-unit-tests                         \
+            vehicle:test:vehicle-compiler-tests                     \
+            --test-show-details=always                              \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
-            ${{ matrix.cabal.extra-args }}
+            ${{ matrix.haskell.cabal.extra-args }}
         shell: sh
 
       - name: Build Vehicle
