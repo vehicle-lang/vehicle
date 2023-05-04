@@ -141,19 +141,18 @@ library
     Vehicle.Syntax.Internal.Print
 
   build-depends:
-    , aeson              ^>=2.1.1
-    , array              >=0.5    && <1
-    , base               >=4      && <5
-    , cereal             >=0.5    && <1
-    , cereal-text        >=0.1    && <1
-    , containers         >=0.5    && <1
-    , deepseq            >=1.4    && <2
-    , hashable           >=1.3    && <2
-    , mtl                >=2.2    && <3
-    , prettyprinter      >=1.7    && <2
-    , recursion-schemes  >=5.2    && <6
-    , text               >=1.2    && <3
-    , these              >=1.0    && <2
+    , aeson          ^>=2.1.1
+    , array          >=0.5    && <1
+    , base           >=4      && <5
+    , cereal         >=0.5    && <1
+    , cereal-text    >=0.1    && <1
+    , containers     >=0.5    && <1
+    , deepseq        >=1.4    && <2
+    , hashable       >=1.3    && <2
+    , mtl            >=2.2    && <3
+    , prettyprinter  >=1.7    && <2
+    , text           >=1.2    && <3
+    , these          >=1.0    && <2
 
   -- Trying to fix version of Alex as the CI is installing a weird dev version with label
   -- alex-3.2.7.1-e-alex-74292c840d46e203e846167e7ae201e465952b30efa86f91f8eef0e8478e6cc0

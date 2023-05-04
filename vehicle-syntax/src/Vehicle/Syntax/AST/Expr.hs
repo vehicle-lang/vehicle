@@ -1,11 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-
 module Vehicle.Syntax.AST.Expr where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
-import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Serialize (Serialize)
@@ -155,11 +151,6 @@ type Arg binder var builtin = GenericArg (Expr binder var builtin)
 type Decl binder var builtin = GenericDecl (Expr binder var builtin)
 
 type Prog binder var builtin = GenericProg (Expr binder var builtin)
-
---------------------------------------------------------------------------------
--- Recursion principles
-
-makeBaseFunctor ''Expr
 
 --------------------------------------------------------------------------------
 -- Utilities

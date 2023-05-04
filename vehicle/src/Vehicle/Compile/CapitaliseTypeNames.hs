@@ -5,7 +5,6 @@ where
 
 import Control.Monad (when)
 import Control.Monad.State (MonadState (..), evalState, modify)
-import Data.Functor.Foldable (Recursive (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -50,18 +49,28 @@ instance CapitaliseTypes TypeCheckedDecl where
       DefFunction p <$> cap ident <*> pure anns <*> cap t <*> cap e
 
 instance CapitaliseTypes TypeCheckedExpr where
-  cap = cata $ \case
-    UniverseF p l -> return $ Universe p l
-    HoleF p n -> return $ Hole p n
-    MetaF p m -> return $ Meta p m
-    BuiltinF p op -> return $ Builtin p op
-    AnnF p e t -> Ann p <$> e <*> t
-    AppF p fun args -> App p <$> fun <*> traverse sequenceA args -- traverse cap args
-    PiF p binder result -> Pi p <$> sequenceA binder <*> result
-    LetF p bound binder body -> Let p <$> bound <*> sequenceA binder <*> body
-    LamF p binder body -> Lam p <$> sequenceA binder <*> body
-    BoundVarF p v -> return $ BoundVar p v
-    FreeVarF p ident -> FreeVar p <$> cap ident
+  cap = \case
+    Universe p l -> return $ Universe p l
+    Hole p n -> return $ Hole p n
+    Meta p m -> return $ Meta p m
+    Builtin p op -> return $ Builtin p op
+    Ann p e t -> Ann p <$> cap e <*> cap t
+    App p fun args -> App p <$> cap fun <*> traverse cap args -- traverse cap args
+    Pi p binder result -> Pi p <$> cap binder <*> cap result
+    Let p bound binder body -> Let p <$> cap bound <*> cap binder <*> cap body
+    Lam p binder body -> Lam p <$> cap binder <*> cap body
+    BoundVar p v -> return $ BoundVar p v
+    FreeVar p ident -> FreeVar p <$> cap ident
+
+instance CapitaliseTypes TypeCheckedArg where
+  cap Arg {..} = do
+    argExpr' <- cap argExpr
+    return $ Arg {argExpr = argExpr', ..}
+
+instance CapitaliseTypes TypeCheckedBinder where
+  cap Binder {..} = do
+    binderType' <- cap binderType
+    return $ Binder {binderType = binderType', ..}
 
 instance CapitaliseTypes Identifier where
   cap ident@(Identifier m s) = do
