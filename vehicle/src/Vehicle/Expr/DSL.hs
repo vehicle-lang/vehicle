@@ -147,7 +147,7 @@ instance DSL (DSLExpr types) where
   app fun args = DSL $ \p i ->
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
-     in normApp p fun' args'
+     in App p fun' args'
 
   free stdlibFn = DSL $ \p _i ->
     FreeVar p (identifierOf stdlibFn)

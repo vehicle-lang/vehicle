@@ -118,7 +118,7 @@ solveIndexQuantifier q c domainBinder body = do
 
   let method = identifierOf $ if q == Forall then StdForallIndex else StdExistsIndex
   let solution =
-        normApp
+        App
           p
           (FreeVar p method)
           [ ImplicitArg p indexSize
