@@ -7,6 +7,7 @@ where
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Backend.Agda
+import Vehicle.Backend.JSON
 import Vehicle.Backend.LossFunction (writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
@@ -52,13 +53,15 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
 
   let resources = Resources specification networkLocations datasetLocations parameterValues
   case target of
-    VerifierQueries queryFormatID ->
-      compileToQueryFormat result resources queryFormatID outputFile
-    LossFunction differentiableLogic ->
-      compileToLossFunction result resources differentiableLogic outputFile
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
+    JSON -> do
+      compileToJSON result outputFile
+    LossFunction differentiableLogic ->
+      compileToLossFunction result resources differentiableLogic outputFile
+    VerifierQueries queryFormatID ->
+      compileToQueryFormat result resources queryFormatID outputFile
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -102,3 +105,12 @@ compileToAgda ::
 compileToAgda agdaOptions (_, typedProg) outputFile = do
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
+
+compileToJSON ::
+  (MonadCompile m, MonadIO m) =>
+  (ImportedModules, StandardGluedProg) ->
+  Maybe FilePath ->
+  m ()
+compileToJSON (_, typedProg) outputFile = do
+  json <- compileProgToJSON typedProg
+  writeJSONFile outputFile json

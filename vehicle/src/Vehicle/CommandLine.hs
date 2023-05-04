@@ -303,7 +303,7 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
 allTasks :: [String]
-allTasks = allVerifiers <> allITPs <> allLossFunctionDLs
+allTasks = ["JSON"] <> allVerifiers <> allITPs <> allLossFunctionDLs
 
 allTypeSystems :: [String]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case

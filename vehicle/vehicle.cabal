@@ -101,6 +101,7 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.Agda
+    Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction
     Vehicle.Backend.Prelude
     Vehicle.CommandLine
@@ -160,6 +161,8 @@ library
     Paths_vehicle
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.JSON.Compile
+    Vehicle.Backend.JSON.Interact
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Interact
     Vehicle.Backend.LossFunction.Logics

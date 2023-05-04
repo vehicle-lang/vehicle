@@ -55,6 +55,7 @@ instance Read TypingSystem where
 
 data Target
   = ITP ITP
+  | JSON
   | VerifierQueries QueryFormatID
   | LossFunction DifferentiableLogic
   deriving (Eq, Show)
@@ -62,11 +63,13 @@ data Target
 instance Pretty Target where
   pretty = \case
     ITP x -> pretty $ show x
+    JSON -> "JSON"
     VerifierQueries x -> pretty x
     LossFunction _ -> "LossFunction"
 
 instance Read Target where
   readsPrec _d x = case x of
+    "JSON" -> [(JSON, [])]
     "MarabouQueries" -> [(VerifierQueries MarabouQueryFormat, [])]
     "LossFunction" -> [(LossFunction DL2, [])]
     "LossFunction-DL2" -> [(LossFunction DL2, [])]
