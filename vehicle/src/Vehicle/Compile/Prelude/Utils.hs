@@ -1,6 +1,5 @@
 module Vehicle.Compile.Prelude.Utils where
 
-import Data.Functor.Foldable (Recursive (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
@@ -19,18 +18,18 @@ isTypeUniverse _ = False
 -- Enumeration functions
 
 freeNamesIn :: Expr binder var builtin -> [Identifier]
-freeNamesIn = cata $ \case
-  FreeVarF _ ident -> [ident]
-  BoundVarF {} -> []
-  UniverseF {} -> []
-  HoleF {} -> []
-  MetaF {} -> []
-  BuiltinF {} -> []
-  AnnF _ e t -> e <> t
-  AppF _ fun args -> fun <> concatMap argExpr args
-  PiF _ binder result -> binderType binder <> result
-  LetF _ bound binder body -> bound <> binderType binder <> body
-  LamF _ binder body -> binderType binder <> body
+freeNamesIn = \case
+  FreeVar _ ident -> [ident]
+  BoundVar {} -> []
+  Universe {} -> []
+  Hole {} -> []
+  Meta {} -> []
+  Builtin {} -> []
+  Ann _ e t -> freeNamesIn e <> freeNamesIn t
+  App _ fun args -> freeNamesIn fun <> concatMap (freeNamesIn . argExpr) args
+  Pi _ binder result -> freeNamesIn (binderType binder) <> freeNamesIn result
+  Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (binderType binder) <> freeNamesIn body
+  Lam _ binder body -> freeNamesIn (binderType binder) <> freeNamesIn body
 
 --------------------------------------------------------------------------------
 -- Destruction functions

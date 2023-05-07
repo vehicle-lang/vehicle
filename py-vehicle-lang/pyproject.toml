@@ -22,7 +22,7 @@ test = ["pytest >=7.1,<8", "packaging>=23"]
 mypy = ["types-setuptools >=45", "types-pygments >=2.14, <3"]
 
 [project.scripts]
-vehicle = "vehicle_lang:main"
+vehicle = "vehicle_lang.__main__:main"
 
 [project.entry-points.'pygments.lexers']
 vehicle = "vehicle_lang.pygments:VehicleLexer"
