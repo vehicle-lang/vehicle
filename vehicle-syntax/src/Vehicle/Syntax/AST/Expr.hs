@@ -1,42 +1,4 @@
-module Vehicle.Syntax.AST.Expr
-  ( -- * Generic expressions
-    Arg,
-    Binder,
-    Decl,
-    Expr
-      ( Universe,
-        Ann,
-        App,
-        Pi,
-        Builtin,
-        BoundVar,
-        FreeVar,
-        Hole,
-        Meta,
-        Let,
-        Lam
-      ),
-    Prog,
-    Type,
-    UniverseLevel (..),
-
-    -- * Input expressions
-    InputBinding,
-    InputVar,
-    InputArg,
-    InputBinder,
-    InputExpr,
-    InputDecl,
-    InputProg,
-
-    -- * Utilities
-    isTypeSynonym,
-    mkHole,
-    normAppList,
-    pattern TypeUniverse,
-    pattern BuiltinExpr,
-  )
-where
+module Vehicle.Syntax.AST.Expr where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
