@@ -1,4 +1,42 @@
-module Vehicle.Syntax.AST.Expr where
+module Vehicle.Syntax.AST.Expr
+  ( -- * Generic expressions
+    Arg,
+    Binder,
+    Decl,
+    Expr
+      ( Universe,
+        Ann,
+        App,
+        Pi,
+        Builtin,
+        BoundVar,
+        FreeVar,
+        Hole,
+        Meta,
+        Let,
+        Lam
+      ),
+    Prog,
+    Type,
+    UniverseLevel (..),
+
+    -- * Input expressions
+    InputBinding,
+    InputVar,
+    InputArg,
+    InputBinder,
+    InputExpr,
+    InputDecl,
+    InputProg,
+
+    -- * Utilities
+    isTypeSynonym,
+    mkHole,
+    normAppList,
+    pattern TypeUniverse,
+    pattern BuiltinExpr,
+  )
+where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
@@ -55,7 +93,7 @@ data Expr binder var builtin
       (Expr binder var builtin) -- The term
       (Expr binder var builtin) -- The type of the term
   | -- | Application of one term to another.
-    App
+    UnsafeApp
       Provenance
       (Expr binder var builtin) -- Function.
       (NonEmpty (Arg binder var builtin)) -- Arguments.
@@ -102,13 +140,35 @@ data Expr binder var builtin
       (Expr binder var builtin) -- Expression body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
+--------------------------------------------------------------------------------
+-- Safe applications
+
+-- | Smart constructor for applications with possibly no arguments.
+normAppList :: Provenance -> Expr binder var builtin -> [Arg binder var builtin] -> Expr binder var builtin
+normAppList _ f [] = f
+normAppList p f (x : xs) = App p f (x :| xs)
+
+-- | Smart constructor for applications.
+normApp :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
+normApp p (UnsafeApp _p f xs) ys = UnsafeApp p f (xs <> ys)
+normApp p f xs = UnsafeApp p f xs
+
+-- | Safe pattern synonym for applications.
+pattern App :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
+pattern App p f xs <- UnsafeApp p f xs
+  where
+    App p f xs = normApp p f xs
+
+{-# COMPLETE Universe, Ann, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
+
+--------------------------------------------------------------------------------
+-- Instances
+
 instance (NFData binder, NFData var, NFData builtin) => NFData (Expr binder var builtin)
 
 instance (ToJSON binder, ToJSON var, ToJSON builtin) => ToJSON (Expr binder var builtin)
 
 instance (Serialize binder, Serialize var, Serialize builtin) => Serialize (Expr binder var builtin)
-
-type Type = Expr
 
 instance HasProvenance (Expr binder var builtin) where
   provenanceOf = \case
@@ -124,9 +184,9 @@ instance HasProvenance (Expr binder var builtin) where
     Let p _ _ _ -> p
     Lam p _ _ -> p
 
--- * Type of annotations attached to the AST after parsing
+--------------------------------------------------------------------------------
+-- Type of input expressions, before being analysed by the compiler
 
--- before being analysed by the compiler
 type InputBinding = ()
 
 type InputVar = Name
@@ -144,6 +204,8 @@ type InputProg = Prog InputBinding InputVar Builtin
 --------------------------------------------------------------------------------
 -- Other AST datatypes specialised to the Expr type
 
+type Type = Expr
+
 type Binder binder var builtin = GenericBinder binder (Expr binder var builtin)
 
 type Arg binder var builtin = GenericArg (Expr binder var builtin)
@@ -154,20 +216,6 @@ type Prog binder var builtin = GenericProg (Expr binder var builtin)
 
 --------------------------------------------------------------------------------
 -- Utilities
-
-renormArgs :: Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> (Expr binder var builtin, NonEmpty (Arg binder var builtin))
-renormArgs (App p' fun args') args = renormArgs fun (args' <> args)
-renormArgs fun args = (fun, args)
-
--- Preserves invariant that we never have two nested Apps
-normApp :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
-normApp p fun args = do
-  let (fun', args') = renormArgs fun args
-  App p fun' args'
-
-normAppList :: Provenance -> Expr binder var builtin -> [Arg binder var builtin] -> Expr binder var builtin
-normAppList _ fun [] = fun
-normAppList p fun (arg : args) = normApp p fun (arg :| args)
 
 mkHole :: Provenance -> Name -> Expr binder var builtin
 mkHole p name = Hole p ("_" <> name)
