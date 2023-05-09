@@ -241,7 +241,6 @@ library
     , optparse-applicative   >=0.16     && <1
     , prettyprinter          >=1.7      && <2
     , process                >=1.6.13   && <1.7
-    , recursion-schemes      >=5.2      && <6
     , split                  >=0.2.3    && <0.3
     , temporary              >=1.3      && <1.4
     , terminal-progress-bar  >=0.4.1    && <1
@@ -344,7 +343,6 @@ library vehicle-unit-tests-common
     , hashable
     , mtl
     , optparse-applicative
-    , recursion-schemes     >=5.2  && <6
     , tagged
     , tasty
     , tasty-hunit

@@ -68,7 +68,7 @@ instance Elab B.Expr V.InputExpr where
       fun' <- elab fun
       arg' <- elab arg
       let p = fillInProvenance (provenanceOf fun' :| [provenanceOf arg'])
-      return $ V.normApp p fun' (arg' :| [])
+      return $ V.App p fun' (arg' :| [])
 
 instance Elab B.Binder V.InputBinder where
   elab = \case
