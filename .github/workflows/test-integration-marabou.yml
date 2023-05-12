@@ -39,7 +39,10 @@ jobs:
       - name: Setup Marabou
         run: pip install "https://github.com/vehicle-lang/Marabou/releases/download/v${{ matrix.marabou.version }}/maraboupy-${{ matrix.marabou.version }}-${{ matrix.python.tag }}-${{ matrix.python.tag }}-${{ matrix.os.plat }}.whl"
 
-      - name: Test windController - safe-query1.txt
-        run: Marabou controller.onnx Marabou.queries/safe-query1.txt.golden
-        working-directory: vehicle/tests/golden/compile/windController
-        continue-on-error: true
+      # - name: Test Vehicle-Marabou interaction
+      #   run: |
+      #     cabal test                                      \
+      #       vehicle:test:vehicle-integration-tests        \
+      #       --test-option=--color=always                  \
+      #       --test-show-details=always
+      #   shell: sh

@@ -26,5 +26,10 @@
     "needs": ["spec.vcl"],
     "produces": ["LossFunction.json"],
     "enabled": false
+  },
+  {
+    "name": "MarabouVerify",
+    "run": "vehicle verify -q Marabou.queries -v Marabou",
+    "needs": ["controller.onnx", "Marabou.queries"]
   }
 ]

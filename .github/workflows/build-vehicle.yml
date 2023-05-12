@@ -118,12 +118,13 @@ jobs:
         run: |
           cabal test                                                \
             vehicle:test:vehicle-unit-tests                         \
-            vehicle:test:vehicle-golden-tests                       \
+            vehicle:test:vehicle-compiler-tests                     \
+            --test-show-details=always                              \
             --test-option=--color=always                            \
             --test-option=--num-threads=1                           \
-            --test-show-details=always                              \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
+        shell: sh
 
       - name: Build Vehicle
         run: |
