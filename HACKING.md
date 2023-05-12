@@ -4,9 +4,65 @@ This file contains instructions for how to get started to contributing to Vehicl
 
 ## 1. Set up
 
-In order to setup Vehicle for development, follow all the instructions for installing
-Haskell in the [documentation](https://vehicle-lang.readthedocs.io/en/latest/installation.html)
-up until (not including) the command for installing Vehicle itself.
+### On Linux
+
+The Vehicle compiler is written in Haskell. The first task is to install Haskell itself:
+
+1. Install GHCUp following the instructions from https://www.haskell.org/ghcup/.
+
+2. Close and reopen your terminal.
+
+3. Run ``ghcup tui`` and use it to install and set:
+  -  GHC 9.0.X (for some version of X)
+  -  Cabal 3.X (for some version of X)
+
+4. Run ``cabal update`` to update your list of packages.
+
+Now we can install the Vehicle compiler itself.
+
+1. Clone the Vehicle github repository to your local computer and
+   navigate to the directory.
+
+2. Run ``git checkout v0.2.0`` to check out the latest version (change the version as required).
+
+3. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
+
+4. Run ``vehicle -h`` to check that Vehicle has been installed.
+  (If this doesn't work then check that check that `~/.cabal/bin` has
+   been added to your system path.)
+
+**Troubleshooting**
+
+* Check if you're using the right versions of GHC and Cabal.
+
+* Check if you have any other installations of GHC and Cabal not managed by GHCUp.
+  Either remove those installations or make sure that GHCUp is earlier in the PATH environment variable.
+
+**Updating Vehicle**
+
+To update an existing Vehicle installation run ``cabal install exe:vehicle --overwrite-policy=always`` to re-install the new Vehicle executable on your system.
+
+### On Windows
+
+The easiest way is:
+
+* Install the Windows Subsystem for Linux (WSL) from the Microsoft Store.
+
+* Follow the instructions for Linux above in a WSL terminal.
+
+.. warning::
+
+    Although Vehicle itself supports and is tested on Windows, that does
+    not mean that all backends will work on Windows. For example ``Marabou``
+    does not currently support Windows.
+
+**Troubleshooting**
+
+* If you have problems with the WSL check if you're using the latest version.
+
+* If you get the error: Missing (or bad) C libraries: icuuc, icuin, icudt
+Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the instructions.
+
 
 ### Dev tools
 
