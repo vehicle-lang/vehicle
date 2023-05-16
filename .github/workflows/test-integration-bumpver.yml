@@ -25,12 +25,13 @@ jobs:
         name: Setup Python
         uses: actions/setup-python@v4
         with:
+          cache: "pip"
+          cache-dependency-path: "./.github/requirements/test-integration-bumpver.txt"
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
 
       - # Required to run job via act: https://github.com/nektos/act
-        name: Setup pipx
-        run: pip install pipx
-        shell: sh
+        name: Setup dependencies
+        run: pip install -r ./.github/requirements/test-integration-bumpver.txt
 
       - name: Test BumpVer configuration
         run: pipx run bumpver update --patch --no-fetch --dry
