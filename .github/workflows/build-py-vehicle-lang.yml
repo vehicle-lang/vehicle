@@ -16,6 +16,7 @@ env:
   #       of GHC and Cabal are hardcoded in the `before-all-$ID.sh` scripts.
   DEFAULT_GHC_VERSION: "9.4.4"
   DEFAULT_CABAL_VERSION: "3.10.1.0"
+
   # NOTE: The default Python version is installed with actions/setup-python.
   DEFAULT_PYTHON_VERSION: "3.11"
 
