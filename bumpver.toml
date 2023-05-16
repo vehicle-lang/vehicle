@@ -1,0 +1,27 @@
+[bumpver]
+current_version = "0.3.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[bumpver.file_patterns]
+"bumpver.toml" = ['current_version = "{version}"']
+# Vehicle Python Bindings - Cabal file
+"py-vehicle-lang/vehicle-python-binding.cabal" = [
+    "^version:         {pep440_version}$",
+]
+# Vehicle Python Bindings - Version file
+"py-vehicle-lang/src/vehicle_lang/_version.py" = [
+    '^VERSION: str = "{pep440_version}"$'
+]
+# Vehicle - Cabal file
+"vehicle/vehicle.cabal" = ["^version:            {pep440_version}$"]
+# Vehicle - Golden files
+"vehicle/tests/golden/**/*.agda.golden" = [
+    "--  - Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/Marabou.queries/*-query*.txt.golden" = [
+    "//  - Vehicle version: {pep440_version}+dev"
+]
