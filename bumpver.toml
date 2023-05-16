@@ -1,6 +1,6 @@
 [bumpver]
-current_version = "0.3.1"
-version_pattern = "MAJOR.MINOR.PATCH"
+current_version = "v0.3.1"
+version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
 tag = true
