@@ -18,13 +18,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: mrkkrp/ormolu-action@v11
 
-  bumpver:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Test BumpVer configuration
-        run: pipx run bumpver update --patch --dry
-        shell: sh
+  test-integration-bumpver:
+    uses: ./.github/workflows/test-integration-bumpver.yml
 
   build-vehicle:
     needs: [ormolu]

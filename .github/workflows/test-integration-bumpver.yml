@@ -1,0 +1,33 @@
+name: Test BumpVer
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-integration-bumpver:
+    name: Test BumpVer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - # Required to run job via act: https://github.com/nektos/act
+        name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+
+      - # Required to run job via act: https://github.com/nektos/act
+        name: Setup pipx
+        run: pip install pipx
+        shell: sh
+
+      - name: Test BumpVer configuration
+        run: pipx run bumpver update --patch --dry
+        shell: sh

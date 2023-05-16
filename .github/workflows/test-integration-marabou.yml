@@ -9,7 +9,7 @@ defaults:
     shell: sh
 
 jobs:
-  test-vehicle-marabou:
+  test-integration-marabou:
     strategy:
       matrix:
         os:
@@ -25,7 +25,7 @@ jobs:
         marabou:
           - version: "2023.1001"
 
-    name: marabou / ${{ matrix.os.name }} - Python ${{ matrix.python.version }} - Marabou ${{ matrix.marabou.version }}
+    name: Test Marabou / ${{ matrix.os.name }} - Python ${{ matrix.python.version }} - Marabou ${{ matrix.marabou.version }}
     runs-on: ${{ matrix.os.type }}
 
     steps:

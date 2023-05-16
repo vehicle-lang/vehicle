@@ -25,7 +25,8 @@ env:
   CABAL_PROJECT_FREEZE_FILE: cabal.project.ghc-${{ inputs.ghc-version }}.freeze
 
 jobs:
-  editor-integration:
+  test-integration-hls:
+    name: Test HLS
     runs-on: ${{ inputs.runs-on }}
     continue-on-error: ${{ inputs.experimental }}
 
