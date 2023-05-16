@@ -1,0 +1,25 @@
+\documentclass{article}
+\usepackage{minted}
+\begin{document}
+\begin{minted}{vehicle}
+--------------------------------------------------------------------------------
+-- Property 1
+
+-- If the intruder is distant and is significantly slower than the
+-- ownship, the score of a COC advisory will always be below a certain fixed
+-- threshold.
+
+-- Tested on: all 45 networks.
+
+intruderDistantAndSlower : UnnormalisedInputVector -> Bool
+intruderDistantAndSlower x =
+  x ! distanceToIntruder >= 55947.691 and
+  x ! speed              >= 1145      and
+  x ! intruderSpeed      <= 60
+
+@property
+property1 : Bool
+property1 = forall x . validInput x and intruderDistantAndSlower x =>
+  normAcasXu x ! clearOfConflict <= 1500
+\end{minted}
+\end{document}
