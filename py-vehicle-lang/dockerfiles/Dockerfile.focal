@@ -49,4 +49,4 @@ ADD snapshot.tar.gz /vehicle/
 # Build Vehicle
 RUN apt-get install patchelf swig -y
 WORKDIR /vehicle/py-vehicle-lang
-RUN ./scripts/build-wheels
+RUN ./scripts/build-wheels.sh
