@@ -33,5 +33,5 @@ jobs:
         shell: sh
 
       - name: Test BumpVer configuration
-        run: pipx run bumpver update --patch --dry
+        run: pipx run bumpver update --patch --no-fetch --dry
         shell: sh
