@@ -8,6 +8,10 @@ defaults:
   run:
     shell: sh
 
+env:
+  # NOTE: The default Python version is installed with actions/setup-python.
+  DEFAULT_PYTHON_VERSION: "3.11"
+
 jobs:
   test-integration-bumpver:
     name: Test BumpVer
