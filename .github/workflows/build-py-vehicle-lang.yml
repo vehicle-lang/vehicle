@@ -36,6 +36,17 @@ jobs:
       - name: Get source
         uses: actions/checkout@v3
 
+      - name: Setup Python
+        if: env.ACT == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: "py-vehicle-lang/.python-version"
+
+      - name: Setup pipx
+        if: env.ACT == 'true'
+        run: pip install pipx
+        shell: sh
+
       - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
         if: runner.os == 'macOS' || runner.os == 'Windows'
         uses: haskell/actions/setup@v2
