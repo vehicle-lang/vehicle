@@ -62,7 +62,7 @@ mkdir -p "${CACHEDIR}"
 
 # Build the container
 IMAGE_ID="$(echo "vehicle-python-${TARGET}:${GIT_REVISION}" | tr '[:upper:]' '[:lower:]')"
-$docker build --tag "${IMAGE_ID}" --file "${DOCKERFILE}" --build-arg SNAPSHOT="${SNAPSHOT}" "${CACHEDIR}"
+$docker build --tag "${IMAGE_ID}" --file "${DOCKERFILE}" --build-arg SNAPSHOT="${SNAPSHOT}" "${DOCKER_BUILD_ARGS}" "${CACHEDIR}"
 
 # Export the built wheels
 CONTAINER_ID="$($docker container create -it "${IMAGE_ID}" )"
