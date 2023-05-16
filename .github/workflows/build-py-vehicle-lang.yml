@@ -1,8 +1,5 @@
 name: Build py-vehicle-lang
 
-# NOTE: This workflow assumes a recent version of Python and pipx are available
-#       on the runner.
-
 on:
   workflow_call:
   workflow_dispatch:
