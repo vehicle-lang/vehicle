@@ -15,7 +15,7 @@ DOCKERFILE_ROOT="${PY_VEHICLE_LANG_DIR}/dockerfiles/Dockerfile."
 DOCKERFILE="${PY_VEHICLE_LANG_DIR}/dockerfiles/Dockerfile.${TARGET}"
 if [ ! -f "${DOCKERFILE}" ]
 then
-    echo "Usage: ./scripts/docker-build-wheels [TARGET] [GIT_REVISION]"
+    echo "Usage: ./scripts/docker-build-wheels.sh [TARGET] [GIT_REVISION]"
     echo "Unknown target '${TARGET}'. Supported targets:"
     set -- "${DOCKERFILE_ROOT}"*
     for TARGET
