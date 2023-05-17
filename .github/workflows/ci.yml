@@ -22,17 +22,13 @@ jobs:
     uses: ./.github/workflows/test-integration-bumpver.yml
 
   build-vehicle:
-    needs: [ormolu]
     uses: ./.github/workflows/build-vehicle.yml
 
   build-py-vehicle-lang:
-    needs: [ormolu]
     uses: ./.github/workflows/build-py-vehicle-lang.yml
 
   build-py-vehicle-lang-tensorflow:
-    needs: [ormolu]
     uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
 
   test-integration-marabou:
-    needs: [build-vehicle]
     uses: ./.github/workflows/test-integration-marabou.yml
