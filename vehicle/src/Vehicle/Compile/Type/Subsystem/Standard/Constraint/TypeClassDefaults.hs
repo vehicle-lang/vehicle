@@ -4,9 +4,9 @@ module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
 where
 
 import Control.Monad (filterM, foldM)
-import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (evalApp, runEmptyNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -99,10 +99,16 @@ sameFamily PolarityFamily {} PolarityFamily {} = True
 sameFamily LinearityFamily {} LinearityFamily {} = True
 sameFamily _ _ = False
 
-data Candidate = Candidate MetaID TypeClass StandardNormExpr StandardConstraintContext
+data Candidate = Candidate
+  { candidateTypeClass :: TypeClass,
+    candidateMetaExpr :: StandardNormExpr,
+    candidateCtx :: StandardConstraintContext,
+    candidateSolution :: StandardNormExpr
+  }
 
 instance Pretty Candidate where
-  pretty (Candidate m tc _ _) = pretty m <+> "~" <+> pretty tc
+  pretty Candidate {..} =
+    prettyVerbose candidateMetaExpr <+> "~" <+> pretty candidateTypeClass
 
 data CandidateStatus
   = Valid Candidate
@@ -116,6 +122,7 @@ instance Pretty CandidateStatus where
     Invalid -> "incompatible"
 
 generateConstraintUsingDefaults ::
+  forall m.
   (TCM StandardBuiltinType m) =>
   [WithContext StandardTypeClassConstraint] ->
   m (Maybe (WithContext StandardConstraint))
@@ -126,16 +133,15 @@ generateConstraintUsingDefaults constraints = do
       logDebug MaxDetail "No default solution found"
       return Nothing
     Invalid -> return Nothing
-    Valid (Candidate m tc metaExpr ctx) -> do
-      solution <- defaultSolution tc
+    Valid Candidate {..} -> do
       logDebug MaxDetail $
         "using default"
-          <+> pretty m
+          <+> prettyVerbose candidateMetaExpr
           <+> "="
-          <+> prettyVerbose solution
-          <+> "         " <> parens ("from" <+> pretty tc)
-      let unificationConstraint = UnificationConstraint (Unify metaExpr solution)
-      newConstraint <- WithContext unificationConstraint <$> copyContext ctx
+          <+> prettyVerbose candidateSolution
+          <+> "         " <> parens ("from" <+> pretty candidateTypeClass)
+      let unificationConstraint = UnificationConstraint (Unify candidateMetaExpr candidateSolution)
+      newConstraint <- WithContext unificationConstraint <$> copyContext candidateCtx
       return $ Just newConstraint
 
 findStrongestConstraint ::
@@ -156,15 +162,15 @@ findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
 strongest :: (MonadCompile m) => CandidateStatus -> Candidate -> m CandidateStatus
 strongest Invalid _ = return Invalid
 strongest None x = return $ Valid x
-strongest y@(Valid (Candidate _ tc2 _ _)) x@(Candidate _ tc1 _ _) = do
-  f1 <- familyOf tc1
-  f2 <- familyOf tc2
+strongest y@(Valid c1) c2 = do
+  f1 <- familyOf (candidateTypeClass c1)
+  f2 <- familyOf (candidateTypeClass c2)
   return $
     if not (sameFamily f1 f2)
       then y
       else
         if f1 > f2
-          then Valid x
+          then Valid c2
           else y
 
 familyOf :: (MonadCompile m) => TypeClass -> m DefaultFamily
@@ -185,58 +191,45 @@ familyOf = \case
   HasQuantifierIn {} -> return $ ContainerFamily False
   NatInDomainConstraint -> return $ NumericFamily NatT False 0
 
-defaultSolution ::
-  (TCM StandardBuiltinType m) =>
-  TypeClass ->
-  m StandardNormExpr
-defaultSolution = \case
-  HasEq {} -> return VNatType
-  HasOrd {} -> return VNatType
-  HasQuantifier {} -> return VBoolType
-  HasAdd -> return VNatType
-  HasSub -> return VIntType
-  HasMul -> return VNatType
-  HasDiv -> return VRatType
-  HasNeg -> return VIntType
-  HasNatLits -> return VNatType
-  HasRatLits -> return VRatType
-  HasVecLits {} -> createDefaultListType
-  HasMap -> createDefaultListType
-  HasFold -> createDefaultListType
-  HasQuantifierIn {} -> createDefaultListType
-  NatInDomainConstraint -> return VNatType
-
-createDefaultListType ::
-  (TCM StandardBuiltinType m) =>
-  m StandardNormType
-createDefaultListType = return $ VBuiltinType List mempty
-
 getCandidatesFromConstraint ::
+  forall m.
   (MonadCompile m) =>
   StandardConstraintContext ->
   StandardTypeClassConstraint ->
   m [Candidate]
 getCandidatesFromConstraint ctx (Has _ b args) = case b of
   StandardTypeClass tc -> do
-    let getCandidate = getCandidatesFromArgs ctx
-    return $ case (tc, args) of
-      (HasOrd ord, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] (HasOrd ord)
-      (HasNeg, [tArg, _tRes]) -> getCandidate [tArg] HasNeg
-      (HasMul, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasMul
-      (HasDiv, [tArg1, tArg2, _tRes]) -> getCandidate [tArg1, tArg2] HasDiv
-      (HasNatLits, [t]) -> getCandidate [t] HasNatLits
-      (HasRatLits, [t]) -> getCandidate [t] HasRatLits
-      (HasVecLits, [_n, t]) -> getCandidate [t] HasVecLits
-      (HasMap, [t]) -> getCandidate [t] HasMap
-      (HasFold, [t]) -> getCandidate [t] HasFold
-      (NatInDomainConstraint, [t]) -> case t of
-        VIndexType size -> getCandidate [size] NatInDomainConstraint
-        _ -> []
-      _ -> []
+    let getCandidates = getCandidatesFromArgs ctx
+    case (tc, args) of
+      (HasOrd ord, [tArg1, tArg2, _tRes]) -> return $ getCandidates (HasOrd ord) VNatType [tArg1, tArg2]
+      (HasNeg, [tArg, _tRes]) -> return $ getCandidates HasNeg VIntType [tArg]
+      (HasMul, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasMul VNatType [tArg1, tArg2]
+      (HasDiv, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasDiv VRatType [tArg1, tArg2]
+      (HasNatLits, [t]) -> return $ getCandidates HasNatLits VNatType [t]
+      (HasRatLits, [t]) -> return $ getCandidates HasRatLits VRatType [t]
+      (HasVecLits, [_n, t]) -> return $ getCandidates HasVecLits VRawListType [t]
+      (HasMap, [t]) -> return $ getCandidates HasMap VRawListType [t]
+      (HasFold, [t]) -> return $ getCandidates HasFold VRawListType [t]
+      (NatInDomainConstraint, [n, t]) -> case t of
+        VIndexType size -> do
+          succN <- runEmptyNormT @StandardBuiltinType @m $ evalApp (VBuiltinFunction (Add AddNat) []) [ExplicitArg mempty n, ExplicitArg mempty (VNatLiteral 1)]
+          return $ getCandidates NatInDomainConstraint succN [size]
+        _ -> return []
+      _ -> return []
   _ -> return []
 
-getCandidatesFromArgs :: StandardConstraintContext -> [StandardNormExpr] -> TypeClass -> [Candidate]
-getCandidatesFromArgs ctx ts tc = catMaybes $ flip map ts $ \t -> do
-  case getNMeta t of
-    Just m -> Just (Candidate m tc t ctx) -- m, t, tc)
-    _ -> Nothing
+getCandidatesFromArgs ::
+  StandardConstraintContext ->
+  TypeClass ->
+  StandardNormExpr ->
+  [StandardNormExpr] ->
+  [Candidate]
+getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter isNMeta ts)
+  where
+    mkCandidate t =
+      Candidate
+        { candidateTypeClass = tc,
+          candidateMetaExpr = t,
+          candidateCtx = ctx,
+          candidateSolution = solution
+        }
