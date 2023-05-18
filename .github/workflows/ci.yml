@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - dev
+    tags:
+      - "v*"
   pull_request:
     types:
       - opened
@@ -11,33 +13,96 @@ on:
       - reopened
   merge_group:
 
+defaults:
+  run:
+    shell: sh
+
 jobs:
-  ormolu:
+  build-vehicle:
+    uses: ./.github/workflows/build-vehicle.yml
+
+  build-py-vehicle-lang:
+    uses: ./.github/workflows/build-py-vehicle-lang.yml
+
+  build-py-vehicle-lang-tensorflow:
+    uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
+
+  test-integration-bumpver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: pipx run bumpver update --patch --dry
+
+  test-integration-marabou:
+    uses: ./.github/workflows/test-integration-marabou.yml
+
+  test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: mrkkrp/ormolu-action@v11
 
-  bumpver:
+  ################################################################################
+  # Publish package to GitHub Releases
+  ################################################################################
+
+  publish-package-to-github-releases:
+    name: Publish package to GitHub Releases
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-vehicle
+      - build-py-vehicle-lang
+      - test-integration-bumpver
+      - test-integration-marabou
+      - test-integration-ormolu
+
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Test BumpVer configuration
-        run: pipx run bumpver update --patch --dry
-        shell: sh
+      - name: Download wheelhouse
+        uses: actions/download-artifact@v3
+        with:
+          name: wheelhouse
+          path: wheelhouse
 
-  build-vehicle:
-    needs: [ormolu]
-    uses: ./.github/workflows/build-vehicle.yml
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: wheelhouse/*.whl
+          fail_on_unmatched_files: true
 
-  build-py-vehicle-lang:
-    needs: [ormolu]
-    uses: ./.github/workflows/build-py-vehicle-lang.yml
+  ################################################################################
+  # Publish package to PyPI
+  ################################################################################
 
-  build-py-vehicle-lang-tensorflow:
-    needs: [ormolu]
-    uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
+  publish-package-to-pypi:
+    name: Publish package to PyPI
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-vehicle
+      - build-py-vehicle-lang
+      - test-integration-bumpver
+      - test-integration-marabou
+      - test-integration-ormolu
 
-  test-integration-marabou:
-    needs: [build-vehicle]
-    uses: ./.github/workflows/test-integration-marabou.yml
+    environment:
+      name: pypi
+      url: https://pypi.org/p/vehicle-lang
+
+    permissions:
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+      - name: Download wheelhouse
+        uses: actions/download-artifact@v3
+        with:
+          name: wheelhouse
+          path: wheelhouse
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheelhouse
