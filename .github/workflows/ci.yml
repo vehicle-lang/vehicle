@@ -13,13 +13,11 @@ on:
       - reopened
   merge_group:
 
-jobs:
-  ormolu:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: mrkkrp/ormolu-action@v11
+defaults:
+  run:
+    shell: sh
 
+jobs:
   build-vehicle:
     uses: ./.github/workflows/build-vehicle.yml
 
@@ -30,10 +28,19 @@ jobs:
     uses: ./.github/workflows/build-py-vehicle-lang-tensorflow.yml
 
   test-integration-bumpver:
-    uses: ./.github/workflows/test-integration-bumpver.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: pipx run bumpver update --patch --dry
 
   test-integration-marabou:
     uses: ./.github/workflows/test-integration-marabou.yml
+
+  test-integration-ormolu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: mrkkrp/ormolu-action@v11
 
   ################################################################################
   # Publish package to GitHub Releases
@@ -44,11 +51,11 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
-      - ormolu
       - build-vehicle
       - build-py-vehicle-lang
       - test-integration-bumpver
       - test-integration-marabou
+      - test-integration-ormolu
 
     permissions:
       contents: write
@@ -75,11 +82,11 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
-      - ormolu
       - build-vehicle
       - build-py-vehicle-lang
       - test-integration-bumpver
       - test-integration-marabou
+      - test-integration-ormolu
 
     environment:
       name: pypi
