@@ -18,6 +18,7 @@ module Vehicle.Compile.Normalise.NBE
     runEmptyNormT,
     MonadNorm (..),
     evalMul,
+    evalAddNat,
   )
 where
 

@@ -149,6 +149,11 @@ pattern VRatType <- VBuiltinType Rat []
   where
     VRatType = VBuiltinType Rat []
 
+pattern VRawListType :: StandardNormType
+pattern VRawListType <- VBuiltinType List []
+  where
+    VRawListType = VBuiltinType List []
+
 pattern VListType :: StandardNormType -> StandardNormType
 pattern VListType tElem <- VBuiltinType List [tElem]
 
