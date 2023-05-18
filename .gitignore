@@ -19,6 +19,7 @@ wheelhouselocal/
 wheelhouse/
 
 # Benchmarks
+.profiling/
 .benchmarks/
 benchmarks.json
 
@@ -395,7 +396,7 @@ acs-*.bib
 *.ltjruby
 
 # makeidx
-*.idx
+# *.idx commented out as we need IDX dataset files
 *.ilg
 *.ind
 

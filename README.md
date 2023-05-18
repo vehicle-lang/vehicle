@@ -23,12 +23,9 @@ that use neural networks as subcomponents.
 The generated ITP code is tightly linked to the actual deployed network, so changes
 to the network will result in errors when checking the larger proof.
 
-**Note**: Vehicle is a work in progress. No stable version is yet available and breaking
-changes will occur frequently so use at your own risk. While verification mode and exporting to ITPs is functional, training mode is still under active development.
-
 ## Documentation
 
-- [User manual](https://vehicle-lang.readthedocs.io/en/latest/) - currently a work in progress.
+- [User manual](https://vehicle-lang.readthedocs.io/en/latest/)
 - [Workshop paper (FOMLAS'22) motivating the Vehicle design](https://www.macs.hw.ac.uk/~ek19/vehicle.pdf)
 - [Vehicle's Type Checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
 

@@ -1,5 +1,16 @@
 # Changelog for Vehicle
 
+## Version 0.4.0
+
+### Bug fixes
+
+* Fixed bug where sometimes using literal numbers on one side of an inequality would fail to type-check
+  (e.g. `forall (i : Index 5) . i <= 1`).
+
+### Errors
+
+* Improved informativeness of error messages thrown when attempting to verify properties with multiple network applications.
+
 ## Version 0.3.0
 
 ### General enhancements

@@ -42,10 +42,22 @@ invokeMarabou marabouExecutable networkLocations queryFile =
 
 prepareNetworkArg :: MetaNetwork -> IO String
 prepareNetworkArg [(_name, file)] = return file
-prepareNetworkArg _ = do
-  hPutStrLn stderr $
-    "Marabou currently doesn't support properties that involve"
-      <> "multiple neural networks or multiple applications of the same network."
+prepareNetworkArg metaNetwork = do
+  let duplicateNetworkNames = findDuplicates (fmap fst metaNetwork)
+
+  let errorMsg =
+        "Error: Marabou currently doesn't support properties that involve"
+          <+> if null duplicateNetworkNames
+            then
+              "multiple networks. This property involves:"
+                <> line
+                <> indent 2 (vsep $ fmap (\(n, _) -> "the network" <+> squotes (pretty n)) metaNetwork)
+            else
+              "multiple applications of the same network. This property applies:"
+                <> line
+                <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)
+
+  hPutStrLn stderr $ layoutAsText errorMsg
   exitFailure
 
 parseMarabouOutput :: String -> (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)

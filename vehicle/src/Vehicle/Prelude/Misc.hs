@@ -12,6 +12,8 @@ import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
@@ -61,6 +63,12 @@ partitionMaybe f xs = runIdentity (partitionMaybeM (return . f) xs)
 
 partitionM :: (Monad m) => (a -> m Bool) -> [a] -> m ([a], [a])
 partitionM f = partitionMaybeM (\v -> do r <- f v; return $ if r then Just v else Nothing)
+
+countOccurrences :: (Ord a) => [a] -> Map a Int
+countOccurrences = foldr (\v -> Map.insertWith (+) v 1) mempty
+
+findDuplicates :: (Ord a) => [a] -> [(a, Int)]
+findDuplicates xs = filter (\(_, n) -> n > 1) $ Map.toList $ countOccurrences xs
 
 duplicate :: String -> Int -> String
 duplicate string n = concat $ replicate n string
