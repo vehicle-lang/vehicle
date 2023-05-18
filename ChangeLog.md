@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Version 0.4.0
+
+### Misc.
+
+* Improved informativeness of error messages thrown when attempting to verify properties with multiple network applications.
+
 ## Version 0.3.0
 
 ### General enhancements
