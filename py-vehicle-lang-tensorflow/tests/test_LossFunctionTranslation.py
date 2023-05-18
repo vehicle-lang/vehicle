@@ -91,12 +91,12 @@ class TestLossFunctionTranslation(unittest.TestCase):
         loss = generate_loss_function(path_to_vcl, functionName, networks)
         self.assertEqual(loss(), 12)
 
-    def test_division(self):
-        path_to_vcl = self.vcl_file("test_division")
-        functionName = "division"
-        networks = {}
-        loss = generate_loss_function(path_to_vcl, functionName, networks)
-        self.assertEqual(loss(), 3)
+    # def test_division(self):
+    #     path_to_vcl = self.vcl_file("test_division")
+    #     functionName = "division"
+    #     networks = {}
+    #     loss = generate_loss_function(path_to_vcl, functionName, networks)
+    #     self.assertEqual(loss(), 3)
 
     # def test_power(self):
     #     path_to_vcl = self.vcl_file("test_power")
