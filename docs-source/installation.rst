@@ -1,84 +1,27 @@
 Installation
 ============
 
-.. _installation:
+Installing Vehicle itself
+-------------------------
 
-At the moment, the only way to install Vehicle is from source. We aim to make it
-available as both an executable and a Python package in the near future.
+Installing Vehicle is very easy via the Python package manager.
+Simply run ``pip install vehicle-lang``. This will both add the
+executable ``vehicle`` to the PATH variable allowing you to call
+the compiler directly, as well as making the Python bindings
+importable as you would any other module.
 
-Building from source
---------------------
+Installing syntax highlighting for .vcl files
+---------------------------------------------
 
-On Linux
-********
+The syntax highlighting can be installed in VSCode by going to the
+"Extensions" tab and searching for "Vehicle Syntax Highlighting".
 
-Vehicle is written in Haskell. The first task is to install Haskell itself:
+Contributions adding syntax highlighting to other IDEs would be welcome.
+The source code for the VSCode extension is available
+`here <https://github.com/vehicle-lang/vscode-vehicle-syntax-highlighting>`_.
 
-1. Install GHCUp following the instructions from https://www.haskell.org/ghcup/.
-
-2. Close and reopen your terminal.
-
-3. Run ``ghcup tui`` and use it to install and set:
-  -  GHC 9.0.X (for some version of X)
-  -  Cabal 3.X (for some version of X)
-
-4. Run ``cabal update`` to update your list of packages.
-
-Now we can install Vehicle itself.
-
-1. Clone the Vehicle github repository to your local computer and
-   navigate to the directory.
-
-2. Run ``git checkout v0.2.0`` to check out the latest version (change the version as required).
-
-3. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
-
-4. Run ``vehicle -h`` to check that Vehicle has been installed.
-  (If this doesn't work then check that check that `~/.cabal/bin` has
-   been added to your system path.)
-
-**Troubleshooting**
-
-* Check if you're using the right versions of GHC and Cabal.
-
-* Check if you have any other installations of GHC and Cabal not managed by GHCUp.
-  Either remove those installations or make sure that GHCUp is earlier in the PATH environment variable.
-
-**Updating Vehicle**
-
-To update an existing Vehicle installation:
-
-1. Navigate to the existing Vehicle repository.
-
-2. Run ``git checkout vX`` to check out the latest version (choose the version as required).
-
-3. Run ``cabal install exe:vehicle --overwrite-policy=always`` to re-install the new Vehicle
-executable on your system.
-
-On Windows
-**********
-
-The easiest way is:
-
-* Install the Windows Subsystem for Linux (WSL) from the Microsoft Store.
-
-* Follow the instructions for Linux above in a WSL terminal.
-
-.. warning::
-
-    Although Vehicle itself supports and is tested on Windows, that does
-    not mean that all backends will work on Windows. For example ``Marabou``
-    does not currently support Windows.
-
-**Troubleshooting**
-
-* If you have problems with the WSL check if you're using the latest version.
-
-* If you get the error: Missing (or bad) C libraries: icuuc, icuin, icudt
-Go to https://github.com/microsoft/vcpkg#quick-start-windows and follow the instructions.
-
-Setting Vehicle to work with Agda
----------------------------------
+Setting up Vehicle to work with Agda
+------------------------------------
 
 If you want to enable Vehicle to work with Agda, run:
 
@@ -94,13 +37,3 @@ either your library's ``.agda-lib`` file or to your Agda ``defaults`` file.
 See the Agda documentation on
 `Library Management <https://agda.readthedocs.io/en/v2.6.0.1/tools/package-system.html>`_
 for more details.
-
-Syntax highlighting
--------------------
-
-The syntax highlighting can be installed in VSCode by going to the
-"Extensions" tab and searching for "Vehicle Syntax Highlighting".
-
-Contributions adding syntax highlighting to other IDEs would be welcome.
-The source code for the VSCode extension is available
-`here <https://github.com/vehicle-lang/vscode-vehicle-syntax-highlighting>`_.

@@ -57,7 +57,7 @@ Rationals
 ---------
 
 Rational numbers in Vehicle are stored using arbitrary precision.
-The type of natural numbers is written as ``Rat``.
+The type of rational numbers is written as ``Rat``.
 
 The available operations over rationals are:
 
