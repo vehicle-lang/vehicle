@@ -15,3 +15,5 @@ packages:
   vendor/vehicle/vehicle.cabal
   vendor/vehicle-syntax/vehicle-syntax.cabal
   vehicle-python-binding.cabal
+
+constraints: vehicle +release-build
