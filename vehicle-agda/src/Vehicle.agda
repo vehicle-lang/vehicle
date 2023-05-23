@@ -41,11 +41,11 @@ record CheckArgs : Set where
   field
     proofCache : String
 
-checkCmd : CheckArgs → CmdSpec
-checkCmd checkArgs = cmdSpec VEHICLE_COMMAND
-  ( "check"
+validateCmd : CheckArgs → CmdSpec
+validateCmd checkArgs = cmdSpec VEHICLE_COMMAND
+  ( "validate"
   ∷ ("--proofCache=" ++ proofCache)
-  ∷ []) ""
+  ∷ [] ) ""
   where open CheckArgs checkArgs
 
 checkSuccessful : String → Bool
@@ -54,16 +54,15 @@ checkSuccessful output = "verified" ⊆ output
 postulate valid : ∀ {a} {A : Set a} → A
 
 `valid : Term
-`valid = def (quote valid) (hArg unknown ∷ [])
+`valid = def (quote valid) (hArg unknown ∷ hArg unknown ∷ [])
 
 checkSpecificationMacro : CheckArgs → Term → TC ⊤
 checkSpecificationMacro args hole = do
   goal   ← inferType hole
-  -- (showTerm goal)
-  output ← runCmdTC (checkCmd args)
+  output ← runCmdTC (validateCmd args)
   if checkSuccessful output
     then unify hole `valid
-    else unexpectedTypeInExprError (strErr ("Error: " ++ output) ∷ [])
+    else typeError (strErr ("Error: " ++ output) ∷ [])
 
 macro
   checkSpecification : CheckArgs → Term → TC ⊤

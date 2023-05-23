@@ -22,7 +22,7 @@ This can be done using the :code:`vehicle export` command:
 .. code-block:: bash
 
   vehicle export \
-    --itp Agda \
+    --target Agda \
     --proofCache examples/windController/windController.vcl-cache \
     --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 

@@ -34,9 +34,9 @@ x ≤ y = T (x ≤ᵇ y)
 _⊆_ : String → String → Bool
 s ⊆ t = does (infix? _≟_ (toList s) (toList t))
 
-infixl 6 _⊕_
 record HasAdd {a} (A : Set a) : Set a where
   constructor hasAdd
+  infixl 6 _⊕_
   field
     _⊕_ : A → A → A
 
@@ -54,9 +54,9 @@ instance
 
 
 
-infixl 6 _⊖_
 record HasSub {a} (A : Set a) : Set a where
   constructor hasSub
+  infixl 6 _⊖_
   field
     _⊖_ : A → A → A
 
