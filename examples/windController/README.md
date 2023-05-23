@@ -47,7 +47,7 @@ The (verified) specification may then be compiled to Agda by running the command
 
 ```bash
 vehicle export \
-  --itp Agda \
+  --target Agda \
   --proofCache examples/windController/windController.vcl-cache \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 ```
