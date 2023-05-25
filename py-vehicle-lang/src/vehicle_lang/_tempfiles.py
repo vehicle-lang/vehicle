@@ -30,7 +30,7 @@ class _TemporaryFile:
 
 
 @contextlib.contextmanager
-def tempfiles(
+def _tempfiles(
     *names: str,
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,

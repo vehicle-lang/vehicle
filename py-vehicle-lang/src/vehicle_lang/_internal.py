@@ -6,15 +6,15 @@ from vehicle_lang._binding import (
     _unsafe_vehicle_init,
     _unsafe_vehicle_main,
 )
-from vehicle_lang._tempfiles import tempfiles
+from vehicle_lang._tempfiles import _tempfiles
 
 
-def vehicleSync(
+def vehicle(
     args: Optional[List[str]] = None,
 ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
     """Calls the Vehicle main function with the given arguments and returns the exit code, output, error, and logs."""
-    with tempfiles("out", "err", "log", prefix="vehicle") as (out, err, log):
-        exc = vehicleMain(
+    with _tempfiles("out", "err", "log", prefix="vehicle") as (out, err, log):
+        exc = _vehicle_cli(
             [
                 f"--redirect-stdout={out}",
                 f"--redirect-stderr={err}",
@@ -25,14 +25,14 @@ def vehicleSync(
         return (exc, out.read_text(), err.read_text(), log.read_text())
 
 
-def vehicleMain(args: Optional[List[str]] = None) -> int:
+def _vehicle_cli(args: Optional[List[str]] = None) -> int:
     """Calls the Vehicle main function with the given arguments and returns the exit code."""
-    with _vehicleRTS():
+    with _vehicle_rts():
         return _unsafe_vehicle_main(args or [])
 
 
 @contextlib.contextmanager
-def _vehicleRTS(args: Optional[List[str]] = None) -> Iterator[None]:
+def _vehicle_rts(args: Optional[List[str]] = None) -> Iterator[None]:
     try:
         _unsafe_vehicle_init(["vehicle", *(args or [])])
         yield None
