@@ -68,7 +68,7 @@ instance DescopeNaive (Prog () Ix builtin) (Prog InputBinding InputVar builtin) 
 instance DescopeNaive (Decl () Ix builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr DBBinding Ix builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (Expr () Ix builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -101,7 +101,7 @@ addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 performDescoping ::
   (Show var) =>
   (Provenance -> var -> Reader Ctx Name) ->
-  Contextualised (Expr DBBinding var builtin) BoundDBCtx ->
+  Contextualised (Expr () var builtin) BoundDBCtx ->
   Expr InputBinding InputVar builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) (Ctx ctx)
@@ -111,7 +111,7 @@ type MonadDescope m = MonadReader Ctx m
 descopeExpr ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
-  Expr DBBinding var builtin ->
+  Expr () var builtin ->
   m (Expr InputBinding InputVar builtin)
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
@@ -139,14 +139,14 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Binder DBBinding var builtin ->
+  Binder () var builtin ->
   f (Binder InputBinding InputVar builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Arg DBBinding var builtin ->
+  Arg () var builtin ->
   f (Arg InputBinding InputVar builtin)
 descopeArg f = traverse (descopeExpr f)
 
@@ -214,7 +214,7 @@ descopeCoDBVarNaive _ = \case
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: (Show var) => Expr DBBinding var builtin -> Expr DBBinding var builtin
+showScopeEntry :: (Show var) => Expr () var builtin -> Expr () var builtin
 showScopeEntry e =
   e
 

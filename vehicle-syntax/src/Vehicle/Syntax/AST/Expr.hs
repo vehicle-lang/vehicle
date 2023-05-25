@@ -19,6 +19,7 @@ module Vehicle.Syntax.AST.Expr
     Prog,
     Type,
     UniverseLevel (..),
+    Telescope,
 
     -- * Input expressions
     InputBinding,
@@ -213,6 +214,8 @@ type Arg binder var builtin = GenericArg (Expr binder var builtin)
 type Decl binder var builtin = GenericDecl (Expr binder var builtin)
 
 type Prog binder var builtin = GenericProg (Expr binder var builtin)
+
+type Telescope binder var builtin = [Binder binder var builtin]
 
 --------------------------------------------------------------------------------
 -- Utilities

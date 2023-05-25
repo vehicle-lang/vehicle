@@ -93,7 +93,7 @@ convertExprFromStandardTypes ::
   m (UncheckedExpr types)
 convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
   where
-    builtinUpdateFunction :: BuiltinUpdate m DBBinding Ix StandardBuiltin (NormalisableBuiltin types)
+    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin (NormalisableBuiltin types)
     builtinUpdateFunction p1 p2 b args = do
       case b of
         CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args

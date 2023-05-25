@@ -26,7 +26,7 @@ instance (Serialize types) => Serialize (NormExpr types)
 
 type NormArg types = GenericArg (NormExpr types)
 
-type NormBinder types = GenericBinder DBBinding (NormType types)
+type NormBinder types = GenericBinder () (NormType types)
 
 type NormDecl types = GenericDecl (NormExpr types)
 

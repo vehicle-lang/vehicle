@@ -41,4 +41,4 @@ type NormalisableDecl types = Decl () Ix (NormalisableBuiltin types)
 
 type NormalisableProg types = Prog () Ix (NormalisableBuiltin types)
 
-type NormalisableTelescope types = DBTelescope (NormalisableBuiltin types)
+type NormalisableTelescope types = Telescope () Ix (NormalisableBuiltin types)

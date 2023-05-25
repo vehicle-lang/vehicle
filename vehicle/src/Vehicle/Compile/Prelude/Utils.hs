@@ -3,7 +3,6 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Expr.DeBruijn
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
@@ -52,7 +51,7 @@ getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getBinderName :: GenericBinder DBBinding expr -> Name
+getBinderName :: GenericBinder () expr -> Name
 getBinderName binder = case binderNamingForm binder of
   NameAndType name -> name
   OnlyName name -> name

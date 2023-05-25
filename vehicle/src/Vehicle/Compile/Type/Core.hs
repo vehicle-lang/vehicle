@@ -17,7 +17,7 @@ import Vehicle.Expr.Normalised
 
 -- * Types pre type-checking
 
-type UncheckedBinding = DBBinding
+type UncheckedBinding = ()
 
 type UncheckedVar = Ix
 
@@ -37,7 +37,7 @@ type UncheckedProg types = NormalisableProg types
 
 -- * Types post type-checking
 
-type CheckedBinding = DBBinding
+type CheckedBinding = ()
 
 type CheckedVar = Ix
 

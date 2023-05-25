@@ -1,10 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Expr.DeBruijn
-  ( DBBinding,
-    Ix (..),
+  ( Ix (..),
     Lv (..),
-    DBTelescope,
     Substitution,
     substituteDB,
     substDBInto,
@@ -68,9 +66,6 @@ instance Serialize Lv
 instance Pretty Lv where
   pretty l = "𝓵" <> pretty (unLv l)
 
--- | The type of the data DeBruijn notation stores at binding sites.
-type DBBinding = ()
-
 -- | Converts a `Lv` x to a `Ix` given that we're currently at
 -- level `l`.
 dbLevelToIndex :: Lv -> Lv -> Ix
@@ -78,11 +73,6 @@ dbLevelToIndex l x = Ix (unLv l - unLv x - 1)
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)
-
---------------------------------------------------------------------------------
--- Expressions
-
-type DBTelescope builtin = [Binder () Ix builtin]
 
 --------------------------------------------------------------------------------
 -- Substitution
