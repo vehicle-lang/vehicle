@@ -2,8 +2,8 @@
 
 module Vehicle.Expr.DeBruijn
   ( DBBinding,
-    DBIndex (..),
-    DBLevel (..),
+    Ix (..),
+    Lv (..),
     DBBinder,
     DBArg,
     DBType,
@@ -38,78 +38,78 @@ import Vehicle.Syntax.AST
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the variable position upwards.
-newtype DBIndex = DBIndex
-  { unIndex :: Int
+newtype Ix = Ix
+  { unIx :: Int
   }
   deriving (Eq, Ord, Num, Show, Generic)
 
-instance NFData DBIndex
+instance NFData Ix
 
-instance Hashable DBIndex
+instance Hashable Ix
 
-instance ToJSON DBIndex
+instance ToJSON Ix
 
-instance Serialize DBIndex
+instance Serialize Ix
 
-instance Pretty DBIndex where
-  pretty i = "𝓲" <> pretty (unIndex i)
+instance Pretty Ix where
+  pretty i = "𝓲" <> pretty (unIx i)
 
 -- | DeBruijn level - represents how many binders deep we currently are.
 -- (e.g. \f . f (\x . x)) the variable `f` is at level 0 and the variable `x`
 -- is at level 1.
 -- When used as a variable refers to the binder at that level.
-newtype DBLevel = DBLevel
-  { unLevel :: Int
+newtype Lv = Lv
+  { unLv :: Int
   }
   deriving (Eq, Ord, Num, Enum, Show, Generic)
 
-instance NFData DBLevel
+instance NFData Lv
 
-instance Hashable DBLevel
+instance Hashable Lv
 
-instance ToJSON DBLevel
+instance ToJSON Lv
 
-instance Serialize DBLevel
+instance Serialize Lv
 
-instance Pretty DBLevel where
-  pretty l = "𝓵" <> pretty (unLevel l)
+instance Pretty Lv where
+  pretty l = "𝓵" <> pretty (unLv l)
 
 -- | The type of the data DeBruijn notation stores at binding sites.
 type DBBinding = ()
 
--- | Converts a `DBLevel` x to a `DBIndex` given that we're currently at
+-- | Converts a `Lv` x to a `Ix` given that we're currently at
 -- level `l`.
-dbLevelToIndex :: DBLevel -> DBLevel -> DBIndex
-dbLevelToIndex l x = DBIndex (unLevel l - unLevel x - 1)
+dbLevelToIndex :: Lv -> Lv -> Ix
+dbLevelToIndex l x = Ix (unLv l - unLv x - 1)
 
-shiftDBIndex :: DBIndex -> DBLevel -> DBIndex
-shiftDBIndex i l = DBIndex (unIndex i + unLevel l)
+shiftDBIndex :: Ix -> Lv -> Ix
+shiftDBIndex i l = Ix (unIx i + unLv l)
 
 --------------------------------------------------------------------------------
 -- Expressions
 
 -- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder builtin = Binder DBBinding DBIndex builtin
+type DBBinder builtin = Binder DBBinding Ix builtin
 
-type DBArg builtin = Arg DBBinding DBIndex builtin
+type DBArg builtin = Arg DBBinding Ix builtin
 
 type DBType builtin = DBExpr builtin
 
-type DBExpr builtin = Expr DBBinding DBIndex builtin
+type DBExpr builtin = Expr DBBinding Ix builtin
 
-type DBDecl builtin = Decl DBBinding DBIndex builtin
+type DBDecl builtin = Decl DBBinding Ix builtin
 
-type DBProg builtin = Prog DBBinding DBIndex builtin
+type DBProg builtin = Prog DBBinding Ix builtin
 
 type DBTelescope builtin = [DBBinder builtin]
 
 --------------------------------------------------------------------------------
 -- Substitution
 
-type Substitution value = DBIndex -> Either DBIndex value
+type Substitution value = Ix -> Either Ix value
 
 class Substitutable value target | target -> value where
-  subst :: (MonadReader (DBLevel, Substitution value) m) => target -> m target
+  subst :: (MonadReader (Lv, Substitution value) m) => target -> m target
 
 instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
   subst = traverse subst
@@ -122,7 +122,7 @@ instance Substitutable (DBExpr builtin) (DBExpr builtin) where
     BoundVar p i -> do
       (d, s) <- ask
       return $
-        if unIndex i < unLevel d
+        if unIx i < unLv d
           then BoundVar p i
           else case s (shiftDBIndex i (-d)) of
             Left i' -> BoundVar p (shiftDBIndex i' d)
@@ -140,20 +140,20 @@ instance Substitutable (DBExpr builtin) (DBExpr builtin) where
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.
-underDBBinder :: (MonadReader (DBLevel, c) m) => m a -> m a
+underDBBinder :: (MonadReader (Lv, c) m) => m a -> m a
 underDBBinder = local (first (+ 1))
 
 --------------------------------------------------------------------------------
 -- Concrete operations
 
-substituteDB :: DBLevel -> Substitution (DBExpr builtin) -> DBExpr builtin -> DBExpr builtin
+substituteDB :: Lv -> Substitution (DBExpr builtin) -> DBExpr builtin -> DBExpr builtin
 substituteDB depth sub e = runReader (subst e) (depth, sub)
 
 -- | Lift all DeBruijn indices that refer to environment variables by the
 -- provided depth.
 liftDBIndices ::
   -- | number of levels to lift by
-  DBLevel ->
+  Lv ->
   -- | target term to lift
   DBExpr builtin ->
   -- | lifted term
@@ -164,7 +164,7 @@ liftDBIndices l = substituteDB 0 (\i -> Left (shiftDBIndex i l))
 substDBIntoAtLevel ::
   forall builtin.
   -- | The index of the variable of which to substitute
-  DBIndex ->
+  Ix ->
   -- | expression to substitute
   DBExpr builtin ->
   -- | term to substitute into
@@ -173,7 +173,7 @@ substDBIntoAtLevel ::
   DBExpr builtin
 substDBIntoAtLevel level value = substituteDB 0 substVar
   where
-    substVar :: DBIndex -> Either DBIndex (DBExpr builtin)
+    substVar :: Ix -> Either Ix (DBExpr builtin)
     substVar v
       | v == level = Right value
       | v > level = Left (v - 1)
@@ -190,8 +190,8 @@ substDBInto ::
 substDBInto = substDBIntoAtLevel 0
 
 substDBAll ::
-  DBLevel ->
-  (DBIndex -> Maybe DBIndex) ->
+  Lv ->
+  (Ix -> Maybe Ix) ->
   DBExpr builtin ->
   DBExpr builtin
 substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))

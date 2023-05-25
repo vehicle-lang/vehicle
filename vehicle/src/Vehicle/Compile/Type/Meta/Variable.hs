@@ -29,7 +29,7 @@ import Vehicle.Expr.Normalised
 -- Meta information
 
 -- | The size of a meta-variable's context (i.e. how many bound variables it
--- can depend on.) In theory this should be identical to the current `DBLevel`
+-- can depend on.) In theory this should be identical to the current `Lv`
 -- but in practice, linearity/polarity/type-class insertion meta-variables
 -- have a context of zero size as they cannot depend on the context.
 type MetaCtxSize = Int
@@ -60,8 +60,8 @@ makeMetaExpr ::
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [ExplicitArg p (BoundVar p $ DBIndex i) | i <- reverse dependencyLevels]
-  let normBoundEnv = [ExplicitArg p (VBoundVar (DBLevel i) []) | i <- dependencyLevels]
+  let unnormBoundEnv = [ExplicitArg p (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
+  let normBoundEnv = [ExplicitArg p (VBoundVar (Lv i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
@@ -85,12 +85,12 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
       let n = fromMaybe "_" name
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
-getMetaDependencies :: [CheckedArg types] -> [DBIndex]
+getMetaDependencies :: [CheckedArg types] -> [Ix]
 getMetaDependencies = \case
   (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg types] -> ([DBLevel], Spine types)
+getNormMetaDependencies :: [NormArg types] -> ([Lv], Spine types)
 getNormMetaDependencies = \case
   (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)

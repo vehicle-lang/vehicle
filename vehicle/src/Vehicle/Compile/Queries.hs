@@ -26,7 +26,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.DeBruijn (DBLevel (..))
+import Vehicle.Expr.DeBruijn (Lv (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -328,7 +328,7 @@ compileQuantifierBodyToPropositionTree quantifiedVariables _ binder env body = d
 
   let variableName = getBinderName binder
   -- TODO avoid calculating this repeatedly?
-  let currentLevel = DBLevel $ sum (map (\(_, _, vars) -> length vars) quantifiedVariables)
+  let currentLevel = Lv $ sum (map (\(_, _, vars) -> length vars) quantifiedVariables)
   tensorDimensions <- calculateDimensionsOfQuantifiedVariable propertyState binder
   (envEntry, binderUserVars) <- calculateEnvEntry currentLevel variableName tensorDimensions
   let newEnv = extendEnv binder envEntry env
@@ -455,7 +455,7 @@ calculateDimensionsOfQuantifiedVariable propertyState binder = go (typeOf binder
 
 calculateEnvEntry ::
   (MonadCompile m) =>
-  DBLevel ->
+  Lv ->
   Name ->
   TensorDimensions ->
   m (StandardNormExpr, [UserVariable])
@@ -463,7 +463,7 @@ calculateEnvEntry startingLevel baseName baseDims = do
   runSupplyT (go baseName baseDims) [startingLevel ..]
   where
     go ::
-      (MonadSupply DBLevel m, MonadCompile m) =>
+      (MonadSupply Lv m, MonadCompile m) =>
       Name ->
       TensorDimensions ->
       m (StandardNormExpr, [UserVariable])

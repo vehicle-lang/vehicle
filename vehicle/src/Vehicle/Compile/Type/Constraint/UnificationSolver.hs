@@ -218,7 +218,7 @@ solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
       else return solution
 
   unnormSolution <- quote mempty (contextDBLevel ctx) prunedSolution
-  let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` renaming) unnormSolution
+  let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
   solveMeta metaID substSolution (boundContext ctx)
   return $ Success mempty
 
@@ -272,7 +272,7 @@ createMetaWithRestrictedDependencies ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   MetaID ->
-  [DBLevel] ->
+  [Lv] ->
   m (NormExpr types)
 createMetaWithRestrictedDependencies ctx meta newDependencies = do
   p <- getMetaProvenance (Proxy @types) meta
@@ -284,7 +284,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: StandardExpr) boundCtx)) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
-    let levelSet = IntSet.fromList $ fmap unLevel newDependencies
+    let levelSet = IntSet.fromList $ fmap unLv newDependencies
     let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
     let typingBoundCtx = boundContext ctx
     let ctxWithLevels = zip (reverse [0 .. length typingBoundCtx - 1 :: Int]) typingBoundCtx
@@ -292,7 +292,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
     newMetaExpr <- freshMetaExpr p metaType restrictedContext
 
     let substitution = IntMap.fromAscList (zip [0 ..] (reverse dbIndices))
-    let substMetaExpr = substDBAll 0 (\v -> unIndex v `IntMap.lookup` substitution) (unnormalised newMetaExpr)
+    let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) (unnormalised newMetaExpr)
     solveMeta meta substMetaExpr (boundContext ctx)
 
     return $ normalised newMetaExpr
@@ -307,11 +307,11 @@ unify ctx (e1, e2) = WithContext (Unify e1 e2) <$> copyContext ctx
 --------------------------------------------------------------------------------
 -- Argument patterns
 
-type Renaming = IntMap DBIndex
+type Renaming = IntMap Ix
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: forall types m. (MonadUnify types m) => DBLevel -> (MetaID, Spine types) -> m (Maybe Renaming)
+invert :: forall types m. (MonadUnify types m) => Lv -> (MetaID, Spine types) -> m (Maybe Renaming)
 invert ctxSize (metaID, spine) = do
   metaCtxSize <- length <$> getMetaCtx @types metaID
   return $
@@ -319,16 +319,16 @@ invert ctxSize (metaID, spine) = do
       then Nothing
       else go (metaCtxSize - 1) IntMap.empty spine
   where
-    go :: Int -> IntMap DBIndex -> Spine types -> Maybe Renaming
+    go :: Int -> IntMap Ix -> Spine types -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
       (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
-        if IntMap.member (unIndex jIndex) revMap
+        if IntMap.member (unIx jIndex) revMap
           then -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
           -- but then we should make sure the solution is well-typed
             Nothing
-          else go (i - 1) (IntMap.insert (unIndex jIndex) (DBIndex i) revMap) restArgs
+          else go (i - 1) (IntMap.insert (unIx jIndex) (Ix i) revMap) restArgs
       -- Not a pattern so return nothing.
       _ -> Nothing

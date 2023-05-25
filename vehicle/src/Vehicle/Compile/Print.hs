@@ -420,7 +420,7 @@ instance
   PrettyUsing ('Denormalise rest) (Contextualised (NormExpr types) BoundDBCtx)
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) (DBLevel $ length ctx) e
+    let e' = unnormalise @(NormExpr types) @(DBExpr (NormalisableBuiltin types)) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
 instance (PrettyUsing rest (DBExpr (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (NormExpr types) where

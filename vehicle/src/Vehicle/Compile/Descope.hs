@@ -68,7 +68,7 @@ instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) wher
 instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr DBBinding DBIndex builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (Expr DBBinding Ix builtin) (Expr InputBinding InputVar builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -153,7 +153,7 @@ descopeArg f = traverse (descopeExpr f)
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `NormExpr`s in a readable form.
 descopeNormExpr ::
-  (Provenance -> DBLevel -> Name) ->
+  (Provenance -> Lv -> Name) ->
   NormExpr types ->
   Expr InputBinding InputVar (NormalisableBuiltin types)
 descopeNormExpr f e = case e of
@@ -180,18 +180,18 @@ descopeNormExpr f e = case e of
     p = mempty
 
 descopeSpine ::
-  (Provenance -> DBLevel -> Name) ->
+  (Provenance -> Lv -> Name) ->
   Spine types ->
   [Arg InputBinding InputVar (NormalisableBuiltin types)]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
-  (Provenance -> DBLevel -> Name) ->
+  (Provenance -> Lv -> Name) ->
   NormBinder types ->
   Binder InputBinding InputVar (NormalisableBuiltin types)
 descopeNormBinder f = fmap (descopeNormExpr f)
 
-descopeDBIndexVar :: (MonadDescope m) => Provenance -> DBIndex -> m Name
+descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do
   Ctx ctx <- ask
   case lookupVar ctx i of
@@ -199,10 +199,10 @@ descopeDBIndexVar p i = do
     Just Nothing -> return "_" -- usingUnnamedBoundVariable p i
     Just (Just name) -> return name
 
-descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> DBIndex -> m Name
+descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVarNaive _ i = return $ layoutAsText (pretty i)
 
-descopeDBLevelVarNaive :: Provenance -> DBLevel -> Name
+descopeDBLevelVarNaive :: Provenance -> Lv -> Name
 descopeDBLevelVarNaive _ l = layoutAsText $ pretty l
 
 {-
@@ -224,7 +224,7 @@ showScopeExit m = do
   return e
 
 -- | Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: (MonadDescope m) => Provenance -> DBIndex -> Int -> m a
+indexOutOfBounds :: (MonadDescope m) => Provenance -> Ix -> Int -> m a
 indexOutOfBounds p index ctxSize =
   developerError $
     "During descoping found DeBruijn index"
@@ -235,7 +235,7 @@ indexOutOfBounds p index ctxSize =
 
 {-
 -- | Use of unnamed bound variable error using an arbitrary index.
-usingUnnamedBoundVariable :: MonadDescope m => Provenance -> DBIndex -> m a
+usingUnnamedBoundVariable :: MonadDescope m => Provenance -> Ix -> m a
 usingUnnamedBoundVariable p index =
   developerError $
     "During descoping found use of unnamed bound variable"

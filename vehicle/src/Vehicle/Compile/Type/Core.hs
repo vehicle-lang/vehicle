@@ -19,7 +19,7 @@ import Vehicle.Expr.Normalised
 
 type UncheckedBinding = DBBinding
 
-type UncheckedVar = DBIndex
+type UncheckedVar = Ix
 
 type UncheckedBinder types = NormalisableBinder types
 
@@ -39,7 +39,7 @@ type UncheckedProg types = NormalisableProg types
 
 type CheckedBinding = DBBinding
 
-type CheckedVar = DBIndex
+type CheckedVar = Ix
 
 type CheckedBinder types = NormalisableBinder types
 
@@ -141,7 +141,7 @@ instance HasBoundCtx (TypingBoundCtx types) where
 
 typingBoundContextToEnv :: TypingBoundCtx types -> Env types
 typingBoundContextToEnv ctx = do
-  let levels = reverse (fmap DBLevel [0 .. length ctx - 1])
+  let levels = reverse (fmap Lv [0 .. length ctx - 1])
   zipWith (\level (n, _) -> (n, VBoundVar level [])) levels ctx
 
 --------------------------------------------------------------------------------
@@ -227,8 +227,8 @@ extendConstraintBoundCtx ConstraintContext {..} telescope =
       ..
     }
 
-contextDBLevel :: ConstraintContext types -> DBLevel
-contextDBLevel = DBLevel . length . boundContext
+contextDBLevel :: ConstraintContext types -> Lv
+contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
 -- Unification constraints

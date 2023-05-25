@@ -170,7 +170,7 @@ evalApp fun (arg : args) = do
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
     VPi {} -> unexpectedExprError currentPass "VPi"
 
-lookupIn :: (MonadCompile m) => Provenance -> DBIndex -> Env types -> m (NormExpr types)
+lookupIn :: (MonadCompile m) => Provenance -> Ix -> Env types -> m (NormExpr types)
 lookupIn p i env = case lookupVar env i of
   Just (_, value) -> return value
   Nothing ->

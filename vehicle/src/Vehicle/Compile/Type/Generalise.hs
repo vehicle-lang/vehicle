@@ -168,7 +168,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   -- We now solve the meta as the newly bound variable
   metaCtx <- getMetaCtx @types meta
   let p = provenanceOf prependedDecl
-  let solution = BoundVar p (DBIndex $ length metaCtx - 1)
+  let solution = BoundVar p (Ix $ length metaCtx - 1)
   solveMeta meta solution metaCtx
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
@@ -201,7 +201,7 @@ removeContextsOfMetasIn binderType decl =
 addNewArgumentToMetaUses :: MetaID -> CheckedDecl types -> CheckedDecl types
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: DBLevel -> CheckedExpr types -> CheckedExpr types
+    go :: Lv -> CheckedExpr types -> CheckedExpr types
     go d expr = case expr of
       Meta p m
         | m == meta -> App p (Meta p m) [newVar p]

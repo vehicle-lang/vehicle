@@ -34,7 +34,7 @@ addToBoundCtx v = local (v :)
 getBoundCtx :: (MonadReader (BoundCtx b) m) => m (BoundCtx b)
 getBoundCtx = ask
 
-lookupVar :: BoundCtx b -> DBIndex -> Maybe b
+lookupVar :: BoundCtx b -> Ix -> Maybe b
 lookupVar ctx i = ctx !!? coerce i
 
 --------------------------------------------------------------------------------

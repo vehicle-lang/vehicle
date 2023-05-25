@@ -18,7 +18,7 @@ data NormExpr types
   | VPi (NormBinder types) (NormExpr types)
   | VMeta MetaID (Spine types)
   | VFreeVar Identifier (Spine types)
-  | VBoundVar DBLevel (Spine types)
+  | VBoundVar Lv (Spine types)
   | VBuiltin (NormalisableBuiltin types) (ExplicitSpine types)
   deriving (Eq, Show, Generic)
 
@@ -52,7 +52,7 @@ extendEnv binder value = ((nameOf binder, value) :)
 
 extendEnvOverBinder :: GenericBinder binder expr -> Env types -> Env types
 extendEnvOverBinder binder env =
-  extendEnv binder (VBoundVar (DBLevel $ length env) []) env
+  extendEnv binder (VBoundVar (Lv $ length env) []) env
 
 -----------------------------------------------------------------------------
 -- Patterns

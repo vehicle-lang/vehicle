@@ -161,11 +161,11 @@ inferExpr e = do
       ctx <- getBoundCtx
       case lookupVar ctx i of
         Just (_, checkedType) -> do
-          let liftedCheckedType = liftDBIndices (DBLevel $ unIndex i + 1) checkedType
+          let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) checkedType
           return (BoundVar p i, liftedCheckedType)
         Nothing ->
           compilerDeveloperError $
-            "DBIndex"
+            "Ix"
               <+> pretty i
               <+> "out of bounds when looking"
               <+> "up variable in context"

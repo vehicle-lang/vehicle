@@ -173,12 +173,12 @@ scopeExpr :: (MonadScopeExpr m) => UnscopedExpr -> m ScopedExpr
 scopeExpr = traverseVars scopeVar
 
 -- | Find the index for a given name of a given sort.
-scopeVar :: (MonadScopeExpr m) => VarUpdate m Name DBIndex
+scopeVar :: (MonadScopeExpr m) => VarUpdate m Name Ix
 scopeVar p symbol = do
   (declCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
-    Just i -> return $ BoundVar p $ DBIndex i
+    Just i -> return $ BoundVar p $ Ix i
     Nothing -> case Map.lookup symbol declCtx of
       Just ident -> return $ FreeVar p ident
       Nothing -> do
