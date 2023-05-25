@@ -113,7 +113,7 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
-  | UnsupportedNegatedOperation DifferentiableLogic Provenance (NamedExpr StandardBuiltin)
+  | UnsupportedNegatedOperation DifferentiableLogic Provenance (Expr () Name StandardBuiltin)
   deriving (Show)
 
 --------------------------------------------------------------------------------

@@ -110,7 +110,7 @@ delabNameBinder b = case V.binderNamingForm b of
     developerError $
       "Should not be delaborating the `OnlyType` binder named"
         <+> pretty (show (V.binderRepresentation b))
-        <+> "to a `NamedBinder`"
+        <+> "to a `Binder () Name`"
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
     V.Explicit -> B.ExplicitNameBinder (delabSymbol name)

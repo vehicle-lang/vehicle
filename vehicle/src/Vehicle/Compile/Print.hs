@@ -117,27 +117,27 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('As lang) (Arg () Name Builtin) = 'PrintAs lang
   StrategyFor ('As lang) (Binder () Name Builtin) = 'PrintAs lang
   -- To print a DB expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Prog () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedProg builtin))
-  StrategyFor ('Unnamed tags) (Decl () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedDecl builtin))
-  StrategyFor ('Unnamed tags) (Expr () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedExpr builtin))
-  StrategyFor ('Unnamed tags) (Arg () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedArg builtin))
-  StrategyFor ('Unnamed tags) (Binder () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedBinder builtin))
+  StrategyFor ('Unnamed tags) (Prog () Ix builtin) = 'DescopeNaively (StrategyFor tags (Prog () Name builtin))
+  StrategyFor ('Unnamed tags) (Decl () Ix builtin) = 'DescopeNaively (StrategyFor tags (Decl () Name builtin))
+  StrategyFor ('Unnamed tags) (Expr () Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr () Name builtin))
+  StrategyFor ('Unnamed tags) (Arg () Ix builtin) = 'DescopeNaively (StrategyFor tags (Arg () Name builtin))
+  StrategyFor ('Unnamed tags) (Binder () Ix builtin) = 'DescopeNaively (StrategyFor tags (Binder () Name builtin))
   -- To print a normalised expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Value types) = 'DescopeNaively (StrategyFor tags (NamedExpr (NormalisableBuiltin types)))
-  StrategyFor ('Unnamed tags) (VArg types) = 'DescopeNaively (StrategyFor tags (NamedArg (NormalisableBuiltin types)))
-  StrategyFor ('Unnamed tags) (VBinder types) = 'DescopeNaively (StrategyFor tags (NamedBinder (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (Value types) = 'DescopeNaively (StrategyFor tags (Expr () Name (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (VArg types) = 'DescopeNaively (StrategyFor tags (Arg () Name (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (VBinder types) = 'DescopeNaively (StrategyFor tags (Binder () Name (NormalisableBuiltin types)))
   -- To standardise builtins
-  StrategyFor ('StandardiseBuiltin tags) (NamedProg builtin) = 'ConvertBuiltins (StrategyFor tags (Prog () Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (NamedDecl builtin) = 'ConvertBuiltins (StrategyFor tags (Decl () Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (NamedExpr builtin) = 'ConvertBuiltins (StrategyFor tags (Expr () Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (NamedArg builtin) = 'ConvertBuiltins (StrategyFor tags (Arg () Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (NamedBinder builtin) = 'ConvertBuiltins (StrategyFor tags (Binder () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Prog () Name builtin) = 'ConvertBuiltins (StrategyFor tags (Prog () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Decl () Name builtin) = 'ConvertBuiltins (StrategyFor tags (Decl () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Expr () Name builtin) = 'ConvertBuiltins (StrategyFor tags (Expr () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Arg () Name builtin) = 'ConvertBuiltins (StrategyFor tags (Arg () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Binder () Name builtin) = 'ConvertBuiltins (StrategyFor tags (Binder () Name Builtin))
   -- To convert an expression using a named representation to a named representation is a no-op.
-  StrategyFor ('Named tags) (NamedProg builtin) = StrategyFor tags (NamedProg builtin)
-  StrategyFor ('Named tags) (NamedDecl builtin) = StrategyFor tags (NamedDecl builtin)
-  StrategyFor ('Named tags) (NamedExpr builtin) = StrategyFor tags (NamedExpr builtin)
-  StrategyFor ('Named tags) (NamedArg builtin) = StrategyFor tags (NamedArg builtin)
-  StrategyFor ('Named tags) (NamedBinder builtin) = StrategyFor tags (NamedBinder builtin)
+  StrategyFor ('Named tags) (Prog () Name builtin) = StrategyFor tags (Prog () Name builtin)
+  StrategyFor ('Named tags) (Decl () Name builtin) = StrategyFor tags (Decl () Name builtin)
+  StrategyFor ('Named tags) (Expr () Name builtin) = StrategyFor tags (Expr () Name builtin)
+  StrategyFor ('Named tags) (Arg () Name builtin) = StrategyFor tags (Arg () Name builtin)
+  StrategyFor ('Named tags) (Binder () Name builtin) = StrategyFor tags (Binder () Name builtin)
   -- To convert a closed expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the Checked to named conversion. For expressions, args, binders
   -- we need to have the context in scope.
@@ -260,31 +260,31 @@ instance (PrettyUsing rest (Binder () Name Builtin)) => PrettyUsing ('ConvertBui
 
 instance
   (PrintableBuiltin types, PrettyUsing rest (Prog () Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (NamedProg (NormalisableBuiltin types))
+  PrettyUsing ('ConvertBuiltins rest) (Prog () Name (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
   (PrintableBuiltin types, PrettyUsing rest (Decl () Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (NamedDecl (NormalisableBuiltin types))
+  PrettyUsing ('ConvertBuiltins rest) (Decl () Name (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
   (PrintableBuiltin types, PrettyUsing rest (Expr () Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (NamedExpr (NormalisableBuiltin types))
+  PrettyUsing ('ConvertBuiltins rest) (Expr () Name (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . convertExprBuiltins
 
 instance
   (PrintableBuiltin types, PrettyUsing rest (Arg () Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (NamedArg (NormalisableBuiltin types))
+  PrettyUsing ('ConvertBuiltins rest) (Arg () Name (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
   (PrintableBuiltin types, PrettyUsing rest (Binder () Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (NamedBinder (NormalisableBuiltin types))
+  PrettyUsing ('ConvertBuiltins rest) (Binder () Name (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
@@ -304,53 +304,53 @@ convertExprBuiltins = traverseBuiltins $ \p1 p2 b args -> do
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance (PrettyUsing rest (NamedProg builtin)) => PrettyUsing ('DescopeNaively rest) (Prog () Ix builtin) where
+instance (PrettyUsing rest (Prog () Name builtin)) => PrettyUsing ('DescopeNaively rest) (Prog () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedDecl builtin)) => PrettyUsing ('DescopeNaively rest) (Decl () Ix builtin) where
+instance (PrettyUsing rest (Decl () Name builtin)) => PrettyUsing ('DescopeNaively rest) (Decl () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedExpr builtin)) => PrettyUsing ('DescopeNaively rest) (Expr () Ix builtin) where
+instance (PrettyUsing rest (Expr () Name builtin)) => PrettyUsing ('DescopeNaively rest) (Expr () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedArg builtin)) => PrettyUsing ('DescopeNaively rest) (Arg () Ix builtin) where
+instance (PrettyUsing rest (Arg () Name builtin)) => PrettyUsing ('DescopeNaively rest) (Arg () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedBinder builtin)) => PrettyUsing ('DescopeNaively rest) (Binder () Ix builtin) where
+instance (PrettyUsing rest (Binder () Name builtin)) => PrettyUsing ('DescopeNaively rest) (Binder () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedExpr (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (Value types) where
+instance (PrettyUsing rest (Expr () Name (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (Value types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedArg (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VArg types) where
+instance (PrettyUsing rest (Arg () Name (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VArg types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedBinder (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VBinder types) where
+instance (PrettyUsing rest (Binder () Name (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VBinder types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
-instance (PrettyUsing rest (NamedProg builtin)) => PrettyUsing ('DescopeWithNames rest) (Prog () Ix builtin) where
+instance (PrettyUsing rest (Prog () Name builtin)) => PrettyUsing ('DescopeWithNames rest) (Prog () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
-instance (PrettyUsing rest (NamedDecl builtin)) => PrettyUsing ('DescopeWithNames rest) (Decl () Ix builtin) where
+instance (PrettyUsing rest (Decl () Name builtin)) => PrettyUsing ('DescopeWithNames rest) (Decl () Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  (PrettyUsing rest (NamedExpr builtin)) =>
+  (PrettyUsing rest (Expr () Name builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr () Ix builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  (PrettyUsing rest (NamedArg builtin)) =>
+  (PrettyUsing rest (Arg () Name builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg () Ix builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed
 
 instance
-  (PrettyUsing rest (NamedBinder builtin)) =>
+  (PrettyUsing rest (Binder () Name builtin)) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder () Ix builtin) BoundDBCtx)
   where
   prettyUsing = prettyUsing @rest . descopeNamed

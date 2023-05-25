@@ -92,15 +92,15 @@ type OutputBinding = ()
 
 type OutputVar = Name
 
-type OutputBinder = NamedBinder StandardBuiltin
+type OutputBinder = Binder () Name StandardBuiltin
 
-type OutputArg = NamedArg StandardBuiltin
+type OutputArg = Arg () Name StandardBuiltin
 
-type OutputExpr = NamedExpr StandardBuiltin
+type OutputExpr = Expr () Name StandardBuiltin
 
-type OutputDecl = NamedDecl StandardBuiltin
+type OutputDecl = Decl () Name StandardBuiltin
 
-type OutputProg = NamedProg StandardBuiltin
+type OutputProg = Prog () Name StandardBuiltin
 
 --------------------------------------------------------------------------------
 -- Modules

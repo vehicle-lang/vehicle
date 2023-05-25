@@ -63,13 +63,13 @@ compile _resources logic typedProg = do
 currentPass :: Doc a
 currentPass = "compilation to loss functions"
 
-type InputProg = V.NamedProg V.StandardBuiltin
+type InputProg = V.Prog () V.Name V.StandardBuiltin
 
-type InputDecl = V.NamedDecl V.StandardBuiltin
+type InputDecl = V.Decl () V.Name V.StandardBuiltin
 
-type InputExpr = V.NamedExpr V.StandardBuiltin
+type InputExpr = V.Expr () V.Name V.StandardBuiltin
 
-type InputArg = V.NamedArg V.StandardBuiltin
+type InputArg = V.Arg () V.Name V.StandardBuiltin
 
 --------------------------------------------------------------------------------
 -- Main compilation pass
@@ -301,7 +301,7 @@ reformatLogicalOperators ::
   m InputProg
 reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
+    builtinUpdateFunction :: V.BuiltinUpdate m () V.Name V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       V.CFunction V.Not
         | isNothing (compileNot (implementationOf logic)) ->

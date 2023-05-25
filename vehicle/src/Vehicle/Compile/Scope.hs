@@ -36,11 +36,11 @@ scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 --------------------------------------------------------------------------------
 -- Type synonyms
 
-type UnscopedProg = NamedProg Builtin
+type UnscopedProg = Prog () Name Builtin
 
-type UnscopedDecl = NamedDecl Builtin
+type UnscopedDecl = Decl () Name Builtin
 
-type UnscopedExpr = NamedExpr Builtin
+type UnscopedExpr = Expr () Name Builtin
 
 type ScopedProg = Prog () Ix Builtin
 
@@ -193,13 +193,13 @@ type MonadTraverse m =
   )
 
 type VarUpdate m var1 var2 =
-  forall builtin. Provenance -> var1 -> m (Expr NamedBinding var2 builtin)
+  forall builtin. Provenance -> var1 -> m (Expr () var2 builtin)
 
 traverseVars ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
-  Expr NamedBinding var1 builtin ->
-  m (Expr NamedBinding var2 builtin)
+  Expr () var1 builtin ->
+  m (Expr () var2 builtin)
 traverseVars f e = do
   result <- case e of
     BoundVar p v -> f p v
@@ -226,9 +226,9 @@ traverseVars f e = do
 traverseBinder ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
-  Binder NamedBinding var1 builtin ->
-  (Binder NamedBinding var2 builtin -> m (Expr NamedBinding var2 builtin)) ->
-  m (Expr NamedBinding var2 builtin)
+  Binder () var1 builtin ->
+  (Binder () var2 builtin -> m (Expr () var2 builtin)) ->
+  m (Expr () var2 builtin)
 traverseBinder f binder update = do
   binder' <- traverse (traverseVars f) binder
   let updateCtx ctx = nameOf binder : ctx

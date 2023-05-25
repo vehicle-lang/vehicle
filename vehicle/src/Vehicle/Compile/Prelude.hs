@@ -15,20 +15,6 @@ import Vehicle.Syntax.AST as X
 --------------------------------------------------------------------------------
 -- Type synonyms
 
-type NamedBinding = ()
-
-type NamedVar = Name
-
-type NamedArg builtin = Arg NamedBinding NamedVar builtin
-
-type NamedBinder builtin = Binder NamedBinding NamedVar builtin
-
-type NamedExpr builtin = Expr NamedBinding NamedVar builtin
-
-type NamedDecl builtin = Decl NamedBinding NamedVar builtin
-
-type NamedProg builtin = Prog NamedBinding NamedVar builtin
-
 type DeclProvenance = (Identifier, Provenance)
 
 --------------------------------------------------------------------------------
