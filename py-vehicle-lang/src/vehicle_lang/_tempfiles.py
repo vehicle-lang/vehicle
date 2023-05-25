@@ -1,14 +1,22 @@
 import contextlib
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory as _TemporaryDirectory
-from typing import Dict, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
+
+from typing_extensions import TypeAlias
+
+if TYPE_CHECKING or sys.version_info >= (3, 9):
+    _StrTemporaryDirectory: TypeAlias = _TemporaryDirectory[str]
+else:
+    _StrTemporaryDirectory: TypeAlias = _TemporaryDirectory
 
 
 class _TemporaryFile:
     path: Path
 
     def __init__(
-        self, dir: _TemporaryDirectory[str], name: str, *, encoding: str = "utf8"
+        self, dir: _StrTemporaryDirectory, name: str, *, encoding: str = "utf8"
     ):
         self.path = Path(dir.name) / name
         self.encoding = encoding
