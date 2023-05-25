@@ -22,7 +22,7 @@ ext_module = setuptools.Extension(
 
 
 class cabal_build_ext(setuptools.command.build_ext.build_ext):
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         super().finalize_options()
 
         if sys.platform in ["win32", "cygwin"]:
@@ -34,7 +34,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
             self.libraries.append(libname)
             self.library_dirs.append(library_dir)
 
-    def build_extension(self, ext: setuptools.Extension):
+    def build_extension(self, ext: setuptools.Extension) -> None:
         # Taken from setuptools:
         # https://github.com/pypa/setuptools/blob/245d72a8aa4d47e1811425213aba2a06a0bb64fa/setuptools/command/build_ext.py#L240-L241
         ext._convert_pyx_sources_to_lang()  # type: ignore[attr-defined]
@@ -54,7 +54,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         # First, scan the sources for SWIG definition files (.i), run
         # SWIG on 'em to create .c files, and modify the sources list
         # accordingly.
-        sources = self.swig_sources(sources, ext)
+        sources = self.swig_sources(sources, ext)  # type: ignore[no-untyped-call]
 
         # Next, build the sources with Cabal.
         # NOTE: This requires a valid .cabal file that defines a foreign library called _binding.
@@ -68,7 +68,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
             build_lib = self.get_finalized_command("build_py").build_lib  # type: ignore[attr-defined]
             self.write_stub(build_lib, ext)
 
-    def cabal_configure_ext(self, ext: setuptools.Extension):
+    def cabal_configure_ext(self, ext: setuptools.Extension) -> None:
         library_dirs = [*(self.library_dirs or []), *(ext.library_dirs or [])]
         include_dirs = [*(self.include_dirs or []), *(ext.include_dirs or [])]
         libraries = [*(self.libraries or []), *(ext.libraries or [])]
@@ -85,7 +85,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
             ]
         )
 
-    def cabal_build_ext(self, ext: setuptools.Extension):
+    def cabal_build_ext(self, ext: setuptools.Extension) -> None:
         self.mkpath(self.build_temp)
         self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
         lib_filename = self.get_cabal_foreign_library_filename(ext)
@@ -93,7 +93,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         self.mkpath(os.path.dirname(ext_fullpath))
         self.copy_file(os.path.join(self.build_temp, lib_filename), ext_fullpath)
 
-    def get_cabal_foreign_library_filename(self, ext):
+    def get_cabal_foreign_library_filename(self, ext: setuptools.Extension) -> str:
         if sys.platform not in ["darwin", "linux", "win32", "cygwin"]:
             raise distutils.errors.DistutilsPlatformError(
                 f"unsupported platform {self.plat_name}"
@@ -108,7 +108,12 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         }[sys.platform]
         return f"{library_prefix}{component_name}{os.path.extsep}{dynlib_extension}"
 
-    def cabal(self, args, *, env=None):
+    def cabal(
+        self,
+        args: typing.List[str],
+        *,
+        env: typing.Optional[typing.Mapping[str, str]] = None,
+    ) -> None:
         args = [self.find_cabal(), *args]
         cmd = " ".join(args)
         print(cmd)
@@ -120,7 +125,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
     _cabal: typing.Optional[str] = None
 
-    def find_cabal(self):
+    def find_cabal(self) -> str:
         if self._cabal is None:
             self._cabal = distutils.spawn.find_executable("cabal")
             if self._cabal is None:
@@ -131,7 +136,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
                 )
         return self._cabal
 
-    def check_cabal_version(self):
+    def check_cabal_version(self) -> None:
         cabal_version = subprocess.getoutput(f"{self.find_cabal()} --numeric-version")
         if packaging.version.Version(cabal_version) < packaging.version.Version("3.8"):
             raise distutils.errors.DistutilsExecError(
@@ -141,7 +146,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
     _ghc: typing.Optional[str] = None
 
-    def find_ghc(self):
+    def find_ghc(self) -> str:
         if self._ghc is None:
             self._ghc = distutils.spawn.find_executable("ghc")
             if self._ghc is None:
@@ -152,7 +157,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
                 )
         return self._ghc
 
-    def check_ghc_version(self):
+    def check_ghc_version(self) -> None:
         ghc_version = subprocess.getoutput(f"{self.find_ghc()} --numeric-version")
         if packaging.version.Version(ghc_version) < packaging.version.Version("8.10"):
             raise distutils.errors.DistutilsExecError(
@@ -161,7 +166,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
             )
 
 
-def main():
+def main() -> None:
     setuptools.setup(
         ext_modules=[ext_module],
         cmdclass={"build_ext": cabal_build_ext},

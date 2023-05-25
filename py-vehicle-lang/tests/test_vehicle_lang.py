@@ -4,10 +4,10 @@ def base_version(version: str) -> str:
     return Version(version).base_version
 
 
-def test_main():
-    from vehicle_lang import VERSION, vehicleSync
+def test_main() -> None:
+    from vehicle_lang import VERSION, vehicle
 
-    exc, out, err, log = vehicleSync(["--version"])
+    exc, out, err, log = vehicle(["--version"])
     assert isinstance(exc, int) and exc == 0
     assert isinstance(out, str) and base_version(out) == base_version(VERSION)
     assert err is None
