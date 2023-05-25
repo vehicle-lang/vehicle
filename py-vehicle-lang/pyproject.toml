@@ -60,6 +60,10 @@ exclude = [
 ]
 
 [[tool.mypy.overrides]]
+module = "vehicle_lang.pygments"
+allow_subclassing_any = true
+
+[[tool.mypy.overrides]]
 module = "vehicle_lang.pygments._external"
 allow_subclassing_any = true
 allow_untyped_defs = true
