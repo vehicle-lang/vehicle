@@ -7,10 +7,10 @@ import Data.List.NonEmpty (NonEmpty)
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalisable (NormalisableArg)
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (QueryFormatID)
 
@@ -51,7 +51,7 @@ data CompileError
       StandardType -- The expected type.
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
-      (UncheckedArg StandardBuiltinType) -- The non-explicit argument
+      (NormalisableArg StandardBuiltinType) -- The non-explicit argument
       StandardType -- Expected type of the argument
   | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))

@@ -14,6 +14,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
@@ -42,7 +43,7 @@ type MonadBidirectional types m =
 checkExpr ::
   (MonadBidirectional types m) =>
   CheckedType types -> -- Type we're checking against
-  UncheckedExpr types -> -- Expression being type-checked
+  NormalisableExpr types -> -- Expression being type-checked
   m (CheckedExpr types) -- Checked expression
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
@@ -101,7 +102,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: (MonadBidirectional types m) => CheckedType types -> UncheckedExpr types -> m (CheckedExpr types)
+viaInfer :: (MonadBidirectional types m) => CheckedType types -> NormalisableExpr types -> m (CheckedExpr types)
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -119,7 +120,7 @@ viaInfer expectedType expr = do
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr ::
   (MonadBidirectional types m) =>
-  UncheckedExpr types ->
+  NormalisableExpr types ->
   m (CheckedExpr types, CheckedType types)
 inferExpr e = do
   showInferEntry e
@@ -229,7 +230,7 @@ inferApp ::
   Provenance ->
   CheckedExpr types ->
   CheckedType types ->
-  [UncheckedArg types] ->
+  [NormalisableArg types] ->
   m (CheckedExpr types, CheckedType types)
 inferApp p fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args) funType args
@@ -242,9 +243,9 @@ inferApp p fun funType args = do
 -- (including inserted arguments) and that list of arguments.
 inferArgs ::
   (MonadBidirectional types m) =>
-  (CheckedExpr types, [UncheckedArg types]) -> -- The original function and its arguments
+  (CheckedExpr types, [NormalisableArg types]) -> -- The original function and its arguments
   CheckedType types -> -- Type of the function
-  [UncheckedArg types] -> -- User-provided arguments of the function
+  [NormalisableArg types] -> -- User-provided arguments of the function
   m (CheckedType types, [CheckedArg types])
 inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
@@ -335,7 +336,7 @@ checkBinderTypesEqual p binderName expectedType actualType = do
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showCheckEntry :: (MonadBidirectional types m) => CheckedType types -> UncheckedExpr types -> m ()
+showCheckEntry :: (MonadBidirectional types m) => CheckedType types -> NormalisableExpr types -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
   incrCallDepth
@@ -345,7 +346,7 @@ showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: (MonadBidirectional types m) => UncheckedExpr types -> m ()
+showInferEntry :: (MonadBidirectional types m) => NormalisableExpr types -> m ()
 showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth

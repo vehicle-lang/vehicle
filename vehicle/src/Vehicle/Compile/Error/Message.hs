@@ -1454,7 +1454,7 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [UncheckedArg StandardBuiltinType] -> Doc a
+prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [NormalisableArg StandardBuiltinType] -> Doc a
 prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring

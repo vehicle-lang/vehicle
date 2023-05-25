@@ -37,7 +37,7 @@ import Vehicle.Expr.Normalised
 typeCheckProg ::
   (TypableBuiltin types, MonadCompile m) =>
   Imports types ->
-  UncheckedProg StandardBuiltinType ->
+  NormalisableProg StandardBuiltinType ->
   m (GluedProg types)
 typeCheckProg imports (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
@@ -48,7 +48,7 @@ typeCheckExpr ::
   forall types m.
   (TypableBuiltin types, MonadCompile m) =>
   Imports types ->
-  UncheckedExpr types ->
+  NormalisableExpr types ->
   m (CheckedExpr types)
 typeCheckExpr imports expr1 =
   runTypeChecker (createDeclCtx imports) $ do
@@ -62,7 +62,7 @@ typeCheckExpr imports expr1 =
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM types m) => [UncheckedDecl StandardBuiltinType] -> m [GluedDecl types]
+typeCheckDecls :: (TCM types m) => [NormalisableDecl StandardBuiltinType] -> m [GluedDecl types]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +70,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall types m. (TCM types m) => UncheckedDecl StandardBuiltinType -> m (GluedDecl types)
+typeCheckDecl :: forall types m. (TCM types m) => NormalisableDecl StandardBuiltinType -> m (GluedDecl types)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -89,8 +89,8 @@ typeCheckDecl uncheckedDecl =
 convertExprFromStandardTypes ::
   forall types m.
   (TypableBuiltin types, TCM types m) =>
-  UncheckedExpr StandardBuiltinType ->
-  m (UncheckedExpr types)
+  NormalisableExpr StandardBuiltinType ->
+  m (NormalisableExpr types)
 convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
   where
     builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin (NormalisableBuiltin types)
@@ -105,7 +105,7 @@ typeCheckAbstractDef ::
   Provenance ->
   Identifier ->
   DefAbstractSort ->
-  UncheckedType types ->
+  NormalisableType types ->
   m (GluedDecl types)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
@@ -136,8 +136,8 @@ typeCheckFunction ::
   Provenance ->
   Identifier ->
   [Annotation] ->
-  UncheckedType types ->
-  UncheckedExpr types ->
+  NormalisableType types ->
+  NormalisableExpr types ->
   m (GluedDecl types)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
@@ -172,7 +172,7 @@ typeCheckFunction p ident anns typ body = do
       gluedDecl <- traverse (glueNBE mempty) checkedDecl3
       return gluedDecl
 
-checkDeclType :: (TCM types m) => Identifier -> UncheckedExpr types -> m (CheckedType types)
+checkDeclType :: (TCM types m) => Identifier -> NormalisableExpr types -> m (CheckedType types)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do

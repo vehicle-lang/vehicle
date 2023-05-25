@@ -135,8 +135,8 @@ class (PrintableBuiltin types) => TypableBuiltin types where
     (MonadTypeChecker types m) =>
     Provenance ->
     StandardBuiltinType ->
-    [UncheckedArg types] ->
-    m (UncheckedExpr types)
+    [NormalisableArg types] ->
+    m (NormalisableExpr types)
 
   -- | Can meta-variables be dependent on their context?
   useDependentMetas :: Proxy types -> Bool

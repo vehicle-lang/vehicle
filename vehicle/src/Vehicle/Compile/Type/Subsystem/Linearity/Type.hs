@@ -154,8 +154,8 @@ convertToLinearityTypes ::
   (MonadTypeChecker LinearityType m) =>
   Provenance ->
   StandardBuiltinType ->
-  [UncheckedArg LinearityType] ->
-  m (UncheckedExpr LinearityType)
+  [NormalisableArg LinearityType] ->
+  m (NormalisableExpr LinearityType)
 convertToLinearityTypes p b args = case b of
   StandardBuiltinType s -> case s of
     Unit -> return $ Builtin p $ CType $ Linearity Constant

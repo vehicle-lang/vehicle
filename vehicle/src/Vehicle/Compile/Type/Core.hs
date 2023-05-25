@@ -15,26 +15,6 @@ import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 
--- * Types pre type-checking
-
-type UncheckedBinding = ()
-
-type UncheckedVar = Ix
-
-type UncheckedBinder types = NormalisableBinder types
-
-type UncheckedArg types = NormalisableArg types
-
-type UncheckedExpr types = NormalisableExpr types
-
-type UncheckedType types = NormalisableExpr types
-
-type UncheckedDecl types = NormalisableDecl types
-
-type UncheckedProg types = NormalisableProg types
-
---------------------------------------------------------------------------------
-
 -- * Types post type-checking
 
 type CheckedBinding = ()
@@ -61,8 +41,8 @@ type Imports types = [GluedProg types]
 
 -- | Errors in bidirectional type-checking
 data TypingError types
-  = MissingExplicitArgument (TypingBoundCtx types) (CheckedBinder types) (UncheckedArg types)
-  | FunctionTypeMismatch (TypingBoundCtx types) (CheckedExpr types) [UncheckedArg types] (CheckedExpr types) [UncheckedArg types]
+  = MissingExplicitArgument (TypingBoundCtx types) (CheckedBinder types) (NormalisableArg types)
+  | FunctionTypeMismatch (TypingBoundCtx types) (CheckedExpr types) [NormalisableArg types] (CheckedExpr types) [NormalisableArg types]
   | FailedUnification (NonEmpty (WithContext (UnificationConstraint types)))
   | UnsolvableConstraints (NonEmpty (WithContext (Constraint types)))
 

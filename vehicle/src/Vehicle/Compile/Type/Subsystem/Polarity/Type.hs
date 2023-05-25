@@ -156,8 +156,8 @@ convertToPolarityTypes ::
   (MonadTypeChecker PolarityType m) =>
   Provenance ->
   StandardBuiltinType ->
-  [UncheckedArg PolarityType] ->
-  m (UncheckedExpr PolarityType)
+  [NormalisableArg PolarityType] ->
+  m (NormalisableExpr PolarityType)
 convertToPolarityTypes p b args = case b of
   StandardBuiltinType s -> case s of
     Unit -> return $ PolarityExpr p Unquantified
