@@ -124,8 +124,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (Binder () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedBinder builtin))
   -- To print a normalised expr in an unnamed representation, simply naively descope.
   StrategyFor ('Unnamed tags) (Value types) = 'DescopeNaively (StrategyFor tags (NamedExpr (NormalisableBuiltin types)))
-  StrategyFor ('Unnamed tags) (NormArg types) = 'DescopeNaively (StrategyFor tags (NamedArg (NormalisableBuiltin types)))
-  StrategyFor ('Unnamed tags) (NormBinder types) = 'DescopeNaively (StrategyFor tags (NamedBinder (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (VArg types) = 'DescopeNaively (StrategyFor tags (NamedArg (NormalisableBuiltin types)))
+  StrategyFor ('Unnamed tags) (VBinder types) = 'DescopeNaively (StrategyFor tags (NamedBinder (NormalisableBuiltin types)))
   -- To standardise builtins
   StrategyFor ('StandardiseBuiltin tags) (NamedProg builtin) = 'ConvertBuiltins (StrategyFor tags (Prog () Name Builtin))
   StrategyFor ('StandardiseBuiltin tags) (NamedDecl builtin) = 'ConvertBuiltins (StrategyFor tags (Decl () Name Builtin))
@@ -322,10 +322,10 @@ instance (PrettyUsing rest (NamedBinder builtin)) => PrettyUsing ('DescopeNaivel
 instance (PrettyUsing rest (NamedExpr (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (Value types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedArg (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (NormArg types) where
+instance (PrettyUsing rest (NamedArg (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VArg types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (NamedBinder (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (NormBinder types) where
+instance (PrettyUsing rest (NamedBinder (NormalisableBuiltin types))) => PrettyUsing ('DescopeNaively rest) (VBinder types) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
@@ -426,8 +426,8 @@ instance
 instance (PrettyUsing rest (Expr () Ix (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (Value types) where
   prettyUsing e = prettyUsing @rest (unnormalise @(Value types) @(Expr () Ix (NormalisableBuiltin types)) 0 e)
 
-instance (PrettyUsing rest (Arg () Ix (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (NormArg types) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(NormArg types) @(Arg () Ix (NormalisableBuiltin types)) 0 e)
+instance (PrettyUsing rest (Arg () Ix (NormalisableBuiltin types))) => PrettyUsing ('Denormalise rest) (VArg types) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(VArg types) @(Arg () Ix (NormalisableBuiltin types)) 0 e)
 
 --------------------------------------------------------------------------------
 -- Instances for constraints

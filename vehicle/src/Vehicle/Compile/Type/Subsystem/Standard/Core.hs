@@ -78,11 +78,11 @@ type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
 
 type StandardNormExpr = Value StandardBuiltinType
 
-type StandardNormBinder = NormBinder StandardBuiltinType
+type StandardNormBinder = VBinder StandardBuiltinType
 
-type StandardNormArg = NormArg StandardBuiltinType
+type StandardNormArg = VArg StandardBuiltinType
 
-type StandardNormType = NormType StandardBuiltinType
+type StandardNormType = VType StandardBuiltinType
 
 type StandardSpine = Spine StandardBuiltinType
 

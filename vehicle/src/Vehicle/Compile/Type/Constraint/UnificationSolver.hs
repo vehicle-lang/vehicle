@@ -131,7 +131,7 @@ solveTrivially = do
 solveArg ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormArg types, NormArg types) ->
+  (VArg types, VArg types) ->
   Maybe (m (UnificationResult types))
 solveArg ctx (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just $ return HardFailure
@@ -164,16 +164,16 @@ solveExplicitSpine ctx args1 args2
 
 solveLam ::
   (MonadUnify types m) =>
-  (NormBinder types, Env builtin, CheckedExpr builtin) ->
-  (NormBinder types, Env builtin, CheckedExpr builtin) ->
+  (VBinder types, Env builtin, CheckedExpr builtin) ->
+  (VBinder types, Env builtin, CheckedExpr builtin) ->
   m (UnificationResult types)
 solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
 
 solvePi ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormBinder types, Value types) ->
-  (NormBinder types, Value types) ->
+  (VBinder types, Value types) ->
+  (VBinder types, Value types) ->
   m (UnificationResult types)
 solvePi ctx (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved

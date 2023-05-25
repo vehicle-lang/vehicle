@@ -99,7 +99,7 @@ createTC ::
   (TCM types m) =>
   ConstraintContext types ->
   types ->
-  NonEmpty (NormType types) ->
+  NonEmpty (VType types) ->
   m (CheckedExpr types, WithContext (Constraint types))
 createTC c tc argExprs = do
   let p = provenanceOf c

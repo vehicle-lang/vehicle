@@ -8,7 +8,7 @@ import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised (NormBinder, Spine, Value (..))
+import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -187,7 +187,7 @@ descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> Lv -> Name) ->
-  NormBinder types ->
+  VBinder types ->
   Binder () Name (NormalisableBuiltin types)
 descopeNormBinder f = fmap (descopeNormExpr f)
 

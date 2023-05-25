@@ -42,10 +42,10 @@ instance Quote (Value types) (NormalisableExpr types) where
       -- quotedBody <- quote (level + 1) normBody
       return $ Lam mempty quotedBinder quotedBody
 
-instance Quote (NormBinder types) (NormalisableBinder types) where
+instance Quote (VBinder types) (NormalisableBinder types) where
   quote p level = traverse (quote p level)
 
-instance Quote (NormArg types) (NormalisableArg types) where
+instance Quote (VArg types) (NormalisableArg types) where
   quote p level = traverse (quote p level)
 
 quoteApp :: (MonadCompile m) => Lv -> Provenance -> NormalisableExpr types -> Spine types -> m (NormalisableExpr types)

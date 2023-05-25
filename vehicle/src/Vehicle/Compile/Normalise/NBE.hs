@@ -141,7 +141,7 @@ eval env expr = do
   showExit env result
   return result
 
-evalBinder :: (MonadNorm types m) => Env types -> NormalisableBinder types -> m (NormBinder types)
+evalBinder :: (MonadNorm types m) => Env types -> NormalisableBinder types -> m (VBinder types)
 evalBinder env = traverse (eval env)
 
 evalApp :: (MonadNorm types m) => Value types -> Spine types -> m (Value types)

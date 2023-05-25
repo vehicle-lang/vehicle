@@ -90,7 +90,7 @@ getMetaDependencies = \case
   (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg types] -> ([Lv], Spine types)
+getNormMetaDependencies :: [VArg types] -> ([Lv], Spine types)
 getNormMetaDependencies = \case
   (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)

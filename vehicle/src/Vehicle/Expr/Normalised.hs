@@ -14,8 +14,8 @@ import Vehicle.Syntax.AST
 -- well-typed.
 data Value types
   = VUniverse UniverseLevel
-  | VLam (NormBinder types) (Env types) (NormalisableExpr types)
-  | VPi (NormBinder types) (Value types)
+  | VLam (VBinder types) (Env types) (NormalisableExpr types)
+  | VPi (VBinder types) (Value types)
   | VMeta MetaID (Spine types)
   | VFreeVar Identifier (Spine types)
   | VBoundVar Lv (Spine types)
@@ -24,22 +24,22 @@ data Value types
 
 instance (Serialize types) => Serialize (Value types)
 
-type NormArg types = GenericArg (Value types)
+type VArg types = GenericArg (Value types)
 
-type NormBinder types = GenericBinder () (NormType types)
+type VBinder types = GenericBinder () (VType types)
 
-type NormDecl types = GenericDecl (Value types)
+type VDecl types = GenericDecl (Value types)
 
-type NormProg types = GenericDecl types
+type VProg types = GenericDecl types
 
 -- | A normalised type
-type NormType types = Value types
+type VType types = Value types
 
 -----------------------------------------------------------------------------
 -- Spines and environments
 
 -- | A list of arguments for an application that cannot be normalised.
-type Spine types = [NormArg types]
+type Spine types = [VArg types]
 
 -- | A spine type for builtins which enforces the invariant that they should
 -- only ever depend computationally on their explicit arguments.
@@ -57,7 +57,7 @@ extendEnvOverBinder binder env =
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern VTypeUniverse :: UniverseLevel -> NormType types
+pattern VTypeUniverse :: UniverseLevel -> VType types
 pattern VTypeUniverse l = VUniverse l
 
 pattern VBuiltinFunction :: BuiltinFunction -> ExplicitSpine types -> Value types
