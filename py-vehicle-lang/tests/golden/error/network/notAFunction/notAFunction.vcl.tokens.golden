@@ -1,0 +1,8 @@
+Token.Keyword.Declaration	'@network'
+Token.Space	'\n'
+Token.Name	'f'
+Token.Space	' '
+Token.Punctuation	':'
+Token.Space	' '
+Token.Keyword.Type	'Rat'
+Token.Space	'\n'

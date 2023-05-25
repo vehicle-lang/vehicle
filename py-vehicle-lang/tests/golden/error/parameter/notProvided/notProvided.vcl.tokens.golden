@@ -1,0 +1,8 @@
+Token.Keyword.Declaration	'@parameter'
+Token.Space	'\n'
+Token.Name	'n'
+Token.Space	' '
+Token.Punctuation	':'
+Token.Space	' '
+Token.Keyword.Type	'Nat'
+Token.Space	'\n'

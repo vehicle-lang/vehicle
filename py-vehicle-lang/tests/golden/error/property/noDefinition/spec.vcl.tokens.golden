@@ -1,0 +1,8 @@
+Token.Keyword.Declaration	'@property'
+Token.Space	'\n'
+Token.Name	'test'
+Token.Space	' '
+Token.Punctuation	':'
+Token.Space	' '
+Token.Keyword.Type	'Bool'
+Token.Space	'\n'

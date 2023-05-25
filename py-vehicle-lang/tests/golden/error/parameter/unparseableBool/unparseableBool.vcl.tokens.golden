@@ -1,0 +1,8 @@
+Token.Keyword.Declaration	'@parameter'
+Token.Space	'\n'
+Token.Name	'b'
+Token.Space	' '
+Token.Punctuation	':'
+Token.Space	' '
+Token.Keyword.Type	'Bool'
+Token.Space	'\n'
