@@ -20,7 +20,7 @@ import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typePolarityBuiltin :: Provenance -> PolarityBuiltin -> CheckedType PolarityType
+typePolarityBuiltin :: Provenance -> PolarityBuiltin -> NormalisableType PolarityType
 typePolarityBuiltin p b = fromDSL p $ case b of
   CConstructor c -> typeOfConstructor c
   CFunction f -> typeOfBuiltinFunction f

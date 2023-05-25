@@ -20,6 +20,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- Eventually when metas make into the builtins, this should module
@@ -39,12 +40,12 @@ data MetaInfo types = MetaInfo
   { -- | Location in the source file the meta-variable was generated
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
-    metaType :: CheckedExpr types,
+    metaType :: NormalisableExpr types,
     -- | The number of bound variables in scope when the meta-variable was created.
     metaCtx :: TypingBoundCtx types
   }
 
-extendMetaCtx :: CheckedBinder types -> MetaInfo types -> MetaInfo types
+extendMetaCtx :: NormalisableBinder types -> MetaInfo types -> MetaInfo types
 extendMetaCtx binder MetaInfo {..} =
   MetaInfo
     { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
@@ -73,19 +74,19 @@ makeMetaExpr p metaID boundCtx = do
 makeMetaType ::
   TypingBoundCtx types ->
   Provenance ->
-  CheckedType types ->
-  CheckedType types
+  NormalisableType types ->
+  NormalisableType types
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi ::
-      (Maybe Name, CheckedType types) ->
-      CheckedType types ->
-      CheckedType types
+      (Maybe Name, NormalisableType types) ->
+      NormalisableType types ->
+      NormalisableType types
     entryToPi (name, t) = do
       let n = fromMaybe "_" name
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
-getMetaDependencies :: [CheckedArg types] -> [Ix]
+getMetaDependencies :: [NormalisableArg types] -> [Ix]
 getMetaDependencies = \case
   (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
@@ -104,7 +105,7 @@ class HasMetas a where
   metasIn :: (MonadCompile m) => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
-instance HasMetas (CheckedExpr types) where
+instance HasMetas (NormalisableExpr types) where
   findMetas expr = case expr of
     Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()

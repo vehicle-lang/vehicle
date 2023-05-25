@@ -13,36 +13,14 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
---------------------------------------------------------------------------------
-
--- * Types post type-checking
-
-type CheckedBinding = ()
-
-type CheckedVar = Ix
-
-type CheckedBinder types = NormalisableBinder types
-
-type CheckedArg types = NormalisableArg types
-
-type CheckedExpr types = NormalisableExpr types
-
-type CheckedType types = CheckedExpr types
-
-type CheckedDecl types = NormalisableDecl types
-
-type CheckedProg types = NormalisableProg types
-
-type CheckedTelescope types = NormalisableTelescope types
-
 type Imports types = [GluedProg types]
 
 --------------------------------------------------------------------------------
 
 -- | Errors in bidirectional type-checking
 data TypingError types
-  = MissingExplicitArgument (TypingBoundCtx types) (CheckedBinder types) (NormalisableArg types)
-  | FunctionTypeMismatch (TypingBoundCtx types) (CheckedExpr types) [NormalisableArg types] (CheckedExpr types) [NormalisableArg types]
+  = MissingExplicitArgument (TypingBoundCtx types) (NormalisableBinder types) (NormalisableArg types)
+  | FunctionTypeMismatch (TypingBoundCtx types) (NormalisableExpr types) [NormalisableArg types] (NormalisableExpr types) [NormalisableArg types]
   | FailedUnification (NonEmpty (WithContext (UnificationConstraint types)))
   | UnsolvableConstraints (NonEmpty (WithContext (Constraint types)))
 
@@ -58,7 +36,7 @@ instance Pretty (TypingError types) where
 
 data TypingDeclCtxEntry types = TypingDeclCtxEntry
   { declAnns :: [Annotation],
-    declType :: CheckedType types,
+    declType :: NormalisableType types,
     declBody :: Maybe (GluedExpr types)
   }
 
@@ -108,10 +86,10 @@ type MetaSubstitution types = MetaMap (GluedExpr types)
 -- currently in scope, indexed into via De Bruijn expressions.
 type TypingBoundCtxEntry types =
   ( Maybe Name,
-    CheckedType types
+    NormalisableType types
   )
 
-mkTypingBoundCtxEntry :: CheckedBinder types -> TypingBoundCtxEntry types
+mkTypingBoundCtxEntry :: NormalisableBinder types -> TypingBoundCtxEntry types
 mkTypingBoundCtxEntry binder = (nameOf binder, binderType binder)
 
 type TypingBoundCtx types = BoundCtx (TypingBoundCtxEntry types)
@@ -132,9 +110,9 @@ typingBoundContextToEnv ctx = do
 -- Constraint origins
 
 data ConstraintOrigin types
-  = CheckingExprType (CheckedExpr types) (CheckedType types) (CheckedType types)
-  | CheckingBinderType (Maybe Name) (CheckedType types) (CheckedType types)
-  | CheckingTypeClass (CheckedExpr types) [CheckedArg types] types [CheckedArg types]
+  = CheckingExprType (NormalisableExpr types) (NormalisableType types) (NormalisableType types)
+  | CheckingBinderType (Maybe Name) (NormalisableType types) (NormalisableType types)
+  | CheckingTypeClass (NormalisableExpr types) [NormalisableArg types] types [NormalisableArg types]
   | CheckingAuxiliary
   deriving (Show)
 
@@ -200,7 +178,7 @@ blockCtxOn metas (ConstraintContext cid originProv originalConstraint creationPr
   let status = BlockingStatus (Just metas)
    in ConstraintContext cid originProv originalConstraint creationProv status ctx
 
-extendConstraintBoundCtx :: ConstraintContext types -> CheckedTelescope types -> ConstraintContext types
+extendConstraintBoundCtx :: ConstraintContext types -> NormalisableTelescope types -> ConstraintContext types
 extendConstraintBoundCtx ConstraintContext {..} telescope =
   ConstraintContext
     { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,

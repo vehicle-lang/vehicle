@@ -49,7 +49,7 @@ typeCheckExpr ::
   (TypableBuiltin types, MonadCompile m) =>
   Imports types ->
   NormalisableExpr types ->
-  m (CheckedExpr types)
+  m (NormalisableExpr types)
 typeCheckExpr imports expr1 =
   runTypeChecker (createDeclCtx imports) $ do
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
@@ -172,7 +172,7 @@ typeCheckFunction p ident anns typ body = do
       gluedDecl <- traverse (glueNBE mempty) checkedDecl3
       return gluedDecl
 
-checkDeclType :: (TCM types m) => Identifier -> NormalisableExpr types -> m (CheckedType types)
+checkDeclType :: (TCM types m) => Identifier -> NormalisableExpr types -> m (NormalisableType types)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
@@ -185,7 +185,7 @@ restrictAbstractDefType ::
   DefAbstractSort ->
   DeclProvenance ->
   GluedType types ->
-  m (CheckedType types)
+  m (NormalisableType types)
 restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
@@ -195,7 +195,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
 
-assertDeclTypeIsType :: (TCM types m) => Identifier -> CheckedType types -> m ()
+assertDeclTypeIsType :: (TCM types m) => Identifier -> NormalisableType types -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
@@ -214,11 +214,11 @@ assertDeclTypeIsType ident actualType = do
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> m ()
+solveConstraints :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> m ()
 solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
-    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()
+    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (NormalisableDecl types) -> m ()
     loopOverConstraints recentlySolvedMetas loopNumber decl = do
       unsolvedConstraints <- getActiveConstraints @types
 
@@ -313,7 +313,7 @@ checkAllMetasSolved proxy = do
           )
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   whenM (loggingLevelAtLeast MaxDetail) $ do
     newSubstitution <- getMetaSubstitution @types

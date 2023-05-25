@@ -23,7 +23,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, solveMeta, trackSolvedMetas)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..), NormalisableExpr)
 import Vehicle.Expr.Normalised
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -100,7 +100,7 @@ createTC ::
   ConstraintContext types ->
   types ->
   NonEmpty (VType types) ->
-  m (CheckedExpr types, WithContext (Constraint types))
+  m (NormalisableExpr types, WithContext (Constraint types))
 createTC c tc argExprs = do
   let p = provenanceOf c
   ctx <- copyContext c

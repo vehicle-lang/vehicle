@@ -25,6 +25,7 @@ import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -164,8 +165,8 @@ solveExplicitSpine ctx args1 args2
 
 solveLam ::
   (MonadUnify types m) =>
-  (VBinder types, Env builtin, CheckedExpr builtin) ->
-  (VBinder types, Env builtin, CheckedExpr builtin) ->
+  (VBinder types, Env builtin, NormalisableExpr builtin) ->
+  (VBinder types, Env builtin, NormalisableExpr builtin) ->
   m (UnificationResult types)
 solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
 

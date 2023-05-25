@@ -32,7 +32,7 @@ import Vehicle.Expr.Normalised
 import Vehicle.Verify.Specification (MetaNetwork)
 
 -- Pairs of (input variable == expression)
--- TODO push back through this file once changing CheckedExpr to Value
+-- TODO push back through this file once changing NormalisableExpr to Value
 type InputEqualities = [(Lv, StandardNormExpr)]
 
 -- | Okay so this is a wild ride. The Marabou query format has special variable
