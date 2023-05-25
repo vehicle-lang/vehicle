@@ -21,24 +21,34 @@ jobs:
             type: "windows-latest"
         haskell:
           - ghc:
-              version: "9.6.1"
-            cabal:
-              version: "3.10.1.0"
-              project-file: "cabal.project.ghc-9.6.1"
-              extra-args: ""
-          - ghc:
               version: "9.4.4"
             cabal:
               version: "3.8.1.0"
               project-file: "cabal.project.ghc-9.4.4"
               extra-args: ""
-          - ghc:
-              version: "9.2.7"
-            cabal:
-              version: "3.8.1.0"
-              project-file: "cabal.project.ghc-9.2.7"
-              extra-args: ""
         include:
+          # Build with GHC 9.6.1
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.6.1"
+              cabal:
+                version: "3.10.1.0"
+                project-file: "cabal.project.ghc-9.6.1"
+                extra-args: ""
+          # Build with GHC 9.2.7
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.2.7"
+              cabal:
+                version: "3.8.1.0"
+                project-file: "cabal.project.ghc-9.2.7"
+                extra-args: ""
           # Build with GHC 9.0.2
           - os:
               name: Linux
