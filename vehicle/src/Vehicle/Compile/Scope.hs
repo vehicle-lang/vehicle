@@ -23,30 +23,15 @@ import Vehicle.Expr.DeBruijn
 scopeCheck ::
   (MonadCompile m) =>
   ImportedModules ->
-  UnscopedProg ->
-  m ScopedProg
+  Prog () Name Builtin ->
+  m (Prog () Ix Builtin)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
   prog <- runReaderT (scopeProg e) importCtx
   return prog
 
-scopeCheckClosedExpr :: (MonadCompile m) => UnscopedExpr -> m ScopedExpr
+scopeCheckClosedExpr :: (MonadCompile m) => Expr () Name Builtin -> m (Expr () Ix Builtin)
 scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
-
---------------------------------------------------------------------------------
--- Type synonyms
-
-type UnscopedProg = Prog () Name Builtin
-
-type UnscopedDecl = Decl () Name Builtin
-
-type UnscopedExpr = Expr () Name Builtin
-
-type ScopedProg = Prog () Ix Builtin
-
-type ScopedDecl = Decl () Ix Builtin
-
-type ScopedExpr = Expr () Ix Builtin
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
@@ -63,10 +48,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: (MonadScope m) => UnscopedProg -> m ScopedProg
+scopeProg :: (MonadScope m) => Prog () Name Builtin -> m (Prog () Ix Builtin)
 scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: (MonadScope m) => [UnscopedDecl] -> m [ScopedDecl]
+scopeDecls :: (MonadScope m) => [Decl () Name Builtin] -> m [Decl () Ix Builtin]
 scopeDecls = \case
   [] -> return []
   (d : ds) -> do
@@ -81,7 +66,7 @@ scopeDecls = \case
         ds' <- bindDecl ident (scopeDecls ds)
         return (d' : ds')
 
-scopeDecl :: (MonadScope m) => UnscopedDecl -> m ScopedDecl
+scopeDecl :: (MonadScope m) => Decl () Name Builtin -> m (Decl () Ix Builtin)
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefAbstract p ident r t ->
@@ -94,8 +79,8 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
 scopeDeclExpr ::
   (MonadScope m) =>
   Bool ->
-  UnscopedExpr ->
-  m ScopedExpr
+  Expr () Name Builtin ->
+  m (Expr () Ix Builtin)
 scopeDeclExpr generalise expr = do
   declCtx <- ask
 
@@ -114,7 +99,7 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> UnscopedExpr -> m UnscopedExpr
+generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr () Name Builtin -> m (Expr () Name Builtin)
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
@@ -122,7 +107,7 @@ generaliseExpr declContext expr = do
 findGeneralisableVariables ::
   (MonadCompile m) =>
   DeclScopeCtx ->
-  UnscopedExpr ->
+  Expr () Name Builtin ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
   execWriterT (runReaderT (traverseVars traverseVar expr) (declContext, mempty))
@@ -141,15 +126,15 @@ findGeneralisableVariables declContext expr =
 generaliseOverVariables ::
   (MonadCompile m) =>
   [GeneralisableVariable] ->
-  UnscopedExpr ->
-  m UnscopedExpr
+  Expr () Name Builtin ->
+  m (Expr () Name Builtin)
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
       (MonadCompile m) =>
-      (UnscopedExpr, Set Name) ->
+      (Expr () Name Builtin, Set Name) ->
       GeneralisableVariable ->
-      m (UnscopedExpr, Set Name)
+      m (Expr () Name Builtin, Set Name)
     generalise (expr, seenNames) (p, name)
       | name `Set.member` seenNames = return (expr, seenNames)
       | otherwise = do
@@ -169,7 +154,7 @@ type MonadScopeExpr m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-scopeExpr :: (MonadScopeExpr m) => UnscopedExpr -> m ScopedExpr
+scopeExpr :: (MonadScopeExpr m) => Expr () Name Builtin -> m (Expr () Ix Builtin)
 scopeExpr = traverseVars scopeVar
 
 -- | Find the index for a given name of a given sort.
