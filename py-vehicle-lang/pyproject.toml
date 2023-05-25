@@ -47,12 +47,20 @@ test-extras = "test"
 before-all = "source /etc/os-release && {package}/scripts/before-all-$ID.sh"
 
 [tool.mypy]
+mypy_path = "src"
 python_version = 3.7
+strict = true
+implicit_reexport = false
 ignore_missing_imports = true
 exclude = [
-  '^src\/vehicle_lang\/binding\.py$',
-  '^src\/vehicle_lang\/pygments\/_external\/__init__\.py$',
+  '^src/vehicle_lang/binding\.py$'
 ]
+
+[[tool.mypy.overrides]]
+module = "vehicle_lang.pygments._external"
+allow_subclassing_any = true
+allow_untyped_defs = true
+disable_error_code = ['name-defined']
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }

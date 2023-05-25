@@ -7,7 +7,9 @@ from typing import Dict, Iterator, Optional, Tuple
 class _TemporaryFile:
     path: Path
 
-    def __init__(self, dir: _TemporaryDirectory, name: str, *, encoding: str = "utf8"):
+    def __init__(
+        self, dir: _TemporaryDirectory[str], name: str, *, encoding: str = "utf8"
+    ):
         self.path = Path(dir.name) / name
         self.encoding = encoding
 
@@ -21,7 +23,7 @@ class _TemporaryFile:
         else:
             return None
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         if self.path.exists():
             self.path.unlink()
 

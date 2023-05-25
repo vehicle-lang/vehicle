@@ -3,7 +3,7 @@ import sys
 from vehicle_lang._internal import _vehicle_cli
 
 
-def main():
+def main() -> None:
     exit(_vehicle_cli(sys.argv[1:]))
 
 
