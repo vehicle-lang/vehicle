@@ -139,8 +139,8 @@ type PolarityConstraintContext = ConstraintContext PolarityType
 
 type PolarityConstraint = Constraint PolarityType
 
--- NormExpr
-type PolarityNormExpr = NormExpr PolarityType
+-- Value
+type PolarityNormExpr = Value PolarityType
 
 type PolarityNormBinder = NormBinder PolarityType
 

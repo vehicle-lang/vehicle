@@ -86,7 +86,7 @@ unification ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   MetaSet ->
-  (NormExpr types, NormExpr types) ->
+  (Value types, Value types) ->
   m (UnificationResult types)
 unification ctx reductionBlockingMetas = \case
   -----------------------
@@ -172,8 +172,8 @@ solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not
 solvePi ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormBinder types, NormExpr types) ->
-  (NormBinder types, NormExpr types) ->
+  (NormBinder types, Value types) ->
+  (NormBinder types, Value types) ->
   m (UnificationResult types)
 solvePi ctx (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
@@ -191,7 +191,7 @@ solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
     Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
     Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
-solveFlexRigid :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> NormExpr types -> m (UnificationResult types)
+solveFlexRigid :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> Value types -> m (UnificationResult types)
 solveFlexRigid ctx (metaID, spine) solution = do
   -- Check that 'spine' is a pattern and try to calculate a substitution
   -- that renames the variables in `solution` to ones available to `meta`
@@ -209,7 +209,7 @@ solveFlexRigidWithRenaming ::
   ConstraintContext types ->
   (MetaID, Spine types) ->
   Renaming ->
-  NormExpr types ->
+  Value types ->
   m (UnificationResult types)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   prunedSolution <-
@@ -227,15 +227,15 @@ pruneMetaDependencies ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   (MetaID, Spine types) ->
-  NormExpr types ->
-  m (NormExpr types)
+  Value types ->
+  m (Value types)
 pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
   go attemptedSolution
   where
     go ::
       (MonadUnify types m) =>
-      NormExpr types ->
-      m (NormExpr types)
+      Value types ->
+      m (Value types)
     go expr = case expr of
       VMeta m spine
         | m == solvingMetaID ->
@@ -273,7 +273,7 @@ createMetaWithRestrictedDependencies ::
   ConstraintContext types ->
   MetaID ->
   [Lv] ->
-  m (NormExpr types)
+  m (Value types)
 createMetaWithRestrictedDependencies ctx meta newDependencies = do
   p <- getMetaProvenance (Proxy @types) meta
   metaType <- getMetaType meta
@@ -300,7 +300,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
 unify ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormExpr types, NormExpr types) ->
+  (Value types, Value types) ->
   m (WithContext (UnificationConstraint types))
 unify ctx (e1, e2) = WithContext (Unify e1 e2) <$> copyContext ctx
 

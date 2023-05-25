@@ -20,7 +20,7 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 class Quote a b where
   quote :: (MonadCompile m) => Provenance -> Lv -> a -> m b
 
-instance Quote (NormExpr types) (NormalisableExpr types) where
+instance Quote (Value types) (NormalisableExpr types) where
   quote p level = \case
     VUniverse u -> return $ Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine

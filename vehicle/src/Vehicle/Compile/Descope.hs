@@ -8,7 +8,7 @@ import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised (NormBinder, NormExpr (..), Spine)
+import Vehicle.Expr.Normalised (NormBinder, Spine, Value (..))
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -83,7 +83,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (NormExpr types) (Expr () Name (NormalisableBuiltin types)) where
+instance DescopeNaive (Value types) (Expr () Name (NormalisableBuiltin types)) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -151,10 +151,10 @@ descopeArg ::
 descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
--- used for printing `NormExpr`s in a readable form.
+-- used for printing `Value`s in a readable form.
 descopeNormExpr ::
   (Provenance -> Lv -> Name) ->
-  NormExpr types ->
+  Value types ->
   Expr () Name (NormalisableBuiltin types)
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u

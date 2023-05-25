@@ -99,7 +99,7 @@ addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry d
 -- Typing declaration context
 
 data NormDeclCtxEntry types = NormDeclCtxEntry
-  { declExpr :: NormExpr types,
+  { declExpr :: Value types,
     declAnns :: [Annotation]
   }
 
@@ -234,7 +234,7 @@ contextDBLevel = Lv . length . boundContext
 -- Unification constraints
 
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint types = Unify (NormExpr types) (NormExpr types)
+data UnificationConstraint types = Unify (Value types) (Value types)
   deriving (Show)
 
 type instance
@@ -247,7 +247,7 @@ type instance
 data TypeClassConstraint types = Has MetaID types (ExplicitSpine types)
   deriving (Show)
 
-tcNormExpr :: TypeClassConstraint types -> NormExpr types
+tcNormExpr :: TypeClassConstraint types -> Value types
 tcNormExpr (Has _ tc spine) = VBuiltin (CType tc) spine
 
 type instance

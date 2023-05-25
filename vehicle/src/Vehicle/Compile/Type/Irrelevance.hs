@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode m (CheckedExpr types) where
     showRemoveExit result
     return result
 
-instance (MonadNorm types m) => RemoveIrrelevantCode m (NormExpr types) where
+instance (MonadNorm types m) => RemoveIrrelevantCode m (Value types) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VPi binder res

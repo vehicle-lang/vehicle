@@ -74,8 +74,8 @@ malformedConstraintError c =
 unify ::
   (MonadTypeChecker types m) =>
   ConstraintContext types ->
-  NormExpr types ->
-  NormExpr types ->
+  Value types ->
+  Value types ->
   m (WithContext (Constraint types))
 unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) <$> copyContext ctx
 
@@ -83,8 +83,8 @@ unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) <$> copyCont
 unifyWithPiType ::
   TCM types m =>
   ConstraintContext types ->
-  NormExpr types ->
-  m (WithContext (Constraint types), NormExpr types, NormExpr types)
+  Value types ->
+  m (WithContext (Constraint types), Value types, Value types)
 unifyWithPiType ctx expr = do
   let p = provenanceOf ctx
   let boundCtx = boundContext ctx
@@ -111,7 +111,7 @@ createTC c tc argExprs = do
   let newConstraint = TypeClassConstraint (Has meta tc (NonEmpty.toList argExprs))
   return (unnormalised metaExpr, WithContext newConstraint ctx)
 
-solveTypeClassMeta :: (TCM types m) => ConstraintContext types -> MetaID -> NormExpr types -> m ()
+solveTypeClassMeta :: (TCM types m) => ConstraintContext types -> MetaID -> Value types -> m ()
 solveTypeClassMeta ctx meta solution = do
   quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)

@@ -118,7 +118,7 @@ instance HasMetas (CheckedExpr types) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App _ fun args -> do findMetas fun; findMetas args
 
-instance HasMetas (NormExpr types) where
+instance HasMetas (Value types) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)

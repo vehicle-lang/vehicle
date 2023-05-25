@@ -76,7 +76,7 @@ type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
 -----------------------------------------------------------------------------
 -- Norm expressions
 
-type StandardNormExpr = NormExpr StandardBuiltinType
+type StandardNormExpr = Value StandardBuiltinType
 
 type StandardNormBinder = NormBinder StandardBuiltinType
 
