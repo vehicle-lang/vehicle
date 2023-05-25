@@ -4,12 +4,6 @@ module Vehicle.Expr.DeBruijn
   ( DBBinding,
     Ix (..),
     Lv (..),
-    DBBinder,
-    DBArg,
-    DBType,
-    DBExpr,
-    DBDecl,
-    DBProg,
     DBTelescope,
     Substitution,
     substituteDB,
@@ -88,20 +82,7 @@ shiftDBIndex i l = Ix (unIx i + unLv l)
 --------------------------------------------------------------------------------
 -- Expressions
 
--- An expression that uses DeBruijn index scheme for both binders and variables.
-type DBBinder builtin = Binder DBBinding Ix builtin
-
-type DBArg builtin = Arg DBBinding Ix builtin
-
-type DBType builtin = DBExpr builtin
-
-type DBExpr builtin = Expr DBBinding Ix builtin
-
-type DBDecl builtin = Decl DBBinding Ix builtin
-
-type DBProg builtin = Prog DBBinding Ix builtin
-
-type DBTelescope builtin = [DBBinder builtin]
+type DBTelescope builtin = [Binder () Ix builtin]
 
 --------------------------------------------------------------------------------
 -- Substitution
@@ -117,7 +98,7 @@ instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
 instance (Substitutable expr expr) => Substitutable expr (GenericBinder binder expr) where
   subst = traverse subst
 
-instance Substitutable (DBExpr builtin) (DBExpr builtin) where
+instance Substitutable (Expr () Ix builtin) (Expr () Ix builtin) where
   subst expr = case expr of
     BoundVar p i -> do
       (d, s) <- ask
@@ -146,7 +127,7 @@ underDBBinder = local (first (+ 1))
 --------------------------------------------------------------------------------
 -- Concrete operations
 
-substituteDB :: Lv -> Substitution (DBExpr builtin) -> DBExpr builtin -> DBExpr builtin
+substituteDB :: Lv -> Substitution (Expr () Ix builtin) -> Expr () Ix builtin -> Expr () Ix builtin
 substituteDB depth sub e = runReader (subst e) (depth, sub)
 
 -- | Lift all DeBruijn indices that refer to environment variables by the
@@ -155,9 +136,9 @@ liftDBIndices ::
   -- | number of levels to lift by
   Lv ->
   -- | target term to lift
-  DBExpr builtin ->
+  Expr () Ix builtin ->
   -- | lifted term
-  DBExpr builtin
+  Expr () Ix builtin
 liftDBIndices l = substituteDB 0 (\i -> Left (shiftDBIndex i l))
 
 -- | De Bruijn aware substitution of one expression into another
@@ -166,14 +147,14 @@ substDBIntoAtLevel ::
   -- | The index of the variable of which to substitute
   Ix ->
   -- | expression to substitute
-  DBExpr builtin ->
+  Expr () Ix builtin ->
   -- | term to substitute into
-  DBExpr builtin ->
+  Expr () Ix builtin ->
   -- | the result of the substitution
-  DBExpr builtin
+  Expr () Ix builtin
 substDBIntoAtLevel level value = substituteDB 0 substVar
   where
-    substVar :: Ix -> Either Ix (DBExpr builtin)
+    substVar :: Ix -> Either Ix (Expr () Ix builtin)
     substVar v
       | v == level = Right value
       | v > level = Left (v - 1)
@@ -182,16 +163,16 @@ substDBIntoAtLevel level value = substituteDB 0 substVar
 -- | De Bruijn aware substitution of one expression into another
 substDBInto ::
   -- | expression to substitute
-  DBExpr builtin ->
+  Expr () Ix builtin ->
   -- | term to substitute into
-  DBExpr builtin ->
+  Expr () Ix builtin ->
   -- | the result of the substitution
-  DBExpr builtin
+  Expr () Ix builtin
 substDBInto = substDBIntoAtLevel 0
 
 substDBAll ::
   Lv ->
   (Ix -> Maybe Ix) ->
-  DBExpr builtin ->
-  DBExpr builtin
+  Expr () Ix builtin ->
+  Expr () Ix builtin
 substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))

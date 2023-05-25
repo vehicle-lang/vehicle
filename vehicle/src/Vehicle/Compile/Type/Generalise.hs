@@ -124,7 +124,7 @@ quantifyOverMeta decl meta = do
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
-isMeta :: DBExpr builtin -> Bool
+isMeta :: Expr () Ix builtin -> Bool
 isMeta Meta {} = True
 isMeta (App _ Meta {} _) = True
 isMeta _ = False

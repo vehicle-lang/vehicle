@@ -33,13 +33,13 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed (DBProg builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNamed (Prog () Ix builtin) (Prog InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (DBDecl builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNamed (Decl () Ix builtin) (Decl InputBinding InputVar builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised (DBExpr builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
+instance DescopeNamed (Contextualised (Expr () Ix builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
@@ -62,10 +62,10 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNaive (Prog () Ix builtin) (Prog InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNaive (Decl () Ix builtin) (Decl InputBinding InputVar builtin) where
   descopeNaive = fmap descopeNaive
 
 instance DescopeNaive (Expr DBBinding Ix builtin) (Expr InputBinding InputVar builtin) where

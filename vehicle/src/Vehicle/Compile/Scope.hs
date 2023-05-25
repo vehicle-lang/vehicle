@@ -42,11 +42,11 @@ type UnscopedDecl = NamedDecl Builtin
 
 type UnscopedExpr = NamedExpr Builtin
 
-type ScopedProg = DBProg Builtin
+type ScopedProg = Prog () Ix Builtin
 
-type ScopedDecl = DBDecl Builtin
+type ScopedDecl = Decl () Ix Builtin
 
-type ScopedExpr = DBExpr Builtin
+type ScopedExpr = Expr () Ix Builtin
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
