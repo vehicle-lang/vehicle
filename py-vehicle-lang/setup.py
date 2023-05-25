@@ -109,7 +109,10 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         return f"{library_prefix}{component_name}{os.path.extsep}{dynlib_extension}"
 
     def cabal(
-        self, args: typing.List[str], *, env: typing.Optional[subprocess._ENV] = None
+        self,
+        args: typing.List[str],
+        *,
+        env: typing.Optional[typing.Mapping[str, str]] = None,
     ) -> None:
         args = [self.find_cabal(), *args]
         cmd = " ".join(args)
