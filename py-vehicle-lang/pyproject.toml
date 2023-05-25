@@ -60,13 +60,22 @@ version = { attr = "vehicle_lang._version.VERSION" }
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py37, py38, py39, py310, py311
+envlist = py37, py38, py39, py310, py311, pygments
 isolated_build = true
-skip_missing_interpreters = true
 
 [testenv]
 extras =
   test
 commands =
   {envpython} -m pytest tests
+
+[testenv:pygments]
+allowlist_externals =
+  sh
+requires =
+  py37
+extras =
+  pygments
+commands =
+  sh ./tests/test_pygments.sh {posargs}
 """

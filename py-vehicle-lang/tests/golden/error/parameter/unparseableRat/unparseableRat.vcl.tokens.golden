@@ -1,0 +1,8 @@
+Token.Keyword.Declaration	'@parameter'
+Token.Space	'\n'
+Token.Name	'r'
+Token.Space	' '
+Token.Punctuation	':'
+Token.Space	' '
+Token.Keyword.Type	'Rat'
+Token.Space	'\n'
