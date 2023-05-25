@@ -1,5 +1,3 @@
-from typing import Any
-
 from pygments import token
 
 from ._external import ExternalLexer

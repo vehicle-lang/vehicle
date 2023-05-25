@@ -1,18 +1,20 @@
 import contextlib
 import sys
 from pathlib import Path
-from tempfile import TemporaryDirectory as _TemporaryDirectory
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
+from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Sequence, Tuple
 
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
-    _StrTemporaryDirectory: TypeAlias = _TemporaryDirectory[str]
+    _StrTemporaryDirectory: TypeAlias = TemporaryDirectory[str]
 else:
-    _StrTemporaryDirectory: TypeAlias = _TemporaryDirectory
+    _StrTemporaryDirectory: TypeAlias = TemporaryDirectory
+
+__all__: List[str] = ["TemporaryFile", "temporary_files"]
 
 
-class _TemporaryFile:
+class TemporaryFile:
     path: Path
 
     def __init__(
@@ -40,18 +42,18 @@ class _TemporaryFile:
 
 
 @contextlib.contextmanager
-def _tempfiles(
+def temporary_files(
     *names: str,
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
-) -> Iterator[Tuple[_TemporaryFile, ...]]:
+) -> Iterator[Sequence[TemporaryFile]]:
     try:
-        dir = _TemporaryDirectory(prefix=prefix, suffix=suffix)
-        tempfiles: Dict[str, _TemporaryFile] = {}
+        dir = TemporaryDirectory(prefix=prefix, suffix=suffix)
+        files: Dict[str, TemporaryFile] = {}
         for name in names:
-            tempfiles[name] = _TemporaryFile(dir, name)
-        yield tuple(tempfiles.values())
+            files[name] = TemporaryFile(dir, name)
+        yield tuple(files.values())
     finally:
-        for name, tempfile in tempfiles.items():
-            tempfile.cleanup()
+        for name, file in files.items():
+            file.cleanup()
         dir.cleanup()
