@@ -33,13 +33,13 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed (Prog () Ix builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNamed (Prog () Ix builtin) (Prog () Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Decl () Ix builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNamed (Decl () Ix builtin) (Decl () Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised (Expr () Ix builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
+instance DescopeNamed (Contextualised (Expr () Ix builtin) BoundDBCtx) (Expr () Name builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
@@ -62,13 +62,13 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive (Prog () Ix builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNaive (Prog () Ix builtin) (Prog () Name builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Decl () Ix builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNaive (Decl () Ix builtin) (Decl () Name builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr () Ix builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (Expr () Ix builtin) (Expr () Name builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -83,7 +83,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (NormExpr types) (Expr InputBinding InputVar (NormalisableBuiltin types)) where
+instance DescopeNaive (NormExpr types) (Expr () Name (NormalisableBuiltin types)) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -95,14 +95,14 @@ newtype Ctx = Ctx BoundDBCtx
 runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: Binder InputBinding var builtin -> Ctx -> Ctx
+addBinderToCtx :: Binder () var builtin -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping ::
   (Show var) =>
   (Provenance -> var -> Reader Ctx Name) ->
   Contextualised (Expr () var builtin) BoundDBCtx ->
-  Expr InputBinding InputVar builtin
+  Expr () Name builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) (Ctx ctx)
 
@@ -112,7 +112,7 @@ descopeExpr ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
   Expr () var builtin ->
-  m (Expr InputBinding InputVar builtin)
+  m (Expr () Name builtin)
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
   Hole p name -> return $ Hole p name
@@ -140,14 +140,14 @@ descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Binder () var builtin ->
-  f (Binder InputBinding InputVar builtin)
+  f (Binder () Name builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Arg () var builtin ->
-  f (Arg InputBinding InputVar builtin)
+  f (Arg () Name builtin)
 descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
@@ -155,7 +155,7 @@ descopeArg f = traverse (descopeExpr f)
 descopeNormExpr ::
   (Provenance -> Lv -> Name) ->
   NormExpr types ->
-  Expr InputBinding InputVar (NormalisableBuiltin types)
+  Expr () Name (NormalisableBuiltin types)
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
@@ -182,13 +182,13 @@ descopeNormExpr f e = case e of
 descopeSpine ::
   (Provenance -> Lv -> Name) ->
   Spine types ->
-  [Arg InputBinding InputVar (NormalisableBuiltin types)]
+  [Arg () Name (NormalisableBuiltin types)]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> Lv -> Name) ->
   NormBinder types ->
-  Binder InputBinding InputVar (NormalisableBuiltin types)
+  Binder () Name (NormalisableBuiltin types)
 descopeNormBinder f = fmap (descopeNormExpr f)
 
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
@@ -218,7 +218,7 @@ showScopeEntry :: (Show var) => Expr () var builtin -> Expr () var builtin
 showScopeEntry e =
   e
 
-showScopeExit :: (MonadDescope m) => m (Expr InputBinding InputVar builtin) -> m (Expr InputBinding InputVar builtin)
+showScopeExit :: (MonadDescope m) => m (Expr () Name builtin) -> m (Expr () Name builtin)
 showScopeExit m = do
   e <- m
   return e

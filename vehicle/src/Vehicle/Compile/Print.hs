@@ -111,11 +111,11 @@ data Strategy
 -- and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) InputProg = 'PrintAs lang
-  StrategyFor ('As lang) InputDecl = 'PrintAs lang
-  StrategyFor ('As lang) InputExpr = 'PrintAs lang
-  StrategyFor ('As lang) InputArg = 'PrintAs lang
-  StrategyFor ('As lang) InputBinder = 'PrintAs lang
+  StrategyFor ('As lang) (Prog () Name Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (Decl () Name Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (Expr () Name Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (Arg () Name Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (Binder () Name Builtin) = 'PrintAs lang
   -- To print a DB expr in an unnamed representation, simply naively descope.
   StrategyFor ('Unnamed tags) (Prog () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedProg builtin))
   StrategyFor ('Unnamed tags) (Decl () Ix builtin) = 'DescopeNaively (StrategyFor tags (NamedDecl builtin))
@@ -127,11 +127,11 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (NormArg types) = 'DescopeNaively (StrategyFor tags (NamedArg (NormalisableBuiltin types)))
   StrategyFor ('Unnamed tags) (NormBinder types) = 'DescopeNaively (StrategyFor tags (NamedBinder (NormalisableBuiltin types)))
   -- To standardise builtins
-  StrategyFor ('StandardiseBuiltin tags) (NamedProg builtin) = 'ConvertBuiltins (StrategyFor tags InputProg)
-  StrategyFor ('StandardiseBuiltin tags) (NamedDecl builtin) = 'ConvertBuiltins (StrategyFor tags InputDecl)
-  StrategyFor ('StandardiseBuiltin tags) (NamedExpr builtin) = 'ConvertBuiltins (StrategyFor tags InputExpr)
-  StrategyFor ('StandardiseBuiltin tags) (NamedArg builtin) = 'ConvertBuiltins (StrategyFor tags InputArg)
-  StrategyFor ('StandardiseBuiltin tags) (NamedBinder builtin) = 'ConvertBuiltins (StrategyFor tags InputBinder)
+  StrategyFor ('StandardiseBuiltin tags) (NamedProg builtin) = 'ConvertBuiltins (StrategyFor tags (Prog () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (NamedDecl builtin) = 'ConvertBuiltins (StrategyFor tags (Decl () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (NamedExpr builtin) = 'ConvertBuiltins (StrategyFor tags (Expr () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (NamedArg builtin) = 'ConvertBuiltins (StrategyFor tags (Arg () Name Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (NamedBinder builtin) = 'ConvertBuiltins (StrategyFor tags (Binder () Name Builtin))
   -- To convert an expression using a named representation to a named representation is a no-op.
   StrategyFor ('Named tags) (NamedProg builtin) = StrategyFor tags (NamedProg builtin)
   StrategyFor ('Named tags) (NamedDecl builtin) = StrategyFor tags (NamedDecl builtin)
@@ -141,11 +141,11 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To convert a closed expression using a DB representation but whose missing names have been supplied
   -- to a named representation, perform the Checked to named conversion. For expressions, args, binders
   -- we need to have the context in scope.
-  StrategyFor ('Named tags) (Prog () Ix builtin) = 'DescopeWithNames (StrategyFor tags InputProg)
-  StrategyFor ('Named tags) (Decl () Ix builtin) = 'DescopeWithNames (StrategyFor tags InputDecl)
-  StrategyFor ('Named tags) (Contextualised (Expr () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputExpr)
-  StrategyFor ('Named tags) (Contextualised (Arg () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputArg)
-  StrategyFor ('Named tags) (Contextualised (Binder () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags InputBinder)
+  StrategyFor ('Named tags) (Prog () Ix builtin) = 'DescopeWithNames (StrategyFor tags (Prog () Name Builtin))
+  StrategyFor ('Named tags) (Decl () Ix builtin) = 'DescopeWithNames (StrategyFor tags (Decl () Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Expr () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Expr () Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Arg () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Arg () Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Binder () Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Binder () Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
   StrategyFor ('Named tags) (Contextualised (NormExpr types) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr () Ix (NormalisableBuiltin types)) BoundDBCtx))
   -- Things that we just pretty print.
@@ -204,86 +204,86 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 --------------------------------------------------------------------------------
 -- Printing to internal language
 
-instance PrettyUsing ('PrintAs 'Internal) InputProg where
+instance PrettyUsing ('PrintAs 'Internal) (Prog () Name Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) InputDecl where
+instance PrettyUsing ('PrintAs 'Internal) (Decl () Name Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) InputExpr where
+instance PrettyUsing ('PrintAs 'Internal) (Expr () Name Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) InputArg where
+instance PrettyUsing ('PrintAs 'Internal) (Arg () Name Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) InputBinder where
+instance PrettyUsing ('PrintAs 'Internal) (Binder () Name Builtin) where
   prettyUsing = printInternal
 
 --------------------------------------------------------------------------------
 -- Printing to external language
 
-instance PrettyUsing ('PrintAs 'External) InputProg where
+instance PrettyUsing ('PrintAs 'External) (Prog () Name Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) InputDecl where
+instance PrettyUsing ('PrintAs 'External) (Decl () Name Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) InputExpr where
+instance PrettyUsing ('PrintAs 'External) (Expr () Name Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) InputArg where
+instance PrettyUsing ('PrintAs 'External) (Arg () Name Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) InputBinder where
+instance PrettyUsing ('PrintAs 'External) (Binder () Name Builtin) where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
 -- Converting the basic builtins
 
-instance (PrettyUsing rest InputProg) => PrettyUsing ('ConvertBuiltins rest) InputProg where
+instance (PrettyUsing rest (Prog () Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Prog () Name Builtin) where
   prettyUsing = prettyUsing @rest
 
-instance (PrettyUsing rest InputDecl) => PrettyUsing ('ConvertBuiltins rest) InputDecl where
+instance (PrettyUsing rest (Decl () Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Decl () Name Builtin) where
   prettyUsing = prettyUsing @rest
 
-instance (PrettyUsing rest InputExpr) => PrettyUsing ('ConvertBuiltins rest) InputExpr where
+instance (PrettyUsing rest (Expr () Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Expr () Name Builtin) where
   prettyUsing = prettyUsing @rest
 
-instance (PrettyUsing rest InputArg) => PrettyUsing ('ConvertBuiltins rest) InputArg where
+instance (PrettyUsing rest (Arg () Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Arg () Name Builtin) where
   prettyUsing = prettyUsing @rest
 
-instance (PrettyUsing rest InputBinder) => PrettyUsing ('ConvertBuiltins rest) InputBinder where
+instance (PrettyUsing rest (Binder () Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Binder () Name Builtin) where
   prettyUsing = prettyUsing @rest
 
 --------------------------------------------------------------------------------
 -- Converting builtins
 
 instance
-  (PrintableBuiltin types, PrettyUsing rest InputProg) =>
+  (PrintableBuiltin types, PrettyUsing rest (Prog () Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (NamedProg (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
-  (PrintableBuiltin types, PrettyUsing rest InputDecl) =>
+  (PrintableBuiltin types, PrettyUsing rest (Decl () Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (NamedDecl (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
-  (PrintableBuiltin types, PrettyUsing rest InputExpr) =>
+  (PrintableBuiltin types, PrettyUsing rest (Expr () Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (NamedExpr (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . convertExprBuiltins
 
 instance
-  (PrintableBuiltin types, PrettyUsing rest InputArg) =>
+  (PrintableBuiltin types, PrettyUsing rest (Arg () Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (NamedArg (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
 
 instance
-  (PrintableBuiltin types, PrettyUsing rest InputBinder) =>
+  (PrintableBuiltin types, PrettyUsing rest (Binder () Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (NamedBinder (NormalisableBuiltin types))
   where
   prettyUsing = prettyUsing @rest . fmap convertExprBuiltins

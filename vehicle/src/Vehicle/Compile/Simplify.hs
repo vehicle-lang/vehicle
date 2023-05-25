@@ -17,15 +17,15 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify InputProg where
+instance Simplify (Prog () Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify InputDecl where
+instance Simplify (Decl () Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify InputExpr where
+instance Simplify (Expr () Name Builtin) where
   uninsert expr = case expr of
     Universe {} -> expr
     Hole {} -> expr
@@ -60,15 +60,15 @@ instance Simplify InputExpr where
           n2 = Text.pack $ show $ length args - 2
       _ -> normAppList p1 (Builtin p2 b) args
 
-instance Simplify InputBinder where
+instance Simplify (Binder () Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify InputArg where
+instance Simplify (Arg () Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-simplifyArgs :: NonEmpty InputArg -> [InputArg]
+simplifyArgs :: NonEmpty (Arg () Name Builtin) -> [Arg () Name Builtin]
 simplifyArgs = fmap uninsert . NonEmpty.filter (not . wasInserted)
 
 wasInserted :: Arg binder var builtin -> Bool

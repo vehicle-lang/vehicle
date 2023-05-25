@@ -397,7 +397,7 @@ compileExpr expr = do
   logExit result
   return result
 
-compileVar :: (MonadAgdaCompile m) => InputVar -> m Code
+compileVar :: (MonadAgdaCompile m) => Name -> m Code
 compileVar var = return $ case var of
   -- Standard library operators that we would like to compile
   "Tensor" -> annotateConstant [DataTensor] "Tensor"
