@@ -1,0 +1,65 @@
+name: Test Agda
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-vehicle-marabou:
+    strategy:
+      matrix:
+        os:
+          - name: "Linux"
+            type: "ubuntu-latest"
+          - name: "macOS"
+            type: "macos-latest"
+          - name: "Windows"
+            type: "windows-latest"
+
+        haskell:
+          - ghc:
+              version: "9.4.4"
+            cabal:
+              version: "3.8.1.0"
+              project-file: "cabal.project.ghc-9.4.4"
+              extra-args: ""
+
+        agda:
+          - version: "2.6.3"
+
+    name: agda / ${{ matrix.os.name }} - Agda ${{ matrix.agda.version }}
+    runs-on: ${{ matrix.os.type }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Agda
+        uses: wenkokke/setup-agda@v2
+        with:
+          agda-version: "${{ matrix.agda.version }}"
+          agda-stdlib-version: "recommended"
+          agda-libraries: |
+            https://github.com/vehicle-lang/vehicle/#v0.3.3
+          agda-executables: |
+            vehicle
+          force-no-build: True
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ matrix.haskell.ghc.version }}
+          cabal-version: ${{ matrix.haskell.cabal.version }}
+          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
+          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
+
+      # - name: Test Vehicle-Agda interaction
+      #   run: |
+      #     cabal test                                      \
+      #       vehicle:test:vehicle-integration-tests        \
+      #       --test-option=--color=always                  \
+      #       --test-show-details=always
+      #   shell: sh
