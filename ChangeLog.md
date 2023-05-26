@@ -7,6 +7,9 @@
 * Fixed bug where sometimes using literal numbers on one side of an inequality would fail to type-check
   (e.g. `forall (i : Index 5) . i <= 1`).
 
+* Fixed issue where compiling an expression with an `if` in to Marabou would fail if one of the branches
+  was trivial.
+
 ### Errors
 
 * Improved informativeness of error messages thrown when attempting to verify properties with multiple network applications.
