@@ -14,6 +14,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
@@ -41,9 +42,9 @@ type MonadBidirectional types m =
 
 checkExpr ::
   (MonadBidirectional types m) =>
-  CheckedType types -> -- Type we're checking against
-  UncheckedExpr types -> -- Expression being type-checked
-  m (CheckedExpr types) -- Checked expression
+  NormalisableType types -> -- Type we're checking against
+  NormalisableExpr types -> -- Expression being type-checked
+  m (NormalisableExpr types) -- Checked expression
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
@@ -101,7 +102,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: (MonadBidirectional types m) => CheckedType types -> UncheckedExpr types -> m (CheckedExpr types)
+viaInfer :: (MonadBidirectional types m) => NormalisableType types -> NormalisableExpr types -> m (NormalisableExpr types)
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -119,8 +120,8 @@ viaInfer expectedType expr = do
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr ::
   (MonadBidirectional types m) =>
-  UncheckedExpr types ->
-  m (CheckedExpr types, CheckedType types)
+  NormalisableExpr types ->
+  m (NormalisableExpr types, NormalisableType types)
 inferExpr e = do
   showInferEntry e
   res <- case e of
@@ -161,11 +162,11 @@ inferExpr e = do
       ctx <- getBoundCtx
       case lookupVar ctx i of
         Just (_, checkedType) -> do
-          let liftedCheckedType = liftDBIndices (DBLevel $ unIndex i + 1) checkedType
+          let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) checkedType
           return (BoundVar p i, liftedCheckedType)
         Nothing ->
           compilerDeveloperError $
-            "DBIndex"
+            "Ix"
               <+> pretty i
               <+> "out of bounds when looking"
               <+> "up variable in context"
@@ -227,10 +228,10 @@ inferExpr e = do
 inferApp ::
   (MonadBidirectional types m) =>
   Provenance ->
-  CheckedExpr types ->
-  CheckedType types ->
-  [UncheckedArg types] ->
-  m (CheckedExpr types, CheckedType types)
+  NormalisableExpr types ->
+  NormalisableType types ->
+  [NormalisableArg types] ->
+  m (NormalisableExpr types, NormalisableType types)
 inferApp p fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args) funType args
   return (normAppList p fun checkedArgs, appliedFunType)
@@ -242,10 +243,10 @@ inferApp p fun funType args = do
 -- (including inserted arguments) and that list of arguments.
 inferArgs ::
   (MonadBidirectional types m) =>
-  (CheckedExpr types, [UncheckedArg types]) -> -- The original function and its arguments
-  CheckedType types -> -- Type of the function
-  [UncheckedArg types] -> -- User-provided arguments of the function
-  m (CheckedType types, [CheckedArg types])
+  (NormalisableExpr types, [NormalisableArg types]) -> -- The original function and its arguments
+  NormalisableType types -> -- Type of the function
+  [NormalisableArg types] -> -- User-provided arguments of the function
+  m (NormalisableType types, [NormalisableArg types])
 inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
@@ -291,7 +292,7 @@ inferArgs (fun, originalArgs) nonPiType args
 -------------------------------------------------------------------------------
 -- Utility functions
 
-universeLevel :: (MonadBidirectional types m) => CheckedExpr types -> m Int
+universeLevel :: (MonadBidirectional types m) => NormalisableExpr types -> m Int
 universeLevel = \case
   TypeUniverse _ l -> return l
   -- These next cases are probably going to bite us, apologies.
@@ -302,7 +303,7 @@ universeLevel = \case
     compilerDeveloperError $
       "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
-tMax :: (MonadBidirectional types m) => CheckedExpr types -> CheckedExpr types -> m (CheckedExpr types)
+tMax :: (MonadBidirectional types m) => NormalisableExpr types -> NormalisableExpr types -> m (NormalisableExpr types)
 tMax t1 t2 = do
   l1 <- universeLevel t1
   l2 <- universeLevel t2
@@ -311,9 +312,9 @@ tMax t1 t2 = do
 checkExprTypesEqual ::
   (MonadBidirectionalInternal types m) =>
   Provenance ->
-  CheckedExpr types ->
-  CheckedType types ->
-  CheckedType types ->
+  NormalisableExpr types ->
+  NormalisableType types ->
+  NormalisableType types ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
   ctx <- ask
@@ -324,8 +325,8 @@ checkBinderTypesEqual ::
   (MonadBidirectional types m) =>
   Provenance ->
   Maybe Name ->
-  CheckedType types ->
-  CheckedType types ->
+  NormalisableType types ->
+  NormalisableType types ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
   ctx <- ask
@@ -335,22 +336,22 @@ checkBinderTypesEqual p binderName expectedType actualType = do
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showCheckEntry :: (MonadBidirectional types m) => CheckedType types -> UncheckedExpr types -> m ()
+showCheckEntry :: (MonadBidirectional types m) => NormalisableType types -> NormalisableExpr types -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
   incrCallDepth
 
-showCheckExit :: (MonadBidirectional types m) => CheckedExpr types -> m ()
+showCheckExit :: (MonadBidirectional types m) => NormalisableExpr types -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: (MonadBidirectional types m) => UncheckedExpr types -> m ()
+showInferEntry :: (MonadBidirectional types m) => NormalisableExpr types -> m ()
 showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: (MonadBidirectional types m) => (CheckedExpr types, CheckedType types) -> m ()
+showInferExit :: (MonadBidirectional types m) => (NormalisableExpr types, NormalisableType types) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t)

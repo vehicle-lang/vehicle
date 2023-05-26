@@ -20,6 +20,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- Eventually when metas make into the builtins, this should module
@@ -29,7 +30,7 @@ import Vehicle.Expr.Normalised
 -- Meta information
 
 -- | The size of a meta-variable's context (i.e. how many bound variables it
--- can depend on.) In theory this should be identical to the current `DBLevel`
+-- can depend on.) In theory this should be identical to the current `Lv`
 -- but in practice, linearity/polarity/type-class insertion meta-variables
 -- have a context of zero size as they cannot depend on the context.
 type MetaCtxSize = Int
@@ -39,12 +40,12 @@ data MetaInfo types = MetaInfo
   { -- | Location in the source file the meta-variable was generated
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
-    metaType :: CheckedExpr types,
+    metaType :: NormalisableExpr types,
     -- | The number of bound variables in scope when the meta-variable was created.
     metaCtx :: TypingBoundCtx types
   }
 
-extendMetaCtx :: CheckedBinder types -> MetaInfo types -> MetaInfo types
+extendMetaCtx :: NormalisableBinder types -> MetaInfo types -> MetaInfo types
 extendMetaCtx binder MetaInfo {..} =
   MetaInfo
     { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
@@ -60,8 +61,8 @@ makeMetaExpr ::
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [ExplicitArg p (BoundVar p $ DBIndex i) | i <- reverse dependencyLevels]
-  let normBoundEnv = [ExplicitArg p (VBoundVar (DBLevel i) []) | i <- dependencyLevels]
+  let unnormBoundEnv = [ExplicitArg p (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
+  let normBoundEnv = [ExplicitArg p (VBoundVar (Lv i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
@@ -73,24 +74,24 @@ makeMetaExpr p metaID boundCtx = do
 makeMetaType ::
   TypingBoundCtx types ->
   Provenance ->
-  CheckedType types ->
-  CheckedType types
+  NormalisableType types ->
+  NormalisableType types
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi ::
-      (Maybe Name, CheckedType types) ->
-      CheckedType types ->
-      CheckedType types
+      (Maybe Name, NormalisableType types) ->
+      NormalisableType types ->
+      NormalisableType types
     entryToPi (name, t) = do
       let n = fromMaybe "_" name
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
 
-getMetaDependencies :: [CheckedArg types] -> [DBIndex]
+getMetaDependencies :: [NormalisableArg types] -> [Ix]
 getMetaDependencies = \case
   (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [NormArg types] -> ([DBLevel], Spine types)
+getNormMetaDependencies :: [VArg types] -> ([Lv], Spine types)
 getNormMetaDependencies = \case
   (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
@@ -104,7 +105,7 @@ class HasMetas a where
   metasIn :: (MonadCompile m) => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
-instance HasMetas (CheckedExpr types) where
+instance HasMetas (NormalisableExpr types) where
   findMetas expr = case expr of
     Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()
@@ -118,7 +119,7 @@ instance HasMetas (CheckedExpr types) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App _ fun args -> do findMetas fun; findMetas args
 
-instance HasMetas (NormExpr types) where
+instance HasMetas (Value types) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)

@@ -63,14 +63,6 @@ compile _resources logic typedProg = do
 currentPass :: Doc a
 currentPass = "compilation to loss functions"
 
-type InputProg = V.NamedProg V.StandardBuiltin
-
-type InputDecl = V.NamedDecl V.StandardBuiltin
-
-type InputExpr = V.NamedExpr V.StandardBuiltin
-
-type InputArg = V.NamedArg V.StandardBuiltin
-
 --------------------------------------------------------------------------------
 -- Main compilation pass
 
@@ -78,7 +70,7 @@ type InputArg = V.NamedArg V.StandardBuiltin
 compileProg ::
   (MonadCompile m) =>
   DifferentiableLogic ->
-  InputProg ->
+  V.Prog () V.Name V.StandardBuiltin ->
   m [LDecl]
 compileProg logic (V.Main ds) =
   logCompilerPass MinDetail "compilation to loss function" $
@@ -88,7 +80,7 @@ compileProg logic (V.Main ds) =
 compileDecl ::
   (MonadCompile m, MonadState (Set V.Name) m) =>
   DifferentiableLogic ->
-  InputDecl ->
+  V.Decl () V.Name V.StandardBuiltin ->
   m (Maybe LDecl)
 compileDecl logic = \case
   V.DefAbstract _ ident r _ -> do
@@ -107,11 +99,11 @@ type MonadCompileLoss m =
     MonadState (Set V.Name) m
   )
 
-compileArg :: (MonadCompileLoss m) => DifferentialLogicImplementation -> InputArg -> m LExpr
+compileArg :: (MonadCompileLoss m) => DifferentialLogicImplementation -> V.Arg () V.Name V.StandardBuiltin -> m LExpr
 compileArg t arg = compileExpr t (V.argExpr arg)
 
 -- | Compile a property or single expression
-compileExpr :: (MonadCompileLoss m) => DifferentialLogicImplementation -> InputExpr -> m LExpr
+compileExpr :: (MonadCompileLoss m) => DifferentialLogicImplementation -> V.Expr () V.Name V.StandardBuiltin -> m LExpr
 compileExpr t expr = showExit $ do
   e' <- showEntry expr
   case e' of
@@ -208,7 +200,7 @@ compileStdLibFunction ::
   (MonadCompileLoss m) =>
   StdLibFunction ->
   DifferentialLogicImplementation ->
-  NonEmpty InputArg ->
+  NonEmpty (V.Arg () V.Name V.StandardBuiltin) ->
   m LExpr
 compileStdLibFunction fn t args = case fn of
   StdEqualsBool -> compileEquality V.Eq t =<< compileExplicitArgs t args
@@ -274,7 +266,7 @@ compileQuant :: V.Quantifier -> Quantifier
 compileQuant V.Forall = All
 compileQuant V.Exists = Any
 
-compileExplicitArgs :: (MonadCompileLoss m) => DifferentialLogicImplementation -> NonEmpty InputArg -> m [LExpr]
+compileExplicitArgs :: (MonadCompileLoss m) => DifferentialLogicImplementation -> NonEmpty (V.Arg () V.Name V.StandardBuiltin) -> m [LExpr]
 compileExplicitArgs t args = do
   let explicitArgs = argExpr <$> NonEmpty.filter V.isExplicit args
   traverse (compileExpr t) explicitArgs
@@ -297,11 +289,11 @@ reformatLogicalOperators ::
   forall m.
   (MonadCompile m) =>
   DifferentiableLogic ->
-  InputProg ->
-  m InputProg
+  V.Prog () V.Name V.StandardBuiltin ->
+  m (V.Prog () V.Name V.StandardBuiltin)
 reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: V.BuiltinUpdate m V.NamedBinding V.NamedVar V.StandardBuiltin V.StandardBuiltin
+    builtinUpdateFunction :: V.BuiltinUpdate m () V.Name V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       V.CFunction V.Not
         | isNothing (compileNot (implementationOf logic)) ->
@@ -314,7 +306,7 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
             return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
       _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
 
-    lowerNot :: V.Provenance -> InputExpr -> m InputExpr
+    lowerNot :: V.Provenance -> V.Expr () V.Name V.StandardBuiltin -> m (V.Expr () V.Name V.StandardBuiltin)
     lowerNot notProv arg = case arg of
       -- Base cases
       V.BoolLiteral p b -> return $ V.BoolLiteral p (not b)
@@ -339,12 +331,12 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
       -- Errors
       e -> throwError $ UnsupportedNegatedOperation logic notProv e
 
-    flattenAnds :: InputArg -> NonEmpty InputArg
+    flattenAnds :: V.Arg () V.Name V.StandardBuiltin -> NonEmpty (V.Arg () V.Name V.StandardBuiltin)
     flattenAnds arg = case argExpr arg of
       V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
       _ -> [arg]
 
-    flattenOrs :: InputArg -> NonEmpty InputArg
+    flattenOrs :: V.Arg () V.Name V.StandardBuiltin -> NonEmpty (V.Arg () V.Name V.StandardBuiltin)
     flattenOrs arg = case argExpr arg of
       V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
       _ -> [arg]
@@ -352,7 +344,7 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
 -----------------------------------------------------------------------
 -- Debugging options
 
-showEntry :: (MonadCompile m) => InputExpr -> m InputExpr
+showEntry :: (MonadCompile m) => V.Expr () V.Name V.StandardBuiltin -> m (V.Expr () V.Name V.StandardBuiltin)
 showEntry e = do
   logDebug MinDetail ("loss-entry " <> prettyFriendly e)
   incrCallDepth

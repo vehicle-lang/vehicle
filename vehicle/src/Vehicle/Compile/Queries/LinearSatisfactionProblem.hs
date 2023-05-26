@@ -59,7 +59,7 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     -- Create linear expression equating the magic variable `x_i`
     -- with the expression `e` in the relevant point = xs_i`
     exprSize <- getExprSize
-    let lhs = fromSparse $ Sparse exprSize (HashMap.singleton (unLevel i) 1) 0
+    let lhs = fromSparse $ Sparse exprSize (HashMap.singleton (unLv i) 1) 0
     rhs <- compileLinearExpr expr
     return $ constructAssertion (lhs, Equal, rhs)
 
@@ -252,8 +252,8 @@ compileLinearExpr expr = do
   exprSize <- getExprSize
   return $ fromSparse $ Sparse exprSize linearExpr constant
   where
-    singletonVar :: DBLevel -> Coefficient -> HashMap Int Coefficient
-    singletonVar v = HashMap.singleton (unLevel v)
+    singletonVar :: Lv -> Coefficient -> HashMap Int Coefficient
+    singletonVar v = HashMap.singleton (unLv v)
 
     go :: (MonadSMT m) => StandardNormExpr -> m (HashMap Int Coefficient, Coefficient)
     go e = case e of

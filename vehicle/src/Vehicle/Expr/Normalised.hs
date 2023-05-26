@@ -12,112 +12,112 @@ import Vehicle.Syntax.AST
 
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
-data NormExpr types
+data Value types
   = VUniverse UniverseLevel
-  | VLam (NormBinder types) (Env types) (NormalisableExpr types)
-  | VPi (NormBinder types) (NormExpr types)
+  | VLam (VBinder types) (Env types) (NormalisableExpr types)
+  | VPi (VBinder types) (Value types)
   | VMeta MetaID (Spine types)
   | VFreeVar Identifier (Spine types)
-  | VBoundVar DBLevel (Spine types)
+  | VBoundVar Lv (Spine types)
   | VBuiltin (NormalisableBuiltin types) (ExplicitSpine types)
   deriving (Eq, Show, Generic)
 
-instance (Serialize types) => Serialize (NormExpr types)
+instance (Serialize types) => Serialize (Value types)
 
-type NormArg types = GenericArg (NormExpr types)
+type VArg types = GenericArg (Value types)
 
-type NormBinder types = GenericBinder DBBinding (NormType types)
+type VBinder types = GenericBinder () (VType types)
 
-type NormDecl types = GenericDecl (NormExpr types)
+type VDecl types = GenericDecl (Value types)
 
-type NormProg types = GenericDecl types
+type VProg types = GenericDecl types
 
 -- | A normalised type
-type NormType types = NormExpr types
+type VType types = Value types
 
 -----------------------------------------------------------------------------
 -- Spines and environments
 
 -- | A list of arguments for an application that cannot be normalised.
-type Spine types = [NormArg types]
+type Spine types = [VArg types]
 
 -- | A spine type for builtins which enforces the invariant that they should
 -- only ever depend computationally on their explicit arguments.
-type ExplicitSpine types = [NormExpr types]
+type ExplicitSpine types = [Value types]
 
-type Env types = BoundCtx (Maybe Name, NormExpr types)
+type Env types = BoundCtx (Maybe Name, Value types)
 
-extendEnv :: GenericBinder binder expr -> NormExpr types -> Env types -> Env types
+extendEnv :: GenericBinder binder expr -> Value types -> Env types -> Env types
 extendEnv binder value = ((nameOf binder, value) :)
 
 extendEnvOverBinder :: GenericBinder binder expr -> Env types -> Env types
 extendEnvOverBinder binder env =
-  extendEnv binder (VBoundVar (DBLevel $ length env) []) env
+  extendEnv binder (VBoundVar (Lv $ length env) []) env
 
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern VTypeUniverse :: UniverseLevel -> NormType types
+pattern VTypeUniverse :: UniverseLevel -> VType types
 pattern VTypeUniverse l = VUniverse l
 
-pattern VBuiltinFunction :: BuiltinFunction -> ExplicitSpine types -> NormExpr types
+pattern VBuiltinFunction :: BuiltinFunction -> ExplicitSpine types -> Value types
 pattern VBuiltinFunction f spine = VBuiltin (CFunction f) spine
 
-pattern VConstructor :: BuiltinConstructor -> ExplicitSpine types -> NormExpr types
+pattern VConstructor :: BuiltinConstructor -> ExplicitSpine types -> Value types
 pattern VConstructor c args = VBuiltin (CConstructor c) args
 
-pattern VNullaryConstructor :: BuiltinConstructor -> NormExpr types
+pattern VNullaryConstructor :: BuiltinConstructor -> Value types
 pattern VNullaryConstructor c <- VConstructor c []
   where
     VNullaryConstructor c = VConstructor c []
 
-pattern VUnitLiteral :: NormExpr types
+pattern VUnitLiteral :: Value types
 pattern VUnitLiteral = VNullaryConstructor LUnit
 
-pattern VBoolLiteral :: Bool -> NormExpr types
+pattern VBoolLiteral :: Bool -> Value types
 pattern VBoolLiteral x = VNullaryConstructor (LBool x)
 
-pattern VIndexLiteral :: Int -> NormExpr types
+pattern VIndexLiteral :: Int -> Value types
 pattern VIndexLiteral x = VNullaryConstructor (LIndex x)
 
-pattern VNatLiteral :: Int -> NormExpr types
+pattern VNatLiteral :: Int -> Value types
 pattern VNatLiteral x = VNullaryConstructor (LNat x)
 
-pattern VIntLiteral :: Int -> NormExpr types
+pattern VIntLiteral :: Int -> Value types
 pattern VIntLiteral x = VNullaryConstructor (LInt x)
 
-pattern VRatLiteral :: Rational -> NormExpr types
+pattern VRatLiteral :: Rational -> Value types
 pattern VRatLiteral x = VNullaryConstructor (LRat x)
 
-pattern VVecLiteral :: [NormExpr types] -> NormExpr types
+pattern VVecLiteral :: [Value types] -> Value types
 pattern VVecLiteral xs <- VConstructor (LVec _) xs
   where
     VVecLiteral xs = VConstructor (LVec (length xs)) xs
 
-pattern VNil :: NormExpr types
+pattern VNil :: Value types
 pattern VNil = VNullaryConstructor Nil
 
-pattern VCons :: [NormExpr types] -> NormExpr types
+pattern VCons :: [Value types] -> Value types
 pattern VCons xs = VConstructor Cons xs
 
-mkVList :: [NormExpr types] -> NormExpr types
+mkVList :: [Value types] -> Value types
 mkVList = foldr cons nil
   where
     nil = VConstructor Nil []
     cons y ys = VConstructor Cons [y, ys]
 
-mkVLVec :: [NormExpr types] -> NormExpr types
+mkVLVec :: [Value types] -> Value types
 mkVLVec xs = VConstructor (LVec (length xs)) xs
 
-isNTypeUniverse :: NormExpr types -> Bool
+isNTypeUniverse :: Value types -> Bool
 isNTypeUniverse VUniverse {} = True
 isNTypeUniverse _ = False
 
-isNMeta :: NormExpr types -> Bool
+isNMeta :: Value types -> Bool
 isNMeta VMeta {} = True
 isNMeta _ = False
 
-getNMeta :: NormExpr types -> Maybe MetaID
+getNMeta :: Value types -> Maybe MetaID
 getNMeta (VMeta m _) = Just m
 getNMeta _ = Nothing
 
@@ -127,7 +127,7 @@ getNMeta _ = Nothing
 -- | A pair of an unnormalised and normalised expression.
 data GluedExpr types = Glued
   { unnormalised :: NormalisableExpr types,
-    normalised :: NormExpr types
+    normalised :: Value types
   }
   deriving (Show, Generic)
 
@@ -144,7 +144,7 @@ type GluedProg types = GenericProg (GluedExpr types)
 
 type GluedDecl types = GenericDecl (GluedExpr types)
 
-traverseNormalised :: (Monad m) => (NormExpr types -> m (NormExpr types)) -> GluedExpr types -> m (GluedExpr types)
+traverseNormalised :: (Monad m) => (Value types -> m (Value types)) -> GluedExpr types -> m (GluedExpr types)
 traverseNormalised f (Glued u n) = Glued u <$> f n
 
 traverseUnnormalised :: (Monad m) => (NormalisableExpr types -> m (NormalisableExpr types)) -> GluedExpr types -> m (GluedExpr types)

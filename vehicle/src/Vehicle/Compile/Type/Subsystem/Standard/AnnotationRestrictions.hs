@@ -24,7 +24,7 @@ restrictStandardPropertyType ::
   m ()
 restrictStandardPropertyType decl parameterType = go (normalised parameterType)
   where
-    go :: NormType StandardBuiltinType -> m ()
+    go :: VType StandardBuiltinType -> m ()
     go = \case
       VBoolType {} -> return ()
       VVectorType tElem _ -> go tElem

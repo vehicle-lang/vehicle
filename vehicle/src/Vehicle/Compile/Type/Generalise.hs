@@ -18,6 +18,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -27,8 +28,8 @@ import Vehicle.Expr.DeBruijn
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
   (TCM types m) =>
-  CheckedDecl types ->
-  m (CheckedDecl types)
+  NormalisableDecl types ->
+  m (NormalisableDecl types)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
@@ -42,9 +43,9 @@ generaliseOverUnsolvedConstraints decl =
 generaliseOverConstraint ::
   (TCM types m) =>
   [WithContext (Constraint types)] ->
-  (CheckedDecl types, [WithContext (TypeClassConstraint types)]) ->
+  (NormalisableDecl types, [WithContext (TypeClassConstraint types)]) ->
   WithContext (TypeClassConstraint types) ->
-  m (CheckedDecl types, [WithContext (TypeClassConstraint types)])
+  m (NormalisableDecl types, [WithContext (TypeClassConstraint types)])
 generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
   -- Find any unsolved meta variables that are transitively linked
   -- by constraints of the same type.
@@ -65,9 +66,9 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
 
 prependConstraint ::
   (TCM types m) =>
-  CheckedDecl types ->
+  NormalisableDecl types ->
   WithContext (TypeClassConstraint types) ->
-  m (CheckedDecl types)
+  m (NormalisableDecl types)
 prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
   let p = originalProvenance ctx
   typeClass <- quote p 0 (tcNormExpr constraint)
@@ -86,8 +87,8 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 generaliseOverUnsolvedMetaVariables ::
   forall types m.
   (TCM types m) =>
-  CheckedDecl types ->
-  m (CheckedDecl types)
+  NormalisableDecl types ->
+  m (NormalisableDecl types)
 generaliseOverUnsolvedMetaVariables decl = do
   let declType = typeOf decl
 
@@ -106,9 +107,9 @@ generaliseOverUnsolvedMetaVariables decl = do
 quantifyOverMeta ::
   forall types m.
   (TCM types m) =>
-  CheckedDecl types ->
+  NormalisableDecl types ->
   MetaID ->
-  m (CheckedDecl types)
+  m (NormalisableDecl types)
 quantifyOverMeta decl meta = do
   metaType <- substMetas =<< getMetaType meta
   if isMeta metaType
@@ -124,7 +125,7 @@ quantifyOverMeta decl meta = do
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
-isMeta :: DBExpr builtin -> Bool
+isMeta :: Expr () Ix builtin -> Bool
 isMeta Meta {} = True
 isMeta (App _ Meta {} _) = True
 isMeta _ = False
@@ -139,9 +140,9 @@ prependBinderAndSolveMeta ::
   BinderDisplayForm ->
   Visibility ->
   Relevance ->
-  CheckedType types ->
-  CheckedDecl types ->
-  m (CheckedDecl types)
+  NormalisableType types ->
+  NormalisableDecl types ->
+  m (NormalisableDecl types)
 prependBinderAndSolveMeta meta f v r binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
@@ -168,7 +169,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   -- We now solve the meta as the newly bound variable
   metaCtx <- getMetaCtx @types meta
   let p = provenanceOf prependedDecl
-  let solution = BoundVar p (DBIndex $ length metaCtx - 1)
+  let solution = BoundVar p (Ix $ length metaCtx - 1)
   solveMeta meta solution metaCtx
 
   logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
@@ -182,9 +183,9 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 removeContextsOfMetasIn ::
   forall types m.
   (TCM types m) =>
-  CheckedType types ->
-  CheckedDecl types ->
-  m (CheckedType types, CheckedDecl types)
+  NormalisableType types ->
+  NormalisableDecl types ->
+  m (NormalisableType types, NormalisableDecl types)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     metasInBinder <- metasIn binderType
@@ -198,10 +199,10 @@ removeContextsOfMetasIn binderType decl =
         logCompilerPassOutput (prettyVerbose substDecl)
         return (substBinderType, substDecl)
 
-addNewArgumentToMetaUses :: MetaID -> CheckedDecl types -> CheckedDecl types
+addNewArgumentToMetaUses :: MetaID -> NormalisableDecl types -> NormalisableDecl types
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: DBLevel -> CheckedExpr types -> CheckedExpr types
+    go :: Lv -> NormalisableExpr types -> NormalisableExpr types
     go d expr = case expr of
       Meta p m
         | m == meta -> App p (Meta p m) [newVar p]

@@ -13,56 +13,14 @@ import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
---------------------------------------------------------------------------------
-
--- * Types pre type-checking
-
-type UncheckedBinding = DBBinding
-
-type UncheckedVar = DBIndex
-
-type UncheckedBinder types = NormalisableBinder types
-
-type UncheckedArg types = NormalisableArg types
-
-type UncheckedExpr types = NormalisableExpr types
-
-type UncheckedType types = NormalisableExpr types
-
-type UncheckedDecl types = NormalisableDecl types
-
-type UncheckedProg types = NormalisableProg types
-
---------------------------------------------------------------------------------
-
--- * Types post type-checking
-
-type CheckedBinding = DBBinding
-
-type CheckedVar = DBIndex
-
-type CheckedBinder types = NormalisableBinder types
-
-type CheckedArg types = NormalisableArg types
-
-type CheckedExpr types = NormalisableExpr types
-
-type CheckedType types = CheckedExpr types
-
-type CheckedDecl types = NormalisableDecl types
-
-type CheckedProg types = NormalisableProg types
-
-type CheckedTelescope types = NormalisableTelescope types
-
 type Imports types = [GluedProg types]
 
 --------------------------------------------------------------------------------
 
 -- | Errors in bidirectional type-checking
 data TypingError types
-  = MissingExplicitArgument (TypingBoundCtx types) (CheckedBinder types) (UncheckedArg types)
-  | FunctionTypeMismatch (TypingBoundCtx types) (CheckedExpr types) [UncheckedArg types] (CheckedExpr types) [UncheckedArg types]
+  = MissingExplicitArgument (TypingBoundCtx types) (NormalisableBinder types) (NormalisableArg types)
+  | FunctionTypeMismatch (TypingBoundCtx types) (NormalisableExpr types) [NormalisableArg types] (NormalisableExpr types) [NormalisableArg types]
   | FailedUnification (NonEmpty (WithContext (UnificationConstraint types)))
   | UnsolvableConstraints (NonEmpty (WithContext (Constraint types)))
 
@@ -78,7 +36,7 @@ instance Pretty (TypingError types) where
 
 data TypingDeclCtxEntry types = TypingDeclCtxEntry
   { declAnns :: [Annotation],
-    declType :: CheckedType types,
+    declType :: NormalisableType types,
     declBody :: Maybe (GluedExpr types)
   }
 
@@ -99,7 +57,7 @@ addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry d
 -- Typing declaration context
 
 data NormDeclCtxEntry types = NormDeclCtxEntry
-  { declExpr :: NormExpr types,
+  { declExpr :: Value types,
     declAnns :: [Annotation]
   }
 
@@ -128,10 +86,10 @@ type MetaSubstitution types = MetaMap (GluedExpr types)
 -- currently in scope, indexed into via De Bruijn expressions.
 type TypingBoundCtxEntry types =
   ( Maybe Name,
-    CheckedType types
+    NormalisableType types
   )
 
-mkTypingBoundCtxEntry :: CheckedBinder types -> TypingBoundCtxEntry types
+mkTypingBoundCtxEntry :: NormalisableBinder types -> TypingBoundCtxEntry types
 mkTypingBoundCtxEntry binder = (nameOf binder, binderType binder)
 
 type TypingBoundCtx types = BoundCtx (TypingBoundCtxEntry types)
@@ -141,7 +99,7 @@ instance HasBoundCtx (TypingBoundCtx types) where
 
 typingBoundContextToEnv :: TypingBoundCtx types -> Env types
 typingBoundContextToEnv ctx = do
-  let levels = reverse (fmap DBLevel [0 .. length ctx - 1])
+  let levels = reverse (fmap Lv [0 .. length ctx - 1])
   zipWith (\level (n, _) -> (n, VBoundVar level [])) levels ctx
 
 --------------------------------------------------------------------------------
@@ -152,9 +110,9 @@ typingBoundContextToEnv ctx = do
 -- Constraint origins
 
 data ConstraintOrigin types
-  = CheckingExprType (CheckedExpr types) (CheckedType types) (CheckedType types)
-  | CheckingBinderType (Maybe Name) (CheckedType types) (CheckedType types)
-  | CheckingTypeClass (CheckedExpr types) [CheckedArg types] types [CheckedArg types]
+  = CheckingExprType (NormalisableExpr types) (NormalisableType types) (NormalisableType types)
+  | CheckingBinderType (Maybe Name) (NormalisableType types) (NormalisableType types)
+  | CheckingTypeClass (NormalisableExpr types) [NormalisableArg types] types [NormalisableArg types]
   | CheckingAuxiliary
   deriving (Show)
 
@@ -220,21 +178,21 @@ blockCtxOn metas (ConstraintContext cid originProv originalConstraint creationPr
   let status = BlockingStatus (Just metas)
    in ConstraintContext cid originProv originalConstraint creationProv status ctx
 
-extendConstraintBoundCtx :: ConstraintContext types -> CheckedTelescope types -> ConstraintContext types
+extendConstraintBoundCtx :: ConstraintContext types -> NormalisableTelescope types -> ConstraintContext types
 extendConstraintBoundCtx ConstraintContext {..} telescope =
   ConstraintContext
     { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
       ..
     }
 
-contextDBLevel :: ConstraintContext types -> DBLevel
-contextDBLevel = DBLevel . length . boundContext
+contextDBLevel :: ConstraintContext types -> Lv
+contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
 -- Unification constraints
 
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint types = Unify (NormExpr types) (NormExpr types)
+data UnificationConstraint types = Unify (Value types) (Value types)
   deriving (Show)
 
 type instance
@@ -247,7 +205,7 @@ type instance
 data TypeClassConstraint types = Has MetaID types (ExplicitSpine types)
   deriving (Show)
 
-tcNormExpr :: TypeClassConstraint types -> NormExpr types
+tcNormExpr :: TypeClassConstraint types -> Value types
 tcNormExpr (Has _ tc spine) = VBuiltin (CType tc) spine
 
 type instance

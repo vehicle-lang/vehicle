@@ -8,7 +8,7 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise.NBE (MonadNorm)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- | Removes all irrelevant code from the program/expression.
@@ -36,7 +36,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m (CheckedExpr types) where
+instance RemoveIrrelevantCode m (NormalisableExpr types) where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of
@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode m (CheckedExpr types) where
     showRemoveExit result
     return result
 
-instance (MonadNorm types m) => RemoveIrrelevantCode m (NormExpr types) where
+instance (MonadNorm types m) => RemoveIrrelevantCode m (Value types) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VPi binder res
@@ -109,12 +109,12 @@ removeArgs = traverse remove . filter isRelevant
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showRemoveEntry :: (MonadRemove m) => CheckedExpr types -> m ()
+showRemoveEntry :: (MonadRemove m) => NormalisableExpr types -> m ()
 showRemoveEntry _e = do
   -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showRemoveExit :: (MonadRemove m) => CheckedExpr types -> m ()
+showRemoveExit :: (MonadRemove m) => NormalisableExpr types -> m ()
 showRemoveExit _e = do
   decrCallDepth
 

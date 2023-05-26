@@ -126,14 +126,14 @@ instance Pretty LinearityTypeClass where
 
 type LinearityBuiltin = NormalisableBuiltin LinearityType
 
--- NormExpr
-type LinearityNormExpr = NormExpr LinearityType
+-- Value
+type LinearityNormExpr = Value LinearityType
 
-type LinearityNormBinder = NormBinder LinearityType
+type LinearityNormBinder = VBinder LinearityType
 
-type LinearityNormArg = NormArg LinearityType
+type LinearityNormArg = VArg LinearityType
 
-type LinearityNormType = NormType LinearityType
+type LinearityNormType = VType LinearityType
 
 type LinearitySpine = Spine LinearityType
 

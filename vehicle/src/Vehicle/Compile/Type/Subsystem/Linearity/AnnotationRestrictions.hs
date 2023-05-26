@@ -18,7 +18,7 @@ checkNetworkType ::
   (MonadTypeChecker LinearityType m) =>
   DeclProvenance ->
   GluedType LinearityType ->
-  m (CheckedType LinearityType)
+  m (NormalisableType LinearityType)
 checkNetworkType (ident, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
@@ -42,7 +42,7 @@ assertConstantLinearity ::
   (MonadTypeChecker LinearityType m) =>
   DeclProvenance ->
   GluedType LinearityType ->
-  m (CheckedType LinearityType)
+  m (NormalisableType LinearityType)
 assertConstantLinearity (_, p) t = do
   createFreshUnificationConstraint p mempty CheckingAuxiliary (LinearityExpr p Constant) (unnormalised t)
   return $ unnormalised t

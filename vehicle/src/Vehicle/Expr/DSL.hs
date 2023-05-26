@@ -87,7 +87,6 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -110,13 +109,13 @@ class DSL expr where
   free :: StdLibFunction -> expr
 
 newtype DSLExpr types = DSL
-  { unDSL :: Provenance -> DBLevel -> NormalisableExpr types
+  { unDSL :: Provenance -> Lv -> NormalisableExpr types
   }
 
-fromDSL :: Provenance -> DSLExpr types -> CheckedExpr types
+fromDSL :: Provenance -> DSLExpr types -> NormalisableExpr types
 fromDSL p e = unDSL e p 0
 
-boundVar :: DBLevel -> DSLExpr types
+boundVar :: Lv -> DSLExpr types
 boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
 
 approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm

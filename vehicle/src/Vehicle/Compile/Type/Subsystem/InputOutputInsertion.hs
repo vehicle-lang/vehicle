@@ -5,11 +5,10 @@ where
 
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshTypeClassConstraint, freshMetaExpr)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
@@ -22,8 +21,8 @@ import Vehicle.Expr.Normalised
 addFunctionAuxiliaryInputOutputConstraints ::
   (TCM types m) =>
   (FunctionPosition -> types) ->
-  CheckedDecl types ->
-  m (CheckedDecl types)
+  NormalisableDecl types ->
+  m (NormalisableDecl types)
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   DefFunction p ident anns t e -> do
     logCompilerPass MaxDetail "insertion of input/output constraints" $ do
@@ -32,12 +31,12 @@ addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   d -> return d
 
 decomposePiType ::
-  (TCM types m, MonadState (MetaMap (CheckedExpr types)) m) =>
+  (TCM types m, MonadState (MetaMap (NormalisableExpr types)) m) =>
   (FunctionPosition -> types) ->
   DeclProvenance ->
   Int ->
-  CheckedType types ->
-  m (CheckedType types)
+  NormalisableType types ->
+  m (NormalisableType types)
 decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
   Pi p' binder res
     | isExplicit binder -> do
@@ -55,11 +54,11 @@ decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
     addFunctionConstraint mkConstraint (p, position) outputType
 
 addFunctionConstraint ::
-  (TCM types m, MonadState (MetaMap (CheckedExpr types)) m) =>
+  (TCM types m, MonadState (MetaMap (NormalisableExpr types)) m) =>
   (FunctionPosition -> types) ->
   (Provenance, FunctionPosition) ->
-  CheckedExpr types ->
-  m (CheckedExpr types)
+  NormalisableExpr types ->
+  m (NormalisableExpr types)
 addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
   let p = provenanceOf existingExpr
   newExpr <- case existingExpr of

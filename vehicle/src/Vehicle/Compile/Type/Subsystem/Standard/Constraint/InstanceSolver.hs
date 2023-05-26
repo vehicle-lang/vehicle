@@ -21,7 +21,7 @@ import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.DeBruijn (DBLevel (..), dbLevelToIndex, substDBInto)
+import Vehicle.Expr.DeBruijn (Lv (..), dbLevelToIndex, substDBInto)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ findCandidatesInBoundCtx goal ctx = go ctx
             let candidate =
                   InstanceCandidate
                     { candidateExpr = t,
-                      candidateSolution = BoundVar mempty (dbLevelToIndex (DBLevel $ length ctx) (DBLevel $ length localCtx))
+                      candidateSolution = BoundVar mempty (dbLevelToIndex (Lv $ length ctx) (Lv $ length localCtx))
                     }
             return $ WithContext candidate localCtx : candidates
           _ -> return candidates

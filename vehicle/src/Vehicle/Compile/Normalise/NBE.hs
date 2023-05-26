@@ -49,7 +49,7 @@ whnf ::
   (MonadNorm types m) =>
   Env types ->
   NormalisableExpr types ->
-  m (NormExpr types)
+  m (Value types)
 whnf = eval
 
 -----------------------------------------------------------------------------
@@ -105,7 +105,7 @@ instance (MonadCompile m, PrintableBuiltin types) => MonadNorm types (NormT type
 -- Evaluation
 
 -- TODO change to return a tuple of NF and WHNF?
-eval :: (MonadNorm types m) => Env types -> NormalisableExpr types -> m (NormExpr types)
+eval :: (MonadNorm types m) => Env types -> NormalisableExpr types -> m (Value types)
 eval env expr = do
   showEntry env expr
   result <- case expr of
@@ -141,10 +141,10 @@ eval env expr = do
   showExit env result
   return result
 
-evalBinder :: (MonadNorm types m) => Env types -> NormalisableBinder types -> m (NormBinder types)
+evalBinder :: (MonadNorm types m) => Env types -> NormalisableBinder types -> m (VBinder types)
 evalBinder env = traverse (eval env)
 
-evalApp :: (MonadNorm types m) => NormExpr types -> Spine types -> m (NormExpr types)
+evalApp :: (MonadNorm types m) => Value types -> Spine types -> m (Value types)
 evalApp fun [] = return fun
 evalApp fun (arg : args) = do
   showApp fun (arg : args)
@@ -170,7 +170,7 @@ evalApp fun (arg : args) = do
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
     VPi {} -> unexpectedExprError currentPass "VPi"
 
-lookupIn :: (MonadCompile m) => Provenance -> DBIndex -> Env types -> m (NormExpr types)
+lookupIn :: (MonadCompile m) => Provenance -> Ix -> Env types -> m (Value types)
 lookupIn p i env = case lookupVar env i of
   Just (_, value) -> return value
   Nothing ->
@@ -185,7 +185,7 @@ lookupIn p i env = case lookupVar env i of
 -----------------------------------------------------------------------------
 -- Reevaluation
 
-reeval :: (MonadNorm types m) => NormExpr types -> m (NormExpr types)
+reeval :: (MonadNorm types m) => Value types -> m (Value types)
 reeval expr = case expr of
   VUniverse {} -> return expr
   VLam {} -> return expr
@@ -203,7 +203,7 @@ reevalSpine = traverse (traverse reeval)
 
 -- | Recursively forces the evaluation of any meta-variables at the head
 -- of the expresson.
-forceHead :: (MonadNorm types m) => ConstraintContext types -> NormExpr types -> m (NormExpr types, MetaSet)
+forceHead :: (MonadNorm types m) => ConstraintContext types -> Value types -> m (Value types, MetaSet)
 forceHead ctx expr = do
   (maybeForcedExpr, blockingMetas) <- forceExpr expr
   forcedExpr <- case maybeForcedExpr of
@@ -216,16 +216,16 @@ forceHead ctx expr = do
 
 -- | Recursively forces the evaluation of any meta-variables that are blocking
 -- evaluation.
-forceExpr :: forall types m. (MonadNorm types m) => NormExpr types -> m (Maybe (NormExpr types), MetaSet)
+forceExpr :: forall types m. (MonadNorm types m) => Value types -> m (Maybe (Value types), MetaSet)
 forceExpr = go
   where
-    go :: NormExpr types -> m (Maybe (NormExpr types), MetaSet)
+    go :: Value types -> m (Maybe (Value types), MetaSet)
     go = \case
       VMeta m spine -> goMeta m spine
       VBuiltin b spine -> forceBuiltin b spine
       _ -> return (Nothing, mempty)
 
-    goMeta :: MetaID -> Spine types -> m (Maybe (NormExpr types), MetaSet)
+    goMeta :: MetaID -> Spine types -> m (Maybe (Value types), MetaSet)
     goMeta m spine = do
       metaSubst <- getMetaSubstitution
       case MetaMap.lookup m metaSubst of
@@ -236,7 +236,7 @@ forceExpr = go
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
-forceArg :: (MonadNorm types m) => NormExpr types -> m (NormExpr types, Bool, MetaSet)
+forceArg :: (MonadNorm types m) => Value types -> m (Value types, Bool, MetaSet)
 forceArg expr = do
   (maybeResult, blockingMetas) <- forceExpr expr
   let result = fromMaybe expr maybeResult
@@ -247,7 +247,7 @@ forceBuiltin ::
   (MonadNorm types m) =>
   NormalisableBuiltin types ->
   ExplicitSpine types ->
-  m (Maybe (NormExpr types), MetaSet)
+  m (Maybe (Value types), MetaSet)
 forceBuiltin b spine = case b of
   CConstructor {} -> return (Nothing, mempty)
   CType {} -> return (Nothing, mempty)
@@ -270,13 +270,13 @@ evalBuiltin ::
   (MonadNorm types m) =>
   NormalisableBuiltin types ->
   ExplicitSpine types ->
-  m (NormExpr types)
+  m (Value types)
 evalBuiltin b args = case b of
   CConstructor {} -> return $ VBuiltin b args
   CType {} -> return $ VBuiltin b args
   CFunction f -> evalBuiltinFunction f args
 
-evalBuiltinFunction :: (MonadNorm types m) => BuiltinFunction -> ExplicitSpine types -> m (NormExpr types)
+evalBuiltinFunction :: (MonadNorm types m) => BuiltinFunction -> ExplicitSpine types -> m (Value types)
 evalBuiltinFunction b args
   | isDerived b = evalDerivedBuiltin b args
   | otherwise = do
@@ -314,7 +314,7 @@ evalDerivedBuiltin ::
   (MonadNorm types m) =>
   BuiltinFunction ->
   ExplicitSpine types ->
-  m (NormExpr types)
+  m (Value types)
 evalDerivedBuiltin b args = case b of
   Implies -> evalImplies args
   _ -> compilerDeveloperError $ "Invalid derived types" <+> quotePretty b
@@ -322,9 +322,9 @@ evalDerivedBuiltin b args = case b of
 -----------------------------------------------------------------------------
 -- Indvidual builtins
 
-type EvalBuiltin types m = ExplicitSpine types -> Maybe (m (NormExpr types))
+type EvalBuiltin types m = ExplicitSpine types -> Maybe (m (Value types))
 
-type EvalSimpleBuiltin types = ExplicitSpine types -> Maybe (NormExpr types)
+type EvalSimpleBuiltin types = ExplicitSpine types -> Maybe (Value types)
 
 evalNot :: EvalSimpleBuiltin types
 evalNot e = case e of
@@ -565,7 +565,7 @@ evalIndices = \case
 -----------------------------------------------------------------------------
 -- Derived
 
-type EvalDerived types m = ExplicitSpine types -> m (NormExpr types)
+type EvalDerived types m = ExplicitSpine types -> m (Value types)
 
 -- TODO define in terms of language
 
@@ -588,14 +588,14 @@ showEntry _env _expr = do
   -- logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> prettyVerbose env <+> "}"
   incrCallDepth
 
-showExit :: (MonadNorm types m) => Env types -> NormExpr types -> m ()
+showExit :: (MonadNorm types m) => Env types -> Value types -> m ()
 showExit _env _result = do
   decrCallDepth
   -- logDebug MaxDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
-showApp :: (MonadNorm types m) => NormExpr types -> Spine types -> m ()
+showApp :: (MonadNorm types m) => Value types -> Spine types -> m ()
 showApp _fun _spine =
   return ()
 

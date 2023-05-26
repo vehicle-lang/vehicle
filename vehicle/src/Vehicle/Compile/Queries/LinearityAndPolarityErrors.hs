@@ -90,7 +90,7 @@ resolveInstanceArguments prog =
     logCompilerPassOutput $ prettyFriendly result
     return result
   where
-    builtinUpdateFunction :: BuiltinUpdate m DBBinding DBIndex StandardBuiltin StandardBuiltin
+    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       CType (StandardTypeClassOp {}) -> do
         let (inst, remainingArgs) = findInstanceArg args

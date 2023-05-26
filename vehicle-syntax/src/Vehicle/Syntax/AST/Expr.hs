@@ -19,15 +19,7 @@ module Vehicle.Syntax.AST.Expr
     Prog,
     Type,
     UniverseLevel (..),
-
-    -- * Input expressions
-    InputBinding,
-    InputVar,
-    InputArg,
-    InputBinder,
-    InputExpr,
-    InputDecl,
-    InputProg,
+    Telescope,
 
     -- * Utilities
     isTypeSynonym,
@@ -185,24 +177,7 @@ instance HasProvenance (Expr binder var builtin) where
     Lam p _ _ -> p
 
 --------------------------------------------------------------------------------
--- Type of input expressions, before being analysed by the compiler
-
-type InputBinding = ()
-
-type InputVar = Name
-
-type InputArg = Arg InputBinding InputVar Builtin
-
-type InputBinder = Binder InputBinding InputVar Builtin
-
-type InputExpr = Expr InputBinding InputVar Builtin
-
-type InputDecl = Decl InputBinding InputVar Builtin
-
-type InputProg = Prog InputBinding InputVar Builtin
-
---------------------------------------------------------------------------------
--- Other AST datatypes specialised to the Expr type
+-- The AST datatypes specialised to the Expr type
 
 type Type = Expr
 
@@ -213,6 +188,8 @@ type Arg binder var builtin = GenericArg (Expr binder var builtin)
 type Decl binder var builtin = GenericDecl (Expr binder var builtin)
 
 type Prog binder var builtin = GenericProg (Expr binder var builtin)
+
+type Telescope binder var builtin = [Binder binder var builtin]
 
 --------------------------------------------------------------------------------
 -- Utilities

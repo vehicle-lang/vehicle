@@ -25,6 +25,7 @@ import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -86,7 +87,7 @@ unification ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   MetaSet ->
-  (NormExpr types, NormExpr types) ->
+  (Value types, Value types) ->
   m (UnificationResult types)
 unification ctx reductionBlockingMetas = \case
   -----------------------
@@ -131,7 +132,7 @@ solveTrivially = do
 solveArg ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormArg types, NormArg types) ->
+  (VArg types, VArg types) ->
   Maybe (m (UnificationResult types))
 solveArg ctx (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just $ return HardFailure
@@ -164,16 +165,16 @@ solveExplicitSpine ctx args1 args2
 
 solveLam ::
   (MonadUnify types m) =>
-  (NormBinder types, Env builtin, CheckedExpr builtin) ->
-  (NormBinder types, Env builtin, CheckedExpr builtin) ->
+  (VBinder types, Env builtin, NormalisableExpr builtin) ->
+  (VBinder types, Env builtin, NormalisableExpr builtin) ->
   m (UnificationResult types)
 solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
 
 solvePi ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormBinder types, NormExpr types) ->
-  (NormBinder types, NormExpr types) ->
+  (VBinder types, Value types) ->
+  (VBinder types, Value types) ->
   m (UnificationResult types)
 solvePi ctx (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
@@ -191,7 +192,7 @@ solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
     Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
     Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
-solveFlexRigid :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> NormExpr types -> m (UnificationResult types)
+solveFlexRigid :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> Value types -> m (UnificationResult types)
 solveFlexRigid ctx (metaID, spine) solution = do
   -- Check that 'spine' is a pattern and try to calculate a substitution
   -- that renames the variables in `solution` to ones available to `meta`
@@ -209,7 +210,7 @@ solveFlexRigidWithRenaming ::
   ConstraintContext types ->
   (MetaID, Spine types) ->
   Renaming ->
-  NormExpr types ->
+  Value types ->
   m (UnificationResult types)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   prunedSolution <-
@@ -218,7 +219,7 @@ solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
       else return solution
 
   unnormSolution <- quote mempty (contextDBLevel ctx) prunedSolution
-  let substSolution = substDBAll 0 (\v -> unIndex v `IntMap.lookup` renaming) unnormSolution
+  let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
   solveMeta metaID substSolution (boundContext ctx)
   return $ Success mempty
 
@@ -227,15 +228,15 @@ pruneMetaDependencies ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   (MetaID, Spine types) ->
-  NormExpr types ->
-  m (NormExpr types)
+  Value types ->
+  m (Value types)
 pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
   go attemptedSolution
   where
     go ::
       (MonadUnify types m) =>
-      NormExpr types ->
-      m (NormExpr types)
+      Value types ->
+      m (Value types)
     go expr = case expr of
       VMeta m spine
         | m == solvingMetaID ->
@@ -272,8 +273,8 @@ createMetaWithRestrictedDependencies ::
   (MonadUnify types m) =>
   ConstraintContext types ->
   MetaID ->
-  [DBLevel] ->
-  m (NormExpr types)
+  [Lv] ->
+  m (Value types)
 createMetaWithRestrictedDependencies ctx meta newDependencies = do
   p <- getMetaProvenance (Proxy @types) meta
   metaType <- getMetaType meta
@@ -284,7 +285,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: StandardExpr) boundCtx)) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
-    let levelSet = IntSet.fromList $ fmap unLevel newDependencies
+    let levelSet = IntSet.fromList $ fmap unLv newDependencies
     let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
     let typingBoundCtx = boundContext ctx
     let ctxWithLevels = zip (reverse [0 .. length typingBoundCtx - 1 :: Int]) typingBoundCtx
@@ -292,7 +293,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
     newMetaExpr <- freshMetaExpr p metaType restrictedContext
 
     let substitution = IntMap.fromAscList (zip [0 ..] (reverse dbIndices))
-    let substMetaExpr = substDBAll 0 (\v -> unIndex v `IntMap.lookup` substitution) (unnormalised newMetaExpr)
+    let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) (unnormalised newMetaExpr)
     solveMeta meta substMetaExpr (boundContext ctx)
 
     return $ normalised newMetaExpr
@@ -300,18 +301,18 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
 unify ::
   (MonadUnify types m) =>
   ConstraintContext types ->
-  (NormExpr types, NormExpr types) ->
+  (Value types, Value types) ->
   m (WithContext (UnificationConstraint types))
 unify ctx (e1, e2) = WithContext (Unify e1 e2) <$> copyContext ctx
 
 --------------------------------------------------------------------------------
 -- Argument patterns
 
-type Renaming = IntMap DBIndex
+type Renaming = IntMap Ix
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: forall types m. (MonadUnify types m) => DBLevel -> (MetaID, Spine types) -> m (Maybe Renaming)
+invert :: forall types m. (MonadUnify types m) => Lv -> (MetaID, Spine types) -> m (Maybe Renaming)
 invert ctxSize (metaID, spine) = do
   metaCtxSize <- length <$> getMetaCtx @types metaID
   return $
@@ -319,16 +320,16 @@ invert ctxSize (metaID, spine) = do
       then Nothing
       else go (metaCtxSize - 1) IntMap.empty spine
   where
-    go :: Int -> IntMap DBIndex -> Spine types -> Maybe Renaming
+    go :: Int -> IntMap Ix -> Spine types -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
       (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
-        if IntMap.member (unIndex jIndex) revMap
+        if IntMap.member (unIx jIndex) revMap
           then -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
           -- but then we should make sure the solution is well-typed
             Nothing
-          else go (i - 1) (IntMap.insert (unIndex jIndex) (DBIndex i) revMap) restArgs
+          else go (i - 1) (IntMap.insert (unIx jIndex) (Ix i) revMap) restArgs
       -- Not a pattern so return nothing.
       _ -> Nothing

@@ -9,7 +9,7 @@ import Vehicle.Expr.Normalised
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
-unnormalise :: forall a b. (Quote a b) => DBLevel -> a -> b
+unnormalise :: forall a b. (Quote a b) => Lv -> a -> b
 unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 
 -----------------------------------------------------------------------------
@@ -18,9 +18,9 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 -- i.e. converting back to unnormalised expressions
 
 class Quote a b where
-  quote :: (MonadCompile m) => Provenance -> DBLevel -> a -> m b
+  quote :: (MonadCompile m) => Provenance -> Lv -> a -> m b
 
-instance Quote (NormExpr types) (NormalisableExpr types) where
+instance Quote (Value types) (NormalisableExpr types) where
   quote p level = \case
     VUniverse u -> return $ Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine
@@ -42,13 +42,13 @@ instance Quote (NormExpr types) (NormalisableExpr types) where
       -- quotedBody <- quote (level + 1) normBody
       return $ Lam mempty quotedBinder quotedBody
 
-instance Quote (NormBinder types) (NormalisableBinder types) where
+instance Quote (VBinder types) (NormalisableBinder types) where
   quote p level = traverse (quote p level)
 
-instance Quote (NormArg types) (NormalisableArg types) where
+instance Quote (VArg types) (NormalisableArg types) where
   quote p level = traverse (quote p level)
 
-quoteApp :: (MonadCompile m) => DBLevel -> Provenance -> NormalisableExpr types -> Spine types -> m (NormalisableExpr types)
+quoteApp :: (MonadCompile m) => Lv -> Provenance -> NormalisableExpr types -> Spine types -> m (NormalisableExpr types)
 quoteApp l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
 envSubst :: BoundCtx (NormalisableExpr types) -> Substitution (NormalisableExpr types)

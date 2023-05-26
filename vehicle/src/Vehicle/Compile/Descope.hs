@@ -8,7 +8,7 @@ import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised (NormBinder, NormExpr (..), Spine)
+import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -33,13 +33,13 @@ runNaiveCoDBDescope e1 =
 class DescopeNamed a b | a -> b where
   descopeNamed :: a -> b
 
-instance DescopeNamed (DBProg builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNamed (Prog () Ix builtin) (Prog () Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (DBDecl builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNamed (Decl () Ix builtin) (Decl () Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised (DBExpr builtin) BoundDBCtx) (Expr InputBinding InputVar builtin) where
+instance DescopeNamed (Contextualised (Expr () Ix builtin) BoundDBCtx) (Expr () Name builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
@@ -62,13 +62,13 @@ instance
 class DescopeNaive a b | a -> b where
   descopeNaive :: a -> b
 
-instance DescopeNaive (DBProg builtin) (Prog InputBinding InputVar builtin) where
+instance DescopeNaive (Prog () Ix builtin) (Prog () Name builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (DBDecl builtin) (Decl InputBinding InputVar builtin) where
+instance DescopeNaive (Decl () Ix builtin) (Decl () Name builtin) where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Expr DBBinding DBIndex builtin) (Expr InputBinding InputVar builtin) where
+instance DescopeNaive (Expr () Ix builtin) (Expr () Name builtin) where
   descopeNaive = runWithNoCtx (performDescoping descopeDBIndexVarNaive)
 
 instance
@@ -83,7 +83,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (NormExpr types) (Expr InputBinding InputVar (NormalisableBuiltin types)) where
+instance DescopeNaive (Value types) (Expr () Name (NormalisableBuiltin types)) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -95,14 +95,14 @@ newtype Ctx = Ctx BoundDBCtx
 runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: Binder InputBinding var builtin -> Ctx -> Ctx
+addBinderToCtx :: Binder () var builtin -> Ctx -> Ctx
 addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
 
 performDescoping ::
   (Show var) =>
   (Provenance -> var -> Reader Ctx Name) ->
-  Contextualised (Expr DBBinding var builtin) BoundDBCtx ->
-  Expr InputBinding InputVar builtin
+  Contextualised (Expr () var builtin) BoundDBCtx ->
+  Expr () Name builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) (Ctx ctx)
 
@@ -111,8 +111,8 @@ type MonadDescope m = MonadReader Ctx m
 descopeExpr ::
   (MonadDescope m, Show var) =>
   (Provenance -> var -> m Name) ->
-  Expr DBBinding var builtin ->
-  m (Expr InputBinding InputVar builtin)
+  Expr () var builtin ->
+  m (Expr () Name builtin)
 descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Universe p l -> return $ Universe p l
   Hole p name -> return $ Hole p name
@@ -139,23 +139,23 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
 descopeBinder ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Binder DBBinding var builtin ->
-  f (Binder InputBinding InputVar builtin)
+  Binder () var builtin ->
+  f (Binder () Name builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
   (MonadReader Ctx f, Show var) =>
   (Provenance -> var -> f Name) ->
-  Arg DBBinding var builtin ->
-  f (Arg InputBinding InputVar builtin)
+  Arg () var builtin ->
+  f (Arg () Name builtin)
 descopeArg f = traverse (descopeExpr f)
 
 -- | This function is not meant to do anything sensible and is merely
--- used for printing `NormExpr`s in a readable form.
+-- used for printing `Value`s in a readable form.
 descopeNormExpr ::
-  (Provenance -> DBLevel -> Name) ->
-  NormExpr types ->
-  Expr InputBinding InputVar (NormalisableBuiltin types)
+  (Provenance -> Lv -> Name) ->
+  Value types ->
+  Expr () Name (NormalisableBuiltin types)
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
@@ -180,18 +180,18 @@ descopeNormExpr f e = case e of
     p = mempty
 
 descopeSpine ::
-  (Provenance -> DBLevel -> Name) ->
+  (Provenance -> Lv -> Name) ->
   Spine types ->
-  [Arg InputBinding InputVar (NormalisableBuiltin types)]
+  [Arg () Name (NormalisableBuiltin types)]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
-  (Provenance -> DBLevel -> Name) ->
-  NormBinder types ->
-  Binder InputBinding InputVar (NormalisableBuiltin types)
+  (Provenance -> Lv -> Name) ->
+  VBinder types ->
+  Binder () Name (NormalisableBuiltin types)
 descopeNormBinder f = fmap (descopeNormExpr f)
 
-descopeDBIndexVar :: (MonadDescope m) => Provenance -> DBIndex -> m Name
+descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do
   Ctx ctx <- ask
   case lookupVar ctx i of
@@ -199,10 +199,10 @@ descopeDBIndexVar p i = do
     Just Nothing -> return "_" -- usingUnnamedBoundVariable p i
     Just (Just name) -> return name
 
-descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> DBIndex -> m Name
+descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVarNaive _ i = return $ layoutAsText (pretty i)
 
-descopeDBLevelVarNaive :: Provenance -> DBLevel -> Name
+descopeDBLevelVarNaive :: Provenance -> Lv -> Name
 descopeDBLevelVarNaive _ l = layoutAsText $ pretty l
 
 {-
@@ -214,17 +214,17 @@ descopeCoDBVarNaive _ = \case
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: (Show var) => Expr DBBinding var builtin -> Expr DBBinding var builtin
+showScopeEntry :: (Show var) => Expr () var builtin -> Expr () var builtin
 showScopeEntry e =
   e
 
-showScopeExit :: (MonadDescope m) => m (Expr InputBinding InputVar builtin) -> m (Expr InputBinding InputVar builtin)
+showScopeExit :: (MonadDescope m) => m (Expr () Name builtin) -> m (Expr () Name builtin)
 showScopeExit m = do
   e <- m
   return e
 
 -- | Throw an |IndexOutOfBounds| error using an arbitrary index.
-indexOutOfBounds :: (MonadDescope m) => Provenance -> DBIndex -> Int -> m a
+indexOutOfBounds :: (MonadDescope m) => Provenance -> Ix -> Int -> m a
 indexOutOfBounds p index ctxSize =
   developerError $
     "During descoping found DeBruijn index"
@@ -235,7 +235,7 @@ indexOutOfBounds p index ctxSize =
 
 {-
 -- | Use of unnamed bound variable error using an arbitrary index.
-usingUnnamedBoundVariable :: MonadDescope m => Provenance -> DBIndex -> m a
+usingUnnamedBoundVariable :: MonadDescope m => Provenance -> Ix -> m a
 usingUnnamedBoundVariable p index =
   developerError $
     "During descoping found use of unnamed bound variable"

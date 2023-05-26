@@ -20,7 +20,7 @@ import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeLinearityBuiltin :: Provenance -> NormalisableBuiltin LinearityType -> CheckedType LinearityType
+typeLinearityBuiltin :: Provenance -> NormalisableBuiltin LinearityType -> NormalisableType LinearityType
 typeLinearityBuiltin p b = fromDSL p $ case b of
   CConstructor c -> typeOfConstructor c
   CFunction f -> typeOfBuiltinFunction f
@@ -154,8 +154,8 @@ convertToLinearityTypes ::
   (MonadTypeChecker LinearityType m) =>
   Provenance ->
   StandardBuiltinType ->
-  [UncheckedArg LinearityType] ->
-  m (UncheckedExpr LinearityType)
+  [NormalisableArg LinearityType] ->
+  m (NormalisableExpr LinearityType)
 convertToLinearityTypes p b args = case b of
   StandardBuiltinType s -> case s of
     Unit -> return $ Builtin p $ CType $ Linearity Constant

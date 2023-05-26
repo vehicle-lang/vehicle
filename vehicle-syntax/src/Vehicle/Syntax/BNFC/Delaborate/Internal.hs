@@ -36,11 +36,11 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
 -- | Elaborate programs.
-instance Delaborate V.InputProg B.Prog where
+instance Delaborate (V.Prog () V.Name V.Builtin) B.Prog where
   delabM (V.Main decls) = B.Main <$> traverse delabM decls
 
 -- | Elaborate declarations.
-instance Delaborate V.InputDecl B.Decl where
+instance Delaborate (V.Decl () V.Name V.Builtin) B.Decl where
   delabM = \case
     V.DefFunction _ n _ t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
     V.DefAbstract _ n s t -> do
@@ -56,7 +56,7 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
       V.NonInferable -> B.DeclParam
       V.Inferable -> B.DeclImplParam
 
-instance Delaborate V.InputExpr B.Expr where
+instance Delaborate (V.Expr () V.Name V.Builtin) B.Expr where
   delabM expr = case expr of
     V.Universe _ u -> return $ delabUniverse u
     V.FreeVar _ n -> return $ B.Var (delabSymbol (V.nameOf n))
@@ -70,8 +70,8 @@ instance Delaborate V.InputExpr B.Expr where
     V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
-instance Delaborate V.InputArg B.Arg where
-  delabM :: (MonadDelab m) => V.InputArg -> m B.Arg
+instance Delaborate (V.Arg () V.Name V.Builtin) B.Arg where
+  delabM :: (MonadDelab m) => V.Arg () V.Name V.Builtin -> m B.Arg
   delabM (V.Arg _ v r e) = case (v, r) of
     (V.Explicit {}, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
     (V.Implicit {}, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
@@ -80,7 +80,7 @@ instance Delaborate V.InputArg B.Arg where
     (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
     (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
-instance Delaborate V.InputBinder B.Binder where
+instance Delaborate (V.Binder () V.Name V.Builtin) B.Binder where
   delabM binder = do
     t' <- delabM $ V.binderType binder
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)

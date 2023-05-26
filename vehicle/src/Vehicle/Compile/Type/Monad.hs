@@ -95,7 +95,7 @@ freshMetaIdAndExpr ::
   forall types m.
   (TCM types m) =>
   Provenance ->
-  CheckedType types ->
+  NormalisableType types ->
   TypingBoundCtx types ->
   m (MetaID, GluedExpr types)
 freshMetaIdAndExpr p t boundCtx = do
@@ -106,7 +106,7 @@ freshMetaExpr ::
   forall types m.
   (TCM types m) =>
   Provenance ->
-  CheckedType types ->
+  NormalisableType types ->
   TypingBoundCtx types ->
   m (GluedExpr types)
 freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
@@ -117,8 +117,8 @@ createFreshTypeClassConstraint ::
   forall types m.
   (TCM types m) =>
   TypingBoundCtx types ->
-  (CheckedExpr types, [CheckedArg types]) ->
-  CheckedType types ->
+  (NormalisableExpr types, [NormalisableArg types]) ->
+  NormalisableType types ->
   m (GluedExpr types)
 createFreshTypeClassConstraint boundCtx (fun, funArgs) tcExpr = do
   (tc, tcArgs) <- case tcExpr of
@@ -147,8 +147,8 @@ instantiateArgForNonExplicitBinder ::
   (TCM types m) =>
   TypingBoundCtx types ->
   Provenance ->
-  (CheckedExpr types, [CheckedArg types]) ->
-  CheckedBinder types ->
+  (NormalisableExpr types, [NormalisableArg types]) ->
+  NormalisableBinder types ->
   m (GluedArg types)
 instantiateArgForNonExplicitBinder boundCtx p origin binder = do
   let binderType = typeOf binder

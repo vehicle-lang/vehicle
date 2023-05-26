@@ -20,7 +20,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.DeBruijn (DBLevel, liftDBIndices, substDBInto)
+import Vehicle.Expr.DeBruijn (Lv, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ substTest SubstitutionTest {..} =
 
 data LiftingTest = LiftingTest
   { name :: String,
-    amount :: DBLevel,
+    amount :: Lv,
     input :: TypeCheckedExpr,
     expected :: TypeCheckedExpr
   }

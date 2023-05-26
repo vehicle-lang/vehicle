@@ -11,7 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.DeBruijn (DBLevel)
+import Vehicle.Expr.DeBruijn (Lv)
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)
@@ -58,7 +58,7 @@ normalisationTests =
 
 data NBETest = NBETest
   { name :: String,
-    dbLevel :: DBLevel,
+    dbLevel :: Lv,
     input :: StandardExpr,
     expected :: StandardExpr
   }
@@ -91,5 +91,5 @@ p = mempty
 binding :: StandardType -> StandardBinder
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()
 
-mkNoOpEnv :: DBLevel -> Env builtin
+mkNoOpEnv :: Lv -> Env builtin
 mkNoOpEnv boundCtxSize = [(Nothing, VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]

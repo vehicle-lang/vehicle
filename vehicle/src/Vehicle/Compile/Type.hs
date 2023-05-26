@@ -37,7 +37,7 @@ import Vehicle.Expr.Normalised
 typeCheckProg ::
   (TypableBuiltin types, MonadCompile m) =>
   Imports types ->
-  UncheckedProg StandardBuiltinType ->
+  NormalisableProg StandardBuiltinType ->
   m (GluedProg types)
 typeCheckProg imports (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
@@ -48,8 +48,8 @@ typeCheckExpr ::
   forall types m.
   (TypableBuiltin types, MonadCompile m) =>
   Imports types ->
-  UncheckedExpr types ->
-  m (CheckedExpr types)
+  NormalisableExpr types ->
+  m (NormalisableExpr types)
 typeCheckExpr imports expr1 =
   runTypeChecker (createDeclCtx imports) $ do
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
@@ -62,7 +62,7 @@ typeCheckExpr imports expr1 =
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM types m) => [UncheckedDecl StandardBuiltinType] -> m [GluedDecl types]
+typeCheckDecls :: (TCM types m) => [NormalisableDecl StandardBuiltinType] -> m [GluedDecl types]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +70,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall types m. (TCM types m) => UncheckedDecl StandardBuiltinType -> m (GluedDecl types)
+typeCheckDecl :: forall types m. (TCM types m) => NormalisableDecl StandardBuiltinType -> m (GluedDecl types)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -89,11 +89,11 @@ typeCheckDecl uncheckedDecl =
 convertExprFromStandardTypes ::
   forall types m.
   (TypableBuiltin types, TCM types m) =>
-  UncheckedExpr StandardBuiltinType ->
-  m (UncheckedExpr types)
+  NormalisableExpr StandardBuiltinType ->
+  m (NormalisableExpr types)
 convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
   where
-    builtinUpdateFunction :: BuiltinUpdate m DBBinding DBIndex StandardBuiltin (NormalisableBuiltin types)
+    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin (NormalisableBuiltin types)
     builtinUpdateFunction p1 p2 b args = do
       case b of
         CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args
@@ -105,7 +105,7 @@ typeCheckAbstractDef ::
   Provenance ->
   Identifier ->
   DefAbstractSort ->
-  UncheckedType types ->
+  NormalisableType types ->
   m (GluedDecl types)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
@@ -136,8 +136,8 @@ typeCheckFunction ::
   Provenance ->
   Identifier ->
   [Annotation] ->
-  UncheckedType types ->
-  UncheckedExpr types ->
+  NormalisableType types ->
+  NormalisableExpr types ->
   m (GluedDecl types)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
@@ -172,7 +172,7 @@ typeCheckFunction p ident anns typ body = do
       gluedDecl <- traverse (glueNBE mempty) checkedDecl3
       return gluedDecl
 
-checkDeclType :: (TCM types m) => Identifier -> UncheckedExpr types -> m (CheckedType types)
+checkDeclType :: (TCM types m) => Identifier -> NormalisableExpr types -> m (NormalisableType types)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
@@ -185,7 +185,7 @@ restrictAbstractDefType ::
   DefAbstractSort ->
   DeclProvenance ->
   GluedType types ->
-  m (CheckedType types)
+  m (NormalisableType types)
 restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> squotes (pretty ident)
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
@@ -195,7 +195,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
 
-assertDeclTypeIsType :: (TCM types m) => Identifier -> CheckedType types -> m ()
+assertDeclTypeIsType :: (TCM types m) => Identifier -> NormalisableType types -> m ()
 -- This is a bit of a hack to get around having to have a solver for universe
 -- levels. As type definitions will always have an annotated Type 0 inserted
 -- by delaboration, we can match on it here. Anything else will be unified
@@ -214,11 +214,11 @@ assertDeclTypeIsType ident actualType = do
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> m ()
+solveConstraints :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> m ()
 solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
-    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (CheckedDecl types) -> m ()
+    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (NormalisableDecl types) -> m ()
     loopOverConstraints recentlySolvedMetas loopNumber decl = do
       unsolvedConstraints <- getActiveConstraints @types
 
@@ -313,7 +313,7 @@ checkAllMetasSolved proxy = do
           )
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (CheckedDecl types) -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   whenM (loggingLevelAtLeast MaxDetail) $ do
     newSubstitution <- getMetaSubstitution @types

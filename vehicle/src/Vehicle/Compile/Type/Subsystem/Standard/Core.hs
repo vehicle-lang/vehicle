@@ -41,7 +41,7 @@ instance Hashable StandardBuiltinType
 
 instance Serialize StandardBuiltinType
 
-convertToNormalisableBuiltins :: DBExpr Builtin -> DBExpr StandardBuiltin
+convertToNormalisableBuiltins :: Expr () Ix Builtin -> Expr () Ix StandardBuiltin
 convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
   let fn = Builtin p2 $ case b of
         Constructor c -> CConstructor c
@@ -76,13 +76,13 @@ type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
 -----------------------------------------------------------------------------
 -- Norm expressions
 
-type StandardNormExpr = NormExpr StandardBuiltinType
+type StandardNormExpr = Value StandardBuiltinType
 
-type StandardNormBinder = NormBinder StandardBuiltinType
+type StandardNormBinder = VBinder StandardBuiltinType
 
-type StandardNormArg = NormArg StandardBuiltinType
+type StandardNormArg = VArg StandardBuiltinType
 
-type StandardNormType = NormType StandardBuiltinType
+type StandardNormType = VType StandardBuiltinType
 
 type StandardSpine = Spine StandardBuiltinType
 
@@ -194,14 +194,14 @@ type instance
 
 -----------------------------------------------------------------------------
 
-type TypeCheckedBinder = DBBinder StandardBuiltin
+type TypeCheckedBinder = Binder () Ix StandardBuiltin
 
-type TypeCheckedArg = DBArg StandardBuiltin
+type TypeCheckedArg = Arg () Ix StandardBuiltin
 
-type TypeCheckedExpr = DBExpr StandardBuiltin
+type TypeCheckedExpr = Expr () Ix StandardBuiltin
 
-type TypeCheckedType = DBExpr StandardBuiltin
+type TypeCheckedType = Expr () Ix StandardBuiltin
 
-type TypeCheckedDecl = DBDecl StandardBuiltin
+type TypeCheckedDecl = Decl () Ix StandardBuiltin
 
-type TypeCheckedProg = DBProg StandardBuiltin
+type TypeCheckedProg = Prog () Ix StandardBuiltin

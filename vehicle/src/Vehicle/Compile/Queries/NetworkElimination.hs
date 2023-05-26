@@ -32,8 +32,8 @@ import Vehicle.Expr.Normalised
 import Vehicle.Verify.Specification (MetaNetwork)
 
 -- Pairs of (input variable == expression)
--- TODO push back through this file once changing CheckedExpr to NormExpr
-type InputEqualities = [(DBLevel, StandardNormExpr)]
+-- TODO push back through this file once changing NormalisableExpr to Value
+type InputEqualities = [(Lv, StandardNormExpr)]
 
 -- | Okay so this is a wild ride. The Marabou query format has special variable
 -- names for input and output variables, namely x1 ... xN and y1 ... yM but
@@ -110,7 +110,7 @@ reevalute expr = runEmptyNormT @StandardBuiltinType (reeval expr)
 data IOVarState = IOVarState
   { applicationCache :: HashMap (Identifier, StandardNormExpr) StandardNormExpr,
     metaNetwork :: MetaNetwork,
-    inputEqualities :: [[(DBLevel, StandardNormExpr)]],
+    inputEqualities :: [[(Lv, StandardNormExpr)]],
     magicInputVarCount :: Int,
     magicOutputVarCount :: Int
   }
@@ -135,9 +135,9 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
         let outputType = baseType outputs
 
         let numberOfUserVariables = length boundCtx
-        let inputStartingDBLevel = DBLevel $ numberOfUserVariables + magicInputVarCount + magicOutputVarCount
-        let outputStartingDBLevel = inputStartingDBLevel + DBLevel inputSize
-        let outputEndingDBLevel = outputStartingDBLevel + DBLevel outputSize
+        let inputStartingDBLevel = Lv $ numberOfUserVariables + magicInputVarCount + magicOutputVarCount
+        let outputStartingDBLevel = inputStartingDBLevel + Lv inputSize
+        let outputEndingDBLevel = outputStartingDBLevel + Lv outputSize
         let inputVarIndices = [inputStartingDBLevel .. outputStartingDBLevel - 1]
         let outputVarIndices = [outputStartingDBLevel .. outputEndingDBLevel - 1]
 
@@ -165,9 +165,9 @@ processNetworkApplication networkCtx boundCtx ident inputVector = do
 createInputVarEqualities ::
   (MonadCompile m) =>
   TensorDimensions ->
-  [DBLevel] ->
+  [Lv] ->
   StandardNormExpr ->
-  m [(DBLevel, StandardNormExpr)]
+  m [(Lv, StandardNormExpr)]
 createInputVarEqualities [] [i] e = return [(i, e)]
 createInputVarEqualities (_dim : dims) inputVarIndices (VVecLiteral xs) = do
   let inputVarIndicesChunks = chunksOf (product dims) inputVarIndices
@@ -183,11 +183,11 @@ mkMagicVariableSeq ::
   (MonadCompile m) =>
   NetworkBaseType ->
   TensorDimensions ->
-  [DBLevel] ->
+  [Lv] ->
   m StandardNormExpr
 mkMagicVariableSeq tElem = go
   where
-    go :: (MonadCompile m) => TensorDimensions -> [DBLevel] -> m StandardNormExpr
+    go :: (MonadCompile m) => TensorDimensions -> [Lv] -> m StandardNormExpr
     go (_dim : dims) outputVarIndices = do
       let outputVarIndicesChunks = chunksOf (product dims) outputVarIndices
       elems <- traverse (go dims) outputVarIndicesChunks

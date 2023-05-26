@@ -22,7 +22,7 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Expr.DeBruijn (DBType)
+import Vehicle.Expr.DeBruijn (Ix)
 
 --------------------------------------------------------------------------------
 -- Implementation
@@ -34,7 +34,7 @@ clearFreshNamesInternal :: (Monad m) => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
-getFreshNameInternal :: (Monad m) => DBType builtin -> TypeCheckerTInternals builtin2 m Name
+getFreshNameInternal :: (Monad m) => Type () Ix builtin -> TypeCheckerTInternals builtin2 m Name
 getFreshNameInternal _typ = do
   nameID <- gets freshNameState
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})
