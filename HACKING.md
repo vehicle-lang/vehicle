@@ -12,9 +12,7 @@ The Vehicle compiler is written in Haskell. The first task is to install Haskell
 
 2. Close and reopen your terminal.
 
-3. Run ``ghcup tui`` and use it to install and set:
-  -  GHC 9.0.X (for some version of X)
-  -  Cabal 3.X (for some version of X)
+3. Run ``ghcup install ghc 9.4``, ``ghcup set ghc 9.4``, ``ghcup install cabal 3.10``, and ``ghcup set cabal 3.10``.
 
 4. Run ``cabal update`` to update your list of packages.
 
@@ -23,7 +21,7 @@ Now we can install the Vehicle compiler itself.
 1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-2. Run ``git checkout v0.2.0`` to check out the latest version (change the version as required).
+2. Run ``git checkout v0.3.3`` to check out the latest version (change the version as required).
 
 3. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
 
