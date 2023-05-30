@@ -11,6 +11,9 @@ push = true
 "py-vehicle-lang/vehicle-python-binding.cabal" = [
     "^version:         {pep440_version}$",
 ]
+"HACKING.md" = [
+  "``git checkout {version}``"
+]
 "py-vehicle-lang/src/vehicle_lang/_version.py" = [
     '^VERSION: str = "{pep440_version}"$'
 ]
