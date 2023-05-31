@@ -1,10 +1,12 @@
 import sys
 
-from vehicle_lang._internal import _vehicle_cli
+from .session import Session
 
 
 def main() -> None:
-    exit(_vehicle_cli(sys.argv[1:]))
+    with Session() as session:
+        exitCode = session.check_call(sys.argv[1:])
+    exit(exitCode)
 
 
 if __name__ == "__main__":
