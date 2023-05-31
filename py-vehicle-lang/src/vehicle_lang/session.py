@@ -7,7 +7,7 @@ from typing_extensions import Self, TypeAlias
 
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
 from ._temporary_files import temporary_files
-from .error import VehicleSessionClosed, VehicleSessionUsed
+from .errors import VehicleSessionClosed, VehicleSessionUsed
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     SessionContextManager: TypeAlias = AbstractContextManager["Session"]

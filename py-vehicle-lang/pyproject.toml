@@ -82,7 +82,7 @@ isolated_build = true
 extras =
   test
 commands =
-  {envpython} -m pytest tests
+  {envpython} -m pytest {posargs}
 
 [testenv:pygments]
 allowlist_externals =
