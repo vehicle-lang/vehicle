@@ -140,3 +140,8 @@ class Declaration(Node):
 class DefFunction(Declaration):
     declaration_name: Name
     declaration_body: Expression
+
+
+@dataclass(frozen=True, init=False)
+class Module(Node):
+    declarations: Sequence[Declaration]

@@ -10,7 +10,7 @@ GOLDEN_PATH = Path("vendor") / "vehicle" / "tests" / "golden" / "compile"
 @pytest.mark.parametrize(
     "loss_function_json", GOLDEN_PATH.glob("**/LossFunction.json.golden")
 )  # type: ignore[misc]
-def test_loss_function_json(loss_function_json: Path) -> None:
+def test_load_loss_function(loss_function_json: Path) -> None:
     from vehicle_lang.loss_function import Declaration
 
     value = json.loads(loss_function_json.read_text())

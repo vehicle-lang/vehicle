@@ -16,7 +16,9 @@ license = { file = 'LICENSE' }
 dynamic = ["version"]
 requires-python = ">=3.7.1,<3.12"
 dependencies = [
-  "typing_extensions >=4.6,<5"
+  "typing_extensions >=4.6,<5",
+  "ast_compat >=0.11,<0.12",
+  "singledispatchmethod >=1.0,<2; python_version <'3.8'",
 ]
 
 [project.optional-dependencies]
@@ -56,8 +58,13 @@ strict = true
 implicit_reexport = false
 ignore_missing_imports = true
 exclude = [
-  '^src/vehicle_lang/binding\.py$'
+  '^src/vehicle_lang/binding\.py$',
+  '^src/vehicle_lang/_compat_singledispatchmethod\.py$'
 ]
+
+[[tool.mypy.overrides]]
+module = "vehicle_lang.loss_function.translation.python"
+allow_untyped_decorators = true
 
 [[tool.mypy.overrides]]
 module = "vehicle_lang.pygments"
