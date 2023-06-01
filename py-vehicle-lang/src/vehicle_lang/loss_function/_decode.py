@@ -200,8 +200,10 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
                         kwargs[fld.name] = decode(fld.type, value[fld.name])
 
                 # Check for superfluous arguments:
-                unused_fld_names: Set[str] = set(fld.name for fld in fields(cls_alt))
-                unused_fld_names.difference_update(kwargs.keys())
+                unused_fld_names: Set[str] = set(kwargs.keys())
+                unused_fld_names.difference_update(
+                    (fld.name for fld in fields(cls_alt))
+                )
                 if unused_fld_names:
                     raise UnusedFields(cls_alt, value, unused_fld_names)
 
