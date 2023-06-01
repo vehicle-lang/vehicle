@@ -1,7 +1,6 @@
 from typing import Any, Dict, List
 
 import pytest
-
 import vehicle_lang.loss_function._ast as vcl
 from vehicle_lang.loss_function.translation.python import PythonTranslation
 
