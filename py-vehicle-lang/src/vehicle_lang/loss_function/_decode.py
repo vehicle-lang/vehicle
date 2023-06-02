@@ -201,8 +201,18 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
             raise DecodeError(value, subcls, f"not a dataclass")
 
         # Check if subcls requires any arguments:
-        init_fields = [fld for fld in fields(subcls) if fld.init]
-        if len(init_fields) == 0:
+        required_init_fields = [
+            fld
+            for fld in fields(subcls)
+            if fld.init and fld.default is MISSING and fld.default_factory is MISSING
+        ]
+        optional_init_fields = [
+            fld
+            for fld in fields(subcls)
+            if fld.init
+            and (fld.default is not MISSING or fld.default_factory is not MISSING)
+        ]
+        if len(required_init_fields) == 0:
             if _ARGS in value and value[_ARGS]:
                 raise DecodeError(value, subcls, f"unused field '{_ARGS}'")
             else:
@@ -214,13 +224,13 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
         value_args = value[_ARGS]
 
         # Check if subcls has only a single argument:
-        if len(init_fields) == 1:
+        if len(required_init_fields) == 1:
             value_args = [value_args]
         elif not isinstance(value_args, List):
             raise DecodeError(value, subcls, "expected list")
 
         args: List[Any] = []
-        for index, fld in enumerate(init_fields):
+        for index, fld in enumerate(required_init_fields):
             if index < len(value_args):
                 try:
                     args.append(decode(fld.type, value_args[index]))
@@ -231,12 +241,7 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
                         value, ((subcls, fld.name), *e.telescope), e.reason
                     )
             else:
-                if fld.default is not MISSING:
-                    args.append(fld.default)
-                elif fld.default_factory is not MISSING:
-                    args.append(fld.default_factory())
-                else:
-                    raise DecodeError(value, subcls, f"missing value for {fld.name}")
+                raise DecodeError(value, subcls, f"missing value for {fld.name}")
 
         return cast(_T, subcls(*args))
 

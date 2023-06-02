@@ -1,7 +1,7 @@
 import json
 from abc import ABCMeta
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import ClassVar, List, Optional, Sequence, Tuple
 
 from typing_extensions import Literal, Self, TypeAlias, override
 
@@ -29,6 +29,21 @@ class AST(metaclass=ABCMeta):
 
 
 ################################################################################
+# Provenance
+################################################################################
+
+
+@dataclass(frozen=True)
+class Provenance(AST):
+    lineno: int
+    col_offset: int
+    end_lineno: Optional[int] = None
+    end_col_offset: Optional[int] = None
+
+
+MISSING: Provenance = Provenance(0, 0)
+
+################################################################################
 # Expressions
 ################################################################################
 
@@ -43,10 +58,14 @@ class Expression(AST):
 class Negation(Expression):
     operand: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Constant(Expression):
     value: float
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -54,11 +73,15 @@ class Min(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Max(Expression):
     left: Expression
     right: Expression
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -66,11 +89,15 @@ class Addition(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Subtraction(Expression):
     left: Expression
     right: Expression
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -78,11 +105,15 @@ class Multiplication(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Division(Expression):
     left: Expression
     right: Expression
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -90,10 +121,14 @@ class IndicatorFunction(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Variable(Expression):
     name: Name
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -101,11 +136,15 @@ class FreeVariable(Expression):
     func: Name
     args: Sequence[Expression]
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class NetworkApplication(Expression):
     func: Name
     args: Sequence[Expression]
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -115,22 +154,30 @@ class Quantifier(Expression):
     domain: QuantifierDomain
     body: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class At(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class TensorLiteral(Expression):
     sequence: Sequence[Expression]
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
 class Lambda(Expression):
     name: Name
     body: Expression
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -139,16 +186,22 @@ class Let(Expression):
     value: Expression
     body: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Power(Expression):
     left: Expression
     right: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class Range(Expression):
     range: Expression
+
+    provenance: Provenance = MISSING
 
 
 @dataclass(frozen=True)
@@ -156,10 +209,14 @@ class Map(Expression):
     func: Expression
     args: Expression
 
+    provenance: Provenance = MISSING
+
 
 @dataclass(frozen=True)
 class ExponentialAnd(Expression):
     args: Sequence[Expression]
+
+    provenance: Provenance = MISSING
 
 
 ################################################################################
@@ -177,6 +234,8 @@ class Declaration(AST):
 class DefFunction(Declaration):
     name: Name
     body: Expression
+
+    provenance: Provenance = MISSING
 
 
 ################################################################################
