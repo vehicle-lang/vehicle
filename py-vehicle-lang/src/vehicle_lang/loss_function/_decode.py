@@ -218,15 +218,22 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
             else:
                 return cast(_T, subcls())
 
-        # Decode the arguments:
+        # Get the arguments field:
         if _ARGS not in value:
             raise DecodeError(value, subcls, f"missing field '{_ARGS}'")
         value_args = value[_ARGS]
 
-        # Check if subcls has only a single argument:
+        # Special case: If there is only one required argument
         if len(required_init_fields) == 1:
-            value_args = [value_args]
-        elif not isinstance(value_args, List):
+            try:
+                fld = required_init_fields[0]
+                arg: Any = decode(fld.type, value_args)
+                return cast(_T, subcls(*[arg]))
+            except (DecodeError, DecodeFieldError) as e:
+                value_args = [value_args]
+
+        # Decode the arguments:
+        if not isinstance(value_args, List):
             raise DecodeError(value, subcls, "expected list")
 
         args: List[Any] = []
