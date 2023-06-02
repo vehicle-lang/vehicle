@@ -34,8 +34,9 @@ from . import Translation
 
 
 class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
-    def compile(self, module: Module, filename: str) -> Dict[str, Any]:
-        declaration_context: Dict[str, Any] = {}
+    def compile(
+        self, module: Module, filename: str, declaration_context: Dict[str, Any] = {}
+    ) -> Dict[str, Any]:
         py_ast = self.translate_module(module)
         py_bytecode = compile(py_ast, filename=filename, mode="exec")
         exec(py_bytecode, declaration_context)
