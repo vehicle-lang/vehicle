@@ -1,6 +1,4 @@
-import json
 from pathlib import Path
-from typing import List
 
 import pytest
 
@@ -15,5 +13,4 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("**/LossFunction*.json.golden")
 def test_load_loss_function(loss_function_json: Path) -> None:
     from vehicle_lang.loss_function import Module
 
-    print(f"Load {loss_function_json}")
     Module.from_json(loss_function_json.read_text())
