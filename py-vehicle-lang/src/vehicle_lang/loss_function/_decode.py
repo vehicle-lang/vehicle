@@ -250,6 +250,8 @@ def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
             else:
                 raise DecodeError(value, subcls, f"missing value for {fld.name}")
 
+        # TODO: parse optional arguments
+
         return cast(_T, subcls(*args))
 
     raise DecodeError(value, cls)
