@@ -206,8 +206,8 @@ class Range(Expression):
 
 @dataclass(frozen=True)
 class Map(Expression):
-    func: Expression
-    args: Expression
+    left: Expression
+    right: Expression
 
     provenance: Provenance = MISSING
 

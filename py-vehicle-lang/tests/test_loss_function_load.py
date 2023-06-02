@@ -10,7 +10,7 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("**/LossFunction*.json.golden")
     "loss_function_json",
     GOLDEN_LOSS_FUNCTION_FILES,
 )  # type: ignore[misc]
-def test_load_loss_function(loss_function_json: Path) -> None:
+def test_loss_function_load(loss_function_json: Path) -> None:
     from vehicle_lang.loss_function import Module
 
     Module.from_json(loss_function_json.read_text())
