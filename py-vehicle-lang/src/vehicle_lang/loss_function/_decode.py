@@ -156,6 +156,8 @@ class TaggedObjectDecoder(Decoder[_T]):
             raise DecodeError(value, subcls, "expected list")
 
         args: List[Any] = []
+
+        # Decode required positional arguments:
         for index, fld in enumerate(required_init_fields):
             if index < len(value_args):
                 try:
@@ -169,6 +171,21 @@ class TaggedObjectDecoder(Decoder[_T]):
                     )
             else:
                 raise DecodeError(value, subcls, f"missing value for {fld.name}")
+
+        # Decode optional positional arguments:
+        for index_offset, fld in enumerate(optional_init_fields):
+            if index + index_offset < len(value_args):
+                try:
+                    args.append(
+                        decoder.decode(fld.type, value_args[index + index_offset])
+                    )
+                except DecodeError as e:
+                    raise DecodeError(
+                        value,
+                        subcls,
+                        e.reason,
+                        telescope=((subcls, fld.name), *e.telescope),
+                    )
 
         return cast(_T, subcls(*args))
 
