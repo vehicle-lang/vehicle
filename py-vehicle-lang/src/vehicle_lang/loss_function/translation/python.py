@@ -200,7 +200,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
     def translate_TensorLiteral(self, expression: TensorLiteral) -> py.expr:
         provenance = asdict(expression.provenance)
         sequence = [self.translate_expression(item) for item in expression.sequence]
-        return py.List(*sequence, py.Load())
+        return py.List(*sequence, py.Load(), **provenance)
 
     def translate_Lambda(self, expression: Lambda) -> py.expr:
         provenance = asdict(expression.provenance)
