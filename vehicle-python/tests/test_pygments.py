@@ -17,7 +17,7 @@ VEHICLE_FILES = VEHICLE_GOLDEN_TESTS_PATH.glob("**/*.vcl")
     VEHICLE_FILES,
 )  # type: ignore[misc]
 def test_pygments(vehicle_file: Path) -> None:
-    UPDATE_GOLDENS = os.environ["UPDATE_GOLDENS"]
+    UPDATE_GOLDENS = os.environ.get("UPDATE_GOLDENS")
     temporary_file = tempfile.NamedTemporaryFile("r")
     subprocess.check_call(
         [
