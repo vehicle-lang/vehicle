@@ -50,34 +50,19 @@ two = Module(
             {"two": 2},
         ),
         (
-            TEST_DATA_PATH / "test_variable.vcl",
-            {},
-            {"variable": ...},
-        ),
-        (
-            TEST_DATA_PATH / "test_constant.vcl",
-            {},
-            {"constant": 5},
-        ),
-        (
-            TEST_DATA_PATH / "test_negation.vcl",
-            {},
-            {"negation": -5},
-        ),
-        (
             TEST_DATA_PATH / "test_addition.vcl",
             {},
             {"addition": 8},
         ),
         (
-            TEST_DATA_PATH / "test_subtraction.vcl",
+            TEST_DATA_PATH / "test_at.vcl",
             {},
-            {"subtraction": 4},
+            {"at": 2},
         ),
         (
-            TEST_DATA_PATH / "test_multiplication.vcl",
+            TEST_DATA_PATH / "test_constant.vcl",
             {},
-            {"multiplication": 12},
+            {"constant": 5},
         ),
         # (
         #     TEST_DATA_PATH / "test_division.vcl",
@@ -100,14 +85,44 @@ two = Module(
             {"minimum": 0},
         ),
         (
-            TEST_DATA_PATH / "test_tensor.vcl",
+            TEST_DATA_PATH / "test_multiplication.vcl",
             {},
-            {"tensor": [5, 2, 16, 7]},
+            {"multiplication": 12},
+        ),
+        (
+            TEST_DATA_PATH / "test_negation.vcl",
+            {},
+            {"negation": -5},
         ),
         (
             TEST_DATA_PATH / "test_network.vcl",
             {"net": lambda inputs: [sum(inputs)]},
             {"net_prop": 0},
+        ),
+        (
+            TEST_DATA_PATH / "test_quantifier_all.vcl",
+            {},
+            {"quantifierForall": ...},
+        ),
+        (
+            TEST_DATA_PATH / "test_quantifier_any.vcl",
+            {},
+            {"quantifierExists": ...},
+        ),
+        (
+            TEST_DATA_PATH / "test_subtraction.vcl",
+            {},
+            {"subtraction": 4},
+        ),
+        (
+            TEST_DATA_PATH / "test_tensor.vcl",
+            {},
+            {"tensor": [5, 2, 16, 7]},
+        ),
+        (
+            TEST_DATA_PATH / "test_variable.vcl",
+            {},
+            {"variable": 2},
         ),
     ],
 )  # type: ignore[misc]
@@ -129,5 +144,5 @@ def test_loss_function_exec(
         module = module_or_path
     result = compiler.compile(module, path, input_declaration_context)
     for key in output_declaration_context.keys():
-        if output_declaration_context[key] != ...:
+        if output_declaration_context[key] is not ...:
             assert output_declaration_context[key] == result.get(key)
