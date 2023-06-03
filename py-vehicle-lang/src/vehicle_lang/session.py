@@ -109,7 +109,7 @@ class Session(SessionContextManager):
             return self.load(loss_function_spec.name)
 
     def load(self, path: Union[str, Path]) -> loss_function.Module:
-        exit_code, output, error, _log = self.check_output(
+        exc, out, err, log = self.check_output(
             [
                 "compile",
                 "--target",
@@ -118,11 +118,11 @@ class Session(SessionContextManager):
                 str(path),
             ]
         )
-        if exit_code != 0:
-            raise VehicleError(f"{output}{error}")
-        if output is None:
+        if exc != 0:
+            raise VehicleError(err or out or log or "unknown error")
+        if out is None:
             raise VehicleError("no output")
-        return loss_function.Module.from_json(output)
+        return loss_function.Module.from_json(out)
 
 
 def check_call(args: Sequence[str]) -> int:
