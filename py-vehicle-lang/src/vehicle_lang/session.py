@@ -86,6 +86,7 @@ class Session(SessionContextManager):
         if not self.closed:
             self._rts_exit = True
             _unsafe_vehicle_free()
+            atexit.unregister(self.close)
 
     def __enter__(self) -> Self:
         if not self._rts_init:
