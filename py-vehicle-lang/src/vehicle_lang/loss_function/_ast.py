@@ -1,7 +1,7 @@
 import json
 from abc import ABCMeta
 from dataclasses import dataclass
-from typing import ClassVar, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from typing_extensions import Literal, Self, TypeAlias, override
 

@@ -30,6 +30,8 @@ from .._ast import (
     Variable,
 )
 from . import Translation
+from ._ast_compat import arguments as py_arguments
+from ._ast_compat import unparse as py_ast_unparse
 
 
 @dataclass(frozen=True)
@@ -38,9 +40,12 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         self, module: Module, filename: str, declaration_context: Dict[str, Any] = {}
     ) -> Dict[str, Any]:
         py_ast = self.translate_module(module)
-        py_bytecode = compile(py_ast, filename=filename, mode="exec")
-        exec(py_bytecode, declaration_context)
-        return declaration_context
+        try:
+            py_bytecode = compile(py_ast, filename=filename, mode="exec")
+            exec(py_bytecode, declaration_context)
+            return declaration_context
+        except TypeError as e:
+            raise TypeError(f"{e}:\n{py_ast_unparse(py_ast)}")
 
     @override
     def translate_module(self, module: Module) -> py.Module:
@@ -123,14 +128,14 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
 
     def translate_Min(self, expression: Min) -> py.expr:
         provenance = asdict(expression.provenance)
-        func = py.Name("min", py.Load, **provenance)
+        func = py.Name("min", py.Load(), **provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
 
     def translate_Max(self, expression: Max) -> py.expr:
         provenance = asdict(expression.provenance)
-        func = py.Name("max", py.Load, **provenance)
+        func = py.Name("max", py.Load(), **provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
@@ -164,7 +169,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.IfExp(
-            py.BoolOp(py.Eq(), left, right, **provenance),
+            py.Compare(left, [py.Eq()], [right], **provenance),
             py.Num(1, **provenance),
             py.Num(0, **provenance),
             **provenance,
@@ -194,25 +199,37 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
-        return py.Subscript(left, right, py.Load(), **provenance)
+        return py.Subscript(
+            left, py.Index(right, **provenance), py.Load(), **provenance
+        )
 
     def translate_TensorLiteral(self, expression: TensorLiteral) -> py.expr:
         provenance = asdict(expression.provenance)
         sequence = [self.translate_expression(item) for item in expression.sequence]
-        return py.List(*sequence, py.Load(), **provenance)
+        return py.List(sequence, py.Load(), **provenance)
 
     def translate_Lambda(self, expression: Lambda) -> py.expr:
         provenance = asdict(expression.provenance)
-        name = py.Name(expression.name, py.Load(), **provenance)
         body = self.translate_expression(expression.body)
-        return py.Lambda(name, body, **provenance)
+        return py.Lambda(
+            py_arguments(
+                [], [py.arg(expression.name, **provenance)], None, [], [], None, []
+            ),
+            body,
+            **provenance,
+        )
 
     def translate_Let(self, expression: Let) -> py.expr:
         provenance = asdict(expression.provenance)
-        name = py.Name(expression.name, py.Load(), **provenance)
         value = self.translate_expression(expression.value)
         body = self.translate_expression(expression.body)
-        lam = py.Lambda(name, body, **provenance)
+        lam = py.Lambda(
+            py_arguments(
+                [], [py.arg(expression.name, **provenance)], None, [], [], None, []
+            ),
+            body,
+            **provenance,
+        )
         return py.Call(lam, [value], [], **provenance)
 
     def translate_Power(self, expression: Power) -> py.expr:
