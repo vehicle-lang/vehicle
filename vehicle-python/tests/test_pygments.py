@@ -9,7 +9,7 @@ import pytest
 PACKAGE_ROOT = Path(__file__).parent.parent
 VEHICLE_GOLDEN_TESTS_PATH = PACKAGE_ROOT / "vendor" / "vehicle" / "tests" / "golden"
 VEHICLE_GOLDEN_TOKENS_PATH = PACKAGE_ROOT / "tests" / "golden"
-VEHICLE_FILES = VEHICLE_GOLDEN_TESTS_PATH.glob("**/*.vcl")
+VEHICLE_FILES = VEHICLE_GOLDEN_TESTS_PATH.glob(os.path.join("**", "*.vcl"))
 
 
 @pytest.mark.parametrize(
