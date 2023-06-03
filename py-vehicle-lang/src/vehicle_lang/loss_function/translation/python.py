@@ -1,11 +1,10 @@
 import ast as py
-from dataclasses import asdict, dataclass, field
-from typing import Any, Callable, Dict
+from dataclasses import asdict, dataclass
+from typing import Any, Dict
 
 from typing_extensions import override
 
 from .. import Declaration, Expression, Module
-from .. import _ast as vcl
 from .._ast import (
     Addition,
     At,
