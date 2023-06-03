@@ -86,7 +86,6 @@ class Session(SessionContextManager):
         if not self.closed:
             self._rts_exit = True
             _unsafe_vehicle_free()
-            atexit.unregister(self.close)
 
     def __enter__(self) -> Self:
         if not self._rts_init:
@@ -109,21 +108,20 @@ class Session(SessionContextManager):
             return self.load(loss_function_spec.name)
 
     def load(self, path: Union[str, Path]) -> loss_function.Module:
-        with tempfile.NamedTemporaryFile(mode="r") as loss_function_json:
-            exit_code, output, error, _log = self.check_output(
-                [
-                    "compile",
-                    "--target",
-                    "LossFunction",
-                    "--specification",
-                    str(path),
-                ]
-            )
-            if exit_code != 0:
-                raise VehicleError(error)
-            if output is None:
-                raise VehicleError("no output")
-            return loss_function.Module.from_json(output)
+        exit_code, output, error, _log = self.check_output(
+            [
+                "compile",
+                "--target",
+                "LossFunction",
+                "--specification",
+                str(path),
+            ]
+        )
+        if exit_code != 0:
+            raise VehicleError(f"{output}{error}")
+        if output is None:
+            raise VehicleError("no output")
+        return loss_function.Module.from_json(output)
 
 
 def check_call(args: Sequence[str]) -> int:
