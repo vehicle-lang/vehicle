@@ -1,71 +1,74 @@
 [
-  [
-    "index",
-    {
-      "tag": "Map",
-      "contents": [
-        {
-          "tag": "Lambda",
-          "contents": [
-            "i",
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "TensorLiteral",
-                                "contents": [
-                                  {
-                                    "tag": "Constant",
-                                    "contents": 0
-                                  },
-                                  {
-                                    "tag": "Constant",
-                                    "contents": 0
-                                  }
-                                ]
-                              }
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "index",
+      {
+        "tag": "Map",
+        "contents": [
+          {
+            "tag": "Lambda",
+            "contents": [
+              "i",
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "TensorLiteral",
+                                  "contents": [
+                                    {
+                                      "tag": "Constant",
+                                      "contents": 0
+                                    },
+                                    {
+                                      "tag": "Constant",
+                                      "contents": 0
+                                    }
+                                  ]
+                                }
+                              ]
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "Variable",
-                          "contents": "i"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+                          },
+                          {
+                            "tag": "Variable",
+                            "contents": "i"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Range",
+            "contents": {
+              "tag": "Constant",
+              "contents": 2
             }
-          ]
-        },
-        {
-          "tag": "Range",
-          "contents": {
-            "tag": "Constant",
-            "contents": 2
           }
-        }
-      ]
-    }
-  ]
+        ]
+      }
+    ]
+  }
 ]

@@ -1,206 +1,224 @@
 [
-  [
-    "eqIndex",
-    {
-      "tag": "Addition",
-      "contents": [
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 1
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 1
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "neqIndex",
-    {
-      "tag": "IndicatorFunction",
-      "contents": [
-        {
-          "tag": "Constant",
-          "contents": 0
-        },
-        {
-          "tag": "Constant",
-          "contents": 1
-        }
-      ]
-    }
-  ],
-  [
-    "leqIndex",
-    {
-      "tag": "Max",
-      "contents": [
-        {
-          "tag": "Constant",
-          "contents": 0
-        },
-        {
-          "tag": "Subtraction",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Constant",
-              "contents": 1
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "ltIndex",
-    {
-      "tag": "Addition",
-      "contents": [
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 1
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "IndicatorFunction",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Constant",
-              "contents": 1
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "geqIndex",
-    {
-      "tag": "Max",
-      "contents": [
-        {
-          "tag": "Constant",
-          "contents": 0
-        },
-        {
-          "tag": "Subtraction",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 1
-            },
-            {
-              "tag": "Constant",
-              "contents": 0
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "gtIndex",
-    {
-      "tag": "Addition",
-      "contents": [
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 1
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "IndicatorFunction",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 1
-            },
-            {
-              "tag": "Constant",
-              "contents": 0
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "eqIndex",
+      {
+        "tag": "Addition",
+        "contents": [
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "neqIndex",
+      {
+        "tag": "IndicatorFunction",
+        "contents": [
+          {
+            "tag": "Constant",
+            "contents": 0
+          },
+          {
+            "tag": "Constant",
+            "contents": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "leqIndex",
+      {
+        "tag": "Max",
+        "contents": [
+          {
+            "tag": "Constant",
+            "contents": 0
+          },
+          {
+            "tag": "Subtraction",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Constant",
+                "contents": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "ltIndex",
+      {
+        "tag": "Addition",
+        "contents": [
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "IndicatorFunction",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Constant",
+                "contents": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "geqIndex",
+      {
+        "tag": "Max",
+        "contents": [
+          {
+            "tag": "Constant",
+            "contents": 0
+          },
+          {
+            "tag": "Subtraction",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 1
+              },
+              {
+                "tag": "Constant",
+                "contents": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "gtIndex",
+      {
+        "tag": "Addition",
+        "contents": [
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 1
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "IndicatorFunction",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 1
+              },
+              {
+                "tag": "Constant",
+                "contents": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

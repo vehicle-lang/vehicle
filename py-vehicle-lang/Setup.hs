@@ -92,8 +92,8 @@ generatePygmentsLexer verbosity programDb = do
       "src" </> "vehicle_lang" </> "pygments",
       "vendor" </> "vehicle-syntax" </> "src" </> "Vehicle" </> "Syntax" </> "External.cf"
     ]
-  let source = ("src" </> "vehicle_lang" </> "pygments" </> "external")
-  let target = ("src" </> "vehicle_lang" </> "pygments" </> "_external")
+  let source = "src" </> "vehicle_lang" </> "pygments" </> "external"
+  let target = "src" </> "vehicle_lang" </> "pygments" </> "_external"
   targetExists <- doesDirectoryExist target
   when targetExists $ removeDirectoryRecursive target
   renameDirectory source target

@@ -3,6 +3,7 @@ global-include *.def
 global-include *.hs
 global-include *.i
 global-include *.py
+global-include *.vcl
 
 include cabal.project
 include cabal.project.config

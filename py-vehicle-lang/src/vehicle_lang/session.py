@@ -1,13 +1,17 @@
+import atexit
 import sys
+import tempfile
 from contextlib import AbstractContextManager
+from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type
+from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Union
 
 from typing_extensions import Self, TypeAlias
 
+from . import loss_function
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
 from ._temporary_files import temporary_files
-from .error import VehicleSessionClosed, VehicleSessionUsed
+from .error import VehicleError, VehicleSessionClosed, VehicleSessionUsed
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     SessionContextManager: TypeAlias = AbstractContextManager["Session"]
@@ -76,11 +80,13 @@ class Session(SessionContextManager):
         else:
             self._rts_init = True
             _unsafe_vehicle_init(["vehicle", *(rts_args or [])])
+            atexit.register(self.close)
 
     def close(self) -> None:
         if not self.closed:
             self._rts_exit = True
             _unsafe_vehicle_free()
+            atexit.unregister(self.close)
 
     def __enter__(self) -> Self:
         if not self._rts_init:
@@ -96,3 +102,38 @@ class Session(SessionContextManager):
         if not self.closed:
             self.close()
         return None
+
+    def loads(self, spec: str) -> loss_function.Module:
+        with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
+            loss_function_spec.write(spec)
+            return self.load(loss_function_spec.name)
+
+    def load(self, path: Union[str, Path]) -> loss_function.Module:
+        exc, out, err, log = self.check_output(
+            [
+                "compile",
+                "--target",
+                "LossFunction",
+                "--specification",
+                str(path),
+            ]
+        )
+        if exc != 0:
+            raise VehicleError(err or out or log or "unknown error")
+        if out is None:
+            raise VehicleError("no output")
+        return loss_function.Module.from_json(out)
+
+
+def check_call(args: Sequence[str]) -> int:
+    return Session().__enter__().check_call(args)
+
+
+def check_output(
+    args: Sequence[str],
+) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
+    return Session().__enter__().check_output(args)
+
+
+def load(path: Union[str, Path]) -> loss_function.Module:
+    return Session().__enter__().load(path)

@@ -1,88 +1,91 @@
 [
-  [
-    "reachable",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "Any",
-        "x",
-        [],
-        {
-          "tag": "Addition",
-          "contents": [
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "reachable",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "Any",
+          "x",
+          [],
+          {
+            "tag": "Addition",
+            "contents": [
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "NetworkApplication",
+                        "contents": [
+                          "f",
+                          [
+                            {
+                              "tag": "Variable",
+                              "contents": "x"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "tag": "TensorLiteral",
+                        "contents": [
                           {
-                            "tag": "Variable",
-                            "contents": "x"
+                            "tag": "Constant",
+                            "contents": 0
                           }
                         ]
-                      ]
-                    },
-                    {
-                      "tag": "TensorLiteral",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "NetworkApplication",
+                        "contents": [
+                          "f",
+                          [
+                            {
+                              "tag": "Variable",
+                              "contents": "x"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "tag": "TensorLiteral",
+                        "contents": [
                           {
-                            "tag": "Variable",
-                            "contents": "x"
+                            "tag": "Constant",
+                            "contents": 0
                           }
                         ]
-                      ]
-                    },
-                    {
-                      "tag": "TensorLiteral",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]
