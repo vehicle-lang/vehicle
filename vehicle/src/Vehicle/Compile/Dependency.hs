@@ -48,9 +48,9 @@ fromEdges outEdges = do
 -- Constructing the dependency graph
 
 constructGraph ::
-  forall m expr binder var builtin.
+  forall m expr var builtin.
   (MonadLogger m) =>
-  (expr -> Expr binder var builtin) ->
+  (expr -> Expr var builtin) ->
   GenericProg expr ->
   m DependencyGraph
 constructGraph toExpr prog = do
@@ -65,7 +65,7 @@ constructGraph toExpr prog = do
       deps <- execWriterT (traverse_ (go . toExpr) d)
       return (identifierOf d, deps)
 
-    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr binder var builtin -> m1 ()
+    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr var builtin -> m1 ()
     go = \case
       BoundVar {} -> return ()
       Universe {} -> return ()
@@ -83,7 +83,7 @@ constructGraph toExpr prog = do
 
 analyseDependenciesAndPrune ::
   (MonadCompile m) =>
-  (expr -> Expr binder var builtin) ->
+  (expr -> Expr var builtin) ->
   GenericProg expr ->
   DeclarationNames ->
   m (GenericProg expr)

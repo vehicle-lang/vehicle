@@ -113,7 +113,7 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
-  | UnsupportedNegatedOperation DifferentiableLogic Provenance (Expr () Name StandardBuiltin)
+  | UnsupportedNegatedOperation DifferentiableLogic Provenance (Expr Name StandardBuiltin)
   deriving (Show)
 
 --------------------------------------------------------------------------------
@@ -124,7 +124,8 @@ unexpectedExpr pass name =
   "encountered unexpected expression"
     <+> squotes name
     <+> "during"
-    <+> pass <> "."
+    <+> pass
+    <> "."
 
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
@@ -173,7 +174,8 @@ internalScopingError :: (MonadError CompileError m) => Doc () -> Identifier -> m
 internalScopingError pass ident =
   compilerDeveloperError $
     "Internal scoping error during"
-      <+> pass <> ":"
-      <+> "declaration"
-      <+> quotePretty ident
-      <+> "not found in scope..."
+      <+> pass
+      <> ":"
+        <+> "declaration"
+        <+> quotePretty ident
+        <+> "not found in scope..."

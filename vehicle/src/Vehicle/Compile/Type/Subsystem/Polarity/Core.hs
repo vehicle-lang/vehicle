@@ -152,7 +152,7 @@ type PolaritySpine = Spine PolarityType
 
 type PolarityEnv = Env PolarityType
 
-pattern PolarityExpr :: Provenance -> Polarity -> Expr binder var (NormalisableBuiltin PolarityType)
+pattern PolarityExpr :: Provenance -> Polarity -> Expr var (NormalisableBuiltin PolarityType)
 pattern PolarityExpr p pol = Builtin p (CType (Polarity pol))
 
 pattern VPolarityExpr :: Polarity -> PolarityNormExpr

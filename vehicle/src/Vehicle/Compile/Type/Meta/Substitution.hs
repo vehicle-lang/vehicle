@@ -42,7 +42,7 @@ instance (MetaSubstitutable m a) => MetaSubstitutable m (NonEmpty a) where
 instance (MetaSubstitutable m a) => MetaSubstitutable m (GenericArg a) where
   subst = traverse subst
 
-instance (MetaSubstitutable m a) => MetaSubstitutable m (GenericBinder value a) where
+instance (MetaSubstitutable m a) => MetaSubstitutable m (GenericBinder a) where
   subst = traverse subst
 
 instance (MonadNorm types m) => MetaSubstitutable m (NormalisableExpr types) where

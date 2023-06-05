@@ -9,14 +9,14 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isTypeUniverse :: Expr binder var builtin -> Bool
+isTypeUniverse :: Expr var builtin -> Bool
 isTypeUniverse TypeUniverse {} = True
 isTypeUniverse _ = False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNamesIn :: Expr binder var builtin -> [Identifier]
+freeNamesIn :: Expr var builtin -> [Identifier]
 freeNamesIn = \case
   FreeVar _ ident -> [ident]
   BoundVar {} -> []
@@ -33,11 +33,11 @@ freeNamesIn = \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr binder var builtin -> (Expr binder var builtin, [Arg binder var builtin])
+toHead :: Expr var builtin -> (Expr var builtin, [Arg var builtin])
 toHead (App _ fun args) = (fun, NonEmpty.toList args)
 toHead e = (e, [])
 
-exprHead :: Expr binder var builtin -> Expr binder var builtin
+exprHead :: Expr var builtin -> Expr var builtin
 exprHead = fst . toHead
 
 onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
@@ -46,12 +46,12 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 --------------------------------------------------------------------------------
 -- Views
 
-getMetaID :: Expr binder var builtin -> Maybe MetaID
+getMetaID :: Expr var builtin -> Maybe MetaID
 getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getBinderName :: GenericBinder () expr -> Name
+getBinderName :: GenericBinder expr -> Name
 getBinderName binder = case binderNamingForm binder of
   NameAndType name -> name
   OnlyName name -> name
@@ -61,11 +61,11 @@ getExplicitArg :: GenericArg expr -> Maybe expr
 getExplicitArg (ExplicitArg _ expr) = Just expr
 getExplicitArg _ = Nothing
 
-getImplicitArg :: Arg binder var builtin -> Maybe (Expr binder var builtin)
+getImplicitArg :: Arg var builtin -> Maybe (Expr var builtin)
 getImplicitArg (ImplicitArg _ arg) = Just arg
 getImplicitArg _ = Nothing
 
-filterOutNonExplicitArgs :: NonEmpty (Arg binder var builtin) -> [Expr binder var builtin]
+filterOutNonExplicitArgs :: NonEmpty (Arg var builtin) -> [Expr var builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
 
 findInstanceArg :: [GenericArg a] -> (a, [GenericArg a])

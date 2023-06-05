@@ -76,12 +76,12 @@ normalisationTest NBETest {..} =
               <> indent 2 (prettyVerbose input)
               <> line
               <> "to be equal to:"
-              <+> line
-                <> indent 2 (prettyVerbose expected)
-                <> line
-                <> "but was:"
-              <+> line
-                <> indent 2 (prettyVerbose actual)
+                <+> line
+              <> indent 2 (prettyVerbose expected)
+              <> line
+              <> "but was:"
+                <+> line
+              <> indent 2 (prettyVerbose actual)
 
     return $ assertBool errorMessage (actual == expected)
 
@@ -89,7 +89,7 @@ p :: Provenance
 p = mempty
 
 binding :: StandardType -> StandardBinder
-binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()
+binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> Env builtin
 mkNoOpEnv boundCtxSize = [(Nothing, VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]

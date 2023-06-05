@@ -17,15 +17,15 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify (Prog () Name Builtin) where
+instance Simplify (Prog Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Decl () Name Builtin) where
+instance Simplify (Decl Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Expr () Name Builtin) where
+instance Simplify (Expr Name Builtin) where
   uninsert expr = case expr of
     Universe {} -> expr
     Hole {} -> expr
@@ -60,24 +60,24 @@ instance Simplify (Expr () Name Builtin) where
           n2 = Text.pack $ show $ length args - 2
       _ -> normAppList p1 (Builtin p2 b) args
 
-instance Simplify (Binder () Name Builtin) where
+instance Simplify (Binder Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Arg () Name Builtin) where
+instance Simplify (Arg Name Builtin) where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-simplifyArgs :: NonEmpty (Arg () Name Builtin) -> [Arg () Name Builtin]
+simplifyArgs :: NonEmpty (Arg Name Builtin) -> [Arg Name Builtin]
 simplifyArgs = fmap uninsert . NonEmpty.filter (not . wasInserted)
 
-wasInserted :: Arg binder var builtin -> Bool
+wasInserted :: Arg var builtin -> Bool
 wasInserted arg = case visibilityOf arg of
   Implicit True -> True
   Instance True -> True
   _ -> False
 
-isLiteralCast :: Expr binder var Builtin -> Bool
+isLiteralCast :: Expr var Builtin -> Bool
 isLiteralCast = \case
   Builtin _ (BuiltinFunction FromNat {}) -> True
   Builtin _ (BuiltinFunction FromRat {}) -> True

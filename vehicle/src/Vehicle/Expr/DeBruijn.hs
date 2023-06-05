@@ -85,10 +85,10 @@ class Substitutable value target | target -> value where
 instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
   subst = traverse subst
 
-instance (Substitutable expr expr) => Substitutable expr (GenericBinder binder expr) where
+instance (Substitutable expr expr) => Substitutable expr (GenericBinder expr) where
   subst = traverse subst
 
-instance Substitutable (Expr () Ix builtin) (Expr () Ix builtin) where
+instance Substitutable (Expr Ix builtin) (Expr Ix builtin) where
   subst expr = case expr of
     BoundVar p i -> do
       (d, s) <- ask
@@ -117,7 +117,7 @@ underDBBinder = local (first (+ 1))
 --------------------------------------------------------------------------------
 -- Concrete operations
 
-substituteDB :: Lv -> Substitution (Expr () Ix builtin) -> Expr () Ix builtin -> Expr () Ix builtin
+substituteDB :: Lv -> Substitution (Expr Ix builtin) -> Expr Ix builtin -> Expr Ix builtin
 substituteDB depth sub e = runReader (subst e) (depth, sub)
 
 -- | Lift all DeBruijn indices that refer to environment variables by the
@@ -126,9 +126,9 @@ liftDBIndices ::
   -- | number of levels to lift by
   Lv ->
   -- | target term to lift
-  Expr () Ix builtin ->
+  Expr Ix builtin ->
   -- | lifted term
-  Expr () Ix builtin
+  Expr Ix builtin
 liftDBIndices l = substituteDB 0 (\i -> Left (shiftDBIndex i l))
 
 -- | De Bruijn aware substitution of one expression into another
@@ -137,14 +137,14 @@ substDBIntoAtLevel ::
   -- | The index of the variable of which to substitute
   Ix ->
   -- | expression to substitute
-  Expr () Ix builtin ->
+  Expr Ix builtin ->
   -- | term to substitute into
-  Expr () Ix builtin ->
+  Expr Ix builtin ->
   -- | the result of the substitution
-  Expr () Ix builtin
+  Expr Ix builtin
 substDBIntoAtLevel level value = substituteDB 0 substVar
   where
-    substVar :: Ix -> Either Ix (Expr () Ix builtin)
+    substVar :: Ix -> Either Ix (Expr Ix builtin)
     substVar v
       | v == level = Right value
       | v > level = Left (v - 1)
@@ -153,16 +153,16 @@ substDBIntoAtLevel level value = substituteDB 0 substVar
 -- | De Bruijn aware substitution of one expression into another
 substDBInto ::
   -- | expression to substitute
-  Expr () Ix builtin ->
+  Expr Ix builtin ->
   -- | term to substitute into
-  Expr () Ix builtin ->
+  Expr Ix builtin ->
   -- | the result of the substitution
-  Expr () Ix builtin
+  Expr Ix builtin
 substDBInto = substDBIntoAtLevel 0
 
 substDBAll ::
   Lv ->
   (Ix -> Maybe Ix) ->
-  Expr () Ix builtin ->
-  Expr () Ix builtin
+  Expr Ix builtin ->
+  Expr Ix builtin
 substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))
