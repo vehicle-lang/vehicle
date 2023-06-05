@@ -1,556 +1,565 @@
 [
-  [
-    "test1",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "Any",
-        "a",
-        [],
-        {
-          "tag": "Multiplication",
-          "contents": [
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Variable",
-                      "contents": "a"
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "tag": "Addition",
-              "contents": [
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "test1",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "Any",
+          "a",
+          [],
+          {
+            "tag": "Multiplication",
+            "contents": [
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Variable",
+                        "contents": "a"
+                      },
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "Addition",
+                "contents": [
+                  {
+                    "tag": "Max",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Subtraction",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "TensorLiteral",
+                                  "contents": [
+                                    {
+                                      "tag": "Addition",
+                                      "contents": [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "a"
+                                        },
+                                        {
+                                          "tag": "Constant",
+                                          "contents": 2
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "TensorLiteral",
+                            "contents": [
                               {
-                                "tag": "TensorLiteral",
+                                "tag": "Constant",
+                                "contents": 0
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Max",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Subtraction",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "TensorLiteral",
+                                  "contents": [
+                                    {
+                                      "tag": "Addition",
+                                      "contents": [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "a"
+                                        },
+                                        {
+                                          "tag": "Constant",
+                                          "contents": 2
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "TensorLiteral",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 0
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "test2",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "Any",
+          "a",
+          [],
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "Any",
+              "b",
+              [],
+              {
+                "tag": "Addition",
+                "contents": [
+                  {
+                    "tag": "Max",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Subtraction",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 1
+                          },
+                          {
+                            "tag": "Variable",
+                            "contents": "a"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Addition",
+                    "contents": [
+                      {
+                        "tag": "Max",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          },
+                          {
+                            "tag": "Subtraction",
+                            "contents": [
+                              {
+                                "tag": "Variable",
+                                "contents": "b"
+                              },
+                              {
+                                "tag": "Variable",
+                                "contents": "a"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Addition",
+                        "contents": [
+                          {
+                            "tag": "Max",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 0
+                              },
+                              {
+                                "tag": "Subtraction",
                                 "contents": [
                                   {
-                                    "tag": "Addition",
+                                    "tag": "NetworkApplication",
+                                    "contents": [
+                                      "g",
+                                      [
+                                        {
+                                          "tag": "TensorLiteral",
+                                          "contents": [
+                                            {
+                                              "tag": "Addition",
+                                              "contents": [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "a"
+                                                },
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "b"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "Addition",
+                                              "contents": [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "a"
+                                                },
+                                                {
+                                                  "tag": "Multiplication",
+                                                  "contents": [
+                                                    {
+                                                      "tag": "Constant",
+                                                      "contents": 2
+                                                    },
+                                                    {
+                                                      "tag": "Variable",
+                                                      "contents": "b"
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "tag": "TensorLiteral",
                                     "contents": [
                                       {
-                                        "tag": "Variable",
-                                        "contents": "a"
-                                      },
-                                      {
                                         "tag": "Constant",
-                                        "contents": 2
+                                        "contents": 0
                                       }
                                     ]
                                   }
                                 ]
                               }
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "TensorLiteral",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
+                          },
+                          {
+                            "tag": "Max",
+                            "contents": [
                               {
-                                "tag": "TensorLiteral",
+                                "tag": "Constant",
+                                "contents": 0
+                              },
+                              {
+                                "tag": "Subtraction",
                                 "contents": [
                                   {
-                                    "tag": "Addition",
+                                    "tag": "NetworkApplication",
+                                    "contents": [
+                                      "g",
+                                      [
+                                        {
+                                          "tag": "TensorLiteral",
+                                          "contents": [
+                                            {
+                                              "tag": "Addition",
+                                              "contents": [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "a"
+                                                },
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "b"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "Addition",
+                                              "contents": [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "a"
+                                                },
+                                                {
+                                                  "tag": "Multiplication",
+                                                  "contents": [
+                                                    {
+                                                      "tag": "Constant",
+                                                      "contents": 2
+                                                    },
+                                                    {
+                                                      "tag": "Variable",
+                                                      "contents": "b"
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "tag": "TensorLiteral",
                                     "contents": [
                                       {
-                                        "tag": "Variable",
-                                        "contents": "a"
-                                      },
-                                      {
                                         "tag": "Constant",
-                                        "contents": 2
+                                        "contents": 0
                                       }
                                     ]
                                   }
                                 ]
                               }
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "TensorLiteral",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "test2",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "Any",
-        "a",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "Any",
-            "b",
-            [],
-            {
-              "tag": "Addition",
-              "contents": [
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 1
-                        },
-                        {
-                          "tag": "Variable",
-                          "contents": "a"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "Addition",
-                  "contents": [
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "Variable",
-                              "contents": "b"
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "a"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "g",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "b"
-                                              }
-                                            ]
-                                          },
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Multiplication",
-                                                "contents": [
-                                                  {
-                                                    "tag": "Constant",
-                                                    "contents": 2
-                                                  },
-                                                  {
-                                                    "tag": "Variable",
-                                                    "contents": "b"
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                },
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "NetworkApplication",
-                                  "contents": [
-                                    "g",
-                                    [
-                                      {
-                                        "tag": "TensorLiteral",
-                                        "contents": [
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "b"
-                                              }
-                                            ]
-                                          },
-                                          {
-                                            "tag": "Addition",
-                                            "contents": [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "a"
-                                              },
-                                              {
-                                                "tag": "Multiplication",
-                                                "contents": [
-                                                  {
-                                                    "tag": "Constant",
-                                                    "contents": 2
-                                                  },
-                                                  {
-                                                    "tag": "Variable",
-                                                    "contents": "b"
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  ]
-                                },
-                                {
-                                  "tag": "TensorLiteral",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "test3",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "a",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "b",
-            [],
-            {
-              "tag": "Addition",
-              "contents": [
-                {
-                  "tag": "Multiplication",
-                  "contents": [
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "a"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "Variable",
-                                  "contents": "b"
-                                },
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Subtraction",
-                              "contents": [
-                                {
-                                  "tag": "Variable",
-                                  "contents": "b"
-                                },
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "Addition",
-                  "contents": [
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "g",
-                                [
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "test3",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "a",
+          [],
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "All",
+              "b",
+              [],
+              {
+                "tag": "Addition",
+                "contents": [
+                  {
+                    "tag": "Multiplication",
+                    "contents": [
+                      {
+                        "tag": "Max",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          },
+                          {
+                            "tag": "Subtraction",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 0
+                              },
+                              {
+                                "tag": "Variable",
+                                "contents": "a"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Addition",
+                        "contents": [
+                          {
+                            "tag": "Max",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 0
+                              },
+                              {
+                                "tag": "Subtraction",
+                                "contents": [
                                   {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "a"
-                                      },
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "b"
-                                      }
-                                    ]
+                                    "tag": "Variable",
+                                    "contents": "b"
+                                  },
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
                                   }
                                 ]
-                              ]
-                            },
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Max",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "Subtraction",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "g",
-                                [
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "Max",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 0
+                              },
+                              {
+                                "tag": "Subtraction",
+                                "contents": [
                                   {
-                                    "tag": "TensorLiteral",
-                                    "contents": [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "a"
-                                      },
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "b"
-                                      }
-                                    ]
+                                    "tag": "Variable",
+                                    "contents": "b"
+                                  },
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
                                   }
                                 ]
-                              ]
-                            },
-                            {
-                              "tag": "TensorLiteral",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Addition",
+                    "contents": [
+                      {
+                        "tag": "Max",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          },
+                          {
+                            "tag": "Subtraction",
+                            "contents": [
+                              {
+                                "tag": "NetworkApplication",
+                                "contents": [
+                                  "g",
+                                  [
+                                    {
+                                      "tag": "TensorLiteral",
+                                      "contents": [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "a"
+                                        },
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "b"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "tag": "TensorLiteral",
+                                "contents": [
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Max",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          },
+                          {
+                            "tag": "Subtraction",
+                            "contents": [
+                              {
+                                "tag": "NetworkApplication",
+                                "contents": [
+                                  "g",
+                                  [
+                                    {
+                                      "tag": "TensorLiteral",
+                                      "contents": [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "a"
+                                        },
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "b"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "tag": "TensorLiteral",
+                                "contents": [
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

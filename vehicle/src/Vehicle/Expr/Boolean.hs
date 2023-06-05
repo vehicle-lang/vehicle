@@ -91,6 +91,17 @@ andTrivial x y f = case (x, y) of
   (_, Trivial True) -> x
   (NonTrivial a, NonTrivial b) -> NonTrivial $ f a b
 
+eliminateTrivialConjunctions :: ConjunctAll (MaybeTrivial a) -> MaybeTrivial (ConjunctAll a)
+eliminateTrivialConjunctions conjunction = do
+  let conjuncts = NonEmpty.toList (unConjunctAll conjunction)
+  let (trivial, nonTrivial) = partitionEithers (fmap maybeTrivialToEither conjuncts)
+  let triviallyFalse = not (and trivial)
+  if triviallyFalse
+    then Trivial False
+    else case nonTrivial of
+      [] -> Trivial True
+      x : xs -> NonTrivial $ ConjunctAll (x :| xs)
+
 --------------------------------------------------------------------------------
 -- Disjunctions
 
@@ -121,3 +132,6 @@ newtype ConjunctAll a = ConjunctAll
   { unConjunctAll :: NonEmpty a
   }
   deriving (Show, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
+
+conjunctsToList :: ConjunctAll a -> [a]
+conjunctsToList = NonEmpty.toList . unConjunctAll
