@@ -38,10 +38,10 @@ import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 class Elab vf vc where
   elab :: (MonadElab m) => vf -> m vc
 
-instance Elab B.Prog (V.Prog () V.Name V.Builtin) where
+instance Elab B.Prog (V.Prog V.Name V.Builtin) where
   elab (B.Main ds) = V.Main <$> traverse elab ds
 
-instance Elab B.Decl (V.Decl () V.Name V.Builtin) where
+instance Elab B.Decl (V.Decl V.Name V.Builtin) where
   elab = \case
     B.DeclNetw n t -> elabDefAbstract n t V.NetworkDef
     B.DeclData n t -> elabDefAbstract n t V.DatasetDef
@@ -50,10 +50,10 @@ instance Elab B.Decl (V.Decl () V.Name V.Builtin) where
     B.DeclPost n t -> elabDefAbstract n t V.PostulateDef
     B.DefFun n t e -> V.DefFunction <$> mkProvenance n <*> elab n <*> pure mempty <*> elab t <*> elab e
 
-elabDefAbstract :: (MonadElab m) => NameToken -> B.Expr -> V.DefAbstractSort -> m (V.Decl () V.Name V.Builtin)
+elabDefAbstract :: (MonadElab m) => NameToken -> B.Expr -> V.DefAbstractSort -> m (V.Decl V.Name V.Builtin)
 elabDefAbstract n t r = V.DefAbstract <$> mkProvenance n <*> elab n <*> pure r <*> elab t
 
-instance Elab B.Expr (V.Expr () V.Name V.Builtin) where
+instance Elab B.Expr (V.Expr V.Name V.Builtin) where
   elab = \case
     B.Type l -> convType l
     B.Hole name -> V.Hole <$> mkProvenance name <*> pure (tkSymbol name)
@@ -70,7 +70,7 @@ instance Elab B.Expr (V.Expr () V.Name V.Builtin) where
       let p = fillInProvenance (provenanceOf fun' :| [provenanceOf arg'])
       return $ V.App p fun' (arg' :| [])
 
-instance Elab B.Binder (V.Binder () V.Name V.Builtin) where
+instance Elab B.Binder (V.Binder V.Name V.Builtin) where
   elab = \case
     B.RelevantExplicitBinder n e -> mkBinder n Explicit Relevant e
     B.RelevantImplicitBinder n e -> mkBinder n (Implicit False) Relevant e
@@ -79,13 +79,13 @@ instance Elab B.Binder (V.Binder () V.Name V.Builtin) where
     B.IrrelevantImplicitBinder n e -> mkBinder n (Implicit False) Irrelevant e
     B.IrrelevantInstanceBinder n e -> mkBinder n (Instance False) Irrelevant e
     where
-      mkBinder :: (MonadElab m) => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m (V.Binder () V.Name V.Builtin)
+      mkBinder :: (MonadElab m) => B.NameToken -> V.Visibility -> V.Relevance -> B.Expr -> m (V.Binder V.Name V.Builtin)
       mkBinder n v r e = do
         let form = V.BinderDisplayForm (V.NameAndType (tkSymbol n)) False
         p <- mkProvenance n
-        V.Binder p form v r () <$> elab e
+        V.Binder p form v r <$> elab e
 
-instance Elab B.Arg (V.Arg () V.Name V.Builtin) where
+instance Elab B.Arg (V.Arg V.Name V.Builtin) where
   elab = \case
     B.RelevantExplicitArg e -> mkArg Explicit Relevant <$> elab e
     B.RelevantImplicitArg e -> mkArg (Implicit False) Relevant <$> elab e
@@ -94,7 +94,7 @@ instance Elab B.Arg (V.Arg () V.Name V.Builtin) where
     B.IrrelevantImplicitArg e -> mkArg (Implicit False) Irrelevant <$> elab e
     B.IrrelevantInstanceArg e -> mkArg (Instance False) Irrelevant <$> elab e
     where
-      mkArg :: V.Visibility -> V.Relevance -> V.Expr () V.Name V.Builtin -> V.Arg () V.Name V.Builtin
+      mkArg :: V.Visibility -> V.Relevance -> V.Expr V.Name V.Builtin -> V.Arg V.Name V.Builtin
       mkArg v r e = V.Arg (expandByArgVisibility v (provenanceOf e)) v r e
 
 instance Elab B.Lit V.BuiltinConstructor where
@@ -141,7 +141,7 @@ op3 ::
   d
 op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 t2 t3
 
-elabVec :: [V.Expr () V.Name V.Builtin] -> V.Expr () V.Name V.Builtin
+elabVec :: [V.Expr V.Name V.Builtin] -> V.Expr V.Name V.Builtin
 elabVec xs = do
   let vecConstructor = V.Builtin mempty (V.Constructor $ V.LVec (length xs))
   V.normAppList mempty vecConstructor (V.ExplicitArg mempty <$> xs)
@@ -149,7 +149,7 @@ elabVec xs = do
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got
 -- the grammar wrong.
-convType :: (MonadElab m) => TypeToken -> m (V.Expr () V.Name V.Builtin)
+convType :: (MonadElab m) => TypeToken -> m (V.Expr V.Name V.Builtin)
 convType tk = case Text.unpack (tkSymbol tk) of
   ('T' : 'y' : 'p' : 'e' : l) -> do
     p <- mkProvenance tk

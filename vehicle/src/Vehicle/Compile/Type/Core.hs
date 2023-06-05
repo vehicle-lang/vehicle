@@ -272,7 +272,7 @@ class (Eq types) => PrintableBuiltin types where
   convertBuiltin ::
     Provenance ->
     types ->
-    Expr binder var Builtin
+    Expr var Builtin
 
   isTypeClassOp :: types -> Bool
 

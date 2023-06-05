@@ -34,7 +34,7 @@ clearFreshNamesInternal :: (Monad m) => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
-getFreshNameInternal :: (Monad m) => Type () Ix builtin -> TypeCheckerTInternals builtin2 m Name
+getFreshNameInternal :: (Monad m) => Type Ix builtin -> TypeCheckerTInternals builtin2 m Name
 getFreshNameInternal _typ = do
   nameID <- gets freshNameState
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})

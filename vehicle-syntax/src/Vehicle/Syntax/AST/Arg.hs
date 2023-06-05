@@ -83,5 +83,5 @@ traverseNonInstanceArgExpr f arg
   | isInstance arg = return arg
   | otherwise = traverse f arg
 
-argFromBinder :: GenericBinder binder expr -> expr -> GenericArg expr
-argFromBinder (Binder p i v r _ _) = Arg p v r
+argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
+argFromBinder (Binder p i v r _) = Arg p v r

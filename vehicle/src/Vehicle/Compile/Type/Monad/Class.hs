@@ -364,7 +364,7 @@ abstractOverCtx ctx body = do
   -- WARNING: in theory the type of this binder should be `t` but because these binders
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.
-  let lam i@(_, _t) = Lam p (Binder p (lamBinderForm i) Explicit Relevant () (TypeUniverse p 0))
+  let lam i@(_, _t) = Lam p (Binder p (lamBinderForm i) Explicit Relevant (TypeUniverse p 0))
   foldr lam body (reverse ctx)
 
 solveMeta :: forall types m. (MonadTypeChecker types m) => MetaID -> NormalisableExpr types -> TypingBoundCtx types -> m ()

@@ -153,7 +153,7 @@ type LinearityConstraint = Constraint LinearityType
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern LinearityExpr :: Provenance -> Linearity -> Expr binder var (NormalisableBuiltin LinearityType)
+pattern LinearityExpr :: Provenance -> Linearity -> Expr var (NormalisableBuiltin LinearityType)
 pattern LinearityExpr p lin = Builtin p (CType (Linearity lin))
 
 pattern VLinearityExpr :: Linearity -> LinearityNormExpr

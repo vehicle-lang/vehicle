@@ -89,7 +89,7 @@ p :: Provenance
 p = mempty
 
 binding :: StandardType -> StandardBinder
-binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant ()
+binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> Env builtin
 mkNoOpEnv boundCtxSize = [(Nothing, VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]

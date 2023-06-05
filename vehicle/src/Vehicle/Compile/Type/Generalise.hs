@@ -125,7 +125,7 @@ quantifyOverMeta decl meta = do
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
-isMeta :: Expr () Ix builtin -> Bool
+isMeta :: Expr Ix builtin -> Bool
 isMeta Meta {} = True
 isMeta (App _ Meta {} _) = True
 isMeta _ = False
@@ -151,9 +151,9 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 
   -- Construct the new binder and prepend it to both the type and
   -- (if applicable) the body of the declaration.
-  let typeBinder = Binder (provenanceOf decl) f v r () substBinderType
+  let typeBinder = Binder (provenanceOf decl) f v r substBinderType
   let bodyBinderForm = BinderDisplayForm (OnlyName (fromMaybe "_" (nameOf f))) True
-  let bodyBinder = Binder (provenanceOf decl) bodyBinderForm v r () substBinderType
+  let bodyBinder = Binder (provenanceOf decl) bodyBinderForm v r substBinderType
   prependedDecl <- case substDecl of
     DefAbstract p rt ident t ->
       return $ DefAbstract p rt ident (Pi p typeBinder t)

@@ -94,7 +94,7 @@ instance (MonadNorm types m) => RemoveIrrelevantCode m (GluedExpr types) where
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
   remove = traverse remove
 
-instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder binding expr) where
+instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder expr) where
   remove = traverse remove
 
 instance (MonadNorm types m) => RemoveIrrelevantCode m (Env types) where

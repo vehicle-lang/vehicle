@@ -57,7 +57,7 @@ parseAndTypeCheckExpr expr = do
   typedExpr <- typeCheckExpr imports (convertToNormalisableBuiltins scopedExpr)
   return typedExpr
 
-parseExprText :: (MonadCompile m) => Text -> m (Expr () Name Builtin)
+parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
 parseExprText txt =
   case runExcept (parseExpr User =<< readExpr txt) of
     Left err -> throwError $ ParseError err
@@ -104,7 +104,7 @@ typeCheckOrLoadProg modul imports specificationFile = do
       writeObjectFile specificationFile spec result
       return result
 
-parseProgText :: (MonadCompile m) => Module -> Text -> m (Prog () Name Builtin)
+parseProgText :: (MonadCompile m) => Module -> Text -> m (Prog Name Builtin)
 parseProgText modul txt = do
   case runExcept (readAndParseProg modul txt) of
     Left err -> throwError $ ParseError err

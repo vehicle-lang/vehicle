@@ -26,7 +26,7 @@ instance (Serialize types) => Serialize (Value types)
 
 type VArg types = GenericArg (Value types)
 
-type VBinder types = GenericBinder () (VType types)
+type VBinder types = GenericBinder (VType types)
 
 type VDecl types = GenericDecl (Value types)
 
@@ -47,10 +47,10 @@ type ExplicitSpine types = [Value types]
 
 type Env types = BoundCtx (Maybe Name, Value types)
 
-extendEnv :: GenericBinder binder expr -> Value types -> Env types -> Env types
+extendEnv :: GenericBinder expr -> Value types -> Env types -> Env types
 extendEnv binder value = ((nameOf binder, value) :)
 
-extendEnvOverBinder :: GenericBinder binder expr -> Env types -> Env types
+extendEnvOverBinder :: GenericBinder expr -> Env types -> Env types
 extendEnvOverBinder binder env =
   extendEnv binder (VBoundVar (Lv $ length env) []) env
 

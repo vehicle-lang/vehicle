@@ -36,5 +36,5 @@ instance TypableBuiltin PolarityType where
 -------------------------------------------------------------------------------
 -- Conversion
 
-convertFromPolarityTypes :: Provenance -> PolarityType -> Expr binder var Builtin
+convertFromPolarityTypes :: Provenance -> PolarityType -> Expr var Builtin
 convertFromPolarityTypes p b = FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)

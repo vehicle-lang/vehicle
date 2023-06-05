@@ -36,5 +36,5 @@ instance TypableBuiltin LinearityType where
 -------------------------------------------------------------------------------
 -- Conversion
 
-convertFromLinearityTypes :: Provenance -> LinearityType -> Expr binder var Builtin
+convertFromLinearityTypes :: Provenance -> LinearityType -> Expr var Builtin
 convertFromLinearityTypes p b = FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
