@@ -389,14 +389,14 @@ solveMeta m solution solutionCtx = do
           <+> pretty m
           <+> "already solved as"
           <+> line
-            <> indent 2 (squotes (prettyVerbose (unnormalised existing)))
-            <> line
-            <> "but is being re-solved as"
-          <+> line
-            <> indent 2 (squotes (prettyVerbose solution))
-            <> line
-            <> "at"
-          <+> pretty p
+          <> indent 2 (squotes (prettyVerbose (unnormalised existing)))
+          <> line
+          <> "but is being re-solved as"
+            <+> line
+          <> indent 2 (squotes (prettyVerbose solution))
+          <> line
+          <> "at"
+            <+> pretty p
     -- Could use `insertWith` instead of `insert` here for one lookup instead of
     -- two, but not possible to throw a monadic error unfortunately.
     Nothing -> do

@@ -82,11 +82,12 @@ preProcessBnfc packageDescription localBuildInfo _userHooks buildFlags = do
       let targetFiles = filter (outputDir `isPrefixOf`) extraTmpFiles
       shouldCompile <- and <$> mapM (extraSrcFile `moreRecentFile`) targetFiles
       when shouldCompile $ do
-        notice verbosity $
-          unlines $
-            ("Compiling " ++ extraSrcFile ++ "to generate:") : map ("- " ++) targetFiles
-        runDbProgram verbosity bnfcProgram withPrograms $
-          concat
+        notice verbosity
+          $ unlines
+          $ ("Compiling " ++ extraSrcFile ++ "to generate:")
+          : map ("- " ++) targetFiles
+        runDbProgram verbosity bnfcProgram withPrograms
+          $ concat
             [ ["-d"],
               ["--haskell"],
               ["--generic"],

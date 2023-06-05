@@ -34,8 +34,8 @@ developerError message =
       layoutAsText $
         "Something went wrong internally. Please report the error"
           <+> "shown below to `https://github.com/vehicle-lang/vehicle/issues`."
-            <> line
-            <> "Error:"
+          <> line
+          <> "Error:"
           <+> message
 
 --------------------------------------------------------------------------------

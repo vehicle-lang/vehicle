@@ -76,12 +76,12 @@ normalisationTest NBETest {..} =
               <> indent 2 (prettyVerbose input)
               <> line
               <> "to be equal to:"
-              <+> line
-                <> indent 2 (prettyVerbose expected)
-                <> line
-                <> "but was:"
-              <+> line
-                <> indent 2 (prettyVerbose actual)
+                <+> line
+              <> indent 2 (prettyVerbose expected)
+              <> line
+              <> "but was:"
+                <+> line
+              <> indent 2 (prettyVerbose actual)
 
     return $ assertBool errorMessage (actual == expected)
 

@@ -77,9 +77,12 @@ instance Pretty Range where
     if posLine p1 == posLine p2
       then
         "Line"
-          <+> pretty (posLine p1) <> ","
+          <+> pretty (posLine p1)
+          <> ","
           <+> "Columns"
-          <+> pretty (posColumn p1) <> "-" <> pretty (posColumn p2)
+          <+> pretty (posColumn p1)
+          <> "-"
+          <> pretty (posColumn p2)
       else pretty p1 <+> "-" <+> pretty p2
 
 instance Serialize Range

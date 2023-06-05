@@ -827,9 +827,10 @@ compileFunDef n t ns e =
   n
     <+> ":"
     <+> align t
-      <> line
-      <> n
-    <+> (if null ns then mempty else hsep ns <> " ") <> "="
+    <> line
+    <> n
+    <+> (if null ns then mempty else hsep ns <> " ")
+    <> "="
     <+> e
 
 -- | Compile a `network` declaration
@@ -849,16 +850,16 @@ compileProperty propertyName propertyBody = do
           propertyName
             <+> ":"
             <+> align propertyBody
-              <> line
-              <> propertyName
+            <> line
+            <> propertyName
             <+> "= checkSpecification record"
-              <> line
-              <> indentCode
-                ( "{ proofCache   ="
-                    <+> dquotes (pretty loc)
-                      <> line
-                      <> "}"
-                )
+            <> line
+            <> indentCode
+              ( "{ proofCache   ="
+                  <+> dquotes (pretty loc)
+                  <> line
+                  <> "}"
+              )
 
 -- Calculates the dependencies needed for equality over the provided type
 equalityDependencies :: (MonadAgdaCompile m) => Expr () Name StandardBuiltin -> m [Dependency]
@@ -888,7 +889,8 @@ unexpectedTypeError actualType expectedTypes =
       <+> "but found"
       <+> prettyExternal actualType
       <+> "at"
-      <+> pretty (provenanceOf actualType) <> "."
+      <+> pretty (provenanceOf actualType)
+      <> "."
 
 currentPhase :: Doc ()
 currentPhase = "compilation to Agda"
