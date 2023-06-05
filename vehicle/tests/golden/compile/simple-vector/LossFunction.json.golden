@@ -1,56 +1,62 @@
 [
-  [
-    "empty",
-    {
-      "tag": "TensorLiteral",
-      "contents": []
-    }
-  ],
-  [
-    "p",
-    {
-      "tag": "Max",
-      "contents": [
-        {
-          "tag": "Constant",
-          "contents": 0
-        },
-        {
-          "tag": "Subtraction",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "At",
-              "contents": [
-                {
-                  "tag": "NetworkApplication",
-                  "contents": [
-                    "f",
-                    [
-                      {
-                        "tag": "TensorLiteral",
-                        "contents": [
-                          {
-                            "tag": "Constant",
-                            "contents": 0
-                          }
-                        ]
-                      }
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "empty",
+      {
+        "tag": "TensorLiteral",
+        "contents": []
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "p",
+      {
+        "tag": "Max",
+        "contents": [
+          {
+            "tag": "Constant",
+            "contents": 0
+          },
+          {
+            "tag": "Subtraction",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "At",
+                "contents": [
+                  {
+                    "tag": "NetworkApplication",
+                    "contents": [
+                      "f",
+                      [
+                        {
+                          "tag": "TensorLiteral",
+                          "contents": [
+                            {
+                              "tag": "Constant",
+                              "contents": 0
+                            }
+                          ]
+                        }
+                      ]
                     ]
-                  ]
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

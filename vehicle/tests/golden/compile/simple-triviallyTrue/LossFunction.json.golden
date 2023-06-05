@@ -1,138 +1,144 @@
 [
-  [
-    "p",
-    {
-      "tag": "Multiplication",
-      "contents": [
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "x",
-            [],
-            {
-              "tag": "Addition",
-              "contents": [
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Subtraction",
-                      "contents": [
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        },
-                        {
-                          "tag": "At",
-                          "contents": [
-                            {
-                              "tag": "NetworkApplication",
-                              "contents": [
-                                "f",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "x"
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "IndicatorFunction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "p",
+      {
+        "tag": "Multiplication",
+        "contents": [
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "All",
+              "x",
+              [],
+              {
+                "tag": "Addition",
+                "contents": [
+                  {
+                    "tag": "Max",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Subtraction",
+                        "contents": [
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          },
+                          {
+                            "tag": "At",
+                            "contents": [
                               {
-                                "tag": "Variable",
-                                "contents": "x"
+                                "tag": "NetworkApplication",
+                                "contents": [
+                                  "f",
+                                  [
+                                    {
+                                      "tag": "Variable",
+                                      "contents": "x"
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "tag": "Constant",
+                                "contents": 0
                               }
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "Constant",
-          "contents": 0
-        }
-      ]
-    }
-  ],
-  [
-    "multiProperty",
-    {
-      "tag": "TensorLiteral",
-      "contents": [
-        {
-          "tag": "TensorLiteral",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Constant",
-              "contents": 0
-            }
-          ]
-        },
-        {
-          "tag": "TensorLiteral",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 1
-            },
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Constant",
-              "contents": 1
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "IndicatorFunction",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Constant",
+            "contents": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "multiProperty",
+      {
+        "tag": "TensorLiteral",
+        "contents": [
+          {
+            "tag": "TensorLiteral",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Constant",
+                "contents": 0
+              }
+            ]
+          },
+          {
+            "tag": "TensorLiteral",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 1
+              },
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Constant",
+                "contents": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

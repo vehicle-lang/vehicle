@@ -12,9 +12,7 @@ The Vehicle compiler is written in Haskell. The first task is to install Haskell
 
 2. Close and reopen your terminal.
 
-3. Run ``ghcup tui`` and use it to install and set:
-  -  GHC 9.0.X (for some version of X)
-  -  Cabal 3.X (for some version of X)
+3. Run ``ghcup install ghc 9.4``, ``ghcup set ghc 9.4``, ``ghcup install cabal 3.10``, and ``ghcup set cabal 3.10``.
 
 4. Run ``cabal update`` to update your list of packages.
 
@@ -23,7 +21,7 @@ Now we can install the Vehicle compiler itself.
 1. Clone the Vehicle github repository to your local computer and
    navigate to the directory.
 
-2. Run ``git checkout v0.2.0`` to check out the latest version (change the version as required).
+2. Run ``git checkout v0.3.3`` to check out the latest version (change the version as required).
 
 3. Run ``cabal install exe:vehicle`` to install the Vehicle executable on your system.
 
@@ -186,3 +184,33 @@ The documentation is hosted by ReadTheDocs (RTD). The documentation is automatic
 - In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable
   mapping, traversing and projection functions.
+
+## 10. Release instructions
+
+1. Ensure all work is committed and you're on the `dev` branch.
+
+2. Run the tests:
+
+    # from the repository root
+    cabal test all
+    # from py-vehicle-lang
+    tox
+
+3. Run the following command, using `--patch`, `--minor`, or `--major` as needed:
+
+    pipx run bumpver update --patch --dry
+
+That'll print a diff.
+
+4. If the diff looks good, rerun the previous command without `--dry`.
+
+#### Release dependencies
+
+To run the BumpVer command, you need either `pipx` (recommended) or `BumpVer`. If you don't have `pipx`, either install it or simply install bumpver globally with pip install bumpver and omit pipx run from the command.
+
+To run the `Python` tests you need to have the reference GHC release installed, which is currently `GHC 9.4.4`.
+You also need `Tox` and `PyEnv`, and an installed version of every supported Python release. At the time of writing, that's `3.7` to `3.11`, so you run:
+
+    pyenv install 3.7 3.8 3.9 3.10 3.11
+
+If you have all that, `tox` takes care of the rest, and will build and test `Vehicle` with `GHC 9.4.4` and each of these `Python` releases.

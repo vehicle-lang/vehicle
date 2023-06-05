@@ -1,486 +1,501 @@
 [
-  [
-    "truthy",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0.5
-                },
-                {
-                  "tag": "Variable",
-                  "contents": "x"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "falsey",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "Variable",
-                  "contents": "x"
-                },
-                {
-                  "tag": "Constant",
-                  "contents": 0.5
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "validInput",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Addition",
-          "contents": [
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Variable",
-                      "contents": "x"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Variable",
-                      "contents": "x"
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 1
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "correctOutput",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x1",
-        {
-          "tag": "Lambda",
-          "contents": [
-            "x2",
-            {
-              "tag": "Let",
-              "contents": [
-                "y",
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "andGate",
-                        [
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "truthy",
+      {
+        "tag": "Lambda",
+        "contents": [
+          "x",
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0.5
+                  },
+                  {
+                    "tag": "Variable",
+                    "contents": "x"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "falsey",
+      {
+        "tag": "Lambda",
+        "contents": [
+          "x",
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "Variable",
+                    "contents": "x"
+                  },
+                  {
+                    "tag": "Constant",
+                    "contents": 0.5
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "validInput",
+      {
+        "tag": "Lambda",
+        "contents": [
+          "x",
+          {
+            "tag": "Addition",
+            "contents": [
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Variable",
+                        "contents": "x"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Variable",
+                        "contents": "x"
+                      },
+                      {
+                        "tag": "Constant",
+                        "contents": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "correctOutput",
+      {
+        "tag": "Lambda",
+        "contents": [
+          "x1",
+          {
+            "tag": "Lambda",
+            "contents": [
+              "x2",
+              {
+                "tag": "Let",
+                "contents": [
+                  "y",
+                  {
+                    "tag": "At",
+                    "contents": [
+                      {
+                        "tag": "NetworkApplication",
+                        "contents": [
+                          "andGate",
+                          [
+                            {
+                              "tag": "TensorLiteral",
+                              "contents": [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x1"
+                                },
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x2"
+                                }
+                              ]
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Addition",
+                    "contents": [
+                      {
+                        "tag": "Multiplication",
+                        "contents": [
                           {
-                            "tag": "TensorLiteral",
+                            "tag": "Max",
                             "contents": [
                               {
-                                "tag": "Variable",
-                                "contents": "x1"
+                                "tag": "Constant",
+                                "contents": 0
                               },
                               {
-                                "tag": "Variable",
-                                "contents": "x2"
+                                "tag": "Addition",
+                                "contents": [
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "truthy",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "x1"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "truthy",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "x2"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "FreeVariable",
+                            "contents": [
+                              "truthy",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "y"
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Addition",
+                        "contents": [
+                          {
+                            "tag": "Multiplication",
+                            "contents": [
+                              {
+                                "tag": "Max",
+                                "contents": [
+                                  {
+                                    "tag": "Constant",
+                                    "contents": 0
+                                  },
+                                  {
+                                    "tag": "Addition",
+                                    "contents": [
+                                      {
+                                        "tag": "FreeVariable",
+                                        "contents": [
+                                          "truthy",
+                                          [
+                                            {
+                                              "tag": "Variable",
+                                              "contents": "x1"
+                                            }
+                                          ]
+                                        ]
+                                      },
+                                      {
+                                        "tag": "FreeVariable",
+                                        "contents": [
+                                          "falsey",
+                                          [
+                                            {
+                                              "tag": "Variable",
+                                              "contents": "x2"
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "FreeVariable",
+                                "contents": [
+                                  "falsey",
+                                  [
+                                    {
+                                      "tag": "Variable",
+                                      "contents": "y"
+                                    }
+                                  ]
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "Addition",
+                            "contents": [
+                              {
+                                "tag": "Multiplication",
+                                "contents": [
+                                  {
+                                    "tag": "Max",
+                                    "contents": [
+                                      {
+                                        "tag": "Constant",
+                                        "contents": 0
+                                      },
+                                      {
+                                        "tag": "Addition",
+                                        "contents": [
+                                          {
+                                            "tag": "FreeVariable",
+                                            "contents": [
+                                              "falsey",
+                                              [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "x1"
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          {
+                                            "tag": "FreeVariable",
+                                            "contents": [
+                                              "truthy",
+                                              [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "x2"
+                                                }
+                                              ]
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "falsey",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "y"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "Multiplication",
+                                "contents": [
+                                  {
+                                    "tag": "Max",
+                                    "contents": [
+                                      {
+                                        "tag": "Constant",
+                                        "contents": 0
+                                      },
+                                      {
+                                        "tag": "Addition",
+                                        "contents": [
+                                          {
+                                            "tag": "FreeVariable",
+                                            "contents": [
+                                              "falsey",
+                                              [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "x1"
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          {
+                                            "tag": "FreeVariable",
+                                            "contents": [
+                                              "falsey",
+                                              [
+                                                {
+                                                  "tag": "Variable",
+                                                  "contents": "x2"
+                                                }
+                                              ]
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "FreeVariable",
+                                    "contents": [
+                                      "falsey",
+                                      [
+                                        {
+                                          "tag": "Variable",
+                                          "contents": "y"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
                               }
                             ]
                           }
                         ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
-                },
-                {
-                  "tag": "Addition",
-                  "contents": [
-                    {
-                      "tag": "Multiplication",
-                      "contents": [
-                        {
-                          "tag": "Max",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 0
-                            },
-                            {
-                              "tag": "Addition",
-                              "contents": [
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "truthy",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x1"
-                                      }
-                                    ]
-                                  ]
-                                },
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "truthy",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "x2"
-                                      }
-                                    ]
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "FreeVariable",
-                          "contents": [
-                            "truthy",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "y"
-                              }
-                            ]
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Multiplication",
-                          "contents": [
-                            {
-                              "tag": "Max",
-                              "contents": [
-                                {
-                                  "tag": "Constant",
-                                  "contents": 0
-                                },
-                                {
-                                  "tag": "Addition",
-                                  "contents": [
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "truthy",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x1"
-                                          }
-                                        ]
-                                      ]
-                                    },
-                                    {
-                                      "tag": "FreeVariable",
-                                      "contents": [
-                                        "falsey",
-                                        [
-                                          {
-                                            "tag": "Variable",
-                                            "contents": "x2"
-                                          }
-                                        ]
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "tag": "FreeVariable",
-                              "contents": [
-                                "falsey",
-                                [
-                                  {
-                                    "tag": "Variable",
-                                    "contents": "y"
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "Addition",
-                          "contents": [
-                            {
-                              "tag": "Multiplication",
-                              "contents": [
-                                {
-                                  "tag": "Max",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    },
-                                    {
-                                      "tag": "Addition",
-                                      "contents": [
-                                        {
-                                          "tag": "FreeVariable",
-                                          "contents": [
-                                            "falsey",
-                                            [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "x1"
-                                              }
-                                            ]
-                                          ]
-                                        },
-                                        {
-                                          "tag": "FreeVariable",
-                                          "contents": [
-                                            "truthy",
-                                            [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "x2"
-                                              }
-                                            ]
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "falsey",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "y"
-                                      }
-                                    ]
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "tag": "Multiplication",
-                              "contents": [
-                                {
-                                  "tag": "Max",
-                                  "contents": [
-                                    {
-                                      "tag": "Constant",
-                                      "contents": 0
-                                    },
-                                    {
-                                      "tag": "Addition",
-                                      "contents": [
-                                        {
-                                          "tag": "FreeVariable",
-                                          "contents": [
-                                            "falsey",
-                                            [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "x1"
-                                              }
-                                            ]
-                                          ]
-                                        },
-                                        {
-                                          "tag": "FreeVariable",
-                                          "contents": [
-                                            "falsey",
-                                            [
-                                              {
-                                                "tag": "Variable",
-                                                "contents": "x2"
-                                              }
-                                            ]
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                },
-                                {
-                                  "tag": "FreeVariable",
-                                  "contents": [
-                                    "falsey",
-                                    [
-                                      {
-                                        "tag": "Variable",
-                                        "contents": "y"
-                                      }
-                                    ]
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "andGateCorrect",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x1",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "x2",
-            [],
-            {
-              "tag": "Multiplication",
-              "contents": [
-                {
-                  "tag": "Max",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "FreeVariable",
-                          "contents": [
-                            "validInput",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x1"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "FreeVariable",
-                          "contents": [
-                            "validInput",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x2"
-                              }
-                            ]
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "FreeVariable",
-                  "contents": [
-                    "correctOutput",
-                    [
-                      {
-                        "tag": "Variable",
-                        "contents": "x1"
-                      },
-                      {
-                        "tag": "Variable",
-                        "contents": "x2"
                       }
                     ]
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "andGateCorrect",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "x1",
+          [],
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "All",
+              "x2",
+              [],
+              {
+                "tag": "Multiplication",
+                "contents": [
+                  {
+                    "tag": "Max",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "Addition",
+                        "contents": [
+                          {
+                            "tag": "FreeVariable",
+                            "contents": [
+                              "validInput",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x1"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "FreeVariable",
+                            "contents": [
+                              "validInput",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x2"
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "FreeVariable",
+                    "contents": [
+                      "correctOutput",
+                      [
+                        {
+                          "tag": "Variable",
+                          "contents": "x1"
+                        },
+                        {
+                          "tag": "Variable",
+                          "contents": "x2"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

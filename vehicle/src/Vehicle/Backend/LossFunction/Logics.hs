@@ -14,11 +14,17 @@ module Vehicle.Backend.LossFunction.Logics
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), Options (..), ToJSON (..), defaultOptions, genericParseJSON, genericToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Prelude qualified as V
+
+jsonOptions :: Options
+jsonOptions =
+  defaultOptions
+    { tagSingleConstructors = True
+    }
 
 -- | Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
@@ -63,9 +69,11 @@ data LDecl
       LExpr -- Bound function body.
   deriving (Eq, Show, Generic)
 
-instance FromJSON LDecl
+instance FromJSON LDecl where
+  parseJSON = genericParseJSON jsonOptions
 
-instance ToJSON LDecl
+instance ToJSON LDecl where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- other definitions
