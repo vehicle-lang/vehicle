@@ -32,10 +32,10 @@ readAndParseProg :: (MonadError ParseError m) => Module -> Text -> m PartiallyPa
 readAndParseProg modul txt =
   castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
 
-parseDecl :: (MonadError ParseError m) => Module -> PartiallyParsedDecl -> m (Decl () Name Builtin)
+parseDecl :: (MonadError ParseError m) => Module -> PartiallyParsedDecl -> m (Decl Name Builtin)
 parseDecl = elaborateDecl
 
-parseExpr :: (MonadError ParseError m) => Module -> UnparsedExpr -> m (Expr () Name Builtin)
+parseExpr :: (MonadError ParseError m) => Module -> UnparsedExpr -> m (Expr Name Builtin)
 parseExpr = elaborateExpr
 
 readExpr :: (MonadError ParseError m) => Text -> m UnparsedExpr

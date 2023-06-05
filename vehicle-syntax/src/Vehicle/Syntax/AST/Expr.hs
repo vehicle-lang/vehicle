@@ -74,7 +74,7 @@ instance Pretty UniverseLevel where
 --
 -- Names are parameterised over so that they can store
 -- either the user assigned names or deBruijn indices.
-data Expr binder var builtin
+data Expr var builtin
   = -- | A universe, used to type types.
     Universe
       Provenance
@@ -82,18 +82,18 @@ data Expr binder var builtin
   | -- | User annotation
     Ann
       Provenance
-      (Expr binder var builtin) -- The term
-      (Expr binder var builtin) -- The type of the term
+      (Expr var builtin) -- The term
+      (Expr var builtin) -- The type of the term
   | -- | Application of one term to another.
     UnsafeApp
       Provenance
-      (Expr binder var builtin) -- Function.
-      (NonEmpty (Arg binder var builtin)) -- Arguments.
+      (Expr var builtin) -- Function.
+      (NonEmpty (Arg var builtin)) -- Arguments.
   | -- | Dependent product (subsumes both functions and universal quantification).
     Pi
       Provenance
-      (Binder binder var builtin) -- The bound name
-      (Expr binder var builtin) -- (Dependent) result type.
+      (Binder var builtin) -- The bound name
+      (Expr var builtin) -- (Dependent) result type.
   | -- | Terms consisting of constants that are built into the language.
     Builtin
       Provenance
@@ -122,31 +122,31 @@ data Expr binder var builtin
     -- operations concisely much easier.
     Let
       Provenance
-      (Expr binder var builtin) -- Bound expression body.
-      (Binder binder var builtin) -- Bound expression name.
-      (Expr binder var builtin) -- Expression body.
+      (Expr var builtin) -- Bound expression body.
+      (Binder var builtin) -- Bound expression name.
+      (Expr var builtin) -- Expression body.
   | -- | Lambda expressions (i.e. anonymous functions).
     Lam
       Provenance
-      (Binder binder var builtin) -- Bound expression name.
-      (Expr binder var builtin) -- Expression body.
+      (Binder var builtin) -- Bound expression name.
+      (Expr var builtin) -- Expression body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
 -- Safe applications
 
 -- | Smart constructor for applications with possibly no arguments.
-normAppList :: Provenance -> Expr binder var builtin -> [Arg binder var builtin] -> Expr binder var builtin
+normAppList :: Provenance -> Expr var builtin -> [Arg var builtin] -> Expr var builtin
 normAppList _ f [] = f
 normAppList p f (x : xs) = App p f (x :| xs)
 
 -- | Smart constructor for applications.
-normApp :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
+normApp :: Provenance -> Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
 normApp p (UnsafeApp _p f xs) ys = UnsafeApp p f (xs <> ys)
 normApp p f xs = UnsafeApp p f xs
 
 -- | Safe pattern synonym for applications.
-pattern App :: Provenance -> Expr binder var builtin -> NonEmpty (Arg binder var builtin) -> Expr binder var builtin
+pattern App :: Provenance -> Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
 pattern App p f xs <- UnsafeApp p f xs
   where
     App p f xs = normApp p f xs
@@ -156,13 +156,13 @@ pattern App p f xs <- UnsafeApp p f xs
 --------------------------------------------------------------------------------
 -- Instances
 
-instance (NFData binder, NFData var, NFData builtin) => NFData (Expr binder var builtin)
+instance (NFData var, NFData builtin) => NFData (Expr var builtin)
 
-instance (ToJSON binder, ToJSON var, ToJSON builtin) => ToJSON (Expr binder var builtin)
+instance (ToJSON var, ToJSON builtin) => ToJSON (Expr var builtin)
 
-instance (Serialize binder, Serialize var, Serialize builtin) => Serialize (Expr binder var builtin)
+instance (Serialize var, Serialize builtin) => Serialize (Expr var builtin)
 
-instance HasProvenance (Expr binder var builtin) where
+instance HasProvenance (Expr var builtin) where
   provenanceOf = \case
     Universe p _ -> p
     Hole p _ -> p
@@ -181,36 +181,36 @@ instance HasProvenance (Expr binder var builtin) where
 
 type Type = Expr
 
-type Binder binder var builtin = GenericBinder binder (Expr binder var builtin)
+type Binder var builtin = GenericBinder (Expr var builtin)
 
-type Arg binder var builtin = GenericArg (Expr binder var builtin)
+type Arg var builtin = GenericArg (Expr var builtin)
 
-type Decl binder var builtin = GenericDecl (Expr binder var builtin)
+type Decl var builtin = GenericDecl (Expr var builtin)
 
-type Prog binder var builtin = GenericProg (Expr binder var builtin)
+type Prog var builtin = GenericProg (Expr var builtin)
 
-type Telescope binder var builtin = [Binder binder var builtin]
+type Telescope var builtin = [Binder var builtin]
 
 --------------------------------------------------------------------------------
 -- Utilities
 
-mkHole :: Provenance -> Name -> Expr binder var builtin
+mkHole :: Provenance -> Name -> Expr var builtin
 mkHole p name = Hole p ("_" <> name)
 
-isTypeSynonym :: Expr binder var builtin -> Bool
+isTypeSynonym :: Expr var builtin -> Bool
 isTypeSynonym = \case
   Universe {} -> True
   Pi _ _ res -> isTypeSynonym res
   _ -> False
 
-pattern TypeUniverse :: Provenance -> Int -> Expr binder var builtin
+pattern TypeUniverse :: Provenance -> Int -> Expr var builtin
 pattern TypeUniverse p l = Universe p (UniverseLevel l)
 
 pattern BuiltinExpr ::
   Provenance ->
   builtin ->
-  NonEmpty (Arg binder var builtin) ->
-  Expr binder var builtin
+  NonEmpty (Arg var builtin) ->
+  Expr var builtin
 pattern BuiltinExpr p b args <- App p (Builtin _ b) args
   where
     BuiltinExpr p b args = App p (Builtin p b) args
