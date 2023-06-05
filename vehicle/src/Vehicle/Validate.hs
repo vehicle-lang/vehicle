@@ -56,11 +56,12 @@ instance Pretty ValidateResult where
       <> line
       <> line
       <> "To fix this problem, either move the missing files back to"
-      <+> "the"
-      <+> locations
-      <+> "above or use Vehicle to reverify the"
-      <+> "specification with the new"
-      <+> locations <> "."
+        <+> "the"
+        <+> locations
+        <+> "above or use Vehicle to reverify the"
+        <+> "specification with the new"
+        <+> locations
+      <> "."
     where
       locations = "location" <> if length missingResources == 1 then "" else "s"
   pretty (AlteredResources alteredResources) =
@@ -68,13 +69,13 @@ instance Pretty ValidateResult where
       <> line
       <> line
       <> "The following have been altered since verification was"
-      <+> "last run:"
-        <> line
-        <> line
-        <> indent 2 (vsep (fmap prettyResource alteredResources))
-        <> line
-        <> line
-        <> "To fix this problem, use Vehicle to reverify the specification."
+        <+> "last run:"
+      <> line
+      <> line
+      <> indent 2 (vsep (fmap prettyResource alteredResources))
+      <> line
+      <> line
+      <> "To fix this problem, use Vehicle to reverify the specification."
 
 prettyResource :: ResourceIntegrityInfo -> Doc ann
 prettyResource ResourceIntegrityInfo {..} =

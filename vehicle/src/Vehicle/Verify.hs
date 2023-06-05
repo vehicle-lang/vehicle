@@ -66,7 +66,8 @@ locateVerifierExecutable Verifier {..} = \case
               <+> pretty verifierIdentifier
               <+> "executable found"
               <+> "at the provided location"
-              <+> quotePretty providedLocation <> "."
+              <+> quotePretty providedLocation
+              <> "."
         exitFailure
   Nothing -> do
     maybeLocationOnPath <- liftIO $ findExecutable verifierExecutableName
@@ -78,7 +79,7 @@ locateVerifierExecutable Verifier {..} = \case
             "Could not locate the executable"
               <+> quotePretty verifierExecutableName
               <+> "via the PATH environment variable."
-                <> line
-                <> "Please either provide it using the `--verifierLocation` command line option"
-              <+> "or add it to the PATH environment variable."
+              <> line
+              <> "Please either provide it using the `--verifierLocation` command line option"
+                <+> "or add it to the PATH environment variable."
         liftIO exitFailure

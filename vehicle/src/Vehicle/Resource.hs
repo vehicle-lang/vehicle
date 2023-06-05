@@ -99,9 +99,9 @@ generateResourceIntegrityInfo (name, filePath) = do
             fatalError $
               "Error occured while reading"
                 <+> quotePretty filePath
-                  <> ":"
-                  <> line
-                  <> indent 2 (pretty (show e))
+                <> ":"
+                <> line
+                <> indent 2 (pretty (show e))
         )
 
   return $
@@ -196,6 +196,7 @@ warnIfUnusedResources resourceType given found = do
   when (Set.size unusedParams > 0) $
     logWarning $
       "the following"
-        <+> pretty resourceType <> "s were provided"
+        <+> pretty resourceType
+        <> "s were provided"
         <+> "but not used by the specification:"
         <+> prettySet unusedParams

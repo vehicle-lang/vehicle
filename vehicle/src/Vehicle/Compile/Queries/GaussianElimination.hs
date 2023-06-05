@@ -65,18 +65,19 @@ reduceRow varNames (solvedVars, rows) var = do
         return (newSolvedVars, newRows)
 
   logDebug MaxDetail $
-    line <> "After iteration"
-      <+> pretty (var + 1)
-        <> ":"
-        <> line
-        <> indent
-          2
-          ( "Solutions:"
-              <> prettySolutions varNames (fst result)
-              <> line
-              <> "Equations:"
-              <> prettyExprs varNames (snd result)
-          )
+    line
+      <> "After iteration"
+        <+> pretty (var + 1)
+      <> ":"
+      <> line
+      <> indent
+        2
+        ( "Solutions:"
+            <> prettySolutions varNames (fst result)
+            <> line
+            <> "Equations:"
+            <> prettyExprs varNames (snd result)
+        )
   return result
 
 findPivot :: (LinearExpression linexp) => LinearVar -> [linexp] -> Maybe (linexp, [linexp])

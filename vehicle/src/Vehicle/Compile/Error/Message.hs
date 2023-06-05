@@ -52,9 +52,10 @@ instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
     unAnnotate $
       "Error at"
-        <+> pretty p <> ":"
-        <+> prob
-          <> maybe "" (\fix -> line <> fixText fix) probFix
+        <+> pretty p
+        <> ":"
+          <+> prob
+        <> maybe "" (\fix -> line <> fixText fix) probFix
   pretty (EError (ExternalError text)) = pretty text
   pretty (DError text) = unAnnotate text
 
@@ -102,16 +103,19 @@ instance MeaningfulError CompileError where
             { provenance = p,
               problem =
                 "no definition provided for the declaration"
-                  <+> quotePretty name <> ".",
+                  <+> quotePretty name
+                  <> ".",
               fix =
                 Just $
                   "either provide a definition for"
                     <+> quotePretty name
                     <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
-                    <+> pretty NetworkDef <> ","
-                    <+> pretty DatasetDef
-                    <+> "or"
-                    <+> pretty (ParameterDef NonInferable) <> "."
+                    <+> pretty NetworkDef
+                    <> ","
+                      <+> pretty DatasetDef
+                      <+> "or"
+                      <+> pretty (ParameterDef NonInferable)
+                    <> "."
             }
       MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
         UError $
@@ -123,7 +127,8 @@ instance MeaningfulError CompileError where
                   <+> "cannot simulataneously be annotated with both"
                   <+> quotePretty ann1
                   <+> "and"
-                  <+> quotePretty ann2 <> ".",
+                  <+> quotePretty ann2
+                  <> ".",
               fix =
                 Just "remove one of annotations."
             }
@@ -143,7 +148,7 @@ instance MeaningfulError CompileError where
                   problem =
                     "the annotation"
                       <+> pretty AnnNoInline
-                        <> "must be attached to a declaration with a definition.",
+                      <> "must be attached to a declaration with a definition.",
                   fix = Just $ "add a definition for" <+> quotePretty name <+> "."
                 }
       NonAbstractDefWithAbstractAnnotation p name resource ->
@@ -297,11 +302,13 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf ctx,
             problem =
-              constraintOriginMessage <> "."
-                <+> "In particular"
-                <+> prettyFriendly (WithContext e1 boundCtx)
-                <+> "!="
-                <+> prettyFriendly (WithContext e2 boundCtx) <> ".",
+              constraintOriginMessage
+                <> "."
+                  <+> "In particular"
+                  <+> prettyFriendly (WithContext e1 boundCtx)
+                  <+> "!="
+                  <+> prettyFriendly (WithContext e2 boundCtx)
+                <> ".",
             fix = Just "check your types"
           }
       where
@@ -392,15 +399,15 @@ instance MeaningfulError CompileError where
             problem =
               "unable to work out a valid type for the overloaded expression"
                 <+> originExpr
-                  <> "."
-                  <> line
-                  <> "Type checking has deduced that it is of type:"
-                  <> line
-                  <> indent 2 (inferredOpType (boundContextOf ctx) tcArgs)
-                  <> line
-                  <> "but the list of valid types for it is:"
-                  <> line
-                  <> indent 2 (vsep (fmap candidateType candidates)),
+                <> "."
+                <> line
+                <> "Type checking has deduced that it is of type:"
+                <> line
+                <> indent 2 (inferredOpType (boundContextOf ctx) tcArgs)
+                <> line
+                <> "but the list of valid types for it is:"
+                <> line
+                <> indent 2 (vsep (fmap candidateType candidates)),
             fix = Nothing
           }
       where
@@ -448,7 +455,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly $ WithContext t1 (boundContextOf ctx))
                 <+> "and"
                 <+> squotes (prettyFriendly $ WithContext t2 (boundContextOf ctx))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedOrdConstraint ctx t1 t2 ord ->
@@ -462,7 +469,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
                 <+> "and"
                 <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
       where
@@ -476,7 +483,7 @@ instance MeaningfulError CompileError where
                 <+> quotePretty Not
                 <+> "to something of type"
                 <+> squotes (prettyFriendly $ WithContext t (boundContextOf ctx))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedBoolOp2Constraint ctx t1 t2 op ->
@@ -490,7 +497,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
                 <+> "and"
                 <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
       where
@@ -502,7 +509,7 @@ instance MeaningfulError CompileError where
             problem =
               "cannot quantify over arguments of type"
                 <+> squotes (prettyFriendly $ WithContext typeOfDomain (boundContextOf ctx))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedQuantifierConstraintBody ctx typeOfBody _q ->
@@ -512,7 +519,7 @@ instance MeaningfulError CompileError where
             problem =
               "the body of the quantifier cannot be of type"
                 <+> squotes (prettyFriendly $ WithContext typeOfBody (boundContextOf ctx))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedBuiltinConstraintArgument ctx builtin t allowedTypes argNo argTotal ->
@@ -528,7 +535,7 @@ instance MeaningfulError CompileError where
                 <+> prettyAllowedTypes allowedTypes
                 <+> "but found something of type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedBuiltinConstraintResult ctx builtin actualType allowedTypes ->
@@ -542,7 +549,7 @@ instance MeaningfulError CompileError where
                 <+> prettyAllowedTypes allowedTypes
                 <+> "but the program is expecting something of type"
                 <+> squotes (prettyFriendly (WithContext actualType (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedArithOp2Constraint ctx t1 t2 op2 ->
@@ -557,7 +564,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly (WithContext t1 boundCtx))
                 <+> "and"
                 <+> squotes (prettyFriendly (WithContext t2 boundCtx))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
       where
@@ -571,7 +578,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (pretty FoldTC)
                 <+> "must be a container type but found something of type"
                 <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedQuantInConstraintContainer ctx tCont q ->
@@ -579,10 +586,12 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf ctx,
             problem =
-              "the argument <c> in '" <> pretty q <> " <v> in <c> . ...`"
-                <+> "must be a container type but found something of type"
-                <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
-                  <> ".",
+              "the argument <c> in '"
+                <> pretty q
+                <> " <v> in <c> . ...`"
+                  <+> "must be a container type but found something of type"
+                  <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
+                <> ".",
             fix = Nothing
           }
     FailedNatLitConstraint ctx v t ->
@@ -595,7 +604,7 @@ instance MeaningfulError CompileError where
                 <+> "is not a valid"
                 <+> "instance of type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedNatLitConstraintTooBig ctx v n ->
@@ -607,7 +616,8 @@ instance MeaningfulError CompileError where
                 <+> squotes (pretty v)
                 <+> "is too big to"
                 <+> "be used as an index of size"
-                <+> squotes (pretty n) <> ".",
+                <+> squotes (pretty n)
+                <> ".",
             fix = Nothing
           }
     FailedNatLitConstraintUnknown ctx v t ->
@@ -619,7 +629,7 @@ instance MeaningfulError CompileError where
                 <+> squotes (prettyFriendly (WithContext v (boundContextOf ctx)))
                 <+> "is a valid index of size"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedIntLitConstraint ctx t ->
@@ -629,7 +639,7 @@ instance MeaningfulError CompileError where
             problem =
               "an integer literal is not a valid element of the type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedRatLitConstraint ctx t ->
@@ -639,7 +649,7 @@ instance MeaningfulError CompileError where
             problem =
               "a rational literal is not a valid element of the type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                  <> ".",
+                <> ".",
             fix = Nothing
           }
     FailedConLitConstraint ctx t ->
@@ -648,7 +658,8 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "a vector literal is not a valid element of the type"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx))) <> ".",
+                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                <> ".",
             fix = Nothing
           }
     QuantifiedIfCondition ctx ->
@@ -679,15 +690,17 @@ instance MeaningfulError CompileError where
               "No"
                 <+> entity
                 <+> "was provided for the"
-                <+> prettyResource resourceType ident <> ".",
+                <+> prettyResource resourceType ident
+                <> ".",
             fix =
               Just $
                 "provide it via the command line using"
                   <+> squotes
-                    ( "--" <> pretty resourceType
-                        <+> pretty (nameOf ident :: Name)
-                          <> ":"
-                          <> var
+                    ( "--"
+                        <> pretty resourceType
+                          <+> pretty (nameOf ident :: Name)
+                        <> ":"
+                        <> var
                     )
           }
       where
@@ -709,7 +722,9 @@ instance MeaningfulError CompileError where
               Just $
                 "use one of the supported formats"
                   <+> pretty (supportedFileFormats resourceType)
-                  <+> ", or open an issue on Github (" <> githubIssues <> ") to discuss adding support."
+                  <+> ", or open an issue on Github ("
+                  <> githubIssues
+                  <> ") to discuss adding support."
           }
     ResourceIOError (ident, p) resourceType ioException ->
       UError $
@@ -719,9 +734,9 @@ instance MeaningfulError CompileError where
               "The following exception occured when trying to read the file"
                 <+> "provided for"
                 <+> prettyResource resourceType ident
-                  <> ":"
-                  <> line
-                  <> indent 2 (pretty (show ioException)),
+                <> ":"
+                <> line
+                <> indent 2 (pretty (show ioException)),
             fix = Nothing
           }
     UnableToParseResource (ident, p) resourceType value ->
@@ -763,7 +778,8 @@ instance MeaningfulError CompileError where
                 <+> pretty io
                 <+> squotes (prettyFriendly (WithContext nonTensorType emptyDBCtx))
                 <+> "is not one of"
-                <+> list [pretty Vector, pretty (identifierName TensorIdent)] <> ".",
+                <+> list [pretty Vector, pretty (identifierName TensorIdent)]
+                <> ".",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -779,7 +795,7 @@ instance MeaningfulError CompileError where
               unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as it contains the non-explicit argument of type"
                 <+> squotes (prettyFriendly (WithContext (typeOf binder) emptyDBCtx))
-                  <> ".",
+                <> ".",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -792,9 +808,10 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as"
-                <+> pretty io <> "s of type"
-                <+> squotes (prettyFriendly (WithContext elementType emptyDBCtx))
-                <+> "are not currently supported.",
+                <+> pretty io
+                <> "s of type"
+                  <+> squotes (prettyFriendly (WithContext elementType emptyDBCtx))
+                  <+> "are not currently supported.",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -843,12 +860,13 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType <> "."
-                <+> "Only the following types are allowed for"
-                <+> pretty Dataset
-                  <> "s:"
-                  <> line
-                  <> indent 2 (prettyAllowedBuiltins supportedTypes),
+              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
+                <> "."
+                  <+> "Only the following types are allowed for"
+                  <+> pretty Dataset
+                <> "s:"
+                <> line
+                <> indent 2 (prettyAllowedBuiltins supportedTypes),
             fix =
               Just $
                 "change the type of"
@@ -864,14 +882,14 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
                 <+> "as it has elements of an unsupported type:"
-                  <> line
-                  <> indent 2 (prettyFriendly (WithContext elementType emptyDBCtx))
-                  <> line
-                  <> "Only the following element types are allowed for"
-                <+> pretty Dataset
-                  <> "s:"
-                  <> line
-                  <> indent 2 (prettyAllowedBuiltins supportedTypes),
+                <> line
+                <> indent 2 (prettyFriendly (WithContext elementType emptyDBCtx))
+                <> line
+                <> "Only the following element types are allowed for"
+                  <+> pretty Dataset
+                <> "s:"
+                <> line
+                <> indent 2 (prettyAllowedBuiltins supportedTypes),
             fix =
               Just $
                 "change the element type of"
@@ -887,10 +905,10 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
                 <+> "as the dimension size"
-                  <> line
-                  <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
-                  <> line
-                  <> "is not a constant.",
+                <> line
+                <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
+                <> line
+                <> "is not a constant.",
             fix = Just "make sure the dimensions of the dataset are all constants."
           }
     DatasetDimensionsMismatch (ident, p) file expectedType actualDims ->
@@ -900,14 +918,17 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the dimensions of"
                 <+> prettyResource Dataset ident
-                  <> "."
-                  <> line
-                  <> "According to the specification it should be"
-                <+> pretty (dimensionsOf (normalised expectedType)) <> "-dimensional"
-                <+> "but was actually found to be"
-                <+> pretty (length actualDims) <> "-dimensional"
-                <+> "when reading"
-                <+> quotePretty file <> ".",
+                <> "."
+                <> line
+                <> "According to the specification it should be"
+                  <+> pretty (dimensionsOf (normalised expectedType))
+                <> "-dimensional"
+                  <+> "but was actually found to be"
+                  <+> pretty (length actualDims)
+                <> "-dimensional"
+                  <+> "when reading"
+                  <+> quotePretty file
+                <> ".",
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
@@ -925,14 +946,15 @@ instance MeaningfulError CompileError where
                 <+> dimension
                 <+> "of"
                 <+> prettyResource Dataset ident
-                  <> "."
-                  <> line
-                  <> "According to the specification it should be"
-                <+> quotePretty expectedSize
-                <+> "but was actually found to be"
-                <+> quotePretty actualSize
-                <+> "when reading"
-                <+> quotePretty file <> ".",
+                <> "."
+                <> line
+                <> "According to the specification it should be"
+                  <+> quotePretty expectedSize
+                  <+> "but was actually found to be"
+                  <+> quotePretty actualSize
+                  <+> "when reading"
+                  <+> quotePretty file
+                <> ".",
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
@@ -945,14 +967,15 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the type of elements of"
                 <+> prettyResource Dataset ident
-                  <> "."
-                  <> line
-                  <> "Expected elements of type"
-                <+> quotePretty Nat
-                <+> "but found value"
-                <+> quotePretty v
-                <+> "when reading"
-                <+> quotePretty file <> ".",
+                <> "."
+                <> line
+                <> "Expected elements of type"
+                  <+> quotePretty Nat
+                  <+> "but found value"
+                  <+> quotePretty v
+                  <+> "when reading"
+                  <+> quotePretty file
+                <> ".",
             fix = Just $ datasetDimensionsFix "type" ident file
           }
     DatasetInvalidIndex (ident, p) file v n ->
@@ -962,14 +985,15 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the type of elements of"
                 <+> prettyResource Dataset ident
-                  <> "."
-                  <> line
-                  <> "Expected elements of type"
-                <+> squotes (pretty Index <+> pretty n)
-                <+> "but found value"
-                <+> quotePretty v
-                <+> "when reading"
-                <+> quotePretty file <> ".",
+                <> "."
+                <> line
+                <> "Expected elements of type"
+                  <+> squotes (pretty Index <+> pretty n)
+                  <+> "but found value"
+                  <+> quotePretty v
+                  <+> "when reading"
+                  <+> quotePretty file
+                <> ".",
             fix = Just $ datasetDimensionsFix "type" ident file
           }
     DatasetTypeMismatch (ident, p) file _datasetType expectedType actualType ->
@@ -979,14 +1003,15 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the type of elements of"
                 <+> prettyResource Dataset ident
-                  <> "."
-                  <> line
-                  <> "Expected elements of type"
-                <+> squotes (prettyFriendly (WithContext expectedType emptyDBCtx))
-                <+> "but found elements of type"
-                <+> squotes (prettyFriendly (WithContext actualType emptyDBCtx))
-                <+> "when reading"
-                <+> quotePretty file <> ".",
+                <> "."
+                <> line
+                <> "Expected elements of type"
+                  <+> squotes (prettyFriendly (WithContext expectedType emptyDBCtx))
+                  <+> "but found elements of type"
+                  <+> squotes (prettyFriendly (WithContext actualType emptyDBCtx))
+                  <+> "when reading"
+                  <+> quotePretty file
+                <> ".",
             fix = Just $ datasetDimensionsFix "type" ident file
           }
     -- Parameter errors
@@ -996,12 +1021,13 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident expectedType <> "."
-                <+> "Only the following types are allowed for"
-                <+> pretty Parameter
-                  <> "s:"
-                  <> line
-                  <> indent 2 (prettyAllowedBuiltins supportedTypes),
+              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident expectedType
+                <> "."
+                  <+> "Only the following types are allowed for"
+                  <+> pretty Parameter
+                <> "s:"
+                <> line
+                <> indent 2 (prettyAllowedBuiltins supportedTypes),
             fix =
               Just $
                 "change the element type of"
@@ -1020,7 +1046,8 @@ instance MeaningfulError CompileError where
                 <+> "provided for"
                 <+> prettyResource Parameter ident
                 <+> "could not be parsed as"
-                <+> prettyBuiltinType expectedType <> ".",
+                <+> prettyBuiltinType expectedType
+                <> ".",
             fix =
               Just $
                 "either change the type of"
@@ -1034,8 +1061,8 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
                 <> "as the size of the"
-                <+> pretty Index
-                <+> "type is not a known constant.",
+                  <+> pretty Index
+                  <+> "type is not a known constant.",
             fix = Just "make sure the dimensions of the indices are all constants."
           }
     ParameterValueInvalidIndex (ident, p) value n ->
@@ -1045,12 +1072,13 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the type of"
                 <+> prettyResource Parameter ident
-                  <> "."
-                  <> line
-                  <> "Expected something of type"
-                <+> squotes (pretty Index <+> pretty n)
-                <+> "but was provided the value"
-                <+> quotePretty value <> ".",
+                <> "."
+                <> line
+                <> "Expected something of type"
+                  <+> squotes (pretty Index <+> pretty n)
+                  <+> "but was provided the value"
+                  <+> quotePretty value
+                <> ".",
             fix =
               Just $
                 "either change the size of the index or ensure the value"
@@ -1065,12 +1093,13 @@ instance MeaningfulError CompileError where
             problem =
               "Mismatch in the type of"
                 <+> prettyResource Parameter ident
-                  <> "."
-                  <> line
-                  <> "Expected something of type"
-                <+> quotePretty Nat
-                <+> "but was provided the value"
-                <+> quotePretty value <> ".",
+                <> "."
+                <> line
+                <> "Expected something of type"
+                  <+> quotePretty Nat
+                  <+> "but was provided the value"
+                  <+> quotePretty value
+                <> ".",
             fix =
               Just $
                 "either change the type of"
@@ -1099,7 +1128,7 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty (ParameterDef Inferable)) ident expectedType
                 <> "."
-                <+> "Inferable parameters must be of type 'Nat'.",
+                  <+> "Inferable parameters must be of type 'Nat'.",
             fix =
               Just $
                 "either change the type of"
@@ -1113,15 +1142,16 @@ instance MeaningfulError CompileError where
             problem =
               "Found contradictory values for inferable parameter"
                 <+> quotePretty ident
-                  <> "."
-                  <> "Inferred the value"
-                <+> squotes (pretty v1)
-                <+> "from"
-                <+> prettyResource r1 ident1
-                  <> "but inferred the value"
-                <+> squotes (pretty v2)
-                <+> "from"
-                <+> prettyResource r2 ident2 <> ".",
+                <> "."
+                <> "Inferred the value"
+                  <+> squotes (pretty v1)
+                  <+> "from"
+                  <+> prettyResource r1 ident1
+                <> "but inferred the value"
+                  <+> squotes (pretty v2)
+                  <+> "from"
+                  <+> prettyResource r2 ident2
+                <> ".",
             fix = Just "make sure the provided resources are consistent with each other."
           }
     InferableParameterUninferrable (ident, p) ->
@@ -1130,7 +1160,8 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               "Unable to infer the value of"
-                <+> prettyResource Parameter ident <> ".",
+                <+> prettyResource Parameter ident
+                <> ".",
             fix =
               Just $
                 "For a parameter's value to be inferable, it must"
@@ -1144,12 +1175,13 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = p,
             problem =
-              unsupportedAnnotationTypeDescription (pretty AnnProperty) ident actualType <> "."
-                <+> "Only the following types are allowed for"
-                <+> quotePretty AnnProperty
-                  <> "s:"
-                  <> line
-                  <> indent 2 (prettyAllowedBuiltins supportedTypes),
+              unsupportedAnnotationTypeDescription (pretty AnnProperty) ident actualType
+                <> "."
+                  <+> "Only the following types are allowed for"
+                  <+> quotePretty AnnProperty
+                <> "s:"
+                <> line
+                <> indent 2 (prettyAllowedBuiltins supportedTypes),
             fix =
               Just $
                 "either change the type of"
@@ -1179,11 +1211,11 @@ instance MeaningfulError CompileError where
                 <+> quotePretty Exists
                 <+> "quantifiers which is not supported by the"
                 <+> pretty queryFormat
-                  <> "."
-                  <> line
-                  <> "In particular:"
-                  <> line
-                  <> indent 2 (prettyPolarityProvenance pq q pp),
+                <> "."
+                <> line
+                <> "In particular:"
+                <> line
+                <> indent 2 (prettyPolarityProvenance pq q pp),
             fix = Nothing
           }
     UnsupportedNonLinearConstraint queryFormat (ident, p) p' v1 v2 ->
@@ -1196,14 +1228,14 @@ instance MeaningfulError CompileError where
                 <+> "contains"
                 <+> "a non-linear constraint which is not supported by the"
                 <+> pretty queryFormat
-                  <> "."
-                  <> line
-                  <> "In particular the multiplication at"
-                <+> pretty p'
-                <+> "involves"
-                  <> prettyLinearityProvenance v1 True
-                  <> "and"
-                  <> prettyLinearityProvenance v2 False,
+                <> "."
+                <> line
+                <> "In particular the multiplication at"
+                  <+> pretty p'
+                  <+> "involves"
+                <> prettyLinearityProvenance v1 True
+                <> "and"
+                <> prettyLinearityProvenance v2 False,
             fix =
               Just $
                 "try avoiding it, otherwise please open an issue on the"
@@ -1223,14 +1255,14 @@ instance MeaningfulError CompileError where
                 <+> "which is not currently supported"
                 <+> "by the"
                 <+> pretty queryFormat
-                  <> "."
-                  <> ( if baseType == problemType
-                         then ""
-                         else
-                           " In particular the element type"
-                             <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
-                             <+> "is not supported."
-                     ),
+                <> "."
+                <> ( if baseType == problemType
+                       then ""
+                       else
+                         " In particular the element type"
+                           <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
+                           <+> "is not supported."
+                   ),
             fix =
               Just $
                 "try switching the variable to one of the following supported types:"
@@ -1244,7 +1276,8 @@ instance MeaningfulError CompileError where
               "After compilation, property"
                 <+> prettyIdentName identifier
                 <+> "contains a `!=` which is not current supported by the"
-                <+> pretty queryFormat <> ". ",
+                <+> pretty queryFormat
+                <> ". ",
             fix = Just (implementationLimitation (Just 74))
           }
     UnsupportedPolymorphicEquality target p typeName ->
@@ -1298,7 +1331,8 @@ instance MeaningfulError CompileError where
                 <+> "an expression with the following subterm"
                 <+> squotes (prettyFriendly expr)
                 <+> "at"
-                <+> pretty (provenanceOf expr) <> ".",
+                <+> pretty (provenanceOf expr)
+                <> ".",
             fix = Just "choose a different differential logic"
           }
 
@@ -1318,19 +1352,19 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
   "The type of"
     <+> annotation
     <+> quotePretty (nameOf ident :: Text)
-      <> ":"
-      <> line
-      <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
-      <> line
-      <> ( if reducedResourceType == unreducedResourceType
-             then ""
-             else
-               "which reduces to:"
-                 <> line
-                 <> indent 2 (prettyFriendly (WithContext reducedResourceType emptyDBCtx))
-                 <> line
-         )
-      <> "is not supported"
+    <> ":"
+    <> line
+    <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
+    <> line
+    <> ( if reducedResourceType == unreducedResourceType
+           then ""
+           else
+             "which reduces to:"
+               <> line
+               <> indent 2 (prettyFriendly (WithContext reducedResourceType emptyDBCtx))
+               <> line
+       )
+    <> "is not supported"
   where
     unreducedResourceType = unnormalised resourceType
     reducedResourceType = unnormalise 0 (normalised resourceType)
@@ -1353,7 +1387,8 @@ implementationLimitation issue =
       Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
       Just issueNumber ->
         "If you would like this to be fixed, please comment at"
-          <+> squotes (githubIssues <+> pretty issueNumber) <> "."
+          <+> squotes (githubIssues <+> pretty issueNumber)
+          <> "."
 
 prettyResource :: ExternalResource -> Identifier -> Doc a
 prettyResource resourceType ident =
