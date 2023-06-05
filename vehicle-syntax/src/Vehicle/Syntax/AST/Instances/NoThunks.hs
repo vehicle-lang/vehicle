@@ -2,7 +2,6 @@
 
 module Vehicle.Syntax.AST.Instances.NoThunks where
 
-#if nothunks
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin
@@ -17,6 +16,7 @@ import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
 
+#ifdef nothunks
 import NoThunks.Class (NoThunks)
 
 -- Vehicle.Syntax.AST.Builtin.Core

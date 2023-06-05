@@ -253,9 +253,9 @@ processCandidate candidate = do
       developerError $
         "Invalid builtin instance candidate:"
           <+> candidateDoc
-            <> line
-            <> "Problematic subexpr:"
-          <+> problemDoc
+          <> line
+          <> "Problematic subexpr:"
+            <+> problemDoc
 
 builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction

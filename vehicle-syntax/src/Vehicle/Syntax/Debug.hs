@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP #-}
-#if nothunks
+#ifdef nothunks
 {-# LANGUAGE BangPatterns              #-}
 #endif
-#if ghcDebug
+#ifdef ghcDebug
 #else
 {-# LANGUAGE ExistentialQuantification #-}
 #endif
@@ -20,22 +20,22 @@ module Vehicle.Syntax.Debug
 where
 
 -- Import ghc-debug-stub:
-#if ghcDebug
+#ifdef ghcDebug
 import GHC.Debug.Stub (Box (Box), pause, resume, saveClosures)
 #endif
 
 -- Import nothunks and helpers:
-#if nothunks
+#ifdef nothunks
 import GHC.Stack (HasCallStack, callStack)
 import NoThunks.Class (NoThunks, unsafeNoThunks)
-#if ghcDebug
+#ifdef ghcDebug
 import Control.Monad (void)
 import System.IO.Unsafe (unsafePerformIO)
 #endif
 #endif
 
 -- Define ghc-debug operators if needed:
-#if ghcDebug
+#ifdef ghcDebug
 -- The operators are imported from GHC.Debug.Stub,
 -- so we do not need to define anything.
 #else
@@ -55,8 +55,8 @@ resume = return ()
 #endif
 
 -- Define unsafeCheckThunks:
-#if nothunks
-#if ghcDebug
+#ifdef nothunks
+#ifdef ghcDebug
 -- If nothunks is defined & ghcDebug is defined:
 -- If we find a thunk, we pass it to ghc-debug, and pause execution.
 unsafeCheckThunks :: (HasCallStack, NoThunks a) => a -> a

@@ -43,19 +43,20 @@ readSpecification inputFile
           <+> quotePretty inputFile
           <+> "has unsupported"
           <+> "extension"
-          <+> quotePretty (takeExtension inputFile) <> "."
-          <+> "Only files with a"
-          <+> quotePretty vehicleSpecificationFileExtension
-          <+> "extension are supported."
+          <+> quotePretty (takeExtension inputFile)
+          <> "."
+            <+> "Only files with a"
+            <+> quotePretty vehicleSpecificationFileExtension
+            <+> "extension are supported."
   | otherwise =
       liftIO $
         TIO.readFile inputFile `catch` \(e :: IOException) -> do
           fatalError $
             "Error occured while reading specification"
               <+> quotePretty inputFile
-                <> ":"
-                <> line
-                <> indent 2 (pretty (show e))
+              <> ":"
+              <> line
+              <> indent 2 (pretty (show e))
 
 --------------------------------------------------------------------------------
 -- Verification plan output
@@ -97,8 +98,8 @@ outputVerificationPlan maybeFolder plan = do
           fatalError $
             "Unable to write the verification plan to file"
               <+> quotePretty planFile
-                <> line
-                <> indent 2 ("error:" <+> pretty (show err))
+              <> line
+              <> indent 2 ("error:" <+> pretty (show err))
 
 readVerificationPlan :: (MonadIO m) => FilePath -> m VerificationPlan
 readVerificationPlan planFile = do
@@ -113,15 +114,15 @@ readVerificationPlan planFile = do
       fatalError $
         "Unable to read the verification plan from file"
           <+> quotePretty planFile
-            <> line
-            <> indent 2 ("error:" <+> pretty (show err))
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
     Right result -> case decode result of
       Nothing ->
         fatalError $
           "Unabled to decode verification plan from file"
             <+> quotePretty planFile
-              <> "."
-            <+> ""
+            <> "."
+              <+> ""
       Just plan -> return plan
 
 writeVerificationQueries ::

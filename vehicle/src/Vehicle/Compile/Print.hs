@@ -401,10 +401,10 @@ instance
     "("
       <> prettyUsing @resta e1
       <> ","
-      <+> prettyUsing @restb e2
-        <> ","
-      <+> prettyUsing @restc e3
-        <> ")"
+        <+> prettyUsing @restb e2
+      <> ","
+        <+> prettyUsing @restc e3
+      <> ")"
 
 --------------------------------------------------------------------------------
 -- Instances which defer to primitive pretty instances
