@@ -82,7 +82,6 @@ repos:
         language: script
         types: [haskell]
         args: [--mode inplace, --check-idempotence]
-        exclude: '^vehicle-syntax/src/Vehicle/Syntax/AST/Instances/NoThunks\.hs$'
 
 # Do not run local hooks on pre-commit CI:
 ci:
