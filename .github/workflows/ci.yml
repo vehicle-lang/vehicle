@@ -36,6 +36,9 @@ jobs:
   test-integration-marabou:
     uses: ./.github/workflows/test-integration-marabou.yml
 
+  test-integration-agda:
+    uses: ./.github/workflows/test-integration-agda.yml
+
   test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
