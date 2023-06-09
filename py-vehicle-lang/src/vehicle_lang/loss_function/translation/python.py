@@ -20,6 +20,7 @@ from .._ast import (
     Max,
     Min,
     Multiplication,
+    Name,
     Negation,
     NetworkApplication,
     Power,
@@ -205,7 +206,22 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
 
     def translate_Quantifier(self, expression: Quantifier) -> py.expr:
         provenance = asdict(expression.provenance)
-        raise NotImplementedError("Quantifier")
+        locals_name = py.Name("locals", py.Load(), **provenance)
+        locals_call = py.Call(locals_name, [], [], **provenance)
+        sampler_name_str = f"sampler_for_{expression.name}"
+        sampler_name = py.Name(sampler_name_str, py.Load(), **provenance)
+        sampler_args = py.keyword(value=locals_call, **provenance)
+        sampler_call = py.Call(sampler_name, [], [sampler_args], **provenance)
+        body = self.translate_expression(
+            Lambda(expression.name, expression.body, expression.provenance)
+        )
+        map_name = py.Name("map", py.Load(), **provenance)
+        map_call = py.Call(map_name, [body, sampler_call], [], **provenance)
+        agg_name = py.Name(
+            {"All": "max", "Any": "min"}[expression.kind], py.Load(), **provenance
+        )
+        agg_call = py.Call(agg_name, [map_call], [], **provenance)
+        return agg_call
 
     def translate_At(self, expression: At) -> py.expr:
         provenance = asdict(expression.provenance)
@@ -256,7 +272,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
 
     def translate_Map(self, expression: Map) -> py.expr:
         provenance = asdict(expression.provenance)
-        func = py.Name("map", py.Load, **provenance)
+        func = py.Name("map", py.Load(), **provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
