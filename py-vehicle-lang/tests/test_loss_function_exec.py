@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Iterator, Union
 
 import pytest
 from typing_extensions import TypeAlias
+
 from vehicle_lang import session
 from vehicle_lang.loss_function._ast import (
     Addition,
@@ -34,6 +35,11 @@ two = Module(
         ),
     ]
 )
+
+
+def sampler_for_x(**ctx: Any) -> Iterator[float]:
+    yield 0.0
+    yield 1.0
 
 
 @pytest.mark.parametrize(
@@ -101,16 +107,16 @@ two = Module(
             {"net": lambda inputs: [sum(inputs)]},
             {"net_prop": 0},
         ),
-        # (
-        #     TEST_DATA_PATH / "test_quantifier_all.vcl",
-        #     {},
-        #     {"quantifierForall": ...},
-        # ),
-        # (
-        #     TEST_DATA_PATH / "test_quantifier_any.vcl",
-        #     {},
-        #     {"quantifierExists": ...},
-        # ),
+        (
+            TEST_DATA_PATH / "test_quantifier_all.vcl",
+            {"sampler_for_x": sampler_for_x},
+            {"quantifierForall": 0.0},
+        ),
+        (
+            TEST_DATA_PATH / "test_quantifier_any.vcl",
+            {"sampler_for_x": sampler_for_x},
+            {"quantifierExists": 0.0},
+        ),
         (
             TEST_DATA_PATH / "test_subtraction.vcl",
             {},
@@ -149,3 +155,5 @@ def test_loss_function_exec(
     for key in output_declaration_context.keys():
         if output_declaration_context[key] is not ...:
             assert output_declaration_context[key] == result.get(key)
+        else:
+            assert key in result
