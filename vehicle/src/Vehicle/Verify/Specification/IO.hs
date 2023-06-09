@@ -21,7 +21,9 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as Text
 import System.Directory (createDirectoryIfMissing)
+import System.Exit (exitFailure)
 import System.FilePath (takeExtension, (<.>), (</>))
+import System.IO (stderr)
 import System.ProgressBar
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -252,9 +254,14 @@ verifyQuery ::
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
-  result <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
-  liftIO $ incProgress progressBar 1
-  return $ fmap (reconstructUserVars userVar) result
+  errorOrResult <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
+  case errorOrResult of
+    Left errMsg -> liftIO $ do
+      TIO.hPutStrLn stderr ("\nError: " <> errMsg)
+      exitFailure
+    Right result -> do
+      liftIO $ incProgress progressBar 1
+      return $ fmap (reconstructUserVars userVar) result
 
 --------------------------------------------------------------------------------
 -- Calculation of file paths

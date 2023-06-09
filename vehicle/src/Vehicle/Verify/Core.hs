@@ -30,7 +30,7 @@ type VerifierInvocation =
   VerifierExecutable ->
   MetaNetwork ->
   QueryFile ->
-  m (QueryResult NetworkVariableCounterexample)
+  m (Either Text (QueryResult NetworkVariableCounterexample))
 
 -- | A complete verifier implementation
 data Verifier = Verifier
