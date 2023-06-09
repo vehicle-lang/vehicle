@@ -41,6 +41,24 @@ instance FromJSON PropertyStatus
 
 instance ToJSON PropertyStatus
 
+instance IsVerified PropertyStatus where
+  isVerified (PropertyStatus negated result) = evaluateQuery negated result
+
+instance Pretty PropertyStatus where
+  pretty (PropertyStatus negated s) = do
+    let witnessText = if negated then "Counter-example" else "Witness"
+    let (verified, evidenceText) = case s of
+          Trivial status -> (status `xor` negated, Just "(trivial)")
+          NonTrivial status -> case status of
+            UnSAT -> (negated, Nothing)
+            SAT Nothing -> (not negated, Just $ witnessText <> ": none")
+            SAT (Just witness) -> do
+              let assignments = vsep (fmap prettyUserVariableAssignment witness)
+              let witnessDoc = witnessText <> line <> indent 2 assignments
+              (not negated, Just witnessDoc)
+
+    pretty (statusSymbol verified) <> maybe "" (line <>) evidenceText
+
 --------------------------------------------------------------------------------
 -- Verification status of a multi property
 
@@ -56,36 +74,28 @@ instance ToJSON MultiPropertyStatus
 instance IsVerified MultiPropertyStatus where
   isVerified = \case
     MultiPropertyStatus ps -> and (fmap isVerified ps)
-    SinglePropertyStatus (PropertyStatus negated result) -> evaluateQuery negated result
+    SinglePropertyStatus status -> isVerified status
 
-prettyPropertyStatus :: Name -> MultiPropertyStatus -> Doc a
-prettyPropertyStatus name = \case
+prettyMultiPropertyStatus :: Name -> MultiPropertyStatus -> Doc a
+prettyMultiPropertyStatus name = \case
   MultiPropertyStatus ps -> do
     let numberedSubproperties =
           zipWith (\(i :: Int) p -> (name <> "!" <> pack (show i), p)) [0 ..] ps
     let numVerified = pretty (length (filter isVerified ps))
     let num = pretty $ length ps
-    let summary = pretty name <> ":" <+> numVerified <> "/" <> num <+> "verified"
-    let results = indent 2 $ vsep (fmap (uncurry prettyPropertyStatus) numberedSubproperties)
+    let summary = "Property" <+> quotePretty name <> ":" <+> numVerified <> "/" <> num <+> "verified"
+    let results = indent 2 $ vsep (fmap (uncurry prettyMultiPropertyStatus) numberedSubproperties)
     summary <> line <> results
-  SinglePropertyStatus (PropertyStatus negated s) -> do
-    let witnessText = if negated then "Counter-example" else "Witness"
-    let (verified, evidenceText) = case s of
-          Trivial status -> (status `xor` negated, " (trivial)")
-          NonTrivial status -> case status of
-            UnSAT -> (negated, "")
-            SAT Nothing -> (not negated, witnessText <> ": none")
-            SAT (Just witness) -> do
-              let assignments = vsep (fmap prettyUserVariableAssignment witness)
-              let witnessDoc = witnessText <> line <> indent 2 assignments
-              (not negated, witnessDoc)
+  SinglePropertyStatus status -> pretty name <+> pretty status
 
-    prettyNameAndStatus name verified <> line <> evidenceText
+statusSymbol :: Bool -> String
+statusSymbol verified = do
+  let (colour, symbol) = if verified then (Green, "🗸") else (Red, "✗")
+  setTextColour colour symbol
 
 prettyNameAndStatus :: Text -> Bool -> Doc a
 prettyNameAndStatus name verified = do
-  let (colour, symbol) = if verified then (Green, "🗸") else (Red, "✗")
-  pretty (setTextColour colour symbol) <+> pretty name
+  pretty (statusSymbol verified) <+> pretty name
 
 prettyUserVariableAssignment :: UserVariableAssignment -> Doc a
 prettyUserVariableAssignment UserVariableAssignment {..} = do
@@ -118,8 +128,8 @@ instance IsVerified SpecificationStatus where
 
 instance Pretty SpecificationStatus where
   pretty spec@(SpecificationStatus properties) = do
-    let result = "Result:" <+> (if isVerified spec then "true" else "false")
+    let result = "Specification summary:" <+> (if isVerified spec then "true" else "false")
     let propertiesByName = Map.toList properties
     result
       <> line
-      <> indent 2 (vsep (fmap (uncurry prettyPropertyStatus) propertiesByName))
+      <> indent 2 (vsep (fmap (uncurry prettyMultiPropertyStatus) propertiesByName))

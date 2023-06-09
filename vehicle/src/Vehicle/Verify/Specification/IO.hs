@@ -16,7 +16,7 @@ import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy qualified as BIO
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map
-import Data.Text (unpack)
+import Data.Text (intercalate, pack, unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as Text
@@ -185,6 +185,7 @@ verifyMultiProperty verifier verifierExecutable queryFolder = go
         progressBar <- createPropertyProgressBar address (propertySize property)
         let readerState = (verifier, verifierExecutable, queryFolder, progressBar)
         result <- runReaderT (verifyProperty property) readerState
+        liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
         return $ SinglePropertyStatus result
 
 type MonadVerify m =
@@ -280,11 +281,12 @@ calculateQueryFileName ((propertyName, propertyIndices), queryID) = do
 type PropertyProgressBar = ProgressBar ()
 
 createPropertyProgressBar :: (MonadIO m) => PropertyAddress -> Int -> m PropertyProgressBar
-createPropertyProgressBar (name, _indices) numberOfQueries = do
+createPropertyProgressBar (name, indices) numberOfQueries = do
+  let propertyName = Text.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
   let style =
         defStyle
-          { stylePrefix = msg ("  " <> Text.fromStrict name),
-            stylePostfix = exact <> msg " queries complete",
+          { stylePrefix = msg ("  " <> propertyName),
+            stylePostfix = exact <> msg " queries",
             styleWidth = ConstantWidth 80
           }
   let initialProgress = Progress 0 numberOfQueries ()

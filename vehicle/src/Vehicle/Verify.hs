@@ -34,7 +34,7 @@ verify _loggingSettings VerifyOptions {..} = do
   VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlanFile
   status <- verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan
 
-  programOutput $ pretty status
+  programOutput $ line <> pretty status
   case proofCache of
     Nothing -> return ()
     Just proofCachePath ->
