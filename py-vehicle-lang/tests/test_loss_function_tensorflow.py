@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator
 
 import pytest
+
 from vehicle_lang import session
 from vehicle_lang.loss_function.translation.tensorflow import TensorflowTranslation
 
@@ -45,14 +46,15 @@ def test_loss_function_tensorflow(
         specification_path = Path(__file__).parent / "data" / specification_filename
         module = session.load(specification_path)
         compiler = TensorflowTranslation()
-        network_context = {network_name: _apply_network}
-        output_declaration_context = compiler.compile(
-            module,
-            specification_filename,
-            {**input_declaration_context, **network_context},
-        )
-        bounded = output_declaration_context["bounded"]
-        print(repr(bounded))
+
+        def _bounded_loss() -> Any:
+            network_context = {network_name: _apply_network}
+            output_declaration_context = compiler.compile(
+                module,
+                specification_filename,
+                {**input_declaration_context, **network_context},
+            )
+            return output_declaration_context["bounded"]
 
         # Prepare training data
         batch_size = 1
@@ -93,7 +95,7 @@ def test_loss_function_tensorflow(
                         x_batch_train, training=True
                     )  # Outputs for this minibatch
                     ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                    bounded_value = bounded()
+                    bounded_value = _bounded_loss()
                     weighted_loss = (
                         ce_loss_value * ce_loss_weight + bounded_value * bounded_weight
                     )

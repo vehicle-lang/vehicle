@@ -1,10 +1,10 @@
 import ast as py
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Sequence
+from typing import Any, ClassVar, Dict, Sequence
 
 from typing_extensions import override
 
-from .. import Declaration, Expression, Module
+from .. import Module
 from .._ast import (
     Addition,
     At,
@@ -20,7 +20,6 @@ from .._ast import (
     Max,
     Min,
     Multiplication,
-    Name,
     Negation,
     NetworkApplication,
     Power,
@@ -30,14 +29,17 @@ from .._ast import (
     TensorLiteral,
     Variable,
 )
-from . import Translation
+from . import ABCTranslation
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
+from .free_networks import FreeNetworks
 
 
 @dataclass(frozen=True)
-class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
+class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
+    free_networks: ClassVar[FreeNetworks] = FreeNetworks()
+
     def compile(
         self, module: Module, filename: str, declaration_context: Dict[str, Any] = {}
     ) -> Dict[str, Any]:
@@ -71,17 +73,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
     def get_module_footer(self) -> Sequence[py.stmt]:
         return []
 
-    def translate_declarations(
-        self, declarations: Sequence[Declaration]
-    ) -> Sequence[py.stmt]:
-        return [self.translate_declaration(declaration) for declaration in declarations]
-
     @override
-    def translate_declaration(self, declaration: Declaration) -> py.stmt:
-        if isinstance(declaration, DefFunction):
-            return self.translate_DefFunction(declaration)
-        raise NotImplementedError(type(declaration).__name__)
-
     def translate_DefFunction(self, declaration: DefFunction) -> py.stmt:
         provenance = asdict(declaration.provenance)
         return py.Assign(
@@ -91,60 +83,17 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         )
 
     @override
-    def translate_expression(self, expression: Expression) -> py.expr:
-        if isinstance(expression, Negation):
-            return self.translate_Negation(expression)
-        if isinstance(expression, Constant):
-            return self.translate_Constant(expression)
-        if isinstance(expression, Min):
-            return self.translate_Min(expression)
-        if isinstance(expression, Max):
-            return self.translate_Max(expression)
-        if isinstance(expression, Addition):
-            return self.translate_Addition(expression)
-        if isinstance(expression, Subtraction):
-            return self.translate_Subtraction(expression)
-        if isinstance(expression, Multiplication):
-            return self.translate_Multiplication(expression)
-        if isinstance(expression, Division):
-            return self.translate_Division(expression)
-        if isinstance(expression, IndicatorFunction):
-            return self.translate_IndicatorFunction(expression)
-        if isinstance(expression, Variable):
-            return self.translate_Variable(expression)
-        if isinstance(expression, FreeVariable):
-            return self.translate_FreeVariable(expression)
-        if isinstance(expression, NetworkApplication):
-            return self.translate_NetworkApplication(expression)
-        if isinstance(expression, Quantifier):
-            return self.translate_Quantifier(expression)
-        if isinstance(expression, At):
-            return self.translate_At(expression)
-        if isinstance(expression, TensorLiteral):
-            return self.translate_TensorLiteral(expression)
-        if isinstance(expression, Lambda):
-            return self.translate_Lambda(expression)
-        if isinstance(expression, Let):
-            return self.translate_Let(expression)
-        if isinstance(expression, Power):
-            return self.translate_Power(expression)
-        if isinstance(expression, Range):
-            return self.translate_Range(expression)
-        if isinstance(expression, Map):
-            return self.translate_Map(expression)
-        if isinstance(expression, ExponentialAnd):
-            return self.translate_ExponentialAnd(expression)
-        raise NotImplementedError(type(expression).__name__)
-
     def translate_Negation(self, expression: Negation) -> py.expr:
         operand = self.translate_expression(expression.operand)
         provenance = asdict(expression.provenance)
         return py.UnaryOp(py.USub(), operand, **provenance)
 
+    @override
     def translate_Constant(self, expression: Constant) -> py.expr:
         provenance = asdict(expression.provenance)
         return py.Num(expression.value, **provenance)
 
+    @override
     def translate_Min(self, expression: Min) -> py.expr:
         provenance = asdict(expression.provenance)
         func = py.Name("min", py.Load(), **provenance)
@@ -152,6 +101,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
 
+    @override
     def translate_Max(self, expression: Max) -> py.expr:
         provenance = asdict(expression.provenance)
         func = py.Name("max", py.Load(), **provenance)
@@ -159,30 +109,35 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
 
+    @override
     def translate_Addition(self, expression: Addition) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.BinOp(left, py.Add(), right, **provenance)
 
+    @override
     def translate_Subtraction(self, expression: Subtraction) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.BinOp(left, py.Sub(), right, **provenance)
 
+    @override
     def translate_Multiplication(self, expression: Multiplication) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.BinOp(left, py.Mult(), right, **provenance)
 
+    @override
     def translate_Division(self, expression: Division) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.BinOp(left, py.Div(), right, **provenance)
 
+    @override
     def translate_IndicatorFunction(self, expression: IndicatorFunction) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
@@ -194,22 +149,26 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
             **provenance,
         )
 
+    @override
     def translate_Variable(self, expression: Variable) -> py.expr:
         provenance = asdict(expression.provenance)
         return py.Name(expression.name, py.Load(), **provenance)
 
+    @override
     def translate_FreeVariable(self, expression: FreeVariable) -> py.expr:
         provenance = asdict(expression.provenance)
         func = py.Name(expression.func, py.Load(), **provenance)
-        args = [self.translate_expression(arg) for arg in expression.args]
+        args = list(self.translate_expressions(expression.args))
         return py.Call(func, args, [], **provenance)
 
+    @override
     def translate_NetworkApplication(self, expression: NetworkApplication) -> py.expr:
         provenance = asdict(expression.provenance)
         func = py.Name(expression.func, py.Load(), **provenance)
-        args = [self.translate_expression(arg) for arg in expression.args]
+        args = list(self.translate_expressions(expression.args))
         return py.Call(func, args, [], **provenance)
 
+    @override
     def translate_Quantifier(self, expression: Quantifier) -> py.expr:
         provenance = asdict(expression.provenance)
         locals_name = py.Name("locals", py.Load(), **provenance)
@@ -229,6 +188,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         agg_call = py.Call(agg_name, [map_call], [], **provenance)
         return agg_call
 
+    @override
     def translate_At(self, expression: At) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
@@ -237,11 +197,13 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
             left, py.Index(right, **provenance), py.Load(), **provenance
         )
 
+    @override
     def translate_TensorLiteral(self, expression: TensorLiteral) -> py.expr:
         provenance = asdict(expression.provenance)
-        sequence = [self.translate_expression(item) for item in expression.sequence]
+        sequence = list(self.translate_expressions(expression.sequence))
         return py.List(sequence, py.Load(), **provenance)
 
+    @override
     def translate_Lambda(self, expression: Lambda) -> py.expr:
         provenance = asdict(expression.provenance)
         body = self.translate_expression(expression.body)
@@ -253,6 +215,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
             **provenance,
         )
 
+    @override
     def translate_Let(self, expression: Let) -> py.expr:
         provenance = asdict(expression.provenance)
         value = self.translate_expression(expression.value)
@@ -266,16 +229,19 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         )
         return py.Call(lam, [value], [], **provenance)
 
+    @override
     def translate_Power(self, expression: Power) -> py.expr:
         provenance = asdict(expression.provenance)
         left = self.translate_expression(expression.left)
         right = self.translate_expression(expression.right)
         return py.BinOp(left, py.Pow(), right, **provenance)
 
+    @override
     def translate_Range(self, expression: Range) -> py.expr:
         provenance = asdict(expression.provenance)
         raise NotImplementedError("Range")
 
+    @override
     def translate_Map(self, expression: Map) -> py.expr:
         provenance = asdict(expression.provenance)
         func = py.Name("map", py.Load(), **provenance)
@@ -283,6 +249,7 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
         right = self.translate_expression(expression.right)
         return py.Call(func, [left, right], [], **provenance)
 
+    @override
     def translate_ExponentialAnd(self, expression: ExponentialAnd) -> py.expr:
         provenance = asdict(expression.provenance)
         raise NotImplementedError("ExponentialAnd")
