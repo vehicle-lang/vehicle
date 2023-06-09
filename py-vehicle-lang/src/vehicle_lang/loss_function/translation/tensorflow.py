@@ -12,7 +12,7 @@ from .python import PythonTranslation
 class TensorflowTranslation(PythonTranslation):
     @override
     def get_module_header(self) -> Sequence[py.stmt]:
-        return [py.Import(names=py.alias("tensorflow"))]
+        return [py.Import(names=[py.alias("tensorflow")])]
 
     @override
     def translate_TensorLiteral(self, expression: TensorLiteral) -> py.expr:
