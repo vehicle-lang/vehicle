@@ -1,6 +1,6 @@
 import ast as py
 from dataclasses import asdict, dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Sequence
 
 from typing_extensions import override
 
@@ -51,11 +51,23 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
     def translate_module(self, module: Module) -> py.Module:
         return py.Module(
             body=[
-                self.translate_declaration(declaration)
-                for declaration in module.declarations
+                *self.get_module_header(),
+                *self.translate_declarations(module.declarations),
+                *self.get_module_footer(),
             ],
             type_ignores=[],
         )
+
+    def get_module_header(self) -> Sequence[py.stmt]:
+        return []
+
+    def get_module_footer(self) -> Sequence[py.stmt]:
+        return []
+
+    def translate_declarations(
+        self, declarations: Sequence[Declaration]
+    ) -> Sequence[py.stmt]:
+        return [self.translate_declaration(declaration) for declaration in declarations]
 
     @override
     def translate_declaration(self, declaration: Declaration) -> py.stmt:
