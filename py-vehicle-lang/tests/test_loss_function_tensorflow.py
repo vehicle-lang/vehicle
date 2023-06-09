@@ -1,31 +1,12 @@
 import random
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import Any, Iterator
 
-import pytest
 from vehicle_lang import session
 from vehicle_lang.loss_function.translation.tensorflow import TensorflowTranslation
 
 
-def sampler_for_x(**ctx: Any) -> Iterator[float]:
-    yield random.uniform(0.5, 0.5)
-
-
-@pytest.mark.parametrize(
-    "specification_filename,network_name,input_declaration_context",
-    (
-        (
-            "test_bounded.vcl",
-            "f",
-            {"sampler_for_x": sampler_for_x},
-        ),
-    ),
-)  # type: ignore[misc]
-def test_loss_function_tensorflow(
-    specification_filename: str,
-    network_name: str,
-    input_declaration_context: Dict[str, Any],
-) -> None:
+def test_loss_function_tensorflow_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
@@ -42,16 +23,19 @@ def test_loss_function_tensorflow(
             return network(tf.expand_dims(input, axis=0), training=True)[0]
 
         # Load and compile Vehicle specification
+        specification_filename = "test_bounded.vcl"
         specification_path = Path(__file__).parent / "data" / specification_filename
         module = session.load(specification_path)
         compiler = TensorflowTranslation()
 
+        def _sampler_for_x(**ctx: Any) -> Iterator[float]:
+            yield random.uniform(0.5, 0.5)
+
         def _bounded_loss() -> Any:
-            network_context = {network_name: _apply_network}
             output_declaration_context = compiler.compile(
                 module,
                 specification_filename,
-                {**input_declaration_context, **network_context},
+                {"f": _apply_network, "sampler_for_x": _sampler_for_x},
             )
             return output_declaration_context["bounded"]
 
