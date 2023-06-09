@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterator
 
 import pytest
-
 from vehicle_lang import session
 from vehicle_lang.loss_function.translation.tensorflow import TensorflowTranslation
 
