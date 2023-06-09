@@ -1,15 +1,14 @@
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Tuple
 
 import pytest
 from typing_extensions import TypeAlias
 from vehicle_lang import session
-from vehicle_lang.loss_function import Module
 from vehicle_lang.loss_function.translation.python import PythonTranslation
 
 
 @pytest.mark.parametrize(
-    "specification_filename,input_declaration_context,output_declaration_context",
+    "specification_name,input_declaration_context,output_declaration_context",
     [
         (
             "test_one.vcl",
@@ -102,14 +101,14 @@ from vehicle_lang.loss_function.translation.python import PythonTranslation
     ],
 )  # type: ignore[misc]
 def test_loss_function_exec(
-    specification_filename: str,
+    specification_name: str,
     input_declaration_context: Dict[str, Any],
     output_declaration_context: Dict[str, Any],
 ) -> None:
-    specification_path = Path(__file__).parent / "data" / specification_filename
+    specification_path = Path(__file__).parent / "data" / specification_name
     compiler = PythonTranslation()
     module = session.load(specification_path)
-    result = compiler.compile(module, specification_filename, input_declaration_context)
+    result = compiler.compile(module, specification_name, input_declaration_context)
     for key in output_declaration_context.keys():
         if output_declaration_context[key] is not ...:
             assert output_declaration_context[key] == result.get(key)
