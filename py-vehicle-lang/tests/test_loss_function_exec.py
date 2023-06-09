@@ -3,49 +3,24 @@ from typing import Any, Dict, Union
 
 import pytest
 from typing_extensions import TypeAlias
+
 from vehicle_lang import session
-from vehicle_lang.loss_function._ast import (
-    Addition,
-    Constant,
-    DefFunction,
-    Module,
-    Variable,
-)
+from vehicle_lang.loss_function import Module
 from vehicle_lang.loss_function.translation.python import PythonTranslation
 
 TEST_DATA_PATH = Path(__file__).parent / "data"
 
-ModuleOrPath: TypeAlias = Union[str, Path, Module]
-
-one = Module(
-    declarations=[
-        DefFunction(
-            "one",
-            Constant(1),
-        ),
-    ]
-)
-
-two = Module(
-    declarations=[
-        DefFunction(
-            "two",
-            Addition(Variable("one"), Constant(1)),
-        ),
-    ]
-)
-
 
 @pytest.mark.parametrize(
-    "module_or_path,input_declaration_context,output_declaration_context",
+    "specification_path,input_declaration_context,output_declaration_context",
     [
         (
-            one,
+            TEST_DATA_PATH / "test_one.vcl",
             {},
             {"one": 1},
         ),
         (
-            two,
+            TEST_DATA_PATH / "test_two.vcl",
             {"one": 1},
             {"two": 2},
         ),
@@ -130,22 +105,15 @@ two = Module(
     ],
 )  # type: ignore[misc]
 def test_loss_function_exec(
-    module_or_path: ModuleOrPath,
+    specification_path: Path,
     input_declaration_context: Dict[str, Any],
     output_declaration_context: Dict[str, Any],
 ) -> None:
     compiler = PythonTranslation()
-    if isinstance(module_or_path, (str, Path)):
-        if isinstance(module_or_path, str):
-            path = module_or_path
-        else:
-            path = str(module_or_path)
-        print(f"Exec {path}")
-        module = session.load(path)
-    else:
-        path = "<string>"
-        module = module_or_path
-    result = compiler.compile(module, path, input_declaration_context)
+    module = session.load(specification_path)
+    result = compiler.compile(
+        module, specification_path.name, input_declaration_context
+    )
     for key in output_declaration_context.keys():
         if output_declaration_context[key] is not ...:
             assert output_declaration_context[key] == result.get(key)
