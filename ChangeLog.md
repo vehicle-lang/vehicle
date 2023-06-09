@@ -14,6 +14,8 @@
 
 * Improved informativeness of error messages thrown when attempting to verify properties with multiple network applications.
 
+* Improved error reporting when Marabou is automatically terminated by the OS (e.g. runs out of memory)
+
 ## Version 0.3.0
 
 ### General enhancements
