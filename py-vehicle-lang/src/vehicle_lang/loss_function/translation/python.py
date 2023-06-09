@@ -32,6 +32,7 @@ from .._ast import (
 )
 from . import Translation
 from ._ast_compat import arguments as py_arguments
+from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
 
 
@@ -46,7 +47,12 @@ class PythonTranslation(Translation[py.Module, py.stmt, py.expr]):
             exec(py_bytecode, declaration_context)
             return declaration_context
         except TypeError as e:
-            raise TypeError(f"{e}:\n{py_ast_unparse(py_ast)}")
+            py_ast_str: str
+            try:
+                py_ast_str = py_ast_unparse(py_ast)
+            except:
+                py_ast_str = py_ast_dump(py_ast)
+            raise TypeError(f"{e}:\n{py_ast_str}")
 
     @override
     def translate_module(self, module: Module) -> py.Module:
