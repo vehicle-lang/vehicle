@@ -3,7 +3,6 @@ from typing import Any, Dict, Union
 
 import pytest
 from typing_extensions import TypeAlias
-
 from vehicle_lang import session
 from vehicle_lang.loss_function import Module
 from vehicle_lang.loss_function.translation.python import PythonTranslation
