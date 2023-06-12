@@ -230,7 +230,7 @@ class TupleDecoder(Decoder[Any]):
             raise DecodeError(value, cls_origin, "expected list")
 
         # tuple[()]
-        if len(cls_args) == 1 and cls_args[0] is ():
+        if len(cls_args) == 1 and cls_args[0] == ():
             if not value:
                 return ()
             else:
