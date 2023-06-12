@@ -79,66 +79,6 @@ candidates =
               free StdVectorToList @@@ [n]
           ),
           ------------
-          -- HasEq --
-          ------------
-          ( forAll "n1" tNat $ \n1 ->
-              forAll "n2" tNat $ \n2 ->
-                hasEq Eq (tIndex n1) (tIndex n2),
-            implLam "n1" tNat $ \n1 ->
-              implLam "n2" tNat $ \n2 ->
-                builtin (Equals EqIndex Eq) @@@ [n1, n2]
-          ),
-          ( hasEq Eq tNat tNat,
-            builtin (Equals EqNat Eq)
-          ),
-          ( hasEq Eq tInt tInt,
-            builtin (Equals EqInt Eq)
-          ),
-          ( hasEq Eq tRat tRat,
-            builtin (Equals EqRat Eq)
-          ),
-          ( forAll "t1" type0 $ \t1 ->
-              forAll "t2" type0 $ \t2 ->
-                forAllNat $ \n ->
-                  hasEq Eq t1 t2
-                    ~~~> hasEq Eq (tVector t1 n) (tVector t2 n),
-            implLam "t1" type0 $ \t1 ->
-              implLam "t2" type0 $ \t2 ->
-                implLam "n" tNat $ \n ->
-                  instLam "eq" (hasEq Eq t1 t2) $ \eq ->
-                    free StdEqualsVector @@@ [t1, t2] @@@ [n] @@@@ [eq]
-          ),
-          ------------
-          -- HasNotEq --
-          ------------
-          ( forAll "n1" tNat $ \n1 ->
-              forAll "n2" tNat $ \n2 ->
-                hasEq Neq (tIndex n1) (tIndex n2),
-            implLam "n1" tNat $ \n1 ->
-              implLam "n2" tNat $ \n2 ->
-                builtin (Equals EqIndex Neq) @@@ [n1, n2]
-          ),
-          ( hasEq Neq tNat tNat,
-            builtin (Equals EqNat Neq)
-          ),
-          ( hasEq Neq tInt tInt,
-            builtin (Equals EqInt Neq)
-          ),
-          ( hasEq Neq tRat tRat,
-            builtin (Equals EqRat Neq)
-          ),
-          ( forAll "t1" type0 $ \t1 ->
-              forAll "t2" type0 $ \t2 ->
-                forAllNat $ \n ->
-                  hasEq Neq t1 t2
-                    ~~~> hasEq Neq (tVector t1 n) (tVector t2 n),
-            implLam "t1" type0 $ \t1 ->
-              implLam "t2" type0 $ \t2 ->
-                implLam "n" tNat $ \n ->
-                  instLam "eq" (hasEq Neq t1 t2) $ \eq ->
-                    free StdNotEqualsVector @@@ [t1, t2, n] @@@@ [eq]
-          ),
-          ------------
           -- HasNeg --
           ------------
           ( hasNeg tInt tInt,
@@ -235,6 +175,63 @@ candidates =
                     builtin (Fold FoldVector) @@@ [n, a, b] @@ [implLam "m" tNat (const f)]
           )
         ]
+      <> orderCandidates Le
+      <> orderCandidates Lt
+      <> orderCandidates Ge
+      <> orderCandidates Gt
+      <> eqCandidates Eq StdEqualsVector
+      <> eqCandidates Neq StdNotEqualsVector
+  where
+    orderCandidates :: OrderOp -> [(StandardDSLExpr, StandardDSLExpr)]
+    orderCandidates op =
+      [ ( forAll "n1" tNat $ \n1 ->
+            forAll "n2" tNat $ \n2 ->
+              hasOrd op (tIndex n1) (tIndex n2),
+          implLam "n1" tNat $ \n1 ->
+            implLam "n2" tNat $ \n2 ->
+              builtin (Order OrderIndex op) @@@ [n1, n2]
+        ),
+        ( hasOrd op tNat tNat,
+          builtin (Order OrderNat op)
+        ),
+        ( hasOrd op tInt tInt,
+          builtin (Order OrderInt op)
+        ),
+        ( hasOrd op tRat tRat,
+          builtin (Order OrderRat op)
+        )
+      ]
+
+    eqCandidates :: EqualityOp -> StdLibFunction -> [(StandardDSLExpr, StandardDSLExpr)]
+    eqCandidates op vectorOp =
+      [ ( forAll "n1" tNat $ \n1 ->
+            forAll "n2" tNat $ \n2 ->
+              hasEq op (tIndex n1) (tIndex n2),
+          implLam "n1" tNat $ \n1 ->
+            implLam "n2" tNat $ \n2 ->
+              builtin (Equals EqIndex op) @@@ [n1, n2]
+        ),
+        ( hasEq op tNat tNat,
+          builtin (Equals EqNat op)
+        ),
+        ( hasEq op tInt tInt,
+          builtin (Equals EqInt op)
+        ),
+        ( hasEq op tRat tRat,
+          builtin (Equals EqRat op)
+        ),
+        ( forAll "t1" type0 $ \t1 ->
+            forAll "t2" type0 $ \t2 ->
+              forAllNat $ \n ->
+                hasEq op t1 t2
+                  ~~~> hasEq op (tVector t1 n) (tVector t2 n),
+          implLam "t1" type0 $ \t1 ->
+            implLam "t2" type0 $ \t2 ->
+              implLam "n" tNat $ \n ->
+                instLam "eq" (hasEq op t1 t2) $ \eq ->
+                  free vectorOp @@@ [t1, t2] @@@ [n] @@@@ [eq]
+        )
+      ]
 
 mkCandidate :: (StandardDSLExpr, StandardDSLExpr) -> Provenance -> InstanceCandidate
 mkCandidate (expr, solution) p = do

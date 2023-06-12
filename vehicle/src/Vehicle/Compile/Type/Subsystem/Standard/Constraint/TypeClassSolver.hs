@@ -3,7 +3,6 @@ module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
   )
 where
 
-import Control.Monad (MonadPlus (..))
 import Control.Monad.Except (throwError)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
@@ -52,33 +51,12 @@ type TypeClassSolver =
 
 solve :: StandardBuiltinType -> TypeClassSolver
 solve (StandardTypeClass tc) = case tc of
-  HasOrd ord -> solveHasOrd ord
   HasQuantifier q -> solveHasQuantifier q
   NatInDomainConstraint -> solveInDomain
   _ -> \_ _ ->
     compilerDeveloperError $
       "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
 solve tc = \_ _ -> compilerDeveloperError $ "Invalid instance argument type" <+> quotePretty tc
-
---------------------------------------------------------------------------------
--- HasOrd
-
-solveHasOrd :: OrderOp -> TypeClassSolver
-solveHasOrd op c [arg1, arg2]
-  | allOf args isNMeta = blockOnMetas args
-  | anyOf args isIndexType = solveIndexComparisonOp ctx arg1 arg2 (Order OrderIndex op)
-  | anyOf args isNatType = solveSimpleComparisonOp ctx arg1 arg2 (Order OrderNat op)
-  | anyOf args isIntType = solveSimpleComparisonOp ctx arg1 arg2 (Order OrderInt op)
-  | anyOf args isRatType = solveSimpleComparisonOp ctx arg1 arg2 (Order OrderRat op)
-  | otherwise = blockOrThrowErrors ctx args tcError
-  where
-    ctx = contextOf c
-    args = [arg1, arg2]
-    allowedTypes = fmap pretty [Index, Nat, Int, Rat]
-    tcError =
-      tcArgError ctx arg1 (OrderTC op) allowedTypes 1 2
-        <> tcArgError ctx arg2 (OrderTC op) allowedTypes 1 2
-solveHasOrd _ c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
 -- HasQuantifier
@@ -209,33 +187,6 @@ freshDimMeta c = do
   let p = provenanceOf c
   freshMetaExpr p (NatType p) (boundContext c)
 
-solveSimpleComparisonOp ::
-  (MonadTypeClass m) =>
-  StandardConstraintContext ->
-  StandardNormType ->
-  StandardNormType ->
-  BuiltinFunction ->
-  m TypeClassProgress
-solveSimpleComparisonOp c arg1 arg2 fn = do
-  let p = provenanceOf c
-  argEq <- unify c arg1 arg2
-  let solution = NullaryBuiltinFunctionExpr p fn
-  return $ Right ([argEq], solution)
-
-solveIndexComparisonOp ::
-  (MonadTypeClass m) =>
-  StandardConstraintContext ->
-  StandardNormType ->
-  StandardNormType ->
-  BuiltinFunction ->
-  m TypeClassProgress
-solveIndexComparisonOp c arg1 arg2 fn = do
-  let p = provenanceOf c
-  (arg1Eq, _size1) <- unifyWithIndexType c arg1
-  (arg2Eq, _size2) <- unifyWithIndexType c arg2
-  let solution = NullaryBuiltinFunctionExpr p fn
-  return $ Right ([arg1Eq, arg2Eq], solution)
-
 irrelevant :: [WithContext StandardConstraint] -> TypeClassProgress
 irrelevant newConstraints = Right (newConstraints, UnitLiteral mempty)
 
@@ -251,22 +202,6 @@ blockOrThrowErrors ctx args err = do
   if MetaSet.null blockingMetas
     then throwError (head err)
     else return $ Left blockingMetas
-
-unless2 :: (MonadPlus m) => Bool -> a -> m a
-unless2 p a = if not p then return a else mzero
-
-tcArgError ::
-  StandardConstraintContext ->
-  StandardNormType ->
-  TypeClassOp ->
-  [UnAnnDoc] ->
-  Int ->
-  Int ->
-  [CompileError]
-tcArgError c arg op allowedTypes argIndex numberOfArgs =
-  unless2
-    (isNMeta arg)
-    (FailedBuiltinConstraintArgument c op arg allowedTypes argIndex numberOfArgs)
 
 blockOnMetas :: (MonadCompile m) => [StandardNormExpr] -> m TypeClassProgress
 blockOnMetas args = do
