@@ -113,7 +113,7 @@ class Session(SessionContextManager):
             [
                 "compile",
                 "--target",
-                "LossFunction",
+                "DL2Loss",
                 "--specification",
                 str(path),
             ]
