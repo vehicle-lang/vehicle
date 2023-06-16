@@ -18,8 +18,10 @@ import Options.Applicative
     OptionFields,
     Parser,
     ParserInfo,
+    ReadM,
     auto,
     command,
+    eitherReader,
     fullDesc,
     header,
     help,
@@ -38,21 +40,26 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..))
+import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
-import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
-  ( LoggingLevel,
+  ( Doc,
+    LoggingLevel,
     defaultLoggingLevel,
     enumerate,
+    indent,
+    layoutAsString,
+    line,
     loggingLevelHelp,
     supportedOptions,
     vehicleSpecificationFileExtension,
+    vsep,
   )
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))
+import Vehicle.Verify.Core (QueryFormatID)
 
 --------------------------------------------------------------------------------
 -- Options objects
@@ -87,7 +94,6 @@ data ModeOptions
   = Check TypeCheckOptions
   | Compile CompileOptions
   | Verify VerifyOptions
-  | CompileAndVerify CompileAndVerifyOptions
   | Validate ValidateOptions
   | Export ExportOptions
   deriving (Eq, Show)
@@ -162,7 +168,6 @@ modeOptionsParser =
       command "check" typeCheckParserInfo
         <> command "compile" compileParserInfo
         <> command "verify" verifyParserInfo
-        <> command "compileAndVerify" compileAndVerifyParserInfo
         <> command "validate" validateParserInfo
         <> command "export" exportParserInfo
 
@@ -172,7 +177,10 @@ modeOptionsParser =
 typeCheckDescription :: InfoMod ModeOptions
 typeCheckDescription =
   progDesc $
-    "type checks a " <> vehicleSpecificationFileExtension <> " file"
+    "Type-check a "
+      <> vehicleSpecificationFileExtension
+      <> " specification file"
+      <> "."
 
 typeCheckParser :: Parser TypeCheckOptions
 typeCheckParser =
@@ -189,7 +197,7 @@ typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
 compileDescription :: InfoMod ModeOptions
 compileDescription =
   progDesc $
-    "Compile a " <> vehicleSpecificationFileExtension <> " file to an output target"
+    "Compile a " <> vehicleSpecificationFileExtension <> " specification file."
 
 compileParser :: Parser CompileOptions
 compileParser =
@@ -212,34 +220,15 @@ compileParserInfo = info (Compile <$> compileParser) compileDescription
 
 verifyDescription :: InfoMod ModeOptions
 verifyDescription =
-  progDesc
-    "Verify the status of a Vehicle property, and write out the result to a \
-    \ proof cache."
+  progDesc $
+    "Verify whether properties in a "
+      <> vehicleSpecificationFileExtension
+      <> " specification file are true or false."
 
 verifyParser :: Parser VerifyOptions
 verifyParser =
   VerifyOptions
-    <$> queriesParser
-    <*> verifierParser
-    <*> verifierLocationParser
-    <*> verifyProofCacheParser
-
-verifyParserInfo :: ParserInfo ModeOptions
-verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
-
---------------------------------------------------------------------------------
--- Compile and verify mode
-
-compileAndVerifyDescription :: InfoMod ModeOptions
-compileAndVerifyDescription =
-  progDesc
-    "Verify the status of a Vehicle property, and write out the result to a \
-    \ proof cache."
-
-compileAndVerifyParser :: Parser CompileAndVerifyOptions
-compileAndVerifyParser =
-  CompileAndVerifyOptions
-    <$> specificationParser
+    <$> verifySpecificationParser
     <*> propertyParser
     <*> networkParser
     <*> datasetParser
@@ -248,9 +237,8 @@ compileAndVerifyParser =
     <*> verifierLocationParser
     <*> verifyProofCacheParser
 
-compileAndVerifyParserInfo :: ParserInfo ModeOptions
-compileAndVerifyParserInfo =
-  info (CompileAndVerify <$> compileAndVerifyParser) compileAndVerifyDescription
+verifyParserInfo :: ParserInfo ModeOptions
+verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
 
 --------------------------------------------------------------------------------
 -- Check mode
@@ -258,7 +246,7 @@ compileAndVerifyParserInfo =
 validateDescription :: InfoMod ModeOptions
 validateDescription =
   progDesc
-    "Validate the verification status of a Vehicle specification."
+    "Validate a verification result to check whether it still holds."
 
 validateParser :: Parser ValidateOptions
 validateParser =
@@ -273,8 +261,10 @@ validateParserInfo = info (Validate <$> validateParser) validateDescription
 
 exportDescription :: InfoMod ModeOptions
 exportDescription =
-  progDesc
-    "Export a Vehicle specification to an interactive theorem prover."
+  progDesc $
+    "Export a"
+      <> vehicleSpecificationFileExtension
+      <> " specification file to an interactive theorem prover."
 
 exportParser :: Parser ExportOptions
 exportParser =
@@ -299,17 +289,20 @@ allITPs = map show (enumerate @ITP)
 allVerifiers :: [String]
 allVerifiers = map show (enumerate @VerifierID)
 
+allVerifiersFormats :: [String]
+allVerifiersFormats = map show (enumerate @QueryFormatID)
+
 allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
-allTasks :: [String]
-allTasks = allVerifiers <> allITPs <> allLossFunctionDLs
+allTargets :: [String]
+allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
 
-allTypeSystems :: [String]
+allTypeSystems :: [Doc a]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case
-  Standard -> "Standard"
-  Linearity -> "Linearity - check whether quantified variables are used linearly in the specification."
-  Polarity -> "Polarity - check whether alternating quantifiers are used in the specification."
+  Standard -> "i) Standard - check whether the types written in the specification are consistent."
+  Polarity -> "ii) Polarity - check whether alternating quantifiers are used in the specification."
+  Linearity -> "iii) Linearity - check whether quantified variables are used linearly in the specification."
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -367,22 +360,36 @@ loggingLevelParser =
       <> showDefault
       <> help loggingLevelHelp
 
-queriesParser :: Parser FilePath
-queriesParser =
+verifySpecificationParser :: Parser FilePath
+verifySpecificationParser =
   strOption $
-    long "queryFolder"
-      <> short 'q'
+    long "specification"
+      <> short 's'
       <> metavar "FILE"
       <> help
-        "A folder containing the queries and verification plan generated by \
-        \a previous call to `vehicle compile`"
+        ( "Either: i) a "
+            <> vehicleSpecificationFileExtension
+            <> " file containing the specification "
+            <> "or ii) a folder containing the queries and verification plan generated by"
+            <> "a previous call to `vehicle compile`."
+        )
 
 typeSystemParser :: Parser TypingSystem
 typeSystemParser =
   option auto $
     long "typeSystem"
       <> short 't'
-      <> help ("Which typing system should be used. " <> supportedOptions allTypeSystems)
+      <> help
+        ( "Which typing system should be used. "
+            <> layoutAsString
+              ( line
+                  <> line
+                  <> indent
+                    2
+                    ( vsep allTypeSystems
+                    )
+              )
+        )
       <> value Standard
 
 specificationParser :: Parser FilePath
@@ -513,11 +520,16 @@ exportTargetParser =
 
 compileTargetParser :: Parser Target
 compileTargetParser =
-  option auto $
+  option targetReader $
     long "target"
       <> short 't'
       <> metavar "TARGET"
-      <> help ("The target that the specification should be compiled to. " <> supportedOptions allTasks)
+      <> help ("The target that the specification should be compiled to. " <> supportedOptions allTargets <> ".")
+  where
+    targetReader :: ReadM Target
+    targetReader = eitherReader $ \s -> case findTarget s of
+      Nothing -> Left ("Could not parse 'target' value '" <> s <> "'")
+      Just t -> Right t
 
 proofCacheOption :: Mod OptionFields String -> Parser String
 proofCacheOption helpField =

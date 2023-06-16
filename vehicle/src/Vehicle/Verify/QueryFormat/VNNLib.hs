@@ -15,11 +15,11 @@ import Vehicle.Verify.Core
 vnnlibQueryFormat :: QueryFormat
 vnnlibQueryFormat =
   QueryFormat
-    { queryFormatID = VNNLibQueryFormat,
+    { queryFormatID = VNNLibQueries,
       compileQuery = compileVNNLibQuery,
       queryOutputFormat =
         ExternalOutputFormat
-          { formatName = pretty VNNLibQueryFormat,
+          { formatName = pretty VNNLibQueries,
             formatVersion = Nothing,
             commentToken = ";",
             emptyLines = True

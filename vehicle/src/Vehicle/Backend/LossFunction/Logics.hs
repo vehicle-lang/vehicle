@@ -115,12 +115,12 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 
 implementationOf :: DifferentiableLogic -> DifferentialLogicImplementation
 implementationOf = \case
-  DL2 -> dl2Translation
-  Godel -> godelTranslation
-  Lukasiewicz -> lukasiewiczTranslation
-  Product -> productTranslation
-  Yager -> yagerTranslation
-  STL -> stlTranslation
+  DL2Loss -> dl2Translation
+  GodelLoss -> godelTranslation
+  LukasiewiczLoss -> lukasiewiczTranslation
+  ProductLoss -> productTranslation
+  YagerLoss -> yagerTranslation
+  STLLoss -> stlTranslation
 
 --------------------------------------------------------------------------------
 -- different available  differentiable logics

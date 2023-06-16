@@ -23,9 +23,6 @@ def call_vehicle_to_generate_loss_json(
         args = [
             "compile",
             "--target",
-            # use the string below to specify which translation is used. the options are:
-            # LossFunction (uses DL2 by default), LossFunction-DL2, LossFunction-Godel, LossFunction-Lukasiewicz,
-            #  LossFunction-Product, LossFunction-STL (in progress, not currently working)
             "LossFunction",
             "--specification",
             specification,

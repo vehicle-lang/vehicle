@@ -35,7 +35,6 @@ commandLineParserTests =
     [ noModeTests,
       checkModeTests,
       verifyTests,
-      compileAndVerifyTests,
       validateModeTests
     ]
 
@@ -121,20 +120,18 @@ verifyTests =
                 Verify $
                   VerifyOptions
                     { queryFolder = "queries",
+                      properties = mempty,
+                      networkLocations = mempty,
+                      datasetLocations = mempty,
+                      parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
                       proofCache = Just "test/proofCache.vcl-cache"
                     }
-          }
-    ]
-
-compileAndVerifyTests :: TestTree
-compileAndVerifyTests =
-  testGroup
-    "compileAndVerify"
-    [ parserTest
-        "basic"
-        "vehicle compileAndVerify \
+          },
+      parserTest
+        "preCompileBasic"
+        "vehicle verify \
         \--specification test/spec.vcl \
         \--network f:test/myNetwork.onnx \
         \--verifier Marabou"
@@ -142,8 +139,8 @@ compileAndVerifyTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                CompileAndVerify $
-                  CompileAndVerifyOptions
+                Verify $
+                  VerifyOptions
                     { specification = "test/spec.vcl",
                       properties = mempty,
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
@@ -155,8 +152,8 @@ compileAndVerifyTests =
                     }
           },
       parserTest
-        "complex"
-        "vehicle compileAndVerify \
+        "preCompileComplex"
+        "vehicle verify \
         \--specification test/spec.vcl \
         \--property p1 \
         \--property p2 \
@@ -169,8 +166,8 @@ compileAndVerifyTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                CompileAndVerify $
-                  CompileAndVerifyOptions
+                Verify $
+                  VerifyOptions
                     { specification = "test/spec.vcl",
                       properties = ["p1", "p2"],
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],

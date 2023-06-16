@@ -1,6 +1,7 @@
 module Vehicle.Backend.Prelude where
 
 import Control.Monad.IO.Class
+import Data.Maybe (catMaybes)
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
@@ -12,12 +13,12 @@ import Vehicle.Verify.Core
 
 -- | Different ways of translating from the logical constraints to loss functions.
 data DifferentiableLogic
-  = DL2
-  | Godel
-  | Lukasiewicz
-  | Product
-  | Yager
-  | STL
+  = DL2Loss
+  | GodelLoss
+  | LukasiewiczLoss
+  | ProductLoss
+  | YagerLoss
+  | STLLoss
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty DifferentiableLogic where
@@ -31,8 +32,7 @@ data ITP
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty ITP where
-  pretty = \case
-    Agda -> "Agda"
+  pretty = pretty . show
 
 --------------------------------------------------------------------------------
 -- Different type-checking modes
@@ -57,26 +57,26 @@ data Target
   = ITP ITP
   | VerifierQueries QueryFormatID
   | LossFunction DifferentiableLogic
-  deriving (Eq, Show)
+  deriving (Eq)
+
+findTarget :: String -> Maybe Target
+findTarget s = do
+  let itp = lookup s (fmap (\t -> (show t, ITP t)) (enumerate @ITP))
+  let queries = lookup s (fmap (\t -> (show t, VerifierQueries t)) (enumerate @QueryFormatID))
+  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogic))
+  catMaybes [itp, queries, dl] !!? 0
+
+instance Show Target where
+  show = \case
+    ITP x -> show x
+    VerifierQueries x -> show x
+    LossFunction x -> show x
 
 instance Pretty Target where
   pretty = \case
-    ITP x -> pretty $ show x
+    ITP x -> pretty x
     VerifierQueries x -> pretty x
-    LossFunction _ -> "LossFunction"
-
-instance Read Target where
-  readsPrec _d x = case x of
-    "MarabouQueries" -> [(VerifierQueries MarabouQueryFormat, [])]
-    "LossFunction" -> [(LossFunction DL2, [])]
-    "LossFunction-DL2" -> [(LossFunction DL2, [])]
-    "LossFunction-Godel" -> [(LossFunction Godel, [])]
-    "LossFunction-Lukasiewicz" -> [(LossFunction Lukasiewicz, [])]
-    "LossFunction-Product" -> [(LossFunction Product, [])]
-    "LossFunction-Yager" -> [(LossFunction Yager, [])]
-    "LossFunction-STL" -> [(LossFunction STL, [])]
-    "Agda" -> [(ITP Agda, [])]
-    _ -> []
+    LossFunction x -> pretty x
 
 -- | Generate the file header given the token used to start comments in the
 --  target language

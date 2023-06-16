@@ -11,8 +11,8 @@ import Vehicle.Verify.Verifier.Marabou (marabouVerifier)
 
 queryFormats :: QueryFormatID -> QueryFormat
 queryFormats = \case
-  MarabouQueryFormat -> marabouQueryFormat
-  VNNLibQueryFormat -> vnnlibQueryFormat
+  MarabouQueries -> marabouQueryFormat
+  VNNLibQueries -> vnnlibQueryFormat
 
 verifiers :: VerifierID -> Verifier
 verifiers = \case

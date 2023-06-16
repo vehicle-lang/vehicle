@@ -37,7 +37,7 @@ The outputs of the above Vehicle commands can be found in the test suite:
 A network can be verified against the specification by running the following command:
 
 ```bash
-vehicle compileAndVerify \
+vehicle verify \
   --specification examples/mnist-robustness/mnist-robustness.vcl \
   --network classifier:examples/mnist-robustness/mnist-classifier.onnx \
   --parameter epsilon:0.005 \

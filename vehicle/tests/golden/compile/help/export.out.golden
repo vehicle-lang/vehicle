@@ -1,0 +1,19 @@
+Usage: vehicle export (-t|--target TARGET) (-c|--proofCache FILE) 
+                      [-o|--outputFile FILE] [-m|--moduleName MODULENAME]
+
+  Export a.vcl specification file to an interactive theorem prover.
+
+Available options:
+  -t,--target TARGET       The target to export to. Supported options: Agda
+  -c,--proofCache FILE     The location of the proof cache that can be used to
+                           check the verification status of the specification.
+                           Should be parsed when compiling to an ITP.
+  -o,--outputFile FILE     Output location for compiled file(s). Defaults to
+                           stdout if not provided.
+  -m,--moduleName MODULENAME
+                           Override the name of the exported ITP module. For
+                           example, compiling with 'Foo.Bar' will result in the
+                           Agda module with the internal name `Foo.Bar.agda`. If
+                           not provided then the name will default to the name
+                           of the output file.
+  -h,--help                Show this help text
