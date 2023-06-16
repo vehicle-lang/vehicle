@@ -23,7 +23,7 @@ def call_vehicle_to_generate_loss_json(
         args = [
             "compile",
             "--target",
-            "DL2Loss",
+            "LossFunction",
             "--specification",
             specification,
             "--outputFile",
