@@ -19,11 +19,11 @@ import Vehicle.Verify.Core
 marabouQueryFormat :: QueryFormat
 marabouQueryFormat =
   QueryFormat
-    { queryFormatID = MarabouQueryFormat,
+    { queryFormatID = MarabouQueries,
       compileQuery = compileMarabouQuery,
       queryOutputFormat =
         ExternalOutputFormat
-          { formatName = pretty MarabouQueryFormat,
+          { formatName = pretty MarabouQueries,
             formatVersion = Nothing,
             commentToken = "//",
             emptyLines = False

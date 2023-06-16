@@ -19,7 +19,7 @@ Unlike the equivalent low-level Marabou queries, the specification is written at
 The following command verifies `property3` for the network `acasXu_1_7.onnx`:
 ```bash
 vehicle \
-  --compileAndVerify \
+  verify \
   --specification examples/acasXu/acasXu.vcl \
   --verifier Marabou \
   --network acasXu:examples/acasXu/acasXu_1_7.onnx \

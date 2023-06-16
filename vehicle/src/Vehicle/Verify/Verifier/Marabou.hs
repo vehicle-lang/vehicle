@@ -25,7 +25,7 @@ marabouVerifier =
     { verifierIdentifier = Marabou,
       verifierExecutableName = "Marabou",
       invokeVerifier = invokeMarabou,
-      verifierQueryFormat = MarabouQueryFormat
+      verifierQueryFormat = MarabouQueries
     }
 
 --------------------------------------------------------------------------------

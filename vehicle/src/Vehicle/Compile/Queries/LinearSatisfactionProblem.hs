@@ -229,7 +229,7 @@ compileAssertions = go
       VBuiltinFunction (Equals EqRat eq) [e1, e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
-          throwError $ UnsupportedInequality MarabouQueryFormat ident
+          throwError $ UnsupportedInequality MarabouQueries ident
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
           return $ NonTrivial assertion

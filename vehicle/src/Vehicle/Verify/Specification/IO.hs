@@ -4,6 +4,7 @@ module Vehicle.Verify.Specification.IO
     outputVerificationResult,
     verifySpecification,
     verificationPlanFileName,
+    isValidQueryFolder,
   )
 where
 
@@ -20,7 +21,7 @@ import Data.Text (intercalate, pack, unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as Text
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitFailure)
 import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr)
@@ -79,6 +80,9 @@ outputVerificationResult queryFormatID maybeOutputLocation (plan, queries) = do
 
   outputVerificationPlan maybeOutputLocation plan
   writeVerificationQueries queryFormatID maybeOutputLocation queries
+
+isValidQueryFolder :: (MonadIO m) => FilePath -> m Bool
+isValidQueryFolder folder = liftIO $ doesFileExist (verificationPlanFileName folder)
 
 outputVerificationPlan :: (MonadIO m) => Maybe FilePath -> VerificationPlan -> m ()
 outputVerificationPlan maybeFolder plan = do
