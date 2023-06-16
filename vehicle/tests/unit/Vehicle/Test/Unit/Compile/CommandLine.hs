@@ -15,7 +15,6 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
-import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Prelude
   ( LoggingLevel (MinDetail),
     Pretty (pretty),
@@ -109,7 +108,7 @@ verifyTests =
     [ parserTest
         "basic"
         "vehicle verify \
-        \--queryFolder queries \
+        \--specification queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
         \--proofCache test/proofCache.vcl-cache"
@@ -119,7 +118,7 @@ verifyTests =
               Just $
                 Verify $
                   VerifyOptions
-                    { queryFolder = "queries",
+                    { specification = "queries",
                       properties = mempty,
                       networkLocations = mempty,
                       datasetLocations = mempty,
