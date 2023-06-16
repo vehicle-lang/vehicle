@@ -29,7 +29,8 @@ data VerifyOptions = VerifyOptions
     -- Shared options
     verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable,
-    proofCache :: Maybe FilePath
+    proofCache :: Maybe FilePath,
+    assignmentsLocation :: Maybe FilePath
   }
   deriving (Eq, Show)
 
@@ -37,7 +38,7 @@ verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings options@VerifyOptions {..} = do
   validQueryFolder <- isValidQueryFolder specification
   if validQueryFolder
-    then verifyQueries loggingSettings specification verifierID verifierLocation proofCache
+    then verifyQueries loggingSettings specification verifierID verifierLocation proofCache assignmentsLocation
     else
       if takeExtension specification == vehicleSpecificationFileExtension
         then compileAndVerifyQueries loggingSettings options
@@ -61,18 +62,17 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
           ..
         }
 
-    verifyQueries loggingSettings tempDir verifierID verifierLocation proofCache
+    verifyQueries loggingSettings tempDir verifierID verifierLocation proofCache assignmentsLocation
 
-verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> Maybe FilePath -> IO ()
-verifyQueries _loggingSettings queryFolder verifierID verifierLocation proofCache = do
+verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> Maybe FilePath -> Maybe FilePath -> IO ()
+verifyQueries _loggingSettings queryFolder verifierID verifierLocation proofCache assignmentsLocation = do
   let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
   let verificationPlanFile = verificationPlanFileName queryFolder
   VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlanFile
-  status <- verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan
+  status <- verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan assignmentsLocation
 
-  programOutput $ line <> pretty status
   case proofCache of
     Nothing -> return ()
     Just proofCachePath ->

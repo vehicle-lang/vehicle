@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "doesNotConfuseBigAndSmall",
-            []
-          ],
+          {
+            "propertyName": "doesNotConfuseBigAndSmall",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -304,10 +304,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -590,10 +590,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -876,10 +876,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -1162,10 +1162,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         5
                       ],
                       {
@@ -1448,10 +1448,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         6
                       ],
                       {
@@ -1734,10 +1734,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         7
                       ],
                       {
@@ -2020,10 +2020,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         8
                       ],
                       {
@@ -2306,10 +2306,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         9
                       ],
                       {
@@ -2592,10 +2592,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         10
                       ],
                       {
@@ -2878,10 +2878,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         11
                       ],
                       {
@@ -3164,10 +3164,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         12
                       ],
                       {
@@ -3450,10 +3450,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         13
                       ],
                       {
@@ -3736,10 +3736,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         14
                       ],
                       {
@@ -4022,10 +4022,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         15
                       ],
                       {
@@ -4308,10 +4308,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         16
                       ],
                       {
@@ -4594,10 +4594,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         17
                       ],
                       {
@@ -4880,10 +4880,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         18
                       ],
                       {
@@ -5166,10 +5166,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         19
                       ],
                       {
@@ -5452,10 +5452,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         20
                       ],
                       {
@@ -5738,10 +5738,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         21
                       ],
                       {
@@ -6024,10 +6024,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         22
                       ],
                       {
@@ -6310,10 +6310,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         23
                       ],
                       {
@@ -6596,10 +6596,10 @@
                     ],
                     [
                       [
-                        [
-                          "doesNotConfuseBigAndSmall",
-                          []
-                        ],
+                        {
+                          "propertyName": "doesNotConfuseBigAndSmall",
+                          "propertyIndices": []
+                        },
                         24
                       ],
                       {

@@ -44,7 +44,7 @@ compileToQueries ::
   QueryFormat ->
   StandardGluedProg ->
   Resources ->
-  m (Specification (QueryMetaData, QueryText))
+  m (Specification (Property (QueryMetaData, QueryText)))
 compileToQueries queryFormat typedProg resources =
   logCompilerPass MinDetail currentPass $ do
     properties <- compileProgToQueries queryFormat resources typedProg
@@ -61,7 +61,7 @@ compileProgToQueries ::
   QueryFormat ->
   Resources ->
   GenericProg StandardGluedExpr ->
-  m [(Name, MultiProperty (QueryMetaData, QueryText))]
+  m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
 compileProgToQueries queryFormat resources prog = do
   resourceCtx <- expandResources resources prog
   let (networkCtx, declCtx) = splitResourceCtx resourceCtx
@@ -72,7 +72,7 @@ compileProgToQueries queryFormat resources prog = do
       NetworkContext ->
       StandardNormDeclCtx ->
       [StandardGluedDecl] ->
-      m [(Name, MultiProperty (QueryMetaData, QueryText))]
+      m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
     compileDecls _ _ [] = return []
     compileDecls networkCtx declCtx (d : ds) = case d of
       DefAbstract {} -> compileDecls networkCtx declCtx ds
@@ -95,7 +95,7 @@ compileProgToQueries queryFormat resources prog = do
       Identifier ->
       StandardGluedType ->
       StandardGluedExpr ->
-      m (Name, MultiProperty (QueryMetaData, QueryText))
+      m (Name, MultiProperty (Property (QueryMetaData, QueryText)))
     compilePropertyDecl networkCtx declCtx p ident _typ expr = do
       logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
         -- We can't use the `normalised` part of the glued expression here because
@@ -121,18 +121,18 @@ compileProgToQueries queryFormat resources prog = do
       Provenance ->
       Identifier ->
       StandardNormExpr ->
-      m (MultiProperty (QueryMetaData, QueryText))
+      m (MultiProperty (Property (QueryMetaData, QueryText)))
     compileMultiProperty networkCtx declCtx p ident = go []
       where
-        go :: TensorIndices -> StandardNormExpr -> m (MultiProperty (QueryMetaData, QueryText))
+        go :: TensorIndices -> StandardNormExpr -> m (MultiProperty (Property (QueryMetaData, QueryText)))
         go indices = \case
           VVecLiteral es -> do
             let es' = zip [0 :: QueryID ..] es
             MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
           expr ->
             logCompilerSection MaxDetail "Starting single boolean property" $ do
-              let propertyAddress = (nameOf ident, indices)
-              let state = PropertyState queryFormat declCtx networkCtx p ident indices
+              let propertyAddress = PropertyAddress (nameOf ident) indices
+              let state = PropertyState queryFormat declCtx networkCtx p propertyAddress
               let compileProperty = compilePropertyTopLevelStructure expr
               property <- runMonadCompileProperty state compileProperty
               return $ SingleProperty propertyAddress property
@@ -145,8 +145,7 @@ data PropertyState = PropertyState
     declSubst :: StandardNormDeclCtx,
     networkCtx :: NetworkContext,
     declProvenance :: Provenance,
-    declIdentifier :: Identifier,
-    propertyIndices :: TensorIndices
+    propertyAddress :: PropertyAddress
   }
 
 type MonadCompileProperty m =
@@ -361,6 +360,7 @@ compileSingleQuery quantifiedVariables conjuncts = do
       replaceNetworkApplications networkCtx boundCtx conjuncts
 
     -- Convert it into a linear satisfaction problem in the user variables
+    let declIdentifier = Identifier User (propertyName propertyAddress)
     let state =
           ( networkCtx,
             (declIdentifier, declProvenance),
@@ -379,7 +379,7 @@ compileSingleQuery quantifiedVariables conjuncts = do
         queryText <- compileQuery queryFormat clstProblem
         logCompilerPassOutput $ pretty queryText
         queryID <- demand
-        let queryAddress = ((nameOf declIdentifier, propertyIndices), queryID)
+        let queryAddress = (propertyAddress, queryID)
         let queryVarInfo = QueryVariableInfo variableInfo normalisedVarInfo
         let queryData = QueryData metaNetwork queryVarInfo
         return $ NonTrivial (queryAddress, (queryData, queryText))
@@ -451,6 +451,7 @@ calculateDimensionsOfQuantifiedVariable propertyState binder = go (typeOf binder
         let p = provenanceOf binder
         let baseName = getBinderName binder
         let baseType = binderType binder
+        let declIdentifier = Identifier User (propertyName propertyAddress)
         throwError $ UnsupportedVariableType target declIdentifier p baseName variableType baseType [BuiltinType Rat]
 
 calculateEnvEntry ::

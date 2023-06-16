@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "prop1",
-            []
-          ],
+          {
+            "propertyName": "prop1",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "prop1",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop1",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -61,10 +61,10 @@
                     ],
                     [
                       [
-                        [
-                          "prop1",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop1",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -116,10 +116,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "prop2",
-            []
-          ],
+          {
+            "propertyName": "prop2",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -129,10 +129,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "prop2",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop2",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -172,10 +172,10 @@
                     ],
                     [
                       [
-                        [
-                          "prop2",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop2",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -232,10 +232,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "prop3",
-            []
-          ],
+          {
+            "propertyName": "prop3",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -245,10 +245,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "prop3",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop3",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -288,10 +288,10 @@
                     ],
                     [
                       [
-                        [
-                          "prop3",
-                          []
-                        ],
+                        {
+                          "propertyName": "prop3",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {

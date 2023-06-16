@@ -13,8 +13,8 @@ import Vehicle.Verify.Core
 
 reconstructUserVars ::
   QueryVariableInfo ->
-  NetworkVariableCounterexample ->
-  UserVariableCounterexample
+  NetworkVariableAssignments ->
+  UserVariableAssignments
 reconstructUserVars QueryVariableInfo {..} networkVariableAssignment = do
   let normalisedVariableAssignment =
         reconstructNormalisedVariables normalisedVariableInfo networkVariableAssignment
@@ -27,14 +27,14 @@ reconstructUserVars QueryVariableInfo {..} networkVariableAssignment = do
 reconstructUnnormalisedVariables ::
   QueryUnnormalisedVariableInfo ->
   VariableAssignment ->
-  UserVariableCounterexample
+  UserVariableAssignments
 reconstructUnnormalisedVariables info normalisedVariableAssignment = do
   fst $ foldl reconstructUnnormalisedVariable ([], normalisedVariableAssignment) info
 
 reconstructUnnormalisedVariable ::
-  (UserVariableCounterexample, VariableAssignment) ->
+  (UserVariableAssignments, VariableAssignment) ->
   (Name, TensorDimensions) ->
-  (UserVariableCounterexample, VariableAssignment)
+  (UserVariableAssignments, VariableAssignment)
 reconstructUnnormalisedVariable (counterexamples, assignment) (name, dims) = do
   let (varAssignment, assignmentRemainder) = Vector.splitAt (product dims) assignment
   let counterexample = UserVariableAssignment name dims varAssignment
@@ -42,7 +42,7 @@ reconstructUnnormalisedVariable (counterexamples, assignment) (name, dims) = do
 
 reconstructNormalisedVariables ::
   QueryNormalisedVariableInfo ->
-  NetworkVariableCounterexample ->
+  NetworkVariableAssignments ->
   VariableAssignment
 reconstructNormalisedVariables info networkVariableAssignment = do
   let numberOfUserVars = length info

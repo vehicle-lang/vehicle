@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "robustAround",
-            []
-          ],
+          {
+            "propertyName": "robustAround",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "robustAround",
-                          []
-                        ],
+                        {
+                          "propertyName": "robustAround",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -91,7 +91,7 @@
     "specificationSummary": {
       "name": "specification",
       "filePath": "spec.vcl",
-      "fileHash": -3172457552258763651
+      "fileHash": -695303404173926866
     },
     "parameterSummaries": {},
     "networkSummaries": [

@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "identity",
-            []
-          ],
+          {
+            "propertyName": "identity",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -131,10 +131,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -244,10 +244,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -357,10 +357,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -470,10 +470,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         5
                       ],
                       {
@@ -583,10 +583,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         6
                       ],
                       {
@@ -696,10 +696,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         7
                       ],
                       {
@@ -809,10 +809,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         8
                       ],
                       {
@@ -922,10 +922,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         9
                       ],
                       {
@@ -1035,10 +1035,10 @@
                     ],
                     [
                       [
-                        [
-                          "identity",
-                          []
-                        ],
+                        {
+                          "propertyName": "identity",
+                          "propertyIndices": []
+                        },
                         10
                       ],
                       {
