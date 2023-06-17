@@ -77,22 +77,39 @@ version = { attr = "vehicle_lang._version.VERSION" }
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py37, py38, py39, py310, py311, pygments
-isolated_build = true
+requires =
+  tox>=4
+env_list =
+  py{37,38,39,310,311}
 
 [testenv]
+package = external
+package_env = build-{env_name}
+allowlist_externals = sh
 extras =
   test
-commands =
-  {envpython} -m pytest {posargs}
-
-[testenv:pygments]
-allowlist_externals =
-  sh
-requires =
-  py37
-extras =
   pygments
 commands =
-  sh ./tests/test_pygments.sh {posargs}
+  {env_python} -m pytest {posargs}
+  sh {package_root}/tests/test_pygments.sh
+
+[testenv:build-py{37,38,39,310,311}]
+allowlist_externals = sh
+deps =
+  build
+  auditwheel; sys_platform == 'linux'
+  delocate; sys_platform == 'darwin'
+set_env =
+  env_python = {env_python}
+  package_root = {package_root}
+  dist_dir = {package_root}{/}dist
+  dist_tmp_dir = {env_tmp_dir}{/}dist
+package_glob =
+  py37: {env:dist_dir}{/}*cp37*.whl
+  py38: {env:dist_dir}{/}*cp38*.whl
+  py39: {env:dist_dir}{/}*cp39*.whl
+  py310: {env:dist_dir}{/}*cp310*.whl
+  py311: {env:dist_dir}{/}*cp311*.whl
+commands =
+  sh {package_root}/scripts/build-wheel.sh
 """

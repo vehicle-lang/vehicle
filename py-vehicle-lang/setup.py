@@ -77,6 +77,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         self.cabal(
             [
                 "configure",
+                "--disable-backup",
                 *(f"--extra-lib-dirs={dir}" for dir in library_dirs),
                 *(f"--extra-include-dirs={dir}" for dir in include_dirs),
                 *(f"--ghc-options=-optl-l{library}" for library in libraries),
