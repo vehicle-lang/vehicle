@@ -19,4 +19,4 @@ fi
   --rm \
   --volume="${package_root}:/vehicle" \
   --workdir="/vehicle/py-vehicle-lang" "${manylinux_image}" \
-  /bin/sh -c "sh ./scripts/before-all-centos.sh && pipx run tox"
+  /bin/sh -c "sh ./scripts/before-all-centos-7.sh && pipx run tox"

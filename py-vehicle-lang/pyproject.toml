@@ -48,7 +48,7 @@ test-command = "pytest {package}/tests"
 test-extras = "test"
 
 [tool.cibuildwheel.linux]
-before-all = "source /etc/os-release && {package}/scripts/before-all-$ID.sh"
+before-all = "source /etc/os-release && {package}/scripts/before-all-$ID-$VERSION_ID.sh"
 
 [tool.mypy]
 mypy_path = "src"
