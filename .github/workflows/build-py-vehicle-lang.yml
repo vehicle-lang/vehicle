@@ -35,7 +35,7 @@ jobs:
             type: "windows-latest"
             arch: "native"
 
-    name: py-vehicle-lang / ${{ matrix.os.name }}
+    name: py-vehicle-lang / ${{ matrix.os.name }} - ${{ matrix.os.arch }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
