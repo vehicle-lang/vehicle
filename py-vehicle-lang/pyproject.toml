@@ -77,14 +77,16 @@ version = { attr = "vehicle_lang._version.VERSION" }
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-requires =
-  tox>=4
-env_list =
-  py{37,38,39,310,311}
+min_version = 4
+env_list = py{37,38,39,310,311}-{lin,mac,win}
 
-[testenv]
+[testenv:py{37,38,39,310,311}-{lin,mac,win}]
 package = external
 package_env = build-{env_name}
+platform =
+  lin: linux
+  mac: darwin
+  win: windows
 allowlist_externals = sh
 extras =
   test
@@ -93,23 +95,33 @@ commands =
   {env_python} -m pytest {posargs}
   sh {package_root}/tests/test_pygments.sh
 
-[testenv:build-py{37,38,39,310,311}]
-allowlist_externals = sh
+[testenv:build-py{37,38,39,310,311}-{lin,mac,win}]
 deps =
   build
   auditwheel; sys_platform == 'linux'
-  delocate; sys_platform == 'darwin'
 set_env =
   env_python = {env_python}
   package_root = {package_root}
   dist_dir = {package_root}{/}dist
   dist_tmp_dir = {env_tmp_dir}{/}dist
 package_glob =
-  py37: {env:dist_dir}{/}*cp37*.whl
-  py38: {env:dist_dir}{/}*cp38*.whl
-  py39: {env:dist_dir}{/}*cp39*.whl
-  py310: {env:dist_dir}{/}*cp310*.whl
-  py311: {env:dist_dir}{/}*cp311*.whl
+  py37-lin: {env:dist_dir}{/}*cp37*manylinux*.whl
+  py38-lin: {env:dist_dir}{/}*cp38*manylinux*.whl
+  py39-lin: {env:dist_dir}{/}*cp39*manylinux*.whl
+  py310-lin: {env:dist_dir}{/}*cp310*manylinux*.whl
+  py311-lin: {env:dist_dir}{/}*cp311*manylinux*.whl
+  py37-mac: {env:dist_dir}{/}*cp37*macosx*.whl
+  py38-mac: {env:dist_dir}{/}*cp38*macosx*.whl
+  py39-mac: {env:dist_dir}{/}*cp39*macosx*.whl
+  py310-mac: {env:dist_dir}{/}*cp310*macosx*.whl
+  py311-mac: {env:dist_dir}{/}*cp311*macosx*.whl
+  py37-win: {env:dist_dir}{/}*cp37*win*.whl
+  py38-win: {env:dist_dir}{/}*cp38*win*.whl
+  py39-win: {env:dist_dir}{/}*cp39*win*.whl
+  py310-win: {env:dist_dir}{/}*cp310*win*.whl
+  py311-win: {env:dist_dir}{/}*cp311*win*.whl
+allowlist_externals =
+  sh
 commands =
   sh {package_root}/scripts/build-wheel.sh
 """
