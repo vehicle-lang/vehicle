@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
-        if: os.name == 'macOS' || os.name == 'Windows'
+        if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
         uses: haskell/actions/setup@v2
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
       - name: Set up QEMU
-        if: os.name == 'Linux' && os.arch == 'aarch64'
+        if: matrix.os.name == 'Linux' && matrix.os.arch == 'aarch64'
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
@@ -62,7 +62,7 @@ jobs:
           output-dir: "./py-vehicle-lang/wheelhouse"
           config-file: "{package}/pyproject.toml"
         env:
-          CIBW_ARCHS: "${{ os.arch }}"
+          CIBW_ARCHS: "${{ matrix.os.arch }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
