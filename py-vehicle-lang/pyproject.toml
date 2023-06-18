@@ -88,7 +88,7 @@ package_env = build-{env_name}
 platform =
   lin: linux
   mac: darwin
-  win: windows
+  win: win32
 allowlist_externals = sh
 extras =
   test
