@@ -24,18 +24,12 @@ jobs:
         os:
           - name: "Linux"
             type: "ubuntu-latest"
-            arch: "native"
-          - name: "Linux"
-            type: "ubuntu-latest"
-            arch: "aarch64"
           - name: "macOS"
             type: "macos-latest"
-            arch: "native"
           - name: "Windows"
             type: "windows-latest"
-            arch: "native"
 
-    name: py-vehicle-lang / ${{ matrix.os.name }} - ${{ matrix.os.arch }}
+    name: py-vehicle-lang / ${{ matrix.os.name }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
@@ -49,20 +43,13 @@ jobs:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
-      - name: Set up QEMU
-        if: matrix.os.name == 'Linux' && matrix.os.arch == 'aarch64'
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: arm64
-
       - name: Build wheel
-        uses: pypa/cibuildwheel@v2.13.1
+        uses: pypa/cibuildwheel@v2
         with:
           package-dir: "./py-vehicle-lang"
           output-dir: "./py-vehicle-lang/wheelhouse"
           config-file: "{package}/pyproject.toml"
         env:
-          CIBW_ARCHS: "${{ matrix.os.arch }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
