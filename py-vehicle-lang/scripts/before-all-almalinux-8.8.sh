@@ -7,22 +7,24 @@ python3.11 -m pip install wget
 machine="$(python3.11 -c 'import platform; print(platform.machine())')"
 
 # Link libgmp.so.10 to libgmp.so
-if [ "${machine}" = 'aarch64' ] || [ "${machine}" = 'x86_64' ]; then
-  cd "/usr/lib64" && ln -s "libgmp.so.10" "libgmp.so"
-fi
+cd "/usr/lib64" && ln -s "libgmp.so.10" "libgmp.so"
 
 # GHC version
 GHC_VERSION="9.4.4"
 
 # GHC release URL
-if [ "${machine}" = 'aarch64' ]; then
-  GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-aarch64-deb10-linux.tar.xz"
-elif [ "${machine}" = 'x86_64' ]; then
-  GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-x86_64-deb10-linux.tar.xz"
-else
-  echo "unsupported: ${machine}"
-  exit 1
-fi
+case "${machine}" in
+    'aarch64')
+        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-aarch64-deb10-linux.tar.xz"
+    ;;
+    'x86_64')
+        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-x86_64-deb10-linux.tar.xz"
+    ;;
+    *)
+        echo "unsupported machine: ${machine}"
+        exit 1
+    ;;
+esac
 
 # Install GHC
 python3.11 -c "import wget; wget.download('${GHC_RELEASE_URL}', '/tmp/ghc.tar.xz')"

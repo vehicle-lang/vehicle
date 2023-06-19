@@ -1,6 +1,11 @@
 #!/bin/sh
 
-manylinux_image="quay.io/pypa/manylinux_2_28_aarch64"
+machine="$(python3.11 -c 'import platform; print(platform.machine())')"
+if [ "${machine}" = "aarch64" ] || [ "${machine}" = "arm64" ]; then
+  manylinux_image="quay.io/pypa/manylinux_2_28_aarch64"
+elif [ "${machine}" = "x86_64" ]; then
+  manylinux_image="quay.io/pypa/manylinux_2_28_x86_64"
+fi
 
 # See: https://stackoverflow.com/a/4774063
 package_root="$(dirname "$(dirname "$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )" )" )"
