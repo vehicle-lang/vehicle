@@ -23,19 +23,16 @@ case "${machine}" in
     ;;
 esac
 
-# GHC version
-GHC_VERSION="9.4.4"
-
 # GHC release URL
 case "${machine}" in
     'i386')
-        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-i386-deb9-linux.tar.xz"
+        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/9.4.4/ghc-9.4.4-i386-deb9-linux.tar.xz"
     ;;
     'i686')
-        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-i386-deb9-linux.tar.xz"
+        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/9.4.4/ghc-9.4.4-i386-deb9-linux.tar.xz"
     ;;
     'x86_64')
-        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/${GHC_VERSION}/ghc-${GHC_VERSION}-x86_64-deb10-linux.tar.xz"
+        GHC_RELEASE_URL="https://downloads.haskell.org/~ghc/9.4.4/ghc-9.4.4-x86_64-centos7-linux.tar.xz"
     ;;
     *)
         echo "unsupported machine: ${machine}"
@@ -51,13 +48,12 @@ cd "/tmp/ghc" && ./configure --prefix="/usr/local"
 cd "/tmp/ghc" && make install
 
 # Cabal version and release URL
-CABAL_VERSION="3.10.1.0"
-CABAL_RELEASE_URL="https://github.com/haskell/cabal/archive/refs/tags/cabal-install-v${CABAL_VERSION}.zip"
+CABAL_RELEASE_URL="https://github.com/haskell/cabal/archive/refs/tags/cabal-install-v3.10.1.0.zip"
 
 # Install Cabal
 python3 -c "import wget; wget.download('${CABAL_RELEASE_URL}', '/tmp/cabal.zip')"
-unzip -q "/tmp/cabal.zip" -d "/tmp" && mv "/tmp/cabal-cabal-install-v${CABAL_VERSION}" "/tmp/cabal"
-sed -ie 's/+ofd-locking/-ofd-locking/' "/tmp/cabal/bootstrap/linux-${GHC_VERSION}.json"
-cd "/tmp/cabal" && python3 "./bootstrap/bootstrap.py" -d "./bootstrap/linux-${GHC_VERSION}.json" -w "/usr/local/bin/ghc-${GHC_VERSION}"
+unzip -q "/tmp/cabal.zip" -d "/tmp" && mv "/tmp/cabal-cabal-install-v3.10.1.0" "/tmp/cabal"
+sed -ie 's/+ofd-locking/-ofd-locking/' "/tmp/cabal/bootstrap/linux-9.4.4.json"
+cd "/tmp/cabal" && python3 "./bootstrap/bootstrap.py" -d "./bootstrap/linux-9.4.4.json" -w "/usr/local/bin/ghc-9.4.4"
 "/tmp/cabal/_build/bin/cabal" v2-update
 "/tmp/cabal/_build/bin/cabal" v2-install cabal-install --constraint='lukko -ofd-locking' --overwrite-policy=always --install-method=copy --installdir="/usr/local/bin"
