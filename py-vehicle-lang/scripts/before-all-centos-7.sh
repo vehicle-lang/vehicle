@@ -30,7 +30,7 @@ fi
 python3 -c "import wget; wget.download('${GHC_RELEASE_URL}', '/tmp/ghc.tar.xz')"
 mkdir "/tmp/ghc"
 tar xf "/tmp/ghc.tar.xz" -C "/tmp/ghc" --strip-components 1
-cd "/tmp/ghc" && ./configure
+cd "/tmp/ghc" && ./configure --prefix="/usr/local"
 cd "/tmp/ghc" && make install
 
 # Cabal version and release URL
@@ -42,5 +42,5 @@ python3 -c "import wget; wget.download('${CABAL_RELEASE_URL}', '/tmp/cabal.zip')
 unzip -q "/tmp/cabal.zip" -d "/tmp" && mv "/tmp/cabal-cabal-install-v${CABAL_VERSION}" "/tmp/cabal"
 sed -ie 's/+ofd-locking/-ofd-locking/' "/tmp/cabal/bootstrap/linux-${GHC_VERSION}.json"
 cd "/tmp/cabal" && python3 "./bootstrap/bootstrap.py" -d "./bootstrap/linux-${GHC_VERSION}.json" -w "/usr/local/bin/ghc-${GHC_VERSION}"
-cd "/tmp/cabal/cabal-install" && /tmp/cabal/_build/bin/cabal v2-update
-cd "/tmp/cabal/cabal-install" && /tmp/cabal/_build/bin/cabal v2-install cabal-install --constraint='lukko -ofd-locking' --overwrite-policy=always --install-method=copy --installdir="/usr/local/bin"
+cd "/tmp/cabal/_build/bin/cabal" v2-update
+cd "/tmp/cabal/_build/bin/cabal" v2-install cabal-install --constraint='lukko -ofd-locking' --overwrite-policy=always --install-method=copy --installdir="/usr/local/bin"
