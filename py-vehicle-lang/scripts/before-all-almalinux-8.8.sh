@@ -23,19 +23,19 @@ case "${machine}" in
     ;;
 esac
 
-# Install GHC 9.4.4
+# Install GHC
 python3.11 -c "import wget; wget.download('${GHC_RELEASE_URL}', '/tmp/ghc.tar.xz')"
 mkdir "/tmp/ghc"
 tar xf "/tmp/ghc.tar.xz" -C "/tmp/ghc" --strip-components 1
-cd "/tmp/ghc" && ./configure --prefix="/"
+cd "/tmp/ghc" && ./configure --prefix="/usr/local"
 cd "/tmp/ghc" && make install
 
 # Cabal release URL
 CABAL_RELEASE_URL="https://github.com/haskell/cabal/archive/refs/tags/cabal-install-v3.10.1.0.zip"
 
-# Install Cabal 3.10.1.0
+# Install Cabal
 python3.11 -c "import wget; wget.download('${CABAL_RELEASE_URL}', '/tmp/cabal.zip')"
 unzip -q "/tmp/cabal.zip" -d "/tmp" && mv "/tmp/cabal-cabal-install-v3.10.1.0" "/tmp/cabal"
-cd "/tmp/cabal" && python3.11 "./bootstrap/bootstrap.py" -d "./bootstrap/linux-9.4.4.json" -w "/bin/ghc-9.4.4"
+cd "/tmp/cabal" && python3.11 "./bootstrap/bootstrap.py" -d "./bootstrap/linux-9.4.4.json" -w "/usr/local/bin/ghc-9.4.4"
 "/tmp/cabal/_build/bin/cabal" v2-update
-"/tmp/cabal/_build/bin/cabal" v2-install cabal-install --overwrite-policy=always --install-method=copy --installdir="/"
+"/tmp/cabal/_build/bin/cabal" v2-install cabal-install --overwrite-policy=always --install-method=copy --installdir="/usr/local/bin"
