@@ -44,7 +44,7 @@ jobs:
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
       - name: Build wheel
-        uses: pypa/cibuildwheel@v2
+        uses: pypa/cibuildwheel@v2.13.1
         with:
           package-dir: "./py-vehicle-lang"
           output-dir: "./py-vehicle-lang/wheelhouse"
