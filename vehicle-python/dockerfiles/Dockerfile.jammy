@@ -2,7 +2,7 @@ FROM ubuntu:jammy
 
 # NOTE:
 #
-#   This Dockerfile is primarily for use by `py-vehicle-lang/scripts/docker-build-wheels`.
+#   This Dockerfile is primarily for use by `vehicle-python/scripts/docker-build-wheels`.
 #   If you are looking to try Vehicle in a container, use the dockerfiles in `dockerfiles/`.
 #
 
@@ -48,5 +48,5 @@ ADD snapshot.tar.gz /vehicle/
 
 # Build Vehicle
 RUN apt-get install patchelf swig -y
-WORKDIR /vehicle/py-vehicle-lang
+WORKDIR /vehicle/vehicle-python
 RUN ./scripts/build-wheels
