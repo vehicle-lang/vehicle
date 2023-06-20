@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "reachable",
-            []
-          ],
+          {
+            "propertyName": "reachable",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "reachable",
-                          []
-                        ],
+                        {
+                          "propertyName": "reachable",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {

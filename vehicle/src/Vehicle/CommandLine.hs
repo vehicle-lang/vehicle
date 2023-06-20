@@ -103,7 +103,7 @@ data ModeOptions
 -- List of all options
 --------------------------------------------------------------------------------
 {-
---  - a
+assignmentsLocation = Opt "a" "assignmentsLocation"
 --  - b
 proofCache  = Opt "c" "proofCache"
 dataset     = Opt "d" "dataset"
@@ -237,6 +237,7 @@ verifyParser =
     <*> verifierParser
     <*> verifierLocationParser
     <*> verifyProofCacheParser
+    <*> assignmentsLocationParser
 
 verifyParserInfo :: ParserInfo ModeOptions
 verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
@@ -510,6 +511,20 @@ verifierLocationParser =
           "Location of the executable for the verifier. \
           \If not provided then Vehicle will search for it in the PATH \
           \environment variable."
+
+assignmentsLocationParser :: Parser (Maybe FilePath)
+assignmentsLocationParser =
+  optional $
+    strOption $
+      long "assignmentsLocation"
+        <> internal -- Marked as internal as not yet supported.
+        <> short 'x'
+        <> metavar "FILE"
+        <> help
+          ( "The location which to store any assignments found by the verifier "
+              <> "(i.e. witnesses or counter-examples). "
+              <> "If not provided then Vehicle will output them to stdout."
+          )
 
 exportTargetParser :: Parser ITP
 exportTargetParser =

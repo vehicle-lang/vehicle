@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "safe",
-            []
-          ],
+          {
+            "propertyName": "safe",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "safe",
-                          []
-                        ],
+                        {
+                          "propertyName": "safe",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -79,10 +79,10 @@
                     ],
                     [
                       [
-                        [
-                          "safe",
-                          []
-                        ],
+                        {
+                          "propertyName": "safe",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {

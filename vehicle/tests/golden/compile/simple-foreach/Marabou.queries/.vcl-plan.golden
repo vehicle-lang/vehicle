@@ -8,12 +8,12 @@
           {
             "tag": "SingleProperty",
             "contents": [
-              [
-                "index",
-                [
+              {
+                "propertyName": "index",
+                "propertyIndices": [
                   0
                 ]
-              ],
+              },
               {
                 "tag": "Query",
                 "contents": {
@@ -23,12 +23,12 @@
                       "unDisjunctAll": [
                         [
                           [
-                            [
-                              "index",
-                              [
+                            {
+                              "propertyName": "index",
+                              "propertyIndices": [
                                 0
                               ]
-                            ],
+                            },
                             1
                           ],
                           {
@@ -55,12 +55,12 @@
           {
             "tag": "SingleProperty",
             "contents": [
-              [
-                "index",
-                [
+              {
+                "propertyName": "index",
+                "propertyIndices": [
                   1
                 ]
-              ],
+              },
               {
                 "tag": "Query",
                 "contents": {
@@ -70,12 +70,12 @@
                       "unDisjunctAll": [
                         [
                           [
-                            [
-                              "index",
-                              [
+                            {
+                              "propertyName": "index",
+                              "propertyIndices": [
                                 1
                               ]
-                            ],
+                            },
                             1
                           ],
                           {

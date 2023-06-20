@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "andGateCorrect",
-            []
-          ],
+          {
+            "propertyName": "andGateCorrect",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "andGateCorrect",
-                          []
-                        ],
+                        {
+                          "propertyName": "andGateCorrect",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -81,10 +81,10 @@
                     ],
                     [
                       [
-                        [
-                          "andGateCorrect",
-                          []
-                        ],
+                        {
+                          "propertyName": "andGateCorrect",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -144,10 +144,10 @@
                     ],
                     [
                       [
-                        [
-                          "andGateCorrect",
-                          []
-                        ],
+                        {
+                          "propertyName": "andGateCorrect",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -207,10 +207,10 @@
                     ],
                     [
                       [
-                        [
-                          "andGateCorrect",
-                          []
-                        ],
+                        {
+                          "propertyName": "andGateCorrect",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {

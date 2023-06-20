@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "expandedExpr",
-            []
-          ],
+          {
+            "propertyName": "expandedExpr",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "expandedExpr",
-                          []
-                        ],
+                        {
+                          "propertyName": "expandedExpr",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -75,10 +75,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "sequential",
-            []
-          ],
+          {
+            "propertyName": "sequential",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -88,10 +88,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "sequential",
-                          []
-                        ],
+                        {
+                          "propertyName": "sequential",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -171,10 +171,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "parallel",
-            []
-          ],
+          {
+            "propertyName": "parallel",
+            "propertyIndices": []
+          },
           {
             "tag": "Conjunct",
             "contents": [
@@ -187,10 +187,10 @@
                       "unDisjunctAll": [
                         [
                           [
-                            [
-                              "parallel",
-                              []
-                            ],
+                            {
+                              "propertyName": "parallel",
+                              "propertyIndices": []
+                            },
                             1
                           ],
                           {
@@ -245,10 +245,10 @@
                       "unDisjunctAll": [
                         [
                           [
-                            [
-                              "parallel",
-                              []
-                            ],
+                            {
+                              "propertyName": "parallel",
+                              "propertyIndices": []
+                            },
                             2
                           ],
                           {

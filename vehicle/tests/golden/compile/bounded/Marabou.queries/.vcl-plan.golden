@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "bounded",
-            []
-          ],
+          {
+            "propertyName": "bounded",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "bounded",
-                          []
-                        ],
+                        {
+                          "propertyName": "bounded",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -61,10 +61,10 @@
                     ],
                     [
                       [
-                        [
-                          "bounded",
-                          []
-                        ],
+                        {
+                          "propertyName": "bounded",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {

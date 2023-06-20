@@ -63,7 +63,7 @@ prepareNetworkArg metaNetwork = do
 parseMarabouOutput ::
   String ->
   (ExitCode, String, String) ->
-  IO (Either Text (QueryResult NetworkVariableCounterexample))
+  IO (Either Text (QueryResult NetworkVariableAssignments))
 parseMarabouOutput command (exitCode, out, _err) = case exitCode of
   ExitFailure exitValue
     | exitValue < 0 -> do

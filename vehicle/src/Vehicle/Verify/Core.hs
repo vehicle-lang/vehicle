@@ -30,7 +30,7 @@ type VerifierInvocation =
   VerifierExecutable ->
   MetaNetwork ->
   QueryFile ->
-  m (Either Text (QueryResult NetworkVariableCounterexample))
+  m (Either Text (QueryResult NetworkVariableAssignments))
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -53,7 +53,19 @@ type QueryID = Int
 
 type QueryAddress = (PropertyAddress, QueryID)
 
-type PropertyAddress = (Name, TensorIndices)
+data PropertyAddress = PropertyAddress
+  { propertyName :: Name,
+    propertyIndices :: TensorIndices
+  }
+  deriving (Show, Generic)
+
+instance ToJSON PropertyAddress
+
+instance FromJSON PropertyAddress
+
+instance Pretty PropertyAddress where
+  pretty (PropertyAddress name indices) =
+    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -63,8 +75,11 @@ type QueryFile = FilePath
 
 type QueryText = Text
 
--- | Tracks whether or not the result of the query should be negated.
-type QueryNegationStatus = Bool
+-- | Tracks whether or not the result of the query set should be negated.
+-- Not that at first glance this might seem like it can be lifted to whether
+-- or not the property is negated, but recall a property can have multiple
+-- query sets. e.g. prop = (forall x . P x) and (exists x . Q y).
+type QuerySetNegationStatus = Bool
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [(Name, FilePath)]
@@ -83,9 +98,11 @@ instance ToJSON UserVariableAssignment
 
 instance FromJSON UserVariableAssignment
 
-type NetworkVariableCounterexample = Vector Double
+-- An assignment to network variables ordered sequentially.
+type NetworkVariableAssignments = Vector Double
 
-type UserVariableCounterexample = [UserVariableAssignment]
+-- An assignment to user variables ordered sequentially.
+type UserVariableAssignments = [UserVariableAssignment]
 
 --------------------------------------------------------------------------------
 -- Query formats

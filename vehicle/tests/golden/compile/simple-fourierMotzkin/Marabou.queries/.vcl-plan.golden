@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "unusedVar",
-            []
-          ],
+          {
+            "propertyName": "unusedVar",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "unusedVar",
-                          []
-                        ],
+                        {
+                          "propertyName": "unusedVar",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -87,10 +87,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "underConstrainedVar1",
-            []
-          ],
+          {
+            "propertyName": "underConstrainedVar1",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -100,10 +100,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "underConstrainedVar1",
-                          []
-                        ],
+                        {
+                          "propertyName": "underConstrainedVar1",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -193,10 +193,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "underConstrainedVar2",
-            []
-          ],
+          {
+            "propertyName": "underConstrainedVar2",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -206,10 +206,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "underConstrainedVar2",
-                          []
-                        ],
+                        {
+                          "propertyName": "underConstrainedVar2",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -299,10 +299,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "underConstrainedVars",
-            []
-          ],
+          {
+            "propertyName": "underConstrainedVars",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -312,10 +312,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "underConstrainedVars",
-                          []
-                        ],
+                        {
+                          "propertyName": "underConstrainedVars",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {

@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "monotonic",
-            []
-          ],
+          {
+            "propertyName": "monotonic",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "monotonic",
-                          []
-                        ],
+                        {
+                          "propertyName": "monotonic",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {

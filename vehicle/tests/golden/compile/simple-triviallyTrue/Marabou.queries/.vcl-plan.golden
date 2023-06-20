@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "p",
-            []
-          ],
+          {
+            "propertyName": "p",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -33,13 +33,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       0,
                       0
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {
@@ -55,13 +55,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       1,
                       0
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {
@@ -77,13 +77,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       2,
                       0
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {
@@ -104,13 +104,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       0,
                       1
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {
@@ -126,13 +126,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       1,
                       1
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {
@@ -148,13 +148,13 @@
               {
                 "tag": "SingleProperty",
                 "contents": [
-                  [
-                    "multiProperty",
-                    [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
                       2,
                       1
                     ]
-                  ],
+                  },
                   {
                     "tag": "Query",
                     "contents": {

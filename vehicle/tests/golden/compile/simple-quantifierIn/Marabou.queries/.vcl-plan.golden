@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "forallInForall",
-            []
-          ],
+          {
+            "propertyName": "forallInForall",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "forallInForall",
-                          []
-                        ],
+                        {
+                          "propertyName": "forallInForall",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
