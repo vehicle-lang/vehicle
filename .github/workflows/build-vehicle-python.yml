@@ -24,12 +24,15 @@ jobs:
         os:
           - name: "Linux"
             type: "ubuntu-latest"
+            arch: "x86_64"
           - name: "macOS"
             type: "macos-latest"
+            arch: "x86_64"
           - name: "Windows"
             type: "windows-latest"
+            arch: "AMD64"
 
-    name: vehicle-python / ${{ matrix.os.name }}
+    name: vehicle-python / ${{ matrix.os.name }} - ${{ matrix.os.arch }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
@@ -50,6 +53,7 @@ jobs:
           output-dir: "./vehicle-python/wheelhouse"
           config-file: "{package}/pyproject.toml"
         env:
+          CIBW_ARCHS: "${{ matrix.os.arch }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
