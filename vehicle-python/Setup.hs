@@ -69,11 +69,11 @@ getInstallDir verbosity =
     unsafeGetInstallDir = do
       installDir <- getEnv "INSTALLDIR"
       installDirExists <- doesDirectoryExist installDir
-      unless installDirExists $
-        die' verbosity $
-          "INSTALLDIR '"
-            <> installDir
-            <> "' does not exist"
+      unless installDirExists
+        $ die' verbosity
+        $ "INSTALLDIR '"
+        <> installDir
+        <> "' does not exist"
       return $ Just installDir
 
     doesNotExistErrorHandler e =
