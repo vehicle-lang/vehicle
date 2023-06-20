@@ -33,13 +33,10 @@ from . import ABCTranslation
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from .free_networks import FreeNetworks
 
 
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
-    free_networks: ClassVar[FreeNetworks] = FreeNetworks()
-
     def compile(
         self, module: Module, filename: str, declaration_context: Dict[str, Any] = {}
     ) -> Dict[str, Any]:
@@ -76,9 +73,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     @override
     def translate_DefFunction(self, declaration: DefFunction) -> py.stmt:
         provenance = asdict(declaration.provenance)
-        return py.Assign(
-            [py.Name(declaration.name, py.Store(), **provenance)],
-            self.translate_expression(declaration.body),
+        return py.FunctionDef(
+            declaration.name,
+            py_arguments([], [], None, [], [], None, []),
+            [py.Return(self.translate_expression(declaration.body), **provenance)],
+            [],
+            None,
             **provenance,
         )
 
@@ -156,10 +156,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     @override
     def translate_FreeVariable(self, expression: FreeVariable) -> py.expr:
-        provenance = asdict(expression.provenance)
-        func = py.Name(expression.func, py.Load(), **provenance)
-        args = list(self.translate_expressions(expression.args))
-        return py.Call(func, args, [], **provenance)
+        # provenance = asdict(expression.provenance)
+        # func = py.Name(expression.func, py.Load(), **provenance)
+        # args = list(self.translate_expressions(expression.args))
+        # return py.Call(func, args, [], **provenance)
+        raise NotImplementedError("FreeVariable")
 
     @override
     def translate_NetworkApplication(self, expression: NetworkApplication) -> py.expr:
@@ -238,7 +239,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     @override
     def translate_Range(self, expression: Range) -> py.expr:
-        provenance = asdict(expression.provenance)
+        # provenance = asdict(expression.provenance)
         raise NotImplementedError("Range")
 
     @override
@@ -251,5 +252,5 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     @override
     def translate_ExponentialAnd(self, expression: ExponentialAnd) -> py.expr:
-        provenance = asdict(expression.provenance)
+        # provenance = asdict(expression.provenance)
         raise NotImplementedError("ExponentialAnd")

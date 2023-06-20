@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterator, Union
 
 import pytest
 from typing_extensions import TypeAlias
+
 from vehicle_lang import session
 from vehicle_lang.loss_function._ast import (
     Addition,
@@ -153,6 +154,7 @@ def test_loss_function_exec(
     result = compiler.compile(module, path, input_declaration_context)
     for key in output_declaration_context.keys():
         if output_declaration_context[key] is not ...:
-            assert output_declaration_context[key] == result.get(key)
+            result_at_key = result[key]() if key in result else None
+            assert output_declaration_context[key] == result_at_key
         else:
             assert key in result
