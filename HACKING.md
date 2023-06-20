@@ -193,7 +193,7 @@ The documentation is hosted by ReadTheDocs (RTD). The documentation is automatic
 
     # from the repository root
     cabal test all
-    # from py-vehicle-lang
+    # from vehicle-python
     tox
 
 3. Run the following command, using `--patch`, `--minor`, or `--major` as needed:
