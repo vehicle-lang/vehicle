@@ -28,6 +28,7 @@ import Options.Applicative
     helper,
     hsubparser,
     info,
+    internal,
     long,
     maybeReader,
     metavar,
@@ -324,7 +325,7 @@ redirectStdoutParser =
   optional $
     strOption $
       long "redirect-stdout"
-        <> long "ro"
+        <> internal
         <> metavar "FILE"
         <> help
           "Redirects the standard output to the provided file. \
@@ -335,7 +336,7 @@ redirectStderrParser =
   optional $
     strOption $
       long "redirect-stderr"
-        <> long "re"
+        <> internal
         <> metavar "FILE"
         <> help
           "Redirects the standard error to the provided file. \
@@ -346,7 +347,7 @@ redirectLogsParser =
   optional $
     strOption $
       long "redirect-logs"
-        <> long "rl"
+        <> internal
         <> metavar "FILE"
         <> help
           "Redirects logs to the provided file. \
