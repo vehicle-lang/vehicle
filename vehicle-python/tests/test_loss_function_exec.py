@@ -12,7 +12,7 @@ def sampler_for_x(**ctx: Any) -> Iterator[float]:
 
 
 @pytest.mark.parametrize(
-    "module_or_path,input_declaration_context,output_declaration_context",
+    "specification_filename,input_declaration_context,output_declaration_context",
     [
         (
             "test_addition.vcl",
