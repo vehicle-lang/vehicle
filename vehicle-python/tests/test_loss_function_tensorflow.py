@@ -31,13 +31,12 @@ def test_loss_function_tensorflow_bounded() -> None:
         def _sampler_for_x(**ctx: Any) -> Iterator[float]:
             yield random.uniform(0.5, 0.5)
 
-        def _bounded_loss() -> Any:
-            output_declaration_context = compiler.compile(
-                module,
-                specification_filename,
-                {"f": _apply_network, "sampler_for_x": _sampler_for_x},
-            )
-            return output_declaration_context["bounded"]
+        output_declaration_context = compiler.compile(
+            module,
+            specification_filename,
+            {"f": _apply_network, "sampler_for_x": _sampler_for_x},
+        )
+        _bounded_loss = output_declaration_context["bounded"]
 
         # Prepare training data
         batch_size = 1
