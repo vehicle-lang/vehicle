@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator
 
 import pytest
+
 from vehicle_lang import session
 from vehicle_lang.loss_function.translation.python import PythonTranslation
 
@@ -103,7 +104,9 @@ def test_loss_function_exec(
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
     module = session.load(specification_path)
-    result = compiler.compile(module, specification_path, input_declaration_context)
+    result = compiler.compile(
+        module, str(specification_path), input_declaration_context
+    )
     for key in output_declaration_context.keys():
         if output_declaration_context[key] is not ...:
             assert output_declaration_context[key] == result.get(key)
