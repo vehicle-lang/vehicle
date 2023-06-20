@@ -50,6 +50,10 @@ flag nothunks
   manual:      True
   default:     False
 
+flag optimise-heavily
+  default:     False
+  description: Enable some expensive optimisations when compiling Vehicle.
+
 common common-language
   default-language:   Haskell2010
   default-extensions:
@@ -81,6 +85,10 @@ common common-library
   if flag(nothunks)
     build-depends: nothunks >=0.1.3 && <0.2
     cpp-options:   -Dnothunks
+
+  if flag(optimise-heavily)
+    cpp-options: -DoptimiseHeavily
+    ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
 library
   import:             common-library

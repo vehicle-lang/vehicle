@@ -34,6 +34,10 @@ flag release-build
   manual:      True
   default:     False
 
+flag optimise-heavily
+  default:     False
+  description: Enable some expensive optimisations when compiling Vehicle.
+
 common common-language
   default-language:   Haskell2010
   default-extensions:
@@ -83,6 +87,10 @@ common common-library
 
   if flag(release-build)
     cpp-options: -DreleaseBuild
+
+  if flag(optimise-heavily)
+    cpp-options: -DoptimiseHeavily
+    ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
 common common-executable
   import:      common-language
