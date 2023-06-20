@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterator, Union
 
 import pytest
 from typing_extensions import TypeAlias
+
 from vehicle_lang import session
 from vehicle_lang.loss_function._ast import (
     Addition,

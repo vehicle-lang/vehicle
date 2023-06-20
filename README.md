@@ -4,7 +4,7 @@
 [![readthedocs status](https://readthedocs.org/projects/vehicle-lang/badge/?version=latest)](https://vehicle-lang.readthedocs.io/en/latest/)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/vehicle-lang/vehicle/dev.svg)](https://results.pre-commit.ci/latest/github/vehicle-lang/vehicle/dev)
 
-# Vehicle
+# vehicle-python
 
 Vehicle is a system for embedding logical specifications into neural networks.
 At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks. For example, the following simple

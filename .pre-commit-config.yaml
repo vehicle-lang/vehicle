@@ -53,20 +53,14 @@ repos:
     rev: "v1.3.0"
     hooks:
       - id: mypy
-        name: mypy (py-vehicle-lang)
+        name: mypy (vehicle-python)
         args:
-          - "--config-file=py-vehicle-lang/pyproject.toml"
+          - "--config-file=vehicle-python/pyproject.toml"
         additional_dependencies:
           - "types_setuptools >=45"
           - "types_pygments >=2.14"
           - "packaging >=23"
-        files: '^py-vehicle-lang\/.*\.py$'
-      - id: mypy
-        name: mypy (py-vehicle-lang-tensorflow)
-        args:
-          - "--config-file=py-vehicle-lang-tensorflow/pyproject.toml"
-        additional_dependencies: ["numpy"]
-        files: '^py-vehicle-lang-tensorflow\/.*\.py$'
+        files: '^vehicle-python\/.*\.py$'
   - repo: local
     hooks:
       - id: cabal-fmt
