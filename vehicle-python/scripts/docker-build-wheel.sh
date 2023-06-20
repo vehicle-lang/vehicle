@@ -6,21 +6,20 @@ if [ "${manylinux_image}" = '' ]; then
     echo "Usage: ${0} [manylinux_image]"
     echo
     echo "manylinux_2_28 (AlmaLinux 8 based)"
-    echo "Toolchain: GCC 12"
+    echo "Toolchain: GCC 12, GHC 9.4.4"
     echo
-    echo "- quay.io/pypa/manylinux_2_28_x86_64"
-    echo "- quay.io/pypa/manylinux_2_28_aarch64"
-    echo "- quay.io/pypa/manylinux_2_28_ppc64le"
-    echo "- quay.io/pypa/manylinux_2_28_s390x"
+    echo "- wenkokke/manylinux_2_28_ghc944_aarch64"
     echo
     echo "manylinux2014 (CentOS 7 based)"
-    echo "Toolchain: GCC 10"
+    echo "Toolchain: GCC 10, GHC 9.4.4"
     echo
-    echo "- quay.io/pypa/manylinux2014_x86_64"
-    echo "- quay.io/pypa/manylinux2014_i686"
-    echo "- quay.io/pypa/manylinux2014_aarch64"
-    echo "- quay.io/pypa/manylinux2014_ppc64le"
-    echo "- quay.io/pypa/manylinux2014_s390x"
+    echo "- wenkokke/manylinux2014_ghc944_x86_64"
+    echo "- wenkokke/manylinux2014_ghc944_i686"
+    echo
+    echo "musllinux_1_1 (Alpine 3.12 based)"
+    echo "Toolchain: GCC 9, GHC 9.4.4"
+    echo
+    echo "- wenkokke/musllinux_1_1_ghc944_x86_64"
     echo
     echo "See: https://github.com/pypa/manylinux#readme"
     exit 1
@@ -40,5 +39,4 @@ if [ -s "$fail" ]; then
 fi
 
 # Create a container for the build
-"${docker}" run --rm -v "${package_root}:/${package_name}" -w "/${package_name}" "${manylinux_image}" \
-/bin/sh -c '. /etc/os-release && sh ./scripts/before-all-$ID-$VERSION_ID.sh && pipx run tox'
+"${docker}" run --rm -v "${package_root}:/${package_name}" -w "/${package_name}" "${manylinux_image}" pipx run tox

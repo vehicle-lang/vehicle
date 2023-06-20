@@ -32,6 +32,16 @@ case "${platform}" in
       exit 1
     fi
     ;;
+  'darwin')
+    # Check if delocate is available:
+    has_delocate=$("${env_python}" -c 'import importlib.util; print(importlib.util.find_spec("delocate") is not None)')
+    if [ "${has_delocate}" = 'False' ]
+    then
+      echo "${0} requires 'delocate'"
+      echo "See: https://pypi.org/project/delocate/"
+      exit 1
+    fi
+    ;;
 esac
 
 # Build the wheel
@@ -44,6 +54,10 @@ case "${platform}" in
     libc_xy="$("${env_python}" -c 'import platform; print(platform.libc_ver()[1].replace(".","_"))')"
     machine="$("${env_python}" -c 'import platform; print(platform.machine())')"
     auditwheel repair --wheel-dir "${dist_dir}" --plat "manylinux_${libc_xy}_${machine}" "${dist_tmp_dir}"/*.whl
+    ;;
+  'darwin')
+    # Repair wheel with delocate-wheel
+    delocate-wheel --wheel-dir "${dist_dir}" "${dist_tmp_dir}"/*.whl
     ;;
   *)
     mkdir -p "${dist_dir}"
