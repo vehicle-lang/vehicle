@@ -1,20 +1,9 @@
 Vehicle - a program for enforcing neural network specifications
 
-Usage: vehicle [-V|--version] [--redirect-stdout|--ro FILE] 
-               [--re|--redirect-stderr FILE] [--redirect-logs|--rl FILE] 
-               [--logging ARG] [COMMAND]
+Usage: vehicle [-V|--version] [--logging ARG] [COMMAND]
 
 Available options:
   -V,--version             Show version information.
-  --redirect-stdout,--ro FILE
-                           Redirects the standard output to the provided file.
-                           If no argument is provided will default to stdout.
-  --re,--redirect-stderr FILE
-                           Redirects the standard error to the provided file. If
-                           no argument is provided will default to stderr.
-  --redirect-logs,--rl FILE
-                           Redirects logs to the provided file. If no argument
-                           is provided will default to stdout.
   --logging ARG            Sets the level of detail in the logs if the --log
                            argument has been passed. Supported options:
                            NoDetail, MinDetail, MidDetail, MaxDetail
