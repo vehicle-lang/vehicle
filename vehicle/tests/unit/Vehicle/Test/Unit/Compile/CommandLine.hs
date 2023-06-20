@@ -111,7 +111,8 @@ verifyTests =
         \--specification queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vcl-cache"
+        \--proofCache test/proofCache.vcl-cache \
+        \--assignmentsLocation assignments"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -125,7 +126,8 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vcl-cache"
+                      proofCache = Just "test/proofCache.vcl-cache",
+                      assignmentsLocation = Just "assignments"
                     }
           },
       parserTest
@@ -147,7 +149,8 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing
+                      proofCache = Nothing,
+                      assignmentsLocation = Nothing
                     }
           },
       parserTest
@@ -174,7 +177,8 @@ verifyTests =
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing
+                      proofCache = Nothing,
+                      assignmentsLocation = Nothing
                     }
           }
     ]
