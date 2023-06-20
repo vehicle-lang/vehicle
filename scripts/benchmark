@@ -75,7 +75,7 @@ $HYPERFINE \
   --warmup 3 \
   --runs 10 \
   --export-json "$BENCHMARK_FILE" \
-  'cabal test all' \
+  'cabal test vehicle:test:vehicle-compiler-tests' \
   || echo > "$fail"
 [ ! -s "$fail" ] || (rm "$fail" && exit 1)
 
