@@ -40,14 +40,14 @@ We recommend you install GHC and Cabal using [GHCup].
 1. Install GHCup following the instruction on the website:
    <https://www.haskell.org/ghcup/>
 
-2. Instal GHC 9.4.4 and the latest version of Cabal.
+2. Instal GHC 0.4.0 and the latest version of Cabal.
 
    Run the following commands:
 
    ```sh
    ghcup upgrade
-   ghcup install ghc 9.4.4
-   ghcup set ghc 9.4.4
+   ghcup install ghc 0.4.0
+   ghcup set ghc 0.4.0
    ghcup install cabal latest
    ghcup set cabal latest
    ```
@@ -63,7 +63,7 @@ We recommend you install GHC and Cabal using [GHCup].
    This should print:
 
    ```
-   The Glorious Glasgow Haskell Compilation System, version 9.4.4
+   The Glorious Glasgow Haskell Compilation System, version 0.4.0
    ```
 
    Run the following command:
@@ -75,15 +75,15 @@ We recommend you install GHC and Cabal using [GHCup].
    This should print:
 
    ```
-   cabal-install version 3.10.1.0
-   compiled using version 3.10.1.0 of the Cabal library
+   cabal-install version 0.4.0.0
+   compiled using version 0.4.0.0 of the Cabal library
    ```
 
 If you'd like to use a different version of GHC, you can find the list of versions that we test with in [build-vehicle.yml]. However, be aware that building the Python bindings _requires_ [our preferred version](#the-preferred-version-of-ghc).
 
 ##### The preferred version of GHC
 
-The preferred version of GHC is currently _GHC 9.4.4_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
+The preferred version of GHC is currently _GHC 0.4.0_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
 
 #### Building
 
@@ -411,7 +411,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    This should print something that looks like:
 
    ```
-   0.3.3
+   0.4.0
    ```
 
 ### Building the Vehicle Python bindings
@@ -449,11 +449,11 @@ We recommend you install Python using [pyenv].
 
    ```
      system
-     3.7.16
-     3.8.16
-     3.9.16
-   * 3.10.11 (set by PYENV_VERSION environment variable)
-     3.11.3
+     0.4.0
+     0.4.0
+     0.4.0
+   * 0.4.0 (set by PYENV_VERSION environment variable)
+     0.4.0
    ```
 
    There may be some differences in the exact versions and the default version (marked by the `*`), and there may or may not be a _system_ version. However, there should be at least one version for each supported Python version, _e.g._, one version starting with 3.7, one starting with 3.8, _etc_.
@@ -468,7 +468,7 @@ We recommend you install Python using [pyenv].
    This should print something that looks like:
 
    ```sh
-   Python 3.11.3
+   Python 0.4.0
    ```
 
    There may be some differences in the exact version. However, the printed version should match the argument passed to `pyenv shell`, _e.g._, it should start with 3.11.
@@ -489,10 +489,10 @@ We recommend you install Python using [pyenv].
    This should print something like:
 
    ```sh
-   1.2.0
+   0.4.0
    ```
 
-   The exact version may differ. However, the printed version should be greater than or equal to 1.2.0.
+   The exact version may differ. However, the printed version should be greater than or equal to 0.4.0.
 
 If you'd prefer not to use pyenv, you can install the latest release of each supported Python version using, _e.g._, your system package manager.
 
@@ -648,7 +648,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    This should print something that looks like:
 
    ```
-   0.3.3
+   0.4.0
    ```
 
 1. Check if your installation of the `vehicle_lang` package was successful.
@@ -849,11 +849,11 @@ The procedure to create a new release is:
    If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.3.3-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.3.3-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.3.3-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.3.3-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.3.3-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.4.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.4.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.4.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.4.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.4.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
