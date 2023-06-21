@@ -191,10 +191,12 @@ The documentation is hosted by ReadTheDocs (RTD). The documentation is automatic
 
 2. Run the tests:
 
-    # from the repository root
-    cabal test all
-    # from vehicle-python
-    tox
+  ```sh
+  # from the repository root
+  cabal test all
+  # from vehicle-python
+  pipx run tox
+  ```
 
 3. Run the following command, using `--patch`, `--minor`, or `--major` as needed:
 
