@@ -83,8 +83,7 @@ If you'd like to use a different version of GHC, you can find the list of versio
 
 ##### The preferred version of GHC
 
-The preferred version of GHC is currently _GHC 9.4.4_, which is
-There is one _preferred_ version of GHC which we recommend you use, and which is required to build the Python bindings. That version is currently _GHC 9.4.4_.
+The preferred version of GHC is currently _GHC 9.4.4_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
 
 #### Building
 
