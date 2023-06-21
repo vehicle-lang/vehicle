@@ -676,6 +676,7 @@ The procedure to create a new release is:
 5. Run all tests and fix any errors.
 
    **Vehicle compiler tests**
+
    Run the following command from the root of the repository:
 
    ```sh
@@ -683,6 +684,7 @@ The procedure to create a new release is:
    ```
 
    **Vehicle Python bindings tests**
+
    Run the following command from `vehicle-python`:
 
    ```sh
@@ -690,6 +692,7 @@ The procedure to create a new release is:
    ```
 
    **Vehicle documentation tests**
+
    Run the following command from `docs-source`:
 
    ```sh
@@ -724,7 +727,38 @@ The procedure to create a new release is:
 
    This will update the version, create a Git tag, and push it to GitHub.
 
-7. ...
+7. Ensure that the CI successfully builds and publishes Vehicle to PyPI:
+   <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
+
+8. **On a macOS machine with an M1/M2 chipset**
+
+   There are no GitHub Actions runners with an M1/M2 chipset, so the binary distributions for this platform must be built and published manually from an appropriate machine.
+
+   Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
+
+   Run the following command from `vehicle-python`:
+
+   ```sh
+   pipx run tox
+   ```
+
+   This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages.
+   If you're on macOS with an M1/M2 chipset, these look like:
+
+   ```
+   vehicle_lang-0.3.3-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.3.3-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.3.3-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.3.3-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.3.3-cp38-cp38-macosx_13_0_arm64.whl
+   ```
+
+   To publish these to PyPI, run the following commands:
+
+   ```sh
+   pipx run twine check --strict dist/*.whl
+   pipx run twine upload dist/*.whl
+   ```
 
 To create a new release, ensure that you can successfully build the Vehicle compiler and Python bindings.
 
