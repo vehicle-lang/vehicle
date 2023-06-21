@@ -2,8 +2,7 @@ import random
 from pathlib import Path
 from typing import Any, Iterator
 
-from vehicle_lang import session
-from vehicle_lang.loss_function.translation.tensorflow import TensorflowTranslation
+from vehicle_lang.loss_function import compile
 
 
 def test_loss_function_tensorflow_bounded() -> None:
@@ -25,18 +24,15 @@ def test_loss_function_tensorflow_bounded() -> None:
         # Load and compile Vehicle specification
         specification_filename = "test_bounded.vcl"
         specification_path = Path(__file__).parent / "data" / specification_filename
-        module = session.load(specification_path)
-        compiler = TensorflowTranslation()
 
         def _sampler_for_x(**ctx: Any) -> Iterator[float]:
             yield random.uniform(0.5, 0.5)
 
-        output_declaration_context = compiler.compile(
-            module,
-            specification_filename,
-            {"f": _apply_network, "sampler_for_x": _sampler_for_x},
+        _bounded_loss = compile.to_tensorflow(
+            specification_path,
+            "bounded",
+            declaration_context={"f": _apply_network, "sampler_for_x": _sampler_for_x},
         )
-        _bounded_loss = output_declaration_context["bounded"]
 
         # Prepare training data
         batch_size = 1
