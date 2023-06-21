@@ -14,11 +14,17 @@ module Vehicle.Backend.LossFunction.Logics
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), Options (..), ToJSON (..), defaultOptions, genericParseJSON, genericToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Prelude qualified as V
+
+jsonOptions :: Options
+jsonOptions =
+  defaultOptions
+    { tagSingleConstructors = True
+    }
 
 -- | Definiton of the LExpr - all expressions allowed in a loss constraint
 data LExpr
@@ -63,9 +69,11 @@ data LDecl
       LExpr -- Bound function body.
   deriving (Eq, Show, Generic)
 
-instance FromJSON LDecl
+instance FromJSON LDecl where
+  parseJSON = genericParseJSON jsonOptions
 
-instance ToJSON LDecl
+instance ToJSON LDecl where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- other definitions
@@ -107,12 +115,12 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 
 implementationOf :: DifferentiableLogic -> DifferentialLogicImplementation
 implementationOf = \case
-  DL2 -> dl2Translation
-  Godel -> godelTranslation
-  Lukasiewicz -> lukasiewiczTranslation
-  Product -> productTranslation
-  Yager -> yagerTranslation
-  STL -> stlTranslation
+  DL2Loss -> dl2Translation
+  GodelLoss -> godelTranslation
+  LukasiewiczLoss -> lukasiewiczTranslation
+  ProductLoss -> productTranslation
+  YagerLoss -> yagerTranslation
+  STLLoss -> stlTranslation
 
 --------------------------------------------------------------------------------
 -- different available  differentiable logics

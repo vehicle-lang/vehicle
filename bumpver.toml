@@ -8,13 +8,13 @@ push = true
 
 [bumpver.file_patterns]
 "bumpver.toml" = ['current_version = "{version}"']
-"py-vehicle-lang/vehicle-python-binding.cabal" = [
+"vehicle-python/vehicle-python-binding.cabal" = [
     "^version:         {pep440_version}$",
 ]
 "HACKING.md" = [
   "``git checkout {version}``"
 ]
-"py-vehicle-lang/src/vehicle_lang/_version.py" = [
+"vehicle-python/src/vehicle_lang/_version.py" = [
     '^VERSION: str = "{pep440_version}"$'
 ]
 "vehicle/vehicle.cabal" = ["^version:            {pep440_version}$"]

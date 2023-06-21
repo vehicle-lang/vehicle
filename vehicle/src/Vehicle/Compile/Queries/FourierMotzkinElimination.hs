@@ -48,23 +48,24 @@ solveVar varNames (solutions, inequalities) (iteration, var) = do
 
   let varDoc = pretty $ varNames !! var
   logDebug MaxDetail $
-    line <> "After iteration"
-      <+> pretty iteration
-      <+> "solving for"
-      <+> varDoc
-        <> ":"
-        <> line
-        <> indent
-          2
-          ( "LHS inequalities:"
-              <> prettyAssertions varNames less
-              <> line
-              <> "RHS inequalities:"
-              <> prettyAssertions varNames greater
-              <> line
-              <> "New inequalities:"
-              <> prettyAssertions varNames newInequalities
-          )
+    line
+      <> "After iteration"
+        <+> pretty iteration
+        <+> "solving for"
+        <+> varDoc
+      <> ":"
+      <> line
+      <> indent
+        2
+        ( "LHS inequalities:"
+            <> prettyAssertions varNames less
+            <> line
+            <> "RHS inequalities:"
+            <> prettyAssertions varNames greater
+            <> line
+            <> "New inequalities:"
+            <> prettyAssertions varNames newInequalities
+        )
 
   return (solution : solutions, newInequalities <> unusedInequalities)
 

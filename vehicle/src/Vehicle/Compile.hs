@@ -74,7 +74,7 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = d
   let mergedProg = mergeImports imports typedProg
   let verifier = queryFormats queryFormatID
   queryData <- compileToQueries verifier mergedProg resources
-  let (queryStructure, queryText) = NonEmpty.unzip queryData
+  let (queryStructure, queryText) = (NonEmpty.unzip . fmap (NonEmpty.unzip . fmap NonEmpty.unzip)) queryData
   integrityInfo <- generateResourcesIntegrityInfo resources
   let verificationPlan = VerificationPlan queryStructure integrityInfo
   outputVerificationResult queryFormatID outputFile (verificationPlan, queryText)

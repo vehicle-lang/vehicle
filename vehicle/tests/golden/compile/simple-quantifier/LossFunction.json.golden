@@ -1,253 +1,265 @@
 [
-  [
-    "unused",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Constant",
-          "contents": 0
-        }
-      ]
-    }
-  ],
-  [
-    "expandedExpr",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Max",
-          "contents": [
-            {
-              "tag": "Constant",
-              "contents": 0
-            },
-            {
-              "tag": "Subtraction",
-              "contents": [
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "NetworkApplication",
-                      "contents": [
-                        "f",
-                        [
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "unused",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "x",
+          [],
+          {
+            "tag": "Constant",
+            "contents": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "expandedExpr",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "x",
+          [],
+          {
+            "tag": "Max",
+            "contents": [
+              {
+                "tag": "Constant",
+                "contents": 0
+              },
+              {
+                "tag": "Subtraction",
+                "contents": [
+                  {
+                    "tag": "At",
+                    "contents": [
+                      {
+                        "tag": "NetworkApplication",
+                        "contents": [
+                          "f",
+                          [
+                            {
+                              "tag": "Variable",
+                              "contents": "x"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "At",
+                    "contents": [
+                      {
+                        "tag": "Variable",
+                        "contents": "x"
+                      },
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "sequential",
+      {
+        "tag": "Quantifier",
+        "contents": [
+          "All",
+          "x",
+          [],
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "All",
+              "y",
+              [],
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "At",
+                        "contents": [
                           {
-                            "tag": "Variable",
-                            "contents": "x"
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "y"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "Constant",
+                            "contents": 0
                           }
                         ]
-                      ]
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
-                },
-                {
-                  "tag": "At",
-                  "contents": [
-                    {
-                      "tag": "Variable",
-                      "contents": "x"
-                    },
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "sequential",
-    {
-      "tag": "Quantifier",
-      "contents": [
-        "All",
-        "x",
-        [],
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "y",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "y"
-                              }
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x"
+                                }
+                              ]
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
+                          },
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "parallel",
+      {
+        "tag": "Addition",
+        "contents": [
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "All",
+              "x",
+              [],
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 0
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x"
+                                }
+                              ]
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  [
-    "parallel",
-    {
-      "tag": "Addition",
-      "contents": [
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "All",
-            "x",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 0
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
+                          },
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "Quantifier",
+            "contents": [
+              "Any",
+              "x",
+              [],
+              {
+                "tag": "Max",
+                "contents": [
+                  {
+                    "tag": "Constant",
+                    "contents": 0
+                  },
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Constant",
+                        "contents": 5
+                      },
+                      {
+                        "tag": "At",
+                        "contents": [
+                          {
+                            "tag": "NetworkApplication",
+                            "contents": [
+                              "f",
+                              [
+                                {
+                                  "tag": "Variable",
+                                  "contents": "x"
+                                }
+                              ]
                             ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "Quantifier",
-          "contents": [
-            "Any",
-            "x",
-            [],
-            {
-              "tag": "Max",
-              "contents": [
-                {
-                  "tag": "Constant",
-                  "contents": 0
-                },
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Constant",
-                      "contents": 5
-                    },
-                    {
-                      "tag": "At",
-                      "contents": [
-                        {
-                          "tag": "NetworkApplication",
-                          "contents": [
-                            "f",
-                            [
-                              {
-                                "tag": "Variable",
-                                "contents": "x"
-                              }
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "Constant",
-                          "contents": 0
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+                          },
+                          {
+                            "tag": "Constant",
+                            "contents": 0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

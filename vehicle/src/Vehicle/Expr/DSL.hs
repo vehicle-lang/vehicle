@@ -132,14 +132,14 @@ instance DSL (DSLExpr types) where
     let varType = unDSL binderType p i
         var = boundVar i
         form = approxPiForm name v
-        binder = Binder p form v r () varType
+        binder = Binder p form v r varType
         body = unDSL (bodyFn var) p (i + 1)
      in Pi p binder body
 
   lam name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        binder = Binder p (BinderDisplayForm (OnlyName name) True) v r () varType
+        binder = Binder p (BinderDisplayForm (OnlyName name) True) v r varType
         body = unDSL (bodyFn var) p (i + 1)
      in Lam p binder body
 

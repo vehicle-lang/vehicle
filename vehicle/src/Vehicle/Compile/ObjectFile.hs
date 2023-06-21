@@ -39,15 +39,15 @@ readObjectFile specificationFile spec = do
       logDebug MinDetail $
         errString
           <+> "as the following IO error was thrown:"
-            <> line
-            <> indent 2 (pretty $ show err)
+          <> line
+          <> indent 2 (pretty $ show err)
       return Nothing
     InexplicableDecodingError err -> do
       logDebug MinDetail $
         errString
           <+> "as it was unreadable for the unexpected reason:"
-            <> line
-            <> indent 2 (pretty err)
+          <> line
+          <> indent 2 (pretty err)
       return Nothing
     VersionMismatchError currentVersion writtenVersion err -> do
       logDebug MinDetail $
@@ -55,10 +55,11 @@ readObjectFile specificationFile spec = do
           <+> "as it was written with Vehicle version"
           <+> pretty writtenVersion
           <+> "which is apparently unreadable with the current Vehicle version"
-          <+> pretty currentVersion <> "."
-          <+> "In particular decoding threw the error:"
-            <> line
-            <> indent 2 (pretty err)
+          <+> pretty currentVersion
+          <> "."
+            <+> "In particular decoding threw the error:"
+          <> line
+          <> indent 2 (pretty err)
       return Nothing
     SuccessfulDecoding ObjectFileContents {..}
       | fileHash /= hash spec -> do

@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property1",
-            []
-          ],
+          {
+            "propertyName": "property1",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property1",
-                          []
-                        ],
+                        {
+                          "propertyName": "property1",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -139,10 +139,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property2",
-            []
-          ],
+          {
+            "propertyName": "property2",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -152,10 +152,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property2",
-                          []
-                        ],
+                        {
+                          "propertyName": "property2",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -273,10 +273,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property3",
-            []
-          ],
+          {
+            "propertyName": "property3",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -286,10 +286,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property3",
-                          []
-                        ],
+                        {
+                          "propertyName": "property3",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -407,10 +407,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property4",
-            []
-          ],
+          {
+            "propertyName": "property4",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -420,10 +420,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property4",
-                          []
-                        ],
+                        {
+                          "propertyName": "property4",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -541,10 +541,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property5",
-            []
-          ],
+          {
+            "propertyName": "property5",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -554,10 +554,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property5",
-                          []
-                        ],
+                        {
+                          "propertyName": "property5",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -663,10 +663,10 @@
                     ],
                     [
                       [
-                        [
-                          "property5",
-                          []
-                        ],
+                        {
+                          "propertyName": "property5",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -772,10 +772,10 @@
                     ],
                     [
                       [
-                        [
-                          "property5",
-                          []
-                        ],
+                        {
+                          "propertyName": "property5",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -881,10 +881,10 @@
                     ],
                     [
                       [
-                        [
-                          "property5",
-                          []
-                        ],
+                        {
+                          "propertyName": "property5",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -1002,10 +1002,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property6",
-            []
-          ],
+          {
+            "propertyName": "property6",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -1015,10 +1015,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -1124,10 +1124,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -1233,10 +1233,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -1342,10 +1342,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -1451,10 +1451,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         5
                       ],
                       {
@@ -1560,10 +1560,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         6
                       ],
                       {
@@ -1669,10 +1669,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         7
                       ],
                       {
@@ -1778,10 +1778,10 @@
                     ],
                     [
                       [
-                        [
-                          "property6",
-                          []
-                        ],
+                        {
+                          "propertyName": "property6",
+                          "propertyIndices": []
+                        },
                         8
                       ],
                       {
@@ -1899,10 +1899,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property7",
-            []
-          ],
+          {
+            "propertyName": "property7",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -1912,10 +1912,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property7",
-                          []
-                        ],
+                        {
+                          "propertyName": "property7",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -2021,10 +2021,10 @@
                     ],
                     [
                       [
-                        [
-                          "property7",
-                          []
-                        ],
+                        {
+                          "propertyName": "property7",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -2142,10 +2142,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property8",
-            []
-          ],
+          {
+            "propertyName": "property8",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -2155,10 +2155,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -2264,10 +2264,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -2373,10 +2373,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -2482,10 +2482,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -2591,10 +2591,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         5
                       ],
                       {
@@ -2700,10 +2700,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         6
                       ],
                       {
@@ -2809,10 +2809,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         7
                       ],
                       {
@@ -2918,10 +2918,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         8
                       ],
                       {
@@ -3027,10 +3027,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         9
                       ],
                       {
@@ -3136,10 +3136,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         10
                       ],
                       {
@@ -3245,10 +3245,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         11
                       ],
                       {
@@ -3354,10 +3354,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         12
                       ],
                       {
@@ -3463,10 +3463,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         13
                       ],
                       {
@@ -3572,10 +3572,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         14
                       ],
                       {
@@ -3681,10 +3681,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         15
                       ],
                       {
@@ -3790,10 +3790,10 @@
                     ],
                     [
                       [
-                        [
-                          "property8",
-                          []
-                        ],
+                        {
+                          "propertyName": "property8",
+                          "propertyIndices": []
+                        },
                         16
                       ],
                       {
@@ -3911,10 +3911,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property9",
-            []
-          ],
+          {
+            "propertyName": "property9",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -3924,10 +3924,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property9",
-                          []
-                        ],
+                        {
+                          "propertyName": "property9",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -4033,10 +4033,10 @@
                     ],
                     [
                       [
-                        [
-                          "property9",
-                          []
-                        ],
+                        {
+                          "propertyName": "property9",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -4142,10 +4142,10 @@
                     ],
                     [
                       [
-                        [
-                          "property9",
-                          []
-                        ],
+                        {
+                          "propertyName": "property9",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -4251,10 +4251,10 @@
                     ],
                     [
                       [
-                        [
-                          "property9",
-                          []
-                        ],
+                        {
+                          "propertyName": "property9",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {
@@ -4372,10 +4372,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "property10",
-            []
-          ],
+          {
+            "propertyName": "property10",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -4385,10 +4385,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "property10",
-                          []
-                        ],
+                        {
+                          "propertyName": "property10",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {
@@ -4494,10 +4494,10 @@
                     ],
                     [
                       [
-                        [
-                          "property10",
-                          []
-                        ],
+                        {
+                          "propertyName": "property10",
+                          "propertyIndices": []
+                        },
                         2
                       ],
                       {
@@ -4603,10 +4603,10 @@
                     ],
                     [
                       [
-                        [
-                          "property10",
-                          []
-                        ],
+                        {
+                          "propertyName": "property10",
+                          "propertyIndices": []
+                        },
                         3
                       ],
                       {
@@ -4712,10 +4712,10 @@
                     ],
                     [
                       [
-                        [
-                          "property10",
-                          []
-                        ],
+                        {
+                          "propertyName": "property10",
+                          "propertyIndices": []
+                        },
                         4
                       ],
                       {

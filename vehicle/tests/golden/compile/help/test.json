@@ -1,0 +1,22 @@
+[
+  {
+    "name": "basic",
+    "run": "vehicle --help"
+  },
+  {
+    "name": "check",
+    "run": "vehicle check --help"
+  },
+  {
+    "name": "compile",
+    "run": "vehicle compile --help"
+  },
+  {
+    "name": "verify",
+    "run": "vehicle verify --help"
+  },
+  {
+    "name": "export",
+    "run": "vehicle export --help"
+  }
+]

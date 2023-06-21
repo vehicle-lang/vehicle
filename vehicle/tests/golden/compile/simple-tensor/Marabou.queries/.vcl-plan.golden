@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "p",
-            []
-          ],
+          {
+            "propertyName": "p",
+            "propertyIndices": []
+          },
           {
             "tag": "Conjunct",
             "contents": [
@@ -24,10 +24,10 @@
                           "unDisjunctAll": [
                             [
                               [
-                                [
-                                  "p",
-                                  []
-                                ],
+                                {
+                                  "propertyName": "p",
+                                  "propertyIndices": []
+                                },
                                 1
                               ],
                               {
@@ -58,10 +58,10 @@
                           "unDisjunctAll": [
                             [
                               [
-                                [
-                                  "p",
-                                  []
-                                ],
+                                {
+                                  "propertyName": "p",
+                                  "propertyIndices": []
+                                },
                                 2
                               ],
                               {
@@ -97,10 +97,10 @@
                           "unDisjunctAll": [
                             [
                               [
-                                [
-                                  "p",
-                                  []
-                                ],
+                                {
+                                  "propertyName": "p",
+                                  "propertyIndices": []
+                                },
                                 3
                               ],
                               {
@@ -131,10 +131,10 @@
                           "unDisjunctAll": [
                             [
                               [
-                                [
-                                  "p",
-                                  []
-                                ],
+                                {
+                                  "propertyName": "p",
+                                  "propertyIndices": []
+                                },
                                 4
                               ],
                               {

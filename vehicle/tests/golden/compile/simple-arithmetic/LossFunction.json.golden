@@ -1,63 +1,66 @@
 [
-  [
-    "precedence",
-    {
-      "tag": "Lambda",
-      "contents": [
-        "x",
-        {
-          "tag": "Lambda",
-          "contents": [
-            "y",
-            {
-              "tag": "Lambda",
-              "contents": [
-                "z",
-                {
-                  "tag": "Subtraction",
-                  "contents": [
-                    {
-                      "tag": "Addition",
-                      "contents": [
-                        {
-                          "tag": "Variable",
-                          "contents": "x"
-                        },
-                        {
-                          "tag": "Multiplication",
-                          "contents": [
-                            {
-                              "tag": "Constant",
-                              "contents": 2
-                            },
-                            {
-                              "tag": "Variable",
-                              "contents": "y"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "tag": "Division",
-                      "contents": [
-                        {
-                          "tag": "Variable",
-                          "contents": "z"
-                        },
-                        {
-                          "tag": "Variable",
-                          "contents": "y"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  {
+    "tag": "DefFunction",
+    "contents": [
+      "precedence",
+      {
+        "tag": "Lambda",
+        "contents": [
+          "x",
+          {
+            "tag": "Lambda",
+            "contents": [
+              "y",
+              {
+                "tag": "Lambda",
+                "contents": [
+                  "z",
+                  {
+                    "tag": "Subtraction",
+                    "contents": [
+                      {
+                        "tag": "Addition",
+                        "contents": [
+                          {
+                            "tag": "Variable",
+                            "contents": "x"
+                          },
+                          {
+                            "tag": "Multiplication",
+                            "contents": [
+                              {
+                                "tag": "Constant",
+                                "contents": 2
+                              },
+                              {
+                                "tag": "Variable",
+                                "contents": "y"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "Division",
+                        "contents": [
+                          {
+                            "tag": "Variable",
+                            "contents": "z"
+                          },
+                          {
+                            "tag": "Variable",
+                            "contents": "y"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ]

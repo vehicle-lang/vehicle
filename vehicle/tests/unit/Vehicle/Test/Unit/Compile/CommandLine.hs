@@ -15,7 +15,6 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
-import Vehicle.CompileAndVerify (CompileAndVerifyOptions (..))
 import Vehicle.Prelude
   ( LoggingLevel (MinDetail),
     Pretty (pretty),
@@ -35,7 +34,6 @@ commandLineParserTests =
     [ noModeTests,
       checkModeTests,
       verifyTests,
-      compileAndVerifyTests,
       validateModeTests
     ]
 
@@ -110,31 +108,31 @@ verifyTests =
     [ parserTest
         "basic"
         "vehicle verify \
-        \--queryFolder queries \
+        \--specification queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vcl-cache"
+        \--proofCache test/proofCache.vcl-cache \
+        \--assignmentsLocation assignments"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Verify $
                   VerifyOptions
-                    { queryFolder = "queries",
+                    { specification = "queries",
+                      properties = mempty,
+                      networkLocations = mempty,
+                      datasetLocations = mempty,
+                      parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vcl-cache"
+                      proofCache = Just "test/proofCache.vcl-cache",
+                      assignmentsLocation = Just "assignments"
                     }
-          }
-    ]
-
-compileAndVerifyTests :: TestTree
-compileAndVerifyTests =
-  testGroup
-    "compileAndVerify"
-    [ parserTest
-        "basic"
-        "vehicle compileAndVerify \
+          },
+      parserTest
+        "preCompileBasic"
+        "vehicle verify \
         \--specification test/spec.vcl \
         \--network f:test/myNetwork.onnx \
         \--verifier Marabou"
@@ -142,8 +140,8 @@ compileAndVerifyTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                CompileAndVerify $
-                  CompileAndVerifyOptions
+                Verify $
+                  VerifyOptions
                     { specification = "test/spec.vcl",
                       properties = mempty,
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
@@ -151,12 +149,13 @@ compileAndVerifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing
+                      proofCache = Nothing,
+                      assignmentsLocation = Nothing
                     }
           },
       parserTest
-        "complex"
-        "vehicle compileAndVerify \
+        "preCompileComplex"
+        "vehicle verify \
         \--specification test/spec.vcl \
         \--property p1 \
         \--property p2 \
@@ -169,8 +168,8 @@ compileAndVerifyTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                CompileAndVerify $
-                  CompileAndVerifyOptions
+                Verify $
+                  VerifyOptions
                     { specification = "test/spec.vcl",
                       properties = ["p1", "p2"],
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],
@@ -178,7 +177,8 @@ compileAndVerifyTests =
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing
+                      proofCache = Nothing,
+                      assignmentsLocation = Nothing
                     }
           }
     ]

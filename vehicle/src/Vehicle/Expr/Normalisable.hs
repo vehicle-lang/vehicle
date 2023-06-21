@@ -29,16 +29,16 @@ instance (Hashable types) => Hashable (NormalisableBuiltin types)
 -----------------------------------------------------------------------------
 -- Expressions
 
-type NormalisableExpr types = Expr () Ix (NormalisableBuiltin types)
+type NormalisableExpr types = Expr Ix (NormalisableBuiltin types)
 
-type NormalisableBinder types = Binder () Ix (NormalisableBuiltin types)
+type NormalisableBinder types = Binder Ix (NormalisableBuiltin types)
 
-type NormalisableArg types = Arg () Ix (NormalisableBuiltin types)
+type NormalisableArg types = Arg Ix (NormalisableBuiltin types)
 
 type NormalisableType types = NormalisableExpr types
 
-type NormalisableDecl types = Decl () Ix (NormalisableBuiltin types)
+type NormalisableDecl types = Decl Ix (NormalisableBuiltin types)
 
-type NormalisableProg types = Prog () Ix (NormalisableBuiltin types)
+type NormalisableProg types = Prog Ix (NormalisableBuiltin types)
 
-type NormalisableTelescope types = Telescope () Ix (NormalisableBuiltin types)
+type NormalisableTelescope types = Telescope Ix (NormalisableBuiltin types)

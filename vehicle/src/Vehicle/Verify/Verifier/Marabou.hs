@@ -25,7 +25,7 @@ marabouVerifier =
     { verifierIdentifier = Marabou,
       verifierExecutableName = "Marabou",
       invokeVerifier = invokeMarabou,
-      verifierQueryFormat = MarabouQueryFormat
+      verifierQueryFormat = MarabouQueries
     }
 
 --------------------------------------------------------------------------------
@@ -60,32 +60,46 @@ prepareNetworkArg metaNetwork = do
   hPutStrLn stderr $ layoutAsText errorMsg
   exitFailure
 
-parseMarabouOutput :: String -> (ExitCode, String, String) -> IO (QueryResult NetworkVariableCounterexample)
+parseMarabouOutput ::
+  String ->
+  (ExitCode, String, String) ->
+  IO (Either Text (QueryResult NetworkVariableAssignments))
 parseMarabouOutput command (exitCode, out, _err) = case exitCode of
-  ExitFailure _ -> do
-    -- Marabou seems to output its error messages to stdout rather than stderr...
-    let errorDoc =
-          "Marabou threw the following error:"
-            <> line
-            <> indent 2 (pretty out)
-            <> "when running the command:"
-            <> line
-            <> indent 2 (pretty command)
-    hPutStrLn stderr (layoutAsText errorDoc)
-    exitFailure
+  ExitFailure exitValue
+    | exitValue < 0 -> do
+        -- Marabou was killed by the system.
+        -- See System.Process.html#waitForProcess documentation
+        let errorDoc =
+              "Marabou was automatically killed by the OS with signal"
+                <+> quotePretty (-exitValue)
+                <> "."
+                <> line
+                <> "The most common reason for this is an out-of-memory-error."
+        return $ Left $ layoutAsText errorDoc
+    | otherwise -> do
+        -- Marabou seems to output its error messages to stdout rather than stderr...
+        let errorDoc =
+              "Marabou threw the following error:"
+                <> line
+                <> indent 2 (pretty out)
+                <> line
+                <> "when running the command:"
+                <> line
+                <> indent 2 (pretty command)
+        hPutStrLn stderr (layoutAsText errorDoc)
+        exitFailure
   ExitSuccess -> do
-    -- print (layoutAsString $ pretty (lines out))
     let outputLines = fmap Text.pack (lines out)
     let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
     case resultIndex of
       Nothing -> malformedOutputError "cannot find 'sat' or 'unsat'"
       Just i
         | outputLines !! i == "unsat" ->
-            return UnSAT
+            return $ Right UnSAT
         | otherwise -> do
             let assignmentOutput = drop (i + 1) outputLines
             ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
-            return $ SAT $ Just ioVarAssignment
+            return $ Right $ SAT $ Just ioVarAssignment
 
 parseSATAssignment :: [Text] -> IO (Vector Double)
 parseSATAssignment output = do

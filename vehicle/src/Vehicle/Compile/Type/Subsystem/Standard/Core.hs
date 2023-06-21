@@ -41,7 +41,7 @@ instance Hashable StandardBuiltinType
 
 instance Serialize StandardBuiltinType
 
-convertToNormalisableBuiltins :: Expr () Ix Builtin -> Expr () Ix StandardBuiltin
+convertToNormalisableBuiltins :: Expr Ix Builtin -> Expr Ix StandardBuiltin
 convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
   let fn = Builtin p2 $ case b of
         Constructor c -> CConstructor c
@@ -194,14 +194,14 @@ type instance
 
 -----------------------------------------------------------------------------
 
-type TypeCheckedBinder = Binder () Ix StandardBuiltin
+type TypeCheckedBinder = Binder Ix StandardBuiltin
 
-type TypeCheckedArg = Arg () Ix StandardBuiltin
+type TypeCheckedArg = Arg Ix StandardBuiltin
 
-type TypeCheckedExpr = Expr () Ix StandardBuiltin
+type TypeCheckedExpr = Expr Ix StandardBuiltin
 
-type TypeCheckedType = Expr () Ix StandardBuiltin
+type TypeCheckedType = Expr Ix StandardBuiltin
 
-type TypeCheckedDecl = Decl () Ix StandardBuiltin
+type TypeCheckedDecl = Decl Ix StandardBuiltin
 
-type TypeCheckedProg = Prog () Ix StandardBuiltin
+type TypeCheckedProg = Prog Ix StandardBuiltin

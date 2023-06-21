@@ -22,7 +22,7 @@
   },
   {
     "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction.json --network controller:controller.onnx",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network controller:controller.onnx",
     "needs": ["spec.vcl"],
     "produces": ["LossFunction.json"],
     "enabled": false

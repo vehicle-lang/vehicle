@@ -184,3 +184,33 @@ The documentation is hosted by ReadTheDocs (RTD). The documentation is automatic
 - In order to maintain flexibility in adding extra fields to `Arg` and `Binder`
   one should avoid pattern-matching on them whenever possible, and instead use suitable
   mapping, traversing and projection functions.
+
+## 10. Release instructions
+
+1. Ensure all work is committed and you're on the `dev` branch.
+
+2. Run the tests:
+
+    # from the repository root
+    cabal test all
+    # from vehicle-python
+    tox
+
+3. Run the following command, using `--patch`, `--minor`, or `--major` as needed:
+
+    pipx run bumpver update --patch --dry
+
+That'll print a diff.
+
+4. If the diff looks good, rerun the previous command without `--dry`.
+
+#### Release dependencies
+
+To run the BumpVer command, you need either `pipx` (recommended) or `BumpVer`. If you don't have `pipx`, either install it or simply install bumpver globally with pip install bumpver and omit pipx run from the command.
+
+To run the `Python` tests you need to have the reference GHC release installed, which is currently `GHC 9.4.4`.
+You also need `Tox` and `PyEnv`, and an installed version of every supported Python release. At the time of writing, that's `3.7` to `3.11`, so you run:
+
+    pyenv install 3.7 3.8 3.9 3.10 3.11
+
+If you have all that, `tox` takes care of the rest, and will build and test `Vehicle` with `GHC 9.4.4` and each of these `Python` releases.

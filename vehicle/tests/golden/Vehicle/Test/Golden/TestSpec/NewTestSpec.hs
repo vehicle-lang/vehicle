@@ -39,6 +39,7 @@ import System.FilePath
     isRelative,
     normalise,
     takeDirectory,
+    takeExtension,
     (</>),
   )
 import Test.Tasty (Timeout)
@@ -57,21 +58,13 @@ import Vehicle.Compile qualified as CompileOptions
     target,
   )
 import Vehicle.Compile qualified as Vehicle (CompileOptions)
-import Vehicle.CompileAndVerify qualified as CompileAndVerifyOptions
-  ( datasetLocations,
-    networkLocations,
-    proofCache,
-    specification,
-    verifierID,
-  )
-import Vehicle.CompileAndVerify qualified as Vehicle (CompileAndVerifyOptions)
 import Vehicle.Export qualified as ExportOptions
   ( outputFile,
     proofCacheLocation,
     target,
   )
 import Vehicle.Export qualified as Vehicle (ExportOptions)
-import Vehicle.Prelude (Pretty (pretty), layoutAsString)
+import Vehicle.Prelude (Pretty (pretty), layoutAsString, vehicleSpecificationFileExtension)
 import Vehicle.Test.Golden.Extra (createDirectoryRecursive)
 import Vehicle.Test.Golden.TestSpec
   ( FilePattern,
@@ -96,7 +89,7 @@ import Vehicle.Verify qualified as VerifyOptions
     proofCache,
     verifierID,
   )
-import Vehicle.Verify.Core (QueryFormatID (MarabouQueryFormat))
+import Vehicle.Verify.Core (QueryFormatID (MarabouQueries))
 
 data NewTestSpecOptions = NewTestSpecOptions
   { newTestSpecDryRun :: Bool,
@@ -249,7 +242,6 @@ instance TestSpecLike Vehicle.ModeOptions where
   testSpecData = \case
     ModeOptions.Check opts -> testSpecData opts
     ModeOptions.Compile opts -> testSpecData opts
-    ModeOptions.CompileAndVerify opts -> testSpecData opts
     ModeOptions.Verify opts -> testSpecData opts
     ModeOptions.Export opts -> testSpecData opts
     ModeOptions.Validate opts -> testSpecData opts
@@ -284,7 +276,7 @@ instance TestSpecLike Vehicle.CompileOptions where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
         case CompileOptions.target opts of
-          VerifierQueries MarabouQueryFormat ->
+          VerifierQueries MarabouQueries ->
             [outputDir </> "*.txt" | outputDir <- maybeToList outputFile]
           _ -> maybeToList outputFile
 
@@ -293,29 +285,21 @@ instance TestSpecLike Vehicle.VerifyOptions where
   targetName = layoutAsString . pretty . VerifyOptions.verifierID
 
   needs :: Vehicle.VerifyOptions -> [FilePath]
-  needs opts = do
-    join
-      [ [VerifyOptions.queryFolder opts]
-      -- TODO the verification plan also references resources and query files
-      ]
+  needs opts
+    | takeExtension (VerifyOptions.specification opts) == vehicleSpecificationFileExtension = do
+        join
+          [ [VerifyOptions.specification opts]
+          -- TODO the verification plan also references resources and query files
+          ]
+    | otherwise =
+        join
+          [ [VerifyOptions.specification opts],
+            Map.elems (VerifyOptions.networkLocations opts),
+            Map.elems (VerifyOptions.datasetLocations opts)
+          ]
 
   produces :: Vehicle.VerifyOptions -> Either String [FilePattern]
   produces = traverse parseFilePattern . maybeToList . VerifyOptions.proofCache
-
-instance TestSpecLike Vehicle.CompileAndVerifyOptions where
-  targetName :: Vehicle.CompileAndVerifyOptions -> String
-  targetName = layoutAsString . pretty . CompileAndVerifyOptions.verifierID
-
-  needs :: Vehicle.CompileAndVerifyOptions -> [FilePath]
-  needs opts =
-    join
-      [ [CompileAndVerifyOptions.specification opts],
-        Map.elems (CompileAndVerifyOptions.networkLocations opts),
-        Map.elems (CompileAndVerifyOptions.datasetLocations opts)
-      ]
-
-  produces :: Vehicle.CompileAndVerifyOptions -> Either String [FilePattern]
-  produces = traverse parseFilePattern . maybeToList . CompileAndVerifyOptions.proofCache
 
 instance TestSpecLike Vehicle.ExportOptions where
   targetName :: Vehicle.ExportOptions -> String

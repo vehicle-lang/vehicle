@@ -85,7 +85,7 @@ checkExpr expectedType expr = do
           -- Create a new binder mirroring the Pi binder expected
           lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) binderType
           let lamBinderForm = BinderDisplayForm (OnlyName lamBinderName) False
-          let lamBinder = Binder p lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) () binderType
+          let lamBinder = Binder p lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) binderType
 
           -- Prepend a new lambda to the expression with the implicit binder
           return $ Lam p lamBinder checkedExpr

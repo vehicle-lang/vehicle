@@ -17,7 +17,6 @@ import System.FilePath (takeDirectory)
 import System.IO
 import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
 import Vehicle.Compile (compile)
-import Vehicle.CompileAndVerify (compileAndVerify)
 import Vehicle.Export (export)
 import Vehicle.Prelude
 import Vehicle.TypeCheck (typeCheck)
@@ -57,7 +56,6 @@ runVehicle Options {..} = do
           Check options -> typeCheck ioSettings options
           Compile options -> compile ioSettings options
           Verify options -> verify ioSettings options
-          CompileAndVerify options -> compileAndVerify ioSettings options
           Validate options -> validate ioSettings options
           Export options -> export ioSettings options
 

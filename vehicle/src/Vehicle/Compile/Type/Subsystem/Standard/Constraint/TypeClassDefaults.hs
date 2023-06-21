@@ -139,7 +139,8 @@ generateConstraintUsingDefaults constraints = do
           <+> prettyVerbose candidateMetaExpr
           <+> "="
           <+> prettyVerbose candidateSolution
-          <+> "         " <> parens ("from" <+> pretty candidateTypeClass)
+          <+> "         "
+          <> parens ("from" <+> pretty candidateTypeClass)
       let unificationConstraint = UnificationConstraint (Unify candidateMetaExpr candidateSolution)
       newConstraint <- WithContext unificationConstraint <$> copyContext candidateCtx
       return $ Just newConstraint

@@ -1,0 +1,142 @@
+[build-system]
+requires = [
+  "find_libpython>=0.3; sys_platform == 'win32'",
+  "packaging>=23",
+  "setuptools>=45",
+  "swig>=4",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'vehicle_lang'
+authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
+description = 'A high-level functional language for writing mathematically-precise specifications for neural networks.'
+readme = 'README.md'
+license = { file = 'LICENSE' }
+dynamic = ["version"]
+requires-python = ">=3.7.1,<3.12"
+dependencies = [
+  "typing_extensions >=4.6,<5",
+  "astunparse; python_version<'3.9'",
+]
+
+[project.optional-dependencies]
+pygments = ["pygments >=2.14, <3"]
+test = ["pytest >=7.1,<8", "packaging>=23"]
+mypy = ["types_setuptools >=45", "types_pygments >=2.14, <3"]
+
+[project.scripts]
+vehicle = "vehicle_lang.__main__:main"
+
+[project.entry-points.'pygments.lexers']
+vehicle = "vehicle_lang.pygments:VehicleLexer"
+
+[tool.cibuildwheel]
+# 18-04-2023:
+# Cross-compilation does not work with GHC and Cabal.
+archs = ["native"]
+build-frontend = "build"
+build = [
+  # Using a GitHub runner
+  "*-macosx_x86_64",
+  # Using a GitHub runner
+  "*-win_amd64",
+  # Using wenkokke/manylinux2014_ghc944_x86_64
+  "*-manylinux_x86_64",
+  # Using wenkokke/manylinux2014_ghc944_i686
+  "*-manylinux_i686",
+  # Using wenkokke/manylinux_2_28_ghc944_aarch64
+  "*-manylinux_aarch64",
+  # Using wenkokke/musllinux_1_1_ghc944_x86_64
+  "*-musllinux_x86_64",
+]
+skip = [
+  # 18-04-2023:
+  # PyPy builds do not work.
+  "pp*",
+]
+test-command = "pytest {package}/tests"
+test-extras = "test"
+# 19-06-2023:
+# Use custom manylinux and musllinux images with GHC 9.4.4 preinstalled.
+manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc944_aarch64"
+manylinux-i686-image = "wenkokke/manylinux2014_ghc944_i686"
+manylinux-x86_64-image = "wenkokke/manylinux2014_ghc944_x86_64"
+musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc944_x86_64"
+
+[tool.mypy]
+mypy_path = "src"
+python_version = 3.7
+strict = true
+implicit_reexport = false
+ignore_missing_imports = true
+exclude = ['^src/vehicle_lang/binding\.py$']
+
+[[tool.mypy.overrides]]
+module = "vehicle_lang.pygments"
+allow_subclassing_any = true
+
+[[tool.mypy.overrides]]
+module = "vehicle_lang.pygments._external"
+allow_subclassing_any = true
+allow_untyped_defs = true
+disable_error_code = ['name-defined']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.dynamic]
+version = { attr = "vehicle_lang._version.VERSION" }
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+min_version = 4
+env_list = py{37,38,39,310,311}-{lin,mac,win}
+
+[testenv:py{37,38,39,310,311}-{lin,mac,win}]
+package = external
+package_env = build-{env_name}
+platform =
+  lin: linux
+  mac: darwin
+  win: win32
+allowlist_externals = sh
+extras =
+  test
+  pygments
+commands =
+  {env_python} -m pytest {posargs}
+  sh {package_root}/tests/test_pygments.sh
+
+[testenv:build-py{37,38,39,310,311}-{lin,mac,win}]
+deps =
+  build
+  auditwheel; sys_platform == 'linux'
+  delocate; sys_platform == 'darwin'
+set_env =
+  env_python = {env_python}
+  package_root = {package_root}
+  dist_dir = {package_root}{/}dist
+  dist_tmp_dir = {env_tmp_dir}{/}dist
+package_glob =
+  py37-lin: {env:dist_dir}{/}*cp37*manylinux*.whl
+  py38-lin: {env:dist_dir}{/}*cp38*manylinux*.whl
+  py39-lin: {env:dist_dir}{/}*cp39*manylinux*.whl
+  py310-lin: {env:dist_dir}{/}*cp310*manylinux*.whl
+  py311-lin: {env:dist_dir}{/}*cp311*manylinux*.whl
+  py37-mac: {env:dist_dir}{/}*cp37*macosx*.whl
+  py38-mac: {env:dist_dir}{/}*cp38*macosx*.whl
+  py39-mac: {env:dist_dir}{/}*cp39*macosx*.whl
+  py310-mac: {env:dist_dir}{/}*cp310*macosx*.whl
+  py311-mac: {env:dist_dir}{/}*cp311*macosx*.whl
+  py37-win: {env:dist_dir}{/}*cp37*win*.whl
+  py38-win: {env:dist_dir}{/}*cp38*win*.whl
+  py39-win: {env:dist_dir}{/}*cp39*win*.whl
+  py310-win: {env:dist_dir}{/}*cp310*win*.whl
+  py311-win: {env:dist_dir}{/}*cp311*win*.whl
+allowlist_externals =
+  sh
+commands =
+  sh {package_root}/scripts/build-wheel.sh
+"""

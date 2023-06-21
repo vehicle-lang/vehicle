@@ -5,10 +5,10 @@
       {
         "tag": "SingleProperty",
         "contents": [
-          [
-            "p",
-            []
-          ],
+          {
+            "propertyName": "p",
+            "propertyIndices": []
+          },
           {
             "tag": "Query",
             "contents": {
@@ -18,10 +18,10 @@
                   "unDisjunctAll": [
                     [
                       [
-                        [
-                          "p",
-                          []
-                        ],
+                        {
+                          "propertyName": "p",
+                          "propertyIndices": []
+                        },
                         1
                       ],
                       {

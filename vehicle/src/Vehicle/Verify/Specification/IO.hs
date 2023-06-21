@@ -4,6 +4,7 @@ module Vehicle.Verify.Specification.IO
     outputVerificationResult,
     verifySpecification,
     verificationPlanFileName,
+    isValidQueryFolder,
   )
 where
 
@@ -15,13 +16,14 @@ import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy qualified as BIO
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map qualified as Map
-import Data.Text (unpack)
+import Data.Text (intercalate, pack, unpack)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as Text
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
+import System.Exit (exitFailure)
 import System.FilePath (takeExtension, (<.>), (</>))
+import System.IO (stderr, stdout)
 import System.ProgressBar
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -43,19 +45,20 @@ readSpecification inputFile
           <+> quotePretty inputFile
           <+> "has unsupported"
           <+> "extension"
-          <+> quotePretty (takeExtension inputFile) <> "."
-          <+> "Only files with a"
-          <+> quotePretty vehicleSpecificationFileExtension
-          <+> "extension are supported."
+          <+> quotePretty (takeExtension inputFile)
+          <> "."
+            <+> "Only files with a"
+            <+> quotePretty vehicleSpecificationFileExtension
+            <+> "extension are supported."
   | otherwise =
       liftIO $
         TIO.readFile inputFile `catch` \(e :: IOException) -> do
           fatalError $
             "Error occured while reading specification"
               <+> quotePretty inputFile
-                <> ":"
-                <> line
-                <> indent 2 (pretty (show e))
+              <> ":"
+              <> line
+              <> indent 2 (pretty (show e))
 
 --------------------------------------------------------------------------------
 -- Verification plan output
@@ -77,6 +80,9 @@ outputVerificationResult queryFormatID maybeOutputLocation (plan, queries) = do
   outputVerificationPlan maybeOutputLocation plan
   writeVerificationQueries queryFormatID maybeOutputLocation queries
 
+isValidQueryFolder :: (MonadIO m) => FilePath -> m Bool
+isValidQueryFolder folder = liftIO $ doesFileExist (verificationPlanFileName folder)
+
 outputVerificationPlan :: (MonadIO m) => Maybe FilePath -> VerificationPlan -> m ()
 outputVerificationPlan maybeFolder plan = do
   let planText = encodePretty' prettyJSONConfig plan
@@ -97,8 +103,8 @@ outputVerificationPlan maybeFolder plan = do
           fatalError $
             "Unable to write the verification plan to file"
               <+> quotePretty planFile
-                <> line
-                <> indent 2 ("error:" <+> pretty (show err))
+              <> line
+              <> indent 2 ("error:" <+> pretty (show err))
 
 readVerificationPlan :: (MonadIO m) => FilePath -> m VerificationPlan
 readVerificationPlan planFile = do
@@ -113,15 +119,15 @@ readVerificationPlan planFile = do
       fatalError $
         "Unable to read the verification plan from file"
           <+> quotePretty planFile
-            <> line
-            <> indent 2 ("error:" <+> pretty (show err))
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
     Right result -> case decode result of
       Nothing ->
         fatalError $
           "Unabled to decode verification plan from file"
             <+> quotePretty planFile
-              <> "."
-            <+> ""
+            <> "."
+              <+> ""
       Just plan -> return plan
 
 writeVerificationQueries ::
@@ -156,14 +162,16 @@ verifySpecification ::
   FilePath ->
   Verifier ->
   VerifierExecutable ->
-  Specification QueryMetaData ->
+  Specification (Property QueryMetaData) ->
+  Maybe FilePath ->
   m SpecificationStatus
-verifySpecification queryFolder verifier verifierExecutable (Specification namedProperties) = do
+verifySpecification queryFolder verifier verifierExecutable (Specification namedProperties) assignmentsLocation = do
   programOutput "Verifying properties:"
   results <- forM namedProperties $ \(name, property) -> do
-    result <- verifyMultiProperty verifier verifierExecutable queryFolder property
+    result <- verifyMultiProperty verifier verifierExecutable queryFolder assignmentsLocation property
     return (name, result)
-  return $ SpecificationStatus (Map.fromList results)
+
+  return $ Specification results
 
 verifyMultiProperty ::
   forall m.
@@ -171,18 +179,21 @@ verifyMultiProperty ::
   Verifier ->
   VerifierExecutable ->
   FilePath ->
-  MultiProperty QueryMetaData ->
+  Maybe FilePath ->
+  MultiProperty (Property QueryMetaData) ->
   m MultiPropertyStatus
-verifyMultiProperty verifier verifierExecutable queryFolder = go
+verifyMultiProperty verifier verifierExecutable queryFolder assignmentsLocation = go
   where
-    go :: MultiProperty QueryMetaData -> m MultiPropertyStatus
+    go :: MultiProperty (Property QueryMetaData) -> m MultiPropertyStatus
     go = \case
-      MultiProperty ps -> MultiPropertyStatus <$> traverse go ps
+      MultiProperty ps -> MultiProperty <$> traverse go ps
       SingleProperty address property -> do
         progressBar <- createPropertyProgressBar address (propertySize property)
         let readerState = (verifier, verifierExecutable, queryFolder, progressBar)
         result <- runReaderT (verifyProperty property) readerState
-        return $ SinglePropertyStatus result
+        liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
+        outputAssignments assignmentsLocation address result
+        return $ SingleProperty address result
 
 type MonadVerify m =
   ( MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
@@ -202,7 +213,7 @@ verifyProperty property = do
     go ::
       (MonadVerify m) =>
       BooleanExpr (QuerySet QueryMetaData) ->
-      m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
+      m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignments))
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct x y -> do
@@ -219,7 +230,7 @@ verifyProperty property = do
 verifyQuerySet ::
   (MonadVerify m) =>
   QuerySet QueryMetaData ->
-  m (QueryNegationStatus, MaybeTrivial (QueryResult UserVariableCounterexample))
+  m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignments))
 verifyQuerySet (QuerySet negated queries) = case queries of
   Trivial b -> return (negated, Trivial b)
   NonTrivial disjuncts -> do
@@ -230,13 +241,13 @@ verifyDisjunctAll ::
   forall m.
   (MonadVerify m) =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
-  m (QueryResult UserVariableCounterexample)
+  m (QueryResult UserVariableAssignments)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
       (Monad m) =>
       NonEmpty (QueryAddress, QueryMetaData) ->
-      m (QueryResult UserVariableCounterexample)
+      m (QueryResult UserVariableAssignments)
     go (x :| []) = verifyQuery x
     go (x :| y : xs) = do
       r <- verifyQuery x
@@ -247,19 +258,53 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
 verifyQuery ::
   (MonadVerify m) =>
   (QueryAddress, QueryMetaData) ->
-  m (QueryResult UserVariableCounterexample)
+  m (QueryResult UserVariableAssignments)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
-  result <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
-  liftIO $ incProgress progressBar 1
-  return $ fmap (reconstructUserVars userVar) result
+  errorOrResult <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
+  case errorOrResult of
+    Left errMsg -> liftIO $ do
+      TIO.hPutStrLn stderr ("\nError: " <> errMsg)
+      exitFailure
+    Right result -> do
+      liftIO $ incProgress progressBar 1
+      return $ fmap (reconstructUserVars userVar) result
+
+--------------------------------------------------------------------------------
+-- Assignments
+
+outputAssignments ::
+  (MonadIO m) =>
+  Maybe FilePath ->
+  PropertyAddress ->
+  PropertyStatus ->
+  m ()
+outputAssignments maybeLocation address (PropertyStatus negated s) = case s of
+  NonTrivial (SAT (Just assignments)) -> case maybeLocation of
+    Nothing -> do
+      let witnessText = if negated then "Counter-example" else "Witness"
+      let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
+      let nameDoc = pretty $ propertyName address
+      let witnessDoc = witnessText <+> "for" <+> nameDoc <> line <> indent 2 assignmentDocs
+      liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
+    Just _location -> liftIO $ do
+      fatalError "outputting assignments to a file not yet implemented"
+  {-
+  let folder = takeDirectory location </> layoutAsString (pretty address)
+  createDirectoryIfMissing True folder
+  forM_ assignments $ \UserVariableAssignment {..} -> do
+    let file = folder </> Text.unpack variableName
+    let idxData = _
+    encodeIDXFile _ file
+  -}
+  _ -> return ()
 
 --------------------------------------------------------------------------------
 -- Calculation of file paths
 
 calculateQueryFileName :: QueryAddress -> FilePath
-calculateQueryFileName ((propertyName, propertyIndices), queryID) = do
+calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
   let propertyStr
         | null propertyIndices = ""
         | otherwise = concatMap (\v -> "!" <> show v) (reverse propertyIndices)
@@ -272,11 +317,12 @@ calculateQueryFileName ((propertyName, propertyIndices), queryID) = do
 type PropertyProgressBar = ProgressBar ()
 
 createPropertyProgressBar :: (MonadIO m) => PropertyAddress -> Int -> m PropertyProgressBar
-createPropertyProgressBar (name, _indices) numberOfQueries = do
+createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
+  let propertyName = Text.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
   let style =
         defStyle
-          { stylePrefix = msg ("  " <> Text.fromStrict name),
-            stylePostfix = exact <> msg " queries complete",
+          { stylePrefix = msg ("  " <> propertyName),
+            stylePostfix = exact <> msg " queries",
             styleWidth = ConstantWidth 80
           }
   let initialProgress = Progress 0 numberOfQueries ()

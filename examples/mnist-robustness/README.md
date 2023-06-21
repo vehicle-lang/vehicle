@@ -37,11 +37,14 @@ The outputs of the above Vehicle commands can be found in the test suite:
 A network can be verified against the specification by running the following command:
 
 ```bash
-vehicle compileAndVerify \
+vehicle verify \
   --specification examples/mnist-robustness/mnist-robustness.vcl \
   --network classifier:examples/mnist-robustness/mnist-classifier.onnx \
-  --parameter epsilon:0.1 \
+  --parameter epsilon:0.005 \
   --dataset trainingImages:examples/mnist-robustness/t2-images.idx \
   --dataset trainingLabels:examples/mnist-robustness/t2-labels.idx \
   --verifier Marabou
 ```
+
+Note that the epsilon value can be changed, but the memory requirements of
+Marabou may increase drastically as epsilon increases.

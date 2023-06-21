@@ -34,7 +34,7 @@ import System.Timeout (timeout)
 -- for all builds, unless the flag `release-build` is set in the Cabal file.
 impreciseVehicleVersion :: String
 impreciseVehicleVersion = showVersion Cabal.version
-#if releaseBuild
+#ifdef releaseBuild
 #else
   <> "+dev"
 #endif
@@ -47,7 +47,7 @@ impreciseVehicleVersion = showVersion Cabal.version
 -- Cabal file.
 preciseVehicleVersion :: String
 preciseVehicleVersion = showVersion Cabal.version
-#if releaseBuild
+#ifdef releaseBuild
 #else
   -- Note this needs to be compliant with
   -- https://peps.python.org/pep-0440/#local-version-identifiers

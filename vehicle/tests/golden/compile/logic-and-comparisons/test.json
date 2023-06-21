@@ -6,31 +6,31 @@
     },
     {
       "name": "LossFunction-DL2",
-      "run": "vehicle compile -s spec.vcl -t LossFunction -o LossFunction-DL2.json --network f:NO_FILE --network g:NO_FILE",
+      "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction-DL2.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["spec.vcl"],
       "produces": ["LossFunction-DL2.json"]
     },
     {
       "name": "LossFunction-Godel",
-      "run": "vehicle compile -s spec.vcl -t LossFunction-Godel -o LossFunction-Godel.json --network f:NO_FILE --network g:NO_FILE",
+      "run": "vehicle compile -s spec.vcl -t GodelLoss -o LossFunction-Godel.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["spec.vcl"],
       "produces": ["LossFunction-Godel.json"]
     },
     {
       "name": "LossFunction-Lukasiewicz",
-      "run": "vehicle compile -s spec.vcl -t LossFunction-Lukasiewicz -o LossFunction-Lukasiewicz.json --network f:NO_FILE --network g:NO_FILE",
+      "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LossFunction-Lukasiewicz.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["spec.vcl"],
       "produces": ["LossFunction-Lukasiewicz.json"]
     },
     {
       "name": "LossFunction-Yager",
-      "run": "vehicle compile -s spec.vcl -t LossFunction-Yager -o LossFunction-Yager.json --network f:NO_FILE --network g:NO_FILE",
+      "run": "vehicle compile -s spec.vcl -t YagerLoss -o LossFunction-Yager.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["spec.vcl"],
       "produces": ["LossFunction-Yager.json"]
     },
     {
       "name": "LossFunction-Product",
-      "run": "vehicle compile -s spec.vcl -t LossFunction-Product -o LossFunction-Product.json --network f:NO_FILE --network g:NO_FILE",
+      "run": "vehicle compile -s spec.vcl -t ProductLoss -o LossFunction-Product.json --network f:NO_FILE --network g:NO_FILE",
       "needs": ["spec.vcl"],
       "produces": ["LossFunction-Product.json"]
     }

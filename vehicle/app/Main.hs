@@ -4,14 +4,14 @@ module Main where
 
 import Vehicle qualified (main)
 
-#if ghcDebug
+#ifdef ghcDebug
 import GHC.Debug.Stub (withGhcDebug)
 #endif
 
 --------------------------------------------------------------------------------
 -- Main function with ghc-debug instrumentation
 
-#if ghcDebug
+#ifdef ghcDebug
 main :: IO ()
 main = withGhcDebug Vehicle.main
 #else

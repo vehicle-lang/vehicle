@@ -1,0 +1,21 @@
+Vehicle - a program for enforcing neural network specifications
+
+Usage: vehicle [-V|--version] [--logging ARG] [COMMAND]
+
+Available options:
+  -V,--version             Show version information.
+  --logging ARG            Sets the level of detail in the logs if the --log
+                           argument has been passed. Supported options:
+                           NoDetail, MinDetail, MidDetail, MaxDetail
+                           (default: NoDetail)
+  -h,--help                Show this help text
+
+Available commands:
+  check                    Type-check a .vcl specification file.
+  compile                  Compile a .vcl specification file.
+  verify                   Verify whether properties in a .vcl specification
+                           file are true or false.
+  validate                 Validate a verification result to check whether it
+                           still holds.
+  export                   Export a.vcl specification file to an interactive
+                           theorem prover.

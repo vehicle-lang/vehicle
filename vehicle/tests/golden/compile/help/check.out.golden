@@ -1,0 +1,14 @@
+Usage: vehicle check (-s|--specification FILE) [-t|--typeSystem ARG]
+
+  Type-check a .vcl specification file.
+
+Available options:
+  -s,--specification FILE  The .vcl file containing the specification.
+  -t,--typeSystem ARG      Which typing system should be used. i) Standard -
+                           check whether the types written in the specification
+                           are consistent. ii) Polarity - check whether
+                           alternating quantifiers are used in the
+                           specification. iii) Linearity - check whether
+                           quantified variables are used linearly in the
+                           specification.
+  -h,--help                Show this help text

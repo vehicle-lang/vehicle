@@ -15,7 +15,6 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List (partition)
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
   ( lookup,
   )
@@ -34,7 +33,7 @@ import Vehicle.Compile.Queries.NetworkElimination (InputEqualities)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), unConjunctAll)
+import Vehicle.Expr.Boolean (ConjunctAll, MaybeTrivial (..), conjunctsToList, eliminateTrivialConjunctions)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Verify.Core
@@ -63,18 +62,20 @@ generateCLSTProblem state inputEqualities conjuncts = flip runReaderT state $ do
     rhs <- compileLinearExpr expr
     return $ constructAssertion (lhs, Equal, rhs)
 
-  userAssertions <- NonEmpty.toList . unConjunctAll <$> traverse compileAssertions conjuncts
+  maybeTrivialUserAssertions <- eliminateTrivialConjunctions <$> traverse compileAssertions conjuncts
+  case maybeTrivialUserAssertions of
+    Trivial b -> return $ Trivial b
+    NonTrivial userAssertions -> do
+      let assertions = inputEqualityAssertions <> conjunctsToList userAssertions
+      let clst = CLSTProblem variables assertions
 
-  let assertions = inputEqualityAssertions <> userAssertions
-  let clst = CLSTProblem variables assertions
+      networkVarQuery <-
+        solveForUserVariables (length userVariables) clst
 
-  networkVarQuery <-
-    solveForUserVariables (length userVariables) clst
+      let finalQuery = flip fmap networkVarQuery $
+            \(solvedCLST, varReconst) -> (solvedCLST, varReconst)
 
-  let finalQuery = flip fmap networkVarQuery $
-        \(solvedCLST, varReconst) -> (solvedCLST, varReconst)
-
-  return finalQuery
+      return finalQuery
 
 solveForUserVariables ::
   (MonadCLST m) =>
@@ -206,10 +207,10 @@ getVariables = do
 --------------------------------------------------------------------------------
 -- Compilation of assertions
 
-compileAssertions :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+compileAssertions :: (MonadSMT m) => StandardNormExpr -> m (MaybeTrivial (Assertion SolvingLinearExpr))
 compileAssertions = go
   where
-    go :: (MonadSMT m) => StandardNormExpr -> m (Assertion SolvingLinearExpr)
+    go :: (MonadSMT m) => StandardNormExpr -> m (MaybeTrivial (Assertion SolvingLinearExpr))
     go expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -224,14 +225,15 @@ compileAssertions = go
               Gt -> (LessThan, e2, e1)
               Ge -> (LessThanOrEqualTo, e2, e1)
         assertion <- compileAssertion rel lhs rhs
-        return assertion
+        return $ NonTrivial assertion
       VBuiltinFunction (Equals EqRat eq) [e1, e2] -> case eq of
         Neq -> do
           (_, ident, _, _, _) <- ask
-          throwError $ UnsupportedInequality MarabouQueryFormat ident
+          throwError $ UnsupportedInequality MarabouQueries ident
         Eq -> do
           assertion <- compileAssertion Equal e1 e2
-          return assertion
+          return $ NonTrivial assertion
+      VBoolLiteral b -> return $ Trivial b
       _ -> unexpectedExprError currentPass (prettyVerbose expr)
 
 compileAssertion ::
@@ -283,7 +285,7 @@ compileLinearExpr expr = do
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
 currentPass :: Doc a
-currentPass = "linear satisfaction problem compilation"
+currentPass = "linear satisfaction problem"
 
 -- | Constructs a temporary error with no real fields. This should be recaught
 -- and populated higher up the query compilation process.

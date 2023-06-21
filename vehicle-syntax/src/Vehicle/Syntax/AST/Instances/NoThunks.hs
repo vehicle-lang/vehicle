@@ -2,7 +2,6 @@
 
 module Vehicle.Syntax.AST.Instances.NoThunks where
 
-#if nothunks
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Builtin
@@ -17,6 +16,7 @@ import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
 
+#ifdef nothunks
 import NoThunks.Class (NoThunks)
 
 -- Vehicle.Syntax.AST.Builtin.Core
@@ -47,7 +47,7 @@ instance NoThunks expr => NoThunks (GenericArg expr)
 -- Vehicle.Syntax.AST.Binder
 instance NoThunks BinderNamingForm
 instance NoThunks BinderDisplayForm
-instance (NoThunks binder, NoThunks expr) => NoThunks (GenericBinder binder expr)
+instance (NoThunks expr) => NoThunks (GenericBinder expr)
 
 -- Vehicle.Syntax.AST.Builtin
 instance NoThunks BuiltinConstructor
@@ -72,7 +72,7 @@ instance NoThunks Annotation
 
 -- Vehicle.Syntax.AST.Expr
 instance NoThunks UniverseLevel
-instance (NoThunks binder, NoThunks var, NoThunks builtin) => NoThunks (Expr binder var builtin)
+instance (NoThunks var, NoThunks builtin) => NoThunks (Expr var builtin)
 
 -- Vehicle.Syntax.AST.Meta
 instance NoThunks MetaID

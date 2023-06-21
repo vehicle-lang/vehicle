@@ -84,7 +84,7 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
       NormalisableType types
     entryToPi (name, t) = do
       let n = fromMaybe "_" name
-      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant () t)
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant t)
 
 getMetaDependencies :: [NormalisableArg types] -> [Ix]
 getMetaDependencies = \case
@@ -134,7 +134,7 @@ instance HasMetas (Value types) where
 instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas
 
-instance (HasMetas expr) => HasMetas (GenericBinder binder expr) where
+instance (HasMetas expr) => HasMetas (GenericBinder expr) where
   findMetas = mapM_ findMetas
 
 instance (HasMetas a) => HasMetas [a] where
