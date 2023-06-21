@@ -22,8 +22,15 @@ dependencies = [
 
 [project.optional-dependencies]
 pygments = ["pygments >=2.14, <3"]
-test = ["pytest >=7.1,<8", "packaging>=23"]
-mypy = ["types_setuptools >=45", "types_pygments >=2.14, <3"]
+test = [
+  "pytest >=7.1,<8",
+  "packaging >=23",
+  "tensorflow >=2,<3; python_version>='3.8'"
+]
+mypy = [
+  "types_setuptools >=45",
+  "types_pygments >=2.14, <3",
+]
 
 [project.scripts]
 vehicle = "vehicle_lang.__main__:main"
