@@ -765,6 +765,8 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
 
 To publish new releases to PyPI, you need a PyPI account that is authorised as a collaborator on [the `vehicle_lang` project], and you need to create a [PyPI API token] for that account and add it to your [.pypirc file].
 
+Finally, you need access to a machine running macOS with an M1/M2 chipset.
+
 The procedure to create a new release is:
 
 1. Navigate to your local copy of the Vehicle repository.
@@ -867,8 +869,6 @@ The procedure to create a new release is:
    ```
 
    **Warning**: This is a destructive action! Published versions cannot be changed!
-
-To create a new release, ensure that you can successfully build the Vehicle compiler and Python bindings.
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/
