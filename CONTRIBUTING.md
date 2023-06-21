@@ -325,7 +325,7 @@ To create a new compiler test, you can use the `vehicle-new-golden-test` command
 If the output of the Vehicle compiler changes, it is necessary to update the [golden files](./vehicle/tests/golden/) for the compiler tests.
 You can use the option `--test-option="--accept"` to accept the new output of the golden tests, and update the golden files.
 
-**Warning**: This is a destructive action, and may result in faulty tests!
+**Warning**: This is a destructive action! Mistakes may result in faulty tests!
 
 The procedure for updating the golden files is:
 
@@ -355,6 +355,23 @@ cabal test vehicle-integration-tests --test-show-details=always --test-option=--
 ```
 
 The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
+
+#### Profiling the Vehicle compiler
+
+There are scripts for profiling the time and memory consumption of the Vehicle compiler:
+
+- `./scripts/vehicle-profile-time`
+- `./scripts/vehicle-profile-heap`
+
+For more information, see the comments at the top of these files.
+
+#### Debugging infinite loops
+
+The compiler tests test the output of a successful run of the Vehicle compiler. If the Vehicle compiler loops, it does not terminate. Consequently, if you suspect there is an infinite loop, it is easier to run Vehicle directly with logging:
+
+```sh
+cabal run exe:vehicle -- --logging=MaxDetail ...
+```
 
 #### Installing from source
 
@@ -656,11 +673,98 @@ python -m pip install -e .[test]
 ```
 
 This installs the Python bindings in [editable mode], which directly adds the files in the development directory are added to Python's import path.
-When the Python bindings are installed in editable mode, you'll only have to reinstall when the metadata in `pyproject.toml` or the Haskell source changes.
 
-## Releasing a new version
+When the Python bindings are installed in editable mode, you can run pytest directly:
+
+```sh
+python -m pytest
+```
+
+You'll have to reinstall the Python bindings when the metadata in `pyproject.toml` or the Haskell source changes.
+
+
+## Pre-commit Hooks
+
+The Vehicle repository has a variety of pre-commit hooks that check and ensure code quality, managed by [pre-commit]. The pre-commit hooks require [pre-commit], [cabal-fmt] and [ormolu].
+
+We recommend that you install these hooks.
+
+1. Ensure that you have installed [GHC and Cabal](#installing-ghc-and-cabal).
+
+2. Install pre-commit following the instruction on the website:
+   <https://pre-commit.com/#install>
+
+3. Install cabal-fmt.
+
+   Run the following command:
+
+   ```sh
+   cabal install cabal-fmt --ignore-project --overwrite-policy=always
+   ```
+
+4. Install ormolu.
+
+   Run the following command:
+
+   ```sh
+   cabal install ormolu --ignore-project --overwrite-policy=always
+   ```
+
+5. Navigate to your local copy of the Vehicle repository.
+
+   ```sh
+   cd path/to/vehicle
+   ```
+
+6. Install the pre-commit hooks.
+
+   Run the following command:
+
+   ```sh
+   pre-commit install
+   ```
+
+   This should print:
+
+   ```sh
+   pre-commit installed at .git/hooks/pre-commit
+   ```
+
+   If you ever clone a fresh copy of the Vehicle repository, you'll have to rerun this command.
+
+7. Test the pre-commit hooks.
+
+   Run the following command:
+
+   ```sh
+   pre-commit run --all-files
+   ```
+
+The hooks run every time you run `git commit`. You can skip the hooks by adding the `--no-verify` flag to your Git command.
+
+## Editor Support
+
+You can use whatever development environment you prefer.
+
+We recommend using [VSCode] with the following extensions, based on what parts of Vehicle intend to work on:
+
+| Project        | Language | Extension                                                                                                                                                                                                                                                                                                                                               |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _any_          | Vehicle  | [Vehicle Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=wenkokke.vehicle-syntax-highlighting)                                                                                                                                                                                                                                 |
+| _any_          | Haskell  | [Haskell](https://marketplace.visualstudio.com/items?itemName=haskell.haskell), [Haskell Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=justusadam.language-haskell)                                                                                                                                                          |
+| _any_          | Cabal    | [cabal-fmt](https://marketplace.visualstudio.com/items?itemName=berberman.vscode-cabal-fmt)                                                                                                                                                                                                                                                             |
+| _any_          | Markdown | [MyST-Markdown](https://marketplace.visualstudio.com/items?itemName=ExecutableBookProject.myst-highlight)                                                                                                                                                                                                                                               |
+| vehicle-agda   | Agda     | [agda-mode](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode)                                                                                                                                                                                                                                                                     |
+| vehicle-python | Python   | [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance), [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter), [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort) |
+| vehicle-python | TOML     | [Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml)                                                                                                                                                                                                                                                        |
+
+# Publishing a Release
 
 Vehicle is released via [PyPI], the Python Package Index.
+
+Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
+
+To publish new releases to PyPI, you need a PyPI account that is authorised as a collaborator on [the `vehicle_lang` project], and you need to create a [PyPI API token] for that account and add it to your [.pypirc file].
 
 The procedure to create a new release is:
 
@@ -734,8 +838,6 @@ The procedure to create a new release is:
 
    There are no GitHub Actions runners with an M1/M2 chipset, so the binary distributions for this platform must be built and published manually from an appropriate machine.
 
-   Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
-
    Run the following command from `vehicle-python`:
 
    ```sh
@@ -753,12 +855,19 @@ The procedure to create a new release is:
    vehicle_lang-0.3.3-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
-   To publish these to PyPI, run the following commands:
+   Run the following command to check each wheel's metadata:
 
    ```sh
    pipx run twine check --strict dist/*.whl
+   ```
+
+   Run the following command to upload each wheel to [PyPI]:
+
+   ```sh
    pipx run twine upload dist/*.whl
    ```
+
+   **Warning**: This is a destructive action! Published versions cannot be changed!
 
 To create a new release, ensure that you can successfully build the Vehicle compiler and Python bindings.
 
@@ -780,3 +889,10 @@ To create a new release, ensure that you can successfully build the Vehicle comp
 [editable mode]: https://pip.pypa.io/en/latest/topics/local-project-installs/
 [the Pygments syntax highlighter]: https://pygments.org
 [PyPI]: https://pypi.org
+[the `vehicle_lang` project]: https://pypi.org/project/vehicle-lang/
+[.pypirc file]: https://packaging.python.org/en/latest/specifications/pypirc/
+[PyPI API token]: https://pypi.org/help/#apitoken
+[VSCode]: https://code.visualstudio.com/
+[pre-commit]: https://pre-commit.com/
+[cabal-fmt]: https://hackage.haskell.org/package/cabal-fmt
+[ormolu]: https://hackage.haskell.org/package/ormolu
