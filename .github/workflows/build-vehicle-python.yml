@@ -25,12 +25,27 @@ jobs:
           - name: "Linux"
             type: "ubuntu-latest"
             arch: "x86_64"
+            plat: "manylinux"
+            test-command: "pytest"
+            test-extras: "test,tensorflow"
+          - name: "Linux"
+            type: "ubuntu-latest"
+            arch: "x86_64"
+            plat: "musllinux"
+            test-command: "pytest"
+            test-extras: "test"
           - name: "macOS"
             type: "macos-latest"
             arch: "x86_64"
+            plat: "macosx"
+            test-command: "pytest"
+            test-extras: "test,tensorflow"
           - name: "Windows"
             type: "windows-latest"
             arch: "AMD64"
+            plat: "win"
+            test-command: "pytest"
+            test-extras: "test,tensorflow"
 
     name: vehicle-python / ${{ matrix.os.name }} - ${{ matrix.os.arch }}
     runs-on: ${{ matrix.os.type }}
@@ -53,7 +68,10 @@ jobs:
           output-dir: "./vehicle-python/wheelhouse"
           config-file: "{package}/pyproject.toml"
         env:
+          CIBW_BUILD: "*${{ matrix.os.plat }}*"
           CIBW_ARCHS: "${{ matrix.os.arch }}"
+          CIBW_TEST_COMMAND: "${{ matrix.os.test-command }}"
+          CIBW_TEST_EXTRAS: "${{ matrix.os.test-extras }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
