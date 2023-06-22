@@ -570,8 +570,53 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
 1. Build the Vehicle Python bindings:
 
    ```sh
-   pipx run --spec=build pyproject-build -- --wheel
+   pipx run tox
    ```
+
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.2.0a2-cp311-cp311-macosx_13_0_arm64`:
+
+```sh
+#     Supported
+#     Python   _____
+#     versions      \
+#                    vvvvvvvvvvv
+vehicle_lang-0.4.0-cp311-cp311-macosx_13_0_arm64
+#                                ^^^^^^^^^^^^^^^^^
+#     Supported                /
+#     Operating System  ______/
+#     and Architecture
+```
+
+If you'd prefer to only build wheels for _one_ Python version, you can use one of the following options:
+
+- **On macOS and Windows**
+
+  You can use the standard Python build system, [build].
+
+  Run the following command:
+
+  ```sh
+  pipx run --spec=build pyproject-build --wheel
+  ```
+
+- **On Linux**
+
+  You can use the `build-wheel.sh` script in `vehicle-python/scripts`.
+  This script may ask you to install additional dependencies via `pip`.
+
+  Unfortunately, the Linux wheels cannot be built using _just_ Python's standard build system, as they require _delocating_, which is the process of finding non-standard shared libraries and bundling them with the wheel.
+
+**Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
+
+- The macOS wheels built following these instructions will require _at least_ your version of macOS, whereas the wheels built on CI are backwards compatible to macOS 10.10 (Yosemite).
+
+- The Linux wheels built following these instructions will require _at least_ your system version of libc, whereas the wheels built on CI are backwards compatible to libc 2.17 (Ubuntu 18.04).
+
+  You can determine your system's libc version via Python by running:
+
+  ```sh
+  python -c 'import platform; print(platform.libc_ver())'
+  ```
 
 #### Testing
 
@@ -926,3 +971,4 @@ The procedure to create a new release is:
 [pre-commit]: https://pre-commit.com/
 [cabal-fmt]: https://hackage.haskell.org/package/cabal-fmt
 [ormolu]: https://hackage.haskell.org/package/ormolu
+[build]: https://pypi.org/project/build/
