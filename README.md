@@ -12,7 +12,7 @@ specification says that a network's output should be monotonically increasing wi
 its third input.
 
 <!-- This must be a direct link, because the same README is used on PyPI -->
-![Example specification](https://github.com/vehicle-lang/vehicle/blob/4d985c962eab317fd00fbf07da5846374e6b0b35/docs-source/example-spec.png?raw=true)
+![Example specification](https://github.com/vehicle-lang/vehicle/blob/4d985c962eab317fd00fbf07da5846374e6b0b35/vehicle-docs/example-spec.png?raw=true)
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
