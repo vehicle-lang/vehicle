@@ -829,7 +829,7 @@ The procedure to create a new release is:
 
    **Vehicle documentation tests**
 
-   Run the following command from `docs-source`:
+   Run the following command from `vehicle-docs`:
 
    ```sh
    pipx run tox
