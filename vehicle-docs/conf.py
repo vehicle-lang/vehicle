@@ -32,6 +32,17 @@ templates_path = ["_templates"]
 
 exclude_patterns = [".tox"]
 
+# -- Options for MyST --------------------------------------------------------
+
+myst_enable_extensions = [
+    # Enables colon fence directives
+    # https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#syntax-colon-fence
+    "colon_fence",
+    # Enables definition lists
+    # https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#definition-lists
+    "deflist",
+]
+
 # -- Options for HTML output
 
 html_theme = "sphinx_rtd_theme"
