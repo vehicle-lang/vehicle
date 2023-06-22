@@ -573,19 +573,24 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    pipx run tox
    ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.2.0a2-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages.
+These wheels will have file names such as `vehicle_lang-0.4.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
-#     Supported
-#     Python   _____
-#     versions      \
-#                    vvvvvvvvvvv
+#   Supported
+#   Python   _____
+#   versions      \
+#                  vvvvvvvvvvv
 vehicle_lang-0.4.0-cp311-cp311-macosx_13_0_arm64
-#                                ^^^^^^^^^^^^^^^^^
-#     Supported                /
-#     Operating System  ______/
-#     and Architecture
+#                              ^^^^^^^^^^^^^^^^^
+#   Supported                /
+#   Operating System  ______/
+#   and Architecture
 ```
+
+On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`.
+The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later.
+The `manylinux2014` tag is an alias for `manylinux_2_17`.
 
 If you'd prefer to only build wheels for _one_ Python version, you can use one of the following options:
 
@@ -972,3 +977,4 @@ The procedure to create a new release is:
 [cabal-fmt]: https://hackage.haskell.org/package/cabal-fmt
 [ormolu]: https://hackage.haskell.org/package/ormolu
 [build]: https://pypi.org/project/build/
+[manylinux]: https://github.com/pypa/manylinux#readme
