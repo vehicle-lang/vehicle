@@ -608,7 +608,6 @@ If you'd prefer to only build wheels for _one_ Python version, you can use one o
 
   You can use the `build-wheel.sh` script in `vehicle-python/scripts`.
   This script may ask you to install additional dependencies via `pip`.
-
   Unfortunately, the Linux wheels cannot be built using _just_ Python's standard build system, as they require _delocating_, which is the process of finding non-standard shared libraries and bundling them with the wheel.
 
 **Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
