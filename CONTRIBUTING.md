@@ -1,3 +1,41 @@
+# Table of Contents
+
+- [Getting Started](#getting-started)
+  - [Installing Vehicle](#installing-vehicle)
+  - [Building Vehicle](#building-vehicle)
+    - [Getting the source](#getting-the-source)
+    - [Building the Vehicle compiler](#building-the-vehicle-compiler)
+      - [Dependencies](#dependencies)
+        - [Installing GHC and Cabal](#installing-ghc-and-cabal)
+        - [The preferred version of GHC](#the-preferred-version-of-ghc)
+      - [Building](#building)
+      - [Testing](#testing)
+        - [Running specific tests](#running-specific-tests)
+        - [The unit tests](#the-unit-tests)
+        - [The compiler tests](#the-compiler-tests)
+        - [Adding compiler tests](#adding-compiler-tests)
+        - [Updating the golden files](#updating-the-golden-files)
+        - [The integration tests](#the-integration-tests)
+      - [Debugging](#debugging)
+        - [Profiling](#profiling)
+        - [Loops](#loops)
+      - [Installing from source](#installing-from-source)
+    - [Building the Vehicle Python bindings](#building-the-vehicle-python-bindings)
+      - [Dependencies](#dependencies-1)
+        - [Installing Python and pipx](#installing-python-and-pipx)
+      - [Building](#building-1)
+      - [Testing](#testing-1)
+        - [Running tests for specific versions of Python](#running-tests-for-specific-versions-of-python)
+        - [Running specific tests](#running-specific-tests-1)
+        - [The executable tests](#the-executable-tests)
+        - [The loss function tests](#the-loss-function-tests)
+        - [The pygments tests](#the-pygments-tests)
+      - [Installing from source](#installing-from-source-1)
+      - [Installing in editable mode](#installing-in-editable-mode)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Editor Support](#editor-support)
+- [Publishing a Release](#publishing-a-release)
+
 # Getting Started
 
 ## Installing Vehicle
@@ -287,7 +325,7 @@ Optionally, each test case can specify the following fields:
 
 The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
 
-###### Adding compiler tests
+##### Adding compiler tests
 
 To create a new compiler test, you can use the `vehicle-new-golden-test` command.
 
@@ -319,7 +357,7 @@ To create a new compiler test, you can use the `vehicle-new-golden-test` command
 
    You can add `--test-path` _before_ the Vehicle command to add the test to a particular directory, which creates or updates the `test.json` file in that directory and copies any necessary files.
 
-###### Updating the golden files
+##### Updating the golden files
 
 If the output of the Vehicle compiler changes, it is necessary to update the [golden files](./vehicle/tests/golden/) for the compiler tests.
 You can use the option `--test-option="--accept"` to accept the new output of the golden tests, and update the golden files.
@@ -355,7 +393,9 @@ cabal test vehicle-integration-tests --test-show-details=always --test-option=--
 
 The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
 
-#### Profiling the Vehicle compiler
+#### Debugging
+
+##### Profiling
 
 There are scripts for profiling the time and memory consumption of the Vehicle compiler:
 
@@ -364,7 +404,7 @@ There are scripts for profiling the time and memory consumption of the Vehicle c
 
 For more information, see the comments at the top of these files.
 
-#### Debugging infinite loops
+##### Loops
 
 The compiler tests test the output of a successful run of the Vehicle compiler. If the Vehicle compiler loops, it does not terminate. Consequently, if you suspect there is an infinite loop, it is easier to run Vehicle directly with logging:
 
@@ -601,7 +641,7 @@ Run the following command:
 pipx run tox -- tests/test_loss_function*.py
 ```
 
-#### The pygments tests
+##### The pygments tests
 
 The pygments tests test the integration with [the Pygments syntax highlighter].
 
@@ -653,7 +693,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
 
    This should print the same version as above.
 
-##### Installing in editable mode
+#### Installing in editable mode
 
 If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. To avoid this, you can install the Python bindings in editable mode.
 
@@ -672,7 +712,6 @@ python -m pytest
 ```
 
 You'll have to reinstall the Python bindings when the metadata in `pyproject.toml` or the Haskell source changes.
-
 
 ## Pre-commit Hooks
 
