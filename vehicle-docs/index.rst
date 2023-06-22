@@ -19,7 +19,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   installation
+   CONTRIBUTING.md
    language/index.rst
    typeChecking.rst
    training.rst
