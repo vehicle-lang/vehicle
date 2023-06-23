@@ -26,8 +26,7 @@ if [ "${manylinux_image}" = '' ]; then
 fi
 
 # See: https://stackoverflow.com/a/4774063
-package_root="$(dirname "$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )" )"
-package_name="$(basename "${package_root}")"
+package_root="$(dirname "$(dirname "$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )" )" )"
 
 # Check if 'docker' is on the PATH:
 docker=$(which docker || echo > "$fail")
@@ -39,4 +38,4 @@ if [ -s "$fail" ]; then
 fi
 
 # Create a container for the build
-"${docker}" run --rm -v "${package_root}:/${package_name}" -w "/${package_name}" "${manylinux_image}" pipx run tox
+"${docker}" run --rm -v "${package_root}:/vehicle" -w "/vehicle/vehicle-python" "${manylinux_image}" pipx run tox

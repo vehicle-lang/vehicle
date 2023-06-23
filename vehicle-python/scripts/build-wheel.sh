@@ -53,11 +53,11 @@ case "${platform}" in
     # Repair wheel with auditwheel
     libc_xy="$("${env_python}" -c 'import platform; print(platform.libc_ver()[1].replace(".","_"))')"
     machine="$("${env_python}" -c 'import platform; print(platform.machine())')"
-    auditwheel repair --wheel-dir "${dist_dir}" --plat "manylinux_${libc_xy}_${machine}" "${dist_tmp_dir}"/*.whl
+    "${env_python}" -m auditwheel repair --wheel-dir "${dist_dir}" --plat "manylinux_${libc_xy}_${machine}" "${dist_tmp_dir}"/*.whl
     ;;
   'darwin')
     # Repair wheel with delocate-wheel
-    delocate-wheel --wheel-dir "${dist_dir}" "${dist_tmp_dir}"/*.whl
+    "${env_python}" -m delocate.cmd.delocate_wheel --wheel-dir "${dist_dir}" "${dist_tmp_dir}"/*.whl
     ;;
   *)
     mkdir -p "${dist_dir}"
