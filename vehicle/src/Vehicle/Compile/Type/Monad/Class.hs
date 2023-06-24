@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use <|>" #-}
 module Vehicle.Compile.Type.Monad.Class where
 
 import Control.Monad (foldM, unless)

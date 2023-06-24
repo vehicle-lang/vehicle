@@ -1,13 +1,15 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Use section" #-}
 module Vehicle.Compile.Queries.UserVariableElimination
   ( eliminateUserVariables,
     catchableUnsupportedNonLinearConstraint,
   )
 where
 
-import Control.Applicative (Applicative (..))
+-- Need to import this qualified as in GHC 9.6 and above liftA2 is part of Prelude
+-- and therefore importing it normally gives us an "Unused import warning" on
+-- 9.6 and above, but not earlier versions.
+import Control.Applicative qualified as Applicative (liftA2)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
@@ -241,11 +243,11 @@ compilerVectorLinearExpr variables dimensions = go
       (isAddVector -> Just (e1, e2)) -> do
         l1 <- go e1
         l2 <- go e2
-        return $ liftA2 (\x y -> addExprs 1 x 1 y) l1 l2
+        return $ Applicative.liftA2 (\x y -> addExprs 1 x 1 y) l1 l2
       (isSubVector -> Just (e1, e2)) -> do
         l1 <- go e1
         l2 <- go e2
-        return $ liftA2 (\x y -> addExprs 1 x (-1) y) l1 l2
+        return $ Applicative.liftA2 (\x y -> addExprs 1 x (-1) y) l1 l2
       _ ->
         return Nothing
 

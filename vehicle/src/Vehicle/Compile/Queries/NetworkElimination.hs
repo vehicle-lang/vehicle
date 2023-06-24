@@ -1,7 +1,4 @@
 {-# LANGUAGE DeriveAnyClass #-}
-{-# HLINT ignore "Use section" #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Queries.NetworkElimination
   ( MetaNetworkPartition (..),

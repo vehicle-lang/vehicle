@@ -1,7 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Use forM_" #-}
-
 module Vehicle.Compile.Monomorphisation where
 
 import Control.Monad (forM_)
