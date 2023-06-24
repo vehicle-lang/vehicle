@@ -9,7 +9,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Semigroup (..))
 import GHC.Generics (Generic)
-import Vehicle.Prelude (Doc, Pretty (..), indent, line)
+import Vehicle.Prelude (Doc, Pretty (..), indent, line, prependList)
 
 --------------------------------------------------------------------------------
 -- Triviality
@@ -162,7 +162,7 @@ concatConjuncts :: ConjunctAll (ConjunctAll a) -> ConjunctAll a
 concatConjuncts xs = ConjunctAll $ sconcat (coerce xs)
 
 prependConjunctions :: [a] -> ConjunctAll a -> ConjunctAll a
-prependConjunctions xs ys = ConjunctAll $ NonEmpty.prependList xs $ unConjunctAll ys
+prependConjunctions xs ys = ConjunctAll $ prependList xs $ unConjunctAll ys
 
 eliminateTrivialConjunctions :: ConjunctAll (MaybeTrivial a) -> MaybeTrivial (ConjunctAll a)
 eliminateTrivialConjunctions conjunction = do
