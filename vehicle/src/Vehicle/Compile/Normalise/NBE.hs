@@ -338,7 +338,7 @@ evalAnd = \case
 
 evalOr :: EvalSimpleBuiltin types
 evalOr = \case
-  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
+  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x || y)
   _ -> Nothing
 
 evalNeg :: NegDomain -> EvalSimpleBuiltin types
@@ -585,7 +585,7 @@ currentPass = "normalisation by evaluation"
 showEntry :: (MonadNorm types m) => Env types -> NormalisableExpr types -> m ()
 showEntry _env _expr = do
   -- logDebug MaxDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
-  -- logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> prettyVerbose env <+> "}"
+  -- logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   incrCallDepth
 
 showExit :: (MonadNorm types m) => Env types -> Value types -> m ()

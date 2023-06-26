@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.4.1
+
+* Fixed bug where disjunctions were being evaluated incorrectly.
+
 ## Version 0.4.0
 
 ### Command-line changes
