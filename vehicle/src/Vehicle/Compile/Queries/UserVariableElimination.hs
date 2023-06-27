@@ -14,7 +14,6 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
-import Data.HashMap.Strict qualified as HashMap
 import Data.IntSet qualified as IntSet
 import Data.List (elemIndex, partition)
 import Data.Map (Map)
@@ -208,7 +207,7 @@ solutionToExpr variables (var, GaussianVariableSolution Sparse {..}) = do
         | c == -1.0 = addFn (toExprVar v) e
         | otherwise = developerError "Vector equality coefficients should currently all be magnitude 1.0"
   let constant = constantExpr dimensions (Vector.map (* (-1)) constantValue)
-  let varCoeffList = HashMap.toList coefficients
+  let varCoeffList = Map.toList coefficients
   return (var, foldr combFn constant varCoeffList)
 
 compileVectorEquality ::
@@ -256,7 +255,7 @@ compilerVectorLinearExpr variables dimensions = go
       case lookupLv variables level of
         Just var -> do
           let constant = Vector.replicate (product dimensions) 0
-          return $ Sparse dimensions (HashMap.singleton var coef) constant
+          return $ Sparse dimensions (Map.singleton var coef) constant
         Nothing ->
           developerError $
             "Reduced network variable level"
@@ -554,7 +553,7 @@ compileReducedLinearExpr variables expr = do
 
     singletonVar :: Lv -> Coefficient -> m (SparseLinearExpr MixedVariable)
     singletonVar level coef = case lookupLv variables level of
-      Just var -> return (Sparse [] (HashMap.singleton var coef) (Vector.singleton 0))
+      Just var -> return (Sparse [] (Map.singleton var coef) (Vector.singleton 0))
       Nothing ->
         developerError $
           "Reduced network variable level"

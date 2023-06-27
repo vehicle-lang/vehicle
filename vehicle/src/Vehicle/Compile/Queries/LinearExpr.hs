@@ -30,8 +30,6 @@ where
 import Control.Monad (foldM)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Bifunctor (Bifunctor (..))
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -116,7 +114,7 @@ prettyCoefficient v = pretty $ Numeric.showFFloat Nothing v ""
 
 data SparseLinearExpr variable = Sparse
   { dimensions :: TensorDimensions,
-    coefficients :: HashMap variable Coefficient,
+    coefficients :: Map variable Coefficient,
     constantValue :: Constant
   }
   deriving (Show, Eq, Generic)
@@ -128,7 +126,7 @@ instance (Variable variable, FromJSONKey variable) => FromJSON (SparseLinearExpr
 instance (Variable variable) => Pretty (SparseLinearExpr variable) where
   pretty (Sparse dims coefficients constant) = do
     -- Append an empty variable name for the constant at the end
-    let coeffVars = HashMap.toList coefficients
+    let coeffVars = Map.toList coefficients
     case coeffVars of
       [] -> prettyConstant True dims constant
       (x : xs) -> do
@@ -145,22 +143,22 @@ addExprs ::
   SparseLinearExpr variable
 addExprs c1 (Sparse dims coeff1 const1) c2 (Sparse _ coeff2 const2) = do
   -- We should really be able to do this in one operation, but the API isn't flexible enough.
-  let coeff1' = if c1 == 1 then coeff1 else HashMap.map (c1 *) coeff1
-  let coeff2' = if c2 == 1 then coeff2 else HashMap.map (c2 *) coeff2
-  let rcoeff = HashMap.filter (/= 0) (HashMap.unionWith (+) coeff1' coeff2')
+  let coeff1' = if c1 == 1 then coeff1 else Map.map (c1 *) coeff1
+  let coeff2' = if c2 == 1 then coeff2 else Map.map (c2 *) coeff2
+  let rcoeff = Map.filter (/= 0) (Map.unionWith (+) coeff1' coeff2')
   let rconst = addConstants c1 const1 c2 const2
   Sparse dims rcoeff rconst
 
 scaleExpr :: Coefficient -> SparseLinearExpr variable -> SparseLinearExpr variable
 scaleExpr c (Sparse dims coefficients constant) =
-  Sparse dims (HashMap.map (c *) coefficients) (scaleConstant c constant)
+  Sparse dims (Map.map (c *) coefficients) (scaleConstant c constant)
 
-lookupCoefficient :: (Hashable variable) => SparseLinearExpr variable -> variable -> Coefficient
-lookupCoefficient (Sparse _ coefficients _) v = fromMaybe 0 $ HashMap.lookup v coefficients
+lookupCoefficient :: (Ord variable) => SparseLinearExpr variable -> variable -> Coefficient
+lookupCoefficient (Sparse _ coefficients _) v = fromMaybe 0 $ Map.lookup v coefficients
 
 isConstant :: SparseLinearExpr variable -> Maybe Constant
 isConstant (Sparse _ coeff constant)
-  | HashMap.null coeff = Just constant
+  | Map.null coeff = Just constant
   | otherwise = Nothing
 
 toSparse :: SparseLinearExpr variable -> SparseLinearExpr variable
@@ -174,7 +172,7 @@ evaluateExpr ::
   Either variable Constant
 evaluateExpr expr assignment = do
   let Sparse _ coefficients constant = toSparse expr
-  foldM op constant (HashMap.toList coefficients)
+  foldM op constant (Map.toList coefficients)
   where
     op :: Constant -> (variable, Coefficient) -> Either variable Constant
     op total (var, coeff) = case Map.lookup var assignment of
@@ -198,7 +196,7 @@ eliminateVar var solution row = do
 mapExprVariables :: (Variable variable2) => (variable1 -> variable2) -> SparseLinearExpr variable1 -> SparseLinearExpr variable2
 mapExprVariables f Sparse {..} =
   Sparse
-    { coefficients = HashMap.mapKeys f coefficients,
+    { coefficients = Map.mapKeys f coefficients,
       ..
     }
 
@@ -242,7 +240,7 @@ substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)
 
 referencesVariables :: (Variable variable) => Assertion variable -> Set variable -> Bool
 referencesVariables (Assertion _ e) variables = do
-  let presentVariables = Set.fromList $ HashMap.keys $ coefficients e
+  let presentVariables = Set.fromList $ Map.keys $ coefficients e
   not $ Set.null $ variables `Set.intersection` presentVariables
 
 -- | Checks whether an assertion is trivial or not. Returns `Nothing` if
@@ -315,9 +313,9 @@ convertToSparseFormat nameMap (Assertion rel linearExpr) = do
 
   (finalCoeff, finalOp, finalConstant)
 
-sortVarCoeffs :: HashMap NetworkVariable Coefficient -> [(NetworkVariable, Coefficient)]
+sortVarCoeffs :: Map NetworkVariable Coefficient -> [(NetworkVariable, Coefficient)]
 sortVarCoeffs coeffs = do
-  let coeffsList = HashMap.toList coeffs
+  let coeffsList = Map.toList coeffs
   let getKey (var, _) = (inputOrOutput var, networkVarIndices var)
   sortOn getKey coeffsList
 
