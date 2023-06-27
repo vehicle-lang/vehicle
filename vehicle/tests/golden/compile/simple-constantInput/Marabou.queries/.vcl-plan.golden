@@ -33,10 +33,10 @@
                               "contents": {
                                 "networkVarIndices": null,
                                 "networkVarDimensions": [
-                                  2
+                                  1
                                 ],
                                 "networkName": "f",
-                                "inputOrOutput": "Input",
+                                "inputOrOutput": "Output",
                                 "application": 0
                               }
                             }
@@ -48,10 +48,10 @@
                               "contents": {
                                 "networkVarIndices": null,
                                 "networkVarDimensions": [
-                                  1
+                                  2
                                 ],
                                 "networkName": "f",
-                                "inputOrOutput": "Output",
+                                "inputOrOutput": "Input",
                                 "application": 0
                               }
                             }

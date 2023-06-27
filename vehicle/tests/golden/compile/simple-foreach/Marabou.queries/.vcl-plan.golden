@@ -43,7 +43,7 @@
                                       2
                                     ],
                                     "networkName": "f",
-                                    "inputOrOutput": "Input",
+                                    "inputOrOutput": "Output",
                                     "application": 0
                                   }
                                 }
@@ -58,7 +58,7 @@
                                       2
                                     ],
                                     "networkName": "f",
-                                    "inputOrOutput": "Output",
+                                    "inputOrOutput": "Input",
                                     "application": 0
                                   }
                                 }
@@ -162,7 +162,7 @@
                                       2
                                     ],
                                     "networkName": "f",
-                                    "inputOrOutput": "Input",
+                                    "inputOrOutput": "Output",
                                     "application": 0
                                   }
                                 }
@@ -177,7 +177,7 @@
                                       2
                                     ],
                                     "networkName": "f",
-                                    "inputOrOutput": "Output",
+                                    "inputOrOutput": "Input",
                                     "application": 0
                                   }
                                 }

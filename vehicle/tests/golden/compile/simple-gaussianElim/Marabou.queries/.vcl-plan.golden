@@ -66,7 +66,7 @@
                                   1
                                 ],
                                 "networkName": "f",
-                                "inputOrOutput": "Output",
+                                "inputOrOutput": "Input",
                                 "application": 0
                               }
                             }
@@ -81,7 +81,7 @@
                                   1
                                 ],
                                 "networkName": "f",
-                                "inputOrOutput": "Input",
+                                "inputOrOutput": "Output",
                                 "application": 0
                               }
                             }
@@ -226,10 +226,10 @@
                               "contents": {
                                 "networkVarIndices": null,
                                 "networkVarDimensions": [
-                                  1
+                                  2
                                 ],
                                 "networkName": "g",
-                                "inputOrOutput": "Output",
+                                "inputOrOutput": "Input",
                                 "application": 0
                               }
                             }
@@ -241,71 +241,13 @@
                               "contents": {
                                 "networkVarIndices": null,
                                 "networkVarDimensions": [
-                                  2
+                                  1
                                 ],
                                 "networkName": "g",
-                                "inputOrOutput": "Input",
+                                "inputOrOutput": "Output",
                                 "application": 0
                               }
                             }
-                          },
-                          {
-                            "tag": "EliminateViaGaussian",
-                            "contents": [
-                              {
-                                "tag": "UserVar",
-                                "contents": {
-                                  "userVarName": "b",
-                                  "userVarDimensions": []
-                                }
-                              },
-                              {
-                                "solutionEquality": {
-                                  "dimensions": [],
-                                  "constantValue": [
-                                    0
-                                  ],
-                                  "coefficients": [
-                                    [
-                                      {
-                                        "tag": "NetworkVar",
-                                        "contents": {
-                                          "networkVarIndices": 1,
-                                          "networkVarDimensions": [],
-                                          "networkName": "g",
-                                          "inputOrOutput": "Input",
-                                          "application": 0
-                                        }
-                                      },
-                                      -2
-                                    ],
-                                    [
-                                      {
-                                        "tag": "NetworkVar",
-                                        "contents": {
-                                          "networkVarIndices": 0,
-                                          "networkVarDimensions": [],
-                                          "networkName": "g",
-                                          "inputOrOutput": "Input",
-                                          "application": 0
-                                        }
-                                      },
-                                      1
-                                    ],
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "b",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      1
-                                    ]
-                                  ]
-                                }
-                              }
-                            ]
                           },
                           {
                             "tag": "EliminateViaGaussian",
@@ -335,7 +277,7 @@
                                           "application": 0
                                         }
                                       },
-                                      -1
+                                      1
                                     ],
                                     [
                                       {
@@ -348,13 +290,71 @@
                                           "application": 0
                                         }
                                       },
-                                      1
+                                      -2
                                     ],
                                     [
                                       {
                                         "tag": "UserVar",
                                         "contents": {
                                           "userVarName": "a",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
+                              {
+                                "tag": "UserVar",
+                                "contents": {
+                                  "userVarName": "b",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 1,
+                                          "networkVarDimensions": [],
+                                          "networkName": "g",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "g",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "b",
                                           "userVarDimensions": []
                                         }
                                       },
