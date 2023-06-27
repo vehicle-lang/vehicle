@@ -30,26 +30,52 @@
 	"Syntax table for Vehicle mode")
 
 (defconst vehicle-keywords
-	'( "network"
-		 "forall"
-		 "exists"
+	'( "@network"
+		 "@dataset"
+		 "@parameter"
+		 "@property"
+		 "@postulate"
+		 "@noinline"
+		 "forallT"
 		 "let" "in"
-		 "if" "then" "else")
+		 "type")
 	"Keywords for Vehicle language")
 
 (defconst vehicle-builtins
 	'( "True"
-		 "False")
+		 "False"
+		 "nil"
+		 "if" "then" "else"
+		 "forall"
+		 "exists"
+		 "foreach"
+		 "and"
+		 "or"
+		 "map"
+		 "fold"
+		 "dfold"
+		 "indices"
+		 "fromNat"
+		 "fromInt")
 	"Builtin constructors for Vehicle language")
 
 (defconst vehicle-types
-	'( "Bool"
-		 "Rat"
-		 "Nat"
-		 "Tensor"
-		 "List"
-		 "Nil"
-		 "Cons")
+	'( "Type"
+     "Unit"
+     "Bool"
+     "Nat"
+     "Int"
+     "Rat"
+     "Vector"
+     "List"
+     "Index"
+ 		 "HasEq"
+ 		 "HasNotEq"
+ 		 "HasAdd"
+ 		 "HasSub"
+ 		 "HasMul"
+ 		 "HasFold"
+ 		 "HasMap")
 	"Builtin types and kinds for Vehicle language")
 
 (defvar vehicle-font-lock-keywords
