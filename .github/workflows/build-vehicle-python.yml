@@ -5,7 +5,6 @@ name: Build vehicle-python
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 defaults:
   run:
