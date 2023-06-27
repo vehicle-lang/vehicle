@@ -11,14 +11,17 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT, gets, modify)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (foldlM)
+import Data.Functor.Classes (Ord1 (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet (singleton, toList, union, unions)
 import Data.Hashable (Hashable (..))
+import Data.List (sortBy)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Traversable (for)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Error
@@ -102,10 +105,41 @@ applicationExpr (networkName, spine) = VFreeVar (Identifier User networkName) sp
 -- `Node (f (g x + h y)) {Node (g x) {}, Node (h y) {}}`. The reason we use sets
 -- at the nodes is that we want them to be invariant to the order of their
 -- branches.
-data NetworkApplicationTree = Node NetworkApplication NetworkApplicationForest
+data NetworkApplicationTree = Node
+  { nodeApp :: NetworkApplication,
+    nodeSubApps :: NetworkApplicationForest
+  }
   deriving (Eq, Generic, Hashable)
 
 type NetworkApplicationForest = HashSet NetworkApplicationTree
+
+-- | Compares two application trees. This could be done via implementing Ord
+-- but it gets messy fast. In particular `Value` refers back to normal expressions
+-- via lambda expressions and then you have to push it through *everywhere*
+-- even though lambdas will never appear. Better to just implement it locally
+-- here.
+compareApplicationTree :: NetworkApplicationTree -> NetworkApplicationTree -> Ordering
+compareApplicationTree a b = do
+  let (f, x) = nodeApp a
+  let (g, y) = nodeApp b
+  compare f g <> compareSpine x y
+  where
+    compareSpine :: StandardSpine -> StandardSpine -> Ordering
+    compareSpine x y = compareExplicitSpine (mapMaybe getExplicitArg x) (mapMaybe getExplicitArg y)
+
+    compareExplicitSpine :: StandardExplicitSpine -> StandardExplicitSpine -> Ordering
+    compareExplicitSpine = liftCompare compareValue
+
+    compareValue :: StandardNormExpr -> StandardNormExpr -> Ordering
+    compareValue x y = case (x, y) of
+      (VBoundVar v1 spine1, VBoundVar v2 spine2) -> compare v1 v2 <> compareSpine spine1 spine2
+      (VBoundVar {}, _) -> LT
+      (_, VBoundVar {}) -> GT
+      (VBuiltin b1 spine1, VBuiltin b2 spine2) -> compare b1 b2 <> compareExplicitSpine spine1 spine2
+      (VBuiltin {}, _) -> LT
+      (_, VBuiltin {}) -> GT
+      (VFreeVar i1 spine1, VFreeVar i2 spine2) -> compare i1 i2 <> compareSpine spine1 spine2
+      _ -> EQ
 
 -- | Locate network applications and lift disjunctions as required to form
 -- consistent partitions.
@@ -200,7 +234,7 @@ replaceApplications ::
 replaceApplications (partitionID, (applications, expr)) = do
   let sectionDoc = "variable substitution for meta-network partition" <+> pretty partitionID
   logCompilerPass MaxDetail sectionDoc $ do
-    appInfo <- flip evalStateT mempty $ lineariseNetworkApplicationForest applications
+    appInfo <- flip evalStateT mempty $ lineariseNetworkApplicationForest mempty applications
     NetworkReaderCtx {..} <- ask
 
     -- Calculate the meta network and the network norm steps
@@ -239,19 +273,20 @@ type NetworkAppInfo =
 
 lineariseNetworkApplicationForest ::
   (MonadTraverseApplications m, MonadState (HashMap Name Int) m) =>
+  [(NetworkApplication, NetworkAppInfo)] ->
   NetworkApplicationForest ->
   m [(NetworkApplication, NetworkAppInfo)]
-lineariseNetworkApplicationForest forest = do
-  let linearised = HashSet.toList forest
-  -- TODO sort by network occurence
-  concat <$> traverse lineariseNetworkApplicationTree linearised
+lineariseNetworkApplicationForest appInfo forest = do
+  let linearised = sortBy compareApplicationTree $ HashSet.toList forest
+  foldlM lineariseNetworkApplicationTree appInfo linearised
 
 lineariseNetworkApplicationTree ::
   (MonadTraverseApplications m, MonadState (HashMap Name Int) m) =>
+  [(NetworkApplication, NetworkAppInfo)] ->
   NetworkApplicationTree ->
   m [(NetworkApplication, NetworkAppInfo)]
-lineariseNetworkApplicationTree (Node app branches) = do
-  branchInfo <- lineariseNetworkApplicationForest branches
+lineariseNetworkApplicationTree appInfo (Node app branches) = do
+  branchInfo <- lineariseNetworkApplicationForest appInfo branches
   info <- getNetworkApplicationInfo app branchInfo
   return $ info : branchInfo
 

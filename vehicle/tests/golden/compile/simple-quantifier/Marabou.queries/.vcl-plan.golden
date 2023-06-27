@@ -208,7 +208,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
-                                "application": 0
+                                "application": 1
                               }
                             }
                           },
@@ -223,7 +223,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Input",
-                                "application": 0
+                                "application": 1
                               }
                             }
                           },
@@ -238,7 +238,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
-                                "application": 1
+                                "application": 0
                               }
                             }
                           },
@@ -253,7 +253,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Input",
-                                "application": 1
+                                "application": 0
                               }
                             }
                           },
@@ -374,7 +374,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Input",
-                                "application": 1
+                                "application": 0
                               }
                             }
                           },
@@ -389,7 +389,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
-                                "application": 1
+                                "application": 0
                               }
                             }
                           },
@@ -404,7 +404,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Input",
-                                "application": 0
+                                "application": 1
                               }
                             }
                           },
@@ -419,7 +419,7 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
-                                "application": 0
+                                "application": 1
                               }
                             }
                           }
@@ -813,7 +813,7 @@
     "specificationSummary": {
       "name": "specification",
       "filePath": "spec.vcl",
-      "fileHash": -8492557239416345185
+      "fileHash": 1373983250704961566
     },
     "parameterSummaries": {},
     "networkSummaries": [

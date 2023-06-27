@@ -19,7 +19,7 @@ data StandardBuiltinType
   = StandardBuiltinType BuiltinType
   | StandardTypeClass TypeClass
   | StandardTypeClassOp TypeClassOp
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Pretty StandardBuiltinType where
   pretty = \case

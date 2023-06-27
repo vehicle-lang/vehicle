@@ -37,6 +37,36 @@
                                 ],
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
+                                "application": 1
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 1
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
                                 "application": 0
                               }
                             }
@@ -53,66 +83,6 @@
                                 "networkName": "f",
                                 "inputOrOutput": "Input",
                                 "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  1
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 1
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  1
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 1
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  1
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 1
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  1
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 1
                               }
                             }
                           },
@@ -143,6 +113,36 @@
                                 "networkName": "f",
                                 "inputOrOutput": "Output",
                                 "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 1
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
+                                "application": 1
                               }
                             }
                           },

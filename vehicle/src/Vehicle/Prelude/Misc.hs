@@ -128,6 +128,15 @@ partialSort partialCompare xs = sortedNodes
     sortedIndices = topSort graph
     sortedNodes = map (xs !!) sortedIndices
 
+listOrd :: (a -> a -> Bool) -> [a] -> [a] -> Bool
+listOrd _ [] [] = True
+listOrd _ (_ : _) [] = False
+listOrd _ [] (_ : _) = True
+listOrd leq (x : xs) (y : ys) = le || (eq && listOrd leq xs ys)
+  where
+    le = leq x y && not (leq y x)
+    eq = leq x y && leq y x
+
 class Negatable a where
   neg :: a -> a
 

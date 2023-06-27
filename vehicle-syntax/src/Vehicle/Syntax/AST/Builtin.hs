@@ -33,7 +33,7 @@ data BuiltinType
   | Rat
   | List
   | Vector
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinType
 
@@ -69,7 +69,7 @@ data BuiltinConstructor
   | LInt Int
   | LRat Rational
   | LVec Int
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor
 
@@ -327,7 +327,7 @@ data BuiltinFunction
   | ConsVector
   | Fold FoldDomain
   | Indices
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
 

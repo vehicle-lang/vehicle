@@ -31,7 +31,7 @@ data TypeClass
   | HasVecLits
   | -- Utility constraints
     NatInDomainConstraint
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 instance NFData TypeClass
 
@@ -73,7 +73,7 @@ data TypeClassOp
   | MapTC
   | FoldTC
   | QuantifierTC Quantifier
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 instance NFData TypeClassOp
 
