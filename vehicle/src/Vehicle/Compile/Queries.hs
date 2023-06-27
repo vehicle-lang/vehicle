@@ -6,28 +6,28 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.State (MonadState, StateT, evalStateT)
-import Data.List.NonEmpty qualified as NonEmpty
+import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
-import Data.Text (pack)
+import Data.Traversable (for)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources, splitResourceCtx)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Compile.Queries.LinearSatisfactionProblem (UserVariableEliminationCache, generateCLSTProblem)
+import Vehicle.Compile.Queries.IfElimination (unfoldIf)
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors
 import Vehicle.Compile.Queries.NetworkElimination
-import Vehicle.Compile.Queries.Variable (UserVariable (..))
+import Vehicle.Compile.Queries.QuerySetStructure
+import Vehicle.Compile.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
+import Vehicle.Compile.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.DeBruijn (Lv (..))
 import Vehicle.Expr.Normalised
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector))
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 
@@ -56,7 +56,6 @@ compileToQueries queryFormat typedProg resources =
 -- Getting properties
 
 compileProgToQueries ::
-  forall m.
   (MonadIO m, MonadCompile m) =>
   QueryFormat ->
   Resources ->
@@ -65,103 +64,111 @@ compileProgToQueries ::
 compileProgToQueries queryFormat resources prog = do
   resourceCtx <- expandResources resources prog
   let (networkCtx, declCtx) = splitResourceCtx resourceCtx
+  let queryDeclCtx = fmap (,mempty) declCtx
   let Main decls = prog
-  compileDecls networkCtx declCtx decls
+  compileDecls prog queryFormat networkCtx queryDeclCtx decls
+
+compileDecls ::
+  (MonadCompile m) =>
+  StandardGluedProg ->
+  QueryFormat ->
+  NetworkContext ->
+  QueryDeclCtx ->
+  [StandardGluedDecl] ->
+  m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
+compileDecls _ _ _ _ [] = return []
+compileDecls prog queryFormat networkCtx queryDeclCtx (d : ds) = case d of
+  DefAbstract {} -> compileDecls prog queryFormat networkCtx queryDeclCtx ds
+  DefFunction p ident anns typ body -> do
+    maybeProperty <-
+      if not (isProperty anns)
+        then return Nothing
+        else Just <$> compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident body
+
+    let declCtxEntry = NormDeclCtxEntry (normalised body) anns (arity (normalised typ))
+    let usedFunctionsInfo = getUsedFunctions (queryDeclCtxToInfoDeclCtx queryDeclCtx) mempty (unnormalised body)
+    let newQueryDeclCtx = Map.insert ident (declCtxEntry, usedFunctionsInfo) queryDeclCtx
+    properties <- compileDecls prog queryFormat networkCtx newQueryDeclCtx ds
+
+    return $ maybeToList maybeProperty ++ properties
+
+compilePropertyDecl ::
+  (MonadCompile m) =>
+  StandardGluedProg ->
+  QueryFormat ->
+  NetworkContext ->
+  QueryDeclCtx ->
+  Provenance ->
+  Identifier ->
+  StandardGluedExpr ->
+  m (Name, MultiProperty (Property (QueryMetaData, QueryText)))
+compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr = do
+  logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
+    -- Normalise the property expression.
+    -- Note: we can't use the `normalised` part of the glued expression here because
+    -- the external resources have been added since it was normalised during type-checking.
+    let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
+    normalisedExpr <- runNormT defaultEvalOptions declCtx mempty $ eval mempty (unnormalised expr)
+
+    let computeProperty = compileMultiProperty queryFormat networkCtx queryDeclCtx p ident normalisedExpr
+    property <-
+      computeProperty `catchError` \e -> do
+        let formatID = queryFormatID queryFormat
+        case e of
+          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog ident
+          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
+          _ -> throwError e
+
+    return (nameOf ident, property)
+
+-- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
+-- by recursing through the levels of vectors until it reaches something of
+-- type `Bool`.
+compileMultiProperty ::
+  forall m.
+  (MonadCompile m) =>
+  QueryFormat ->
+  NetworkContext ->
+  QueryDeclCtx ->
+  Provenance ->
+  Identifier ->
+  StandardNormExpr ->
+  m (MultiProperty (Property (QueryMetaData, QueryText)))
+compileMultiProperty queryFormat networkCtx declCtx p ident = go []
   where
-    compileDecls ::
-      NetworkContext ->
-      StandardNormDeclCtx ->
-      [StandardGluedDecl] ->
-      m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
-    compileDecls _ _ [] = return []
-    compileDecls networkCtx declCtx (d : ds) = case d of
-      DefAbstract {} -> compileDecls networkCtx declCtx ds
-      DefFunction p ident anns typ body -> do
-        maybeProperty <-
-          if not (isProperty anns)
-            then return Nothing
-            else Just <$> compilePropertyDecl networkCtx declCtx p ident typ body
+    go :: TensorIndices -> StandardNormExpr -> m (MultiProperty (Property (QueryMetaData, QueryText)))
+    go indices expr = case expr of
+      VVecLiteral es -> do
+        let es' = zip [0 :: QueryID ..] es
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      _ -> do
+        let logFunction =
+              if null indices
+                then id
+                else logCompilerPass MinDetail ("property" <+> squotes (pretty ident <> pretty (showTensorIndices indices)))
 
-        let declCtxEntry = NormDeclCtxEntry (normalised body) anns
-        let newDeclCtx = Map.insert ident declCtxEntry declCtx
-        properties <- compileDecls networkCtx newDeclCtx ds
-
-        return $ maybeToList maybeProperty ++ properties
-
-    compilePropertyDecl ::
-      NetworkContext ->
-      StandardNormDeclCtx ->
-      Provenance ->
-      Identifier ->
-      StandardGluedType ->
-      StandardGluedExpr ->
-      m (Name, MultiProperty (Property (QueryMetaData, QueryText)))
-    compilePropertyDecl networkCtx declCtx p ident _typ expr = do
-      logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-        -- We can't use the `normalised` part of the glued expression here because
-        -- the external resources have been added since it was normalised during type-checking.
-        normalisedExpr <- runNormT declCtx mempty $ eval mempty (unnormalised expr)
-        let computeProperty = compileMultiProperty networkCtx declCtx p ident normalisedExpr
-        property <-
-          computeProperty `catchError` \e -> do
-            let formatID = queryFormatID queryFormat
-            case e of
-              UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog ident
-              UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
-              _ -> throwError e
-
-        return (nameOf ident, property)
-
-    -- \| Compiles a property of type `Tensor Bool dims` for some variable `dims`,
-    -- by recursing through the levels of vectors until it reaches something of
-    -- type `Bool`.
-    compileMultiProperty ::
-      NetworkContext ->
-      StandardNormDeclCtx ->
-      Provenance ->
-      Identifier ->
-      StandardNormExpr ->
-      m (MultiProperty (Property (QueryMetaData, QueryText)))
-    compileMultiProperty networkCtx declCtx p ident = go []
-      where
-        go :: TensorIndices -> StandardNormExpr -> m (MultiProperty (Property (QueryMetaData, QueryText)))
-        go indices = \case
-          VVecLiteral es -> do
-            let es' = zip [0 :: QueryID ..] es
-            MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-          expr ->
-            logCompilerSection MaxDetail "Starting single boolean property" $ do
-              let propertyAddress = PropertyAddress (nameOf ident) indices
-              let state = PropertyState queryFormat declCtx networkCtx p propertyAddress
-              let compileProperty = compilePropertyTopLevelStructure expr
-              property <- runMonadCompileProperty state compileProperty
-              return $ SingleProperty propertyAddress property
+        logFunction $ do
+          let propertyAddress = PropertyAddress (nameOf ident) indices
+          let propertyState = PropertyState queryFormat declCtx networkCtx (ident, p) propertyAddress
+          property <- evalStateT (runReaderT (compilePropertyTopLevelStructure expr) propertyState) 1
+          return $ SingleProperty propertyAddress property
 
 --------------------------------------------------------------------------------
 -- Compilation
 
 data PropertyState = PropertyState
   { queryFormat :: QueryFormat,
-    declSubst :: StandardNormDeclCtx,
+    queryDeclCtx :: QueryDeclCtx,
     networkCtx :: NetworkContext,
-    declProvenance :: Provenance,
+    declProvenance :: DeclProvenance,
     propertyAddress :: PropertyAddress
   }
 
 type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
-    MonadSupply QueryID m,
-    MonadState UserVariableEliminationCache m
+    MonadState QueryID m
   )
-
-runMonadCompileProperty ::
-  (Monad m) =>
-  PropertyState ->
-  ReaderT PropertyState (SupplyT QueryID (StateT UserVariableEliminationCache m)) a ->
-  m a
-runMonadCompileProperty state r =
-  evalStateT (runSupplyT (runReaderT r state) [1 :: QueryID ..]) mempty
 
 -- | Compiles the top-level structure of a property of type `Bool` until it
 -- hits the first quantifier.
@@ -180,17 +187,22 @@ compilePropertyTopLevelStructure = go
         Query <$> compileQuerySet False expr
       VBuiltinFunction Order {} _ ->
         Query <$> compileQuerySet False expr
+      VFreeVar ident _
+        | ident == identifierOf StdEqualsVector ->
+            Query <$> compileQuerySet False expr
       VBuiltinFunction And [e1, e2] ->
         smartConjunct <$> go e1 <*> go e2
       VBuiltinFunction Or [e1, e2] ->
         smartDisjunct <$> go e1 <*> go e2
-      VBuiltinFunction Not [x] ->
-        go $ lowerNotNorm x
+      VBuiltinFunction Not [e] ->
+        case eliminateNot e of
+          Nothing -> compilerDeveloperError $ "Unable to push not through:" <+> prettyVerbose e
+          Just r -> go r
       VBuiltinFunction If [c, x, y] -> do
         let unfoldedIf = unfoldIf c x y
         logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendly (WithContext unfoldedIf emptyDBCtx)
         go $ unfoldIf c x y
-      VQuantifierExpr q dom args binder env body -> do
+      VInfiniteQuantifier q dom args binder env body -> do
         let subsectionDoc = "compilation of set of queries:" <+> prettyFriendly (WithContext expr emptyDBCtx)
         logCompilerPass MaxDetail subsectionDoc $ do
           -- Have to check whether to negate the quantifier here, rather than at the top
@@ -200,11 +212,11 @@ compilePropertyTopLevelStructure = go
             Exists -> return (False, body)
             Forall -> do
               -- If the property is universally quantified then we negate the expression.
-              logDebug MinDetail "Negating property..."
+              logDebug MinDetail ("Negating property..." <> line)
               let p = mempty
               return (True, BuiltinFunctionExpr p Not [ExplicitArg p body])
 
-          let negatedExpr = VQuantifierExpr Exists dom args binder env existsBody
+          let negatedExpr = VInfiniteQuantifier Exists dom args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
       _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
 
@@ -214,286 +226,83 @@ compileQuerySet ::
   StandardNormExpr ->
   m (QuerySet (QueryMetaData, QueryText))
 compileQuerySet isPropertyNegated expr = do
-  -- First we recursively compile down the remaining boolean structure, stopping at
-  -- the level of individual propositions (e.g. equality or ordering assertions)
-  (propositionTree, quantifiedVariables) <-
-    compileQueryStructure mempty expr
-
-  -- We then convert this tree into disjunctive normal form (DNF).
-  dnfTree <- logCompilerSection MaxDetail "Converting to disjunctive normal form..." $ do
-    let dnfTree = convertToDNF propositionTree
-    logDebug MaxDetail $ prettyVerbose dnfTree
-    return dnfTree
-
-  queries <- case dnfTree of
-    Trivial b -> return $ Trivial b
-    NonTrivial dnf -> do
-      -- Split up into the individual queries needed for Marabou.
-      logDebug MinDetail $ "Found" <+> pretty (length dnf) <+> "potential queries" <> line
-      queries <- traverse (compileSingleQuery quantifiedVariables) dnf
-      return $ eliminateTrivialDisjunctions queries
-
-  return $ QuerySet isPropertyNegated queries
-
--- | This is a tree structure which stores the reverse environment at each
--- node and propositional expressions at the leaves.
-type PropositionTree = BooleanExpr StandardNormExpr
-
--- | The set of variables that will be cumulatively in scope at the current
--- point in time once all existential quantifiers have been lifted to the
--- top level. Essentially the set of quantifiers that are before the current
--- point in the tree when traversed depth first.
-type QuantifiedVariables = [(Name, TensorDimensions, [UserVariable])]
-
-cumulativeVarsToCtx :: QuantifiedVariables -> BoundDBCtx
-cumulativeVarsToCtx = concatMap (fmap (Just . userVarName) . (\(_, _, c) -> c))
-
-compileQueryStructure ::
-  forall m.
-  (MonadCompileProperty m) =>
-  QuantifiedVariables ->
-  StandardNormExpr ->
-  m (PropositionTree, QuantifiedVariables)
-compileQueryStructure = go False
-  where
-    go :: Bool -> QuantifiedVariables -> StandardNormExpr -> m (PropositionTree, QuantifiedVariables)
-    go processingLiftedIfs quantifiedVariables expr = case expr of
-      VBuiltinFunction And [e1, e2] ->
-        goOp2 Conjunct processingLiftedIfs quantifiedVariables e1 e2
-      VBuiltinFunction Or [e1, e2] ->
-        goOp2 Disjunct processingLiftedIfs quantifiedVariables e1 e2
-      VBuiltinFunction Not [x] ->
-        go processingLiftedIfs quantifiedVariables $ lowerNotNorm x
-      VBuiltinFunction If [c, x, y] ->
-        go processingLiftedIfs quantifiedVariables $ unfoldIf c x y
-      VQuantifierExpr q dom _ binder env body -> case q of
-        Exists -> compileQuantifierBodyToPropositionTree quantifiedVariables dom binder env body
-        Forall -> throwError temporaryUnsupportedAlternatingQuantifiersError
-      VBuiltinFunction Equals {} _ ->
-        goProposition processingLiftedIfs quantifiedVariables expr
-      VBuiltinFunction Order {} _ ->
-        goProposition processingLiftedIfs quantifiedVariables expr
-      VBoolLiteral {} -> do
-        goProposition processingLiftedIfs quantifiedVariables expr
-      _ -> unexpectedExprError "compiling query structure" (prettyVerbose expr)
-
-    goOp2 ::
-      (PropositionTree -> PropositionTree -> PropositionTree) ->
-      Bool ->
-      QuantifiedVariables ->
-      StandardNormExpr ->
-      StandardNormExpr ->
-      m (PropositionTree, QuantifiedVariables)
-    goOp2 op2 processingLiftedIfs quantifiedVariables e1 e2 = do
-      let lhsVariables = quantifiedVariables
-      (e1', lhsUserVars) <- go processingLiftedIfs lhsVariables e1
-      let rhsVariables = lhsUserVars <> quantifiedVariables
-      (e2', rhsUserVars) <- go processingLiftedIfs rhsVariables e2
-      let userVars = lhsUserVars <> rhsUserVars
-      return (op2 e1' e2', userVars)
-
-    goProposition :: Bool -> QuantifiedVariables -> StandardNormExpr -> m (PropositionTree, QuantifiedVariables)
-    goProposition processingLiftedIfs quantifiedVariables expr = do
-      let ctx = cumulativeVarsToCtx quantifiedVariables
-      let subsectionDoc = "Identified proposition:" <+> prettyFriendly (WithContext expr ctx)
-      logDebug MaxDetail subsectionDoc
-      if processingLiftedIfs
-        then do
-          return (Query expr, [])
-        else do
-          incrCallDepth
-          exprWithoutIf <- eliminateIfs ctx expr
-          result <-
-            if not (wasIfLifted exprWithoutIf)
-              then return (Query expr, [])
-              else go True quantifiedVariables exprWithoutIf
-          decrCallDepth
-          return result
-
-    wasIfLifted :: StandardNormExpr -> Bool
-    wasIfLifted (VBuiltinFunction Or _) = True
-    wasIfLifted _ = False
-
-compileQuantifierBodyToPropositionTree ::
-  (MonadCompileProperty m) =>
-  QuantifiedVariables ->
-  QuantifierDomain ->
-  StandardNormBinder ->
-  StandardEnv ->
-  TypeCheckedExpr ->
-  m (PropositionTree, QuantifiedVariables)
-compileQuantifierBodyToPropositionTree quantifiedVariables _ binder env body = do
-  propertyState@PropertyState {..} <- ask
-
-  let variableName = getBinderName binder
-  -- TODO avoid calculating this repeatedly?
-  let currentLevel = Lv $ sum (map (\(_, _, vars) -> length vars) quantifiedVariables)
-  tensorDimensions <- calculateDimensionsOfQuantifiedVariable propertyState binder
-  (envEntry, binderUserVars) <- calculateEnvEntry currentLevel variableName tensorDimensions
-  let newEnv = extendEnv binder envEntry env
-
-  let newQuantifiedVariable = (variableName, tensorDimensions, binderUserVars)
-  let updatedQuantifiedVars = newQuantifiedVariable : quantifiedVariables
-
-  normBody <- runNormT declSubst mempty (eval newEnv body)
-
-  (substructure, allQuantifiedVariables) <- compileQueryStructure updatedQuantifiedVars normBody
-
-  return (substructure, newQuantifiedVariable : allQuantifiedVariables)
-
-compileSingleQuery ::
-  (MonadCompileProperty m) =>
-  QuantifiedVariables ->
-  ConjunctAll StandardNormExpr ->
-  m (MaybeTrivial (QueryAddress, (QueryMetaData, QueryText)))
-compileSingleQuery quantifiedVariables conjuncts = do
   PropertyState {..} <- ask
-
-  let (variableInfo, nestedNormalisedVars) =
-        unzipWith (\(name, dims, vars) -> ((name, dims), vars)) quantifiedVariables
-  let normalisedVars = concat nestedNormalisedVars
-
-  logCompilerPass MinDetail "query" $ do
-    -- Convert all user variables and applications of networks into magic I/O variables
-    let boundCtx = fmap (Just . userVarName) normalisedVars
-    (metaNetwork, networkVariables, inputEqualities, networkFreeConjuncts) <-
-      replaceNetworkApplications networkCtx boundCtx conjuncts
-
-    -- Convert it into a linear satisfaction problem in the user variables
-    let declIdentifier = Identifier User (propertyName propertyAddress)
-    let state =
-          ( networkCtx,
-            (declIdentifier, declProvenance),
-            metaNetwork,
-            normalisedVars,
-            networkVariables
-          )
-    clstQuery <- generateCLSTProblem state inputEqualities networkFreeConjuncts
-
-    -- Compile the query to the specific verifiers.
-    case clstQuery of
-      Trivial b -> do
-        logDebug MaxDetail $ "Query found to be trivially" <+> pretty b
-        return $ Trivial b
-      NonTrivial (clstProblem, normalisedVarInfo) -> do
-        queryText <- compileQuery queryFormat clstProblem
-        logCompilerPassOutput $ pretty queryText
-        queryID <- demand
-        let queryAddress = (propertyAddress, queryID)
-        let queryVarInfo = QueryVariableInfo variableInfo normalisedVarInfo
-        let queryData = QueryData metaNetwork queryVarInfo
-        return $ NonTrivial (queryAddress, (queryData, queryText))
-
-lowerNotNorm :: StandardNormExpr -> StandardNormExpr
-lowerNotNorm arg = case arg of
-  -- Base cases
-  VBoolLiteral b -> VBoolLiteral (not b)
-  VBuiltinFunction (Order dom ord) args -> VBuiltinFunction (Order dom (neg ord)) args
-  VBuiltinFunction (Equals dom eq) args -> VBuiltinFunction (Equals dom (neg eq)) args
-  VBuiltinFunction Not [e] -> e
-  -- Inductive cases
-  VBuiltinFunction Or args -> VBuiltinFunction And (lowerNotNorm <$> args)
-  VBuiltinFunction And args -> VBuiltinFunction Or (lowerNotNorm <$> args)
-  VQuantifierExpr q dom args binder env body ->
-    let p = mempty
-     in VQuantifierExpr (neg q) dom args binder env (NotExpr p [ExplicitArg p body])
-  VBuiltinFunction If [c, e1, e2] -> VBuiltinFunction If [c, lowerNotNorm e1, lowerNotNorm e2]
-  -- Errors
-  e -> developerError ("Unable to lower 'not' through norm expr:" <+> prettyVerbose e)
-
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-temporaryUnsupportedAlternatingQuantifiersError :: CompileError
-temporaryUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
-
---------------------------------------------------------------------------------
--- DNF
-
--- | A tree of expressions in disjunctive normal form.
-type DNFTree = MaybeTrivial (DisjunctAll (ConjunctAll StandardNormExpr))
-
--- | Converts a boolean structure to disjunctive normal form.
-convertToDNF :: PropositionTree -> DNFTree
-convertToDNF = \case
-  Disjunct e1 e2 ->
-    orTrivial (convertToDNF e1) (convertToDNF e2) (<>)
-  Conjunct e1 e2 -> do
-    let xs = convertToDNF e1
-    let ys = convertToDNF e2
-    andTrivial xs ys $ \(DisjunctAll cs) (DisjunctAll ds) ->
-      DisjunctAll $
-        NonEmpty.fromList [as <> bs | as <- NonEmpty.toList cs, bs <- NonEmpty.toList ds]
-  Query x -> case x of
-    VBoolLiteral False -> Trivial False
-    VBoolLiteral True -> Trivial True
-    _ -> NonTrivial $ DisjunctAll [ConjunctAll [x]]
-
-calculateDimensionsOfQuantifiedVariable ::
-  forall m.
-  (MonadCompile m) =>
-  PropertyState ->
-  StandardNormBinder ->
-  m TensorDimensions
-calculateDimensionsOfQuantifiedVariable propertyState binder = go (typeOf binder)
-  where
-    go :: StandardNormType -> m TensorDimensions
-    go = \case
-      VRatType {} -> return []
-      VVectorType tElem (VNatLiteral dim) -> do
-        dims <- go tElem
-        return $ dim : dims
-      variableType -> do
-        let PropertyState {..} = propertyState
+  -- First we attempt to recursively compile down the remaining boolean structure,
+  -- stopping at the level of individual propositions (e.g. equality or ordering assertions)
+  queryStructureResult <- compileQueryStructure declProvenance queryDeclCtx expr
+  case queryStructureResult of
+    Left err -> case err of
+      AlternatingQuantifiers ->
+        throwError catchableUnsupportedAlternatingQuantifiersError
+      NonLinearSpecification e -> do
+        logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
+        throwError catchableUnsupportedNonLinearConstraint
+      UnsupportedQuantifierType binder variableType -> do
         let target = queryFormatID queryFormat
         let p = provenanceOf binder
         let baseName = getBinderName binder
         let baseType = binderType binder
-        let declIdentifier = Identifier User (propertyName propertyAddress)
-        throwError $ UnsupportedVariableType target declIdentifier p baseName variableType baseType [BuiltinType Rat]
+        let declIdent = fst declProvenance
+        throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
+      UnsupportedInequalityOp -> do
+        throwError $ UnsupportedInequality (queryFormatID queryFormat) declProvenance
+    Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
+      logDebug MaxDetail $ pretty quantifiedVariables
+      queries <- case maybeTrivialBoolExpr of
+        Trivial b -> return $ Trivial b
+        NonTrivial boolExpr -> do
+          metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
+          let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
+          let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
+          queries <- traverse compilePartition numberedMetaNetworkPartitions
+          return $ fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
 
-calculateEnvEntry ::
-  (MonadCompile m) =>
-  Lv ->
-  Name ->
-  TensorDimensions ->
-  m (StandardNormExpr, [UserVariable])
-calculateEnvEntry startingLevel baseName baseDims = do
-  runSupplyT (go baseName baseDims) [startingLevel ..]
+      return $ QuerySet isPropertyNegated queries
+
+-- | Constructs a temporary error with no real fields. This should be recaught
+-- and populated higher up the query compilation process.
+catchableUnsupportedAlternatingQuantifiersError :: CompileError
+catchableUnsupportedAlternatingQuantifiersError =
+  UnsupportedAlternatingQuantifiers x x x x x
   where
-    go ::
-      (MonadSupply Lv m, MonadCompile m) =>
-      Name ->
-      TensorDimensions ->
-      m (StandardNormExpr, [UserVariable])
-    go name = \case
-      [] -> do
-        dbLevel <- demand
-        return (VBoundVar dbLevel [], [UserVariable name])
+    x = developerError "Evaluating temporary quantifier error"
 
-      -- If we're quantifying over a tensor, instead quantify over each individual
-      -- element, and then substitute in a LVec construct with those elements in.
-      size : dims -> do
-        -- Use the list monad to create a nested list of all possible indices into the tensor
-        let allIndices = [0 .. size - 1]
+compileMetaNetworkPartition ::
+  (MonadCompileProperty m) =>
+  VariableNormalisationSteps ->
+  BoundCtx UserVariable ->
+  (Int, MetaNetworkPartition) ->
+  m (MaybeTrivial (DisjunctAll (QueryAddress, (QueryMetaData, QueryText))))
+compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionID, MetaNetworkPartition {..}) = do
+  PropertyState {..} <- ask
+  let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
+  logCompilerPass MinDetail ("compilation of meta-network partition" <+> pretty partitionID) $ do
+    -- Convert it into linear satisfaction problems in the network variables
+    let mixedVariables = MixedVariables userVariables networkVars
+    clstQueries <- eliminateUserVariables declCtx declProvenance metaNetwork mixedVariables partitionExpr
 
-        -- Generate the corresponding names from the indices
-        let mkName i = name <> "_" <> pack (show i)
-        (subexprs, userVars) <- unzip <$> traverse (\i -> go (mkName i) dims) allIndices
+    -- Compile the query to the specific verifiers.
+    case clstQueries of
+      Trivial b -> do
+        logDebug MinDetail $ "Meta-network partition found to be trivially" <+> pretty b
+        return $ Trivial b
+      NonTrivial queries ->
+        NonTrivial
+          <$> for
+            queries
+            ( \(conjunctions, userVariableEliminationSteps) -> do
+                queryText <- compileQuery queryFormat conjunctions
+                logDebug MaxDetail $ "Final query:" <> line <> indent 2 (pretty queryText)
+                queryID <- get
+                put (queryID + 1)
+                let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
+                let queryAddress = (propertyAddress, queryID)
+                let queryData = QueryData metaNetwork allVariableSteps
+                return (queryAddress, (queryData, queryText))
+            )
 
-        let expr = mkVLVec subexprs
-
-        -- Generate a expression prepended with `tensorSize` quantifiers
-        return (expr, concat userVars)
-
-pattern VQuantifierExpr :: Quantifier -> QuantifierDomain -> [StandardNormExpr] -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
-pattern VQuantifierExpr q dom args binder env body <-
-  VBuiltinFunction (Quantifier q dom) (reverse -> VLam binder env body : args)
-  where
-    VQuantifierExpr q dom args binder env body =
-      VBuiltinFunction (Quantifier q dom) (reverse (VLam binder env body : args))
+--------------------------------------------------------------------------------
+-- Other
 
 smartConjunct :: BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a)
 smartConjunct x y = case (x, y) of

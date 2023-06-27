@@ -14,7 +14,7 @@ data NormalisableBuiltin types
   = CConstructor BuiltinConstructor
   | CFunction BuiltinFunction
   | CType types
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance (Pretty types) => Pretty (NormalisableBuiltin types) where
   pretty = \case

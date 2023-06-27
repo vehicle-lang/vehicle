@@ -35,6 +35,24 @@ type VProg types = GenericDecl types
 -- | A normalised type
 type VType types = Value types
 
+isValue :: Value types -> Bool
+isValue = \case
+  VUniverse {} -> True
+  VLam {} -> True
+  VPi {} -> True
+  VMeta {} -> False
+  VFreeVar {} -> False
+  VBoundVar {} -> False
+  VBuiltin b _ -> case b of
+    CConstructor {} -> True
+    CType {} -> True
+    CFunction {} -> False
+
+arity :: VType types -> Int
+arity = \case
+  VPi _ r -> 1 + arity r
+  _ -> 0
+
 -----------------------------------------------------------------------------
 -- Spines and environments
 
@@ -120,6 +138,16 @@ isNMeta _ = False
 getNMeta :: Value types -> Maybe MetaID
 getNMeta (VMeta m _) = Just m
 getNMeta _ = Nothing
+
+getNatLiteral :: Value types -> Maybe Int
+getNatLiteral = \case
+  VNatLiteral d -> Just d
+  _ -> Nothing
+
+getRatLiteral :: Value types -> Maybe Rational
+getRatLiteral = \case
+  VRatLiteral d -> Just d
+  _ -> Nothing
 
 -----------------------------------------------------------------------------
 -- Glued expressions

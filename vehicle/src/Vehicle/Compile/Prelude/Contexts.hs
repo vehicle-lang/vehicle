@@ -12,6 +12,8 @@ import Vehicle.Syntax.AST
 
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
+-- Therefore the variables at the start of the list are the most
+-- recent variables introduced to the scope.
 type BoundCtx a = [a]
 
 type BoundDBCtx = BoundCtx (Maybe Name)
@@ -34,8 +36,11 @@ addToBoundCtx v = local (v :)
 getBoundCtx :: (MonadReader (BoundCtx b) m) => m (BoundCtx b)
 getBoundCtx = ask
 
-lookupVar :: BoundCtx b -> Ix -> Maybe b
-lookupVar ctx i = ctx !!? coerce i
+lookupIx :: BoundCtx b -> Ix -> Maybe b
+lookupIx ctx i = ctx !!? coerce i
+
+lookupLv :: BoundCtx b -> Lv -> Maybe b
+lookupLv ctx l = lookupIx ctx (dbLevelToIndex (Lv $ length ctx) l)
 
 --------------------------------------------------------------------------------
 -- Declaration contexts

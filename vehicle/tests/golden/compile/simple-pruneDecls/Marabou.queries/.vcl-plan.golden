@@ -25,55 +25,141 @@
                         1
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x",
-                              [
-                                2
-                              ]
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              1,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "g",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "g",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "3": 1,
-                                      "1": -1
-                                    }
-                                  }
+                                  "userVarName": "x",
+                                  "userVarDimensions": [
+                                    2
+                                  ]
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [
+                                    2
+                                  ],
+                                  "constantValue": [
+                                    0,
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x",
+                                          "userVarDimensions": [
+                                            2
+                                          ]
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": null,
+                                          "networkVarDimensions": [
+                                            2
+                                          ],
+                                          "networkName": "g",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
-                            ],
-                            [
-                              0,
-                              {
-                                "tag": "GaussianSolution",
-                                "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "2": 1,
-                                      "0": -1
-                                    }
-                                  }
-                                }
-                              }
                             ]
-                          ]
-                        },
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "g",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "g",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "g",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "g",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ]

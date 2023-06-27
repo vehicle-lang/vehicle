@@ -315,53 +315,51 @@ checkAllMetasSolved proxy = do
 
 logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
-  whenM (loggingLevelAtLeast MaxDetail) $ do
+  logDebugM MaxDetail $ do
     newSubstitution <- getMetaSubstitution @types
     updatedSubst <- substMetas newSubstitution
-    logDebug MaxDetail $
+
+    unsolvedMetas <- getUnsolvedMetas (Proxy @types)
+    unsolvedMetasDoc <- prettyMetas (Proxy @types) unsolvedMetas
+    unsolvedConstraints <- getActiveConstraints @types
+
+    let constraintsDoc = case maybeSolvedMetas of
+          Nothing ->
+            "unsolved-constraints:"
+              <> line
+              <> indent 2 (prettyVerbose unsolvedConstraints)
+              <> line
+          Just solvedMetas -> do
+            let isUnblocked = not . constraintIsBlocked solvedMetas
+            let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+            "unsolved-blocked-constraints:"
+              <> line
+              <> indent 2 (prettyBlockedConstraints blockedConstraints)
+              <> line
+              <> "unsolved-unblocked-constraints:"
+              <> line
+              <> indent 2 (prettyVerbose unblockedConstraints)
+              <> line
+
+    let declDoc = case maybeDecl of
+          Nothing -> ""
+          Just decl ->
+            "current-decl:"
+              <> line
+              <> indent 2 (prettyExternal decl)
+              <> line
+
+    return $
       "current-solution:"
         <> line
         <> prettyVerbose (fmap unnormalised updatedSubst)
         <> line
-
-    unsolvedMetas <- getUnsolvedMetas (Proxy @types)
-    unsolvedMetasDoc <- prettyMetas (Proxy @types) unsolvedMetas
-    logDebug MaxDetail $
-      "unsolved-metas:"
+        <> "unsolved-metas:"
         <> line
         <> indent 2 unsolvedMetasDoc
         <> line
-
-    unsolvedConstraints <- getActiveConstraints @types
-    case maybeSolvedMetas of
-      Nothing ->
-        logDebug MaxDetail $
-          "unsolved-constraints:"
-            <> line
-            <> indent 2 (prettyVerbose unsolvedConstraints)
-            <> line
-      Just solvedMetas -> do
-        let isUnblocked = not . constraintIsBlocked solvedMetas
-        let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
-        logDebug MaxDetail $
-          "unsolved-blocked-constraints:"
-            <> line
-            <> indent 2 (prettyBlockedConstraints blockedConstraints)
-            <> line
-        logDebug MaxDetail $
-          "unsolved-unblocked-constraints:"
-            <> line
-            <> indent 2 (prettyVerbose unblockedConstraints)
-            <> line
-
-    case maybeDecl of
-      Nothing -> return ()
-      Just decl ->
-        logDebug MaxDetail $
-          "current-decl:"
-            <> line
-            <> indent 2 (prettyExternal decl)
-            <> line
+        <> constraintsDoc
+        <> declDoc
 
 prettyBlockedConstraints :: (PrintableBuiltin types) => [WithContext (Constraint types)] -> Doc a
 prettyBlockedConstraints constraints = do

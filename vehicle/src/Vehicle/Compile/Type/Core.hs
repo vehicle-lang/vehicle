@@ -36,7 +36,7 @@ instance Pretty (TypingError types) where
 
 data TypingDeclCtxEntry types = TypingDeclCtxEntry
   { declAnns :: [Annotation],
-    declType :: NormalisableType types,
+    declType :: GluedType types,
     declBody :: Maybe (GluedExpr types)
   }
 
@@ -46,7 +46,7 @@ mkTypingDeclCtxEntry :: GluedDecl types -> TypingDeclCtxEntry types
 mkTypingDeclCtxEntry decl =
   TypingDeclCtxEntry
     { declAnns = annotationsOf decl,
-      declType = unnormalised $ typeOf decl,
+      declType = typeOf decl,
       declBody = bodyOf decl
     }
 
@@ -58,7 +58,8 @@ addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry d
 
 data NormDeclCtxEntry types = NormDeclCtxEntry
   { declExpr :: Value types,
-    declAnns :: [Annotation]
+    declAnns :: [Annotation],
+    declArity :: Int
   }
 
 type NormDeclCtx types = DeclCtx (NormDeclCtxEntry types)
@@ -69,7 +70,8 @@ typingDeclCtxToNormDeclCtx = Map.mapMaybe $ \TypingDeclCtxEntry {..} ->
     ( \body ->
         NormDeclCtxEntry
           { declExpr = normalised body,
-            declAnns = declAnns
+            declAnns = declAnns,
+            declArity = arity (normalised declType)
           }
     )
     declBody

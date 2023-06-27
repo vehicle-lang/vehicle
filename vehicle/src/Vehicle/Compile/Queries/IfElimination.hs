@@ -9,7 +9,6 @@ where
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 
@@ -21,12 +20,17 @@ import Vehicle.Expr.Normalised
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
-eliminateIfs :: (MonadCompile m) => BoundDBCtx -> StandardNormExpr -> m StandardNormExpr
-eliminateIfs ctx e =
-  logCompilerPass MaxDetail currentPass $ do
-    result <- elimIf <$> recLiftIf e
-    logCompilerPassOutput (prettyFriendly (WithContext result ctx))
-    return result
+eliminateIfs ::
+  (MonadCompile m) =>
+  StandardNormExpr ->
+  m (Maybe StandardNormExpr)
+eliminateIfs e = do
+  ifLiftedExpr <- recLiftIf e
+  case ifLiftedExpr of
+    Nothing -> return ifLiftedExpr
+    Just e' -> do
+      let result = elimIf e'
+      return $ Just result
 
 currentPass :: Doc a
 currentPass = "if elimination"
@@ -44,16 +48,24 @@ liftIf f (VBuiltinFunction If [cond, e1, e2]) =
     ]
 liftIf f e = f e
 
-recLiftIf :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
+recLiftIf :: (MonadCompile m) => StandardNormExpr -> m (Maybe StandardNormExpr)
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
-  -- Quantified lambdas should have been caught before now.
-  VLam {} -> normalisationError currentPass "Non-quantified Lam"
-  VUniverse {} -> return expr
-  VMeta {} -> return expr
-  VBoundVar {} -> return expr
-  VFreeVar v spine -> liftSpine (VFreeVar v) <$> traverse (traverse recLiftIf) spine
-  VBuiltin b spine -> liftExplicitSpine (VBuiltin b) <$> traverse recLiftIf spine
+  VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
+  -- Can't lift over quantified lambda.
+  VLam {} -> return Nothing
+  VMeta {} -> return $ Just expr
+  VBoundVar {} -> return $ Just expr
+  VFreeVar v spine -> do
+    maybeLiftedSpine <- sequence <$> (fmap sequence <$> traverse (traverse recLiftIf) spine)
+    case maybeLiftedSpine of
+      Nothing -> return Nothing
+      Just xs -> return $ Just $ liftSpine (VFreeVar v) xs
+  VBuiltin b spine -> do
+    maybeLiftedSpine <- sequence <$> traverse recLiftIf spine
+    case maybeLiftedSpine of
+      Nothing -> return Nothing
+      Just xs -> return $ Just $ liftExplicitSpine (VBuiltin b) xs
 
 liftArg :: (StandardNormArg -> StandardNormExpr) -> StandardNormArg -> StandardNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e

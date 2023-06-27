@@ -194,7 +194,7 @@ descopeNormBinder f = fmap (descopeNormExpr f)
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do
   Ctx ctx <- ask
-  case lookupVar ctx i of
+  case lookupIx ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
     Just Nothing -> return "_" -- usingUnnamedBoundVariable p i
     Just (Just name) -> return name

@@ -25,37 +25,132 @@
                         1
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              0,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 4,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "1": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "f",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "f",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "f",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ],
@@ -68,37 +163,132 @@
                         2
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              0,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "f",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 4,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "1": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "f",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "f",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "f",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ]

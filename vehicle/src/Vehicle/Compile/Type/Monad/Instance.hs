@@ -62,6 +62,8 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 -- Instances that TypeCheckerT satisfies
 
 instance (PrintableBuiltin types, MonadCompile m) => MonadNorm types (TypeCheckerT types m) where
+  getEvalOptions _ = TypeCheckerT $ return defaultEvalOptions
+
   getDeclSubstitution = TypeCheckerT $ asks typingDeclCtxToNormDeclCtx
 
   getMetaSubstitution = TypeCheckerT (gets currentSubstitution)

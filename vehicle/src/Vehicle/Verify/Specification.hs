@@ -14,7 +14,6 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     VerificationPlan (..),
     VerificationQueries,
-    MetaNetwork,
   )
 where
 
@@ -31,7 +30,7 @@ import Vehicle.Verify.Core
 
 data QueryMetaData = QueryData
   { metaNetwork :: MetaNetwork,
-    variableInfo :: QueryVariableInfo
+    variableReconstruction :: VariableNormalisationSteps
   }
   deriving (Show, Generic)
 

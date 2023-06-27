@@ -1,7 +1,7 @@
 module Vehicle.Verify.Specification.IO
   ( readSpecification,
     readVerificationPlan,
-    outputVerificationResult,
+    outputCompilationResults,
     verifySpecification,
     verificationPlanFileName,
     isValidQueryFolder,
@@ -66,13 +66,13 @@ readSpecification inputFile
 -- | Outputs the compiled verification plan and queries that make up the specification.
 -- If a folder is provided it outputs them to individual files in that folder,
 -- otherwise it outputs them to stdout.
-outputVerificationResult ::
+outputCompilationResults ::
   (MonadIO m, MonadLogger m) =>
   QueryFormatID ->
   Maybe FilePath ->
   (VerificationPlan, VerificationQueries) ->
   m ()
-outputVerificationResult queryFormatID maybeOutputLocation (plan, queries) = do
+outputCompilationResults queryFormatID maybeOutputLocation (plan, queries) = do
   case maybeOutputLocation of
     Nothing -> return ()
     Just folder -> liftIO $ createDirectoryIfMissing True folder
@@ -213,7 +213,7 @@ verifyProperty property = do
     go ::
       (MonadVerify m) =>
       BooleanExpr (QuerySet QueryMetaData) ->
-      m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignments))
+      m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct x y -> do
@@ -230,7 +230,7 @@ verifyProperty property = do
 verifyQuerySet ::
   (MonadVerify m) =>
   QuerySet QueryMetaData ->
-  m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignments))
+  m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
 verifyQuerySet (QuerySet negated queries) = case queries of
   Trivial b -> return (negated, Trivial b)
   NonTrivial disjuncts -> do
@@ -241,13 +241,13 @@ verifyDisjunctAll ::
   forall m.
   (MonadVerify m) =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
-  m (QueryResult UserVariableAssignments)
+  m (QueryResult UserVariableAssignment)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
       (Monad m) =>
       NonEmpty (QueryAddress, QueryMetaData) ->
-      m (QueryResult UserVariableAssignments)
+      m (QueryResult UserVariableAssignment)
     go (x :| []) = verifyQuery x
     go (x :| y : xs) = do
       r <- verifyQuery x
@@ -258,7 +258,7 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
 verifyQuery ::
   (MonadVerify m) =>
   (QueryAddress, QueryMetaData) ->
-  m (QueryResult UserVariableAssignments)
+  m (QueryResult UserVariableAssignment)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
@@ -269,7 +269,7 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
       exitFailure
     Right result -> do
       liftIO $ incProgress progressBar 1
-      return $ fmap (reconstructUserVars userVar) result
+      return $ fmap (reconstructUserVars metaNetwork userVar) result
 
 --------------------------------------------------------------------------------
 -- Assignments
@@ -281,7 +281,7 @@ outputAssignments ::
   PropertyStatus ->
   m ()
 outputAssignments maybeLocation address (PropertyStatus negated s) = case s of
-  NonTrivial (SAT (Just assignments)) -> case maybeLocation of
+  NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> case maybeLocation of
     Nothing -> do
       let witnessText = if negated then "Counter-example" else "Witness"
       let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
@@ -307,7 +307,7 @@ calculateQueryFileName :: QueryAddress -> FilePath
 calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
   let propertyStr
         | null propertyIndices = ""
-        | otherwise = concatMap (\v -> "!" <> show v) (reverse propertyIndices)
+        | otherwise = showTensorIndices propertyIndices
 
   unpack propertyName
     <> propertyStr

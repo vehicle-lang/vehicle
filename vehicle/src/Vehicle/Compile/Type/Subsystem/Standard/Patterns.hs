@@ -71,6 +71,14 @@ pattern TensorType p tElem tDims <-
     [ ExplicitArg _ tElem,
       ExplicitArg _ tDims
       ]
+  where
+    TensorType p tElem tDims =
+      App
+        p
+        (FreeVar p TensorIdent)
+        [ ExplicitArg p tElem,
+          ExplicitArg p tDims
+        ]
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -332,6 +340,16 @@ pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
         : InstanceArg _ solution
         : explicitArgs
       )
+  where
+    EqualityTCExpr p op t1 t2 solution explicitArgs =
+      BuiltinTypeClassOp
+        p
+        (EqualsTC op)
+        ( ImplicitArg p t1
+            :| ImplicitArg p t2
+            : InstanceArg p solution
+            : explicitArgs
+        )
 
 pattern OrderTCExpr ::
   Provenance ->
@@ -390,6 +408,9 @@ pattern VecLiteral ::
   Expr var StandardBuiltin
 pattern VecLiteral p tElem xs <-
   ConstructorExpr p (LVec _) (ImplicitArg _ tElem :| xs)
+  where
+    VecLiteral p tElem xs =
+      ConstructorExpr p (LVec (length xs)) (ImplicitArg p tElem :| xs)
 
 pattern TrueExpr :: Provenance -> Expr var StandardBuiltin
 pattern TrueExpr p = BoolLiteral p True

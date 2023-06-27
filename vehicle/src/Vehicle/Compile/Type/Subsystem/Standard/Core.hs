@@ -19,7 +19,7 @@ data StandardBuiltinType
   = StandardBuiltinType BuiltinType
   | StandardTypeClass TypeClass
   | StandardTypeClassOp TypeClassOp
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Pretty StandardBuiltinType where
   pretty = \case
@@ -164,6 +164,36 @@ pattern VVectorType tElem dim <- VBuiltinType Vector [tElem, dim]
 
 pattern VTensorType :: StandardNormType -> StandardNormType -> StandardNormType
 pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
+  where
+    VTensorType tElem dims = VFreeVar TensorIdent [ExplicitArg mempty tElem, ExplicitArg mempty dims]
+
+mkRatVectorAdd :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
+mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
+
+mkRatVectorSub :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
+mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
+
+mkVectorOp ::
+  BuiltinFunction ->
+  StdLibFunction ->
+  [StandardNormExpr] ->
+  StandardExplicitSpine ->
+  StandardNormExpr
+mkVectorOp baseOp libOp dims spine = case dims of
+  [] -> VBuiltinFunction baseOp spine
+  (d : ds) ->
+    VFreeVar
+      (identifierOf libOp)
+      ( [ ImplicitArg p vecType,
+          ImplicitArg p vecType,
+          ImplicitArg p vecType,
+          ImplicitArg p d,
+          InstanceArg p (mkVectorOp baseOp libOp ds [])
+        ]
+          <> fmap (ExplicitArg p) spine
+      )
+    where
+      p = mempty; vecType = VTensorType VRatType (mkVList ds)
 
 --------------------------------------------------------------------------------
 -- Instance constraints

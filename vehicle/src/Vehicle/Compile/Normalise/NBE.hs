@@ -5,11 +5,14 @@
 
 module Vehicle.Compile.Normalise.NBE
   ( whnf,
+    EvalOptions (..),
+    defaultEvalOptions,
     eval,
     evalApp,
     evalBuiltin,
     extendEnv,
     extendEnvOverBinder,
+    lookupFreeVar,
     forceHead,
     forceArg,
     reeval,
@@ -27,6 +30,7 @@ import Control.Monad.Reader (ReaderT (..), asks)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer (WriterT)
+import Data.Data (Proxy (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map qualified as Map (lookup)
@@ -41,6 +45,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 
 -----------------------------------------------------------------------------
 -- Main method
@@ -55,32 +60,46 @@ whnf = eval
 -----------------------------------------------------------------------------
 -- Normalisation monad
 
+newtype EvalOptions = EvalOptions
+  { evalFiniteQuantifiers :: Bool
+  }
+
+defaultEvalOptions :: EvalOptions
+defaultEvalOptions =
+  EvalOptions
+    { evalFiniteQuantifiers = True
+    }
+
 class (MonadCompile m, PrintableBuiltin types) => MonadNorm types m where
+  getEvalOptions :: Proxy types -> m EvalOptions
   getDeclSubstitution :: m (NormDeclCtx types)
   getMetaSubstitution :: m (MetaSubstitution types)
 
 instance (MonadNorm types m) => MonadNorm types (StateT s m) where
+  getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
   getMetaSubstitution = lift getMetaSubstitution
 
 instance (Monoid s, MonadNorm types m) => MonadNorm types (WriterT s m) where
+  getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
   getMetaSubstitution = lift getMetaSubstitution
 
 instance (MonadNorm types m) => MonadNorm types (ReaderT s m) where
+  getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
   getMetaSubstitution = lift getMetaSubstitution
 
 newtype NormT types m a = NormT
-  { unnormT :: ReaderT (NormDeclCtx types, MetaSubstitution types) m a
+  { unnormT :: ReaderT (EvalOptions, NormDeclCtx types, MetaSubstitution types) m a
   }
   deriving (Functor, Applicative, Monad)
 
-runNormT :: NormDeclCtx types -> MetaSubstitution types -> NormT types m a -> m a
-runNormT declSubst metaSubst x = runReaderT (unnormT x) (declSubst, metaSubst)
+runNormT :: EvalOptions -> NormDeclCtx types -> MetaSubstitution types -> NormT types m a -> m a
+runNormT opts declSubst metaSubst x = runReaderT (unnormT x) (opts, declSubst, metaSubst)
 
 runEmptyNormT :: NormT types m a -> m a
-runEmptyNormT = runNormT mempty mempty
+runEmptyNormT = runNormT defaultEvalOptions mempty mempty
 
 instance MonadTrans (NormT types) where
   lift = NormT . lift
@@ -98,13 +117,13 @@ instance (MonadError e m) => MonadError e (NormT types m) where
   catchError m f = NormT (catchError (unnormT m) (unnormT . f))
 
 instance (MonadCompile m, PrintableBuiltin types) => MonadNorm types (NormT types m) where
-  getDeclSubstitution = NormT $ asks fst
-  getMetaSubstitution = NormT $ asks snd
+  getEvalOptions _ = NormT $ asks (\(opts, _, _) -> opts)
+  getDeclSubstitution = NormT $ asks (\(_, declCtx, _) -> declCtx)
+  getMetaSubstitution = NormT $ asks (\(_, _, metaCtx) -> metaCtx)
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
--- TODO change to return a tuple of NF and WHNF?
 eval :: (MonadNorm types m) => Env types -> NormalisableExpr types -> m (Value types)
 eval env expr = do
   showEntry env expr
@@ -122,13 +141,10 @@ eval env expr = do
       let newEnv = extendEnvOverBinder binder env
       body' <- eval newEnv body
       return $ VPi binder' body'
-    BoundVar p i -> lookupIn p i env
-    FreeVar _ ident -> do
-      declSubst <- getDeclSubstitution
-      let entry = Map.lookup ident declSubst
-      return $ case entry of
-        Just NormDeclCtxEntry {..} -> declExpr
-        _ -> VFreeVar ident []
+    BoundVar p i -> case lookupIx env i of
+      Just (_, value) -> return value
+      Nothing -> outOfBoundsError env p i
+    FreeVar _ ident -> lookupFreeVar ident
     Let _ bound binder body -> do
       boundNormExpr <- eval env bound
       let newEnv = extendEnv binder boundNormExpr env
@@ -141,6 +157,18 @@ eval env expr = do
   showExit env result
   return result
 
+lookupFreeVar :: forall types m. (MonadNorm types m) => Identifier -> m (Value types)
+lookupFreeVar ident = do
+  declSubst <- getDeclSubstitution
+  let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
+  evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @types)
+  if isFiniteQuantifier && not evalFiniteQuants
+    then return $ VFreeVar ident []
+    else case Map.lookup ident declSubst of
+      Just NormDeclCtxEntry {..}
+        | isInlinable declAnns -> return declExpr
+      _ -> return $ VFreeVar ident []
+
 evalBinder :: (MonadNorm types m) => Env types -> NormalisableBinder types -> m (VBinder types)
 evalBinder env = traverse (eval env)
 
@@ -151,7 +179,7 @@ evalApp fun (arg : args) = do
   case fun of
     VMeta v spine -> return $ VMeta v (spine <> (arg : args))
     VBoundVar v spine -> return $ VBoundVar v (spine <> (arg : args))
-    VFreeVar v spine -> return $ VFreeVar v (spine <> (arg : args))
+    VFreeVar v spine -> evalFreeVarApp v (spine <> (arg : args))
     VLam binder env body
       | not (visibilityMatches binder arg) ->
           compilerDeveloperError $ "Mismatch in visibilities" <+> prettyVerbose binder <+> prettyVerbose arg
@@ -170,33 +198,60 @@ evalApp fun (arg : args) = do
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
     VPi {} -> unexpectedExprError currentPass "VPi"
 
-lookupIn :: (MonadCompile m) => Provenance -> Ix -> Env types -> m (Value types)
-lookupIn p i env = case lookupVar env i of
-  Just (_, value) -> return value
-  Nothing ->
-    compilerDeveloperError $
-      "Environment of size"
-        <+> pretty (length env)
-        <+> "in which NBE is being performed"
-        <+> "is smaller than the found DB index"
-        <+> pretty i
-        <+> parens (pretty p)
+-- | This evaluates a free variable applied to an application.
+evalFreeVarApp ::
+  (MonadNorm types m) =>
+  Identifier ->
+  Spine types ->
+  m (Value types)
+evalFreeVarApp ident spine = do
+  declSubst <- getDeclSubstitution
+  case Map.lookup ident declSubst of
+    -- If free variable was annotated with a `@noinline` annotation but all
+    -- it's explicit arguments are actually values then we should actually
+    -- substitute it through and evaluate.
+    Just NormDeclCtxEntry {..}
+      | not (isInlinable declAnns) && length spine == declArity -> do
+          let allExplicitArgsAreValues = all (isValue . argExpr) $ filter isExplicit spine
+          if allExplicitArgsAreValues
+            then evalApp declExpr spine
+            else return $ VFreeVar ident spine
+    _ -> return $ VFreeVar ident spine
 
 -----------------------------------------------------------------------------
 -- Reevaluation
 
-reeval :: (MonadNorm types m) => Value types -> m (Value types)
-reeval expr = case expr of
-  VUniverse {} -> return expr
-  VLam {} -> return expr
-  VPi {} -> return expr
-  VMeta m spine -> VMeta m <$> reevalSpine spine
-  VFreeVar v spine -> VFreeVar v <$> reevalSpine spine
-  VBoundVar v spine -> VBoundVar v <$> reevalSpine spine
-  VBuiltin b spine -> evalBuiltin b =<< traverse reeval spine
+reeval ::
+  (MonadNorm types m) =>
+  Env types ->
+  Value types ->
+  m (Value types)
+reeval env expr = do
+  showNormEntry env expr
+  result <- case expr of
+    VUniverse {} -> return expr
+    VLam binder lamEnv body -> do
+      lamEnv' <- traverse (\(a, b) -> (a,) <$> reeval env b) lamEnv
+      return $ VLam binder lamEnv' body
+    VPi {} -> return expr
+    VMeta m spine -> VMeta m <$> reevalSpine env spine
+    VFreeVar v spine -> do
+      value <- lookupFreeVar v
+      spine' <- reevalSpine env spine
+      evalApp value spine'
+    VBoundVar v spine -> do
+      case lookupLv env v of
+        Nothing -> outOfBoundsError env mempty (dbLevelToIndex (Lv $ length env) v)
+        Just (_, value) -> do
+          spine' <- reevalSpine env spine
+          evalApp value spine'
+    VBuiltin b spine ->
+      evalBuiltin b =<< traverse (reeval env) spine
+  showNormExit env result
+  return result
 
-reevalSpine :: (MonadNorm types m) => Spine types -> m (Spine types)
-reevalSpine = traverse (traverse reeval)
+reevalSpine :: (MonadNorm types m) => Env types -> Spine types -> m (Spine types)
+reevalSpine env = traverse (traverse (reeval env))
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
@@ -520,7 +575,9 @@ evalIf = \case
 
 evalAt :: EvalSimpleBuiltin types
 evalAt = \case
-  [VVecLiteral xs, VIndexLiteral i] -> Just $ xs !! fromIntegral i
+  [VVecLiteral xs, VIndexLiteral i] -> Just $ case xs !!? fromIntegral i of
+    Nothing -> developerError $ "out of bounds error:" <+> pretty (length xs) <+> "<=" <+> pretty i
+    Just xsi -> xsi
   _ -> Nothing
 
 evalConsVector :: EvalSimpleBuiltin types
@@ -584,19 +641,42 @@ currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm types m) => Env types -> NormalisableExpr types -> m ()
 showEntry _env _expr = do
-  -- logDebug MaxDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
-  -- logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> prettyVerbose env <+> "}"
-  incrCallDepth
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
+  -- incrCallDepth
+  return ()
 
 showExit :: (MonadNorm types m) => Env types -> Value types -> m ()
 showExit _env _result = do
-  decrCallDepth
-  -- logDebug MaxDetail $ "nbe-exit" <+> prettyVerbose result
-  -- logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
+  -- decrCallDepth
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
+  return ()
+
+showNormEntry :: (MonadNorm types m) => Env types -> Value types -> m ()
+showNormEntry _env _expr = do
+  -- logDebug MidDetail $ "reeval-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+  -- logDebug MidDetail $ "reeval-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
+  -- incrCallDepth
+  return ()
+
+showNormExit :: (MonadNorm types m) => Env types -> Value types -> m ()
+showNormExit _env _result = do
+  -- decrCallDepth
+  -- logDebug MidDetail $ "reeval-exit" <+> prettyVerbose result
+  -- logDebug MidDetail $ "reeval-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
 showApp :: (MonadNorm types m) => Value types -> Spine types -> m ()
 showApp _fun _spine =
   return ()
 
--- logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> prettyVerbose spine
+outOfBoundsError :: (MonadCompile m) => BoundCtx a -> Provenance -> Ix -> m b
+outOfBoundsError env p i =
+  compilerDeveloperError $
+    "Environment of size"
+      <+> pretty (length env)
+      <+> "in which NBE is being performed"
+      <+> "is smaller than the found DB index"
+      <+> pretty i
+      <+> parens (pretty p)

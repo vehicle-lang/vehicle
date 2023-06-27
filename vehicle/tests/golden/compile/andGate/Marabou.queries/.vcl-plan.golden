@@ -25,57 +25,177 @@
                         1
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x1",
-                              []
-                            ],
-                            [
-                              "x2",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              1,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "3": 1,
-                                      "1": -1
-                                    }
-                                  }
+                                  "userVarName": "x1",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x1",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
-                            ],
-                            [
-                              0,
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "2": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x2",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x2",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 1,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "andGate",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "andGate",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ],
@@ -88,57 +208,177 @@
                         2
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x1",
-                              []
-                            ],
-                            [
-                              "x2",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              1,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "3": 1,
-                                      "1": -1
-                                    }
-                                  }
+                                  "userVarName": "x1",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x1",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
-                            ],
-                            [
-                              0,
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "2": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x2",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x2",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 1,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "andGate",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "andGate",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ],
@@ -151,57 +391,177 @@
                         3
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x1",
-                              []
-                            ],
-                            [
-                              "x2",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              1,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "3": 1,
-                                      "1": -1
-                                    }
-                                  }
+                                  "userVarName": "x1",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x1",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
-                            ],
-                            [
-                              0,
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "2": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x2",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x2",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 1,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "andGate",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "andGate",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ],
@@ -214,57 +574,177 @@
                         4
                       ],
                       {
-                        "variableInfo": {
-                          "unnormalisedVariableInfo": [
-                            [
-                              "x1",
-                              []
-                            ],
-                            [
-                              "x2",
-                              []
-                            ]
-                          ],
-                          "normalisedVariableInfo": [
-                            [
-                              1,
+                        "variableReconstruction": [
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Introduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  2
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "Reduce",
+                            "contents": {
+                              "tag": "NetworkVar",
+                              "contents": {
+                                "networkVarIndices": null,
+                                "networkVarDimensions": [
+                                  1
+                                ],
+                                "networkName": "andGate",
+                                "inputOrOutput": "Output",
+                                "application": 0
+                              }
+                            }
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "3": 1,
-                                      "1": -1
-                                    }
-                                  }
+                                  "userVarName": "x1",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x1",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
-                            ],
-                            [
-                              0,
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
                               {
-                                "tag": "GaussianSolution",
+                                "tag": "UserVar",
                                 "contents": {
-                                  "solutionEquality": {
-                                    "numberOfVars": 6,
-                                    "constantValue": 0,
-                                    "coefficients": {
-                                      "2": 1,
-                                      "0": -1
-                                    }
-                                  }
+                                  "userVarName": "x2",
+                                  "userVarDimensions": []
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "UserVar",
+                                        "contents": {
+                                          "userVarName": "x2",
+                                          "userVarDimensions": []
+                                        }
+                                      },
+                                      -1
+                                    ],
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 1,
+                                          "networkVarDimensions": [],
+                                          "networkName": "andGate",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
                                 }
                               }
                             ]
-                          ]
-                        },
+                          }
+                        ],
                         "metaNetwork": [
-                          [
-                            "andGate",
-                            "fake.onnx"
-                          ]
+                          {
+                            "metaNetworkEntryType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  1
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "metaNetworkEntryName": "andGate",
+                            "metaNetworkEntryFilePath": "fake.onnx"
+                          }
                         ]
                       }
                     ]

@@ -8,7 +8,6 @@ import Data.List (elemIndex, findIndex)
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
 import Data.Text.IO (hPutStrLn)
-import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
@@ -41,9 +40,9 @@ invokeMarabou marabouExecutable networkLocations queryFile =
     parseMarabouOutput command marabouOutput
 
 prepareNetworkArg :: MetaNetwork -> IO String
-prepareNetworkArg [(_name, file)] = return file
+prepareNetworkArg [MetaNetworkEntry {..}] = return metaNetworkEntryFilePath
 prepareNetworkArg metaNetwork = do
-  let duplicateNetworkNames = findDuplicates (fmap fst metaNetwork)
+  let duplicateNetworkNames = findDuplicates (fmap metaNetworkEntryName metaNetwork)
 
   let errorMsg =
         "Error: Marabou currently doesn't support properties that involve"
@@ -51,7 +50,7 @@ prepareNetworkArg metaNetwork = do
             then
               "multiple networks. This property involves:"
                 <> line
-                <> indent 2 (vsep $ fmap (\(n, _) -> "the network" <+> squotes (pretty n)) metaNetwork)
+                <> indent 2 (vsep $ fmap (\e -> "the network" <+> squotes (pretty $ metaNetworkEntryName e)) metaNetwork)
             else
               "multiple applications of the same network. This property applies:"
                 <> line
@@ -63,7 +62,7 @@ prepareNetworkArg metaNetwork = do
 parseMarabouOutput ::
   String ->
   (ExitCode, String, String) ->
-  IO (Either Text (QueryResult NetworkVariableAssignments))
+  IO (Either Text (QueryResult NetworkVariableAssignment))
 parseMarabouOutput command (exitCode, out, _err) = case exitCode of
   ExitFailure exitValue
     | exitValue < 0 -> do
@@ -101,7 +100,7 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
             ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
             return $ Right $ SAT $ Just ioVarAssignment
 
-parseSATAssignment :: [Text] -> IO (Vector Double)
+parseSATAssignment :: [Text] -> IO NetworkVariableAssignment
 parseSATAssignment output = do
   let mInputIndex = elemIndex "Input assignment:" output
   let mOutputIndex = elemIndex "Output:" output
@@ -111,7 +110,7 @@ parseSATAssignment output = do
       let outputVarLines = drop (outputIndex + 1) output
       let inputValues = parseSATAssignmentLine Input <$> inputVarLines
       let outputValues = parseSATAssignmentLine Output <$> outputVarLines
-      return $ Vector.fromList (inputValues <> outputValues)
+      return $ NetworkVariableAssignment $ Vector.fromList (inputValues <> outputValues)
     _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine :: InputOrOutput -> Text -> Double

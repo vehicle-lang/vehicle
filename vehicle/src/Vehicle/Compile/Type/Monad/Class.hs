@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use <|>" #-}
 module Vehicle.Compile.Type.Monad.Class where
 
 import Control.Monad (foldM, unless)
@@ -429,7 +426,7 @@ getDeclType p ident = do
   ctx <- getDeclContext
   case Map.lookup ident ctx of
     Just TypingDeclCtxEntry {..} ->
-      return declType
+      return $ unnormalised declType
     -- This should have been caught during scope checking
     Nothing ->
       compilerDeveloperError $
