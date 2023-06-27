@@ -360,9 +360,10 @@ To create a new compiler test, you can use the `vehicle-new-golden-test` command
 ##### Updating the golden files
 
 If the output of the Vehicle compiler changes, it is necessary to update the [golden files](./vehicle/tests/golden/) for the compiler tests.
-You can use the option `--test-option="--accept"` to accept the new output of the golden tests, and update the golden files.
 
-**Warning**: This is a destructive action! Mistakes may result in faulty tests!
+**Warning**: The following is a destructive action! Mistakes may result in faulty tests!
+
+You can use the option `--test-option="--accept"` to accept the new output of the golden tests, and update the golden files.
 
 The procedure for updating the golden files is:
 
@@ -942,13 +943,19 @@ The procedure to create a new release is:
    pipx run twine check --strict dist/*.whl
    ```
 
+   **Warning**: The following is a destructive action! Published versions cannot be changed!
+
    Run the following command to upload each wheel to [PyPI]:
 
    ```sh
    pipx run twine upload dist/*.whl
    ```
 
-   **Warning**: This is a destructive action! Published versions cannot be changed!
+   Edit the release on GitHub and add the wheel files in `dist/`.
+
+   The release will be at a URL like:
+
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.5.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/
