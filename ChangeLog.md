@@ -1,11 +1,13 @@
 # Changelog for Vehicle
 
-## Version 0.5.0
+## Version 0.4.2
 
-### General improvements
+* Asymptotically significant speedup when compiling specifications with very large
+  tensors in them and a corresponding reduction in size of the `.vcl-plan` files being generated.
 
-* Massive speedup when compiling many specifications with very large tensors in them and a
-  corresponding reduction in size of the `.vcl-plan` files being generated.
+## Version 0.4.1
+
+* Fixed bug where disjunctions were being evaluated incorrectly.
 
 ## Version 0.4.0
 

@@ -393,7 +393,7 @@ evalAnd = \case
 
 evalOr :: EvalSimpleBuiltin types
 evalOr = \case
-  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
+  [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x || y)
   _ -> Nothing
 
 evalNeg :: NegDomain -> EvalSimpleBuiltin types

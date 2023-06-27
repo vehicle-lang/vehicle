@@ -29,7 +29,7 @@
   },
   {
     "name": "MarabouVerify",
-    "run": "vehicle verify -q Marabou.queries -v Marabou",
-    "needs": ["controller.onnx", "Marabou.queries"]
+    "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
+    "needs": ["spec.vcl", "controller.onnx"]
   }
 ]
