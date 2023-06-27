@@ -4,7 +4,6 @@
 /src/vehicle_lang/binding_wrap.c
 /src/vehicle_lang/_binding*.so
 /src/vehicle_lang/_binding*.pyd
-/src/vehicle_lang/pygments/_external/
 /src/vehicle_lang/pygments/external/
 /src/vehicle_lang/pygments/setup.py
 /wheelhouse/
