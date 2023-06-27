@@ -21,8 +21,8 @@ property often needs to be split up into many queries in a non-obvious manner.
 However, Vehicle is capable of:
 
   1. generating these queries automatically from a specification.
-  2. calling a verifier on the generated queries to obtain whether each query is satisfiable.
-  and using this information to reconstruct the truth status for the original property.
+  2. calling a verifier on the generated queries to obtain whether each query is satisfiable
+     and using this information to reconstruct the truth status for the original property.
 
 Generating verifier queries
 ---------------------------
@@ -286,8 +286,8 @@ non-linearity.
 Quantifiers
 ~~~~~~~~~~~
 
-While verifiers can be used to verify both universal properties (i.e. with ``forall``s)
-and existential properties (i.e. with ``exists``s) they cannot verify properties with
+While verifiers can be used to verify both universal properties (i.e. with ``forall``)
+and existential properties (i.e. with ``exists``) they cannot verify properties with
 *alternating* quantifiers where one type of quantifier is used within the scope of the
 other type of quantifier. Here are some examples.
 
@@ -361,6 +361,7 @@ How long it takes to verify a property depends on several factors:
   1. The complexity of the property. The more SAT queries that a property
   is compiled down to, the longer it will take to verify them all. Language
   features that are likely to increase the number of queries generated are
+
     i. ``if`` statements
     ii. ``and`` statements underneath a ``forall`` quantifier
     iii. ``or`` statements underneath a ``exists`` quantifier

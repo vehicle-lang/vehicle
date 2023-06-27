@@ -28,6 +28,10 @@ intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
 
+# -- Options for rewriting external links
+
+extlinks = {".": ("https://github.com/vehicle-lang/vehicle/tree/dev/%s", "./%s")}
+
 # -- Options for excluding temporary files
 
 exclude_patterns = [".tox"]
@@ -42,6 +46,8 @@ myst_enable_extensions = [
     # https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#definition-lists
     "deflist",
 ]
+
+myst_heading_anchors = 5
 
 # -- Options for HTML output
 

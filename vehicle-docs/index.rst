@@ -20,7 +20,7 @@ Contents
    :maxdepth: 2
 
    installation.md
-   contributing.md
+   CONTRIBUTING.md
    language/index.rst
    typeChecking.rst
    training.rst
