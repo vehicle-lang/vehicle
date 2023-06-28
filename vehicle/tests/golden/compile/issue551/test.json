@@ -6,7 +6,7 @@
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     }
   }
 ]

@@ -12,7 +12,7 @@
     "produces": ["Marabou.queries/*.txt"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     },
     "enabled": false
   }

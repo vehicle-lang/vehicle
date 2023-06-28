@@ -271,12 +271,16 @@ executable vehicle
 -- Test suites --
 -----------------
 
-library vehicle-golden-tests-common
+library golden-tests-common
   import:          common-library
   hs-source-dirs:  tests/golden
   exposed-modules:
     Vehicle.Test.Golden
+    Vehicle.Test.Golden.TestSkip
     Vehicle.Test.Golden.TestSpec
+    Vehicle.Test.Golden.TestSpec.External
+    Vehicle.Test.Golden.TestSpec.FilePattern
+    Vehicle.Test.Golden.TestSpec.Ignore
     Vehicle.Test.Golden.TestSpec.NewTestSpec
 
   other-modules:   Vehicle.Test.Golden.Extra
@@ -305,38 +309,28 @@ library vehicle-golden-tests-common
     , unordered-containers  >=0.2.19 && <0.3
     , vehicle
 
-test-suite vehicle-compiler-tests
+test-suite golden-tests
   import:             common-test
   type:               exitcode-stdio-1.0
   main-is:            tests/golden/CompilerTests.hs
   build-depends:
-    , base                                 >=4.13 && <5
+    , base
     , filepath
+    , optparse-applicative
+    , tagged
     , tasty
-    , vehicle:vehicle-golden-tests-common
+    , vehicle:golden-tests-common
 
   build-tool-depends: vehicle:vehicle
 
-test-suite vehicle-integration-tests
-  import:             common-test
-  type:               exitcode-stdio-1.0
-  main-is:            tests/golden/IntegrationTests.hs
-  build-depends:
-    , base                                 >=4.13 && <5
-    , filepath
-    , tasty
-    , vehicle:vehicle-golden-tests-common
-
-  build-tool-depends: vehicle:vehicle
-
-executable vehicle-new-golden-test
+executable new-golden-test
   import:        common-executable
   main-is:       tests/golden/NewTest.hs
   build-depends:
-    , base                                 >=4.13 && <5
-    , vehicle:vehicle-golden-tests-common
+    , base                         >=4.13 && <5
+    , vehicle:golden-tests-common
 
-library vehicle-unit-tests-common
+library unit-tests-common
   import:          common-library
   hs-source-dirs:  tests/unit
   exposed-modules:
@@ -358,11 +352,11 @@ library vehicle-unit-tests-common
     , vehicle
     , vehicle-syntax
 
-test-suite vehicle-unit-tests
+test-suite unit-tests
   import:        common-test
   type:          exitcode-stdio-1.0
   main-is:       tests/unit/Tests.hs
   build-depends:
-    , base                               >=4.13 && <5
+    , base                       >=4.13 && <5
     , tasty
-    , vehicle:vehicle-unit-tests-common
+    , vehicle:unit-tests-common
