@@ -113,8 +113,9 @@ compileToJSON ::
   (ImportedModules, StandardGluedProg) ->
   Maybe FilePath ->
   m ()
-compileToJSON (_, typedProg) outputFile = do
-  let unnormalisedProg = fmap unnormalised typedProg
+compileToJSON (imports, typedProg) outputFile = do
+  let mergedProg = mergeImports imports typedProg
+  let unnormalisedProg = fmap unnormalised mergedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
   let namedProg = descopeNamed resolvedProg
   result <- compileProgToJSON namedProg
