@@ -103,6 +103,9 @@ data TestSpec = TestSpec
     -- | Files needed by the test command.
     --   Paths should be relative to the test specification file.
     testSpecNeeds :: [FilePath],
+    -- | Tools needed by the test command.
+    --   Paths should be the names of executables on the PATH.
+    testSpecTools :: [FilePath],
     -- | Files produced by the test command.
     --   Paths should be relative to the test specification file,
     --   and should not contain the .golden file extension.
@@ -125,8 +128,7 @@ data FilePattern = FilePattern
 
 parseFilePattern :: String -> Either String FilePattern
 parseFilePattern patternString = do
-  globPattern <- eitherGlobPattern
-  return $ FilePattern patternString globPattern
+  FilePattern patternString <$> eitherGlobPattern
   where
     eitherGlobPattern = Glob.tryCompileWith compOptions (patternString <.> "golden")
     compOptions =
@@ -432,6 +434,9 @@ instance FromJSON TestSpec where
       <*> o
         .:? "needs"
         .!= []
+      <*> o
+        .:? "tools"
+        .!= []
       <*> produces o
       <*> timeout o
       <*> o
@@ -455,6 +460,8 @@ instance ToJSON TestSpec where
           ("enabled" .=) <$> testSpecEnabled,
           -- Include "needs" only if it is non-empty:
           boolToMaybe (not $ null testSpecNeeds) ("needs" .= testSpecNeeds),
+          -- Include "tools" only if it is non-empty:
+          boolToMaybe (not $ null testSpecTools) ("tools" .= testSpecNeeds),
           -- Include "produces" only if it is non-empty:
           boolToMaybe (not $ null testSpecProduces) ("produces" .= testSpecProduces),
           -- Include "timeout" only if it is non-empty:

@@ -167,6 +167,7 @@ newTestSpec args = do
             testSpecRun = testSpecRun,
             testSpecEnabled = Nothing,
             testSpecNeeds = testSpecDataNeeds,
+            testSpecTools = [],
             testSpecProduces = testSpecProduces,
             testSpecTimeout = newTestSpecTestTimeout,
             testSpecDiffSpec = Nothing

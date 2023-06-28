@@ -9,8 +9,7 @@
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
-    "ignore":
-    {
+    "ignore": {
       "matches": ".*\"fileHash\".*"
     }
   },
@@ -30,6 +29,7 @@
   {
     "name": "MarabouVerify",
     "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
-    "needs": ["spec.vcl", "controller.onnx"]
+    "needs": ["spec.vcl", "controller.onnx"],
+    "tools": ["Marabou"]
   }
 ]

@@ -1,7 +1,8 @@
 module Vehicle.Test.Golden
-  ( TestFilter,
-    makeTestTreesFromFile,
+  ( makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
+    GoldenOptions (..),
+    defaultGoldenOptions,
   )
 where
 
@@ -9,7 +10,6 @@ import Control.Exception (throw)
 import Control.Monad (filterM, forM, when)
 import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as HashMap
-import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -59,11 +59,24 @@ import Vehicle.Test.Golden.TestSpec
     writeGoldenFiles,
   )
 
-type TestFilter = TestName -> Bool
+-- | Options for test discover.
+newtype GoldenOptions = GoldenOptions
+  { testFilter :: Maybe (TestSpec -> Bool)
+  }
+
+defaultGoldenOptions :: GoldenOptions
+defaultGoldenOptions =
+  GoldenOptions
+    { testFilter = Nothing
+    }
 
 -- | Create a test tree from all test specifications in a directory, recursively.
-makeTestTreeFromDirectoryRecursive :: TestName -> TestFilter -> FilePath -> IO TestTree
-makeTestTreeFromDirectoryRecursive testGroupLabel testFilter testDirectory = do
+makeTestTreeFromDirectoryRecursive :: TestName -> FilePath -> IO TestTree
+makeTestTreeFromDirectoryRecursive = makeTestTreeFromDirectoryRecursiveOpts defaultGoldenOptions
+
+-- | Create a test tree from all test specifications in a directory, recursively.
+makeTestTreeFromDirectoryRecursiveOpts :: GoldenOptions -> TestName -> FilePath -> IO TestTree
+makeTestTreeFromDirectoryRecursiveOpts goldenOptions testGroupLabel testDirectory = do
   -- List all paths in `testDirectory`
   testDirectoryEntries <- listDirectory testDirectory
 
@@ -74,7 +87,7 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testFilter testDirectory = do
       -- Make test trees
       >>= traverse
         ( \testSpecFileName ->
-            makeTestTreesFromFile testFilter (testDirectory </> testSpecFileName)
+            makeTestTreesFromFileOpts goldenOptions (testDirectory </> testSpecFileName)
         )
       <&> concat
 
@@ -86,7 +99,7 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testFilter testDirectory = do
       >>= traverse
         ( \subDirectoryName ->
             let testSubDirectory = testDirectory </> subDirectoryName
-             in makeTestTreeFromDirectoryRecursive subDirectoryName testFilter testSubDirectory
+             in makeTestTreeFromDirectoryRecursiveOpts goldenOptions subDirectoryName testSubDirectory
         )
 
   -- Combine all test trees:
@@ -95,11 +108,15 @@ makeTestTreeFromDirectoryRecursive testGroupLabel testFilter testDirectory = do
   return result
 
 -- | Read a test specification and return a TestTree.
-makeTestTreesFromFile :: TestFilter -> FilePath -> IO [TestTree]
-makeTestTreesFromFile testFilter testSpecFile = do
+makeTestTreesFromFile :: FilePath -> IO [TestTree]
+makeTestTreesFromFile = makeTestTreesFromFileOpts defaultGoldenOptions
+
+-- | Read a test specification and return a TestTree.
+makeTestTreesFromFileOpts :: GoldenOptions -> FilePath -> IO [TestTree]
+makeTestTreesFromFileOpts GoldenOptions {..} testSpecFile = do
   TestSpecs testSpecs <- readTestSpecsFile testSpecFile
   let enabledTestSpec = filter testSpecIsEnabled $ NonEmpty.toList testSpecs
-  let filteredTestSpec = filter (testFilter . testSpecName) enabledTestSpec
+  let filteredTestSpec = maybe id filter testFilter $ enabledTestSpec
   return $ toTestTree testSpecFile <$> filteredTestSpec
 
 -- | Test whether a path refers to an existing test specification file.
@@ -133,7 +150,7 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
               createDirectoryRecursive (tempDirectory </> takeDirectory neededFile)
               let originalFilePath = testDirectory </> neededFile
               let finalFilePath = tempDirectory </> neededFile
-              copyRecursively removeGoldenPrefix originalFilePath finalFilePath
+              copyRecursively originalFilePath finalFilePath
             let copiedFiles = Set.fromList (drop (length tempDirectory + 1) <$> concat allCopiedFiles)
 
             -- Run the command in the specified directory:
@@ -145,10 +162,8 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
             testOutputFiles <- HashMap.fromList <$> getTestOutputFiles copiedFiles tempDirectory
             return TestOutput {..}
 
--- | Copies the file or directory recursively, applying the provided function to file names
--- when files are found.
-copyRecursively :: (FilePath -> FilePath) -> FilePath -> FilePath -> IO [FilePath]
-copyRecursively updateName src dst = do
+copyRecursively :: FilePath -> FilePath -> IO [FilePath]
+copyRecursively src dst = do
   whenM (not <$> doesPathExist src) $
     throw (userError "source does not exist")
 
@@ -161,21 +176,13 @@ copyRecursively updateName src dst = do
       copiedFiles <- forM xs $ \name -> do
         let srcPath = src </> name
         let dstPath = dst </> name
-        copyRecursively updateName srcPath dstPath
+        copyRecursively srcPath dstPath
       return $ concat copiedFiles
     else do
-      let finalDst = updateName dst
-      copyFile src finalDst
-      return [finalDst]
+      copyFile src dst
+      return [dst]
   where
     whenM s r = s >>= flip when r
-
-removeGoldenPrefix :: FilePath -> FilePath
-removeGoldenPrefix path
-  | golden `isSuffixOf` path = take (length path - length golden) path
-  | otherwise = path
-  where
-    golden = ".golden"
 
 getTestOutputFiles :: Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoredFiles tempDirectory = do
