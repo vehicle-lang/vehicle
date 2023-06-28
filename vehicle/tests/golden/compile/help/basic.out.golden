@@ -1,9 +1,9 @@
 Vehicle - a program for enforcing neural network specifications
 
-Usage: vehicle [-V|--version] [--logging ARG] [COMMAND]
+Usage: vehicle [-v|--version] [--logging ARG] [COMMAND]
 
 Available options:
-  -V,--version             Show version information.
+  -v,--version             Show version information.
   --logging ARG            Sets the level of detail in the logs if the --log
                            argument has been passed. Supported options:
                            NoDetail, MinDetail, MidDetail, MaxDetail

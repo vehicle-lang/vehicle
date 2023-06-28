@@ -25,5 +25,11 @@
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network f:NO_FILE",
     "needs": ["spec.vcl"],
     "produces": ["LossFunction.json"]
+  },
+  {
+    "name": "JSON",
+    "run": "vehicle compile -s spec.vcl -t JSON -o JSON.json",
+    "needs": ["spec.vcl"],
+    "produces": ["JSON.json"]
   }
 ]
