@@ -65,13 +65,15 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
     verifyQueries loggingSettings tempDir verifierID verifierLocation proofCache assignmentsLocation
 
 verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> Maybe FilePath -> Maybe FilePath -> IO ()
-verifyQueries _loggingSettings queryFolder verifierID verifierLocation proofCache assignmentsLocation = do
+verifyQueries loggingSettings queryFolder verifierID verifierLocation proofCache assignmentsLocation = do
   let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
 
   let verificationPlanFile = verificationPlanFileName queryFolder
   VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlanFile
-  status <- verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan assignmentsLocation
+  status <-
+    runImmediateLogger loggingSettings $
+      verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan assignmentsLocation
 
   case proofCache of
     Nothing -> return ()

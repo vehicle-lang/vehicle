@@ -12,7 +12,6 @@ where
 import Control.Applicative qualified as Applicative (liftA2)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
 import Data.IntSet qualified as IntSet
 import Data.List (elemIndex, partition)
@@ -136,7 +135,7 @@ tryToSolveForUnreducedUserVariables variables expr =
         let userVars = UserVar <$> userVariableCtx variables
         (gaussianSolutions, _, usedEqualityIDs) <-
           gaussianElimination userVars (fmap (assertionExpr . snd) solvableEqualities)
-        let gaussianReconstructionSteps = fmap (uncurry EliminateViaGaussian) gaussianSolutions
+        let gaussianReconstructionSteps = fmap mkGaussianReconstructionStep gaussianSolutions
         logDebug MidDetail $ "Eliminated user variables:" <+> pretty (fmap fst gaussianSolutions)
 
         -- Calculate the updated set of assertions.
@@ -193,9 +192,9 @@ extractSolvableVectorEqualities mixedVariables = go
 solutionToExpr ::
   (MonadCompile m) =>
   BoundCtx MixedVariable ->
-  (UserVariable, GaussianVariableSolution) ->
+  (UserVariable, SparseLinearExpr MixedVariable) ->
   m (UserVariable, StandardNormExpr)
-solutionToExpr variables (var, GaussianVariableSolution Sparse {..}) = do
+solutionToExpr variables (var, Sparse {..}) = do
   let findVarIx v = Ix $ fromMaybe (developerError ("Variable" <+> pretty var <+> "not found")) (v `elemIndex` variables)
   let toExprVar v = VBoundVar (dbIndexToLevel (Lv $ length variables) (findVarIx v)) []
   let addFn e1 e2 = mkRatVectorAdd (VNatLiteral <$> dimensions) [e1, e2]
@@ -411,14 +410,13 @@ solveForReducedUserVariables variables assertions =
     -- Try to solve for user variables using Gaussian elimination.
     (gaussianSolutions, unusedEqualityExprs, _usedEqualityIDs) <-
       gaussianElimination userVars (map assertionExpr equalitiesWithUserVars)
-    let gaussianReconstructionSteps = fmap (uncurry EliminateViaGaussian) gaussianSolutions
+    let gaussianReconstructionSteps = fmap mkGaussianReconstructionStep gaussianSolutions
     let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
-    let gaussianSolutionEqualities = fmap (second solutionEquality) gaussianSolutions
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
-            foldl (uncurry . substitute) assertion gaussianSolutionEqualities
+            foldl (uncurry . substitute) assertion gaussianSolutions
 
     -- Calculate the set of unsolved user variables
     let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
@@ -441,6 +439,10 @@ solveForReducedUserVariables variables assertions =
 
     -- Eliminate network variables
     return (networkVarAssertions, reconstructionSteps)
+
+mkGaussianReconstructionStep :: (MixedVariable, SparseLinearExpr MixedVariable) -> VariableNormalisationStep
+mkGaussianReconstructionStep (v, e) =
+  EliminateViaGaussian v (GaussianVariableSolution $ rearrangeExprToSolveFor v e)
 
 --------------------------------------------------------------------------------
 -- Compilation of fully reduced assertions

@@ -1,5 +1,6 @@
 module Vehicle.Compile.Queries.VariableReconstruction where
 
+import Data.Foldable (foldlM)
 import Data.Map qualified as Map
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Prelude
@@ -12,18 +13,22 @@ import Vehicle.Verify.Core
 -- Variable reconstruction
 
 reconstructUserVars ::
+  (MonadLogger m) =>
   MetaNetwork ->
   VariableNormalisationSteps ->
   NetworkVariableAssignment ->
-  UserVariableAssignment
-reconstructUserVars metaNetwork steps networkVariableAssignment = do
-  let assignment = createInitialAssignment metaNetwork networkVariableAssignment
-  let finalAssignment = foldr applyReconstructionStep assignment (reverse steps)
-  let assignmentPairs = traverse checkIsUserVariable $ Map.toList finalAssignment
-  case assignmentPairs of
-    Right pairs -> UserVariableAssignment pairs
-    Left networkVar ->
-      developerError $ "Did not successfully eliminate network variable" <+> pretty networkVar
+  m UserVariableAssignment
+reconstructUserVars metaNetwork steps networkVariableAssignment =
+  logCompilerPass MidDetail "recreation of user variables" $ do
+    let assignment = createInitialAssignment metaNetwork networkVariableAssignment
+    logDebug MaxDetail $ "Network variables:" <+> pretty (Map.keys assignment)
+    finalAssignment <- foldlM applyReconstructionStep assignment (reverse steps)
+    let assignmentPairs = traverse checkIsUserVariable $ Map.toList finalAssignment
+    case assignmentPairs of
+      Right pairs ->
+        return $ UserVariableAssignment pairs
+      Left networkVar ->
+        developerError $ "Did not successfully eliminate network variable" <+> pretty networkVar
 
 createInitialAssignment ::
   MetaNetwork ->
@@ -36,32 +41,37 @@ createInitialAssignment metaNetwork (NetworkVariableAssignment values) = do
   Map.fromList variableValuePairs
 
 applyReconstructionStep ::
-  VariableNormalisationStep ->
+  (MonadLogger m) =>
   VariableAssignment MixedVariable ->
-  VariableAssignment MixedVariable
-applyReconstructionStep step assignment = case step of
-  Reduce var ->
-    unreduceVariable var assignment
-  Introduce var ->
-    Map.delete var assignment
-  EliminateViaGaussian var solution -> do
-    let errorOrValue = reconstructGaussianVariableValue assignment solution
-    case errorOrValue of
-      Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> pretty missingVar
-      Right value -> Map.insert var value assignment
-  EliminateViaFourierMotzkin var solution -> do
-    let errorOrValue = reconstructFourierMotzkinVariableValue assignment solution
-    case errorOrValue of
-      Left missingVar -> developerError $ "Missing variable required in Fourier-Motzkin elimination" <+> pretty missingVar
-      Right value -> Map.insert var value assignment
+  VariableNormalisationStep ->
+  m (VariableAssignment MixedVariable)
+applyReconstructionStep assignment step =
+  case step of
+    Reduce var -> unreduceVariable var assignment
+    Introduce var -> do
+      logDebug MaxDetail $ "Deleting now unused variable" <+> pretty var
+      return $ Map.delete var assignment
+    EliminateViaGaussian var solution -> do
+      logDebug MaxDetail $ "Reintroducing Gaussian solved variable" <+> pretty var
+      let errorOrValue = reconstructGaussianVariableValue assignment solution
+      case errorOrValue of
+        Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> pretty missingVar
+        Right value -> return $ Map.insert var value assignment
+    EliminateViaFourierMotzkin var solution -> do
+      logDebug MaxDetail $ "Reintroducing Fourier-Motzkin solved variable" <+> pretty var
+      let errorOrValue = reconstructFourierMotzkinVariableValue assignment solution
+      case errorOrValue of
+        Left missingVar -> developerError $ "Missing variable required in Fourier-Motzkin elimination" <+> pretty missingVar
+        Right value -> return $ Map.insert var value assignment
 
 -- | Unreduces a previously reduced variable, removing the normalised
 -- values from the assignment and adding the unreduced value back to the
 -- assignment.
 unreduceVariable ::
+  (MonadLogger m) =>
   MixedVariable ->
   VariableAssignment MixedVariable ->
-  VariableAssignment MixedVariable
+  m (VariableAssignment MixedVariable)
 unreduceVariable variable assignment = do
   let reducedVariables = fst $ reduceVariable 0 variable
   let variableResults = lookupAndRemoveAll assignment reducedVariables
@@ -74,8 +84,10 @@ unreduceVariable variable assignment = do
           <+> "unable to find variable"
           <+> pretty missingVar
     Right (values, assignment') -> do
+      logDebug MaxDetail $
+        "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
       let unreducedValue = Vector.concat values
-      Map.insert variable unreducedValue assignment'
+      return $ Map.insert variable unreducedValue assignment'
 
 checkIsUserVariable :: (MixedVariable, Constant) -> Either NetworkVariable (UserVariable, Constant)
 checkIsUserVariable (var, value) = case var of

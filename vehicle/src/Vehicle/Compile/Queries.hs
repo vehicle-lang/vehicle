@@ -291,13 +291,17 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
           <$> for
             queries
             ( \(conjunctions, userVariableEliminationSteps) -> do
-                queryText <- compileQuery queryFormat conjunctions
-                logDebug MaxDetail $ "Final query:" <> line <> indent 2 (pretty queryText)
                 queryID <- get
                 put (queryID + 1)
+
+                queryText <- compileQuery queryFormat conjunctions
                 let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
                 let queryAddress = (propertyAddress, queryID)
                 let queryData = QueryData metaNetwork allVariableSteps
+
+                logDebug MaxDetail $ "Final query:" <> line <> indent 2 (pretty queryText) <> line
+                logDebug MaxDetail $ "Variable sequence:" <> line <> indent 2 (pretty allVariableSteps)
+
                 return (queryAddress, (queryData, queryText))
             )
 

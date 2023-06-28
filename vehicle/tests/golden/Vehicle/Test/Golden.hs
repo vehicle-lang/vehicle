@@ -150,7 +150,7 @@ toTestTree testSpecFile testSpec = someLocalOptions testOptions testTree
 copyRecursively :: (FilePath -> FilePath) -> FilePath -> FilePath -> IO [FilePath]
 copyRecursively updateName src dst = do
   whenM (not <$> doesPathExist src) $
-    throw (userError "source does not exist")
+    throw (userError $ "test source file '" <> src <> "' does not exist")
 
   isDirectory <- doesDirectoryExist src
   if isDirectory
