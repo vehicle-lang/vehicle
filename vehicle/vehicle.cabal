@@ -276,7 +276,6 @@ library golden-tests-common
   hs-source-dirs:  tests/golden
   exposed-modules:
     Vehicle.Test.Golden
-    Vehicle.Test.Golden.TestSkip
     Vehicle.Test.Golden.TestSpec
     Vehicle.Test.Golden.TestSpec.External
     Vehicle.Test.Golden.TestSpec.FilePattern
