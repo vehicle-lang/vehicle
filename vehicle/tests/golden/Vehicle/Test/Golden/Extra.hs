@@ -21,11 +21,14 @@ import Test.Tasty (TestTree, localOption)
 import Test.Tasty.Options (IsOption)
 
 -- | Existential type of test options.
-data SomeOption = forall v. (IsOption v) => SomeOption v
+data SomeOption
+  = forall v. (IsOption v) => LocalOption v
+  | forall v. (IsOption v) => AdjustOption (v -> b)
 
 -- | Apply a test option.
 someLocalOption :: SomeOption -> TestTree -> TestTree
-someLocalOption (SomeOption option) = localOption option
+someLocalOption (LocalOption value) = localOption option
+someLocalOption (AdjustOption adjust) = adjustOption adjust
 
 -- | Apply a list of test options.
 someLocalOptions :: [SomeOption] -> TestTree -> TestTree

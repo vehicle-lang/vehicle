@@ -71,7 +71,7 @@ import Test.Tasty (TestName, Timeout (Timeout))
 import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
 import Vehicle.Test.Golden.Extra
-  ( SomeOption (SomeOption),
+  ( SomeOption (..),
     boolToMaybe,
     duplicates,
     writeFileChanged,

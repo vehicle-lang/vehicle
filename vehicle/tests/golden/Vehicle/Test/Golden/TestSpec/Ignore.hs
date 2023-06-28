@@ -136,7 +136,7 @@ matchLine ignore = (==) `on` strikeOutMatches ignore
 -- * Test options
 
 ignoreLineOption :: [String] -> SomeOption
-ignoreLineOption ls = SomeOption (IgnoreLineOption (fromString <$> ls))
+ignoreLineOption opt = AdjustOption (<> (IgnoreLineOption (fromString <$> opt)))
 
 ignoreLineOptionIngredient :: Ingredient
 ignoreLineOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreLineOption)]
@@ -179,7 +179,7 @@ newtype IgnoreFileOption = IgnoreFileOption [IgnoreFile]
   deriving (Eq, Ord, Semigroup, Monoid, Typeable)
 
 ignoreFileOption :: [String] -> SomeOption
-ignoreFileOption ls = SomeOption (IgnoreFileOption (fromString <$> ls))
+ignoreFileOption ls = AdjustOption (<> (IgnoreFileOption (fromString <$> ls)))
 
 ignoreFileOptionIngredient :: Ingredient
 ignoreFileOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreFileOption)]
