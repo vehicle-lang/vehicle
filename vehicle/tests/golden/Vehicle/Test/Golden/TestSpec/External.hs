@@ -15,7 +15,7 @@ import Options.Applicative (help, long, maybeReader, option)
 import Options.Applicative.NonEmpty (some1)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeReadBool, flagCLParser)
+import Test.Tasty.Options (IsOption (..), OptionDescription (..), flagCLParser, safeReadBool)
 
 externalOptionIngredient :: Ingredient
 externalOptionIngredient =
