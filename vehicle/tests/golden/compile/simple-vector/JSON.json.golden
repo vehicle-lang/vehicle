@@ -1,0 +1,502 @@
+[
+  {
+    "tag": "DefAbstract",
+    "contents": [
+      [],
+      [
+        "User",
+        "f"
+      ],
+      {
+        "tag": "NetworkDef"
+      },
+      {
+        "tag": "Pi",
+        "contents": [
+          [],
+          {
+            "tag": "JBinder",
+            "binderType": {
+              "tag": "UnsafeApp",
+              "contents": [
+                [],
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CType",
+                      "contents": {
+                        "tag": "StandardBuiltinType",
+                        "contents": "Vector"
+                      }
+                    }
+                  ]
+                },
+                [
+                  {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Rat"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CFunction",
+                            "contents": {
+                              "tag": "FromNat",
+                              "contents": "FromNatToNat"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CConstructor",
+                              "contents": {
+                                "tag": "LNat",
+                                "contents": 1
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            },
+            "binderProvenance": [],
+            "binderDisplayForm": {
+              "namingForm": {
+                "tag": "OnlyType"
+              },
+              "foldingForm": false
+            }
+          },
+          {
+            "tag": "UnsafeApp",
+            "contents": [
+              [],
+              {
+                "tag": "Builtin",
+                "contents": [
+                  [],
+                  {
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Vector"
+                    }
+                  }
+                ]
+              },
+              [
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CType",
+                      "contents": {
+                        "tag": "StandardBuiltinType",
+                        "contents": "Rat"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "UnsafeApp",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "Builtin",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "CFunction",
+                          "contents": {
+                            "tag": "FromNat",
+                            "contents": "FromNatToNat"
+                          }
+                        }
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CConstructor",
+                            "contents": {
+                              "tag": "LNat",
+                              "contents": 1
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      [],
+      [
+        "User",
+        "empty"
+      ],
+      {
+        "tag": "UnsafeApp",
+        "contents": [
+          [],
+          {
+            "tag": "Builtin",
+            "contents": [
+              [],
+              {
+                "tag": "CType",
+                "contents": {
+                  "tag": "StandardBuiltinType",
+                  "contents": "Vector"
+                }
+              }
+            ]
+          },
+          [
+            {
+              "tag": "Builtin",
+              "contents": [
+                [],
+                {
+                  "tag": "CType",
+                  "contents": {
+                    "tag": "StandardBuiltinType",
+                    "contents": "Rat"
+                  }
+                }
+              ]
+            },
+            {
+              "tag": "UnsafeApp",
+              "contents": [
+                [],
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CFunction",
+                      "contents": {
+                        "tag": "FromNat",
+                        "contents": "FromNatToNat"
+                      }
+                    }
+                  ]
+                },
+                [
+                  {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CConstructor",
+                        "contents": {
+                          "tag": "LNat",
+                          "contents": 0
+                        }
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      {
+        "tag": "UnsafeApp",
+        "contents": [
+          [],
+          {
+            "tag": "FreeVar",
+            "contents": [
+              [],
+              [
+                "StdLib",
+                "vectorToVector"
+              ]
+            ]
+          },
+          [
+            {
+              "tag": "Builtin",
+              "contents": [
+                [],
+                {
+                  "tag": "CConstructor",
+                  "contents": {
+                    "tag": "LVec",
+                    "contents": 0
+                  }
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "DefFunction",
+    "contents": [
+      [],
+      [
+        "User",
+        "p"
+      ],
+      {
+        "tag": "Builtin",
+        "contents": [
+          [],
+          {
+            "tag": "CType",
+            "contents": {
+              "tag": "StandardBuiltinType",
+              "contents": "Bool"
+            }
+          }
+        ]
+      },
+      {
+        "tag": "UnsafeApp",
+        "contents": [
+          [],
+          {
+            "tag": "Builtin",
+            "contents": [
+              [],
+              {
+                "tag": "CFunction",
+                "contents": {
+                  "tag": "Order",
+                  "contents": [
+                    "OrderRat",
+                    "Ge"
+                  ]
+                }
+              }
+            ]
+          },
+          [
+            {
+              "tag": "UnsafeApp",
+              "contents": [
+                [],
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CFunction",
+                      "contents": {
+                        "tag": "At"
+                      }
+                    }
+                  ]
+                },
+                [
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "FreeVar",
+                        "contents": [
+                          [],
+                          [
+                            "User",
+                            "f"
+                          ]
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "FreeVar",
+                              "contents": [
+                                [],
+                                [
+                                  "StdLib",
+                                  "vectorToVector"
+                                ]
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "UnsafeApp",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CConstructor",
+                                        "contents": {
+                                          "tag": "LVec",
+                                          "contents": 1
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  [
+                                    {
+                                      "tag": "UnsafeApp",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "Builtin",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "CFunction",
+                                              "contents": {
+                                                "tag": "FromNat",
+                                                "contents": "FromNatToRat"
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        [
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CConstructor",
+                                                "contents": {
+                                                  "tag": "LNat",
+                                                  "contents": 0
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CFunction",
+                            "contents": {
+                              "tag": "FromNat",
+                              "contents": "FromNatToIndex"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CConstructor",
+                              "contents": {
+                                "tag": "LNat",
+                                "contents": 0
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            },
+            {
+              "tag": "UnsafeApp",
+              "contents": [
+                [],
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CFunction",
+                      "contents": {
+                        "tag": "FromNat",
+                        "contents": "FromNatToRat"
+                      }
+                    }
+                  ]
+                },
+                [
+                  {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CConstructor",
+                        "contents": {
+                          "tag": "LNat",
+                          "contents": 0
+                        }
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        ]
+      }
+    ]
+  }
+]

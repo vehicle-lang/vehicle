@@ -7,13 +7,16 @@ where
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Backend.Agda
+import Vehicle.Backend.JSON (compileProgToJSON)
 import Vehicle.Backend.LossFunction (writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
+import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Queries
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -59,6 +62,8 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
+    JSON -> do
+      compileToJSON result outputFile
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -102,3 +107,15 @@ compileToAgda ::
 compileToAgda agdaOptions (_, typedProg) outputFile = do
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
+
+compileToJSON ::
+  (MonadCompile m, MonadIO m) =>
+  (ImportedModules, StandardGluedProg) ->
+  Maybe FilePath ->
+  m ()
+compileToJSON (_, typedProg) outputFile = do
+  let unnormalisedProg = fmap unnormalised typedProg
+  resolvedProg <- resolveInstanceArguments unnormalisedProg
+  let namedProg = descopeNamed resolvedProg
+  result <- compileProgToJSON namedProg
+  writeResultToFile Nothing outputFile result
