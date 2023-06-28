@@ -67,16 +67,15 @@ import Vehicle.Export qualified as Vehicle (ExportOptions)
 import Vehicle.Prelude (Pretty (pretty), layoutAsString, vehicleSpecificationFileExtension)
 import Vehicle.Test.Golden.Extra (createDirectoryRecursive)
 import Vehicle.Test.Golden.TestSpec
-  ( FilePattern,
-    TestSpec (..),
+  ( TestSpec (..),
     TestSpecs (TestSpecs),
     addOrReplaceTestSpec,
     encodeTestSpecsPretty,
-    filePatternString,
-    parseFilePattern,
     readTestSpecsFile,
     writeTestSpecsFile,
   )
+import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
+import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
 import Vehicle.TypeCheck qualified as TypeCheckOptions
   ( specification,
   )
@@ -155,10 +154,9 @@ newTestSpec args = do
       fail $
         printf "Test needs files at an absolute path: %s\n" testSpecNeed
   forM_ testSpecProduces $ \testSpecProducePattern ->
-    let testSpecProduce = filePatternString testSpecProducePattern
-     in unless (isRelative testSpecProduce) $
-          fail $
-            printf "Test produces files at an absolute path: %s\n" testSpecProduce
+    unless (FilePattern.isRelative testSpecProducePattern) $
+      fail $
+        printf "Test produces files at an absolute path: %s\n" (show testSpecProducePattern)
 
   -- Construct the test specification:
   let theNewTestSpec =
@@ -168,8 +166,9 @@ newTestSpec args = do
             testSpecEnabled = Nothing,
             testSpecNeeds = testSpecDataNeeds,
             testSpecProduces = testSpecProduces,
+            testSpecExternal = [],
             testSpecTimeout = newTestSpecTestTimeout,
-            testSpecDiffSpec = Nothing
+            testSpecIgnore = Nothing
           }
 
   -- Write the test:
@@ -210,7 +209,7 @@ newTestSpec args = do
 data TestSpecData = TestSpecData
   { testSpecDataTarget :: String,
     testSpecDataNeeds :: [FilePath],
-    testSpecDataProduces :: Either String [FilePattern]
+    testSpecDataProduces :: Either String [GoldenFilePattern]
   }
   deriving (Show)
 
@@ -221,7 +220,7 @@ class TestSpecLike a where
   needs :: a -> [FilePath]
   needs = testSpecDataNeeds . testSpecData
 
-  produces :: a -> Either String [FilePattern]
+  produces :: a -> Either String [GoldenFilePattern]
   produces = testSpecDataProduces . testSpecData
 
   testSpecData :: a -> TestSpecData
@@ -255,7 +254,7 @@ instance TestSpecLike Vehicle.TypeCheckOptions where
     [ TypeCheckOptions.specification opts
     ]
 
-  produces :: Vehicle.TypeCheckOptions -> Either String [FilePattern]
+  produces :: Vehicle.TypeCheckOptions -> Either String [GoldenFilePattern]
   produces = const (return [])
 
 instance TestSpecLike Vehicle.CompileOptions where
@@ -270,8 +269,8 @@ instance TestSpecLike Vehicle.CompileOptions where
         Map.elems (CompileOptions.datasetLocations opts)
       ]
 
-  produces :: Vehicle.CompileOptions -> Either String [FilePattern]
-  produces opts = traverse parseFilePattern filePatternStrings
+  produces :: Vehicle.CompileOptions -> Either String [GoldenFilePattern]
+  produces opts = traverse FilePattern.readEither filePatternStrings
     where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
@@ -298,8 +297,8 @@ instance TestSpecLike Vehicle.VerifyOptions where
             Map.elems (VerifyOptions.datasetLocations opts)
           ]
 
-  produces :: Vehicle.VerifyOptions -> Either String [FilePattern]
-  produces = traverse parseFilePattern . maybeToList . VerifyOptions.proofCache
+  produces :: Vehicle.VerifyOptions -> Either String [GoldenFilePattern]
+  produces = traverse FilePattern.readEither . maybeToList . VerifyOptions.proofCache
 
 instance TestSpecLike Vehicle.ExportOptions where
   targetName :: Vehicle.ExportOptions -> String
@@ -308,8 +307,8 @@ instance TestSpecLike Vehicle.ExportOptions where
   needs :: Vehicle.ExportOptions -> [FilePath]
   needs = (: []) . ExportOptions.proofCacheLocation
 
-  produces :: Vehicle.ExportOptions -> Either String [FilePattern]
-  produces = traverse parseFilePattern . maybeToList . ExportOptions.outputFile
+  produces :: Vehicle.ExportOptions -> Either String [GoldenFilePattern]
+  produces = traverse FilePattern.readEither . maybeToList . ExportOptions.outputFile
 
 instance TestSpecLike Vehicle.ValidateOptions where
   targetName :: Vehicle.ValidateOptions -> String
@@ -318,5 +317,5 @@ instance TestSpecLike Vehicle.ValidateOptions where
   needs :: Vehicle.ValidateOptions -> [FilePath]
   needs = (: []) . ValidateOptions.proofCache
 
-  produces :: Vehicle.ValidateOptions -> Either String [FilePattern]
+  produces :: Vehicle.ValidateOptions -> Either String [GoldenFilePattern]
   produces = const (return [])

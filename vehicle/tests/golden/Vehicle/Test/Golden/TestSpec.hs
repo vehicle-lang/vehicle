@@ -1,16 +1,12 @@
 module Vehicle.Test.Golden.TestSpec
   ( TestSpecs (..),
     TestSpec (..),
-    FilePattern (..),
-    parseFilePattern,
-    DiffSpec (..),
-    DiffSpecIgnore (..),
     TestOutput (..),
     mergeTestSpecs,
     addOrReplaceTestSpec,
     testSpecOptions,
     testSpecIsEnabled,
-    testSpecDiffTestOutput,
+    testSpecIgnoreTestOutput,
     readTestSpecsFile,
     writeTestSpecsFile,
     readGoldenFiles,
@@ -35,7 +31,6 @@ import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
     Object,
-    Pair,
     Parser,
     ToJSON (toJSON),
     Value,
@@ -49,9 +44,7 @@ import Data.Aeson.Types
 import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Algorithm.Diff (Diff, PolyDiff (..), getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
-import Data.Array qualified as Array ((!))
 import Data.Foldable (for_)
-import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
@@ -74,20 +67,20 @@ import System.FilePath
     (<.>),
     (</>),
   )
-import System.FilePath.Glob (CompOptions (..))
-import System.FilePath.Glob qualified as Glob
 import Test.Tasty (TestName, Timeout (Timeout))
 import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
-import Text.Regex.TDFA qualified as Regex
-import Text.Regex.TDFA.Text (Regex)
-import Text.Regex.TDFA.Text qualified as Regex
 import Vehicle.Test.Golden.Extra
   ( SomeOption (SomeOption),
     boolToMaybe,
     duplicates,
     writeFileChanged,
   )
+import Vehicle.Test.Golden.TestSpec.External (External)
+import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
+import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
+import Vehicle.Test.Golden.TestSpec.Ignore (Ignore)
+import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
 
 newtype TestSpecs = TestSpecs (NonEmpty TestSpec)
 
@@ -106,64 +99,16 @@ data TestSpec = TestSpec
     -- | Files produced by the test command.
     --   Paths should be relative to the test specification file,
     --   and should not contain the .golden file extension.
-    testSpecProduces :: [FilePattern],
+    testSpecProduces :: [GoldenFilePattern],
+    -- | External tools needed by the test command.
+    --   Paths should be the names of executables on the PATH.
+    testSpecExternal :: [External],
     -- | Local options for the test.
     testSpecTimeout :: Maybe Timeout,
-    -- | Options for the `diff` algorithm.
-    testSpecDiffSpec :: Maybe DiffSpec
+    -- | Options that configure what differences to ignore.
+    testSpecIgnore :: Maybe Ignore
   }
   deriving (Show)
-
--- | Type of file patterns.
---
---   Consists of a pair of the original string and the parsed glob pattern,
---   so that we can output the original string in `show` and `toJSON`.
-data FilePattern = FilePattern
-  { filePatternString :: String,
-    filePattern :: Glob.Pattern
-  }
-
-parseFilePattern :: String -> Either String FilePattern
-parseFilePattern patternString = do
-  globPattern <- eitherGlobPattern
-  return $ FilePattern patternString globPattern
-  where
-    eitherGlobPattern = Glob.tryCompileWith compOptions (patternString <.> "golden")
-    compOptions =
-      CompOptions
-        { characterClasses = False,
-          characterRanges = False,
-          numberRanges = False,
-          wildcards = True,
-          recursiveWildcards = True,
-          pathSepInRanges = False,
-          errorRecovery = False
-        }
-
-instance Show FilePattern where
-  show :: FilePattern -> String
-  show FilePattern {..} = show filePatternString
-
--- | Type of options for the comparison between the produced output and the golden output.
-newtype DiffSpec = DiffSpec
-  { -- | A regular expression to apply to each line before testing for
-    --   equality.
-    diffSpecIgnore :: Maybe DiffSpecIgnore
-  }
-  deriving (Show)
-
--- | Type of regular expression to ignore in the comparison.
---
---   Consists of a pair of the original string and the parsed regular expression,
---   so that we can output the original string in `show` and `toJSON`.
-data DiffSpecIgnore = DiffSpecIgnore
-  { diffSpecIgnoreRegexText :: Text,
-    diffSpecIgnoreRegex :: Regex
-  }
-
-instance Show DiffSpecIgnore where
-  show :: DiffSpecIgnore -> String
-  show DiffSpecIgnore {..} = show diffSpecIgnoreRegexText
 
 -- | The output of running a test.
 --
@@ -193,11 +138,11 @@ testSpecIsEnabled = fromMaybe True . testSpecEnabled
 -- | Find the files matching the file patterns in a test specification 'produces' field.
 testSpecProducesGlobDir :: FilePath -> TestSpec -> IO [FilePath]
 testSpecProducesGlobDir testDirectory testSpec =
-  concat <$> Glob.globDir (filePattern <$> testSpecProduces testSpec) testDirectory
+  FilePattern.glob (testSpecProduces testSpec) testDirectory
 
--- | Compare two test outputs using the options set in DiffSpec.
-testSpecDiffTestOutput :: TestSpec -> TestOutput -> TestOutput -> IO (Maybe String)
-testSpecDiffTestOutput testSpec golden actual = do
+-- | Compare two test outputs using the options set in Ignore.
+testSpecIgnoreTestOutput :: TestSpec -> TestOutput -> TestOutput -> IO (Maybe String)
+testSpecIgnoreTestOutput testSpec golden actual = do
   let goldenFiles = HashMap.keysSet (testOutputFiles golden)
   let actualFiles = HashMap.keysSet (testOutputFiles actual)
   -- Compute missing files:
@@ -241,10 +186,10 @@ testSpecDiffTestOutput testSpec golden actual = do
           ]
   return $ boolToMaybe (not $ null messages) (unlines messages)
 
--- | Compare two texts using the options set in DiffSpec.
+-- | Compare two texts using the options set in Ignore.
 testSpecDiffText :: TestSpec -> Text -> Text -> Maybe String
 testSpecDiffText testSpec golden actual = do
-  let compareLine = maybe (==) testSpecCompareLine (testSpecDiffSpec testSpec)
+  let compareLine = maybe (==) Ignore.matchLine (testSpecIgnore testSpec)
   let goldenLines = Text.lines golden
   let actualLines = Text.lines actual
   let linesEqual =
@@ -278,30 +223,6 @@ testSpecDiffText testSpec golden actual = do
     mapDiff f (First x) = First (f x)
     mapDiff f (Second y) = Second (f y)
     mapDiff f (Both x y) = Both (f x) (f y)
-
--- | Compare two lines using the options set in DiffSpec.
-testSpecCompareLine :: DiffSpec -> Text -> Text -> Bool
-testSpecCompareLine testDiffSpec =
-  (==) `on` testSpecDiffSpecStrikeOut testDiffSpec
-
--- | Strike out matches for the DiffSpecIgnore expression.
-testSpecDiffSpecStrikeOut :: DiffSpec -> Text -> Text
-testSpecDiffSpecStrikeOut testDiffSpec = maybe id strikeOut maybeRegex
-  where
-    maybeRegex = diffSpecIgnoreRegex <$> diffSpecIgnore testDiffSpec
-
--- | Strike out matches for a regular expression.
-strikeOut :: Regex -> Text -> Text
-strikeOut re txt = strikeOutAcc (Regex.matchAll re txt) txt []
-
-strikeOutAcc :: [Regex.MatchArray] -> Text -> [Text] -> Text
-strikeOutAcc [] txt acc = Text.concat (reverse (txt : acc))
-strikeOutAcc (match : matches) txt acc = strikeOutAcc matches rest newAcc
-  where
-    (matchOffset, matchLength) = match Array.! 0
-    (beforeMatch, matchAndAfterMatch) = Text.splitAt matchOffset txt
-    (_matchText, rest) = Text.splitAt matchLength matchAndAfterMatch
-    newAcc = "[IGNORE]" : beforeMatch : acc
 
 -- Reading and writing test specifications:
 
@@ -398,7 +319,7 @@ validateTestSpecProduces testSpec testOutput
   where
     isMatched filePath =
       let goldenFilePath = filePath <.> "golden"
-       in any (`Glob.match` goldenFilePath) (filePattern <$> testSpecProduces testSpec)
+       in any (`FilePattern.match` goldenFilePath) (testSpecProduces testSpec)
     unmatchFileErrors = do
       outputFilePath <- HashMap.keys $ testOutputFiles testOutput
       if isMatched outputFilePath
@@ -433,11 +354,14 @@ instance FromJSON TestSpec where
         .:? "needs"
         .!= []
       <*> produces o
+      <*> o
+        .:? "external"
+        .!= []
       <*> timeout o
       <*> o
         .:? "ignore"
     where
-      produces :: Object -> Parser [FilePattern]
+      produces :: Object -> Parser [GoldenFilePattern]
       produces o =
         o .:? "produces" >>= \case
           Nothing -> return []
@@ -457,21 +381,13 @@ instance ToJSON TestSpec where
           boolToMaybe (not $ null testSpecNeeds) ("needs" .= testSpecNeeds),
           -- Include "produces" only if it is non-empty:
           boolToMaybe (not $ null testSpecProduces) ("produces" .= testSpecProduces),
+          -- Include "external" only if it is non-empty:
+          boolToMaybe (not $ null testSpecExternal) ("external" .= testSpecNeeds),
           -- Include "timeout" only if it is non-empty:
           ("timeout" .=) . timeoutToJSON <$> testSpecTimeout,
-          -- Include "diff" only if it is non-empty:
-          ("diff" .=) <$> (diffSpecToJSON =<< testSpecDiffSpec)
+          -- Include "ignore" only if it is non-empty:
+          boolToMaybe (not $ Ignore.null testSpecIgnore) ("ignore" .= testSpecIgnore)
         ]
-
-instance FromJSON FilePattern where
-  parseJSON :: Value -> Parser FilePattern
-  parseJSON (Value.String patternText) =
-    either fail return $ parseFilePattern (Text.unpack patternText)
-  parseJSON v = typeMismatch "String" v
-
-instance ToJSON FilePattern where
-  toJSON :: FilePattern -> Value
-  toJSON = toJSON . filePatternString
 
 parseJSONTimeout :: Value -> Parser Timeout
 parseJSONTimeout (Value.String timeoutText) =
@@ -491,30 +407,6 @@ timeoutToJSON :: Timeout -> Maybe Value
 timeoutToJSON (Timeout _ms timeoutString) = return $ Value.String (Text.pack timeoutString)
 timeoutToJSON _ = Nothing
 
-instance FromJSON DiffSpec where
-  parseJSON :: Value -> Parser DiffSpec
-  parseJSON = withObject "diff" $ \v ->
-    DiffSpec <$> v .:? "matches"
-
-diffSpecToJSON :: DiffSpec -> Maybe Value
-diffSpecToJSON DiffSpec {..} =
-  boolToMaybe (null diffSpecFields) (object diffSpecFields)
-  where
-    diffSpecFields :: [Pair]
-    diffSpecFields = catMaybes [("ignore" .=) . toJSON <$> diffSpecIgnore]
-
-instance FromJSON DiffSpecIgnore where
-  parseJSON :: Value -> Parser DiffSpecIgnore
-  parseJSON (Value.String regexText) =
-    case Regex.compile Regex.defaultCompOpt Regex.defaultExecOpt regexText of
-      Left compileError -> fail $ "Failed to parse regular expression 'matches': " <> compileError
-      Right regex -> return $ DiffSpecIgnore regexText regex
-  parseJSON v = typeMismatch "String" v
-
-instance ToJSON DiffSpecIgnore where
-  toJSON :: DiffSpecIgnore -> Value
-  toJSON DiffSpecIgnore {..} = Value.String diffSpecIgnoreRegexText
-
 -- | Encode a TestSpec as JSON using aeson-pretty.
 encodeTestSpecsPretty :: TestSpecs -> Text
 encodeTestSpecsPretty =
@@ -523,6 +415,6 @@ encodeTestSpecsPretty =
     . encodePrettyToTextBuilder'
       defConfig
         { confIndent = Indent.Spaces 2,
-          confCompare = keyOrder ["name", "run", "enabled", "needs", "produces", "timeout", "diff"],
+          confCompare = keyOrder ["name", "run", "enabled", "needs", "produces", "timeout", "ignore"],
           confTrailingNewline = True
         }

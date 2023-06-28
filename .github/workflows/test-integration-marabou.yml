@@ -55,7 +55,9 @@ jobs:
 
       - name: Test Vehicle-Marabou interaction
         run: |
-          cabal test                                      \
-            vehicle:test:vehicle-integration-tests        \
-            --test-option=--color=always                  \
-            --test-show-details=always
+          cabal test                           \
+            vehicle:test:golden-tests          \
+            --test-show-details=always         \
+            --test-option=--color=always       \
+            --test-option=--external-only=True \
+            --test-option=--external=Marabou
