@@ -312,7 +312,7 @@ library golden-tests-common
 test-suite golden-tests
   import:             common-test
   type:               exitcode-stdio-1.0
-  main-is:            tests/golden/CompilerTests.hs
+  main-is:            tests/golden/GoldenTests.hs
   build-depends:
     , base
     , filepath

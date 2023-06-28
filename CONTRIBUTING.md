@@ -154,13 +154,13 @@ The tests for the Vehicle compiler are in [the tests subdirectory](./vehicle/tes
 
 There are three test suites for the Vehicle compiler:
 
-- [The unit tests](#the-unit-tests) (`vehicle-unit-tests`)
+- [The unit tests](#the-unit-tests) (`unit-tests`)
 - [The golden tests](#the-golden-tests) (`golden-tests`)
 
 The standard command to test the Vehicle compiler runs the unit and the compiler tests:
 
 ```sh
-cabal test vehicle-unit-tests golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
 ```
 
 This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see [build-vehicle.yml](./.github/workflows/build-vehicle.yml).
@@ -169,7 +169,7 @@ This command builds the Vehicle compiler, if necessary, and runs the unit and co
 
 ```
 Running 1 test suites...
-Test suite vehicle-unit-tests: RUNNING...
+Test suite unit-tests: RUNNING...
 Tests
   DeBruijnIndices
     substUnderLambdaClosed:       OK
@@ -177,7 +177,7 @@ Tests
   ...
 
 All 18 tests passed (0.00s)
-Test suite vehicle-unit-tests: PASS
+Test suite unit-tests: PASS
 
 Running 1 test suites...
 Test suite golden-tests: RUNNING...
@@ -198,8 +198,8 @@ The option `--test-show-details=always` asks the testing framework to print some
 
 ```
 Running 1 test suites...
-Test suite vehicle-unit-tests: RUNNING...
-Test suite vehicle-unit-tests: PASS
+Test suite unit-tests: RUNNING...
+Test suite unit-tests: PASS
 Running 1 test suites...
 Test suite golden-tests: RUNNING...
 Test suite golden-tests: PASS
@@ -250,7 +250,7 @@ The unit tests test properties of the internals of Vehicle, _e.g._, of the Vehic
 Run the following command:
 
 ```sh
-cabal test vehicle-unit-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
 ```
 
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
@@ -344,13 +344,13 @@ To create a new golden test, you can use the `new-golden-test` command.
 3. Run the same Vehicle command, but prefixed with:
 
    ```sh
-   cabal run vehicle-new-golden-test --
+   cabal run new-golden-test --
    ```
 
    For instance:
 
    ```sh
-   cabal run vehicle-new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   cabal run new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    This creates or updates the `test.json` file to add the test.

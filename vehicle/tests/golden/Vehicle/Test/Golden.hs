@@ -6,7 +6,6 @@ module Vehicle.Test.Golden
     ignoreFileOptionIngredient,
     ignoreLineOption,
     ignoreLineOptionIngredient,
-    externalOption,
     externalOptionIngredient,
   )
 where
@@ -64,7 +63,7 @@ import Vehicle.Test.Golden.TestSpec
     testSpecRun,
     writeGoldenFiles,
   )
-import Vehicle.Test.Golden.TestSpec.External (ExternalOption (..), externalOption, externalOptionIngredient)
+import Vehicle.Test.Golden.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
 import Vehicle.Test.Golden.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
 
@@ -109,9 +108,12 @@ makeTestTreesFromFile testOptions testSpecFile = do
   return $ toTestTree testOptions testSpecFile <$> enabledTestSpec
 
 -- | Test whether all required external dependencies are allowed.
-testSpecExternalAllowed :: ExternalOption -> TestSpec -> Bool
-testSpecExternalAllowed (ExternalOption allowedExternals) testSpec =
-  Set.fromList (testSpecExternal testSpec) `Set.isSubsetOf` allowedExternals
+testSpecExternalAllowed :: ExternalOnlyOption -> ExternalOption -> TestSpec -> Bool
+testSpecExternalAllowed (ExternalOnlyOption externalOnly) (ExternalOption allowedExternals) testSpec
+  | externalOnly = neededExternals == allowedExternals
+  | otherwise = neededExternals `Set.isSubsetOf` allowedExternals
+  where
+    neededExternals = Set.fromList (testSpecExternal testSpec)
 
 -- | Test whether a path refers to an existing test specification file.
 isTestSpecFile :: FilePath -> IO Bool
@@ -148,9 +150,10 @@ toTestTreeHelper testSpecFile testSpec = testTree
     testTree :: TestTree
     testTree =
       askOption $ \external ->
-        if testSpecExternalAllowed external testSpec
-          then goldenTest testName readGolden runTest compareTestOutput updateGolden
-          else testGroup testName []
+        askOption $ \externalOnly ->
+          if testSpecExternalAllowed externalOnly external testSpec
+            then goldenTest testName readGolden runTest compareTestOutput updateGolden
+            else testGroup testName []
       where
         testName = testSpecName testSpec
         readGolden = readGoldenFiles testDirectory testSpec

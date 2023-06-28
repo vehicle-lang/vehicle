@@ -38,7 +38,8 @@ import Data.String (IsString (..))
 import Data.Tagged (Tagged, untag)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Options.Applicative (Alternative (many), help, long, option, str)
+import Options.Applicative (help, long, option, str)
+import Options.Applicative.NonEmpty (some1)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
 import Test.Tasty.Options (IsOption (..), OptionDescription (..))
@@ -156,8 +157,8 @@ instance IsOption IgnoreLineOption where
   optionHelp :: Tagged IgnoreLineOption String
   optionHelp = return "Ignore produced lines that match the regular expression."
   optionCLParser =
-    mconcat
-      <$> many
+    mconcat . toList
+      <$> some1
         ( option
             (parseIgnoreLineOption =<< str)
             ( long (untag (optionName :: Tagged IgnoreLineOption String))
@@ -195,8 +196,8 @@ instance IsOption IgnoreFileOption where
   optionName = return "ignore-files"
   optionHelp = return "Ignore produced files that match the pattern."
   optionCLParser =
-    mconcat
-      <$> many
+    mconcat . toList
+      <$> some1
         ( option
             (parseIgnoreFileOption =<< str)
             ( long (untag (optionName :: Tagged IgnoreFileOption String))

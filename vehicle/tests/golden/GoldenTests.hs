@@ -4,7 +4,7 @@ import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
 import Test.Tasty (defaultIngredients, defaultMainWithIngredients)
 import Test.Tasty.Ingredients (Ingredient)
-import Vehicle.Test.Golden (SomeOption (..), externalOptionIngredient, ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOptionIngredient, makeTestTreeFromDirectoryRecursive)
+import Vehicle.Test.Golden (SomeOption (..), externalOptionIngredient, ignoreFileOption, makeTestTreeFromDirectoryRecursive)
 
 testDirectory :: FilePath
 testDirectory = "tests" </> "golden"
@@ -21,4 +21,4 @@ main = do
   defaultMainWithIngredients ingredients testTree
 
 ingredients :: [Ingredient]
-ingredients = externalOptionIngredient : ignoreLineOptionIngredient : ignoreFileOptionIngredient : defaultIngredients
+ingredients = externalOptionIngredient : defaultIngredients
