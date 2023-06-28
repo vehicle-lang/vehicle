@@ -18,6 +18,13 @@ jobs:
           - name: "macOS"
             type: "macos-latest"
             plat: "macosx_10_9_x86_64"
+        haskell:
+          - ghc:
+              version: "9.4.4"
+            cabal:
+              version: "3.8.1.0"
+              project-file: "cabal.project.ghc-9.4.4"
+              extra-args: ""
         python:
           - version: "3.11"
             tag: "cp311"
@@ -29,6 +36,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ matrix.haskell.ghc.version }}
+          cabal-version: ${{ matrix.haskell.cabal.version }}
+          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
+          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
       - name: Setup Python
         uses: actions/setup-python@v4
