@@ -12,10 +12,9 @@
       - [Testing](#testing)
         - [Running specific tests](#running-specific-tests)
         - [The unit tests](#the-unit-tests)
-        - [The compiler tests](#the-compiler-tests)
-        - [Adding compiler tests](#adding-compiler-tests)
+        - [The golden tests](#the-golden-tests)
+        - [Adding golden tests](#adding-golden-tests)
         - [Updating the golden files](#updating-the-golden-files)
-        - [The integration tests](#the-integration-tests)
       - [Debugging](#debugging)
         - [Profiling](#profiling)
         - [Loops](#loops)
@@ -155,14 +154,13 @@ The tests for the Vehicle compiler are in [the tests subdirectory](./vehicle/tes
 
 There are three test suites for the Vehicle compiler:
 
-- [The unit tests](#the-unit-tests) (`vehicle-unit-tests`)
-- [The compiler tests](#the-compiler-tests) (`vehicle-compiler-tests`)
-- [The integration tests](#the-integration-tests) (`vehicle-integration-tests`)
+- [The unit tests](#the-unit-tests) (`unit-tests`)
+- [The golden tests](#the-golden-tests) (`golden-tests`)
 
 The standard command to test the Vehicle compiler runs the unit and the compiler tests:
 
 ```sh
-cabal test vehicle-unit-tests vehicle-compiler-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
 ```
 
 This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see [build-vehicle.yml](./.github/workflows/build-vehicle.yml).
@@ -171,7 +169,7 @@ This command builds the Vehicle compiler, if necessary, and runs the unit and co
 
 ```
 Running 1 test suites...
-Test suite vehicle-unit-tests: RUNNING...
+Test suite unit-tests: RUNNING...
 Tests
   DeBruijnIndices
     substUnderLambdaClosed:       OK
@@ -179,10 +177,10 @@ Tests
   ...
 
 All 18 tests passed (0.00s)
-Test suite vehicle-unit-tests: PASS
+Test suite unit-tests: PASS
 
 Running 1 test suites...
-Test suite vehicle-compiler-tests: RUNNING...
+Test suite golden-tests: RUNNING...
 Compiler
   compile
     simple-quantifierIn
@@ -193,18 +191,18 @@ Compiler
   ...
 
 All 155 tests passed (12.33s)
-Test suite vehicle-compiler-tests: PASS
+Test suite golden-tests: PASS
 ```
 
 The option `--test-show-details=always` asks the testing framework to print some details about the tests it is running, and `--test-option=--color=always` asks it to use colour. If you omit these options, the output is much less verbose, and looks like:
 
 ```
 Running 1 test suites...
-Test suite vehicle-unit-tests: RUNNING...
-Test suite vehicle-unit-tests: PASS
+Test suite unit-tests: RUNNING...
+Test suite unit-tests: PASS
 Running 1 test suites...
-Test suite vehicle-compiler-tests: RUNNING...
-Test suite vehicle-compiler-tests: PASS
+Test suite golden-tests: RUNNING...
+Test suite golden-tests: PASS
 ```
 
 The option `--test-option=--num-threads=1` asks the testing framework to only run one test at a time. If you omit this option, you may get some failing tests due to [#342](https://github.com/vehicle-lang/vehicle/issues/342).
@@ -215,7 +213,7 @@ You can use the option `--test-option="-p /X/"` to only run tests with `X` in th
 
 ```
 Running 1 test suites...
-Test suite vehicle-compiler-tests: RUNNING...
+Test suite golden-tests: RUNNING...
 Compiler
   compile
     windController
@@ -225,14 +223,14 @@ Compiler
 
 All 3 tests passed (0.15s)
 
-Test suite vehicle-compiler-tests: PASS
+Test suite golden-tests: PASS
 ```
 
 If you want to further restrict those to only the test for the Agda backend, you can add `--test-option="-p /windController.Agda/"`:
 
 ```
 Running 1 test suites...
-Test suite vehicle-compiler-tests: RUNNING...
+Test suite golden-tests: RUNNING...
 Compiler
   compile
     windController
@@ -240,7 +238,7 @@ Compiler
 
 All 1 tests passed (0.06s)
 
-Test suite vehicle-compiler-tests: PASS
+Test suite golden-tests: PASS
 ```
 
 For more information, see [the Tasty documentation] on patterns.
@@ -252,21 +250,21 @@ The unit tests test properties of the internals of Vehicle, _e.g._, of the Vehic
 Run the following command:
 
 ```sh
-cabal test vehicle-unit-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
 ```
 
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
 
 These tests are specified in Haskell in [tests/unit](./vehicle/tests/unit/).
 
-##### The compiler tests
+##### The golden tests
 
-The compiler tests test properties of the compiler as a whole, by running it with various input files and comparing the output to golden files, which have the `.golden` file extension.
+The golden tests test properties of the compiler as a whole, by running it with various input files and comparing the output to golden files, which have the `.golden` file extension.
 
 Run the following command:
 
 ```sh
-cabal test vehicle-compiler-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
 ```
 
 These tests are specified in `test.json` files in [tests/golden](./vehicle/tests/golden/), _e.g._, [windController/test.json](./vehicle/tests/golden/compile/windController/test.json):
@@ -284,7 +282,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
     "ignore": {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     }
   },
   {
@@ -303,7 +301,8 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   {
     "name": "MarabouVerify",
     "run": "vehicle verify -q Marabou.queries -v Marabou",
-    "needs": ["controller.onnx", "Marabou.queries"]
+    "needs": ["controller.onnx", "Marabou.queries"],
+    "external": ["Marabou"]
   }
 ]
 ```
@@ -318,6 +317,7 @@ Optionally, each test case can specify the following fields:
 
 - `needs`: A list of input files needed by the command.
 - `produces`: A list of output files produced by the command.
+- `external`: A list of external programs needed by the command.
 - `enabled`: Whether the test case is enabled.
 - `ignore`: An object containing settings for the diff algorithm.
   - `matches`: A regular expression, which matches lines that should be ignored by the diff algorithm.
@@ -325,9 +325,11 @@ Optionally, each test case can specify the following fields:
 
 The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
 
-##### Adding compiler tests
+Some golden tests require external tools, such as the MarabouVerify test above. To run these tests, add `--test-option="--external=<external>"` to the test command, where `<external>` is the name of the external dependency, such as `Marabou`.
 
-To create a new compiler test, you can use the `vehicle-new-golden-test` command.
+##### Adding golden tests
+
+To create a new golden test, you can use the `new-golden-test` command.
 
 1. Compose the Vehicle command you'd like to test, _e.g._,
 
@@ -342,13 +344,13 @@ To create a new compiler test, you can use the `vehicle-new-golden-test` command
 3. Run the same Vehicle command, but prefixed with:
 
    ```sh
-   cabal run vehicle-new-golden-test --
+   cabal run new-golden-test --
    ```
 
    For instance:
 
    ```sh
-   cabal run vehicle-new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   cabal run new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    This creates or updates the `test.json` file to add the test.
@@ -370,29 +372,13 @@ The procedure for updating the golden files is:
 1. Ensure that all changes are committed.
 2. Run the following command:
    ```sh
-   cabal test vehicle-compiler-tests --test-option=--num-threads=1 --test-option="--accept"
+   cabal test golden-tests --test-option=--num-threads=1 --test-option="--accept"
    ```
 3. Review the changes to the golden files, _e.g._, by inspecting the output of the following command:
    ```sh
    git diff
    ```
 4. The _only_ changes to the golden files.
-
-##### The integration tests
-
-The integration tests test the interaction between Vehicle and external tools, such as Marabou.
-
-These tests use the same framework as the compiler tests—see [above](#the-compiler-tests), but are identified by their test name, _e.g._, Marabou integration tests use the name "MarabouVerify".
-
-These tests are excluded from the standard compiler tests.
-
-Run the following command:
-
-```sh
-cabal test vehicle-integration-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
-```
-
-The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
 
 #### Debugging
 
