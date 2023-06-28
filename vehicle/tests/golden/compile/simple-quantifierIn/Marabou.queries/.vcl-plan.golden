@@ -117,16 +117,6 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "y_0",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
                                           "networkVarIndices": 0,
