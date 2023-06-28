@@ -52,4 +52,4 @@ instance IsOption ExternalOnlyOption where
   parseValue = fmap ExternalOnlyOption . safeReadBool
   optionName = return "external-only"
   optionHelp = return "Run only tests with the specified external dependencies."
-  optionCLParser = flagCLParser Nothing
+  optionCLParser = flagCLParser Nothing (ExternalOnlyOption True)
