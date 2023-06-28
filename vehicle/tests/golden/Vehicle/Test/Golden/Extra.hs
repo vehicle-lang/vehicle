@@ -23,7 +23,7 @@ import Test.Tasty.Options (IsOption)
 -- | Existential type of test options.
 data SomeOption
   = forall v. (IsOption v) => LocalOption v
-  | forall v. (IsOption v) => AdjustOption (v -> b)
+  | forall v. (IsOption v) => AdjustOption (v -> v)
 
 -- | Apply a test option.
 someLocalOption :: SomeOption -> TestTree -> TestTree
