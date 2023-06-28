@@ -15,7 +15,7 @@ import Options.Applicative (help, long, maybeReader, option)
 import Options.Applicative.NonEmpty (some1)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeRead)
+import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeReadBool, flagCLParser)
 
 externalOptionIngredient :: Ingredient
 externalOptionIngredient =
@@ -49,6 +49,7 @@ newtype ExternalOnlyOption = ExternalOnlyOption {unExternalOnlyOption :: Bool}
 
 instance IsOption ExternalOnlyOption where
   defaultValue = ExternalOnlyOption False
-  parseValue = fmap ExternalOnlyOption . safeRead
+  parseValue = fmap ExternalOnlyOption . safeReadBool
   optionName = return "external-only"
   optionHelp = return "Run only tests with the specified external dependencies."
+  optionCLParser = flagCLParser Nothing
