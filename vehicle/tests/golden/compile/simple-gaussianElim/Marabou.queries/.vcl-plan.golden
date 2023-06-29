@@ -93,7 +93,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "a",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "a"
                                 }
                               },
                               {
@@ -103,16 +104,6 @@
                                     -2
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "a",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -255,8 +246,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "a",
-                                  "userVarDimensions": []
+                                  "userVarName": "b",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "b"
                                 }
                               },
                               {
@@ -268,16 +260,6 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "a",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
                                           "networkVarIndices": 0,
@@ -287,7 +269,7 @@
                                           "application": 0
                                         }
                                       },
-                                      -2
+                                      -1
                                     ],
                                     [
                                       {
@@ -313,8 +295,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "b",
-                                  "userVarDimensions": []
+                                  "userVarName": "a",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "a"
                                 }
                               },
                               {
@@ -329,7 +312,8 @@
                                         "tag": "UserVar",
                                         "contents": {
                                           "userVarName": "b",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "b"
                                         }
                                       },
                                       -1
@@ -339,19 +323,6 @@
                                         "tag": "NetworkVar",
                                         "contents": {
                                           "networkVarIndices": 0,
-                                          "networkVarDimensions": [],
-                                          "networkName": "g",
-                                          "inputOrOutput": "Input",
-                                          "application": 0
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
-                                        "tag": "NetworkVar",
-                                        "contents": {
-                                          "networkVarIndices": 1,
                                           "networkVarDimensions": [],
                                           "networkName": "g",
                                           "inputOrOutput": "Input",

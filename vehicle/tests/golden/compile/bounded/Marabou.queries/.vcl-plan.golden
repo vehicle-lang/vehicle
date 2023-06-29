@@ -93,7 +93,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -103,16 +104,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -231,7 +222,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -241,16 +233,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",

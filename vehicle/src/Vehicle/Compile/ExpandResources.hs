@@ -9,7 +9,9 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Foldable (traverse_)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
@@ -19,6 +21,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Warning (CompileWarning (..))
 import Vehicle.Expr.Normalised (pattern VNatLiteral)
 
 -- | Calculates the context for external resources, reading them from disk and
@@ -104,3 +107,22 @@ fillInInferableParameters ResourceContext {..} inferableCtx = do
     insertInferableParameter ctx (param, maybeValue) = case maybeValue of
       Left p -> throwError $ InferableParameterUninferrable (param, p)
       Right (_, _, v) -> return $ Map.insert param (VNatLiteral v) ctx
+
+warnIfUnusedResources ::
+  (MonadLogger m, HasName ident Name) =>
+  ExternalResource ->
+  Map Name a ->
+  Map ident b ->
+  m ()
+warnIfUnusedResources resourceType given found = do
+  when (null found) $
+    logDebug MinDetail $
+      "No" <+> pretty resourceType <> "s found in program"
+
+  let givenNames = Map.keysSet given
+  let foundNames = Set.map nameOf $ Map.keysSet found
+  let unusedParams = givenNames `Set.difference` foundNames
+  when (Set.size unusedParams > 0) $
+    logWarning $
+      pretty $
+        UnusedResource resourceType unusedParams

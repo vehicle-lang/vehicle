@@ -1,0 +1,4 @@
+[93mWarning: In property 'unusedVar' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
+[93mWarning: In property 'underConstrainedVar1' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
+[93mWarning: In property 'underConstrainedVar2' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
+[93mWarning: In property 'underConstrainedVars' the quantified variables 'x_1', 'x_2', 'x_3' are not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m

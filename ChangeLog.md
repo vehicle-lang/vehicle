@@ -1,6 +1,14 @@
 # Changelog for Vehicle
 
-## Version 0.4.2
+## Version 0.5.1
+
+* Fixed bug where reconstructing counter-examples from Marabou would sometimes crash.
+
+* Improved command-line output from the `vehicle verify` command.
+
+* Added warnings when quantified variables aren't related by equalities to network input and outputs.
+
+## Version 0.5.0
 
 * Asymptotically significant speedup when compiling specifications with very large
   tensors in them and a corresponding reduction in size of the `.vcl-plan` files being generated.

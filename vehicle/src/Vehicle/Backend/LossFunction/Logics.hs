@@ -20,6 +20,12 @@ import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogic (..))
 import Vehicle.Compile.Prelude qualified as V
 
+-- Target flag --target json
+-- Resolve instance arguments
+-- Erase all implicit arguments
+-- (Later) Make relevant implicit arguments explicit
+-- Move jsonOptions to somewhere, and add ToJSON, FromJSON.
+
 jsonOptions :: Options
 jsonOptions =
   defaultOptions

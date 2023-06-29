@@ -244,6 +244,13 @@ instance ToJSON VariableNormalisationStep
 
 instance FromJSON VariableNormalisationStep
 
+instance Pretty VariableNormalisationStep where
+  pretty = \case
+    EliminateViaGaussian v s -> "EliminateGaussian[" <+> pretty v <+> "=" <+> pretty s <+> "]"
+    EliminateViaFourierMotzkin v _ -> "EliminateFourierMotzkin[" <+> pretty v <+> "]"
+    Reduce v -> "Reduce[" <+> pretty v <+> "]"
+    Introduce v -> "Introduce[" <+> pretty v <+> "]"
+
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.
 -- These are used to recreate a satisfying assignment for the user variables

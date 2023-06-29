@@ -22,23 +22,22 @@ import Vehicle.Verify.Core
 -- unused assertions and the indices of the solved assertions.
 gaussianElimination ::
   (MonadCompile m) =>
-  [MixedVariable] ->
+  BoundCtx MixedVariable ->
   [GaussianAssertion] ->
-  m ([(MixedVariable, GaussianVariableSolution)], [GaussianAssertion], IntSet)
+  m ([(MixedVariable, GaussianAssertion)], [GaussianAssertion], IntSet)
 gaussianElimination variablesToEliminate exprs =
   logCompilerPass MidDetail currentPhase $ do
     logDebug MaxDetail $ prettyExprs exprs
     let numberedExprs = zip [0 ..] exprs
-    (solvedVars, reducedRows, usedRows) <- foldM reduceRow (mempty, numberedExprs, mempty) variablesToEliminate
+    (solvedVars, reducedRows, usedRows) <- foldM reduceRow (mempty, numberedExprs, mempty) (reverse variablesToEliminate)
 
     let unusedExprs = coerce (fmap snd reducedRows)
-    let solvedExprs = fmap (second GaussianVariableSolution) solvedVars
 
     unless (null unusedExprs) $
       logDebug MidDetail $
-        line <> pretty ("Unused:" :: String) <> line <> prettyExprs unusedExprs
+        line <> pretty ("Unused:" :: String) <> line <> indent 2 (prettyExprs unusedExprs)
 
-    return (solvedExprs, unusedExprs, usedRows)
+    return (solvedVars, unusedExprs, usedRows)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -64,9 +63,7 @@ reduceRow (solvedVars, rows, usedRows) var = do
         ((pivotRowID, pivotRow), remainingRows) <- findPivot var rows
         -- Eliminate the row from the remaining rows
         let newRows = fmap (second (eliminateVar var pivotRow)) remainingRows
-        -- Add the newly solved row (TODO remove this?)
-        let normSolvedVars = second (eliminateVar var pivotRow) <$> solvedVars
-        let newSolvedVars = (var, pivotRow) : normSolvedVars
+        let newSolvedVars = (var, pivotRow) : solvedVars
         let newUsedRows = IntSet.insert pivotRowID usedRows
         return (newSolvedVars, newRows, newUsedRows)
 
@@ -79,10 +76,10 @@ reduceRow (solvedVars, rows, usedRows) var = do
       <> indent
         2
         ( "Solutions:"
-            <> prettySolutions newSolvedVars'
+            <+> pretty newSolvedVars'
             <> line
             <> "Equations:"
-            <> prettyExprs (fmap snd newRows')
+              <+> prettyExprs (fmap snd newRows')
         )
   return result
 
@@ -118,6 +115,3 @@ currentPhase = "Gaussian elimination of user variables"
 
 prettyExprs :: [GaussianAssertion] -> Doc a
 prettyExprs exprs = prettyAssertions (fmap (Assertion Equal) exprs)
-
-prettySolutions :: [Solution] -> Doc a
-prettySolutions solutions = prettyExprs (fmap snd solutions)

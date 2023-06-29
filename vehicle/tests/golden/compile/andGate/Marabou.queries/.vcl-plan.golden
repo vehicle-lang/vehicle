@@ -92,8 +92,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x1",
-                                  "userVarDimensions": []
+                                  "userVarName": "x2",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x2"
                                 }
                               },
                               {
@@ -105,19 +106,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x1",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 0,
+                                          "networkVarIndices": 1,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -137,8 +128,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x2",
-                                  "userVarDimensions": []
+                                  "userVarName": "x1",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x1"
                                 }
                               },
                               {
@@ -150,19 +142,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x2",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 1,
+                                          "networkVarIndices": 0,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -275,8 +257,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x1",
-                                  "userVarDimensions": []
+                                  "userVarName": "x2",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x2"
                                 }
                               },
                               {
@@ -288,19 +271,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x1",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 0,
+                                          "networkVarIndices": 1,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -320,8 +293,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x2",
-                                  "userVarDimensions": []
+                                  "userVarName": "x1",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x1"
                                 }
                               },
                               {
@@ -333,19 +307,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x2",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 1,
+                                          "networkVarIndices": 0,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -458,8 +422,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x1",
-                                  "userVarDimensions": []
+                                  "userVarName": "x2",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x2"
                                 }
                               },
                               {
@@ -471,19 +436,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x1",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 0,
+                                          "networkVarIndices": 1,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -503,8 +458,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x2",
-                                  "userVarDimensions": []
+                                  "userVarName": "x1",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x1"
                                 }
                               },
                               {
@@ -516,19 +472,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x2",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 1,
+                                          "networkVarIndices": 0,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -641,8 +587,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x1",
-                                  "userVarDimensions": []
+                                  "userVarName": "x2",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x2"
                                 }
                               },
                               {
@@ -654,19 +601,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x1",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 0,
+                                          "networkVarIndices": 1,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",
@@ -686,8 +623,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x2",
-                                  "userVarDimensions": []
+                                  "userVarName": "x1",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x1"
                                 }
                               },
                               {
@@ -699,19 +637,9 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x2",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
-                                          "networkVarIndices": 1,
+                                          "networkVarIndices": 0,
                                           "networkVarDimensions": [],
                                           "networkName": "andGate",
                                           "inputOrOutput": "Input",

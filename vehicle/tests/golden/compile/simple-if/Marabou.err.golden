@@ -1,0 +1,1 @@
+[93mWarning: In property 'prop2' the quantified variable 'x' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m

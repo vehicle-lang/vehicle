@@ -13,6 +13,7 @@ module Vehicle.Compile.Queries.LinearExpr
     evaluateExpr,
     addExprs,
     scaleExpr,
+    rearrangeExprToSolveFor,
     constructReducedAssertion,
     isEquality,
     prettyAssertions,
@@ -193,6 +194,20 @@ eliminateVar var solution row = do
       let scaleFactor = varCoefficient / lookupCoefficient solution var
       addExprs 1 row (-scaleFactor) solution
 
+-- | Takes an assertion `a*x_0 + ... + b*x_i + ... c * x_n` and
+-- returns the RHS of the equation: `x_i = -a/b*x_0 + ... -c/b*x_n`
+rearrangeExprToSolveFor ::
+  (Variable variable) =>
+  variable ->
+  SparseLinearExpr variable ->
+  SparseLinearExpr variable
+rearrangeExprToSolveFor var expr = do
+  let c = lookupCoefficient expr var
+  let scaledExpr = scaleExpr (-1 / c) expr
+  scaledExpr
+    { coefficients = Map.delete var $ coefficients scaledExpr
+    }
+
 mapExprVariables :: (Variable variable2) => (variable1 -> variable2) -> SparseLinearExpr variable1 -> SparseLinearExpr variable2
 mapExprVariables f Sparse {..} =
   Sparse
@@ -233,7 +248,7 @@ constructReducedAssertion (lhs, rel, rhs) =
 
 prettyAssertions :: (Variable variable) => [Assertion variable] -> Doc a
 prettyAssertions assertions =
-  indent 2 $ vsep (fmap pretty assertions)
+  vsep (fmap pretty assertions)
 
 substitute :: (Variable variable) => Assertion variable -> variable -> SparseLinearExpr variable -> Assertion variable
 substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)

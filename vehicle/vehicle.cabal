@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.5.0
+version:            0.5.1
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -167,6 +167,7 @@ library
     Paths_vehicle
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Interact
     Vehicle.Backend.LossFunction.Logics
@@ -211,6 +212,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
     Vehicle.Compile.Type.Subsystem.Standard.Type
+    Vehicle.Compile.Warning
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging

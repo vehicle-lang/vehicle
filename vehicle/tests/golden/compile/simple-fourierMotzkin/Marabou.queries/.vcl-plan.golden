@@ -93,7 +93,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -103,16 +104,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -138,7 +129,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -271,8 +263,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarName": "x",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -286,18 +279,9 @@
                                       {
                                         "tag": "UserVar",
                                         "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
                                           "userVarName": "y",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "y"
                                         }
                                       },
                                       -1
@@ -326,8 +310,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarName": "y",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -337,15 +322,16 @@
                                     "assertionExpr": {
                                       "dimensions": [],
                                       "constantValue": [
-                                        2
+                                        1
                                       ],
                                       "coefficients": [
                                         [
                                           {
                                             "tag": "UserVar",
                                             "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": []
+                                              "userVarName": "y",
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           1
@@ -373,15 +359,16 @@
                                     "assertionExpr": {
                                       "dimensions": [],
                                       "constantValue": [
-                                        1
+                                        2
                                       ],
                                       "coefficients": [
                                         [
                                           {
                                             "tag": "UserVar",
                                             "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": []
+                                              "userVarName": "y",
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           -1
@@ -517,8 +504,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarName": "x",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -532,21 +520,12 @@
                                       {
                                         "tag": "UserVar",
                                         "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -2
-                                    ],
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
                                           "userVarName": "y",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "y"
                                         }
                                       },
-                                      -1
+                                      -0.5
                                     ],
                                     [
                                       {
@@ -559,7 +538,7 @@
                                           "application": 0
                                         }
                                       },
-                                      1
+                                      0.5
                                     ]
                                   ]
                                 }
@@ -572,8 +551,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarName": "y",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -583,15 +563,16 @@
                                     "assertionExpr": {
                                       "dimensions": [],
                                       "constantValue": [
-                                        0.5
+                                        2
                                       ],
                                       "coefficients": [
                                         [
                                           {
                                             "tag": "UserVar",
                                             "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": []
+                                              "userVarName": "y",
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           1
@@ -607,7 +588,7 @@
                                               "application": 0
                                             }
                                           },
-                                          -0.5
+                                          -1
                                         ]
                                       ]
                                     }
@@ -626,8 +607,9 @@
                                           {
                                             "tag": "UserVar",
                                             "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": []
+                                              "userVarName": "y",
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           -1
@@ -735,7 +717,8 @@
                                 "userVarName": "x",
                                 "userVarDimensions": [
                                   4
-                                ]
+                                ],
+                                "unreducedUserVarName": "x"
                               }
                             }
                           },
@@ -775,8 +758,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x_1",
-                                  "userVarDimensions": []
+                                  "userVarName": "x_0",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -790,18 +774,9 @@
                                       {
                                         "tag": "UserVar",
                                         "contents": {
-                                          "userVarName": "x_0",
-                                          "userVarDimensions": []
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
                                           "userVarName": "x_1",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "x"
                                         }
                                       },
                                       -1
@@ -831,7 +806,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_3",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -850,7 +826,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_3",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -869,7 +846,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_2",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -888,7 +866,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_2",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -898,7 +877,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_3",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -916,8 +896,9 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x_0",
-                                  "userVarDimensions": []
+                                  "userVarName": "x_1",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {

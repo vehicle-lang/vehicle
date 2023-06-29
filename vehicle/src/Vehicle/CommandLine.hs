@@ -41,7 +41,7 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target, TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target (..), TypingSystem (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
@@ -298,7 +298,7 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
 
 allTargets :: [String]
-allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
+allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show JSON]
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case
@@ -318,7 +318,7 @@ showVersionParser :: Parser Bool
 showVersionParser =
   switch $
     long "version"
-      <> short 'V'
+      <> short 'v'
       <> help "Show version information."
 
 redirectStdoutParser :: Parser (Maybe FilePath)

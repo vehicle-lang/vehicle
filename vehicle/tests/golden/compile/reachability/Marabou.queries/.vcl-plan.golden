@@ -65,7 +65,8 @@
                                   "userVarName": "x",
                                   "userVarDimensions": [
                                     2
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -78,18 +79,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            2
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",

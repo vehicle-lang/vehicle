@@ -67,7 +67,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -95,19 +96,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -235,7 +223,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -263,19 +252,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -403,7 +379,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -431,19 +408,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -571,7 +535,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -599,19 +564,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -739,7 +691,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -767,19 +720,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -907,7 +847,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -935,19 +876,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1075,7 +1003,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1103,19 +1032,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1243,7 +1159,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1271,19 +1188,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1411,7 +1315,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1439,19 +1344,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1579,7 +1471,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1607,19 +1500,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1747,7 +1627,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1775,19 +1656,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -1915,7 +1783,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -1943,19 +1812,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2083,7 +1939,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2111,19 +1968,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2251,7 +2095,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2279,19 +2124,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2419,7 +2251,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2447,19 +2280,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2587,7 +2407,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2615,19 +2436,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2755,7 +2563,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2783,19 +2592,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -2923,7 +2719,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -2951,19 +2748,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3091,7 +2875,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3119,19 +2904,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3259,7 +3031,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3287,19 +3060,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3427,7 +3187,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3455,19 +3216,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3595,7 +3343,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3623,19 +3372,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3763,7 +3499,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3791,19 +3528,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -3931,7 +3655,8 @@
                                   "userVarDimensions": [
                                     4,
                                     4
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -3959,19 +3684,6 @@
                                     0
                                   ],
                                   "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            4,
-                                            4
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
                                     [
                                       {
                                         "tag": "NetworkVar",
