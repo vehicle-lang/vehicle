@@ -154,7 +154,7 @@ newTestSpec args = do
       fail $
         printf "Test needs files at an absolute path: %s\n" testSpecNeed
   forM_ testSpecProduces $ \testSpecProducePattern ->
-    unless (FilePattern.isRelative testSpecProducePattern) $
+    unless (isRelative $ show testSpecProducePattern) $
       fail $
         printf "Test produces files at an absolute path: %s\n" (show testSpecProducePattern)
 

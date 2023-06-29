@@ -42,14 +42,14 @@ import Options.Applicative (help, long, option, str)
 import Options.Applicative.NonEmpty (some1)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..))
+import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeRead)
 import Text.Printf (printf)
 import Text.Regex.TDFA qualified as Regex
 import Text.Regex.TDFA.Text (Regex)
 import Text.Regex.TDFA.Text qualified as Regex
 import Vehicle.Test.Golden.TestSpec.FilePattern (FilePattern)
 import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
-import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..))
+import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..), appendOption)
 
 -- * Types
 
@@ -92,7 +92,15 @@ instance IsString IgnoreLine where
 
 -- | Type of file patterns for files to ignore in the comparison.
 newtype IgnoreFile = IgnoreFile FilePattern
-  deriving (Show, Eq, Ord, Typeable, FromJSON, ToJSON)
+  deriving (Eq, Ord, Typeable, FromJSON, ToJSON)
+
+instance Show IgnoreFile where
+  show :: IgnoreFile -> String
+  show (IgnoreFile pat) = show pat
+
+instance Read IgnoreFile where
+  readsPrec :: Int -> ReadS IgnoreFile
+  readsPrec prec s = [(IgnoreFile value, rest) | (value, rest) <- readsPrec prec s]
 
 instance IsString IgnoreFile where
   fromString :: String -> IgnoreFile
@@ -136,7 +144,7 @@ matchLine ignore = (==) `on` strikeOutMatches ignore
 -- * Test options
 
 ignoreLineOption :: [String] -> SomeOption
-ignoreLineOption opt = AdjustOption (<> (IgnoreLineOption (fromString <$> opt)))
+ignoreLineOption opt = appendOption (IgnoreLineOption (fromString <$> opt))
 
 ignoreLineOptionIngredient :: Ingredient
 ignoreLineOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreLineOption)]
@@ -151,20 +159,17 @@ instance IsString IgnoreLineOption where
     Nothing -> error $ printf "Cannot parse ignore line option '%s'" s
 
 instance IsOption IgnoreLineOption where
+  defaultValue :: IgnoreLineOption
   defaultValue = IgnoreLineOption []
+
+  parseValue :: String -> Maybe IgnoreLineOption
   parseValue = parseIgnoreLineOption . Text.pack
+
+  optionName :: Tagged IgnoreLineOption String
   optionName = return "ignore-lines"
+
   optionHelp :: Tagged IgnoreLineOption String
   optionHelp = return "Ignore produced lines that match the regular expression."
-  optionCLParser =
-    mconcat . toList
-      <$> some1
-        ( option
-            (parseIgnoreLineOption =<< str)
-            ( long (untag (optionName :: Tagged IgnoreLineOption String))
-                <> help (untag (optionHelp :: Tagged IgnoreLineOption String))
-            )
-        )
 
 parseIgnoreLineOption :: (MonadFail m) => Text -> m IgnoreLineOption
 parseIgnoreLineOption = return . IgnoreLineOption . (: []) <=< parseIgnoreLine
@@ -191,26 +196,23 @@ instance IsString IgnoreFileOption where
     Nothing -> error $ printf "Cannot parse ignore file option '%s'" s
 
 instance IsOption IgnoreFileOption where
+  defaultValue :: IgnoreFileOption
   defaultValue = IgnoreFileOption []
+
+  parseValue :: String -> Maybe IgnoreFileOption
   parseValue = parseIgnoreFileOption
+
+  optionName :: Tagged IgnoreFileOption String
   optionName = return "ignore-files"
+
+  optionHelp :: Tagged IgnoreFileOption String
   optionHelp = return "Ignore produced files that match the pattern."
-  optionCLParser =
-    mconcat . toList
-      <$> some1
-        ( option
-            (parseIgnoreFileOption =<< str)
-            ( long (untag (optionName :: Tagged IgnoreFileOption String))
-                <> help (untag (optionHelp :: Tagged IgnoreFileOption String))
-            )
-        )
 
 parseIgnoreFileOption :: (MonadFail m) => String -> m IgnoreFileOption
 parseIgnoreFileOption = return . IgnoreFileOption . (: []) <=< parseIgnoreFile
 
 parseIgnoreFile :: (MonadFail m) => String -> m IgnoreFile
-parseIgnoreFile patternString =
-  either fail (return . IgnoreFile) $ FilePattern.readEither patternString
+parseIgnoreFile = safeRead
 
 -- * Conversion to/from JSON
 
