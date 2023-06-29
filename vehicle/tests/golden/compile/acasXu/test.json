@@ -22,6 +22,7 @@
   {
     "name": "MarabouVerify",
     "run": "vehicle verify -s spec.vcl --verifier Marabou --network acasXu:acasXu_1_7.onnx --property property3",
-    "needs": ["spec.vcl", "acasXu_1_7.onnx"]
+    "needs": ["spec.vcl", "acasXu_1_7.onnx"],
+    "external": ["Marabou"]
   }
 ]

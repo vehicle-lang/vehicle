@@ -35,7 +35,7 @@ gaussianElimination variablesToEliminate exprs =
 
     unless (null unusedExprs) $
       logDebug MidDetail $
-        line <> pretty ("Unused:" :: String) <> line <> prettyExprs unusedExprs
+        line <> pretty ("Unused:" :: String) <> line <> indent 2 (prettyExprs unusedExprs)
 
     return (solvedVars, unusedExprs, usedRows)
 
@@ -76,10 +76,10 @@ reduceRow (solvedVars, rows, usedRows) var = do
       <> indent
         2
         ( "Solutions:"
-            <> pretty newSolvedVars'
+            <+> pretty newSolvedVars'
             <> line
             <> "Equations:"
-            <> prettyExprs (fmap snd newRows')
+              <+> prettyExprs (fmap snd newRows')
         )
   return result
 

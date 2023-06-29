@@ -390,7 +390,7 @@ substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePo
 -- Solving of unreduced assertions
 
 solveForReducedUserVariables ::
-  (MonadCompile m) =>
+  (MonadSMT m) =>
   MixedVariables ->
   ConjunctAll SolvableAssertion ->
   m ([Assertion NetworkVariable], VariableNormalisationSteps)
@@ -416,7 +416,7 @@ solveForReducedUserVariables variables assertions =
     -- Eliminate the solved user variables in the inequalities
     let reducedInequalities =
           flip fmap inequalitiesWithUserVars $ \assertion ->
-            foldl (uncurry . substitute) assertion gaussianSolutions
+            foldr (flip $ uncurry . substitute) assertion gaussianSolutions
 
     -- Calculate the set of unsolved user variables
     let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
@@ -432,8 +432,9 @@ solveForReducedUserVariables variables assertions =
     let allAssertions = withoutUserVars <> newlyWithoutUserVars
     let reconstructionSteps = gaussianReconstructionSteps <> fourierMotzkinSteps
 
+    ((ident, _), _, _) <- ask
     let uneliminatedVarError v =
-          developerError $ "User variable" <+> pretty v <+> "not successfully eliminated"
+          developerError $ "User variable" <+> quotePretty v <+> "not successfully eliminated in property" <+> quotePretty ident
     let toNetworkVar v = fromMaybe (uneliminatedVarError v) (getNetworkVariable v)
     let networkVarAssertions = fmap (mapAssertionVariables toNetworkVar) allAssertions
 

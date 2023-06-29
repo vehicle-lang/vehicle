@@ -247,7 +247,6 @@ compileQuerySet isPropertyNegated expr = do
       UnsupportedInequalityOp -> do
         throwError $ UnsupportedInequality (queryFormatID queryFormat) declProvenance
     Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
-      logDebug MaxDetail $ pretty quantifiedVariables
       queries <- case maybeTrivialBoolExpr of
         Trivial b -> return $ Trivial b
         NonTrivial boolExpr -> do

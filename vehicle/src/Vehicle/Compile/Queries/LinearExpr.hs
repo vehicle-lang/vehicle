@@ -248,7 +248,7 @@ constructReducedAssertion (lhs, rel, rhs) =
 
 prettyAssertions :: (Variable variable) => [Assertion variable] -> Doc a
 prettyAssertions assertions =
-  indent 2 $ vsep (fmap pretty assertions)
+  vsep (fmap pretty assertions)
 
 substitute :: (Variable variable) => Assertion variable -> variable -> SparseLinearExpr variable -> Assertion variable
 substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)
