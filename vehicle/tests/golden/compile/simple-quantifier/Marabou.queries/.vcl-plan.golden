@@ -79,18 +79,6 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            1
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
                                         "tag": "NetworkVar",
                                         "contents": {
                                           "networkVarIndices": null,
@@ -263,59 +251,6 @@
                               {
                                 "tag": "UserVar",
                                 "contents": {
-                                  "userVarName": "x",
-                                  "userVarDimensions": [
-                                    1
-                                  ]
-                                }
-                              },
-                              {
-                                "solutionEquality": {
-                                  "dimensions": [
-                                    1
-                                  ],
-                                  "constantValue": [
-                                    0
-                                  ],
-                                  "coefficients": [
-                                    [
-                                      {
-                                        "tag": "UserVar",
-                                        "contents": {
-                                          "userVarName": "x",
-                                          "userVarDimensions": [
-                                            1
-                                          ]
-                                        }
-                                      },
-                                      -1
-                                    ],
-                                    [
-                                      {
-                                        "tag": "NetworkVar",
-                                        "contents": {
-                                          "networkVarIndices": null,
-                                          "networkVarDimensions": [
-                                            1
-                                          ],
-                                          "networkName": "f",
-                                          "inputOrOutput": "Input",
-                                          "application": 0
-                                        }
-                                      },
-                                      1
-                                    ]
-                                  ]
-                                }
-                              }
-                            ]
-                          },
-                          {
-                            "tag": "EliminateViaGaussian",
-                            "contents": [
-                              {
-                                "tag": "UserVar",
-                                "contents": {
                                   "userVarName": "y",
                                   "userVarDimensions": [
                                     1
@@ -333,16 +268,45 @@
                                   "coefficients": [
                                     [
                                       {
-                                        "tag": "UserVar",
+                                        "tag": "NetworkVar",
                                         "contents": {
-                                          "userVarName": "y",
-                                          "userVarDimensions": [
+                                          "networkVarIndices": null,
+                                          "networkVarDimensions": [
                                             1
-                                          ]
+                                          ],
+                                          "networkName": "f",
+                                          "inputOrOutput": "Input",
+                                          "application": 1
                                         }
                                       },
-                                      -1
-                                    ],
+                                      1
+                                    ]
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "EliminateViaGaussian",
+                            "contents": [
+                              {
+                                "tag": "UserVar",
+                                "contents": {
+                                  "userVarName": "x",
+                                  "userVarDimensions": [
+                                    1
+                                  ]
+                                }
+                              },
+                              {
+                                "solutionEquality": {
+                                  "dimensions": [
+                                    1
+                                  ],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
                                     [
                                       {
                                         "tag": "NetworkVar",
@@ -353,7 +317,7 @@
                                           ],
                                           "networkName": "f",
                                           "inputOrOutput": "Input",
-                                          "application": 1
+                                          "application": 0
                                         }
                                       },
                                       1
@@ -555,18 +519,6 @@
                                       "coefficients": [
                                         [
                                           {
-                                            "tag": "UserVar",
-                                            "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": [
-                                                1
-                                              ]
-                                            }
-                                          },
-                                          -1
-                                        ],
-                                        [
-                                          {
                                             "tag": "NetworkVar",
                                             "contents": {
                                               "networkVarIndices": null,
@@ -712,18 +664,6 @@
                                         0
                                       ],
                                       "coefficients": [
-                                        [
-                                          {
-                                            "tag": "UserVar",
-                                            "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": [
-                                                1
-                                              ]
-                                            }
-                                          },
-                                          -1
-                                        ],
                                         [
                                           {
                                             "tag": "NetworkVar",

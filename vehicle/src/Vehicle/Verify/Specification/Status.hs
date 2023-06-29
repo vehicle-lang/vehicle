@@ -48,14 +48,14 @@ instance IsVerified PropertyStatus where
 
 instance Pretty PropertyStatus where
   pretty (PropertyStatus negated s) = do
-    let witnessText = if negated then "Counter-example" else "Witness"
+    let witnessText = if negated then "counterexample" else "witness"
     let (verified, evidenceText) = case s of
-          Trivial status -> (status `xor` negated, Just "(trivial)")
+          Trivial status -> (status `xor` negated, "(trivial)")
           NonTrivial status -> case status of
-            UnSAT -> (negated, Nothing)
-            SAT Nothing -> (not negated, Just $ witnessText <> ": none")
-            SAT Just {} -> (not negated, Just $ witnessText <> ": found")
-    pretty (statusSymbol verified) <> maybe "" (line <>) evidenceText
+            UnSAT -> (negated, "proved no" <+> witnessText <+> "exists")
+            SAT Nothing -> (not negated, "no" <> witnessText <+> "found")
+            SAT Just {} -> (not negated, witnessText <+> "found")
+    pretty (statusSymbol verified) <+> "-" <+> evidenceText
 
 --------------------------------------------------------------------------------
 -- Verification status of a multi property

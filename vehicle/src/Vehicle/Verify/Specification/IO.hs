@@ -67,7 +67,7 @@ readSpecification inputFile
 -- If a folder is provided it outputs them to individual files in that folder,
 -- otherwise it outputs them to stdout.
 outputCompilationResults ::
-  (MonadIO m, MonadLogger m) =>
+  (MonadVerify m) =>
   QueryFormatID ->
   Maybe FilePath ->
   (VerificationPlan, VerificationQueries) ->
@@ -131,7 +131,7 @@ readVerificationPlan planFile = do
       Just plan -> return plan
 
 writeVerificationQueries ::
-  (MonadIO m, MonadLogger m) =>
+  (MonadVerify m) =>
   QueryFormatID ->
   Maybe FilePath ->
   VerificationQueries ->
@@ -155,10 +155,20 @@ verificationPlanFileName folder = folder </> "" <.> vehicleVerificationPlanFileE
 --------------------------------------------------------------------------------
 -- Verification
 
+type MonadVerify m =
+  ( MonadLogger m,
+    MonadIO m
+  )
+
+type MonadVerifyProperty m =
+  ( MonadVerify m,
+    MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m
+  )
+
 -- | Uses the verifier to verify the specification. Failure of one property does
 -- not prevent the verification of the other properties.
 verifySpecification ::
-  (MonadIO m) =>
+  (MonadVerify m) =>
   FilePath ->
   Verifier ->
   VerifierExecutable ->
@@ -175,7 +185,7 @@ verifySpecification queryFolder verifier verifierExecutable (Specification named
 
 verifyMultiProperty ::
   forall m.
-  (MonadIO m) =>
+  (MonadVerify m) =>
   Verifier ->
   VerifierExecutable ->
   FilePath ->
@@ -192,18 +202,14 @@ verifyMultiProperty verifier verifierExecutable queryFolder assignmentsLocation 
         let readerState = (verifier, verifierExecutable, queryFolder, progressBar)
         result <- runReaderT (verifyProperty property) readerState
         liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
-        outputAssignments assignmentsLocation address result
+        outputAssignments assignmentsLocation result
         return $ SingleProperty address result
-
-type MonadVerify m =
-  ( MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
-    MonadIO m
-  )
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
 verifyProperty ::
-  (MonadVerify m) =>
+  forall m.
+  (MonadVerifyProperty m) =>
   Property QueryMetaData ->
   m PropertyStatus
 verifyProperty property = do
@@ -211,7 +217,6 @@ verifyProperty property = do
   return $ PropertyStatus negationStatus status
   where
     go ::
-      (MonadVerify m) =>
       BooleanExpr (QuerySet QueryMetaData) ->
       m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
     go = \case
@@ -228,7 +233,7 @@ verifyProperty property = do
           else go y
 
 verifyQuerySet ::
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   QuerySet QueryMetaData ->
   m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
 verifyQuerySet (QuerySet negated queries) = case queries of
@@ -239,13 +244,12 @@ verifyQuerySet (QuerySet negated queries) = case queries of
 
 verifyDisjunctAll ::
   forall m.
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableAssignment)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
-      (Monad m) =>
       NonEmpty (QueryAddress, QueryMetaData) ->
       m (QueryResult UserVariableAssignment)
     go (x :| []) = verifyQuery x
@@ -256,7 +260,7 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
         else go (y :| xs)
 
 verifyQuery ::
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableAssignment)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
@@ -269,7 +273,7 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
       exitFailure
     Right result -> do
       liftIO $ incProgress progressBar 1
-      return $ fmap (reconstructUserVars metaNetwork userVar) result
+      traverse (reconstructUserVars metaNetwork userVar) result
 
 --------------------------------------------------------------------------------
 -- Assignments
@@ -277,19 +281,17 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
 outputAssignments ::
   (MonadIO m) =>
   Maybe FilePath ->
-  PropertyAddress ->
   PropertyStatus ->
   m ()
-outputAssignments maybeLocation address (PropertyStatus negated s) = case s of
-  NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> case maybeLocation of
-    Nothing -> do
-      let witnessText = if negated then "Counter-example" else "Witness"
-      let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
-      let nameDoc = pretty $ propertyName address
-      let witnessDoc = witnessText <+> "for" <+> nameDoc <> line <> indent 2 assignmentDocs
-      liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
-    Just _location -> liftIO $ do
-      fatalError "outputting assignments to a file not yet implemented"
+outputAssignments maybeLocation (PropertyStatus _negated s) = case s of
+  NonTrivial (SAT (Just (UserVariableAssignment assignments))) ->
+    case maybeLocation of
+      Nothing -> do
+        let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
+        let witnessDoc = indent 6 assignmentDocs
+        liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
+      Just _location -> liftIO $ do
+        fatalError "outputting assignments to a file not yet implemented"
   {-
   let folder = takeDirectory location </> layoutAsString (pretty address)
   createDirectoryIfMissing True folder
@@ -326,7 +328,7 @@ createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
             styleWidth = ConstantWidth 80
           }
   let initialProgress = Progress 0 numberOfQueries ()
-  liftIO $ newProgressBar style 10 initialProgress
+  liftIO $ hNewProgressBar stdout style 10 initialProgress
 
 {-
 completeProgress :: MonadIO m => PropertyProgressBar -> m ()
