@@ -35,6 +35,7 @@ import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.QuerySetStructure (eliminateNot)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -396,6 +397,8 @@ solveForReducedUserVariables ::
   m ([Assertion NetworkVariable], VariableNormalisationSteps)
 solveForReducedUserVariables variables assertions =
   logCompilerPass MidDetail "elimination of user variables" $ do
+    ((ident, _), _, _) <- ask
+
     let userVars = fmap UserVar (userVariableCtx variables)
     let userVariablesSet = Set.fromList userVars
 
@@ -411,7 +414,7 @@ solveForReducedUserVariables variables assertions =
     (gaussianSolutions, unusedEqualityExprs, _usedEqualityIDs) <-
       gaussianElimination userVars (map assertionExpr equalitiesWithUserVars)
     let gaussianReconstructionSteps = fmap mkGaussianReconstructionStep gaussianSolutions
-    let unusedEqualities = fmap (Assertion Equal) unusedEqualityExprs
+    let equalitiesNewlyWithoutUserVars = fmap (Assertion Equal) unusedEqualityExprs
 
     -- Eliminate the solved user variables in the inequalities
     let reducedInequalities =
@@ -422,17 +425,22 @@ solveForReducedUserVariables variables assertions =
     let varsSolvedByGaussianElim = Set.fromList (fmap fst gaussianSolutions)
     let varsUnsolvedByGaussianElim = Set.difference userVariablesSet varsSolvedByGaussianElim
 
-    -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
-    (fourierMotzkinSolutions, fmElimOutputInequalities) <-
-      fourierMotzkinElimination varsUnsolvedByGaussianElim reducedInequalities
-    let fourierMotzkinSteps = fmap (uncurry EliminateViaFourierMotzkin) fourierMotzkinSolutions
+    (inequalitiesNewlyWithoutUserVars, fourierMotzkinSteps) <-
+      if null varsUnsolvedByGaussianElim
+        then return (reducedInequalities, mempty)
+        else do
+          logWarning $ pretty $ ResortingtoFMElimination (nameOf ident) varsUnsolvedByGaussianElim
+
+          -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
+          (fourierMotzkinSolutions, fmElimOutputInequalities) <-
+            fourierMotzkinElimination varsUnsolvedByGaussianElim reducedInequalities
+          let eliminationSteps = fmap (uncurry EliminateViaFourierMotzkin) fourierMotzkinSolutions
+          return (fmElimOutputInequalities, eliminationSteps)
 
     -- Calculate the final set of (user-variable free) assertions
-    let newlyWithoutUserVars = unusedEqualities <> fmElimOutputInequalities
-    let allAssertions = withoutUserVars <> newlyWithoutUserVars
+    let allAssertions = withoutUserVars <> equalitiesNewlyWithoutUserVars <> inequalitiesNewlyWithoutUserVars
     let reconstructionSteps = gaussianReconstructionSteps <> fourierMotzkinSteps
 
-    ((ident, _), _, _) <- ask
     let uneliminatedVarError v =
           developerError $ "User variable" <+> quotePretty v <+> "not successfully eliminated in property" <+> quotePretty ident
     let toNetworkVar v = fromMaybe (uneliminatedVarError v) (getNetworkVariable v)

@@ -93,7 +93,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -128,7 +129,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -262,7 +264,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -277,7 +280,8 @@
                                         "tag": "UserVar",
                                         "contents": {
                                           "userVarName": "y",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "y"
                                         }
                                       },
                                       -1
@@ -307,7 +311,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -325,7 +330,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "y",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           1
@@ -361,7 +367,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "y",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           -1
@@ -498,7 +505,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -513,7 +521,8 @@
                                         "tag": "UserVar",
                                         "contents": {
                                           "userVarName": "y",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "y"
                                         }
                                       },
                                       -0.5
@@ -543,7 +552,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "y",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
                                 }
                               },
                               {
@@ -561,7 +571,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "y",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           1
@@ -597,7 +608,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "y",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "y"
                                             }
                                           },
                                           -1
@@ -705,7 +717,8 @@
                                 "userVarName": "x",
                                 "userVarDimensions": [
                                   4
-                                ]
+                                ],
+                                "unreducedUserVarName": "x"
                               }
                             }
                           },
@@ -746,7 +759,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_0",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -761,7 +775,8 @@
                                         "tag": "UserVar",
                                         "contents": {
                                           "userVarName": "x_1",
-                                          "userVarDimensions": []
+                                          "userVarDimensions": [],
+                                          "unreducedUserVarName": "x"
                                         }
                                       },
                                       -1
@@ -791,7 +806,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_3",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -810,7 +826,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_3",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -829,7 +846,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_2",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -848,7 +866,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_2",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -858,7 +877,8 @@
                                             "tag": "UserVar",
                                             "contents": {
                                               "userVarName": "x_3",
-                                              "userVarDimensions": []
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
                                             }
                                           },
                                           -1
@@ -877,7 +897,8 @@
                                 "tag": "UserVar",
                                 "contents": {
                                   "userVarName": "x_1",
-                                  "userVarDimensions": []
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {

@@ -212,6 +212,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
     Vehicle.Compile.Type.Subsystem.Standard.Type
+    Vehicle.Compile.Warning
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging

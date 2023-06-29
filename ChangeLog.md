@@ -6,6 +6,8 @@
 
 * Improved command-line output from the `vehicle verify` command.
 
+* Added warnings when quantified variables aren't related by equalities to network input and outputs.
+
 ## Version 0.5.0
 
 * Asymptotically significant speedup when compiling specifications with very large

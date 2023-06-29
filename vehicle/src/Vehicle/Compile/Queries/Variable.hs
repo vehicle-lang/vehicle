@@ -71,12 +71,13 @@ isRationalVariable v = null (variableDimensions v)
 -- | Variables entered by the user
 data UserVariable = UserVariable
   { userVarName :: Name,
-    userVarDimensions :: TensorDimensions
+    userVarDimensions :: TensorDimensions,
+    unreducedUserVarName :: Name
   }
   deriving (Show, Eq, Ord, Generic)
 
 instance Pretty UserVariable where
-  pretty (UserVariable name _) = pretty name
+  pretty (UserVariable name _ _) = pretty name
 
 instance FromJSON UserVariable
 
@@ -104,8 +105,8 @@ reduceUserVariable dbLevel UserVariable {..} = do
       Supply Lv ([UserVariable], StandardNormExpr)
     go name = \case
       [] -> do
-        index <- demand
-        return ([UserVariable name []], VBoundVar index [])
+        lv <- demand
+        return ([UserVariable name [] userVarName], VBoundVar lv [])
       dim : dims -> do
         -- Use the list monad to create a nested list of all possible indices into the tensor
         let allIndices = [0 .. dim - 1]
