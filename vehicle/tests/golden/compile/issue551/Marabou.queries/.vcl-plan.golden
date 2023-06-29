@@ -65,7 +65,8 @@
                                   "userVarName": "p",
                                   "userVarDimensions": [
                                     2
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "p"
                                 }
                               },
                               {

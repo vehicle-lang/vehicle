@@ -49,19 +49,19 @@ applyReconstructionStep assignment step =
   case step of
     Reduce var -> unreduceVariable var assignment
     Introduce var -> do
-      logDebug MaxDetail $ "Deleting now unused variable" <+> pretty var
+      logDebug MaxDetail $ "Deleting now unused variable" <+> quotePretty var
       return $ Map.delete var assignment
     EliminateViaGaussian var solution -> do
-      logDebug MaxDetail $ "Reintroducing Gaussian solved variable" <+> pretty var
+      logDebug MaxDetail $ "Reintroducing Gaussian solved variable" <+> quotePretty var
       let errorOrValue = reconstructGaussianVariableValue assignment solution
       case errorOrValue of
-        Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> pretty missingVar
+        Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> quotePretty missingVar
         Right value -> return $ Map.insert var value assignment
     EliminateViaFourierMotzkin var solution -> do
       logDebug MaxDetail $ "Reintroducing Fourier-Motzkin solved variable" <+> pretty var
       let errorOrValue = reconstructFourierMotzkinVariableValue assignment solution
       case errorOrValue of
-        Left missingVar -> developerError $ "Missing variable required in Fourier-Motzkin elimination" <+> pretty missingVar
+        Left missingVar -> developerError $ "Missing variable required in Fourier-Motzkin elimination" <+> quotePretty missingVar
         Right value -> return $ Map.insert var value assignment
 
 -- | Unreduces a previously reduced variable, removing the normalised

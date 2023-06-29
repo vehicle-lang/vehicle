@@ -20,7 +20,6 @@ import Data.Map qualified as Map (keysSet, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set (difference, null, singleton)
-import Data.Text (pack)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -389,7 +388,7 @@ compileInfiniteQuantifier quantifiedVariables _ binder env body = do
         case calculateVariableDimensions binder of
           Left err -> return $ Left err
           Right tensorDimensions -> do
-            let unnormalisedVar = UserVariable variableName tensorDimensions
+            let unnormalisedVar = UserVariable variableName tensorDimensions variableName
 
             -- First of all optimistically try not to normalise the quantified variable.
             let optimisticEnv = extendEnv binder (VBoundVar currentLevel []) env
@@ -415,7 +414,7 @@ compileInfiniteQuantifier quantifiedVariables _ binder env body = do
               Left (TemporaryError e) -> do
                 logDebug MidDetail $ "Failed to compile without reducing dimensions of" <+> variableDoc
                 logDebug MidDetail $ indent 2 ("Reason:" <+> pretty e) <> line
-                (envEntry, newQuantifiedVariables) <- calculateEnvEntry currentLevel variableName tensorDimensions
+                let (newQuantifiedVariables, envEntry) = reduceVariable currentLevel unnormalisedVar
                 let newEnv = extendEnv binder envEntry env
 
                 let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
@@ -448,40 +447,6 @@ calculateVariableDimensions binder = go (typeOf binder)
     goBase = \case
       VRatType {} -> return []
       baseType -> Left $ SeriousError $ UnsupportedQuantifierType binder baseType
-
-calculateEnvEntry ::
-  (MonadCompile m) =>
-  Lv ->
-  Name ->
-  TensorDimensions ->
-  m (StandardNormExpr, BoundCtx UserVariable)
-calculateEnvEntry startingLevel baseName baseDims =
-  runSupplyT (go baseName baseDims) [startingLevel ..]
-  where
-    go ::
-      (MonadSupply Lv m, MonadCompile m) =>
-      Name ->
-      TensorDimensions ->
-      m (StandardNormExpr, BoundCtx UserVariable)
-    go name = \case
-      [] -> do
-        dbLevel <- demand
-        return (VBoundVar dbLevel [], [UserVariable name []])
-
-      -- If we're quantifying over a tensor, instead quantify over each individual
-      -- element, and then substitute in a LVec construct with those elements in.
-      size : dims -> do
-        -- Use the list monad to create a nested list of all possible indices into the tensor
-        let allIndices = [0 .. size - 1]
-
-        -- Generate the corresponding names from the indices
-        let mkName i = name <> "_" <> pack (show i)
-        (subexprs, userVars) <- unzip <$> traverse (\i -> go (mkName i) dims) allIndices
-
-        let expr = mkVLVec subexprs
-
-        -- Generate a expression prepended with `tensorSize` quantifiers
-        return (expr, concat userVars)
 
 --------------------------------------------------------------------------------
 -- Builtin and free variable tracking

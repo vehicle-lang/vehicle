@@ -65,7 +65,8 @@
                                   "userVarName": "x",
                                   "userVarDimensions": [
                                     2
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {
@@ -200,7 +201,8 @@
                                   "userVarName": "x",
                                   "userVarDimensions": [
                                     2
-                                  ]
+                                  ],
+                                  "unreducedUserVarName": "x"
                                 }
                               },
                               {

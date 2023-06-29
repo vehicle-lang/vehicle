@@ -3,14 +3,13 @@
 module Vehicle.Resource where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM, when)
+import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
 import Data.Map (Map, assocs)
 import Data.Map qualified as Map
-import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter
@@ -175,28 +174,3 @@ reparseResources ResourcesIntegrityInfo {..} = do
 
 reparseResourceType :: [ResourceIntegrityInfo] -> Map Name String
 reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) mempty
-
---------------------------------------------------------------------------------
--- Others
-
-warnIfUnusedResources ::
-  (MonadLogger m, HasName ident Name) =>
-  ExternalResource ->
-  Map Name a ->
-  Map ident b ->
-  m ()
-warnIfUnusedResources resourceType given found = do
-  when (null found) $
-    logDebug MinDetail $
-      "No" <+> pretty resourceType <> "s found in program"
-
-  let givenNames = Map.keysSet given
-  let foundNames = Set.map nameOf $ Map.keysSet found
-  let unusedParams = givenNames `Set.difference` foundNames
-  when (Set.size unusedParams > 0) $
-    logWarning $
-      "the following"
-        <+> pretty resourceType
-        <> "s were provided"
-        <+> "but not used by the specification:"
-        <+> prettySet unusedParams
