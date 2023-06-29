@@ -47,9 +47,9 @@ import Text.Printf (printf)
 import Text.Regex.TDFA qualified as Regex
 import Text.Regex.TDFA.Text (Regex)
 import Text.Regex.TDFA.Text qualified as Regex
-import Vehicle.Test.Golden.Extra (SomeOption (..))
 import Vehicle.Test.Golden.TestSpec.FilePattern (FilePattern)
 import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
+import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..))
 
 -- * Types
 

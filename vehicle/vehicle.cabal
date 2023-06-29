@@ -277,10 +277,13 @@ library golden-tests-common
   exposed-modules:
     Vehicle.Test.Golden
     Vehicle.Test.Golden.TestSpec
+
+  other-modules:
     Vehicle.Test.Golden.TestSpec.External
     Vehicle.Test.Golden.TestSpec.FilePattern
     Vehicle.Test.Golden.TestSpec.Ignore
     Vehicle.Test.Golden.TestSpec.NewTestSpec
+    Vehicle.Test.Golden.TestSpec.SomeOption
 
   other-modules:   Vehicle.Test.Golden.Extra
   build-depends:

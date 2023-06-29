@@ -71,8 +71,7 @@ import Test.Tasty (TestName, Timeout (Timeout))
 import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
 import Vehicle.Test.Golden.Extra
-  ( SomeOption (..),
-    boolToMaybe,
+  ( boolToMaybe,
     duplicates,
     writeFileChanged,
   )
@@ -81,6 +80,7 @@ import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
 import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
 import Vehicle.Test.Golden.TestSpec.Ignore (Ignore)
 import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
+import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..))
 
 newtype TestSpecs = TestSpecs (NonEmpty TestSpec)
 
@@ -127,7 +127,7 @@ data TestOutput = TestOutput
 
 testSpecOptions :: TestSpec -> [SomeOption]
 testSpecOptions testSpec =
-  catMaybes [SomeOption <$> testSpecTimeout testSpec]
+  catMaybes [LocalOption <$> testSpecTimeout testSpec]
 
 -- Helper functions for accessing fields:
 

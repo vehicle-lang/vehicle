@@ -17,22 +17,6 @@ import System.Directory
   )
 import System.FilePath (takeDirectory, (</>))
 import System.IO (IOMode (ReadMode), withFile)
-import Test.Tasty (TestTree, localOption)
-import Test.Tasty.Options (IsOption)
-
--- | Existential type of test options.
-data SomeOption
-  = forall v. (IsOption v) => LocalOption v
-  | forall v. (IsOption v) => AdjustOption (v -> v)
-
--- | Apply a test option.
-someLocalOption :: SomeOption -> TestTree -> TestTree
-someLocalOption (LocalOption value) = localOption option
-someLocalOption (AdjustOption adjust) = adjustOption adjust
-
--- | Apply a list of test options.
-someLocalOptions :: [SomeOption] -> TestTree -> TestTree
-someLocalOptions someOptions testTree = foldr someLocalOption testTree someOptions
 
 -- | Write a file, but only if the contents would change.
 --

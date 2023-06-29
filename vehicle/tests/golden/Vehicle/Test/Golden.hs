@@ -42,10 +42,8 @@ import Test.Tasty (TestName, TestTree, askOption, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Text.Printf (printf)
 import Vehicle.Test.Golden.Extra
-  ( SomeOption (..),
-    createDirectoryRecursive,
+  ( createDirectoryRecursive,
     listFilesRecursive,
-    someLocalOptions,
   )
 import Vehicle.Test.Golden.TestSpec
   ( TestOutput (..),
@@ -66,6 +64,7 @@ import Vehicle.Test.Golden.TestSpec
 import Vehicle.Test.Golden.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
 import Vehicle.Test.Golden.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
+import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..), someLocalOptions)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: [SomeOption] -> TestName -> FilePath -> IO TestTree
