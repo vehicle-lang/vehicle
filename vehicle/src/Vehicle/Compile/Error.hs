@@ -40,7 +40,8 @@ data CompileError
     InvalidPrunedName Name
   | -- Errors thrown by scope checking.
     UnboundName Provenance Name
-  | DuplicateName Provenance Name Identifier
+  | DeclarationDeclarationShadowing Provenance Name Identifier
+  | DeclarationBoundShadowing Provenance Name
   | -- Errors thrown while type checking
     UnresolvedHole Provenance Name
   | FunTypeMismatch

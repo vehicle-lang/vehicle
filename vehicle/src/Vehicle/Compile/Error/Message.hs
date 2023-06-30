@@ -265,12 +265,22 @@ instance MeaningfulError CompileError where
             problem = "The name" <+> quotePretty name <+> "is not in scope",
             fix = Nothing
           }
-    DuplicateName p name _matching ->
+    DeclarationDeclarationShadowing p name _matching ->
       UError $
         UserError
           { provenance = p,
             problem = "multiple declarations found with the name" <+> quotePretty name,
             fix = Just "remove or rename the duplicate definitions"
+          }
+    DeclarationBoundShadowing p name ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "cannot re-use the name"
+                <+> quotePretty name
+                <+> "as a local variable because there is already a declaration with that name.",
+            fix = Just "rename either the original declaration or this variable"
           }
     ------------
     -- Typing --

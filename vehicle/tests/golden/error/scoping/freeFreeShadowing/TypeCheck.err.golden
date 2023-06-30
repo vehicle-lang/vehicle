@@ -1,0 +1,2 @@
+Error at Line 5, Columns 3-4: cannot re-use the name 'f' as a local variable because there is already a declaration with that name.
+Fix: rename either the original declaration or this variable

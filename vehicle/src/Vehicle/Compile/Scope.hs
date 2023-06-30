@@ -61,7 +61,7 @@ scopeDecls = \case
 
     existingEntry <- asks (Map.lookup identName)
     case existingEntry of
-      Just existingIdent -> throwError $ DuplicateName (provenanceOf d) identName existingIdent
+      Just existingIdent -> throwError $ DeclarationDeclarationShadowing (provenanceOf d) identName existingIdent
       Nothing -> do
         ds' <- bindDecl ident (scopeDecls ds)
         return (d' : ds')
@@ -110,18 +110,21 @@ findGeneralisableVariables ::
   Expr Name Builtin ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
-  execWriterT (runReaderT (traverseVars traverseVar expr) (declContext, mempty))
+  execWriterT (runReaderT (traverseExpr registerUnusedVars binderNoOp expr) (declContext, mempty))
   where
-    traverseVar ::
+    registerUnusedVars ::
       (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
       VarUpdate m Name Name
-    traverseVar p symbol = do
+    registerUnusedVars p symbol = do
       (declCtx, boundCtx) <- ask
 
       when (Map.notMember symbol declCtx && notElem (Just symbol) boundCtx) $ do
         tell [(p, symbol)]
 
       return $ BoundVar p symbol
+
+    binderNoOp :: (MonadScopeExpr m) => Binder Name builtin -> m ()
+    binderNoOp _ = return ()
 
 generaliseOverVariables ::
   (MonadCompile m) =>
@@ -155,7 +158,7 @@ type MonadScopeExpr m =
   )
 
 scopeExpr :: (MonadScopeExpr m) => Expr Name Builtin -> m (Expr Ix Builtin)
-scopeExpr = traverseVars scopeVar
+scopeExpr = traverseExpr scopeVar scopeBinder
 
 -- | Find the index for a given name of a given sort.
 scopeVar :: (MonadScopeExpr m) => VarUpdate m Name Ix
@@ -169,6 +172,21 @@ scopeVar p symbol = do
       Nothing -> do
         throwError $ UnboundName p symbol
 
+scopeBinder ::
+  (MonadScopeExpr m) =>
+  Binder Name builtin ->
+  m ()
+scopeBinder binder = case nameOf binder of
+  Nothing -> return ()
+  Just name -> do
+    (declCtx, _boundCtx) <- ask
+    when (name `Map.member` declCtx) $
+      -- This restriction is needed so that
+      -- `Vehicle.Compile.ResourceFunctionalisation`
+      -- doesn't accidentally capture variables.
+      throwError $
+        DeclarationBoundShadowing (provenanceOf binder) name
+
 --------------------------------------------------------------------------------
 -- Utility functions
 
@@ -180,12 +198,16 @@ type MonadTraverse m =
 type VarUpdate m var1 var2 =
   forall builtin. Provenance -> var1 -> m (Expr var2 builtin)
 
-traverseVars ::
+type BinderUpdate m var1 =
+  forall builtin. Binder var1 builtin -> m ()
+
+traverseExpr ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
+  BinderUpdate m var1 ->
   Expr var1 builtin ->
   m (Expr var2 builtin)
-traverseVars f e = do
+traverseExpr f g e = do
   result <- case e of
     BoundVar p v -> f p v
     FreeVar p v -> return $ FreeVar p v
@@ -193,29 +215,31 @@ traverseVars f e = do
     Meta p i -> return $ Meta p i
     Hole p n -> return $ Hole p n
     Builtin p op -> return $ Builtin p op
-    Ann p ex t -> Ann p <$> traverseVars f ex <*> traverseVars f t
-    App p fun args -> App p <$> traverseVars f fun <*> traverse (traverse (traverseVars f)) args
+    Ann p ex t -> Ann p <$> traverseExpr f g ex <*> traverseExpr f g t
+    App p fun args -> App p <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
     Pi p binder res ->
-      traverseBinder f binder $ \binder' ->
-        Pi p binder' <$> traverseVars f res
+      traverseBinder f g binder $ \binder' ->
+        Pi p binder' <$> traverseExpr f g res
     Lam p binder body -> do
-      traverseBinder f binder $ \binder' ->
-        Lam p binder' <$> traverseVars f body
+      traverseBinder f g binder $ \binder' ->
+        Lam p binder' <$> traverseExpr f g body
     Let p bound binder body -> do
-      bound' <- traverseVars f bound
-      traverseBinder f binder $ \binder' ->
-        Let p bound' binder' <$> traverseVars f body
+      bound' <- traverseExpr f g bound
+      traverseBinder f g binder $ \binder' ->
+        Let p bound' binder' <$> traverseExpr f g body
 
   return result
 
 traverseBinder ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
+  BinderUpdate m var1 ->
   Binder var1 builtin ->
   (Binder var2 builtin -> m (Expr var2 builtin)) ->
   m (Expr var2 builtin)
-traverseBinder f binder update = do
-  binder' <- traverse (traverseVars f) binder
+traverseBinder f g binder update = do
+  g binder
+  binder' <- traverse (traverseExpr f g) binder
   let updateCtx ctx = nameOf binder : ctx
   local (second updateCtx) (update binder')
 

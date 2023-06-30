@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.6.0
+
+* Shadowing of declaration names by local variables is no longer allowed.
+
 ## Version 0.5.1
 
 * Fixed bug where reconstructing counter-examples from Marabou would sometimes crash.
