@@ -19,5 +19,11 @@
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
+  },
+  {
+    "name": "JSON",
+    "run": "vehicle compile -s spec.vcl -t JSON -o JSON.json",
+    "needs": ["spec.vcl"],
+    "produces": ["JSON.json"]
   }
 ]

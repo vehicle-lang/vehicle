@@ -4845,23 +4845,27 @@
         [],
         [
           "User",
-          "empty"
+          "Image"
         ],
+        {
+          "tag": "Universe",
+          "contents": [
+            [],
+            0
+          ]
+        },
         {
           "tag": "UnsafeApp",
           "contents": [
             [],
             {
-              "tag": "Builtin",
+              "tag": "FreeVar",
               "contents": [
                 [],
-                {
-                  "tag": "CType",
-                  "contents": {
-                    "tag": "StandardBuiltinType",
-                    "contents": "Vector"
-                  }
-                }
+                [
+                  "StdLib",
+                  "Tensor"
+                ]
               ]
             },
             [
@@ -4878,6 +4882,151 @@
                   }
                 ]
               },
+              {
+                "tag": "UnsafeApp",
+                "contents": [
+                  [],
+                  {
+                    "tag": "FreeVar",
+                    "contents": [
+                      [],
+                      [
+                        "StdLib",
+                        "vectorToList"
+                      ]
+                    ]
+                  },
+                  [
+                    {
+                      "tag": "UnsafeApp",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CConstructor",
+                              "contents": {
+                                "tag": "LVec",
+                                "contents": 2
+                              }
+                            }
+                          ]
+                        },
+                        [
+                          {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CFunction",
+                                    "contents": {
+                                      "tag": "FromNat",
+                                      "contents": "FromNatToNat"
+                                    }
+                                  }
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CConstructor",
+                                      "contents": {
+                                        "tag": "LNat",
+                                        "contents": 28
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CFunction",
+                                    "contents": {
+                                      "tag": "FromNat",
+                                      "contents": "FromNatToNat"
+                                    }
+                                  }
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CConstructor",
+                                      "contents": {
+                                        "tag": "LNat",
+                                        "contents": 28
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DefFunction",
+      "contents": [
+        [],
+        [
+          "User",
+          "Label"
+        ],
+        {
+          "tag": "Universe",
+          "contents": [
+            [],
+            0
+          ]
+        },
+        {
+          "tag": "UnsafeApp",
+          "contents": [
+            [],
+            {
+              "tag": "Builtin",
+              "contents": [
+                [],
+                {
+                  "tag": "CType",
+                  "contents": {
+                    "tag": "StandardBuiltinType",
+                    "contents": "Index"
+                  }
+                }
+              ]
+            },
+            [
               {
                 "tag": "UnsafeApp",
                 "contents": [
@@ -4904,43 +5053,12 @@
                           "tag": "CConstructor",
                           "contents": {
                             "tag": "LNat",
-                            "contents": 0
+                            "contents": 10
                           }
                         }
                       ]
                     }
                   ]
-                ]
-              }
-            ]
-          ]
-        },
-        {
-          "tag": "UnsafeApp",
-          "contents": [
-            [],
-            {
-              "tag": "FreeVar",
-              "contents": [
-                [],
-                [
-                  "StdLib",
-                  "vectorToVector"
-                ]
-              ]
-            },
-            [
-              {
-                "tag": "Builtin",
-                "contents": [
-                  [],
-                  {
-                    "tag": "CConstructor",
-                    "contents": {
-                      "tag": "LVec",
-                      "contents": 0
-                    }
-                  }
                 ]
               }
             ]
@@ -4954,171 +5072,28 @@
         [],
         [
           "User",
-          "p"
+          "validImage"
         ],
         {
-          "tag": "Lam",
+          "tag": "Pi",
           "contents": [
             [],
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "FreeVar",
                 "contents": [
                   [],
-                  {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Vector"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "Builtin",
-                            "contents": [
-                              [],
-                              {
-                                "tag": "CType",
-                                "contents": {
-                                  "tag": "StandardBuiltinType",
-                                  "contents": "Rat"
-                                }
-                              }
-                            ]
-                          },
-                          {
-                            "tag": "UnsafeApp",
-                            "contents": [
-                              [],
-                              {
-                                "tag": "Builtin",
-                                "contents": [
-                                  [],
-                                  {
-                                    "tag": "CFunction",
-                                    "contents": {
-                                      "tag": "FromNat",
-                                      "contents": "FromNatToNat"
-                                    }
-                                  }
-                                ]
-                              },
-                              [
-                                {
-                                  "tag": "Builtin",
-                                  "contents": [
-                                    [],
-                                    {
-                                      "tag": "CConstructor",
-                                      "contents": {
-                                        "tag": "LNat",
-                                        "contents": 1
-                                      }
-                                    }
-                                  ]
-                                }
-                              ]
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
-                    }
-                  },
-                  {
-                    "tag": "UnsafeApp",
-                    "contents": [
-                      [],
-                      {
-                        "tag": "Builtin",
-                        "contents": [
-                          [],
-                          {
-                            "tag": "CType",
-                            "contents": {
-                              "tag": "StandardBuiltinType",
-                              "contents": "Vector"
-                            }
-                          }
-                        ]
-                      },
-                      [
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Rat"
-                              }
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "UnsafeApp",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "Builtin",
-                              "contents": [
-                                [],
-                                {
-                                  "tag": "CFunction",
-                                  "contents": {
-                                    "tag": "FromNat",
-                                    "contents": "FromNatToNat"
-                                  }
-                                }
-                              ]
-                            },
-                            [
-                              {
-                                "tag": "Builtin",
-                                "contents": [
-                                  [],
-                                  {
-                                    "tag": "CConstructor",
-                                    "contents": {
-                                      "tag": "LNat",
-                                      "contents": 1
-                                    }
-                                  }
-                                ]
-                              }
-                            ]
-                          ]
-                        }
-                      ]
-                    ]
-                  }
+                  [
+                    "User",
+                    "Image"
+                  ]
                 ]
               },
               "binderProvenance": [],
               "binderDisplayForm": {
                 "namingForm": {
-                  "tag": "NameAndType",
-                  "contents": "f"
+                  "tag": "OnlyType"
                 },
                 "foldingForm": false
               }
@@ -5145,12 +5120,24 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "UnsafeApp",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Vector"
+                        }
+                      }
+                    ]
+                  },
+                  [
+                    {
                       "tag": "UnsafeApp",
                       "contents": [
                         [],
@@ -5182,39 +5169,473 @@
                             ]
                           },
                           {
-                            "tag": "UnsafeApp",
+                            "tag": "Builtin",
                             "contents": [
                               [],
+                              {
+                                "tag": "CConstructor",
+                                "contents": {
+                                  "tag": "LNat",
+                                  "contents": 28
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "tag": "Builtin",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "CConstructor",
+                          "contents": {
+                            "tag": "LNat",
+                            "contents": 28
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "OnlyName",
+                  "contents": "x"
+                },
+                "foldingForm": true
+              }
+            },
+            {
+              "tag": "UnsafeApp",
+              "contents": [
+                [],
+                {
+                  "tag": "FreeVar",
+                  "contents": [
+                    [],
+                    [
+                      "StdLib",
+                      "forallIndex"
+                    ]
+                  ]
+                },
+                [
+                  {
+                    "tag": "Lam",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
                               {
                                 "tag": "Builtin",
                                 "contents": [
                                   [],
                                   {
-                                    "tag": "CFunction",
+                                    "tag": "CConstructor",
                                     "contents": {
-                                      "tag": "FromNat",
-                                      "contents": "FromNatToNat"
+                                      "tag": "LNat",
+                                      "contents": 28
                                     }
                                   }
                                 ]
-                              },
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyName",
+                            "contents": "i"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "UnsafeApp",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "FreeVar",
+                            "contents": [
+                              [],
                               [
+                                "StdLib",
+                                "forallIndex"
+                              ]
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "Lam",
+                              "contents": [
+                                [],
                                 {
-                                  "tag": "Builtin",
+                                  "tag": "JBinder",
+                                  "binderType": {
+                                    "tag": "UnsafeApp",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "Builtin",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "CType",
+                                            "contents": {
+                                              "tag": "StandardBuiltinType",
+                                              "contents": "Index"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      [
+                                        {
+                                          "tag": "Builtin",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "CConstructor",
+                                              "contents": {
+                                                "tag": "LNat",
+                                                "contents": 28
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  "binderProvenance": [],
+                                  "binderDisplayForm": {
+                                    "namingForm": {
+                                      "tag": "OnlyName",
+                                      "contents": "j"
+                                    },
+                                    "foldingForm": true
+                                  }
+                                },
+                                {
+                                  "tag": "UnsafeApp",
                                   "contents": [
                                     [],
                                     {
-                                      "tag": "CConstructor",
-                                      "contents": {
-                                        "tag": "LNat",
-                                        "contents": 1
+                                      "tag": "Builtin",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "CFunction",
+                                          "contents": {
+                                            "tag": "And"
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    [
+                                      {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CFunction",
+                                                "contents": {
+                                                  "tag": "Order",
+                                                  "contents": [
+                                                    "OrderRat",
+                                                    "Le"
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "FromNat",
+                                                        "contents": "FromNatToRat"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "Builtin",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "CConstructor",
+                                                        "contents": {
+                                                          "tag": "LNat",
+                                                          "contents": 0
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            },
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "At"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "UnsafeApp",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "Builtin",
+                                                        "contents": [
+                                                          [],
+                                                          {
+                                                            "tag": "CFunction",
+                                                            "contents": {
+                                                              "tag": "At"
+                                                            }
+                                                          }
+                                                        ]
+                                                      },
+                                                      [
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "x"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "i"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "j"
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      },
+                                      {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CFunction",
+                                                "contents": {
+                                                  "tag": "Order",
+                                                  "contents": [
+                                                    "OrderRat",
+                                                    "Le"
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "At"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "UnsafeApp",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "Builtin",
+                                                        "contents": [
+                                                          [],
+                                                          {
+                                                            "tag": "CFunction",
+                                                            "contents": {
+                                                              "tag": "At"
+                                                            }
+                                                          }
+                                                        ]
+                                                      },
+                                                      [
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "x"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "i"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "j"
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            },
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "FromNat",
+                                                        "contents": "FromNatToRat"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "Builtin",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "CConstructor",
+                                                        "contents": {
+                                                          "tag": "LNat",
+                                                          "contents": 1
+                                                        }
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
                                       }
-                                    }
+                                    ]
                                   ]
                                 }
                               ]
-                            ]
-                          }
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DefFunction",
+      "contents": [
+        [],
+        [
+          "User",
+          "advises"
+        ],
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
                         ]
                       ]
                     },
@@ -5283,7 +5704,7 @@
                                     "tag": "CConstructor",
                                     "contents": {
                                       "tag": "LNat",
-                                      "contents": 1
+                                      "contents": 10
                                     }
                                   }
                                 ]
@@ -5300,32 +5721,108 @@
               "binderDisplayForm": {
                 "namingForm": {
                   "tag": "NameAndType",
-                  "contents": "f"
+                  "contents": "classifier"
                 },
                 "foldingForm": false
               }
             },
             {
-              "tag": "UnsafeApp",
+              "tag": "Pi",
               "contents": [
                 [],
                 {
-                  "tag": "Builtin",
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "FreeVar",
+                    "contents": [
+                      [],
+                      [
+                        "User",
+                        "Image"
+                      ]
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyType"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Pi",
                   "contents": [
                     [],
                     {
-                      "tag": "CFunction",
-                      "contents": {
-                        "tag": "Order",
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "FreeVar",
                         "contents": [
-                          "OrderRat",
-                          "Ge"
+                          [],
+                          [
+                            "User",
+                            "Label"
+                          ]
                         ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "OnlyType"
+                        },
+                        "foldingForm": false
                       }
+                    },
+                    {
+                      "tag": "Builtin",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "CType",
+                          "contents": {
+                            "tag": "StandardBuiltinType",
+                            "contents": "Bool"
+                          }
+                        }
+                      ]
                     }
                   ]
-                },
-                [
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
+                        ]
+                      ]
+                    },
+                    "binderProvenance": [],
+                    "binderDisplayForm": {
+                      "namingForm": {
+                        "tag": "OnlyType"
+                      },
+                      "foldingForm": false
+                    }
+                  },
                   {
                     "tag": "UnsafeApp",
                     "contents": [
@@ -5335,9 +5832,95 @@
                         "contents": [
                           [],
                           {
-                            "tag": "CFunction",
+                            "tag": "CType",
                             "contents": {
-                              "tag": "At"
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CType",
+                              "contents": {
+                                "tag": "StandardBuiltinType",
+                                "contents": "Rat"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CFunction",
+                                  "contents": {
+                                    "tag": "FromNat",
+                                    "contents": "FromNatToNat"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 10
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "classifier"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
                             }
                           }
                         ]
@@ -5348,25 +5931,200 @@
                           "contents": [
                             [],
                             {
-                              "tag": "BoundVar",
+                              "tag": "Builtin",
                               "contents": [
                                 [],
-                                "f"
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Vector"
+                                  }
+                                }
                               ]
                             },
                             [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CType",
+                                    "contents": {
+                                      "tag": "StandardBuiltinType",
+                                      "contents": "Rat"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 28
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CConstructor",
+                              "contents": {
+                                "tag": "LNat",
+                                "contents": 28
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyName",
+                      "contents": "x"
+                    },
+                    "foldingForm": true
+                  }
+                },
+                {
+                  "tag": "Lam",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "UnsafeApp",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "Builtin",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "CType",
+                                "contents": {
+                                  "tag": "StandardBuiltinType",
+                                  "contents": "Index"
+                                }
+                              }
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CConstructor",
+                                  "contents": {
+                                    "tag": "LNat",
+                                    "contents": 10
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "OnlyName",
+                          "contents": "i"
+                        },
+                        "foldingForm": true
+                      }
+                    },
+                    {
+                      "tag": "UnsafeApp",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "FreeVar",
+                          "contents": [
+                            [],
+                            [
+                              "StdLib",
+                              "forallIndex"
+                            ]
+                          ]
+                        },
+                        [
+                          {
+                            "tag": "Lam",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "JBinder",
+                                "binderType": {
+                                  "tag": "UnsafeApp",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "Builtin",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "CType",
+                                          "contents": {
+                                            "tag": "StandardBuiltinType",
+                                            "contents": "Index"
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    [
+                                      {
+                                        "tag": "Builtin",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "CConstructor",
+                                            "contents": {
+                                              "tag": "LNat",
+                                              "contents": 10
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  ]
+                                },
+                                "binderProvenance": [],
+                                "binderDisplayForm": {
+                                  "namingForm": {
+                                    "tag": "OnlyName",
+                                    "contents": "j"
+                                  },
+                                  "foldingForm": false
+                                }
+                              },
                               {
                                 "tag": "UnsafeApp",
                                 "contents": [
                                   [],
                                   {
-                                    "tag": "FreeVar",
+                                    "tag": "Builtin",
                                     "contents": [
                                       [],
-                                      [
-                                        "StdLib",
-                                        "vectorToVector"
-                                      ]
+                                      {
+                                        "tag": "CFunction",
+                                        "contents": {
+                                          "tag": "Implies"
+                                        }
+                                      }
                                     ]
                                   },
                                   [
@@ -5379,10 +6137,51 @@
                                           "contents": [
                                             [],
                                             {
-                                              "tag": "CConstructor",
+                                              "tag": "CFunction",
                                               "contents": {
-                                                "tag": "LVec",
-                                                "contents": 1
+                                                "tag": "Equals",
+                                                "contents": [
+                                                  "EqIndex",
+                                                  "Neq"
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        [
+                                          {
+                                            "tag": "BoundVar",
+                                            "contents": [
+                                              [],
+                                              "j"
+                                            ]
+                                          },
+                                          {
+                                            "tag": "BoundVar",
+                                            "contents": [
+                                              [],
+                                              "i"
+                                            ]
+                                          }
+                                        ]
+                                      ]
+                                    },
+                                    {
+                                      "tag": "UnsafeApp",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "Builtin",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "CFunction",
+                                              "contents": {
+                                                "tag": "Order",
+                                                "contents": [
+                                                  "OrderRat",
+                                                  "Gt"
+                                                ]
                                               }
                                             }
                                           ]
@@ -5399,24 +6198,88 @@
                                                   {
                                                     "tag": "CFunction",
                                                     "contents": {
-                                                      "tag": "FromNat",
-                                                      "contents": "FromNatToRat"
+                                                      "tag": "At"
                                                     }
                                                   }
                                                 ]
                                               },
                                               [
                                                 {
-                                                  "tag": "Builtin",
+                                                  "tag": "UnsafeApp",
                                                   "contents": [
                                                     [],
                                                     {
-                                                      "tag": "CConstructor",
-                                                      "contents": {
-                                                        "tag": "LNat",
-                                                        "contents": 0
+                                                      "tag": "BoundVar",
+                                                      "contents": [
+                                                        [],
+                                                        "classifier"
+                                                      ]
+                                                    },
+                                                    [
+                                                      {
+                                                        "tag": "BoundVar",
+                                                        "contents": [
+                                                          [],
+                                                          "x"
+                                                        ]
                                                       }
+                                                    ]
+                                                  ]
+                                                },
+                                                {
+                                                  "tag": "BoundVar",
+                                                  "contents": [
+                                                    [],
+                                                    "i"
+                                                  ]
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          {
+                                            "tag": "UnsafeApp",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "Builtin",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "CFunction",
+                                                    "contents": {
+                                                      "tag": "At"
                                                     }
+                                                  }
+                                                ]
+                                              },
+                                              [
+                                                {
+                                                  "tag": "UnsafeApp",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "BoundVar",
+                                                      "contents": [
+                                                        [],
+                                                        "classifier"
+                                                      ]
+                                                    },
+                                                    [
+                                                      {
+                                                        "tag": "BoundVar",
+                                                        "contents": [
+                                                          [],
+                                                          "x"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  ]
+                                                },
+                                                {
+                                                  "tag": "BoundVar",
+                                                  "contents": [
+                                                    [],
+                                                    "j"
                                                   ]
                                                 }
                                               ]
@@ -5429,6 +6292,655 @@
                                 ]
                               }
                             ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DefFunction",
+      "contents": [
+        [],
+        [
+          "User",
+          "boundedByEpsilon"
+        ],
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Builtin",
+                "contents": [
+                  [],
+                  {
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Rat"
+                    }
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "epsilon"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Pi",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "FreeVar",
+                    "contents": [
+                      [],
+                      [
+                        "User",
+                        "Image"
+                      ]
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyType"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CType",
+                      "contents": {
+                        "tag": "StandardBuiltinType",
+                        "contents": "Bool"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Builtin",
+                "contents": [
+                  [],
+                  {
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Rat"
+                    }
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "epsilon"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Vector"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CType",
+                                    "contents": {
+                                      "tag": "StandardBuiltinType",
+                                      "contents": "Rat"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 28
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CConstructor",
+                              "contents": {
+                                "tag": "LNat",
+                                "contents": 28
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyName",
+                      "contents": "x"
+                    },
+                    "foldingForm": true
+                  }
+                },
+                {
+                  "tag": "UnsafeApp",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "StdLib",
+                          "forallIndex"
+                        ]
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "Lam",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "JBinder",
+                            "binderType": {
+                              "tag": "UnsafeApp",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CType",
+                                      "contents": {
+                                        "tag": "StandardBuiltinType",
+                                        "contents": "Index"
+                                      }
+                                    }
+                                  ]
+                                },
+                                [
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CConstructor",
+                                        "contents": {
+                                          "tag": "LNat",
+                                          "contents": 28
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              ]
+                            },
+                            "binderProvenance": [],
+                            "binderDisplayForm": {
+                              "namingForm": {
+                                "tag": "OnlyName",
+                                "contents": "i"
+                              },
+                              "foldingForm": false
+                            }
+                          },
+                          {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "FreeVar",
+                                "contents": [
+                                  [],
+                                  [
+                                    "StdLib",
+                                    "forallIndex"
+                                  ]
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "Lam",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "JBinder",
+                                      "binderType": {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CType",
+                                                "contents": {
+                                                  "tag": "StandardBuiltinType",
+                                                  "contents": "Index"
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "Builtin",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "CConstructor",
+                                                  "contents": {
+                                                    "tag": "LNat",
+                                                    "contents": 28
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      },
+                                      "binderProvenance": [],
+                                      "binderDisplayForm": {
+                                        "namingForm": {
+                                          "tag": "OnlyName",
+                                          "contents": "j"
+                                        },
+                                        "foldingForm": true
+                                      }
+                                    },
+                                    {
+                                      "tag": "UnsafeApp",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "Builtin",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "CFunction",
+                                              "contents": {
+                                                "tag": "And"
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        [
+                                          {
+                                            "tag": "UnsafeApp",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "Builtin",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "CFunction",
+                                                    "contents": {
+                                                      "tag": "Order",
+                                                      "contents": [
+                                                        "OrderRat",
+                                                        "Le"
+                                                      ]
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              [
+                                                {
+                                                  "tag": "UnsafeApp",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "Builtin",
+                                                      "contents": [
+                                                        [],
+                                                        {
+                                                          "tag": "CFunction",
+                                                          "contents": {
+                                                            "tag": "Neg",
+                                                            "contents": "NegRat"
+                                                          }
+                                                        }
+                                                      ]
+                                                    },
+                                                    [
+                                                      {
+                                                        "tag": "BoundVar",
+                                                        "contents": [
+                                                          [],
+                                                          "epsilon"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  ]
+                                                },
+                                                {
+                                                  "tag": "UnsafeApp",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "Builtin",
+                                                      "contents": [
+                                                        [],
+                                                        {
+                                                          "tag": "CFunction",
+                                                          "contents": {
+                                                            "tag": "At"
+                                                          }
+                                                        }
+                                                      ]
+                                                    },
+                                                    [
+                                                      {
+                                                        "tag": "UnsafeApp",
+                                                        "contents": [
+                                                          [],
+                                                          {
+                                                            "tag": "Builtin",
+                                                            "contents": [
+                                                              [],
+                                                              {
+                                                                "tag": "CFunction",
+                                                                "contents": {
+                                                                  "tag": "At"
+                                                                }
+                                                              }
+                                                            ]
+                                                          },
+                                                          [
+                                                            {
+                                                              "tag": "BoundVar",
+                                                              "contents": [
+                                                                [],
+                                                                "x"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "tag": "BoundVar",
+                                                              "contents": [
+                                                                [],
+                                                                "i"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        ]
+                                                      },
+                                                      {
+                                                        "tag": "BoundVar",
+                                                        "contents": [
+                                                          [],
+                                                          "j"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  ]
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          {
+                                            "tag": "UnsafeApp",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "Builtin",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "CFunction",
+                                                    "contents": {
+                                                      "tag": "Order",
+                                                      "contents": [
+                                                        "OrderRat",
+                                                        "Le"
+                                                      ]
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              [
+                                                {
+                                                  "tag": "UnsafeApp",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "Builtin",
+                                                      "contents": [
+                                                        [],
+                                                        {
+                                                          "tag": "CFunction",
+                                                          "contents": {
+                                                            "tag": "At"
+                                                          }
+                                                        }
+                                                      ]
+                                                    },
+                                                    [
+                                                      {
+                                                        "tag": "UnsafeApp",
+                                                        "contents": [
+                                                          [],
+                                                          {
+                                                            "tag": "Builtin",
+                                                            "contents": [
+                                                              [],
+                                                              {
+                                                                "tag": "CFunction",
+                                                                "contents": {
+                                                                  "tag": "At"
+                                                                }
+                                                              }
+                                                            ]
+                                                          },
+                                                          [
+                                                            {
+                                                              "tag": "BoundVar",
+                                                              "contents": [
+                                                                [],
+                                                                "x"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "tag": "BoundVar",
+                                                              "contents": [
+                                                                [],
+                                                                "i"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        ]
+                                                      },
+                                                      {
+                                                        "tag": "BoundVar",
+                                                        "contents": [
+                                                          [],
+                                                          "j"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  ]
+                                                },
+                                                {
+                                                  "tag": "BoundVar",
+                                                  "contents": [
+                                                    [],
+                                                    "epsilon"
+                                                  ]
+                                                }
+                                              ]
+                                            ]
+                                          }
+                                        ]
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DefFunction",
+      "contents": [
+        [],
+        [
+          "User",
+          "robustAround"
+        ],
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
+                        ]
+                      ]
+                    },
+                    "binderProvenance": [],
+                    "binderDisplayForm": {
+                      "namingForm": {
+                        "tag": "OnlyType"
+                      },
+                      "foldingForm": false
+                    }
+                  },
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CType",
+                              "contents": {
+                                "tag": "StandardBuiltinType",
+                                "contents": "Rat"
+                              }
+                            }
                           ]
                         },
                         {
@@ -5443,7 +6955,7 @@
                                   "tag": "CFunction",
                                   "contents": {
                                     "tag": "FromNat",
-                                    "contents": "FromNatToIndex"
+                                    "contents": "FromNatToNat"
                                   }
                                 }
                               ]
@@ -5457,7 +6969,7 @@
                                     "tag": "CConstructor",
                                     "contents": {
                                       "tag": "LNat",
-                                      "contents": 0
+                                      "contents": 10
                                     }
                                   }
                                 ]
@@ -5467,6 +6979,144 @@
                         }
                       ]
                     ]
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "classifier"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Rat"
+                        }
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "NameAndType",
+                      "contents": "epsilon"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Pi",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "FreeVar",
+                        "contents": [
+                          [],
+                          [
+                            "User",
+                            "Image"
+                          ]
+                        ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "OnlyType"
+                        },
+                        "foldingForm": false
+                      }
+                    },
+                    {
+                      "tag": "Pi",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "JBinder",
+                          "binderType": {
+                            "tag": "FreeVar",
+                            "contents": [
+                              [],
+                              [
+                                "User",
+                                "Label"
+                              ]
+                            ]
+                          },
+                          "binderProvenance": [],
+                          "binderDisplayForm": {
+                            "namingForm": {
+                              "tag": "OnlyType"
+                            },
+                            "foldingForm": false
+                          }
+                        },
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CType",
+                              "contents": {
+                                "tag": "StandardBuiltinType",
+                                "contents": "Bool"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
+                        ]
+                      ]
+                    },
+                    "binderProvenance": [],
+                    "binderDisplayForm": {
+                      "namingForm": {
+                        "tag": "OnlyType"
+                      },
+                      "foldingForm": false
+                    }
                   },
                   {
                     "tag": "UnsafeApp",
@@ -5477,10 +7127,10 @@
                         "contents": [
                           [],
                           {
-                            "tag": "CFunction",
+                            "tag": "CType",
                             "contents": {
-                              "tag": "FromNat",
-                              "contents": "FromNatToRat"
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
                             }
                           }
                         ]
@@ -5491,18 +7141,1403 @@
                           "contents": [
                             [],
                             {
-                              "tag": "CConstructor",
+                              "tag": "CType",
                               "contents": {
-                                "tag": "LNat",
-                                "contents": 0
+                                "tag": "StandardBuiltinType",
+                                "contents": "Rat"
                               }
                             }
+                          ]
+                        },
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CFunction",
+                                  "contents": {
+                                    "tag": "FromNat",
+                                    "contents": "FromNatToNat"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 10
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
                           ]
                         }
                       ]
                     ]
                   }
                 ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "classifier"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Rat"
+                        }
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "NameAndType",
+                      "contents": "epsilon"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Lam",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "UnsafeApp",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "Builtin",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "CType",
+                                "contents": {
+                                  "tag": "StandardBuiltinType",
+                                  "contents": "Vector"
+                                }
+                              }
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "UnsafeApp",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CType",
+                                      "contents": {
+                                        "tag": "StandardBuiltinType",
+                                        "contents": "Vector"
+                                      }
+                                    }
+                                  ]
+                                },
+                                [
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CType",
+                                        "contents": {
+                                          "tag": "StandardBuiltinType",
+                                          "contents": "Rat"
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CConstructor",
+                                        "contents": {
+                                          "tag": "LNat",
+                                          "contents": 28
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              ]
+                            },
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CConstructor",
+                                  "contents": {
+                                    "tag": "LNat",
+                                    "contents": 28
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "OnlyName",
+                          "contents": "image"
+                        },
+                        "foldingForm": true
+                      }
+                    },
+                    {
+                      "tag": "Lam",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "JBinder",
+                          "binderType": {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CType",
+                                    "contents": {
+                                      "tag": "StandardBuiltinType",
+                                      "contents": "Index"
+                                    }
+                                  }
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CConstructor",
+                                      "contents": {
+                                        "tag": "LNat",
+                                        "contents": 10
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          "binderProvenance": [],
+                          "binderDisplayForm": {
+                            "namingForm": {
+                              "tag": "OnlyName",
+                              "contents": "label"
+                            },
+                            "foldingForm": true
+                          }
+                        },
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CFunction",
+                                  "contents": {
+                                    "tag": "Quantifier",
+                                    "contents": [
+                                      "Forall",
+                                      "QuantVec"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Lam",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "JBinder",
+                                    "binderType": {
+                                      "tag": "UnsafeApp",
+                                      "contents": [
+                                        [],
+                                        {
+                                          "tag": "Builtin",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "CType",
+                                              "contents": {
+                                                "tag": "StandardBuiltinType",
+                                                "contents": "Vector"
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        [
+                                          {
+                                            "tag": "UnsafeApp",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "Builtin",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "CType",
+                                                    "contents": {
+                                                      "tag": "StandardBuiltinType",
+                                                      "contents": "Vector"
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              [
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CType",
+                                                      "contents": {
+                                                        "tag": "StandardBuiltinType",
+                                                        "contents": "Rat"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CConstructor",
+                                                      "contents": {
+                                                        "tag": "LNat",
+                                                        "contents": 28
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            ]
+                                          },
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CConstructor",
+                                                "contents": {
+                                                  "tag": "LNat",
+                                                  "contents": 28
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      ]
+                                    },
+                                    "binderProvenance": [],
+                                    "binderDisplayForm": {
+                                      "namingForm": {
+                                        "tag": "OnlyName",
+                                        "contents": "pertubation"
+                                      },
+                                      "foldingForm": false
+                                    }
+                                  },
+                                  {
+                                    "tag": "Let",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "FreeVar",
+                                            "contents": [
+                                              [],
+                                              [
+                                                "StdLib",
+                                                "subVector"
+                                              ]
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "BoundVar",
+                                              "contents": [
+                                                [],
+                                                "image"
+                                              ]
+                                            },
+                                            {
+                                              "tag": "BoundVar",
+                                              "contents": [
+                                                [],
+                                                "pertubation"
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      },
+                                      {
+                                        "tag": "JBinder",
+                                        "binderType": {
+                                          "tag": "UnsafeApp",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "Builtin",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "CType",
+                                                  "contents": {
+                                                    "tag": "StandardBuiltinType",
+                                                    "contents": "Vector"
+                                                  }
+                                                }
+                                              ]
+                                            },
+                                            [
+                                              {
+                                                "tag": "UnsafeApp",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "Builtin",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "CType",
+                                                        "contents": {
+                                                          "tag": "StandardBuiltinType",
+                                                          "contents": "Vector"
+                                                        }
+                                                      }
+                                                    ]
+                                                  },
+                                                  [
+                                                    {
+                                                      "tag": "Builtin",
+                                                      "contents": [
+                                                        [],
+                                                        {
+                                                          "tag": "CType",
+                                                          "contents": {
+                                                            "tag": "StandardBuiltinType",
+                                                            "contents": "Rat"
+                                                          }
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "tag": "Builtin",
+                                                      "contents": [
+                                                        [],
+                                                        {
+                                                          "tag": "CConstructor",
+                                                          "contents": {
+                                                            "tag": "LNat",
+                                                            "contents": 28
+                                                          }
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                ]
+                                              },
+                                              {
+                                                "tag": "Builtin",
+                                                "contents": [
+                                                  [],
+                                                  {
+                                                    "tag": "CConstructor",
+                                                    "contents": {
+                                                      "tag": "LNat",
+                                                      "contents": 28
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          ]
+                                        },
+                                        "binderProvenance": [],
+                                        "binderDisplayForm": {
+                                          "namingForm": {
+                                            "tag": "OnlyName",
+                                            "contents": "perturbedImage"
+                                          },
+                                          "foldingForm": false
+                                        }
+                                      },
+                                      {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "Builtin",
+                                            "contents": [
+                                              [],
+                                              {
+                                                "tag": "CFunction",
+                                                "contents": {
+                                                  "tag": "Implies"
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "And"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "UnsafeApp",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "FreeVar",
+                                                        "contents": [
+                                                          [],
+                                                          [
+                                                            "User",
+                                                            "boundedByEpsilon"
+                                                          ]
+                                                        ]
+                                                      },
+                                                      [
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "epsilon"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "pertubation"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "UnsafeApp",
+                                                    "contents": [
+                                                      [],
+                                                      {
+                                                        "tag": "FreeVar",
+                                                        "contents": [
+                                                          [],
+                                                          [
+                                                            "User",
+                                                            "validImage"
+                                                          ]
+                                                        ]
+                                                      },
+                                                      [
+                                                        {
+                                                          "tag": "BoundVar",
+                                                          "contents": [
+                                                            [],
+                                                            "perturbedImage"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            },
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "FreeVar",
+                                                  "contents": [
+                                                    [],
+                                                    [
+                                                      "User",
+                                                      "advises"
+                                                    ]
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "classifier"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "perturbedImage"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "label"
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DefFunction",
+      "contents": [
+        [],
+        [
+          "User",
+          "robust"
+        ],
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
+                        ]
+                      ]
+                    },
+                    "binderProvenance": [],
+                    "binderDisplayForm": {
+                      "namingForm": {
+                        "tag": "OnlyType"
+                      },
+                      "foldingForm": false
+                    }
+                  },
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CType",
+                              "contents": {
+                                "tag": "StandardBuiltinType",
+                                "contents": "Rat"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CFunction",
+                                  "contents": {
+                                    "tag": "FromNat",
+                                    "contents": "FromNatToNat"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 10
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "classifier"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Rat"
+                        }
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "NameAndType",
+                      "contents": "epsilon"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Lam",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Nat"
+                            }
+                          }
+                        ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "NameAndType",
+                          "contents": "n"
+                        },
+                        "foldingForm": false
+                      }
+                    },
+                    {
+                      "tag": "Lam",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "JBinder",
+                          "binderType": {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CType",
+                                    "contents": {
+                                      "tag": "StandardBuiltinType",
+                                      "contents": "Vector"
+                                    }
+                                  }
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "FreeVar",
+                                  "contents": [
+                                    [],
+                                    [
+                                      "User",
+                                      "Image"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "tag": "BoundVar",
+                                  "contents": [
+                                    [],
+                                    "n"
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          "binderProvenance": [],
+                          "binderDisplayForm": {
+                            "namingForm": {
+                              "tag": "NameAndType",
+                              "contents": "trainingImages"
+                            },
+                            "foldingForm": false
+                          }
+                        },
+                        {
+                          "tag": "Lam",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "JBinder",
+                              "binderType": {
+                                "tag": "UnsafeApp",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CType",
+                                        "contents": {
+                                          "tag": "StandardBuiltinType",
+                                          "contents": "Vector"
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  [
+                                    {
+                                      "tag": "FreeVar",
+                                      "contents": [
+                                        [],
+                                        [
+                                          "User",
+                                          "Label"
+                                        ]
+                                      ]
+                                    },
+                                    {
+                                      "tag": "BoundVar",
+                                      "contents": [
+                                        [],
+                                        "n"
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              },
+                              "binderProvenance": [],
+                              "binderDisplayForm": {
+                                "namingForm": {
+                                  "tag": "NameAndType",
+                                  "contents": "trainingLabels"
+                                },
+                                "foldingForm": false
+                              }
+                            },
+                            {
+                              "tag": "UnsafeApp",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CType",
+                                      "contents": {
+                                        "tag": "StandardBuiltinType",
+                                        "contents": "Vector"
+                                      }
+                                    }
+                                  ]
+                                },
+                                [
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CType",
+                                        "contents": {
+                                          "tag": "StandardBuiltinType",
+                                          "contents": "Bool"
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "tag": "BoundVar",
+                                    "contents": [
+                                      [],
+                                      "n"
+                                    ]
+                                  }
+                                ]
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "Lam",
+          "contents": [
+            [],
+            {
+              "tag": "JBinder",
+              "binderType": {
+                "tag": "Pi",
+                "contents": [
+                  [],
+                  {
+                    "tag": "JBinder",
+                    "binderType": {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "User",
+                          "Image"
+                        ]
+                      ]
+                    },
+                    "binderProvenance": [],
+                    "binderDisplayForm": {
+                      "namingForm": {
+                        "tag": "OnlyType"
+                      },
+                      "foldingForm": false
+                    }
+                  },
+                  {
+                    "tag": "UnsafeApp",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Vector"
+                            }
+                          }
+                        ]
+                      },
+                      [
+                        {
+                          "tag": "Builtin",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "CType",
+                              "contents": {
+                                "tag": "StandardBuiltinType",
+                                "contents": "Rat"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CFunction",
+                                  "contents": {
+                                    "tag": "FromNat",
+                                    "contents": "FromNatToNat"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CConstructor",
+                                    "contents": {
+                                      "tag": "LNat",
+                                      "contents": 10
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "binderProvenance": [],
+              "binderDisplayForm": {
+                "namingForm": {
+                  "tag": "NameAndType",
+                  "contents": "classifier"
+                },
+                "foldingForm": false
+              }
+            },
+            {
+              "tag": "Lam",
+              "contents": [
+                [],
+                {
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CType",
+                        "contents": {
+                          "tag": "StandardBuiltinType",
+                          "contents": "Rat"
+                        }
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "NameAndType",
+                      "contents": "epsilon"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "Lam",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "JBinder",
+                      "binderType": {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Nat"
+                            }
+                          }
+                        ]
+                      },
+                      "binderProvenance": [],
+                      "binderDisplayForm": {
+                        "namingForm": {
+                          "tag": "NameAndType",
+                          "contents": "n"
+                        },
+                        "foldingForm": false
+                      }
+                    },
+                    {
+                      "tag": "Lam",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "JBinder",
+                          "binderType": {
+                            "tag": "UnsafeApp",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "Builtin",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "CType",
+                                    "contents": {
+                                      "tag": "StandardBuiltinType",
+                                      "contents": "Vector"
+                                    }
+                                  }
+                                ]
+                              },
+                              [
+                                {
+                                  "tag": "FreeVar",
+                                  "contents": [
+                                    [],
+                                    [
+                                      "User",
+                                      "Image"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "tag": "BoundVar",
+                                  "contents": [
+                                    [],
+                                    "n"
+                                  ]
+                                }
+                              ]
+                            ]
+                          },
+                          "binderProvenance": [],
+                          "binderDisplayForm": {
+                            "namingForm": {
+                              "tag": "NameAndType",
+                              "contents": "trainingImages"
+                            },
+                            "foldingForm": false
+                          }
+                        },
+                        {
+                          "tag": "Lam",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "JBinder",
+                              "binderType": {
+                                "tag": "UnsafeApp",
+                                "contents": [
+                                  [],
+                                  {
+                                    "tag": "Builtin",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "CType",
+                                        "contents": {
+                                          "tag": "StandardBuiltinType",
+                                          "contents": "Vector"
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  [
+                                    {
+                                      "tag": "FreeVar",
+                                      "contents": [
+                                        [],
+                                        [
+                                          "User",
+                                          "Label"
+                                        ]
+                                      ]
+                                    },
+                                    {
+                                      "tag": "BoundVar",
+                                      "contents": [
+                                        [],
+                                        "n"
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              },
+                              "binderProvenance": [],
+                              "binderDisplayForm": {
+                                "namingForm": {
+                                  "tag": "NameAndType",
+                                  "contents": "trainingLabels"
+                                },
+                                "foldingForm": false
+                              }
+                            },
+                            {
+                              "tag": "UnsafeApp",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "FreeVar",
+                                  "contents": [
+                                    [],
+                                    [
+                                      "StdLib",
+                                      "foreachVector"
+                                    ]
+                                  ]
+                                },
+                                [
+                                  {
+                                    "tag": "Lam",
+                                    "contents": [
+                                      [],
+                                      {
+                                        "tag": "JBinder",
+                                        "binderType": {
+                                          "tag": "UnsafeApp",
+                                          "contents": [
+                                            [],
+                                            {
+                                              "tag": "Builtin",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "CType",
+                                                  "contents": {
+                                                    "tag": "StandardBuiltinType",
+                                                    "contents": "Index"
+                                                  }
+                                                }
+                                              ]
+                                            },
+                                            [
+                                              {
+                                                "tag": "BoundVar",
+                                                "contents": [
+                                                  [],
+                                                  "n"
+                                                ]
+                                              }
+                                            ]
+                                          ]
+                                        },
+                                        "binderProvenance": [],
+                                        "binderDisplayForm": {
+                                          "namingForm": {
+                                            "tag": "OnlyName",
+                                            "contents": "i"
+                                          },
+                                          "foldingForm": false
+                                        }
+                                      },
+                                      {
+                                        "tag": "UnsafeApp",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "FreeVar",
+                                            "contents": [
+                                              [],
+                                              [
+                                                "User",
+                                                "robustAround"
+                                              ]
+                                            ]
+                                          },
+                                          [
+                                            {
+                                              "tag": "BoundVar",
+                                              "contents": [
+                                                [],
+                                                "classifier"
+                                              ]
+                                            },
+                                            {
+                                              "tag": "BoundVar",
+                                              "contents": [
+                                                [],
+                                                "epsilon"
+                                              ]
+                                            },
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "At"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "trainingImages"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "i"
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            },
+                                            {
+                                              "tag": "UnsafeApp",
+                                              "contents": [
+                                                [],
+                                                {
+                                                  "tag": "Builtin",
+                                                  "contents": [
+                                                    [],
+                                                    {
+                                                      "tag": "CFunction",
+                                                      "contents": {
+                                                        "tag": "At"
+                                                      }
+                                                    }
+                                                  ]
+                                                },
+                                                [
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "trainingLabels"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "tag": "BoundVar",
+                                                    "contents": [
+                                                      [],
+                                                      "i"
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
               ]
             }
           ]

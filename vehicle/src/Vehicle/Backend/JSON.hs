@@ -10,10 +10,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Error (MonadCompile, resolutionError)
-import Vehicle.Compile.Prelude (DefAbstractSort, Doc, GenericProg (..), getExplicitArg, pretty, prettyJSONConfig)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
+import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
+import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Syntax.AST (BinderDisplayForm, Identifier, Name, Provenance, UniverseLevel, isExplicit)
-import Vehicle.Syntax.AST qualified as V (Binder, Decl, Expr (..), GenericBinder (..), GenericDecl (..), Prog)
+import Vehicle.Syntax.AST qualified as V (Binder, Decl, Expr (..), GenericBinder (..), GenericDecl (..), GenericProg (..), Prog)
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -22,9 +23,10 @@ compileProgToJSON ::
   (MonadCompile m, ToJSON builtin) =>
   V.Prog Name builtin ->
   m (Doc a)
-compileProgToJSON (Main prog) = do
-  decls <- toJSON <$> traverse toJDecl prog
-  return $ pretty $ unpack $ encodePretty' prettyJSONConfig decls
+compileProgToJSON prog = do
+  functionalisedProg <- functionaliseResources prog
+  jProg <- toJSON <$> toJProg functionalisedProg
+  return $ pretty $ unpack $ encodePretty' prettyJSONConfig jProg
 
 --------------------------------------------------------------------------------
 -- Datatype
@@ -33,8 +35,12 @@ compileProgToJSON (Main prog) = do
 -- can maintain backwards compatability, even when the core
 -- Vehicle AST changes.
 
+newtype JProg builtin
+  = Main [JDecl builtin]
+  deriving (Generic)
+
 data JDecl builtin
-  = DefAbstract Provenance Identifier DefAbstractSort (JExpr builtin)
+  = DefPostulate Provenance Identifier (JExpr builtin)
   | DefFunction Provenance Identifier (JExpr builtin) (JExpr builtin)
   deriving (Generic)
 
@@ -65,6 +71,9 @@ jsonOptions =
     { tagSingleConstructors = True
     }
 
+instance (ToJSON builtin) => ToJSON (JProg builtin) where
+  toJSON = genericToJSON jsonOptions
+
 instance (ToJSON builtin) => ToJSON (JDecl builtin) where
   toJSON = genericToJSON jsonOptions
 
@@ -80,9 +89,17 @@ instance (ToJSON builtin) => ToJSON (JBinder builtin) where
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
+toJProg :: (MonadCompile m) => V.Prog Name builtin -> m (JProg builtin)
+toJProg (V.Main ds) = Main <$> traverse toJDecl ds
+
 toJDecl :: (MonadCompile m) => V.Decl Name builtin -> m (JDecl builtin)
 toJDecl d = case d of
-  V.DefAbstract p i s t -> DefAbstract p i s <$> toJExpr t
+  V.DefAbstract p i s t -> do
+    case s of
+      NetworkDef -> resourceError s
+      DatasetDef -> resourceError s
+      ParameterDef {} -> resourceError s
+      PostulateDef -> DefPostulate p i <$> toJExpr t
   V.DefFunction p i _anns t e -> DefFunction p i <$> toJExpr t <*> toJExpr e
 
 toJExpr :: (MonadCompile m) => V.Expr Name builtin -> m (JExpr builtin)
@@ -93,7 +110,7 @@ toJExpr = \case
   V.Universe p l -> return $ Universe p l
   V.Builtin p b -> return $ Builtin p b
   V.BoundVar p v -> return $ BoundVar p v
-  V.FreeVar p b -> return $ FreeVar p b
+  V.FreeVar p v -> return $ FreeVar p v
   V.App p fun args -> do
     fun' <- toJExpr fun
     args' <- traverse toJExpr (mapMaybe getExplicitArg (NonEmpty.toList args))
@@ -118,3 +135,11 @@ toJBinder binder = do
         binderDisplayForm = V.binderDisplayForm binder,
         binderType = type'
       }
+
+resourceError :: (MonadCompile m) => DefAbstractSort -> m a
+resourceError resourceType =
+  compilerDeveloperError $
+    "All"
+      <+> quotePretty resourceType
+      <+> "declarations should have been removed before"
+      <+> squotes currentPass
