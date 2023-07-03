@@ -23,14 +23,16 @@ import Data.Aeson.Types
   )
 import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Data (Typeable)
-import Data.Maybe (catMaybes, fromMaybe)
+-- import Test.Tasty.Golden.Executable.TestSpec.External (External)
+
+import Data.Function (on)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
 import Test.Tasty qualified as Tasty (Timeout (NoTimeout, Timeout))
--- import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
@@ -132,24 +134,22 @@ instance ToJSON External where
 newtype Timeout = Timeout Tasty.Timeout
   deriving (Show, Typeable)
 
-instance Eq Timeout where
-  (==) :: Timeout -> Timeout -> Bool
-  Timeout Tasty.NoTimeout == Timeout Tasty.NoTimeout = True
-  Timeout (Tasty.Timeout {}) == Timeout Tasty.NoTimeout = False
-  Timeout Tasty.NoTimeout == Timeout (Tasty.Timeout {}) = False
-  Timeout (Tasty.Timeout ms1 _) == Timeout (Tasty.Timeout ms2 _) = ms1 == ms2
-
-instance Ord Timeout where
-  compare :: Timeout -> Timeout -> Ordering
-  compare (Timeout Tasty.NoTimeout) (Timeout Tasty.NoTimeout) = EQ
-  compare (Timeout (Tasty.Timeout {})) (Timeout Tasty.NoTimeout) = GT
-  compare (Timeout Tasty.NoTimeout) (Timeout (Tasty.Timeout {})) = LT
-  compare (Timeout (Tasty.Timeout ms1 _)) (Timeout (Tasty.Timeout ms2 _)) = compare ms1 ms2
+-- | Get the timeout in milliseconds.
+getTimeoutMS :: Timeout -> Maybe Integer
+getTimeoutMS (Timeout (Tasty.Timeout ms _)) = Just ms
+getTimeoutMS _ = Nothing
 
 -- | Check whether a timeout represents an finite timeout.
 isTimeout :: Timeout -> Bool
-isTimeout (Timeout (Tasty.Timeout {})) = True
-isTimeout _ = False
+isTimeout = isJust . getTimeoutMS
+
+instance Eq Timeout where
+  (==) :: Timeout -> Timeout -> Bool
+  (==) = (==) `on` getTimeoutMS
+
+instance Ord Timeout where
+  compare :: Timeout -> Timeout -> Ordering
+  compare = compare `on` getTimeoutMS
 
 instance FromJSON Timeout where
   parseJSON :: Value -> Parser Timeout
