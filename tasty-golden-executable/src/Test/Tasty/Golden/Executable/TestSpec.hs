@@ -146,6 +146,7 @@ instance Ord Timeout where
   compare (Timeout Tasty.NoTimeout) (Timeout (Tasty.Timeout {})) = LT
   compare (Timeout (Tasty.Timeout ms1 _)) (Timeout (Tasty.Timeout ms2 _)) = compare ms1 ms2
 
+-- | Check whether a timeout represents an finite timeout.
 isTimeout :: Timeout -> Bool
 isTimeout (Timeout (Tasty.Timeout {})) = True
 isTimeout _ = False
