@@ -10,8 +10,7 @@ module Test.Tasty.Golden.Executable
   )
 where
 
-import Control.Exception (throw)
-import Control.Monad (filterM, forM, when)
+import Control.Monad (filterM, forM)
 import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as HashMap
@@ -21,15 +20,11 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
-import General.Extra.File (createDirectoryRecursive, listFilesRecursive)
+import General.Extra.File (copyRecursively, createDirectoryRecursive, listFilesRecursive)
 import General.Extra.Option (SomeOption (..), someLocalOptions)
 import System.Directory
-  ( copyFile,
-    createDirectory,
-    doesDirectoryExist,
+  ( doesDirectoryExist,
     doesFileExist,
-    doesPathExist,
-    getDirectoryContents,
     listDirectory,
   )
 import System.FilePath
@@ -180,28 +175,6 @@ toTestTreeHelper testSpecFile testSpec = testTree
             testOutputFiles <- HashMap.fromList <$> getTestOutputFiles ignoreFiles copiedFiles tempDirectory
 
             return TestOutput {..}
-
-copyRecursively :: FilePath -> FilePath -> IO [FilePath]
-copyRecursively src dst = do
-  whenM (not <$> doesPathExist src) $
-    throw (userError $ "test source file '" <> src <> "' does not exist")
-
-  isDirectory <- doesDirectoryExist src
-  if isDirectory
-    then do
-      createDirectory dst
-      content <- getDirectoryContents src
-      let xs = filter (`notElem` ([".", ".."] :: [FilePath])) content
-      copiedFiles <- forM xs $ \name -> do
-        let srcPath = src </> name
-        let dstPath = dst </> name
-        copyRecursively srcPath dstPath
-      return $ concat copiedFiles
-    else do
-      copyFile src dst
-      return [dst]
-  where
-    whenM s r = s >>= flip when r
 
 getTestOutputFiles :: [IgnoreFile] -> Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoreFilePatterns copiedFiles tempDirectory = do

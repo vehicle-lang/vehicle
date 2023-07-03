@@ -1,15 +1,21 @@
 module General.Extra.File where
 
-import Control.Exception (IOException, try)
-import Control.Monad (filterM, when)
+-- import Codec.Text.Detect (detectEncodingName)
+import Control.Exception (IOException, throwIO, try)
+import Control.Monad (filterM, forM, when)
+-- import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.DList (DList)
 import Data.DList qualified as DList
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import System.Directory
-  ( createDirectoryIfMissing,
+  ( copyFile,
+    createDirectory,
+    createDirectoryIfMissing,
     doesDirectoryExist,
     doesFileExist,
+    doesPathExist,
+    getDirectoryContents,
     listDirectory,
     removeFile,
   )
@@ -65,3 +71,26 @@ listFilesRecursive directoryPath = do
       subdirectory <- DList.fromList <$> filterM doesDirectoryExist entryPaths
       subdirectoryFiles <- foldMap listFilesRecursiveDList subdirectory
       return $ filePaths <> subdirectoryFiles
+
+-- | Copy files, recursively.
+copyRecursively :: FilePath -> FilePath -> IO [FilePath]
+copyRecursively src dst = do
+  whenM (not <$> doesPathExist src) $
+    throwIO (userError $ "test source file '" <> src <> "' does not exist")
+
+  isDirectory <- doesDirectoryExist src
+  if isDirectory
+    then do
+      createDirectory dst
+      content <- getDirectoryContents src
+      let xs = filter (`notElem` ([".", ".."] :: [FilePath])) content
+      copiedFiles <- forM xs $ \name -> do
+        let srcPath = src </> name
+        let dstPath = dst </> name
+        copyRecursively srcPath dstPath
+      return $ concat copiedFiles
+    else do
+      copyFile src dst
+      return [dst]
+  where
+    whenM s r = s >>= flip when r
