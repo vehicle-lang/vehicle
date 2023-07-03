@@ -6,7 +6,9 @@
 
 * Added JSON backend target to command-line interface
 
-* Fixed bug where `if` statements which when lifted reduced to trivial assertions were causing a crash.
+* Fixed bug when compiling to verification queries where `if` statements that when lifted reduced to trivial assertions were causing a crash.
+
+* Fixed bug when compiling to verification queries where the error "Could not eliminate variable X" was occasionally thrown.
 
 ## Version 0.5.1
 

@@ -60,4 +60,5 @@ jobs:
             --test-show-details=always         \
             --test-option=--color=always       \
             --test-option=--external-only=True \
+            --test-option=--num-threads=1      \
             --test-option=--external=Marabou

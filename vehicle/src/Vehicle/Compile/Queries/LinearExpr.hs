@@ -192,7 +192,11 @@ eliminateVar var solution row = do
     then row
     else do
       let scaleFactor = varCoefficient / lookupCoefficient solution var
-      addExprs 1 row (-scaleFactor) solution
+      let resultExpr = addExprs 1 row (-scaleFactor) solution
+      -- Needed to handle floating point errors....
+      resultExpr
+        { coefficients = Map.delete var $ coefficients resultExpr
+        }
 
 -- | Takes an assertion `a*x_0 + ... + b*x_i + ... c * x_n` and
 -- returns the RHS of the equation: `x_i = -a/b*x_0 + ... -c/b*x_n`
