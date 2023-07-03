@@ -25,7 +25,7 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Compile.Queries.LinearExpr (Relation (..), UnreducedAssertion (..), VectorEquality (..), ordToRelation)
+import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -68,10 +68,13 @@ compileQueryStructure declProv queryDeclCtx expr =
 -- | The set of variables that will be cumulatively in scope at the current
 -- point in time once all existential quantifiers have been lifted to the
 -- top level. Essentially the set of quantifiers that are before the current
--- point in the tree when traversed depth first.
-type QuantifiedVariables = [UserVariable]
+-- point in the tree when traversed depth first. These are ordered in appearance
+-- order and therefore are *not* a bound context.
+type CumulativeCtx = BoundCtx UserVariable
 
-cumulativeVarsToCtx :: QuantifiedVariables -> BoundDBCtx
+type RevGlobalCtx = [UserVariable]
+
+cumulativeVarsToCtx :: CumulativeCtx -> BoundDBCtx
 cumulativeVarsToCtx = fmap (Just . userVarName)
 
 -- | The only time we should be throwing this error is because we haven't sufficiently
@@ -105,7 +108,7 @@ data PropertyError
   | SeriousError SeriousPropertyError
 
 type QueryStructureResult =
-  Either PropertyError ([UserVariable], MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps)
+  Either PropertyError (RevGlobalCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps)
 
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
@@ -156,30 +159,26 @@ evalWhilePreservingFiniteQuantifiers env body = do
 compileBoolExpr ::
   forall m.
   (MonadQueryStructure m) =>
-  QuantifiedVariables ->
+  CumulativeCtx ->
   StandardNormExpr ->
   m QueryStructureResult
 compileBoolExpr = go False
   where
     -- \| Traverses an arbitrary expression of type `Bool`.
-    go :: Bool -> QuantifiedVariables -> StandardNormExpr -> m QueryStructureResult
+    go :: Bool -> CumulativeCtx -> StandardNormExpr -> m QueryStructureResult
     go alreadyLiftedIfs quantifiedVariables expr = case expr of
       ----------------
       -- Base cases --
       ----------------
       VBoolLiteral b ->
         return $ Right ([], Trivial b, [])
-      VBuiltinFunction op@(Equals _ eq) [e1, e2] -> case eq of
-        Neq -> return $ Left $ SeriousError UnsupportedInequalityOp
-        Eq -> do
-          let mkOp e1' e2' = VBuiltinFunction op [e1', e2']
-          compileRel quantifiedVariables alreadyLiftedIfs e1 Equal e2 [] mkOp
-      VBuiltinFunction op@(Order _ ord) [e1, e2] -> do
-        let (e1', rel, e2') = ordToRelation e1 ord e2
-        let mkOp e1'' e2'' = VBuiltinFunction op (if ord == Le || ord == Lt then [e1'', e2''] else [e2'', e1''])
-        compileRel quantifiedVariables alreadyLiftedIfs e1' rel e2' [] mkOp
+      VBuiltinFunction op@(Equals _ eq) [e1, e2] -> do
+        let mkOp e1' e2' = VBuiltinFunction op [e1', e2']
+        compileEquality quantifiedVariables alreadyLiftedIfs e1 eq e2 [] mkOp
+      VBuiltinFunction Order {} [_, _] -> do
+        compileOrder alreadyLiftedIfs quantifiedVariables expr
       (isVectorEquals -> Just (e1, e2, dims, mkOp)) -> do
-        compileRel quantifiedVariables alreadyLiftedIfs e1 Equal e2 dims mkOp
+        compileEquality quantifiedVariables alreadyLiftedIfs e1 Eq e2 dims mkOp
 
       ---------------------
       -- Recursive cases --
@@ -210,35 +209,68 @@ compileBoolExpr = go False
       ------------
       _ -> return $ Left $ TemporaryError $ NonBooleanQueryStructure expr
 
-    compileRel ::
-      QuantifiedVariables ->
+    compileEquality ::
+      CumulativeCtx ->
       Bool ->
       StandardNormExpr ->
-      Relation ->
+      EqualityOp ->
       StandardNormExpr ->
       TensorDimensions ->
       (StandardNormExpr -> StandardNormExpr -> StandardNormExpr) ->
       m QueryStructureResult
-    compileRel quantifiedVariables alreadyLiftedIfs lhs rel rhs dims mkRel = do
+    compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
       let ctx = cumulativeVarsToCtx quantifiedVariables
       let expr = mkRel lhs rhs
-      logDebug MaxDetail $ "Identified proposition:" <+> prettyFriendly (WithContext expr ctx)
+      logDebug MaxDetail $ "Identified (in)equality:" <+> prettyFriendly (WithContext expr ctx)
 
-      if not alreadyLiftedIfs
-        then do
-          result <- liftIfs quantifiedVariables (mkRel lhs rhs)
-          logDebug MaxDetail ""
-          return result
-        else do
-          let assertion
-                | rel /= Equal || null dims = NonVectorEqualityAssertion expr
-                | otherwise = VectorEqualityAssertion $ VectorEquality lhs rhs dims mkRel
+      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables (mkRel lhs rhs)
+      case maybeResult of
+        Just result -> return result
+        Nothing -> case eq of
+          Eq -> do
+            let assertion
+                  | null dims = VectorEqualityAssertion $ VectorEquality lhs rhs dims mkRel
+                  | otherwise = NonVectorEqualityAssertion expr
+            return $ Right ([], NonTrivial $ Query assertion, [])
+          Neq ->
+            return $ Left $ SeriousError UnsupportedInequalityOp
+
+    compileOrder :: Bool -> CumulativeCtx -> StandardNormExpr -> m QueryStructureResult
+    compileOrder alreadyLiftedIfs quantifiedVariables expr = do
+      -- Even though we're sticking the result in a `NonVectorEqualityAssertion` we still need
+      -- to lift and eliminate `if`s as they may be inside network applications.
+      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
+      case maybeResult of
+        Just result -> return result
+        Nothing -> do
+          let assertion = NonVectorEqualityAssertion expr
           return $ Right ([], NonTrivial $ Query assertion, [])
+
+    elimIfs :: Bool -> CumulativeCtx -> StandardNormExpr -> m (Maybe QueryStructureResult)
+    elimIfs alreadyLiftedIfs quantifiedVariables expr
+      | alreadyLiftedIfs = return Nothing
+      | otherwise = do
+          let ctx = cumulativeVarsToCtx quantifiedVariables
+          incrCallDepth
+          ifLessResult <- eliminateIfs expr
+          result <- case ifLessResult of
+            Nothing -> return Nothing
+            Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
+            Just (Just exprWithoutIf) -> do
+              logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
+              (_, queryDeclCtx) <- ask
+              let env = variableCtxToNormEnv quantifiedVariables
+              let normDeclCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
+              normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx mempty $ reeval env exprWithoutIf
+              logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
+              Just <$> go True quantifiedVariables normExprWithoutIf
+          decrCallDepth
+          return result
 
     compileOp2 ::
       (forall a. MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a)) ->
       Bool ->
-      QuantifiedVariables ->
+      CumulativeCtx ->
       StandardNormExpr ->
       StandardNormExpr ->
       m QueryStructureResult
@@ -255,19 +287,6 @@ compileBoolExpr = go False
             Right (rhsUserVars, e2', rhsReconstruction) -> do
               let userVars = lhsUserVars <> rhsUserVars
               return $ Right (userVars, op e1' e2', lhsReconstruction <> rhsReconstruction)
-
-    liftIfs :: QuantifiedVariables -> StandardNormExpr -> m QueryStructureResult
-    liftIfs quantifiedVariables expr = do
-      let ctx = cumulativeVarsToCtx quantifiedVariables
-      incrCallDepth
-      maybeExprWithoutIf <- eliminateIfs expr
-      result <- case maybeExprWithoutIf of
-        Nothing -> return $ Left $ TemporaryError $ CannotEliminateIfs expr
-        Just exprWithoutIf -> do
-          logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
-          go True quantifiedVariables exprWithoutIf
-      decrCallDepth
-      return result
 
 --------------------------------------------------------------------------------
 -- Not elimination
@@ -311,7 +330,7 @@ eliminateNot arg = case arg of
 
 compileFiniteQuantifier ::
   (MonadQueryStructure m) =>
-  QuantifiedVariables ->
+  CumulativeCtx ->
   Quantifier ->
   StandardSpine ->
   StandardNormBinder ->
@@ -368,7 +387,7 @@ canLeaveFiniteQuantifierUnexpanded ctx env expr = do
 
 compileInfiniteQuantifier ::
   (MonadQueryStructure m) =>
-  QuantifiedVariables ->
+  CumulativeCtx ->
   QuantifierDomain ->
   StandardNormBinder ->
   StandardEnv ->

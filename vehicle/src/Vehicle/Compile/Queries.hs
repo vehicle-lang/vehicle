@@ -245,6 +245,9 @@ compileQuerySet isPropertyNegated expr = do
         let declIdent = fst declProvenance
         throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
       UnsupportedInequalityOp -> do
+        logDebug MaxDetail "hi"
+        logDebug MaxDetail (prettyVerbose expr)
+        logDebug MaxDetail "hi"
         throwError $ UnsupportedInequality (queryFormatID queryFormat) declProvenance
     Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
       queries <- case maybeTrivialBoolExpr of
