@@ -79,7 +79,6 @@ typeCheckDecl uncheckedDecl =
       DefAbstract p n r t -> typeCheckAbstractDef p n r t
       DefFunction p n b t e -> typeCheckFunction p n b t e
 
-    -- when (nameOf gluedDecl == "vectorToList") $ developerError "Hi"
     checkAllUnknownsSolved (Proxy @types)
     finalDecl <- substMetas gluedDecl
     logCompilerPassOutput $ prettyFriendly (fmap unnormalised finalDecl)

@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle check -s spec.vcl",
+  "needs": ["spec.vcl"]
+}

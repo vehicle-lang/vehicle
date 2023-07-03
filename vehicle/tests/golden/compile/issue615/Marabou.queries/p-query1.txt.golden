@@ -3,5 +3,4 @@
 // Metadata:
 //  - Marabou query format version: unknown
 //  - Vehicle version: 0.5.1+dev
-x0 = 0.0
-y0 = 0.0
+y0 >= 0.5

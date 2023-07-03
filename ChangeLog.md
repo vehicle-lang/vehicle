@@ -1,5 +1,15 @@
 # Changelog for Vehicle
 
+## Version 0.6.0
+
+* Shadowing of declaration names by local variables is no longer allowed.
+
+* Added JSON backend target to command-line interface
+
+* Fixed bug when compiling to verification queries where `if` statements that when lifted reduced to trivial assertions were causing a crash.
+
+* Fixed bug when compiling to verification queries where the error "Could not eliminate variable X" was occasionally thrown.
+
 ## Version 0.5.1
 
 * Fixed bug where reconstructing counter-examples from Marabou would sometimes crash.

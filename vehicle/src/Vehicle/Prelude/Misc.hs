@@ -2,6 +2,7 @@ module Vehicle.Prelude.Misc where
 
 import Control.Monad (when)
 import Control.Monad.Identity (Identity (..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
@@ -55,6 +56,14 @@ repeatN f n = f . repeatN f (n - 1)
 
 unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
 unzipWith f = unzip . map f
+
+traverseListLocal :: (MonadReader v m) => (a -> m (v -> v, b)) -> [a] -> m [b]
+traverseListLocal f = \case
+  [] -> return []
+  x : xs -> do
+    (update, y) <- f x
+    ys <- local update (traverseListLocal f xs)
+    return $ y : ys
 
 partitionMaybeM :: (Monad m) => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
 partitionMaybeM _ [] = return ([], [])

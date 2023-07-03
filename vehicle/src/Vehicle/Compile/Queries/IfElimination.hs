@@ -20,17 +20,22 @@ import Vehicle.Expr.Normalised
 -- have been normalised and is of type `Bool`. It does this by recursively
 -- lifting the `if` expression until it reaches a point where we know that it's
 -- of type `Bool` in which case we then normalise it to an `or` statement.
+--
+--   - `Nothing` indicates no `if`s present
+--   - `Just Nothing` indicates `if`s present but couldn't be lifted
+--   - `Just (Just x)` indicates `if`s present and `x` is the result of the
+--     lifting and eliminating them
 eliminateIfs ::
   (MonadCompile m) =>
   StandardNormExpr ->
-  m (Maybe StandardNormExpr)
+  m (Maybe (Maybe StandardNormExpr))
 eliminateIfs e = do
   ifLiftedExpr <- recLiftIf e
   case ifLiftedExpr of
-    Nothing -> return ifLiftedExpr
-    Just e' -> do
-      let result = elimIf e'
-      return $ Just result
+    Nothing -> return $ Just Nothing
+    Just liftedExpr@(VBuiltinFunction If _) ->
+      return $ Just $ Just $ elimIf liftedExpr
+    Just _ -> return Nothing
 
 currentPass :: Doc a
 currentPass = "if elimination"
