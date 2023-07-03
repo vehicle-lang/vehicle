@@ -38,6 +38,7 @@ library
     Test.Tasty.Golden.Executable.TestSpec.External
     Test.Tasty.Golden.Executable.TestSpec.FilePattern
     Test.Tasty.Golden.Executable.TestSpec.Ignore
+    Test.Tasty.Golden.Executable.TestSpecs
 
   build-depends:
     , aeson                 >=2.1.1   && <2.2
