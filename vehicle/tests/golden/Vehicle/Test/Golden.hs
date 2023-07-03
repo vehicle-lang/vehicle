@@ -62,6 +62,7 @@ import Vehicle.Test.Golden.TestSpec
     writeGoldenFiles,
   )
 import Vehicle.Test.Golden.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
+import Vehicle.Test.Golden.TestSpec.FilePattern (IsFilePattern (..))
 import Vehicle.Test.Golden.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
 import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..), someLocalOptions)
@@ -208,7 +209,7 @@ copyRecursively src dst = do
 getTestOutputFiles :: [IgnoreFile] -> Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoreFilePatterns copiedFiles tempDirectory = do
   absoluteFilePaths <- listFilesRecursive tempDirectory
-  let shouldIgnore filePath = any (`Ignore.matchFile` filePath) ignoreFilePatterns
+  let shouldIgnore filePath = any (`match` filePath) ignoreFilePatterns
   let outputFilePaths =
         absoluteFilePaths
           <&> makeRelative tempDirectory

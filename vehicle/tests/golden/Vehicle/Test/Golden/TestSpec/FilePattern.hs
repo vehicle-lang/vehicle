@@ -37,6 +37,22 @@ data FilePattern = FilePattern
   }
   deriving (Typeable)
 
+parseFilePattern :: String -> Either String FilePattern
+parseFilePattern patternString = do
+  FilePattern patternString <$> eitherGlobPattern
+  where
+    eitherGlobPattern = Glob.tryCompileWith compOptions patternString
+    compOptions =
+      CompOptions
+        { characterClasses = False,
+          characterRanges = False,
+          numberRanges = False,
+          wildcards = True,
+          recursiveWildcards = True,
+          pathSepInRanges = False,
+          errorRecovery = False
+        }
+
 instance Eq FilePattern where
   (==) :: FilePattern -> FilePattern -> Bool
   (==) = (==) `on` filePatternString
@@ -58,22 +74,6 @@ instance Read FilePattern where
   readsPrec _prec str = case parseFilePattern str of
     Left _err -> []
     Right pat -> [(pat, "")]
-
-parseFilePattern :: String -> Either String FilePattern
-parseFilePattern patternString = do
-  FilePattern patternString <$> eitherGlobPattern
-  where
-    eitherGlobPattern = Glob.tryCompileWith compOptions patternString
-    compOptions =
-      CompOptions
-        { characterClasses = False,
-          characterRanges = False,
-          numberRanges = False,
-          wildcards = True,
-          recursiveWildcards = True,
-          pathSepInRanges = False,
-          errorRecovery = False
-        }
 
 instance FromJSON FilePattern where
   parseJSON :: Value -> Parser FilePattern

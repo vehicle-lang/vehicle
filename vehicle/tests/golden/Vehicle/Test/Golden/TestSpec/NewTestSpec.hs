@@ -43,7 +43,7 @@ import System.FilePath
     (</>),
   )
 import Test.Tasty (Timeout)
-import Test.Tasty.Options (IsOption (optionHelp, parseValue))
+import Test.Tasty.Options (IsOption (optionHelp, parseValue), safeRead)
 import Text.Printf (printf)
 import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Backend.Prelude qualified as Backend
@@ -75,10 +75,7 @@ import Vehicle.Test.Golden.TestSpec
     writeTestSpecsFile,
   )
 import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
-import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
-import Vehicle.TypeCheck qualified as TypeCheckOptions
-  ( specification,
-  )
+import Vehicle.TypeCheck qualified as TypeCheckOptions (specification)
 import Vehicle.TypeCheck qualified as Vehicle
 import Vehicle.Validate qualified as ValidateOptions (proofCache)
 import Vehicle.Validate qualified as Vehicle (ValidateOptions)
@@ -146,7 +143,7 @@ newTestSpec args = do
           testSpecDataNeeds,
           testSpecDataProduces
         } = testSpecData newTestSpecVehicleOptions
-  testSpecProduces <- either fail return testSpecDataProduces
+  testSpecProduces <- maybe (fail "Could not infer 'produces'") return testSpecDataProduces
 
   -- Validate the 'needs' and 'produces':
   forM_ testSpecDataNeeds $ \testSpecNeed ->
@@ -209,7 +206,7 @@ newTestSpec args = do
 data TestSpecData = TestSpecData
   { testSpecDataTarget :: String,
     testSpecDataNeeds :: [FilePath],
-    testSpecDataProduces :: Either String [GoldenFilePattern]
+    testSpecDataProduces :: Maybe [GoldenFilePattern]
   }
   deriving (Show)
 
@@ -220,7 +217,7 @@ class TestSpecLike a where
   needs :: a -> [FilePath]
   needs = testSpecDataNeeds . testSpecData
 
-  produces :: a -> Either String [GoldenFilePattern]
+  produces :: a -> Maybe [GoldenFilePattern]
   produces = testSpecDataProduces . testSpecData
 
   testSpecData :: a -> TestSpecData
@@ -254,7 +251,7 @@ instance TestSpecLike Vehicle.TypeCheckOptions where
     [ TypeCheckOptions.specification opts
     ]
 
-  produces :: Vehicle.TypeCheckOptions -> Either String [GoldenFilePattern]
+  produces :: Vehicle.TypeCheckOptions -> Maybe [GoldenFilePattern]
   produces = const (return [])
 
 instance TestSpecLike Vehicle.CompileOptions where
@@ -269,8 +266,8 @@ instance TestSpecLike Vehicle.CompileOptions where
         Map.elems (CompileOptions.datasetLocations opts)
       ]
 
-  produces :: Vehicle.CompileOptions -> Either String [GoldenFilePattern]
-  produces opts = traverse FilePattern.readEither filePatternStrings
+  produces :: Vehicle.CompileOptions -> Maybe [GoldenFilePattern]
+  produces opts = traverse safeRead filePatternStrings
     where
       outputFile = CompileOptions.outputFile opts
       filePatternStrings =
@@ -297,8 +294,8 @@ instance TestSpecLike Vehicle.VerifyOptions where
             Map.elems (VerifyOptions.datasetLocations opts)
           ]
 
-  produces :: Vehicle.VerifyOptions -> Either String [GoldenFilePattern]
-  produces = traverse FilePattern.readEither . maybeToList . VerifyOptions.proofCache
+  produces :: Vehicle.VerifyOptions -> Maybe [GoldenFilePattern]
+  produces = traverse safeRead . maybeToList . VerifyOptions.proofCache
 
 instance TestSpecLike Vehicle.ExportOptions where
   targetName :: Vehicle.ExportOptions -> String
@@ -307,8 +304,8 @@ instance TestSpecLike Vehicle.ExportOptions where
   needs :: Vehicle.ExportOptions -> [FilePath]
   needs = (: []) . ExportOptions.proofCacheLocation
 
-  produces :: Vehicle.ExportOptions -> Either String [GoldenFilePattern]
-  produces = traverse FilePattern.readEither . maybeToList . ExportOptions.outputFile
+  produces :: Vehicle.ExportOptions -> Maybe [GoldenFilePattern]
+  produces = traverse safeRead . maybeToList . ExportOptions.outputFile
 
 instance TestSpecLike Vehicle.ValidateOptions where
   targetName :: Vehicle.ValidateOptions -> String
@@ -317,5 +314,5 @@ instance TestSpecLike Vehicle.ValidateOptions where
   needs :: Vehicle.ValidateOptions -> [FilePath]
   needs = (: []) . ValidateOptions.proofCache
 
-  produces :: Vehicle.ValidateOptions -> Either String [GoldenFilePattern]
+  produces :: Vehicle.ValidateOptions -> Maybe [GoldenFilePattern]
   produces = const (return [])
