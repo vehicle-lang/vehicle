@@ -1,5 +1,3 @@
-module Main where
-
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Encoding.UTF8 (utf8)
 import Test.Tasty

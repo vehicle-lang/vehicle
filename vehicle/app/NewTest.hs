@@ -1,7 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Vehicle.Test.Golden.TestSpec.NewTestSpec where
-
 import Control.Applicative (optional, (<**>))
 import Control.Monad (forM_, join, unless)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -34,6 +32,7 @@ import Options.Applicative.Types
   ( Backtracking (..),
   )
 import System.Directory (canonicalizePath, copyFile, doesFileExist)
+import System.Environment (getArgs)
 import System.FilePath
   ( equalFilePath,
     isRelative,
@@ -86,6 +85,9 @@ import Vehicle.Verify qualified as VerifyOptions
     verifierID,
   )
 import Vehicle.Verify.Core (QueryFormatID (MarabouQueries))
+
+main :: IO ()
+main = getArgs >>= newTestSpec
 
 data NewTestSpecOptions = NewTestSpecOptions
   { newTestSpecDryRun :: Bool,

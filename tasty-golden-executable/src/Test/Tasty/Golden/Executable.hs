@@ -1,4 +1,4 @@
-module Vehicle.Test.Golden
+module Test.Tasty.Golden.Executable
   ( makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
     SomeOption (..),
@@ -21,6 +21,12 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
+import General.Extra
+  ( SomeOption (..),
+    createDirectoryRecursive,
+    listFilesRecursive,
+    someLocalOptions,
+  )
 import System.Directory
   ( copyFile,
     createDirectory,
@@ -40,12 +46,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, askOption, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
-import Text.Printf (printf)
-import Vehicle.Test.Golden.Extra
-  ( createDirectoryRecursive,
-    listFilesRecursive,
-  )
-import Vehicle.Test.Golden.TestSpec
+import Test.Tasty.Golden.Executable.TestSpec
   ( TestOutput (..),
     TestSpec,
     TestSpecs (TestSpecs),
@@ -61,11 +62,10 @@ import Vehicle.Test.Golden.TestSpec
     testSpecRun,
     writeGoldenFiles,
   )
-import Vehicle.Test.Golden.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
-import Vehicle.Test.Golden.TestSpec.FilePattern (IsFilePattern (..))
-import Vehicle.Test.Golden.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
-import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
-import Vehicle.Test.Golden.TestSpec.SomeOption (SomeOption (..), someLocalOptions)
+import Test.Tasty.Golden.Executable.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
+import Text.Printf (printf)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: [SomeOption] -> TestName -> FilePath -> IO TestTree

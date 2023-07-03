@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Test.Golden.TestSpec.External where
+module Test.Tasty.Golden.Executable.TestSpec.External where
 
 import Data.Aeson (FromJSON)
 import Data.Aeson.Types (ToJSON)
@@ -32,7 +32,7 @@ newtype ExternalOption = ExternalOption {unExternalOption :: Set External}
 
 instance IsOption ExternalOption where
   defaultValue :: ExternalOption
-  defaultValue = ExternalOption []
+  defaultValue = ExternalOption Set.empty
 
   parseValue :: String -> Maybe ExternalOption
   parseValue value =
