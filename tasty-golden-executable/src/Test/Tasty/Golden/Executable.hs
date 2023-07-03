@@ -21,12 +21,8 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
-import General.Extra
-  ( SomeOption (..),
-    createDirectoryRecursive,
-    listFilesRecursive,
-    someLocalOptions,
-  )
+import General.Extra.File (createDirectoryRecursive, listFilesRecursive)
+import General.Extra.Option (SomeOption (..), someLocalOptions)
 import System.Directory
   ( copyFile,
     createDirectory,
@@ -63,6 +59,7 @@ import Test.Tasty.Golden.Executable.TestSpec
     writeGoldenFiles,
   )
 import Test.Tasty.Golden.Executable.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (IsFilePattern (..))
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
 import Text.Printf (printf)

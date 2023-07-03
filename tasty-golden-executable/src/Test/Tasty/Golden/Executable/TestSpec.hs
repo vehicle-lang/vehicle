@@ -59,12 +59,9 @@ import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import GHC.Stack.Types (HasCallStack)
-import General.Extra
-  ( SomeOption (SomeOption),
-    boolToMaybe,
-    duplicates,
-    writeFileChanged,
-  )
+import General.Extra (boolToMaybe, duplicates)
+import General.Extra.File (writeFileChanged)
+import General.Extra.Option (SomeOption (..))
 import System.Directory (doesFileExist)
 import System.FilePath
   ( dropExtension,

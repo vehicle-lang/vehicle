@@ -29,18 +29,16 @@ import Data.Aeson.Types
 import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Array qualified as Array ((!))
 import Data.Data (Typeable)
-import Data.Foldable (Foldable (toList))
 import Data.Function (on)
 import Data.Proxy (Proxy (..))
 import Data.String (IsString (..))
 import Data.Tagged (Tagged)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import General.Extra (SomeOption (..))
-import Options.Applicative (help, long, option, str)
-import Options.Applicative.NonEmpty (some1)
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern qualified as FilePattern
+import General.Extra (splitOn)
+import General.Extra.Aeson (fromStringOrStringArray)
+import General.Extra.Option (SomeOption (..), appendOption)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, IsFilePattern)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
 import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeRead)
@@ -158,7 +156,7 @@ newtype IgnoreLineOption = IgnoreLineOption [IgnoreLine]
 
 instance Read IgnoreLineOption where
   readsPrec :: Int -> ReadS IgnoreLineOption
-  readsPrec _prec s = case traverse (safeRead . Text.unpack) (csv (Text.pack s)) of
+  readsPrec _prec s = case traverse safeRead (splitOn (== ',') s) of
     Just opts -> [(IgnoreLineOption opts, "")]
     Nothing -> []
 
@@ -192,7 +190,7 @@ ignoreFileOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreFile
 
 instance Read IgnoreFileOption where
   readsPrec :: Int -> ReadS IgnoreFileOption
-  readsPrec _prec s = case traverse (safeRead . Text.unpack) (csv (Text.pack s)) of
+  readsPrec _prec s = case traverse safeRead (splitOn (== ',') s) of
     Just opts -> [(IgnoreFileOption opts, "")]
     Nothing -> []
 
@@ -258,17 +256,3 @@ instance FromJSON IgnoreLine where
 instance ToJSON IgnoreLine where
   toJSON :: IgnoreLine -> Value
   toJSON IgnoreLine {..} = Value.String ignoreLineRegexText
-
--- | Parse values from either a String or an Array of Strings.
-fromStringOrStringArray :: (Text -> Parser a) -> Value -> Parser [a]
-fromStringOrStringArray textParser value = case value of
-  Value.String text -> (: []) <$> textParser text
-  Value.Array items -> traverse valueParser (toList items)
-  _ -> typeMismatch "String or Array" value
-  where
-    valueParser (Value.String text) = textParser text
-    valueParser v = typeMismatch "String" v
-
--- | Split a string by commas.
-csv :: Text -> [Text]
-csv txt = Text.strip <$> Text.splitOn "," txt

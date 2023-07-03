@@ -1,4 +1,4 @@
-module Test.Tasty.Golden.Executable.TestSpec.SomeOption where
+module General.Extra.Option where
 
 import Test.Tasty (TestTree, adjustOption, localOption)
 import Test.Tasty.Options (IsOption)

@@ -14,11 +14,14 @@ common common-language
   default-language:   Haskell2010
   default-extensions:
     FlexibleContexts
+    GADTs
     ImportQualifiedPost
     InstanceSigs
     LambdaCase
     OverloadedStrings
+    RankNTypes
     RecordWildCards
+    TypeApplications
 
   ghc-options:        -Werror -Wall
 
@@ -28,6 +31,9 @@ library
   exposed-modules: Test.Tasty.Golden.Executable
   other-modules:
     General.Extra
+    General.Extra.Aeson
+    General.Extra.File
+    General.Extra.Option
     Test.Tasty.Golden.Executable.TestSpec
     Test.Tasty.Golden.Executable.TestSpec.External
     Test.Tasty.Golden.Executable.TestSpec.FilePattern
