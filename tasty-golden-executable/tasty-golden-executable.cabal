@@ -34,10 +34,12 @@ library
     General.Extra.Aeson
     General.Extra.File
     General.Extra.Option
+    Test.Tasty.Golden.Executable.Options
     Test.Tasty.Golden.Executable.TestSpec
     Test.Tasty.Golden.Executable.TestSpec.External
     Test.Tasty.Golden.Executable.TestSpec.FilePattern
-    Test.Tasty.Golden.Executable.TestSpec.Ignore
+    Test.Tasty.Golden.Executable.TestSpec.TextPattern
+    Test.Tasty.Golden.Executable.TestSpec.Timeout
     Test.Tasty.Golden.Executable.TestSpecs
 
   build-depends:

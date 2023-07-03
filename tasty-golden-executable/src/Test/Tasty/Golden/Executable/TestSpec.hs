@@ -5,38 +5,32 @@ module Test.Tasty.Golden.Executable.TestSpec
   )
 where
 
-import Control.Applicative (Alternative ((<|>)))
-import Data.Aeson (FromJSON (parseJSONList))
+import Control.Monad (forM, unless)
 import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
-    Object,
     Parser,
     ToJSON (toJSON),
     Value,
     object,
-    typeMismatch,
     withObject,
     (.!=),
     (.:),
     (.:?),
   )
-import Data.Aeson.Types qualified as Value (Value (..))
-import Data.Data (Typeable)
--- import Test.Tasty.Golden.Executable.TestSpec.External (External)
-
-import Data.Function (on)
-import Data.Maybe (catMaybes, fromMaybe, isJust)
-import Data.Text (Text)
-import Data.Text qualified as Text
+import Data.Maybe (catMaybes, fromMaybe)
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
+import System.Directory (doesFileExist)
+import System.FilePath ((</>))
 import Test.Tasty (TestName)
-import Test.Tasty qualified as Tasty (Timeout (NoTimeout, Timeout))
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern)
-import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore)
-import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
-import Test.Tasty.Options (IsOption (parseValue))
+import Test.Tasty.Golden.Executable.TestSpec.External (External)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
+import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
+import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
+import Test.Tasty.Options (OptionSet)
+import Test.Tasty.Providers (Result)
+import Text.Printf (printf)
 
 data TestSpec = TestSpec
   { -- | Test name.
@@ -53,21 +47,50 @@ data TestSpec = TestSpec
     -- | Files produced by the test command.
     --   Paths should be relative to the test specification file,
     --   and should not contain the .golden file extension.
-    testSpecProduces :: [GoldenFilePattern],
+    testSpecProduces :: [FilePattern],
     -- | External tools needed by the test command.
     --   Paths should be the names of executables on the PATH.
     testSpecExternal :: [External],
     -- | Timeout for the test.
     testSpecTimeout :: Timeout,
     -- | Options that configure what differences to ignore.
-    testSpecIgnore :: Maybe Ignore
+    testSpecIgnore :: TestSpecIgnore
   }
-  deriving (Show)
+  deriving (Eq, Show)
+
+data TestSpecIgnore = TestSpecIgnore
+  { -- | Files produced by the test command that should be ignored.
+    testSpecIgnoreFiles :: [FilePattern],
+    -- | Lines produced by the test command that should be ignored.
+    testSpecIgnoreLines :: [TextPattern]
+  }
+  deriving (Eq, Show)
+
+-- | Run a 'TestSpec'.
+run :: FilePath -> TestSpec -> OptionSet -> IO Result
+run specTestDirectory TestSpec {..} options = do
+  -- + Find needed files
+  neededPaths <- forM testSpecNeeds $ \neededFile -> do
+    let neededPath = specTestDirectory </> neededFile
+    neededFileExists <- doesFileExist neededPath
+    unless neededFileExists $
+      fail $
+        printf "Missing needed file: %s" neededPath
+    return neededPath
+  -- + Find golden files for stdout and stderr
+  -- + Make temporary directory
+  -- + Copy needed files
+  -- + Exec command
+  -- + Diff stdout and golden file for stdout
+  -- + Diff stderr and golden file for stderr
+  -- + Find produced files
+  -- + Find golden files for produced files
+  -- + Diff produced files and golden files
+  _
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
-derivedOptions testSpec =
-  catMaybes [LocalOption <$> testSpecTimeout testSpec]
+derivedOptions testSpec = [toSomeOption (testSpecTimeout testSpec)]
 
 -- | Whether or not the test is enabled.
 isEnabled :: TestSpec -> Bool
@@ -80,19 +103,11 @@ instance FromJSON TestSpec where
       <$> o .: "name"
       <*> o .: "run"
       <*> o .:? "enabled"
-      <*> o .:? "needs" .!= []
-      <*> produces o
-      <*> o .:? "external" .!= []
-      <*> timeout o
-      <*> o .:? "ignore"
-    where
-      produces :: Object -> Parser [GoldenFilePattern]
-      produces o =
-        o .:? "produces" >>= \case
-          Nothing -> return []
-          Just v -> fmap (: []) (parseJSON v) <|> parseJSONList v
-      timeout :: Object -> Parser (Maybe Timeout)
-      timeout o = o .:? "timeout" >>= traverse parseJSONTimeout
+      <*> o .:? "needs" .!= mempty
+      <*> o .:? "produces" .!= mempty
+      <*> o .:? "external" .!= mempty
+      <*> o .:? "timeout" .!= mempty
+      <*> o .:? "ignore" .!= mempty
 
 instance ToJSON TestSpec where
   toJSON :: TestSpec -> Value
@@ -103,70 +118,41 @@ instance ToJSON TestSpec where
           Just $ "run" .= testSpecRun,
           ("enabled" .=) <$> testSpecEnabled,
           -- Include "needs" only if it is non-empty:
-          boolToMaybe (not $ null testSpecNeeds) ("needs" .= testSpecNeeds),
+          boolToMaybe (testSpecNeeds /= mempty) ("needs" .= testSpecNeeds),
           -- Include "produces" only if it is non-empty:
-          boolToMaybe (not $ null testSpecProduces) ("produces" .= testSpecProduces),
+          boolToMaybe (testSpecProduces /= mempty) ("produces" .= testSpecProduces),
           -- Include "external" only if it is non-empty:
-          boolToMaybe (not $ null testSpecExternal) ("external" .= testSpecNeeds),
+          boolToMaybe (testSpecExternal /= mempty) ("external" .= testSpecNeeds),
           -- Include "timeout" only if it is non-empty:
-          boolToMaybe (isTimeout testSpecTimeout) ("timeout" .= testSpecTimeout),
+          boolToMaybe (testSpecTimeout /= mempty) ("timeout" .= testSpecTimeout),
           -- Include "ignore" only if it is non-empty:
-          boolToMaybe (not $ Ignore.null testSpecIgnore) ("ignore" .= testSpecIgnore)
+          boolToMaybe (testSpecIgnore /= mempty) ("ignore" .= testSpecIgnore)
         ]
 
--- * External Programs
+instance Semigroup TestSpecIgnore where
+  (<>) :: TestSpecIgnore -> TestSpecIgnore -> TestSpecIgnore
+  ignore1 <> ignore2 =
+    TestSpecIgnore
+      { testSpecIgnoreFiles = testSpecIgnoreFiles ignore1 <> testSpecIgnoreFiles ignore2,
+        testSpecIgnoreLines = testSpecIgnoreLines ignore1 <> testSpecIgnoreLines ignore2
+      }
 
--- | The name of an external program.
-newtype External = External {unExternal :: Text}
-  deriving (Eq, Ord, Show, Typeable)
+instance Monoid TestSpecIgnore where
+  mempty :: TestSpecIgnore
+  mempty = TestSpecIgnore mempty mempty
 
-instance FromJSON External where
-  parseJSON :: Value -> Parser External
-  parseJSON (Value.String text) = return $ External text
-  parseJSON value = typeMismatch "String" value
+instance FromJSON TestSpecIgnore where
+  parseJSON :: Value -> Parser TestSpecIgnore
+  parseJSON = withObject "TestSpecIgnore" $ \o ->
+    TestSpecIgnore
+      <$> o .:? "files" .!= mempty
+      <*> o .:? "lines" .!= mempty
 
-instance ToJSON External where
-  toJSON :: External -> Value
-  toJSON = toJSON . unExternal
-
--- * Timeout
-
-newtype Timeout = Timeout Tasty.Timeout
-  deriving (Show, Typeable)
-
--- | Get the timeout in milliseconds.
-getTimeoutMS :: Timeout -> Maybe Integer
-getTimeoutMS (Timeout (Tasty.Timeout ms _)) = Just ms
-getTimeoutMS _ = Nothing
-
--- | Check whether a timeout represents an finite timeout.
-isTimeout :: Timeout -> Bool
-isTimeout = isJust . getTimeoutMS
-
-instance Eq Timeout where
-  (==) :: Timeout -> Timeout -> Bool
-  (==) = (==) `on` getTimeoutMS
-
-instance Ord Timeout where
-  compare :: Timeout -> Timeout -> Ordering
-  compare = compare `on` getTimeoutMS
-
-instance FromJSON Timeout where
-  parseJSON :: Value -> Parser Timeout
-  parseJSON (Value.String timeoutText) =
-    let timeoutString = Text.unpack timeoutText
-     in case parseValue timeoutString of
-          Nothing ->
-            fail $
-              unlines
-                [ "Could not parse value of 'timeout'.",
-                  "Expected a number, optionally followed by a suffix (ms, s, m, h).",
-                  "Found: " <> timeoutString
-                ]
-          Just tastyTimeout -> return $ Timeout tastyTimeout
-  parseJSON value = typeMismatch "String" value
-
-instance ToJSON Timeout where
-  toJSON :: Timeout -> Value
-  toJSON (Timeout (Tasty.Timeout _ms timeoutString)) = Value.String (Text.pack timeoutString)
-  toJSON (Timeout Tasty.NoTimeout) = Value.Null
+instance ToJSON TestSpecIgnore where
+  toJSON :: TestSpecIgnore -> Value
+  toJSON TestSpecIgnore {..} =
+    object $
+      catMaybes
+        [ boolToMaybe (testSpecIgnoreFiles /= mempty) ("files" .= testSpecIgnoreFiles),
+          boolToMaybe (testSpecIgnoreLines /= mempty) ("lines" .= testSpecIgnoreLines)
+        ]
