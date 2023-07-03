@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: mrkkrp/ormolu-action@v12
+      - uses: mrkkrp/ormolu-action@v13
 
   ################################################################################
   # Publish package to GitHub Releases
