@@ -462,14 +462,14 @@ compileReducedAssertion ::
   StandardEnv ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
-compileReducedAssertion variables env assertion = do
+compileReducedAssertion variables variableSubstEnv assertion = do
   let assertionExpr = case assertion of
         VectorEqualityAssertion vectorEquality -> originalVectorEqualityExpr vectorEquality
         NonVectorEqualityAssertion expr -> expr
 
   -- First normalise the expression under the new environment of reduced variables
   (_, _, declSubst) <- ask
-  normExpr <- runNormT defaultEvalOptions declSubst mempty $ reeval env assertionExpr
+  normExpr <- runNormT defaultEvalOptions declSubst mempty $ reeval variableSubstEnv assertionExpr
 
   -- Then extract the relation and arguments
   splitAssertions <- splitUpAssertions False normExpr
@@ -515,8 +515,13 @@ compileReducedAssertion variables env assertion = do
     liftIfs expr = do
       maybeExprWithoutIf <- eliminateIfs expr
       case maybeExprWithoutIf of
-        Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
-        Just exprWithoutIf -> splitUpAssertions True exprWithoutIf
+        Nothing -> splitUpAssertions True expr
+        Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
+        Just (Just exprWithoutIf) -> do
+          (_, _, declSubst) <- ask
+          let env = variableCtxToNormEnv variables
+          normExprWithoutIf <- runNormT defaultEvalOptions declSubst mempty (reeval env exprWithoutIf)
+          splitUpAssertions True normExprWithoutIf
 
     reduceAssertion ::
       (MonadSMT m) =>

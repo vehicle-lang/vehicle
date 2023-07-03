@@ -4,6 +4,10 @@
 
 * Shadowing of declaration names by local variables is no longer allowed.
 
+* Added JSON backend target to command-line interface
+
+* Fixed bug where `if` statements which when lifted reduced to trivial assertions were causing a crash.
+
 ## Version 0.5.1
 
 * Fixed bug where reconstructing counter-examples from Marabou would sometimes crash.

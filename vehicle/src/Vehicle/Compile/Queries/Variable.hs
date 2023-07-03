@@ -4,6 +4,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 module Vehicle.Compile.Queries.Variable
   ( Variable (..),
+    variableCtxToNormEnv,
     UserVariable (..),
     NetworkVariable (..),
     sequentialNetworkVariableNaming,
@@ -64,6 +65,11 @@ class
 
 isRationalVariable :: (Variable variable) => variable -> Bool
 isRationalVariable v = null (variableDimensions v)
+
+variableCtxToNormEnv :: (Variable variable) => BoundCtx variable -> StandardEnv
+variableCtxToNormEnv ctx = do
+  let mkEntry lv var = (Just (layoutAsText $ pretty var), VBoundVar (Lv lv) [])
+  zipWith mkEntry (reverse [0 .. length ctx - 1]) ctx
 
 --------------------------------------------------------------------------------
 -- User variables
