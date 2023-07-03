@@ -1,4 +1,4 @@
-module Vehicle.Test.Golden.TestSpec.FilePattern
+module Test.Tasty.Golden.Executable.TestSpec.FilePattern
   ( IsFilePattern (..),
     FilePattern,
     GoldenFilePattern,

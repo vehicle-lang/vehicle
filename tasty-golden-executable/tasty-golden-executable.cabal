@@ -1,0 +1,58 @@
+cabal-version:   3.0
+name:            tasty-golden-executable
+version:         0.1.0.0
+license:
+license-file:    LICENSE
+author:          Wen Kokke
+maintainer:      wenkokke@users.noreply.github.com
+copyright:       © Wen Kokke
+category:        Testing
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common common-language
+  default-language:   Haskell2010
+  default-extensions:
+    FlexibleContexts
+    ImportQualifiedPost
+    InstanceSigs
+    LambdaCase
+    OverloadedStrings
+    RecordWildCards
+
+  ghc-options:        -Werror -Wall
+
+library
+  import:          common-language
+  hs-source-dirs:  src
+  exposed-modules: Test.Tasty.Golden.Executable
+  other-modules:
+    General.Extra
+    Test.Tasty.Golden.Executable.TestSpec
+    Test.Tasty.Golden.Executable.TestSpec.External
+    Test.Tasty.Golden.Executable.TestSpec.FilePattern
+    Test.Tasty.Golden.Executable.TestSpec.Ignore
+
+  build-depends:
+    , aeson                 >=2.1.1  && <2.2
+    , aeson-pretty
+    , array
+    , base                  >=4.13   && <5
+    , bytestring
+    , containers
+    , Diff                  >=0.4.1  && <0.5
+    , directory             >=1.3.6  && <1.4
+    , dlist
+    , filepath              >=1.4    && <2
+    , Glob                  >=0.10.2 && <0.11
+    , hashable
+    , mtl
+    , optparse-applicative
+    , process               >=1.2    && <2
+    , regex-tdfa
+    , tagged
+    , tasty
+    , tasty-golden
+    , temporary
+    , text                  >=1.2    && <3
+    , unordered-containers  >=0.2.19 && <0.3

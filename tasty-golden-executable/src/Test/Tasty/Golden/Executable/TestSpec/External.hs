@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Test.Golden.TestSpec.External where
+module Test.Tasty.Golden.Executable.TestSpec.External where
 
 import Data.Aeson (FromJSON)
 import Data.Aeson.Types (ToJSON)
@@ -31,7 +31,7 @@ newtype ExternalOption = ExternalOption {unExternalOption :: Set External}
   deriving (Eq, Ord, Show, Typeable, Semigroup, Monoid)
 
 instance IsOption ExternalOption where
-  defaultValue = ExternalOption []
+  defaultValue = ExternalOption Set.empty
   parseValue = Just . ExternalOption . Set.singleton . fromString
   optionName = return "external"
   optionHelp = return "Run tests with an external dependency that matches the argument."

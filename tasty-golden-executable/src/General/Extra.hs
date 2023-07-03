@@ -1,4 +1,7 @@
-module Vehicle.Test.Golden.Extra where
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
+
+module General.Extra where
 
 import Control.Exception (IOException, try)
 import Control.Monad (filterM, when)

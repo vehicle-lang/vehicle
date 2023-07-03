@@ -1,10 +1,8 @@
-module Main where
-
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
 import Test.Tasty (defaultIngredients, defaultMainWithIngredients)
+import Test.Tasty.Golden.Executable (SomeOption (..), externalOptionIngredient, ignoreFileOption, makeTestTreeFromDirectoryRecursive)
 import Test.Tasty.Ingredients (Ingredient)
-import Vehicle.Test.Golden (SomeOption (..), externalOptionIngredient, ignoreFileOption, makeTestTreeFromDirectoryRecursive)
 
 testDirectory :: FilePath
 testDirectory = "tests" </> "golden"

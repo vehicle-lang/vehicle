@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Test.Golden.TestSpec.Ignore
+module Test.Tasty.Golden.Executable.TestSpec.Ignore
   ( Ignore (..),
     IgnoreLine,
     IgnoreLineOption (..),
@@ -12,7 +12,7 @@ module Vehicle.Test.Golden.TestSpec.Ignore
     ignoreFileOptionIngredient,
     matchFile,
     matchLine,
-    Vehicle.Test.Golden.TestSpec.Ignore.null,
+    Test.Tasty.Golden.Executable.TestSpec.Ignore.null,
   )
 where
 
@@ -38,8 +38,11 @@ import Data.String (IsString (..))
 import Data.Tagged (Tagged, untag)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import General.Extra (SomeOption (..))
 import Options.Applicative (help, long, option, str)
 import Options.Applicative.NonEmpty (some1)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern qualified as FilePattern
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
 import Test.Tasty.Options (IsOption (..), OptionDescription (..))
@@ -47,9 +50,6 @@ import Text.Printf (printf)
 import Text.Regex.TDFA qualified as Regex
 import Text.Regex.TDFA.Text (Regex)
 import Text.Regex.TDFA.Text qualified as Regex
-import Vehicle.Test.Golden.Extra (SomeOption (..))
-import Vehicle.Test.Golden.TestSpec.FilePattern (FilePattern)
-import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
 
 -- * Types
 
@@ -247,10 +247,10 @@ instance ToJSON IgnoreLine where
 
 -- | Parse values from either a String or an Array of Strings.
 fromStringOrStringArray :: (Text -> Parser a) -> Value -> Parser [a]
-fromStringOrStringArray textParser = \case
+fromStringOrStringArray textParser value = case value of
   Value.String text -> (: []) <$> textParser text
   Value.Array items -> traverse valueParser (toList items)
-  v -> typeMismatch "String or Array" v
+  _ -> typeMismatch "String or Array" value
   where
     valueParser (Value.String text) = textParser text
     valueParser v = typeMismatch "String" v
