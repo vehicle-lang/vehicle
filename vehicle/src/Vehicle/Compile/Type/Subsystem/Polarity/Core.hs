@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type.Subsystem.Polarity.Core where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
@@ -38,8 +37,6 @@ data PolarityProvenance
   | PolFunctionProvenance Provenance PolarityProvenance FunctionPosition
   deriving (Generic)
 
-instance ToJSON PolarityProvenance
-
 instance Serialize PolarityProvenance
 
 instance Show PolarityProvenance where
@@ -72,8 +69,6 @@ instance NFData Polarity
 
 instance Hashable Polarity
 
-instance ToJSON Polarity
-
 instance Serialize Polarity
 
 instance Pretty Polarity where
@@ -105,8 +100,6 @@ data PolarityTypeClass
   | MaxPolarity
   | FunctionPolarity FunctionPosition
   deriving (Eq, Generic, Show)
-
-instance ToJSON PolarityTypeClass
 
 instance Serialize PolarityTypeClass
 

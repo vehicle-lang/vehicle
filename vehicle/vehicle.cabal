@@ -169,8 +169,8 @@ library
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
-    Vehicle.Backend.LossFunction.Interact
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Backend.LossFunction.Syntax
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX

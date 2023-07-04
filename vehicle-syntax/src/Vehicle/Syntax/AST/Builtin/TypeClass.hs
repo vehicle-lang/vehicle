@@ -37,8 +37,6 @@ instance NFData TypeClass
 
 instance Hashable TypeClass
 
-instance ToJSON TypeClass
-
 instance Serialize TypeClass
 
 instance Pretty TypeClass where
@@ -78,8 +76,6 @@ data TypeClassOp
 instance NFData TypeClassOp
 
 instance Hashable TypeClassOp
-
-instance ToJSON TypeClassOp
 
 instance Serialize TypeClassOp
 

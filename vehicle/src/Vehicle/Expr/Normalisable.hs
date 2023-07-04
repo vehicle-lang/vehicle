@@ -1,6 +1,5 @@
 module Vehicle.Expr.Normalisable where
 
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Serialize
 import GHC.Generics
@@ -26,8 +25,6 @@ instance (Pretty types) => Pretty (NormalisableBuiltin types) where
 instance (Serialize types) => Serialize (NormalisableBuiltin types)
 
 instance (Hashable types) => Hashable (NormalisableBuiltin types)
-
-instance (ToJSON types) => ToJSON (NormalisableBuiltin types)
 
 -----------------------------------------------------------------------------
 -- Expressions

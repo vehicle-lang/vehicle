@@ -79,8 +79,8 @@ traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
 traverseBuiltinsBinder :: (Monad m) => BuiltinUpdate m binder var builtin1 builtin2 -> Binder var builtin1 -> m (Binder var builtin2)
 traverseBuiltinsBinder f = traverse (traverseBuiltinsM f)
 
-traverseBuiltins ::
+mapBuiltins ::
   (Provenance -> Provenance -> builtin1 -> [Arg var builtin2] -> Expr var builtin2) ->
   Expr var builtin1 ->
   Expr var builtin2
-traverseBuiltins f e = runIdentity (traverseBuiltinsM (\p1 p2 b args -> return $ f p1 p2 b args) e)
+mapBuiltins f e = runIdentity (traverseBuiltinsM (\p1 p2 b args -> return $ f p1 p2 b args) e)

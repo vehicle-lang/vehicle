@@ -8,16 +8,18 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (compileProgToJSON)
-import Vehicle.Backend.LossFunction (writeLossFunctionFiles)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core
@@ -91,12 +93,12 @@ compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
   (ImportedModules, StandardGluedProg) ->
   Resources ->
-  DifferentiableLogic ->
+  DifferentiableLogicID ->
   Maybe FilePath ->
   m ()
 compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = do
-  lossFunction <- LossFunction.compile resources differentiableLogic typedProg
-  writeLossFunctionFiles outputFile differentiableLogic lossFunction
+  result <- LossFunction.compile resources differentiableLogic typedProg
+  writeResultToFile Nothing outputFile result
 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
@@ -117,6 +119,22 @@ compileToJSON (imports, typedProg) outputFile = do
   let mergedProg = mergeImports imports typedProg
   let unnormalisedProg = fmap unnormalised mergedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
-  let namedProg = descopeNamed resolvedProg
+  literalCoercionFreeProg <- removeLiteralCoercions resolvedProg
+  let namedProg = descopeNamed literalCoercionFreeProg
   result <- compileProgToJSON namedProg
   writeResultToFile Nothing outputFile result
+  where
+    removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
+    removeLiteralCoercions = traverse (traverseBuiltinsM update)
+      where
+        update p1 p2 b args = case b of
+          (CFunction (FromNat dom)) -> case (dom, args) of
+            (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
+            (FromNatToNat, [e, _]) -> return $ argExpr e
+            (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
+            (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+            _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> prettyVerbose args
+          (CFunction (FromRat dom)) -> case (dom, args) of
+            (FromRatToRat, [e]) -> return $ argExpr e
+            _ -> compilerDeveloperError $ "Found partially applied `FromRat`:" <+> pretty b <+> prettyVerbose args
+          _ -> return $ normAppList p1 (Builtin p2 b) args

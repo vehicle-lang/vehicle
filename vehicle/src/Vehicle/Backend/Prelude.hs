@@ -12,7 +12,7 @@ import Vehicle.Verify.Core
 -- Differentiable logics
 
 -- | Different ways of translating from the logical constraints to loss functions.
-data DifferentiableLogic
+data DifferentiableLogicID
   = DL2Loss
   | GodelLoss
   | LukasiewiczLoss
@@ -21,7 +21,7 @@ data DifferentiableLogic
   | STLLoss
   deriving (Eq, Show, Read, Bounded, Enum)
 
-instance Pretty DifferentiableLogic where
+instance Pretty DifferentiableLogicID where
   pretty = pretty . show
 
 --------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ instance Read TypingSystem where
 data Target
   = ITP ITP
   | VerifierQueries QueryFormatID
-  | LossFunction DifferentiableLogic
+  | LossFunction DifferentiableLogicID
   | JSON
   deriving (Eq)
 
@@ -64,7 +64,7 @@ findTarget :: String -> Maybe Target
 findTarget s = do
   let itp = lookup s (fmap (\t -> (show t, ITP t)) (enumerate @ITP))
   let queries = lookup s (fmap (\t -> (show t, VerifierQueries t)) (enumerate @QueryFormatID))
-  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogic))
+  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogicID))
   let json = if s == show JSON then Just JSON else Nothing
   catMaybes [itp, queries, dl, json] !!? 0
 

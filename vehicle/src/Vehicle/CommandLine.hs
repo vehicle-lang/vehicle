@@ -41,7 +41,7 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target (..), TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, Target (..), TypingSystem (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
@@ -295,7 +295,7 @@ allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)
 
 allLossFunctionDLs :: [String]
-allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
+allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
 allTargets :: [String]
 allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show JSON]

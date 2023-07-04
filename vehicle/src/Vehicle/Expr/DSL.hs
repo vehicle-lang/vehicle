@@ -108,14 +108,14 @@ class DSL expr where
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   free :: StdLibFunction -> expr
 
-newtype DSLExpr types = DSL
-  { unDSL :: Provenance -> Lv -> NormalisableExpr types
+newtype DSLExpr builtin = DSL
+  { unDSL :: Provenance -> Lv -> Expr Ix builtin
   }
 
-fromDSL :: Provenance -> DSLExpr types -> NormalisableExpr types
+fromDSL :: Provenance -> DSLExpr builtin -> Expr Ix builtin
 fromDSL p e = unDSL e p 0
 
-boundVar :: Lv -> DSLExpr types
+boundVar :: Lv -> DSLExpr builtin
 boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
 
 approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
@@ -124,7 +124,7 @@ approxPiForm name = \case
   Implicit {} -> BinderDisplayForm (OnlyName $ fromMaybe "_" name) True
   Instance {} -> BinderDisplayForm OnlyType False
 
-instance DSL (DSLExpr types) where
+instance DSL (DSLExpr builtin) where
   hole = DSL $ \p _i ->
     Hole p "_"
 
@@ -158,37 +158,37 @@ instance DSL (DSLExpr types) where
 -- | Explicit function type
 infixr 4 ~>
 
-(~>) :: DSLExpr types -> DSLExpr types -> DSLExpr types
+(~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x ~> y = pi Nothing Explicit Relevant x (const y)
 
 -- | Implicit function type
 infixr 4 ~~>
 
-(~~>) :: DSLExpr types -> DSLExpr types -> DSLExpr types
+(~~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x ~~> y = pi Nothing (Implicit False) Relevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>
 
-(~~~>) :: DSLExpr types -> DSLExpr types -> DSLExpr types
+(~~~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x ~~~> y = pi Nothing (Instance False) Relevant x (const y)
 
 -- | Irrelevant instance function type
 infixr 4 .~~~>
 
-(.~~~>) :: DSLExpr types -> DSLExpr types -> DSLExpr types
+(.~~~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x .~~~> y = pi Nothing (Instance False) Irrelevant x (const y)
 
-explLam :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+explLam :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 explLam n = lam n Explicit Relevant
 
-implLam :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+implLam :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 implLam n = lam n (Implicit False) Relevant
 
-instLam :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+instLam :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 instLam n = lam n (Instance False) Relevant
 
-implTypeTripleLam :: (DSLExpr types -> DSLExpr types -> DSLExpr types -> DSLExpr types) -> DSLExpr types
+implTypeTripleLam :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 implTypeTripleLam f =
   implLam "t1" type0 $ \t1 ->
     implLam "t2" type0 $ \t2 ->
@@ -197,62 +197,62 @@ implTypeTripleLam f =
 
 infixl 6 @@
 
-(@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
+(@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (@@) f args = app f (fmap (Explicit,Relevant,) args)
 
 infixl 6 @@@
 
-(@@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
+(@@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (@@@) f args = app f (fmap (Implicit True,Relevant,) args)
 
 infixl 6 @@@@
 
-(@@@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
+(@@@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (@@@@) f args = app f (fmap (Instance True,Relevant,) args)
 
 infixl 6 .@@@@
 
-(.@@@@) :: DSLExpr types -> NonEmpty (DSLExpr types) -> DSLExpr types
+(.@@@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (.@@@@) f args = app f (fmap (Instance True,Irrelevant,) args)
 
-naryFunc :: Int -> DSLExpr types -> DSLExpr types -> DSLExpr types
+naryFunc :: Int -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 naryFunc n a b = foldr (\_ r -> a ~> r) b ([0 .. n - 1] :: [Int])
 
-forAllExpl :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+forAllExpl :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllExpl name = pi (Just name) Explicit Relevant
 
-forAll :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+forAll :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAll name = pi (Just name) (Implicit False) Relevant
 
-forAllInstance :: Name -> DSLExpr types -> (DSLExpr types -> DSLExpr types) -> DSLExpr types
+forAllInstance :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllInstance name = pi (Just name) (Instance False) Relevant
 
-universe :: UniverseLevel -> DSLExpr types
+universe :: UniverseLevel -> DSLExpr builtin
 universe u = DSL $ \p _ -> Universe p u
 
-type0 :: DSLExpr types
+type0 :: DSLExpr builtin
 type0 = universe $ UniverseLevel 0
 
-forAllTypeTriples :: (DSLExpr types -> DSLExpr types -> DSLExpr types -> DSLExpr types) -> DSLExpr types
+forAllTypeTriples :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllTypeTriples f =
   forAll "t1" type0 $ \t1 ->
     forAll "t2" type0 $ \t2 ->
       forAll "t3" type0 $ \t3 -> f t1 t2 t3
 
-builtin :: NormalisableBuiltin types -> DSLExpr types
+builtin :: builtin -> DSLExpr builtin
 builtin b = DSL $ \p _ -> Builtin p b
 
-builtinFunction :: BuiltinFunction -> DSLExpr types
+--------------------------------------------------------------------------------
+-- Standard builtin
+--------------------------------------------------------------------------------
+
+builtinFunction :: BuiltinFunction -> DSLExpr (NormalisableBuiltin types)
 builtinFunction b = DSL $ \p _ -> Builtin p (CFunction b)
 
-builtinConstructor :: BuiltinConstructor -> DSLExpr types
+builtinConstructor :: BuiltinConstructor -> DSLExpr (NormalisableBuiltin types)
 builtinConstructor = builtin . CConstructor
 
---------------------------------------------------------------------------------
--- Standard types
---------------------------------------------------------------------------------
-
-type StandardDSLExpr = DSLExpr StandardBuiltinType
+type StandardDSLExpr = DSLExpr (NormalisableBuiltin StandardBuiltinType)
 
 builtinType :: BuiltinType -> StandardDSLExpr
 builtinType = builtin . CType . StandardBuiltinType
@@ -368,7 +368,7 @@ addNat x y = builtinFunction (Add AddNat) @@ [x, y]
 --------------------------------------------------------------------------------
 -- Linearity
 
-type LinearityDSLExpr = DSLExpr LinearityType
+type LinearityDSLExpr = DSLExpr (NormalisableBuiltin LinearityType)
 
 forAllLinearities :: (LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearities f = forAll "l" tLin $ \l -> f l
@@ -405,7 +405,7 @@ tLin = type0
 --------------------------------------------------------------------------------
 -- Polarities
 
-type PolarityDSLExpr = DSLExpr PolarityType
+type PolarityDSLExpr = DSLExpr (NormalisableBuiltin PolarityType)
 
 forAllPolarities :: (PolarityDSLExpr -> PolarityDSLExpr) -> PolarityDSLExpr
 forAllPolarities f = forAll "p" tPol $ \p -> f p

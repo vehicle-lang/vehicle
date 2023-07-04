@@ -302,7 +302,7 @@ convertExprBuiltins ::
   (PrintableBuiltin types) =>
   Expr var (NormalisableBuiltin types) ->
   Expr var Builtin
-convertExprBuiltins = traverseBuiltins $ \p1 p2 b args -> do
+convertExprBuiltins = mapBuiltins $ \p1 p2 b args -> do
   let fn = case b of
         CConstructor c -> Builtin p2 $ Constructor c
         CFunction f -> Builtin p2 $ BuiltinFunction f

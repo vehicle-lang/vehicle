@@ -5,7 +5,6 @@ where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
-import Data.Aeson (ToJSON (..))
 import Data.LinkedHashMap (LinkedHashMap)
 import Data.LinkedHashMap qualified as LinkedHashMap (empty, filterWithKey, insert, member, toList)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -43,7 +42,7 @@ import Vehicle.Syntax.AST
 -- Note that the semantics of properties therefore change slightly as they
 -- are no longer guaranteed to be of type `Bool`.
 functionaliseResources ::
-  (MonadCompile m, ToJSON builtin) =>
+  (MonadCompile m) =>
   Prog Name builtin ->
   m (Prog Name builtin)
 functionaliseResources prog =

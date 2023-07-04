@@ -19,6 +19,7 @@ where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON)
+import Data.Aeson.Types (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
@@ -39,8 +40,6 @@ instance NFData FunctionPosition
 
 instance Hashable FunctionPosition
 
-instance ToJSON FunctionPosition
-
 instance Serialize FunctionPosition
 
 instance Pretty FunctionPosition where
@@ -56,13 +55,11 @@ data EqualityOp
   | Neq
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData EqualityOp
-
 instance Hashable EqualityOp
 
-instance ToJSON EqualityOp
-
 instance Serialize EqualityOp
+
+instance NFData EqualityOp
 
 instance Pretty EqualityOp where
   pretty = \case
@@ -89,8 +86,6 @@ instance NFData EqualityDomain
 
 instance Hashable EqualityDomain
 
-instance ToJSON EqualityDomain
-
 instance Serialize EqualityDomain
 
 instance Pretty EqualityDomain where
@@ -113,8 +108,6 @@ data OrderOp
 instance NFData OrderOp
 
 instance Hashable OrderOp
-
-instance ToJSON OrderOp
 
 instance Serialize OrderOp
 
@@ -168,8 +161,6 @@ data OrderDomain
 instance NFData OrderDomain
 
 instance Hashable OrderDomain
-
-instance ToJSON OrderDomain
 
 instance Serialize OrderDomain
 

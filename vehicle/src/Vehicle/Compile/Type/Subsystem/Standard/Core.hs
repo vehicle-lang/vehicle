@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Type.Subsystem.Standard.Core where
 
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics
@@ -42,10 +41,8 @@ instance Hashable StandardBuiltinType
 
 instance Serialize StandardBuiltinType
 
-instance ToJSON StandardBuiltinType
-
 convertToNormalisableBuiltins :: Expr Ix Builtin -> Expr Ix StandardBuiltin
-convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
+convertToNormalisableBuiltins = mapBuiltins $ \p1 p2 b args -> do
   let fn = Builtin p2 $ case b of
         Constructor c -> CConstructor c
         BuiltinFunction f -> CFunction f
