@@ -62,7 +62,7 @@ lcon :: Rational -> PLExpr
 lcon x = builtin (toJBuiltin x)
 
 rat :: PLExpr
-rat = builtin J.Rat
+rat = builtin J.RatType
 
 --------------------------------------------------------------------------------
 -- Logics
@@ -123,7 +123,7 @@ dl2Translation :: DifferentialLogicImplementation
 dl2Translation =
   DifferentialLogicImplementation
     { logicID = DL2Loss,
-      compileBool = builtin J.Rat,
+      compileBool = builtin J.RatType,
       compileAnd = BinaryAnd $ builtin (J.Add AddRat),
       compileOr = BinaryOr $ builtin (J.Mul MulRat),
       compileNot = TryToEliminate,
@@ -147,7 +147,7 @@ godelTranslation :: DifferentialLogicImplementation
 godelTranslation =
   DifferentialLogicImplementation
     { logicID = GodelLoss,
-      compileBool = builtin J.Rat,
+      compileBool = builtin J.RatType,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmin x y),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmax x y),
       compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
@@ -171,7 +171,7 @@ lukasiewiczTranslation :: DifferentialLogicImplementation
 lukasiewiczTranslation =
   DifferentialLogicImplementation
     { logicID = LukasiewiczLoss,
-      compileBool = builtin J.Rat,
+      compileBool = builtin J.RatType,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmax (lcon 0) ((x +: y) -: lcon 1)),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmin (x +: y) (lcon 1)),
       compileNot = UnaryNot (mkOp1 rat $ \arg -> lcon 1 -: arg),
@@ -195,7 +195,7 @@ productTranslation :: DifferentialLogicImplementation
 productTranslation =
   DifferentialLogicImplementation
     { logicID = ProductLoss,
-      compileBool = builtin J.Rat,
+      compileBool = builtin J.RatType,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: (x *: y)),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: ((x +: y) -: (x *: y))),
       compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
@@ -223,7 +223,7 @@ parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
 parameterisedYagerTranslation p =
   DifferentialLogicImplementation
     { logicID = YagerLoss,
-      compileBool = builtin J.Rat,
+      compileBool = builtin J.RatType,
       compileAnd =
         BinaryAnd
           ( mkOp2 rat $ \x y ->

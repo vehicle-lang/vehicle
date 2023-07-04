@@ -1,6 +1,6 @@
 from typing import List
 
-from ._ast import AST, Binder, BuiltinOp, Declaration, Expression, Program, Provenance
+from ._ast import AST, Binder, Builtin, Declaration, Expression, Program, Provenance
 
 __all__: List[str] = [
     "AST",
@@ -9,5 +9,5 @@ __all__: List[str] = [
     "Program",
     "Binder",
     "Provenance",
-    "BuiltinOp",
+    "Builtin",
 ]

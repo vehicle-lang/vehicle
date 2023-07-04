@@ -68,7 +68,7 @@
                     },
                     [
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -90,7 +90,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -162,7 +162,7 @@
                       },
                       "x",
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -206,7 +206,7 @@
                           },
                           "y",
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -237,7 +237,7 @@
                             ]
                           },
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -292,7 +292,7 @@
                 ]
               },
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -381,7 +381,7 @@
                     },
                     [
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -403,7 +403,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -475,7 +475,7 @@
                       },
                       "x",
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -519,7 +519,7 @@
                           },
                           "y",
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -550,7 +550,7 @@
                             ]
                           },
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -605,7 +605,7 @@
                 ]
               },
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -708,7 +708,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -802,7 +802,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -890,7 +890,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -1162,7 +1162,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -1256,7 +1256,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -1344,7 +1344,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -1586,7 +1586,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -1651,7 +1651,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -1741,7 +1741,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -1949,7 +1949,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -2014,7 +2014,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -2167,7 +2167,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -2265,7 +2265,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Builtin",
+                                    "tag": "BuiltinOp",
                                     "contents": [
                                       {
                                         "tag": "Provenance",
@@ -2330,7 +2330,7 @@
                                 ]
                               },
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -2444,7 +2444,7 @@
                       },
                       [
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -2547,7 +2547,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -2616,7 +2616,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -2731,7 +2731,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -2843,7 +2843,7 @@
                         ]
                       },
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -3066,7 +3066,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -3156,7 +3156,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -3221,7 +3221,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -3445,7 +3445,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -3535,7 +3535,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -3653,7 +3653,7 @@
                                         ]
                                       },
                                       {
-                                        "tag": "Builtin",
+                                        "tag": "BuiltinOp",
                                         "contents": [
                                           {
                                             "tag": "Provenance",
@@ -3731,7 +3731,7 @@
                                           ]
                                         },
                                         {
-                                          "tag": "Builtin",
+                                          "tag": "BuiltinOp",
                                           "contents": [
                                             {
                                               "tag": "Provenance",
@@ -3794,7 +3794,7 @@
                                           ]
                                         },
                                         {
-                                          "tag": "Builtin",
+                                          "tag": "BuiltinOp",
                                           "contents": [
                                             {
                                               "tag": "Provenance",
@@ -3911,7 +3911,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -4001,7 +4001,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -4066,7 +4066,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -4353,7 +4353,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -4443,7 +4443,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -4508,7 +4508,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -4795,7 +4795,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -4885,7 +4885,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -4938,7 +4938,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -4996,7 +4996,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -5086,7 +5086,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -5436,7 +5436,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -5526,7 +5526,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -5579,7 +5579,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -5637,7 +5637,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -5727,7 +5727,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -6102,7 +6102,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -6140,7 +6140,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -6161,7 +6161,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -6242,7 +6242,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -6280,7 +6280,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -6394,7 +6394,7 @@
                                       ]
                                     },
                                     {
-                                      "tag": "Builtin",
+                                      "tag": "BuiltinOp",
                                       "contents": [
                                         {
                                           "tag": "Provenance",
@@ -6565,7 +6565,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -6603,7 +6603,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -6624,7 +6624,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -6705,7 +6705,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -6743,7 +6743,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -6857,7 +6857,7 @@
                                       ]
                                     },
                                     {
-                                      "tag": "Builtin",
+                                      "tag": "BuiltinOp",
                                       "contents": [
                                         {
                                           "tag": "Provenance",
@@ -7045,7 +7045,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -7063,7 +7063,7 @@
                         },
                         [
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -7183,7 +7183,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -7201,7 +7201,7 @@
                         },
                         [
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -7235,7 +7235,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -7279,7 +7279,7 @@
                               },
                               "d",
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -7352,7 +7352,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Builtin",
+                                    "tag": "BuiltinOp",
                                     "contents": [
                                       {
                                         "tag": "Provenance",
@@ -7496,7 +7496,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -7561,7 +7561,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -7753,7 +7753,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -7872,7 +7872,7 @@
                                 ]
                               },
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -7922,7 +7922,7 @@
                             ]
                           },
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -7977,7 +7977,7 @@
                 ]
               },
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -8135,7 +8135,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -8185,7 +8185,7 @@
                       ]
                     },
                     {
-                      "tag": "Builtin",
+                      "tag": "BuiltinOp",
                       "contents": [
                         {
                           "tag": "Provenance",
@@ -8323,7 +8323,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -8421,7 +8421,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Builtin",
+                                    "tag": "BuiltinOp",
                                     "contents": [
                                       {
                                         "tag": "Provenance",
@@ -8471,7 +8471,7 @@
                                 ]
                               },
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -8557,7 +8557,7 @@
                     ]
                   },
                   {
-                    "tag": "Builtin",
+                    "tag": "BuiltinOp",
                     "contents": [
                       {
                         "tag": "Provenance",
@@ -8606,7 +8606,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -8624,7 +8624,7 @@
             },
             [
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -8641,7 +8641,7 @@
                 ]
               },
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -8690,7 +8690,7 @@
             },
             [
               {
-                "tag": "Builtin",
+                "tag": "BuiltinOp",
                 "contents": [
                   {
                     "tag": "Provenance",
@@ -8788,7 +8788,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -8806,7 +8806,7 @@
                             },
                             [
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -8823,7 +8823,7 @@
                                 ]
                               },
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -8858,7 +8858,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -8876,7 +8876,7 @@
                         },
                         [
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -8893,7 +8893,7 @@
                             ]
                           },
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -8918,7 +8918,7 @@
               ]
             },
             {
-              "tag": "Builtin",
+              "tag": "BuiltinOp",
               "contents": [
                 {
                   "tag": "Provenance",
@@ -8999,7 +8999,7 @@
                               ]
                             },
                             {
-                              "tag": "Builtin",
+                              "tag": "BuiltinOp",
                               "contents": [
                                 {
                                   "tag": "Provenance",
@@ -9017,7 +9017,7 @@
                             },
                             [
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -9034,7 +9034,7 @@
                                 ]
                               },
                               {
-                                "tag": "Builtin",
+                                "tag": "BuiltinOp",
                                 "contents": [
                                   {
                                     "tag": "Provenance",
@@ -9069,7 +9069,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -9087,7 +9087,7 @@
                         },
                         [
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -9104,7 +9104,7 @@
                             ]
                           },
                           {
-                            "tag": "Builtin",
+                            "tag": "BuiltinOp",
                             "contents": [
                               {
                                 "tag": "Provenance",
@@ -9141,7 +9141,7 @@
                   ]
                 },
                 {
-                  "tag": "Builtin",
+                  "tag": "BuiltinOp",
                   "contents": [
                     {
                       "tag": "Provenance",
@@ -9172,7 +9172,7 @@
                         ]
                       },
                       {
-                        "tag": "Builtin",
+                        "tag": "BuiltinOp",
                         "contents": [
                           {
                             "tag": "Provenance",
@@ -9258,7 +9258,7 @@
                                           ]
                                         },
                                         {
-                                          "tag": "Builtin",
+                                          "tag": "BuiltinOp",
                                           "contents": [
                                             {
                                               "tag": "Provenance",
@@ -9277,7 +9277,7 @@
                                         },
                                         [
                                           {
-                                            "tag": "Builtin",
+                                            "tag": "BuiltinOp",
                                             "contents": [
                                               {
                                                 "tag": "Provenance",
@@ -9307,7 +9307,7 @@
                           ]
                         },
                         {
-                          "tag": "Builtin",
+                          "tag": "BuiltinOp",
                           "contents": [
                             {
                               "tag": "Provenance",
@@ -9328,7 +9328,7 @@
                     ]
                   },
                   {
-                    "tag": "Builtin",
+                    "tag": "BuiltinOp",
                     "contents": [
                       {
                         "tag": "Provenance",

@@ -48,13 +48,13 @@ class DecodeError(Exception):
         telescope_str = " > ".join(
             [f"{_type_name(cls)}.{fld}" for cls, fld in self.telescope]
         )
-        value_str = repr(self.value)
+        value_str = _repr(self.value)
         return "".join(
             [
                 f"Could not decode value of type {found_type_str} as {expected_type_str}",
                 f": {self.reason}." if self.reason else ".",
                 f" ({telescope_str})" if self.telescope else "",
-                f"\n{value_str[:100]}",
+                f"\n{value_str}",
             ]
         )
 
@@ -327,7 +327,7 @@ class LiteralDecoder(Decoder[Any]):
         if value in cls_args:
             return value
         else:
-            reason = f"expected value to be one of {', '.join(_type_name(cls_arg) for cls_arg in cls_args)}"
+            reason = f"expected value to be one of {', '.join(_type_name(cls_arg) for cls_arg in cls_args)}, found {_repr(value)}"
             raise DecodeError(value, cls_origin, reason)
 
 
@@ -418,3 +418,8 @@ def _type_name(cls: Any) -> str:
         return cls.__name__
     else:
         return str(cls)
+
+
+def _repr(value: Any) -> str:
+    value_str = repr(value)
+    return value_str[:100]

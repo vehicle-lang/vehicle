@@ -46,224 +46,224 @@ MISSING: Provenance = Provenance(0, 0)
 
 
 @dataclass(frozen=True, init=False)
-class BuiltinOp(AST):
+class Builtin(AST):
     def __init__(self) -> None:
-        raise TypeError("Cannot instantiate abstract class BuiltinOp")
+        raise TypeError("Cannot instantiate abstract class Builtin")
 
 
 @dataclass(frozen=True)
-class Nil(BuiltinOp):
+class Nil(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Cons(BuiltinOp):
+class Cons(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class LUnit(BuiltinOp):
+class Unit(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class LBool(BuiltinOp):
+class Bool(Builtin):
     value: bool
 
 
 @dataclass(frozen=True)
-class LIndex(BuiltinOp):
+class Index(Builtin):
     value: int
 
 
 @dataclass(frozen=True)
-class LNat(BuiltinOp):
+class Nat(Builtin):
     value: int
 
 
 @dataclass(frozen=True)
-class LInt(BuiltinOp):
+class Int(Builtin):
     value: int
 
 
 @dataclass(frozen=True)
-class LRat(BuiltinOp):
+class Rat(Builtin):
     numerator: int
     denominator: int
 
 
 @dataclass(frozen=True)
-class LVec(BuiltinOp):
+class Vector(Builtin):
     value: int
 
 
 @dataclass(frozen=True)
-class Not(BuiltinOp):
+class Not(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class And(BuiltinOp):
+class And(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Or(BuiltinOp):
+class Or(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Implies(BuiltinOp):
+class Implies(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Forall(BuiltinOp):
+class Forall(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Exists(BuiltinOp):
+class Exists(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class If(BuiltinOp):
+class If(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Neg(BuiltinOp):
+class Neg(Builtin):
     domain: Literal["Int", "Rat"]
 
 
 @dataclass(frozen=True)
-class Add(BuiltinOp):
+class Add(Builtin):
     domain: Literal["Nat", "Int", "Rat"]
 
 
 @dataclass(frozen=True)
-class Sub(BuiltinOp):
+class Sub(Builtin):
     domain: Literal["Int", "Rat"]
 
 
 @dataclass(frozen=True)
-class Mul(BuiltinOp):
+class Mul(Builtin):
     domain: Literal["Nat", "Int", "Rat"]
 
 
 @dataclass(frozen=True)
-class Div(BuiltinOp):
+class Div(Builtin):
     domain: Literal["Rat"]
 
 
 @dataclass(frozen=True)
-class Eq(BuiltinOp):
+class Eq(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class Ne(BuiltinOp):
+class Ne(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class Le(BuiltinOp):
+class Le(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class Lt(BuiltinOp):
+class Lt(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class Ge(BuiltinOp):
+class Ge(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class Gt(BuiltinOp):
+class Gt(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
 
 @dataclass(frozen=True)
-class At(BuiltinOp):
+class At(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class ConsVector(BuiltinOp):
+class ConsVector(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Fold(BuiltinOp):
+class Fold(Builtin):
     domain: Literal["List", "Vector"]
 
 
 @dataclass(frozen=True)
-class Indices(BuiltinOp):
+class Indices(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Min(BuiltinOp):
+class Min(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Max(BuiltinOp):
+class Max(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Power(BuiltinOp):
+class Power(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Indicator(BuiltinOp):
+class Indicator(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Unit(BuiltinOp):
+class UnitType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Bool(BuiltinOp):
+class BoolType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Index(BuiltinOp):
+class IndexType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Nat(BuiltinOp):
+class NatType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Int(BuiltinOp):
+class IntType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Rat(BuiltinOp):
+class RatType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class List(BuiltinOp):
+class ListType(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Vector(BuiltinOp):
+class VectorType(Builtin):
     pass
 
 
@@ -306,9 +306,9 @@ class Pi(Expression):
 
 
 @dataclass(frozen=True)
-class Builtin(Expression):
+class BuiltinOp(Expression):
     provenance: Provenance
-    builtin: BuiltinOp
+    builtin: Builtin
 
 
 @dataclass(frozen=True)

@@ -56,7 +56,7 @@ data JExpr
   = Universe Provenance Int
   | App Provenance JExpr [JExpr]
   | Pi Provenance JBinder JExpr
-  | Builtin Provenance JBuiltin
+  | BuiltinOp Provenance JBuiltin
   | BoundVar Provenance Name
   | FreeVar Provenance Name
   | Let Provenance JExpr JBinder JExpr
@@ -69,13 +69,13 @@ data JBinder = Binder Provenance (Maybe Name) JExpr
 data JBuiltin
   = Nil
   | Cons
-  | LUnit
-  | LBool Bool
-  | LIndex Int
-  | LNat Int
-  | LInt Int
-  | LRat Int Int
-  | LVec Int
+  | Unit
+  | Bool Bool
+  | Index Int
+  | Nat Int
+  | Int Int
+  | Rat Int Int
+  | Vector Int
   | Not
   | And
   | Or
@@ -98,14 +98,14 @@ data JBuiltin
   | ConsVector
   | Fold V.FoldDomain
   | Indices
-  | Unit
-  | Bool
-  | Index
-  | Nat
-  | Int
-  | Rat
-  | List
-  | Vector
+  | UnitType
+  | BoolType
+  | IndexType
+  | NatType
+  | IntType
+  | RatType
+  | ListType
+  | VectorType
   | Min
   | Max
   | Power
@@ -125,16 +125,16 @@ instance ToJBuiltin BuiltinConstructor where
   toJBuiltin = \case
     V.Nil -> Nil
     V.Cons -> Cons
-    V.LUnit -> LUnit
-    V.LBool b -> LBool b
-    V.LIndex i -> LIndex i
-    V.LNat n -> LNat n
-    V.LInt i -> LInt i
+    V.LUnit -> Unit
+    V.LBool b -> Bool b
+    V.LIndex i -> Index i
+    V.LNat n -> Nat n
+    V.LInt i -> Int i
     V.LRat r -> toJBuiltin r
-    V.LVec n -> LVec n
+    V.LVec n -> Vector n
 
 instance ToJBuiltin Rational where
-  toJBuiltin r = LRat (toInt $ numerator r) (toInt $ denominator r)
+  toJBuiltin r = Rat (toInt $ numerator r) (toInt $ denominator r)
     where
       toInt :: Integer -> Int
       toInt x
@@ -171,14 +171,14 @@ instance ToJBuiltin BuiltinFunction where
 
 instance ToJBuiltin BuiltinType where
   toJBuiltin = \case
-    V.Unit -> Unit
-    V.Bool -> Bool
-    V.Index -> Index
-    V.Nat -> Nat
-    V.Int -> Int
-    V.Rat -> Rat
-    V.List -> List
-    V.Vector -> Vector
+    V.Unit -> UnitType
+    V.Bool -> BoolType
+    V.Index -> IndexType
+    V.Nat -> NatType
+    V.Int -> IntType
+    V.Rat -> RatType
+    V.List -> ListType
+    V.Vector -> VectorType
 
 instance ToJBuiltin StandardBuiltin where
   toJBuiltin = \case
@@ -238,7 +238,7 @@ instance ToJSON Provenance where
       ]
 
 instance ToJSON V.EqualityDomain where
-  toJSON = genericToJSON $ stripConstructorNameOptions "Equals"
+  toJSON = genericToJSON $ stripConstructorNameOptions "Eq"
 
 instance ToJSON V.OrderDomain where
   toJSON = genericToJSON $ stripConstructorNameOptions "Order"
@@ -286,7 +286,7 @@ toJExpr = \case
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann {} -> resolutionError currentPass "Ann"
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> return $ Builtin p $ toJBuiltin b
+  V.Builtin p b -> return $ BuiltinOp p $ toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
