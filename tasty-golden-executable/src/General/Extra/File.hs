@@ -1,35 +1,26 @@
-module Vehicle.Test.Golden.Extra where
+module General.Extra.File where
 
-import Control.Exception (IOException, try)
-import Control.Monad (filterM, when)
+-- import Codec.Text.Detect (detectEncodingName)
+import Control.Exception (IOException, throwIO, try)
+import Control.Monad (filterM, forM, when)
+-- import Data.ByteString.Lazy qualified as Lazy (ByteString)
 import Data.DList (DList)
 import Data.DList qualified as DList
-import Data.HashSet qualified as HashSet
-import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import System.Directory
-  ( createDirectoryIfMissing,
+  ( copyFile,
+    createDirectory,
+    createDirectoryIfMissing,
     doesDirectoryExist,
     doesFileExist,
+    doesPathExist,
+    getDirectoryContents,
     listDirectory,
     removeFile,
   )
 import System.FilePath (takeDirectory, (</>))
 import System.IO (IOMode (ReadMode), withFile)
-import Test.Tasty (TestTree, localOption)
-import Test.Tasty.Options (IsOption)
-
--- | Existential type of test options.
-data SomeOption = forall v. (IsOption v) => SomeOption v
-
--- | Apply a test option.
-someLocalOption :: SomeOption -> TestTree -> TestTree
-someLocalOption (SomeOption option) = localOption option
-
--- | Apply a list of test options.
-someLocalOptions :: [SomeOption] -> TestTree -> TestTree
-someLocalOptions someOptions testTree = foldr someLocalOption testTree someOptions
 
 -- | Write a file, but only if the contents would change.
 --
@@ -63,13 +54,6 @@ createDirectoryRecursive dir = do
   x <- try @IOException $ doesDirectoryExist dir
   when (x /= Right True) $ createDirectoryIfMissing True dir
 
--- | If the boolean condition holds, return `Just a`.
---   Otherwise, return `Nothing`.
-boolToMaybe :: Bool -> a -> Maybe a
-boolToMaybe just
-  | just = Just
-  | otherwise = const Nothing
-
 -- | List all files in a directory, recursively.
 listFilesRecursive :: FilePath -> IO [FilePath]
 listFilesRecursive directoryPath = do
@@ -88,11 +72,25 @@ listFilesRecursive directoryPath = do
       subdirectoryFiles <- foldMap listFilesRecursiveDList subdirectory
       return $ filePaths <> subdirectoryFiles
 
--- | Find the duplicate elements in a list:
-duplicates :: (Eq a, Hashable a) => [a] -> [a]
-duplicates = duplicatesAcc HashSet.empty
+-- | Copy files, recursively.
+copyRecursively :: FilePath -> FilePath -> IO [FilePath]
+copyRecursively src dst = do
+  whenM (not <$> doesPathExist src) $
+    throwIO (userError $ "test source file '" <> src <> "' does not exist")
+
+  isDirectory <- doesDirectoryExist src
+  if isDirectory
+    then do
+      createDirectory dst
+      content <- getDirectoryContents src
+      let xs = filter (`notElem` ([".", ".."] :: [FilePath])) content
+      copiedFiles <- forM xs $ \name -> do
+        let srcPath = src </> name
+        let dstPath = dst </> name
+        copyRecursively srcPath dstPath
+      return $ concat copiedFiles
+    else do
+      copyFile src dst
+      return [dst]
   where
-    duplicatesAcc _seen [] = []
-    duplicatesAcc seen (x : xs)
-      | x `HashSet.member` seen = x : duplicatesAcc seen xs
-      | otherwise = duplicatesAcc (HashSet.insert x seen) xs
+    whenM s r = s >>= flip when r

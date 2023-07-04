@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Test.Golden.TestSpec.Ignore
+module Test.Tasty.Golden.Executable.TestSpec.Ignore
   ( Ignore (..),
     IgnoreLine,
     IgnoreLineOption (..),
@@ -10,13 +10,11 @@ module Vehicle.Test.Golden.TestSpec.Ignore
     IgnoreFileOption (..),
     ignoreFileOption,
     ignoreFileOptionIngredient,
-    matchFile,
     matchLine,
-    Vehicle.Test.Golden.TestSpec.Ignore.null,
+    Test.Tasty.Golden.Executable.TestSpec.Ignore.null,
   )
 where
 
-import Control.Monad ((<=<))
 import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
@@ -31,25 +29,23 @@ import Data.Aeson.Types
 import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Array qualified as Array ((!))
 import Data.Data (Typeable)
-import Data.Foldable (Foldable (toList))
 import Data.Function (on)
 import Data.Proxy (Proxy (..))
 import Data.String (IsString (..))
-import Data.Tagged (Tagged, untag)
+import Data.Tagged (Tagged)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Options.Applicative (help, long, option, str)
-import Options.Applicative.NonEmpty (some1)
+import General.Extra (splitOn)
+import General.Extra.Aeson (fromStringOrStringArray)
+import General.Extra.Option (SomeOption (..), appendOption)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, IsFilePattern)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Ingredients.Basic (includingOptions)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..))
+import Test.Tasty.Options (IsOption (..), OptionDescription (..), safeRead)
 import Text.Printf (printf)
 import Text.Regex.TDFA qualified as Regex
 import Text.Regex.TDFA.Text (Regex)
 import Text.Regex.TDFA.Text qualified as Regex
-import Vehicle.Test.Golden.Extra (SomeOption (..))
-import Vehicle.Test.Golden.TestSpec.FilePattern (FilePattern)
-import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
 
 -- * Types
 
@@ -84,19 +80,37 @@ instance Show IgnoreLine where
   show :: IgnoreLine -> String
   show IgnoreLine {..} = show ignoreLineRegexText
 
+parseIgnoreLine :: Text -> Either String IgnoreLine
+parseIgnoreLine regexText =
+  IgnoreLine regexText <$> Regex.compile Regex.defaultCompOpt Regex.defaultExecOpt regexText
+
+instance Read IgnoreLine where
+  readsPrec :: Int -> ReadS IgnoreLine
+  readsPrec _prec s = case parseIgnoreLine (Text.pack s) of
+    Left _err -> []
+    Right re -> [(re, "")]
+
 instance IsString IgnoreLine where
   fromString :: String -> IgnoreLine
   fromString s = case parseIgnoreLine (Text.pack s) of
-    Just opt -> opt
-    Nothing -> error $ printf "Cannot regular expression '%s'" s
+    Left err -> error $ printf "Cannot parse regular expression '%s'" err
+    Right re -> re
 
 -- | Type of file patterns for files to ignore in the comparison.
 newtype IgnoreFile = IgnoreFile FilePattern
-  deriving (Show, Eq, Ord, Typeable, FromJSON, ToJSON)
+  deriving (Eq, Ord, Typeable, IsFilePattern, FromJSON, ToJSON)
+
+instance Show IgnoreFile where
+  show :: IgnoreFile -> String
+  show (IgnoreFile pat) = show pat
+
+instance Read IgnoreFile where
+  readsPrec :: Int -> ReadS IgnoreFile
+  readsPrec prec s = [(IgnoreFile value, rest) | (value, rest) <- readsPrec prec s]
 
 instance IsString IgnoreFile where
   fromString :: String -> IgnoreFile
-  fromString s = case parseIgnoreFile s of
+  fromString s = case safeRead s of
     Just opt -> opt
     Nothing -> error $ printf "Cannot file pattern '%s'" s
 
@@ -104,10 +118,6 @@ instance IsString IgnoreFile where
 
 null :: Maybe Ignore -> Bool
 null = maybe True (\Ignore {..} -> Prelude.null ignoreLines && Prelude.null ignoreFiles)
-
--- | Check if a file should be ignored.
-matchFile :: IgnoreFile -> FilePath -> Bool
-matchFile (IgnoreFile filePattern) = FilePattern.match filePattern
 
 -- | Compare two lines using the options set in Ignore.
 matchLine :: Ignore -> Text -> Text -> Bool
@@ -136,7 +146,7 @@ matchLine ignore = (==) `on` strikeOutMatches ignore
 -- * Test options
 
 ignoreLineOption :: [String] -> SomeOption
-ignoreLineOption ls = SomeOption (IgnoreLineOption (fromString <$> ls))
+ignoreLineOption opt = appendOption (IgnoreLineOption (fromString <$> opt))
 
 ignoreLineOptionIngredient :: Ingredient
 ignoreLineOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreLineOption)]
@@ -144,85 +154,87 @@ ignoreLineOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreLine
 newtype IgnoreLineOption = IgnoreLineOption [IgnoreLine]
   deriving (Eq, Ord, Semigroup, Monoid, Typeable)
 
+instance Read IgnoreLineOption where
+  readsPrec :: Int -> ReadS IgnoreLineOption
+  readsPrec _prec s = case traverse safeRead (splitOn (== ',') s) of
+    Just opts -> [(IgnoreLineOption opts, "")]
+    Nothing -> []
+
 instance IsString IgnoreLineOption where
   fromString :: String -> IgnoreLineOption
-  fromString s = case parseIgnoreLineOption (Text.pack s) of
+  fromString s = case safeRead s of
     Just opt -> opt
     Nothing -> error $ printf "Cannot parse ignore line option '%s'" s
 
 instance IsOption IgnoreLineOption where
+  defaultValue :: IgnoreLineOption
   defaultValue = IgnoreLineOption []
-  parseValue = parseIgnoreLineOption . Text.pack
+
+  parseValue :: String -> Maybe IgnoreLineOption
+  parseValue = safeRead
+
+  optionName :: Tagged IgnoreLineOption String
   optionName = return "ignore-lines"
+
   optionHelp :: Tagged IgnoreLineOption String
   optionHelp = return "Ignore produced lines that match the regular expression."
-  optionCLParser =
-    mconcat . toList
-      <$> some1
-        ( option
-            (parseIgnoreLineOption =<< str)
-            ( long (untag (optionName :: Tagged IgnoreLineOption String))
-                <> help (untag (optionHelp :: Tagged IgnoreLineOption String))
-            )
-        )
-
-parseIgnoreLineOption :: (MonadFail m) => Text -> m IgnoreLineOption
-parseIgnoreLineOption = return . IgnoreLineOption . (: []) <=< parseIgnoreLine
-
-parseIgnoreLine :: (MonadFail m) => Text -> m IgnoreLine
-parseIgnoreLine regexText =
-  case Regex.compile Regex.defaultCompOpt Regex.defaultExecOpt regexText of
-    Left compileError -> fail $ "Failed to parse regular expression 'matches': " <> compileError
-    Right regex -> return $ IgnoreLine regexText regex
 
 newtype IgnoreFileOption = IgnoreFileOption [IgnoreFile]
   deriving (Eq, Ord, Semigroup, Monoid, Typeable)
 
 ignoreFileOption :: [String] -> SomeOption
-ignoreFileOption ls = SomeOption (IgnoreFileOption (fromString <$> ls))
+ignoreFileOption ls = appendOption (IgnoreFileOption (fromString <$> ls))
 
 ignoreFileOptionIngredient :: Ingredient
 ignoreFileOptionIngredient = includingOptions [Option (Proxy :: Proxy IgnoreFileOption)]
 
+instance Read IgnoreFileOption where
+  readsPrec :: Int -> ReadS IgnoreFileOption
+  readsPrec _prec s = case traverse safeRead (splitOn (== ',') s) of
+    Just opts -> [(IgnoreFileOption opts, "")]
+    Nothing -> []
+
 instance IsString IgnoreFileOption where
   fromString :: String -> IgnoreFileOption
-  fromString s = case parseIgnoreFileOption s of
+  fromString s = case safeRead s of
     Just opt -> opt
     Nothing -> error $ printf "Cannot parse ignore file option '%s'" s
 
 instance IsOption IgnoreFileOption where
+  defaultValue :: IgnoreFileOption
   defaultValue = IgnoreFileOption []
-  parseValue = parseIgnoreFileOption
+
+  parseValue :: String -> Maybe IgnoreFileOption
+  parseValue = safeRead
+
+  optionName :: Tagged IgnoreFileOption String
   optionName = return "ignore-files"
+
+  optionHelp :: Tagged IgnoreFileOption String
   optionHelp = return "Ignore produced files that match the pattern."
-  optionCLParser =
-    mconcat . toList
-      <$> some1
-        ( option
-            (parseIgnoreFileOption =<< str)
-            ( long (untag (optionName :: Tagged IgnoreFileOption String))
-                <> help (untag (optionHelp :: Tagged IgnoreFileOption String))
-            )
-        )
-
-parseIgnoreFileOption :: (MonadFail m) => String -> m IgnoreFileOption
-parseIgnoreFileOption = return . IgnoreFileOption . (: []) <=< parseIgnoreFile
-
-parseIgnoreFile :: (MonadFail m) => String -> m IgnoreFile
-parseIgnoreFile patternString =
-  either fail (return . IgnoreFile) $ FilePattern.readEither patternString
 
 -- * Conversion to/from JSON
 
 instance FromJSON Ignore where
   parseJSON :: Value -> Parser Ignore
   parseJSON = withObject "ignore" $ \o -> do
+    -- Parse "lines"
+    let parseIgnoreLinesOption = fromStringOrStringArray $ \txt ->
+          case safeRead (Text.unpack txt) of
+            Just opt -> return opt
+            Nothing -> fail $ printf "Could not parse lines: '%s'"
     ignoreLines <-
       o .:? "lines"
-        >>= maybe (return []) (fromStringOrStringArray parseIgnoreLine)
+        >>= maybe (return []) parseIgnoreLinesOption
+
+    -- Parse "files"
+    let parseIgnoreFilesOption = fromStringOrStringArray $ \txt ->
+          case safeRead (Text.unpack txt) of
+            Just opt -> return opt
+            Nothing -> fail $ printf "Could not parse files: '%s'"
     ignoreFiles <-
       o .:? "files"
-        >>= maybe (return []) (fromStringOrStringArray (parseIgnoreFile . Text.unpack))
+        >>= maybe (return []) parseIgnoreFilesOption
     return $ Ignore ignoreLines ignoreFiles
 
 instance ToJSON Ignore where
@@ -244,13 +256,3 @@ instance FromJSON IgnoreLine where
 instance ToJSON IgnoreLine where
   toJSON :: IgnoreLine -> Value
   toJSON IgnoreLine {..} = Value.String ignoreLineRegexText
-
--- | Parse values from either a String or an Array of Strings.
-fromStringOrStringArray :: (Text -> Parser a) -> Value -> Parser [a]
-fromStringOrStringArray textParser = \case
-  Value.String text -> (: []) <$> textParser text
-  Value.Array items -> traverse valueParser (toList items)
-  v -> typeMismatch "String or Array" v
-  where
-    valueParser (Value.String text) = textParser text
-    valueParser v = typeMismatch "String" v

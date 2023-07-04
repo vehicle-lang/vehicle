@@ -1,4 +1,4 @@
-module Vehicle.Test.Golden.TestSpec.FilePattern
+module Test.Tasty.Golden.Executable.TestSpec.FilePattern
   ( IsFilePattern (..),
     FilePattern,
     GoldenFilePattern,
@@ -13,28 +13,19 @@ import Data.Function (on)
 import Data.String (IsString (fromString))
 import Data.Text as Text (unpack)
 import System.FilePath ((<.>))
-import System.FilePath qualified as FilePath (isRelative)
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
 
-class IsFilePattern filePattern where
-  isRelative :: filePattern -> Bool
+class (Read filePattern, Show filePattern) => IsFilePattern filePattern where
   glob :: [filePattern] -> FilePath -> IO [FilePath]
   match :: filePattern -> FilePath -> Bool
-  readEither :: String -> Either String filePattern
 
 instance IsFilePattern FilePattern where
-  isRelative :: FilePattern -> Bool
-  isRelative pat = FilePath.isRelative (filePatternString pat)
-
   glob :: [FilePattern] -> FilePath -> IO [FilePath]
   glob pats dir = concat <$> Glob.globDir (filePattern <$> pats) dir
 
   match :: FilePattern -> FilePath -> Bool
   match pat = Glob.match (filePattern pat)
-
-  readEither :: String -> Either String FilePattern
-  readEither = parseFilePattern
 
 -- | Type of file patterns.
 --
@@ -45,20 +36,6 @@ data FilePattern = FilePattern
     filePattern :: Glob.Pattern
   }
   deriving (Typeable)
-
-instance Eq FilePattern where
-  (==) :: FilePattern -> FilePattern -> Bool
-  (==) = (==) `on` filePatternString
-
-instance Ord FilePattern where
-  compare :: FilePattern -> FilePattern -> Ordering
-  compare = compare `on` filePatternString
-
-instance IsString FilePattern where
-  fromString :: String -> FilePattern
-  fromString str = case parseFilePattern str of
-    Left err -> error err
-    Right fp -> fp
 
 parseFilePattern :: String -> Either String FilePattern
 parseFilePattern patternString = do
@@ -76,9 +53,27 @@ parseFilePattern patternString = do
           errorRecovery = False
         }
 
+instance Eq FilePattern where
+  (==) :: FilePattern -> FilePattern -> Bool
+  (==) = (==) `on` filePatternString
+
+instance Ord FilePattern where
+  compare :: FilePattern -> FilePattern -> Ordering
+  compare = compare `on` filePatternString
+
+instance IsString FilePattern where
+  fromString :: String -> FilePattern
+  fromString = read
+
 instance Show FilePattern where
   show :: FilePattern -> String
-  show FilePattern {..} = show filePatternString
+  show FilePattern {..} = filePatternString
+
+instance Read FilePattern where
+  readsPrec :: Int -> ReadS FilePattern
+  readsPrec _prec str = case parseFilePattern str of
+    Left _err -> []
+    Right pat -> [(pat, "")]
 
 instance FromJSON FilePattern where
   parseJSON :: Value -> Parser FilePattern
@@ -91,19 +86,11 @@ instance ToJSON FilePattern where
   toJSON = toJSON . filePatternString
 
 instance IsFilePattern GoldenFilePattern where
-  isRelative :: GoldenFilePattern -> Bool
-  isRelative pat = FilePath.isRelative (goldenFilePatternString pat)
-
   glob :: [GoldenFilePattern] -> FilePath -> IO [FilePath]
   glob pats = glob (goldenFilePattern <$> pats)
 
   match :: GoldenFilePattern -> FilePath -> Bool
   match pat = match (goldenFilePattern pat)
-
-  readEither :: String -> Either String GoldenFilePattern
-  readEither patternString = do
-    filePattern <- readEither (patternString <.> ".golden")
-    return $ GoldenFilePattern patternString filePattern
 
 data GoldenFilePattern = GoldenFilePattern
   { goldenFilePatternString :: String,
@@ -113,7 +100,13 @@ data GoldenFilePattern = GoldenFilePattern
 
 instance Show GoldenFilePattern where
   show :: GoldenFilePattern -> String
-  show GoldenFilePattern {..} = show goldenFilePatternString
+  show GoldenFilePattern {..} = goldenFilePatternString
+
+instance Read GoldenFilePattern where
+  readsPrec :: Int -> ReadS GoldenFilePattern
+  readsPrec _prec str = case parseFilePattern (str <.> ".golden") of
+    Left _err -> []
+    Right pat -> [(GoldenFilePattern str pat, "")]
 
 instance FromJSON GoldenFilePattern where
   parseJSON :: Value -> Parser GoldenFilePattern

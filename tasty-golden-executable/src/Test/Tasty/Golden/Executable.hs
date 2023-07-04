@@ -1,17 +1,29 @@
-module Vehicle.Test.Golden
-  ( makeTestTreesFromFile,
+module Test.Tasty.Golden.Executable
+  ( TestSpec (..),
+    TestSpecs (..),
+    readTestSpecsFile,
+    writeTestSpecsFile,
+    GoldenFilePattern,
+    addOrReplaceTestSpec,
+    makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
     SomeOption (..),
+    Ignore (..),
+    IgnoreFile,
+    IgnoreFileOption (..),
     ignoreFileOption,
     ignoreFileOptionIngredient,
+    IgnoreLine,
+    IgnoreLineOption (..),
     ignoreLineOption,
     ignoreLineOptionIngredient,
+    External,
+    ExternalOption,
     externalOptionIngredient,
   )
 where
 
-import Control.Exception (throw)
-import Control.Monad (filterM, forM, when)
+import Control.Monad (filterM, forM)
 import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as HashMap
@@ -21,13 +33,11 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
+import General.Extra.File (copyRecursively, createDirectoryRecursive, listFilesRecursive)
+import General.Extra.Option (SomeOption (..), someLocalOptions)
 import System.Directory
-  ( copyFile,
-    createDirectory,
-    doesDirectoryExist,
+  ( doesDirectoryExist,
     doesFileExist,
-    doesPathExist,
-    getDirectoryContents,
     listDirectory,
   )
 import System.FilePath
@@ -40,17 +50,11 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName, TestTree, askOption, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
-import Text.Printf (printf)
-import Vehicle.Test.Golden.Extra
-  ( SomeOption (..),
-    createDirectoryRecursive,
-    listFilesRecursive,
-    someLocalOptions,
-  )
-import Vehicle.Test.Golden.TestSpec
+import Test.Tasty.Golden.Executable.TestSpec
   ( TestOutput (..),
-    TestSpec,
-    TestSpecs (TestSpecs),
+    TestSpec (..),
+    TestSpecs (..),
+    addOrReplaceTestSpec,
     readGoldenFiles,
     readTestSpecsFile,
     testSpecExternal,
@@ -62,10 +66,13 @@ import Vehicle.Test.Golden.TestSpec
     testSpecOptions,
     testSpecRun,
     writeGoldenFiles,
+    writeTestSpecsFile,
   )
-import Vehicle.Test.Golden.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
-import Vehicle.Test.Golden.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
-import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
+import Test.Tasty.Golden.Executable.TestSpec.External (External, ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern, IsFilePattern (..))
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
+import Text.Printf (printf)
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: [SomeOption] -> TestName -> FilePath -> IO TestTree
@@ -184,32 +191,10 @@ toTestTreeHelper testSpecFile testSpec = testTree
 
             return TestOutput {..}
 
-copyRecursively :: FilePath -> FilePath -> IO [FilePath]
-copyRecursively src dst = do
-  whenM (not <$> doesPathExist src) $
-    throw (userError $ "test source file '" <> src <> "' does not exist")
-
-  isDirectory <- doesDirectoryExist src
-  if isDirectory
-    then do
-      createDirectory dst
-      content <- getDirectoryContents src
-      let xs = filter (`notElem` ([".", ".."] :: [FilePath])) content
-      copiedFiles <- forM xs $ \name -> do
-        let srcPath = src </> name
-        let dstPath = dst </> name
-        copyRecursively srcPath dstPath
-      return $ concat copiedFiles
-    else do
-      copyFile src dst
-      return [dst]
-  where
-    whenM s r = s >>= flip when r
-
 getTestOutputFiles :: [IgnoreFile] -> Set FilePath -> FilePath -> IO [(FilePath, Text)]
 getTestOutputFiles ignoreFilePatterns copiedFiles tempDirectory = do
   absoluteFilePaths <- listFilesRecursive tempDirectory
-  let shouldIgnore filePath = any (`Ignore.matchFile` filePath) ignoreFilePatterns
+  let shouldIgnore filePath = any (`match` filePath) ignoreFilePatterns
   let outputFilePaths =
         absoluteFilePaths
           <&> makeRelative tempDirectory

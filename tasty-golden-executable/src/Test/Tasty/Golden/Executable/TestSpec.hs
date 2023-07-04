@@ -1,4 +1,4 @@
-module Vehicle.Test.Golden.TestSpec
+module Test.Tasty.Golden.Executable.TestSpec
   ( TestSpecs (..),
     TestSpec (..),
     TestOutput (..),
@@ -59,6 +59,9 @@ import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
 import GHC.Stack.Types (HasCallStack)
+import General.Extra (boolToMaybe, duplicates)
+import General.Extra.File (writeFileChanged)
+import General.Extra.Option (SomeOption (..))
 import System.Directory (doesFileExist)
 import System.FilePath
   ( dropExtension,
@@ -68,19 +71,13 @@ import System.FilePath
     (</>),
   )
 import Test.Tasty (TestName, Timeout (Timeout))
+import Test.Tasty.Golden.Executable.TestSpec.External (External)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern qualified as FilePattern
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
 import Test.Tasty.Options (IsOption (parseValue))
 import Text.Printf (printf)
-import Vehicle.Test.Golden.Extra
-  ( SomeOption (SomeOption),
-    boolToMaybe,
-    duplicates,
-    writeFileChanged,
-  )
-import Vehicle.Test.Golden.TestSpec.External (External)
-import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
-import Vehicle.Test.Golden.TestSpec.FilePattern qualified as FilePattern
-import Vehicle.Test.Golden.TestSpec.Ignore (Ignore)
-import Vehicle.Test.Golden.TestSpec.Ignore qualified as Ignore
 
 newtype TestSpecs = TestSpecs (NonEmpty TestSpec)
 
@@ -127,7 +124,7 @@ data TestOutput = TestOutput
 
 testSpecOptions :: TestSpec -> [SomeOption]
 testSpecOptions testSpec =
-  catMaybes [SomeOption <$> testSpecTimeout testSpec]
+  catMaybes [LocalOption <$> testSpecTimeout testSpec]
 
 -- Helper functions for accessing fields:
 

@@ -14,6 +14,7 @@ import: cabal.project.config
 packages:
   vendor/vehicle/vehicle.cabal
   vendor/vehicle-syntax/vehicle-syntax.cabal
+  vendor/tasty-golden-executable/tasty-golden-executable.cabal
   vehicle-python-binding.cabal
 
 constraints: vehicle +release-build
