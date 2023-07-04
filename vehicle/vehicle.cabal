@@ -324,5 +324,13 @@ executable new-golden-test
   main-is:       app/NewTest.hs
   build-depends:
     , base
+    , containers
+    , directory
+    , filepath
+    , optparse-applicative
+    , tagged
+    , tasty
+    , text
+    , unordered-containers
     , tasty-golden-executable
     , vehicle
