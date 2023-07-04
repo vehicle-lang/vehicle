@@ -8,10 +8,17 @@ module Test.Tasty.Golden.Executable
     makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
     SomeOption (..),
+    Ignore (..),
+    IgnoreFile,
+    IgnoreFileOption (..),
     ignoreFileOption,
     ignoreFileOptionIngredient,
+    IgnoreLine,
+    IgnoreLineOption (..),
     ignoreLineOption,
     ignoreLineOptionIngredient,
+    External,
+    ExternalOption,
     externalOptionIngredient,
   )
 where
@@ -61,7 +68,7 @@ import Test.Tasty.Golden.Executable.TestSpec
     writeGoldenFiles,
     writeTestSpecsFile,
   )
-import Test.Tasty.Golden.Executable.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
+import Test.Tasty.Golden.Executable.TestSpec.External (External, ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern, IsFilePattern (..))
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
