@@ -6,7 +6,7 @@ module Test.Tasty.Golden.Executable.Runner where
 
 import Control.Exception (Exception, throw)
 import Control.Monad (unless, when)
-import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow)
+import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT)
 import Control.Monad.Trans (MonadTrans (..))
@@ -35,7 +35,7 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern, strikeOut)
-import Test.Tasty.Providers (TestName, testFailed)
+import Test.Tasty.Providers (TestName, testFailed, testPassed)
 import Test.Tasty.Runners (Result)
 import Text.Printf (printf)
 
@@ -149,11 +149,16 @@ handleExitFailure (ExitFailure code) =
       printf "Test terminated with exit code %d" code
 
 -- | Create a temporary directory to execute the test.
-runTestIO :: FilePath -> TestName -> TestIO r -> IO r
+runTestIO :: FilePath -> TestName -> TestIO () -> IO Result
 runTestIO testDirectory testName (TestT testIO) = do
-  withSystemTempDirectory testName $ \tempDirectory -> do
-    createDirectoryRecursive tempDirectory
-    evalStateT testIO TestEnvironment {testNeeds = [], ..}
+  handle handleNeededFilesError $
+    handle handleGoldenFilesError $
+      handle handleProducedFilesError $
+        handle handleExitFailure $
+          withSystemTempDirectory testName $ \tempDirectory -> do
+            createDirectoryRecursive tempDirectory
+            evalStateT testIO TestEnvironment {testNeeds = [], ..}
+            return $ testPassed mempty
 
 -- | Copy the needed files over to the temporary directory.
 copyTestNeeds :: [FilePath] -> TestIO ()

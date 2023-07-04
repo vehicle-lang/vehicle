@@ -20,6 +20,7 @@ import Data.Aeson.Types
     (.:?),
   )
 import Data.Maybe (catMaybes, fromMaybe)
+import Data.Tagged (Tagged (..))
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
@@ -28,8 +29,9 @@ import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
-import Test.Tasty.Options (OptionSet)
-import Test.Tasty.Providers (Result, testPassed)
+import Test.Tasty.Options (OptionDescription, OptionSet)
+import Test.Tasty.Providers (IsTest (..), Result, testPassed)
+import Test.Tasty.Runners (Progress)
 
 data TestSpec = TestSpec
   { -- | Test directory.
@@ -67,31 +69,29 @@ data TestSpecIgnore = TestSpecIgnore
   }
   deriving (Eq, Show)
 
--- | Run a 'TestSpec'.
-run :: TestSpec -> OptionSet -> IO Result
-run TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} options = do
-  -- Create loose equality based on the ignore options
-  let maybeLooseEq
-        | null testSpecIgnoreLines = Nothing
-        | otherwise = Just $ makeLooseEq testSpecIgnoreLines
-  -- Create test environment
-  handle handleNeededFilesError $
-    handle handleGoldenFilesError $
-      handle handleProducedFilesError $
-        handle handleExitFailure $
-          runTestIO testSpecDirectory testSpecName $ do
-            -- Copy needs to test environment
-            copyTestNeeds testSpecNeeds
-            -- Run test command
-            (stdout, stderr) <- runTestRun testSpecRun
-            -- Diff stdout
-            diffStdout maybeLooseEq stdout
-            -- Diff stderr
-            diffStderr maybeLooseEq stderr
-            -- Diff produced files
-            diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
-            -- Return success
-            return $ testPassed ""
+instance IsTest TestSpec where
+  -- \| Run a 'TestSpec'.
+  run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
+  run options TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} _ = do
+    -- Create loose equality based on the ignore options
+    let maybeLooseEq
+          | null testSpecIgnoreLines = Nothing
+          | otherwise = Just $ makeLooseEq testSpecIgnoreLines
+    -- Create test environment
+    runTestIO testSpecDirectory testSpecName $ do
+      -- Copy needs to test environment
+      copyTestNeeds testSpecNeeds
+      -- Run test command
+      (stdout, stderr) <- runTestRun testSpecRun
+      -- Diff stdout
+      diffStdout maybeLooseEq stdout
+      -- Diff stderr
+      diffStderr maybeLooseEq stderr
+      -- Diff produced files
+      diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
+
+  testOptions :: Tagged TestSpec [OptionDescription]
+  testOptions = Tagged []
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
