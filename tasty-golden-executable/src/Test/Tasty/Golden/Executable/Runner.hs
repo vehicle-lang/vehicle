@@ -1,11 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Test.Tasty.Golden.Executable.Runner where
 
 import Control.Exception (Exception, throw)
 import Control.Monad (unless, when)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
+import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT)
 import Control.Monad.Trans (MonadTrans (..))
@@ -13,26 +14,29 @@ import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (for_)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Semigroup qualified as Set
-import Data.Set (Set)
+import Data.List (intercalate)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.IO qualified as LazyIO
 import Data.Traversable (for)
+import General.Extra (boolToMaybe)
 import General.Extra.Diff (isBoth, mapDiff)
 import General.Extra.File (createDirectoryRecursive)
 import System.Directory (copyFile, doesFileExist, listDirectory)
 import System.Exit qualified as ExitCode
-import System.FilePath (isAbsolute, (<.>), (</>))
+import System.FilePath (isAbsolute, isExtensionOf, stripExtension, (<.>), (</>))
+import System.IO (IOMode (..), hFileSize, withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern, strikeOut)
-import Test.Tasty.Providers (TestName)
+import Test.Tasty.Providers (TestName, testFailed)
+import Test.Tasty.Runners (Result)
 import Text.Printf (printf)
 
 data TestEnvironment = TestEnvironment
@@ -44,28 +48,93 @@ data TestEnvironment = TestEnvironment
 
 -- | Monad for running tests in an isolated environment.
 newtype TestT m a = TestT {unTest :: StateT TestEnvironment m a}
-  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
 
 -- | Alias for @'TestT' 'IO' a@.
 type TestIO a = TestT IO a
 
+testEnvironment :: (Monad m) => TestT m TestEnvironment
+testEnvironment = TestT get
+
 -- | Raised when the needed file for a test is not found.
-newtype NeededFilesNotFound = NeededFilesNotFound (NonEmpty FilePath)
+newtype NeededFilesError = NeededFilesError {neededFilesNotFound :: [FilePath]}
   deriving (Show, Semigroup)
 
-instance Exception NeededFilesNotFound
+neededFileNotFound :: FilePath -> NeededFilesError
+neededFileNotFound file = NeededFilesError [file]
+
+instance Exception NeededFilesError
+
+handleNeededFilesError :: NeededFilesError -> IO Result
+handleNeededFilesError NeededFilesError {..} =
+  return $
+    testFailed $
+      printf "Could not find needed files: %s" $
+        intercalate ", " (show <$> neededFilesNotFound)
 
 -- | Raised when the golden file for a test is not found.
-newtype GoldenFilesNotFound = GoldenFilesNotFound (NonEmpty FilePattern)
+newtype GoldenFilesError = GoldenFilesError {goldenFilesNotFound :: [FilePattern]}
   deriving (Show, Semigroup)
 
-instance Exception GoldenFilesNotFound
+goldenFileNotFound :: FilePattern -> GoldenFilesError
+goldenFileNotFound filePattern = GoldenFilesError [filePattern]
 
--- | Raised when the test run does not produce a file.
-newtype FilesNotProduced = FilesNotProduced (NonEmpty FilePath)
-  deriving (Show, Semigroup)
+instance Exception GoldenFilesError
 
-instance Exception FilesNotProduced
+handleGoldenFilesError :: GoldenFilesError -> IO Result
+handleGoldenFilesError GoldenFilesError {..} =
+  return $
+    testFailed $
+      printf "Could not find golden files: %s" $
+        intercalate ", " (show <$> goldenFilesNotFound)
+
+-- | Raised when the test run does not produce an expected file or does not expect a produced file,
+--   or when the produced file differs from the expected file.
+data ProducedFilesError = ProducedFilesError
+  { expectedFilesNotProduced :: [FilePath],
+    producedFilesNotExpected :: [FilePath],
+    producedAndExpectedDiffs :: Map FilePath Diff
+  }
+  deriving (Show)
+
+instance Semigroup ProducedFilesError where
+  (<>) :: ProducedFilesError -> ProducedFilesError -> ProducedFilesError
+  e1 <> e2 =
+    ProducedFilesError
+      { expectedFilesNotProduced = expectedFilesNotProduced e1 <> expectedFilesNotProduced e2,
+        producedFilesNotExpected = producedFilesNotExpected e1 <> producedFilesNotExpected e2,
+        producedAndExpectedDiffs = producedAndExpectedDiffs e1 <> producedAndExpectedDiffs e2
+      }
+
+expectedFileNotProduced :: FilePath -> ProducedFilesError
+expectedFileNotProduced file = ProducedFilesError [file] [] Map.empty
+
+producedFileNotExpected :: FilePath -> ProducedFilesError
+producedFileNotExpected file = ProducedFilesError [] [file] Map.empty
+
+producedAndExpectedDiffer :: FilePath -> Diff -> ProducedFilesError
+producedAndExpectedDiffer file diff = ProducedFilesError [] [] (Map.singleton file diff)
+
+instance Exception ProducedFilesError
+
+handleProducedFilesError :: ProducedFilesError -> IO Result
+handleProducedFilesError ProducedFilesError {..} = do
+  return . testFailed . unlines . catMaybes $
+    [ boolToMaybe (null expectedFilesNotProduced) $
+        printf "Did not produce expected files: %s" $
+          intercalate ", " (show <$> expectedFilesNotProduced),
+      boolToMaybe (null expectedFilesNotProduced) $
+        printf "Did not expect produced files: %s" $
+          intercalate ", " (show <$> producedFilesNotExpected),
+      boolToMaybe (null producedAndExpectedDiffs) $
+        unlines . flip foldMap (Map.assocs producedAndExpectedDiffs) $ \(file, diff) ->
+          return $ printf "Expected and produced files differ for %s:\n%s" file (show diff)
+    ]
+
+data Diff = Diff {prettyDiff :: String} | NoDiff
+  deriving (Show)
+
+instance Exception Diff
 
 -- | Raised when the test run exits with a non-zero exit code.
 newtype ExitFailure = ExitFailure Int
@@ -73,11 +142,11 @@ newtype ExitFailure = ExitFailure Int
 
 instance Exception ExitFailure
 
--- | Raise when an output differs from its corresponding golden file.
-newtype Diff = Diff String
-  deriving (Show)
-
-instance Exception Diff
+handleExitFailure :: ExitFailure -> IO Result
+handleExitFailure (ExitFailure code) =
+  return $
+    testFailed $
+      printf "Test terminated with exit code %d" code
 
 -- | Create a temporary directory to execute the test.
 runTestIO :: FilePath -> TestName -> TestIO r -> IO r
@@ -106,7 +175,7 @@ copyTestNeeds neededFiles = TestT $ do
         if
           | neededFileExists -> lift $ copyFile neededFileSource neededFileTarget
           | neededFileExistsAsGolden -> lift $ copyFile neededFileSourceAsGolden neededFileTarget
-          | otherwise -> tell $ Just $ NeededFilesNotFound (NonEmpty.singleton $ testDirectory </> neededFile)
+          | otherwise -> tell $ Just $ neededFileNotFound neededFile
     -- If errors were raised, throw them.
     maybe (return ()) throw maybeError
 
@@ -129,7 +198,7 @@ runTestRun cmd = TestT $ do
 diffStdout :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> TestIO ()
 diffStdout maybeLooseEq actual = do
   golden <- readGoldenStdout
-  lift $ diffText maybeLooseEq golden actual
+  lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual
 
 -- | Read the golden file for the standard output.
 readGoldenStdout :: TestIO Lazy.Text
@@ -148,7 +217,7 @@ readGoldenStdout = TestT $ do
 diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> TestIO ()
 diffStderr maybeLooseEq actual = do
   golden <- readGoldenStderr
-  lift $ diffText maybeLooseEq golden actual
+  lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual
 
 -- | Read the golden file for the standard error.
 readGoldenStderr :: TestIO Lazy.Text
@@ -164,30 +233,35 @@ readGoldenStderr = TestT $ do
 -- | Find the files produced by the test.
 diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> [FilePattern] -> TestIO ()
 diffTestProduced maybeLooseEq testProduces testIgnores = do
+  TestEnvironment {testDirectory, tempDirectory} <- testEnvironment
+  let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
+  -- Find the golden and actual files:
   goldenFiles <- findTestProducesGolden testProduces
   actualFiles <- findTestProducesActual testIgnores
-  -- Compute sets of files:
-  let goldenFileSet = Set.fromList goldenFiles
-  let actualFileSet = Set.fromList goldenFiles
-  -- Compute missing files:
-  let missingFileSet = Set.difference goldenFileSet actualFileSet
-  let extraFileSet = Set.difference actualFileSet goldenFileSet
-  -- let missingOutputFileErrors =
-  --       [ printf "Missing output file %s" missingFile
-  --         | missingFile <- sort $ HashSet.toList $ HashSet.difference goldenFiles actualFiles
-  --       ]
-  -- Compute extraneous files:
-  -- let extraOutputFileErrors =
-  --       [ printf "Extraneous output file %s" extraFile
-  --         | extraFile <- sort $ HashSet.toList $ HashSet.difference actualFiles goldenFiles
-  --       ]
-  undefined
+  maybeError <- execWriterT $ do
+    -- Assert that all golden files end with .golden:
+    for_ goldenFiles $ \goldenFile ->
+      unless ("golden" `isExtensionOf` goldenFile) $
+        fail $
+          printf "found golden file without .golden extension: %s" goldenFile
+    -- Compute sets of files:
+    let goldenFileSet = Set.fromList (mapMaybe (stripExtension "golden") goldenFiles)
+    let actualFileSet = Set.fromList actualFiles
+    -- Test for files which were expected but not produced:
+    let expectedFilesNotProduced = Set.toAscList $ Set.difference goldenFileSet actualFileSet
+    for_ expectedFilesNotProduced $ tell . Just . expectedFileNotProduced
+    -- Test for files which were produced but not expected:
+    let producedFilesNotExpected = Set.toAscList $ Set.difference goldenFileSet actualFileSet
+    for_ producedFilesNotExpected $ tell . Just . producedFileNotExpected
+    -- Diff the files which were produced and expected:
+    for_ (Set.toAscList $ Set.intersection goldenFileSet actualFileSet) $ \file -> do
+      let goldenFile = testDirectory </> file <.> "golden"
+      let actualFile = tempDirectory </> file
+      catch (lift $ lift $ diffFile shortCircuitLooseEq goldenFile actualFile) $ \diff ->
+        tell $ Just $ producedAndExpectedDiffer actualFile diff
 
--- TestT $ do
-
--- let findGoldenFilesFor pat = glob testDirectory (pat <.> "golden")
--- goldenFiles <- traverse (\pat -> lift $ glob testDirectory (pat <.> "golden")) pats
--- _
+  -- If errors were raised, throw them.
+  maybe (return ()) throw maybeError
 
 -- | Find the actual files produced by the test command.
 findTestProducesActual :: [FilePattern] -> TestIO [FilePath]
@@ -222,7 +296,7 @@ findTestProducesGolden testProduces = TestT $ do
             when (null filesForPattern) $
               tell $
                 Just $
-                  GoldenFilesNotFound (NonEmpty.singleton testProduce)
+                  goldenFileNotFound testProduce
             -- Assert that the file paths are relative.
             for_ filesForPattern $ \file ->
               when (isAbsolute file) $
@@ -233,24 +307,34 @@ findTestProducesGolden testProduces = TestT $ do
     -- If errors were raised, throw them.
     maybe (return filesByPattern) throw maybeError
 
+fileSizeCutOff :: Integer
+fileSizeCutOff = 1000
+
 -- | Compare two files.
 --
 -- NOTE: The loose equality must extend equality.
-diffFile :: Maybe (Text -> Text -> Bool) -> FilePath -> FilePath -> IO ()
-diffFile maybeLooseEq golden actual = undefined
+diffFile :: (Text -> Text -> Bool) -> FilePath -> FilePath -> IO ()
+diffFile eq golden actual = do
+  withFile golden ReadMode $ \goldenHandle -> do
+    goldenSize <- hFileSize goldenHandle
+    goldenContents <- LazyIO.hGetContents goldenHandle
+    withFile actual ReadMode $ \actualHandle -> do
+      actualSize <- hFileSize actualHandle
+      actualContents <- LazyIO.hGetContents actualHandle
+      if max goldenSize actualSize < fileSizeCutOff
+        then diffText eq goldenContents actualContents
+        else when (goldenContents /= actualContents) $ throw NoDiff
 
 -- | Compare two texts.
 --
 -- NOTE: The loose equality must extend equality.
-diffText :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> Lazy.Text -> IO ()
-diffText maybeLooseEq golden actual = do
+diffText :: (Text -> Text -> Bool) -> Lazy.Text -> Lazy.Text -> IO ()
+diffText eq golden actual = do
   -- Lazily split the golden and actual texts into lines
   let goldenLines = Lazy.toStrict <$> Lazy.lines golden
   let actualLines = Lazy.toStrict <$> Lazy.lines actual
-  -- Create an equality operation which short circuits the loose equality
-  let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   -- Compute the diff
-  let groupedDiff = getGroupedDiffBy shortCircuitLooseEq goldenLines actualLines
+  let groupedDiff = getGroupedDiffBy eq goldenLines actualLines
   -- If both files are the same, the diff should be just "Both":
   unless (all isBoth groupedDiff) $
     throw $

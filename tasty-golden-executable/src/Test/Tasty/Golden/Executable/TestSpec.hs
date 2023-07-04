@@ -6,6 +6,7 @@ module Test.Tasty.Golden.Executable.TestSpec
 where
 
 import Control.Exception (Exception, throw)
+import Control.Monad.Catch (handle)
 import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
@@ -22,13 +23,13 @@ import Data.Maybe (catMaybes, fromMaybe)
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
-import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
+import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, handleExitFailure, handleGoldenFilesError, handleNeededFilesError, handleProducedFilesError, makeLooseEq, runTestIO, runTestRun)
 import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
 import Test.Tasty.Options (OptionSet)
-import Test.Tasty.Providers (Result)
+import Test.Tasty.Providers (Result, testPassed)
 
 data TestSpec = TestSpec
   { -- | Test directory.
@@ -74,20 +75,23 @@ run TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} options = do
         | null testSpecIgnoreLines = Nothing
         | otherwise = Just $ makeLooseEq testSpecIgnoreLines
   -- Create test environment
-  runTestIO testSpecDirectory testSpecName $ do
-    -- Copy needs to test environment
-    copyTestNeeds testSpecNeeds
-    -- Run test command
-    (stdout, stderr) <- runTestRun testSpecRun
-    -- Diff stdout
-    diffStdout maybeLooseEq stdout
-    -- Diff stderr
-    diffStderr maybeLooseEq stderr
-    -- Diff produced files
-    diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
-    -- + Find golden files for produced files
-    -- + Diff produced files and golden files
-    undefined
+  handle handleNeededFilesError $
+    handle handleGoldenFilesError $
+      handle handleProducedFilesError $
+        handle handleExitFailure $
+          runTestIO testSpecDirectory testSpecName $ do
+            -- Copy needs to test environment
+            copyTestNeeds testSpecNeeds
+            -- Run test command
+            (stdout, stderr) <- runTestRun testSpecRun
+            -- Diff stdout
+            diffStdout maybeLooseEq stdout
+            -- Diff stderr
+            diffStderr maybeLooseEq stderr
+            -- Diff produced files
+            diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
+            -- Return success
+            return $ testPassed ""
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
