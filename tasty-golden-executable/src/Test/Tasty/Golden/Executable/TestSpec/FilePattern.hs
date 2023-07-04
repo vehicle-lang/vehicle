@@ -2,7 +2,7 @@ module Test.Tasty.Golden.Executable.TestSpec.FilePattern
   ( FilePattern,
     glob,
     match,
-    (<.>),
+    addExtension,
   )
 where
 
@@ -15,7 +15,7 @@ import Data.Function (on)
 import Data.Sequence (Seq, (|>))
 import Data.Sequence qualified as Seq
 import Data.Text qualified as Text (unpack)
-import System.FilePath (addExtension)
+import System.FilePath qualified as FilePath (addExtension)
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
 
@@ -39,10 +39,10 @@ match :: FilePattern -> FilePath -> Bool
 match pat = Glob.match (pattern pat)
 
 -- | Add an extension to a file pattern.
-(<.>) :: FilePattern -> FilePath -> FilePattern
-FilePattern patternString exts _ <.> ext =
+addExtension :: FilePattern -> FilePath -> FilePattern
+addExtension (FilePattern patternString exts _) ext =
   FilePattern patternString (exts |> ext) $
-    Glob.compileWith globCompOptions (addExtension patternString ext)
+    Glob.compileWith globCompOptions (FilePath.addExtension patternString ext)
 
 -- | Parse a file pattern.
 readEither :: String -> Either String FilePattern
@@ -73,7 +73,7 @@ instance Ord FilePattern where
 instance Show FilePattern where
   show :: FilePattern -> String
   show FilePattern {..} =
-    foldr (flip addExtension) patternString patternExtensions
+    foldr (flip FilePath.addExtension) patternString patternExtensions
 
 instance Read FilePattern where
   readsPrec :: Int -> ReadS FilePattern

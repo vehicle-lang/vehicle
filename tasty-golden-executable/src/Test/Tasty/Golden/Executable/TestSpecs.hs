@@ -21,6 +21,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
+import System.FilePath (takeDirectory)
 import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
 import Test.Tasty.Providers (TestName)
 import Text.Printf (printf)
@@ -29,7 +30,9 @@ newtype TestSpecs = TestSpecs {unTestSpecs :: NonEmpty TestSpec}
 
 -- | Read 'TestSpecs' from a file.
 readTestSpecsFile :: FilePath -> IO TestSpecs
-readTestSpecsFile testSpecFile =
+readTestSpecsFile testSpecFile = do
+  let testDirectory = takeDirectory testSpecFile
+  let addTestSpecDirectory testSpec = testSpec {testSpecDirectory = testDirectory}
   eitherDecodeFileStrict' testSpecFile >>= \case
     Left parseError -> fail $ printf "Could not parse %s: %s" testSpecFile parseError
     Right testSpecs -> do
@@ -37,7 +40,7 @@ readTestSpecsFile testSpecFile =
       unless (null duplicates) $
         fail $
           printf "Duplicate names in %s: %s" testSpecFile (intercalate ", " duplicates)
-      return testSpecs
+      return $ TestSpecs (addTestSpecDirectory <$> unTestSpecs testSpecs)
 
 -- | Find all duplicate test names in a 'TestSpecs'.
 duplicateTestNames :: TestSpecs -> [TestName]

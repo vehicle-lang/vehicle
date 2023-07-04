@@ -5,7 +5,7 @@ module Test.Tasty.Golden.Executable.TestSpec
   )
 where
 
-import Control.Monad (forM, unless)
+import Control.Exception (Exception, throw)
 import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
@@ -21,19 +21,19 @@ import Data.Aeson.Types
 import Data.Maybe (catMaybes, fromMaybe)
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
-import System.Directory (doesFileExist)
-import System.FilePath ((</>))
 import Test.Tasty (TestName)
+import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
 import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
 import Test.Tasty.Options (OptionSet)
 import Test.Tasty.Providers (Result)
-import Text.Printf (printf)
 
 data TestSpec = TestSpec
-  { -- | Test name.
+  { -- | Test directory.
+    testSpecDirectory :: FilePath,
+    -- | Test name.
     --   In a file with multiple test specifications, each name must be unique.
     testSpecName :: TestName,
     -- | Test command to run.
@@ -67,26 +67,27 @@ data TestSpecIgnore = TestSpecIgnore
   deriving (Eq, Show)
 
 -- | Run a 'TestSpec'.
-run :: FilePath -> TestSpec -> OptionSet -> IO Result
-run specTestDirectory TestSpec {..} options = do
-  -- + Find needed files
-  neededPaths <- forM testSpecNeeds $ \neededFile -> do
-    let neededPath = specTestDirectory </> neededFile
-    neededFileExists <- doesFileExist neededPath
-    unless neededFileExists $
-      fail $
-        printf "Missing needed file: %s" neededPath
-    return neededPath
-  -- + Find golden files for stdout and stderr
-  -- + Make temporary directory
-  -- + Copy needed files
-  -- + Exec command
-  -- + Diff stdout and golden file for stdout
-  -- + Diff stderr and golden file for stderr
-  -- + Find produced files
-  -- + Find golden files for produced files
-  -- + Diff produced files and golden files
-  _
+run :: TestSpec -> OptionSet -> IO Result
+run TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} options = do
+  -- Create loose equality based on the ignore options
+  let maybeLooseEq
+        | null testSpecIgnoreLines = Nothing
+        | otherwise = Just $ makeLooseEq testSpecIgnoreLines
+  -- Create test environment
+  runTestIO testSpecDirectory testSpecName $ do
+    -- Copy needs to test environment
+    copyTestNeeds testSpecNeeds
+    -- Run test command
+    (stdout, stderr) <- runTestRun testSpecRun
+    -- Diff stdout
+    diffStdout maybeLooseEq stdout
+    -- Diff stderr
+    diffStderr maybeLooseEq stderr
+    -- Diff produced files
+    diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
+    -- + Find golden files for produced files
+    -- + Diff produced files and golden files
+    undefined
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
@@ -96,10 +97,16 @@ derivedOptions testSpec = [toSomeOption (testSpecTimeout testSpec)]
 isEnabled :: TestSpec -> Bool
 isEnabled = fromMaybe True . testSpecEnabled
 
+-- | Error raised when 'testSpecDirectory' is not set.
+data TestSpecDirectoryMissing = TestSpecDirectoryMissing
+  deriving (Show)
+
+instance Exception TestSpecDirectoryMissing
+
 instance FromJSON TestSpec where
   parseJSON :: Value -> Parser TestSpec
   parseJSON = withObject "TestSpec" $ \o ->
-    TestSpec
+    TestSpec (throw TestSpecDirectoryMissing)
       <$> o .: "name"
       <*> o .: "run"
       <*> o .:? "enabled"
