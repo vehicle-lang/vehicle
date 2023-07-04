@@ -1,12 +1,12 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 import Control.Applicative (optional, (<**>))
-import Control.Monad (forM_, join, unless)
+import Control.Exception (IOException, try)
+import Control.Monad (forM_, join, unless, when)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Tagged (Tagged (unTagged))
-import Data.Text.IO qualified as Text
 import Options.Applicative
   ( Parser,
     ParserInfo,
@@ -31,7 +31,7 @@ import Options.Applicative
 import Options.Applicative.Types
   ( Backtracking (..),
   )
-import System.Directory (canonicalizePath, copyFile, doesFileExist)
+import System.Directory (canonicalizePath, copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import System.Environment (getArgs)
 import System.FilePath
   ( equalFilePath,
@@ -42,6 +42,7 @@ import System.FilePath
     (</>),
   )
 import Test.Tasty (Timeout)
+import Test.Tasty.Golden.Executable (GoldenFilePattern, TestSpec (..), TestSpecs (..), addOrReplaceTestSpec, readTestSpecsFile, writeTestSpecsFile)
 import Test.Tasty.Options (IsOption (optionHelp, parseValue), safeRead)
 import Text.Printf (printf)
 import Vehicle.Backend.Prelude (Target (..))
@@ -64,16 +65,6 @@ import Vehicle.Export qualified as ExportOptions
   )
 import Vehicle.Export qualified as Vehicle (ExportOptions)
 import Vehicle.Prelude (Pretty (pretty), layoutAsString, vehicleSpecificationFileExtension)
-import Vehicle.Test.Golden.Extra (createDirectoryRecursive)
-import Vehicle.Test.Golden.TestSpec
-  ( TestSpec (..),
-    TestSpecs (TestSpecs),
-    addOrReplaceTestSpec,
-    encodeTestSpecsPretty,
-    readTestSpecsFile,
-    writeTestSpecsFile,
-  )
-import Vehicle.Test.Golden.TestSpec.FilePattern (GoldenFilePattern)
 import Vehicle.TypeCheck qualified as TypeCheckOptions (specification)
 import Vehicle.TypeCheck qualified as Vehicle
 import Vehicle.Validate qualified as ValidateOptions (proofCache)
@@ -199,8 +190,6 @@ newTestSpec args = do
       then return $ TestSpecs (theNewTestSpec :| [])
       else addOrReplaceTestSpec theNewTestSpec <$> readTestSpecsFile testSpecsFile
 
-  printf "Writing %s:\n" testSpecsFile
-  Text.putStrLn $ encodeTestSpecsPretty testSpecs
   writeTestSpecsFile testSpecsFile testSpecs
 
 -- Inferred 'needs' and 'produces':
@@ -318,3 +307,14 @@ instance TestSpecLike Vehicle.ValidateOptions where
 
   produces :: Vehicle.ValidateOptions -> Maybe [GoldenFilePattern]
   produces = const (return [])
+
+-- | Like @createDirectoryIfMissing True@ but faster, as it avoids
+--   any work in the common case the directory already exists.
+--
+--   Taken from shake (BSD-3-Clause):
+--   https://hackage.haskell.org/package/shake-0.19.7/docs/src/
+--   General.Extra.html#createDirectoryRecursive
+createDirectoryRecursive :: FilePath -> IO ()
+createDirectoryRecursive dir = do
+  x <- try @IOException $ doesDirectoryExist dir
+  when (x /= Right True) $ createDirectoryIfMissing True dir

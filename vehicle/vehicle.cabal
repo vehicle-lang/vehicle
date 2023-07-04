@@ -330,7 +330,6 @@ executable new-golden-test
     , optparse-applicative
     , tagged
     , tasty
-    , text
-    , unordered-containers
     , tasty-golden-executable
+    , text
     , vehicle

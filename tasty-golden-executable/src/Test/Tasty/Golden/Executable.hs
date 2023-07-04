@@ -1,5 +1,11 @@
 module Test.Tasty.Golden.Executable
-  ( makeTestTreesFromFile,
+  ( TestSpec (..),
+    TestSpecs (..),
+    readTestSpecsFile,
+    writeTestSpecsFile,
+    GoldenFilePattern,
+    addOrReplaceTestSpec,
+    makeTestTreesFromFile,
     makeTestTreeFromDirectoryRecursive,
     SomeOption (..),
     ignoreFileOption,
@@ -39,8 +45,9 @@ import Test.Tasty (TestName, TestTree, askOption, testGroup)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.Golden.Executable.TestSpec
   ( TestOutput (..),
-    TestSpec,
-    TestSpecs (TestSpecs),
+    TestSpec (..),
+    TestSpecs (..),
+    addOrReplaceTestSpec,
     readGoldenFiles,
     readTestSpecsFile,
     testSpecExternal,
@@ -52,9 +59,10 @@ import Test.Tasty.Golden.Executable.TestSpec
     testSpecOptions,
     testSpecRun,
     writeGoldenFiles,
+    writeTestSpecsFile,
   )
 import Test.Tasty.Golden.Executable.TestSpec.External (ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern (IsFilePattern (..))
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern, IsFilePattern (..))
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
 import Text.Printf (printf)
