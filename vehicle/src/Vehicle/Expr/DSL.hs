@@ -246,13 +246,13 @@ builtin b = DSL $ \p _ -> Builtin p b
 -- Standard builtin
 --------------------------------------------------------------------------------
 
-builtinFunction :: BuiltinFunction -> DSLExpr (NormalisableBuiltin types)
+type StandardDSLExpr = DSLExpr StandardBuiltin
+
+builtinFunction :: BuiltinFunction -> StandardDSLExpr
 builtinFunction b = DSL $ \p _ -> Builtin p (CFunction b)
 
-builtinConstructor :: BuiltinConstructor -> DSLExpr (NormalisableBuiltin types)
+builtinConstructor :: BuiltinConstructor -> StandardDSLExpr
 builtinConstructor = builtin . CConstructor
-
-type StandardDSLExpr = DSLExpr (NormalisableBuiltin StandardBuiltinType)
 
 builtinType :: BuiltinType -> StandardDSLExpr
 builtinType = builtin . CType . StandardBuiltinType
@@ -368,7 +368,7 @@ addNat x y = builtinFunction (Add AddNat) @@ [x, y]
 --------------------------------------------------------------------------------
 -- Linearity
 
-type LinearityDSLExpr = DSLExpr (NormalisableBuiltin LinearityType)
+type LinearityDSLExpr = DSLExpr LinearityBuiltin
 
 forAllLinearities :: (LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearities f = forAll "l" tLin $ \l -> f l
@@ -405,7 +405,7 @@ tLin = type0
 --------------------------------------------------------------------------------
 -- Polarities
 
-type PolarityDSLExpr = DSLExpr (NormalisableBuiltin PolarityType)
+type PolarityDSLExpr = DSLExpr PolarityBuiltin
 
 forAllPolarities :: (PolarityDSLExpr -> PolarityDSLExpr) -> PolarityDSLExpr
 forAllPolarities f = forAll "p" tPol $ \p -> f p

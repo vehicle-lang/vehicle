@@ -122,30 +122,32 @@ instance Pretty PolarityTypeClass where
 -- Type synonyms
 
 -- Constraint
-type PolarityConstraintProgress = ConstraintProgress PolarityType
+type PolarityConstraintProgress = ConstraintProgress PolarityBuiltin
 
-type PolarityTypeClassConstraint = TypeClassConstraint PolarityType
+type PolarityTypeClassConstraint = TypeClassConstraint PolarityBuiltin
 
-type PolarityUnificationConstraint = UnificationConstraint PolarityType
+type PolarityUnificationConstraint = UnificationConstraint PolarityBuiltin
 
-type PolarityConstraintContext = ConstraintContext PolarityType
+type PolarityConstraintContext = ConstraintContext PolarityBuiltin
 
-type PolarityConstraint = Constraint PolarityType
+type PolarityConstraint = Constraint PolarityBuiltin
 
 -- Value
-type PolarityNormExpr = Value PolarityType
+type PolarityNormExpr = Value PolarityBuiltin
 
-type PolarityNormBinder = VBinder PolarityType
+type PolarityNormBinder = VBinder PolarityBuiltin
 
-type PolarityNormArg = VArg PolarityType
+type PolarityNormArg = VArg PolarityBuiltin
 
-type PolarityNormType = VType PolarityType
+type PolarityNormType = VType PolarityBuiltin
 
-type PolaritySpine = Spine PolarityType
+type PolaritySpine = Spine PolarityBuiltin
 
-type PolarityEnv = Env PolarityType
+type PolarityExplicitSpine = ExplicitSpine PolarityBuiltin
 
-pattern PolarityExpr :: Provenance -> Polarity -> Expr var (NormalisableBuiltin PolarityType)
+type PolarityEnv = Env PolarityBuiltin
+
+pattern PolarityExpr :: Provenance -> Polarity -> Expr var PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (CType (Polarity pol))
 
 pattern VPolarityExpr :: Polarity -> PolarityNormExpr

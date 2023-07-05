@@ -22,7 +22,7 @@ import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.Normalised (pattern VNatLiteral)
+import Vehicle.Expr.Normalisable (pattern VNatLiteral)
 
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.

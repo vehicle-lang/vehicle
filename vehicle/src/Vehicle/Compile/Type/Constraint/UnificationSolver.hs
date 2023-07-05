@@ -13,6 +13,7 @@ import Data.Maybe (mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Monad (MonadNorm (..))
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -25,7 +26,6 @@ import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -37,9 +37,9 @@ import Vehicle.Expr.Normalised
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
-type MonadUnify types m = TCM types m
+type MonadUnify builtin m = TCM builtin m
 
-solveUnificationConstraint :: forall types m. (MonadUnify types m) => WithContext (UnificationConstraint types) -> m ()
+solveUnificationConstraint :: forall builtin m. (MonadUnify builtin m) => WithContext (UnificationConstraint builtin) -> m ()
 solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
   (ne1', e1BlockingMetas) <- forceHead ctx e1
   (ne2', e2BlockingMetas) <- forceHead ctx e2
@@ -62,14 +62,14 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
           addUnificationConstraints [blockedConstraint]
     _ -> handleTypingError (FailedUnification [WithContext nu ctx])
 
-data UnificationResult types
-  = Success [WithContext (UnificationConstraint types)]
+data UnificationResult builtin
+  = Success [WithContext (UnificationConstraint builtin)]
   | -- | Always an error
     HardFailure
   | -- | Only an error when further reduction will never occur.
     SoftFailure MetaSet
 
-instance Semigroup (UnificationResult types) where
+instance Semigroup (UnificationResult builtin) where
   HardFailure <> _ = HardFailure
   _ <> HardFailure = HardFailure
   SoftFailure m1 <> SoftFailure m2 = SoftFailure (m1 <> m2)
@@ -77,18 +77,18 @@ instance Semigroup (UnificationResult types) where
   _ <> r2@SoftFailure {} = r2
   Success cs1 <> Success cs2 = Success (cs1 <> cs2)
 
-instance Monoid (UnificationResult types) where
+instance Monoid (UnificationResult builtin) where
   mempty = Success mempty
 
 pattern (:~:) :: a -> b -> (a, b)
 pattern x :~: y = (x, y)
 
 unification ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
   MetaSet ->
-  (Value types, Value types) ->
-  m (UnificationResult types)
+  (Value builtin, Value builtin) ->
+  m (UnificationResult builtin)
 unification ctx reductionBlockingMetas = \case
   -----------------------
   -- Rigid-rigid cases --
@@ -124,16 +124,16 @@ unification ctx reductionBlockingMetas = \case
   -----------
   _ -> return $ SoftFailure reductionBlockingMetas
 
-solveTrivially :: (MonadUnify types m) => m (UnificationResult types)
+solveTrivially :: (MonadUnify builtin m) => m (UnificationResult builtin)
 solveTrivially = do
   logDebug MaxDetail "solved-trivially"
   return $ Success mempty
 
 solveArg ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  (VArg types, VArg types) ->
-  Maybe (m (UnificationResult types))
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  (VArg builtin, VArg builtin) ->
+  Maybe (m (UnificationResult builtin))
 solveArg ctx (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just $ return HardFailure
   | isInstance arg1 = Nothing
@@ -142,11 +142,11 @@ solveArg ctx (arg1, arg2)
       return $ Success [argEq]
 
 solveSpine ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  Spine types ->
-  Spine types ->
-  m (UnificationResult types)
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  Spine builtin ->
+  Spine builtin ->
+  m (UnificationResult builtin)
 solveSpine ctx args1 args2
   | length args1 /= length args2 = return HardFailure
   | otherwise = do
@@ -154,28 +154,28 @@ solveSpine ctx args1 args2
       return $ mconcat constraints
 
 solveExplicitSpine ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  ExplicitSpine types ->
-  ExplicitSpine types ->
-  m (UnificationResult types)
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  ExplicitSpine builtin ->
+  ExplicitSpine builtin ->
+  m (UnificationResult builtin)
 solveExplicitSpine ctx args1 args2
   | length args1 /= length args2 = return HardFailure
   | otherwise = Success <$> traverse (unify ctx) (zip args1 args2)
 
 solveLam ::
-  (MonadUnify types m) =>
-  (VBinder types, Env builtin, NormalisableExpr builtin) ->
-  (VBinder types, Env builtin, NormalisableExpr builtin) ->
-  m (UnificationResult types)
+  (MonadUnify builtin m) =>
+  (VBinder builtin, Env builtin, Expr Ix builtin) ->
+  (VBinder builtin, Env builtin, Expr Ix builtin) ->
+  m (UnificationResult builtin)
 solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
 
 solvePi ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  (VBinder types, Value types) ->
-  (VBinder types, Value types) ->
-  m (UnificationResult types)
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  (VBinder builtin, Value builtin) ->
+  (VBinder builtin, Value builtin) ->
+  m (UnificationResult builtin)
 solvePi ctx (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
   -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
@@ -184,7 +184,7 @@ solvePi ctx (binder1, body1) (binder2, body2) = do
   bodyConstraint <- unify ctx (body1, body2)
   return $ Success [binderConstraint, bodyConstraint]
 
-solveFlexFlex :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> (MetaID, Spine types) -> m (UnificationResult types)
+solveFlexFlex :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, Spine builtin) -> (MetaID, Spine builtin) -> m (UnificationResult builtin)
 solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
   -- It may be that only one of the two spines is invertible
   maybeRenaming <- invert (contextDBLevel ctx) (meta1, spine1)
@@ -192,7 +192,7 @@ solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
     Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
     Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
-solveFlexRigid :: (MonadUnify types m) => ConstraintContext types -> (MetaID, Spine types) -> Value types -> m (UnificationResult types)
+solveFlexRigid :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, Spine builtin) -> Value builtin -> m (UnificationResult builtin)
 solveFlexRigid ctx (metaID, spine) solution = do
   -- Check that 'spine' is a pattern and try to calculate a substitution
   -- that renames the variables in `solution` to ones available to `meta`
@@ -205,16 +205,16 @@ solveFlexRigid ctx (metaID, spine) solution = do
     Nothing -> return $ SoftFailure $ MetaSet.singleton metaID
 
 solveFlexRigidWithRenaming ::
-  forall types m.
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  (MetaID, Spine types) ->
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  (MetaID, Spine builtin) ->
   Renaming ->
-  Value types ->
-  m (UnificationResult types)
+  Value builtin ->
+  m (UnificationResult builtin)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   prunedSolution <-
-    if useDependentMetas (Proxy @types)
+    if useDependentMetas (Proxy @builtin)
       then pruneMetaDependencies ctx meta solution
       else return solution
 
@@ -224,19 +224,19 @@ solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   return $ Success mempty
 
 pruneMetaDependencies ::
-  forall types m.
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  (MetaID, Spine types) ->
-  Value types ->
-  m (Value types)
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  (MetaID, Spine builtin) ->
+  Value builtin ->
+  m (Value builtin)
 pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
   go attemptedSolution
   where
     go ::
-      (MonadUnify types m) =>
-      Value types ->
-      m (Value types)
+      (MonadUnify builtin m) =>
+      Value builtin ->
+      m (Value builtin)
     go expr = case expr of
       VMeta m spine
         | m == solvingMetaID ->
@@ -269,14 +269,14 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VLam {} -> return expr
 
 createMetaWithRestrictedDependencies ::
-  forall types m.
-  (MonadUnify types m) =>
-  ConstraintContext types ->
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
   MetaID ->
   [Lv] ->
-  m (Value types)
+  m (Value builtin)
 createMetaWithRestrictedDependencies ctx meta newDependencies = do
-  p <- getMetaProvenance (Proxy @types) meta
+  p <- getMetaProvenance (Proxy @builtin) meta
   metaType <- getMetaType meta
 
   let constraintLevel = contextDBLevel ctx
@@ -299,10 +299,10 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
     return $ normalised newMetaExpr
 
 unify ::
-  (MonadUnify types m) =>
-  ConstraintContext types ->
-  (Value types, Value types) ->
-  m (WithContext (UnificationConstraint types))
+  (MonadUnify builtin m) =>
+  ConstraintContext builtin ->
+  (Value builtin, Value builtin) ->
+  m (WithContext (UnificationConstraint builtin))
 unify ctx (e1, e2) = WithContext (Unify e1 e2) <$> copyContext ctx
 
 --------------------------------------------------------------------------------
@@ -312,15 +312,15 @@ type Renaming = IntMap Ix
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: forall types m. (MonadUnify types m) => Lv -> (MetaID, Spine types) -> m (Maybe Renaming)
+invert :: forall builtin m. (MonadUnify builtin m) => Lv -> (MetaID, Spine builtin) -> m (Maybe Renaming)
 invert ctxSize (metaID, spine) = do
-  metaCtxSize <- length <$> getMetaCtx @types metaID
+  metaCtxSize <- length <$> getMetaCtx @builtin metaID
   return $
     if metaCtxSize < length spine
       then Nothing
       else go (metaCtxSize - 1) IntMap.empty spine
   where
-    go :: Int -> IntMap Ix -> Spine types -> Maybe Renaming
+    go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
       (ExplicitArg _ (VBoundVar j []) : restArgs) -> do

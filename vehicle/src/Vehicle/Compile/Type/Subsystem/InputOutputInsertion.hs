@@ -8,7 +8,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshTypeClassConstraint, freshMetaExpr)
-import Vehicle.Expr.Normalisable
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
@@ -19,10 +19,10 @@ import Vehicle.Expr.Normalised
 -- meta variables, and then relates the the two by adding a new suitable
 -- constraint.
 addFunctionAuxiliaryInputOutputConstraints ::
-  (TCM types m) =>
-  (FunctionPosition -> types) ->
-  NormalisableDecl types ->
-  m (NormalisableDecl types)
+  (TCM builtin m) =>
+  (FunctionPosition -> builtin) ->
+  Decl Ix builtin ->
+  m (Decl Ix builtin)
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   DefFunction p ident anns t e -> do
     logCompilerPass MaxDetail "insertion of input/output constraints" $ do
@@ -31,12 +31,12 @@ addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   d -> return d
 
 decomposePiType ::
-  (TCM types m, MonadState (MetaMap (NormalisableExpr types)) m) =>
-  (FunctionPosition -> types) ->
+  (TCM builtin m, MonadState (MetaMap (Expr Ix builtin)) m) =>
+  (FunctionPosition -> builtin) ->
   DeclProvenance ->
   Int ->
-  NormalisableType types ->
-  m (NormalisableType types)
+  Type Ix builtin ->
+  m (Type Ix builtin)
 decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
   Pi p' binder res
     | isExplicit binder -> do
@@ -54,11 +54,11 @@ decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
     addFunctionConstraint mkConstraint (p, position) outputType
 
 addFunctionConstraint ::
-  (TCM types m, MonadState (MetaMap (NormalisableExpr types)) m) =>
-  (FunctionPosition -> types) ->
+  (TCM builtin m, MonadState (MetaMap (Expr Ix builtin)) m) =>
+  (FunctionPosition -> builtin) ->
   (Provenance, FunctionPosition) ->
-  NormalisableExpr types ->
-  m (NormalisableExpr types)
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
 addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
   let p = provenanceOf existingExpr
   newExpr <- case existingExpr of
@@ -76,7 +76,7 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
         ExplicitArg p <$> case position of
           FunctionInput {} -> [newExpr, existingExpr]
           FunctionOutput {} -> [existingExpr, newExpr]
-  let tcExpr = BuiltinExpr declProv (CType $ mkConstraint position) constraintArgs
+  let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs
 
   _ <- createFreshTypeClassConstraint mempty (existingExpr, mempty) tcExpr
 

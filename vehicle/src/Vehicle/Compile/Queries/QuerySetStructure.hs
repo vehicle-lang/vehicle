@@ -32,7 +32,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), dbLevelToIndex)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector), fromFiniteQuantifier)
 import Vehicle.Verify.Core
@@ -470,7 +470,7 @@ calculateVariableDimensions binder = go (typeOf binder)
 --------------------------------------------------------------------------------
 -- Builtin and free variable tracking
 
-type QueryDeclCtx = DeclCtx (NormDeclCtxEntry StandardBuiltinType, UsedFunctionsInfo)
+type QueryDeclCtx = DeclCtx (NormDeclCtxEntry StandardBuiltin, UsedFunctionsInfo)
 
 queryDeclCtxToNormDeclCtx :: QueryDeclCtx -> StandardNormDeclCtx
 queryDeclCtxToNormDeclCtx = fmap fst
@@ -525,7 +525,7 @@ getUsedNormFunctions declCtx boundCtx expr = case expr of
     builtinInfo <> spineInfo
 
 getUsedFunctionsBuiltin ::
-  NormalisableBuiltin StandardBuiltinType ->
+  StandardBuiltin ->
   UsedFunctionsInfo
 getUsedFunctionsBuiltin = \case
   CFunction f -> (HashSet.singleton f, mempty)

@@ -20,7 +20,6 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- Eventually when metas make into the builtins, this should module
@@ -36,16 +35,16 @@ import Vehicle.Expr.Normalised
 type MetaCtxSize = Int
 
 -- | The information stored about each meta-variable.
-data MetaInfo types = MetaInfo
+data MetaInfo builtin = MetaInfo
   { -- | Location in the source file the meta-variable was generated
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
-    metaType :: NormalisableExpr types,
+    metaType :: Expr Ix builtin,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtx :: TypingBoundCtx types
+    metaCtx :: TypingBoundCtx builtin
   }
 
-extendMetaCtx :: NormalisableBinder types -> MetaInfo types -> MetaInfo types
+extendMetaCtx :: Binder Ix builtin -> MetaInfo builtin -> MetaInfo builtin
 extendMetaCtx binder MetaInfo {..} =
   MetaInfo
     { metaCtx = mkTypingBoundCtxEntry binder : metaCtx,
@@ -56,8 +55,8 @@ extendMetaCtx binder MetaInfo {..} =
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  TypingBoundCtx types ->
-  GluedExpr types
+  TypingBoundCtx builtin ->
+  GluedExpr builtin
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
@@ -72,26 +71,26 @@ makeMetaExpr p metaID boundCtx = do
 
 -- | Creates a Pi type that abstracts over all bound variables
 makeMetaType ::
-  TypingBoundCtx types ->
+  TypingBoundCtx builtin ->
   Provenance ->
-  NormalisableType types ->
-  NormalisableType types
+  Type Ix builtin ->
+  Type Ix builtin
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi ::
-      (Maybe Name, NormalisableType types) ->
-      NormalisableType types ->
-      NormalisableType types
+      (Maybe Name, Type Ix builtin) ->
+      Type Ix builtin ->
+      Type Ix builtin
     entryToPi (name, t) = do
       let n = fromMaybe "_" name
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant t)
 
-getMetaDependencies :: [NormalisableArg types] -> [Ix]
+getMetaDependencies :: [Arg Ix builtin] -> [Ix]
 getMetaDependencies = \case
   (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [VArg types] -> ([Lv], Spine types)
+getNormMetaDependencies :: [VArg builtin] -> ([Lv], Spine builtin)
 getNormMetaDependencies = \case
   (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
@@ -105,7 +104,7 @@ class HasMetas a where
   metasIn :: (MonadCompile m) => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
-instance HasMetas (NormalisableExpr types) where
+instance HasMetas (Expr Ix builtin) where
   findMetas expr = case expr of
     Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()
@@ -119,7 +118,7 @@ instance HasMetas (NormalisableExpr types) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App _ fun args -> do findMetas fun; findMetas args
 
-instance HasMetas (Value types) where
+instance HasMetas (Value builtin) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)
@@ -143,13 +142,13 @@ instance (HasMetas a) => HasMetas [a] where
 instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
-instance HasMetas (TypeClassConstraint types) where
-  findMetas (Has _ _ e) = findMetas e
+instance HasMetas (TypeClassConstraint builtin) where
+  findMetas (Has _ e) = findMetas e
 
-instance HasMetas (UnificationConstraint types) where
+instance HasMetas (UnificationConstraint builtin) where
   findMetas (Unify e1 e2) = do findMetas e1; findMetas e2
 
-instance HasMetas (Constraint types) where
+instance HasMetas (Constraint builtin) where
   findMetas = \case
     UnificationConstraint c -> findMetas c
     TypeClassConstraint c -> findMetas c

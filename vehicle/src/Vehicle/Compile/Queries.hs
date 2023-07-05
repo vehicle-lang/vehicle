@@ -26,6 +26,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector))
 import Vehicle.Verify.Core

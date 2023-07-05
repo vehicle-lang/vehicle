@@ -177,6 +177,8 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.Monomorphisation
+    Vehicle.Compile.Normalise.Builtin
+    Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.Utils

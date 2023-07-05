@@ -3,7 +3,7 @@ module Vehicle.Expr.Normalisable where
 import Data.Hashable (Hashable)
 import Data.Serialize
 import GHC.Generics
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
@@ -26,19 +26,64 @@ instance (Serialize types) => Serialize (NormalisableBuiltin types)
 
 instance (Hashable types) => Hashable (NormalisableBuiltin types)
 
------------------------------------------------------------------------------
--- Expressions
+-------------------------------------------------------------------------------
+-- Patterns
 
-type NormalisableExpr types = Expr Ix (NormalisableBuiltin types)
+pattern VBuiltinFunction :: BuiltinFunction -> ExplicitSpine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
+pattern VBuiltinFunction f spine = VBuiltin (CFunction f) spine
 
-type NormalisableBinder types = Binder Ix (NormalisableBuiltin types)
+pattern VConstructor :: BuiltinConstructor -> ExplicitSpine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
+pattern VConstructor c args = VBuiltin (CConstructor c) args
 
-type NormalisableArg types = Arg Ix (NormalisableBuiltin types)
+pattern VNullaryConstructor :: BuiltinConstructor -> Value (NormalisableBuiltin builtin)
+pattern VNullaryConstructor c <- VConstructor c []
+  where
+    VNullaryConstructor c = VConstructor c []
 
-type NormalisableType types = NormalisableExpr types
+pattern VUnitLiteral :: Value (NormalisableBuiltin builtin)
+pattern VUnitLiteral = VNullaryConstructor LUnit
 
-type NormalisableDecl types = Decl Ix (NormalisableBuiltin types)
+pattern VBoolLiteral :: Bool -> Value (NormalisableBuiltin builtin)
+pattern VBoolLiteral x = VNullaryConstructor (LBool x)
 
-type NormalisableProg types = Prog Ix (NormalisableBuiltin types)
+pattern VIndexLiteral :: Int -> Value (NormalisableBuiltin builtin)
+pattern VIndexLiteral x = VNullaryConstructor (LIndex x)
 
-type NormalisableTelescope types = Telescope Ix (NormalisableBuiltin types)
+pattern VNatLiteral :: Int -> Value (NormalisableBuiltin builtin)
+pattern VNatLiteral x = VNullaryConstructor (LNat x)
+
+pattern VIntLiteral :: Int -> Value (NormalisableBuiltin builtin)
+pattern VIntLiteral x = VNullaryConstructor (LInt x)
+
+pattern VRatLiteral :: Rational -> Value (NormalisableBuiltin builtin)
+pattern VRatLiteral x = VNullaryConstructor (LRat x)
+
+pattern VVecLiteral :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+pattern VVecLiteral xs <- VConstructor (LVec _) xs
+  where
+    VVecLiteral xs = VConstructor (LVec (length xs)) xs
+
+pattern VNil :: Value (NormalisableBuiltin builtin)
+pattern VNil = VNullaryConstructor Nil
+
+pattern VCons :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+pattern VCons xs = VConstructor Cons xs
+
+mkVList :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+mkVList = foldr cons nil
+  where
+    nil = VConstructor Nil []
+    cons y ys = VConstructor Cons [y, ys]
+
+mkVLVec :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+mkVLVec xs = VConstructor (LVec (length xs)) xs
+
+getNatLiteral :: Value (NormalisableBuiltin builtin) -> Maybe Int
+getNatLiteral = \case
+  VNatLiteral d -> Just d
+  _ -> Nothing
+
+getRatLiteral :: Value (NormalisableBuiltin builtin) -> Maybe Rational
+getRatLiteral = \case
+  VRatLiteral d -> Just d
+  _ -> Nothing

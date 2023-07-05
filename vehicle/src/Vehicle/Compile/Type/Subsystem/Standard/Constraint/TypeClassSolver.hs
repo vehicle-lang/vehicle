@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary
 
@@ -23,7 +24,8 @@ import Vehicle.Libraries.StandardLibrary
 -- Solver
 
 solveTypeClassConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
-solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
+solveTypeClassConstraint constraint@(WithContext (Has m expr) ctx) = do
+  (tc, spine) <- getTypeClass expr
   progress <- solve tc constraint spine
   case progress of
     Left metas -> do
@@ -34,7 +36,7 @@ solveTypeClassConstraint constraint@(WithContext (Has m tc spine) ctx) = do
       addConstraints newConstraints
 
 type MonadTypeClass m =
-  ( TCM StandardBuiltinType m
+  ( TCM StandardBuiltin m
   )
 
 type TypeClassProgress = Either MetaSet ([WithContext StandardConstraint], StandardExpr)
@@ -49,14 +51,13 @@ type TypeClassSolver =
   [StandardNormType] ->
   m TypeClassProgress
 
-solve :: StandardBuiltinType -> TypeClassSolver
-solve (StandardTypeClass tc) = case tc of
+solve :: TypeClass -> TypeClassSolver
+solve tc = case tc of
   HasQuantifier q -> solveHasQuantifier q
   NatInDomainConstraint -> solveInDomain
   _ -> \_ _ ->
     compilerDeveloperError $
       "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
-solve tc = \_ _ -> compilerDeveloperError $ "Invalid instance argument type" <+> quotePretty tc
 
 --------------------------------------------------------------------------------
 -- HasQuantifier
@@ -119,7 +120,8 @@ solveVectorQuantifier q c domainBinder body = do
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType (normalised vecElem) domainBinder
-  (metaExpr, recTC) <- createTC c (StandardTypeClass (HasQuantifier q)) [VPi elemDomainBinder body]
+  let expr = VBuiltin (CType (StandardTypeClass (HasQuantifier q))) [VPi elemDomainBinder body]
+  (metaExpr, recTC) <- createTC c expr
 
   let solution =
         BuiltinFunctionExpr

@@ -5,21 +5,29 @@ module Vehicle.Compile.Type.Subsystem.Linearity
   )
 where
 
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Normalise.Builtin (Normalisable (..))
+import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
 import Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions (assertConstantLinearity, checkNetworkType)
 import Vehicle.Compile.Type.Subsystem.Linearity.Core as Core
 import Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
 import Vehicle.Compile.Type.Subsystem.Linearity.Type
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalised (Value (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
 instance PrintableBuiltin LinearityType where
   convertBuiltin = convertFromLinearityTypes
-  isTypeClassOp = const False
 
-instance TypableBuiltin LinearityType where
+instance Normalisable LinearityType where
+  evalBuiltin _ l spine = return $ VBuiltin l spine
+  isValue = return True
+  isTypeClassOp = const False
+  forceBuiltin _ _ _ _ = return (Nothing, mempty)
+
+instance TypableBuiltin LinearityBuiltin where
   convertFromStandardTypes = convertToLinearityTypes
   useDependentMetas _ = False
   typeBuiltin = typeLinearityBuiltin
@@ -30,7 +38,7 @@ instance TypableBuiltin LinearityType where
   handleTypingError = handleLinearityTypingError
   typeClassRelevancy = const $ return Relevant
   solveInstance = solveLinearityConstraint
-  addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityTypeClass . FunctionLinearity)
+  addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (CType . LinearityTypeClass . FunctionLinearity)
   generateDefaultConstraint = const $ return False
 
 -------------------------------------------------------------------------------

@@ -120,33 +120,35 @@ instance Pretty LinearityTypeClass where
 type LinearityBuiltin = NormalisableBuiltin LinearityType
 
 -- Value
-type LinearityNormExpr = Value LinearityType
+type LinearityNormExpr = Value LinearityBuiltin
 
-type LinearityNormBinder = VBinder LinearityType
+type LinearityNormBinder = VBinder LinearityBuiltin
 
-type LinearityNormArg = VArg LinearityType
+type LinearityNormArg = VArg LinearityBuiltin
 
-type LinearityNormType = VType LinearityType
+type LinearityNormType = VType LinearityBuiltin
 
-type LinearitySpine = Spine LinearityType
+type LinearitySpine = Spine LinearityBuiltin
 
-type LinearityEnv = Env LinearityType
+type LinearityExplicitSpine = ExplicitSpine LinearityBuiltin
+
+type LinearityEnv = Env LinearityBuiltin
 
 -- Constraint
-type LinearityConstraintProgress = ConstraintProgress LinearityType
+type LinearityConstraintProgress = ConstraintProgress LinearityBuiltin
 
-type LinearityTypeClassConstraint = TypeClassConstraint LinearityType
+type LinearityTypeClassConstraint = TypeClassConstraint LinearityBuiltin
 
-type LinearityUnificationConstraint = UnificationConstraint LinearityType
+type LinearityUnificationConstraint = UnificationConstraint LinearityBuiltin
 
-type LinearityConstraintContext = ConstraintContext LinearityType
+type LinearityConstraintContext = ConstraintContext LinearityBuiltin
 
-type LinearityConstraint = Constraint LinearityType
+type LinearityConstraint = Constraint LinearityBuiltin
 
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern LinearityExpr :: Provenance -> Linearity -> Expr var (NormalisableBuiltin LinearityType)
+pattern LinearityExpr :: Provenance -> Linearity -> Expr var LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (CType (Linearity lin))
 
 pattern VLinearityExpr :: Linearity -> LinearityNormExpr

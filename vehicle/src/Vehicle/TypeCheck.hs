@@ -21,9 +21,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (typeCheckWithSubsystem)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
-import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Linearity.Core (LinearityType)
-import Vehicle.Compile.Type.Subsystem.Polarity.Core (PolarityType)
+import Vehicle.Compile.Type.Subsystem.Linearity.Core (LinearityBuiltin)
+import Vehicle.Compile.Type.Subsystem.Polarity.Core (PolarityBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
@@ -42,8 +41,8 @@ typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggin
   (_, typedProg) <- typeCheckUserProg options
   case typingSystem of
     Standard -> return ()
-    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityType typedProg
-    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityType typedProg
+    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin typedProg
+    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin typedProg
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes

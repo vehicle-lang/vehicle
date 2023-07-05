@@ -11,6 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------

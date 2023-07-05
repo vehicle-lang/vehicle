@@ -139,7 +139,7 @@ reformatLogicalOperators ::
   m (V.Prog Ix V.StandardBuiltin)
 reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: V.BuiltinUpdate m () Ix V.StandardBuiltin V.StandardBuiltin
+    builtinUpdateFunction :: V.BuiltinUpdate m Ix V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = do
       maybeUpdatedExpr <- case b of
         V.CFunction V.Not -> case compileNot logic of
