@@ -1,5 +1,11 @@
 cradle:
   multi:
+    # tasty-golden-executable
+    - path: "./tasty-golden-executable"
+      config:
+        cradle:
+          cabal:
+
     # vehicle-syntax
     - path: "./vehicle-syntax"
       config:
