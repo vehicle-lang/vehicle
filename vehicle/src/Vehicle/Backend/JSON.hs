@@ -117,7 +117,8 @@ data JBuiltin
   | GtRat
   | At
   | ConsVector
-  | Fold V.FoldDomain
+  | FoldList
+  | FoldVector
   | Indices
   | UnitType
   | BoolType
@@ -202,7 +203,8 @@ instance ToJBuiltin BuiltinFunction where
     V.Order V.OrderRat V.Gt -> GtRat
     V.At -> At
     V.ConsVector -> ConsVector
-    V.Fold dom -> Fold dom
+    V.Fold V.FoldList -> FoldList
+    V.Fold V.FoldVector -> FoldVector
     V.Indices -> Indices
 
 instance ToJBuiltin BuiltinType where

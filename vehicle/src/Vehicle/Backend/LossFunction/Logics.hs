@@ -63,8 +63,8 @@ lcon :: Rational -> PLExpr
 lcon x = builtin (toJBuiltin x)
 
 -- | Rational type
-rat :: PLExpr
-rat = builtin J.RatType
+ratType :: PLExpr
+ratType = builtin J.RatType
 
 -- | Compiles a quantifier to a sampling procedure.
 quantifierSampler :: StdLibFunction -> Name -> PLExpr
@@ -148,15 +148,15 @@ dl2Translation =
       compileAnd = BinaryAnd $ builtin (J.AddRat),
       compileOr = BinaryOr $ builtin (J.MulRat),
       compileNot = TryToEliminate,
-      compileImplies = mkOp2 rat $ \x y -> lmax (lcon 0) (x *: y),
+      compileImplies = mkOp2 ratType $ \x y -> lmax (lcon 0) (x *: y),
       compileForall = forallSampler,
       compileExists = existsSampler,
-      compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y) +: ind x y,
-      compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x) +: ind y x,
-      compileNeq = mkOp2 rat ind,
-      compileEq = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y) +: lmax (lcon 0) (x -: y)
+      compileLe = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileLt = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y) +: ind x y,
+      compileGe = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileGt = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x) +: ind y x,
+      compileNeq = mkOp2 ratType ind,
+      compileEq = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y) +: lmax (lcon 0) (x -: y)
     }
 
 --------------------------------------------------------------------------------
@@ -171,18 +171,18 @@ godelTranslation =
       compileBool = builtin J.RatType,
       compileTrue = lcon 0,
       compileFalse = lcon 1,
-      compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmin x y),
-      compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmax x y),
-      compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
-      compileImplies = mkOp2 rat $ \x y -> lcon 1 -: lmax (lcon 1 -: x) y,
+      compileAnd = BinaryAnd (mkOp2 ratType $ \x y -> lcon 1 -: lmin x y),
+      compileOr = BinaryOr (mkOp2 ratType $ \x y -> lcon 1 -: lmax x y),
+      compileNot = UnaryNot (mkOp1 ratType $ \x -> lcon 1 -: x),
+      compileImplies = mkOp2 ratType $ \x y -> lcon 1 -: lmax (lcon 1 -: x) y,
       compileForall = forallSampler,
       compileExists = existsSampler,
-      compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind
+      compileLe = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileLt = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileGe = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileGt = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileEq = mkOp2 ratType $ \x y -> lcon 1 -: ind x y,
+      compileNeq = mkOp2 ratType ind
     }
 
 --------------------------------------------------------------------------------
@@ -197,18 +197,18 @@ lukasiewiczTranslation =
       compileBool = builtin J.RatType,
       compileTrue = lcon 0,
       compileFalse = lcon 1,
-      compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmax (lcon 0) ((x +: y) -: lcon 1)),
-      compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmin (x +: y) (lcon 1)),
-      compileNot = UnaryNot (mkOp1 rat $ \arg -> lcon 1 -: arg),
-      compileImplies = mkOp2 rat $ \x y -> lcon 1 -: lmin (lcon 1) ((lcon 1 -: x) +: y),
+      compileAnd = BinaryAnd (mkOp2 ratType $ \x y -> lcon 1 -: lmax (lcon 0) ((x +: y) -: lcon 1)),
+      compileOr = BinaryOr (mkOp2 ratType $ \x y -> lcon 1 -: lmin (x +: y) (lcon 1)),
+      compileNot = UnaryNot (mkOp1 ratType $ \arg -> lcon 1 -: arg),
+      compileImplies = mkOp2 ratType $ \x y -> lcon 1 -: lmin (lcon 1) ((lcon 1 -: x) +: y),
       compileForall = forallSampler,
       compileExists = existsSampler,
-      compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind
+      compileLe = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileLt = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileGe = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileGt = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileEq = mkOp2 ratType $ \x y -> lcon 1 -: ind x y,
+      compileNeq = mkOp2 ratType ind
     }
 
 --------------------------------------------------------------------------------
@@ -223,18 +223,18 @@ productTranslation =
       compileBool = builtin J.RatType,
       compileTrue = lcon 0,
       compileFalse = lcon 1,
-      compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: (x *: y)),
-      compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: ((x +: y) -: (x *: y))),
-      compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
-      compileImplies = mkOp2 rat $ \x y -> lcon 1 -: ((lcon 1 -: x) +: (x *: y)),
+      compileAnd = BinaryAnd (mkOp2 ratType $ \x y -> lcon 1 -: (x *: y)),
+      compileOr = BinaryOr (mkOp2 ratType $ \x y -> lcon 1 -: ((x +: y) -: (x *: y))),
+      compileNot = UnaryNot (mkOp1 ratType $ \x -> lcon 1 -: x),
+      compileImplies = mkOp2 ratType $ \x y -> lcon 1 -: ((lcon 1 -: x) +: (x *: y)),
       compileForall = forallSampler,
       compileExists = existsSampler,
-      compileLe = mkOp2 rat $ \x y -> lcon 0 `lmax` (x -: y),
-      compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind
+      compileLe = mkOp2 ratType $ \x y -> lcon 0 `lmax` (x -: y),
+      compileLt = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileGe = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileGt = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileEq = mkOp2 ratType $ \x y -> lcon 1 -: ind x y,
+      compileNeq = mkOp2 ratType ind
     }
 
 --------------------------------------------------------------------------------
@@ -255,7 +255,7 @@ parameterisedYagerTranslation p =
       compileFalse = lcon 1,
       compileAnd =
         BinaryAnd
-          ( mkOp2 rat $ \x y ->
+          ( mkOp2 ratType $ \x y ->
               lcon 1
                 -: lmax
                   ( lcon 1
@@ -266,17 +266,17 @@ parameterisedYagerTranslation p =
                   )
                   (lcon 0)
           ),
-      compileNot = UnaryNot (mkOp1 rat (lcon 1 -:)),
+      compileNot = UnaryNot (mkOp1 ratType (lcon 1 -:)),
       compileOr =
         BinaryOr
-          ( mkOp2 rat $ \x y ->
+          ( mkOp2 ratType $ \x y ->
               lcon 1
                 -: lmin
                   ( ((x ^: p) +: (y ^: p)) ^: (1 / p)
                   )
                   (lcon 1)
           ),
-      compileImplies = mkOp2 rat $ \x y ->
+      compileImplies = mkOp2 ratType $ \x y ->
         lcon 1
           -: lmin
             ( (((lcon 1 -: x) ^: p) +: (y ^: p))
@@ -285,12 +285,12 @@ parameterisedYagerTranslation p =
             (lcon 1),
       compileForall = forallSampler,
       compileExists = existsSampler,
-      compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
-      compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
-      compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind
+      compileLe = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileLt = mkOp2 ratType $ \x y -> lmax (lcon 0) (x -: y),
+      compileGe = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileGt = mkOp2 ratType $ \x y -> lmax (lcon 0) (y -: x),
+      compileEq = mkOp2 ratType $ \x y -> lcon 1 -: ind x y,
+      compileNeq = mkOp2 ratType ind
     }
 
 --------------------------------------------------------------------------------
@@ -304,16 +304,16 @@ stlTranslation = developerError "STL logic not yet implemented"
   DifferentialLogicImplementation
     { logicID = STLLoss,
       compileBool = builtin J.Rat,
-      compileAnd = NaryAnd (mkOp1 rat $ \x -> exponentialAnd x),
-      compileOr = NaryOr (mkOp1 rat $ \x -> neg (exponentialAnd (builtin _ @@ [x]))),
-      compileNot = UnaryNot (mkOp1 rat neg),
-      compileImplies = mkOp2 rat $ \x y -> neg (exponentialAnd (map neg [neg x, y])),
+      compileAnd = NaryAnd (mkOp1 ratType $ \x -> exponentialAnd x),
+      compileOr = NaryOr (mkOp1 ratType $ \x -> neg (exponentialAnd (builtin _ @@ [x]))),
+      compileNot = UnaryNot (mkOp1 ratType neg),
+      compileImplies = mkOp2 ratType $ \x y -> neg (exponentialAnd (map neg [neg x, y])),
       compileLe = builtin (J.Sub SubRat),
       compileLt = builtin (J.Sub SubRat),
-      compileGe = mkOp2 rat (\x y -> y -: x),
-      compileGt = mkOp2 rat (\x y -> y -: x),
-      compileEq = mkOp2 rat ind,
-      compileNeq = mkOp2 rat $ \x y -> neg (ind x y),
+      compileGe = mkOp2 ratType (\x y -> y -: x),
+      compileGt = mkOp2 ratType (\x y -> y -: x),
+      compileEq = mkOp2 ratType ind,
+      compileNeq = mkOp2 ratType $ \x y -> neg (ind x y),
       compileTrue = lcon 1,
       compileFalse = lcon (-1)
     }

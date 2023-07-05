@@ -52,53 +52,17 @@ class Builtin(AST):
 
 
 @dataclass(frozen=True)
-class Nil(Builtin):
+class AddInt(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Cons(Builtin):
+class AddNat(Builtin):
     pass
 
 
 @dataclass(frozen=True)
-class Unit(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Bool(Builtin):
-    value: bool
-
-
-@dataclass(frozen=True)
-class Index(Builtin):
-    value: int
-
-
-@dataclass(frozen=True)
-class Nat(Builtin):
-    value: int
-
-
-@dataclass(frozen=True)
-class Int(Builtin):
-    value: int
-
-
-@dataclass(frozen=True)
-class Rat(Builtin):
-    numerator: int
-    denominator: int
-
-
-@dataclass(frozen=True)
-class Vector(Builtin):
-    value: int
-
-
-@dataclass(frozen=True)
-class Not(Builtin):
+class AddRat(Builtin):
     pass
 
 
@@ -108,102 +72,22 @@ class And(Builtin):
 
 
 @dataclass(frozen=True)
-class Or(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Implies(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Forall(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Exists(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class If(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Neg(Builtin):
-    domain: Literal["Int", "Rat"]
-
-
-@dataclass(frozen=True)
-class Add(Builtin):
-    domain: Literal["Nat", "Int", "Rat"]
-
-
-@dataclass(frozen=True)
-class Sub(Builtin):
-    domain: Literal["Int", "Rat"]
-
-
-@dataclass(frozen=True)
-class Mul(Builtin):
-    domain: Literal["Nat", "Int", "Rat"]
-
-
-@dataclass(frozen=True)
-class Div(Builtin):
-    domain: Literal["Rat"]
-
-
-@dataclass(frozen=True)
-class Min(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Max(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Pow(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Eq(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
-class Ne(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
-class Le(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
-class Lt(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
-class Ge(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
-class Gt(Builtin):
-    domain: Literal["Nat", "Int", "Rat", "Index"]
-
-
-@dataclass(frozen=True)
 class At(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Bool(Builtin):
+    value: bool
+
+
+@dataclass(frozen=True)
+class BoolType(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Cons(Builtin):
     pass
 
 
@@ -213,8 +97,93 @@ class ConsVector(Builtin):
 
 
 @dataclass(frozen=True)
-class Fold(Builtin):
-    domain: Literal["List", "Vector"]
+class DivRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Eq(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Exists(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class FoldList(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class FoldVector(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Forall(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GeIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GeInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GeNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GeRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GtIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GtInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GtNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class GtRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class If(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Implies(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Index(Builtin):
+    value: int
+
+
+@dataclass(frozen=True)
+class IndexType(Builtin):
+    pass
 
 
 @dataclass(frozen=True)
@@ -223,7 +192,153 @@ class Indices(Builtin):
 
 
 @dataclass(frozen=True)
-class Indicator(Builtin):
+class Int(Builtin):
+    value: int
+
+
+@dataclass(frozen=True)
+class IntType(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LeIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LeInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LeNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LeRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class ListType(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LtIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LtInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LtNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class LtRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class MaxRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class MinRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class MulInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class MulNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class MulRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Nat(Builtin):
+    value: int
+
+
+@dataclass(frozen=True)
+class NatType(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Ne(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class NegInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class NegRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Nil(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Not(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Or(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class PowRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Rat(Builtin):
+    numerator: int
+    denominator: int
+
+
+@dataclass(frozen=True)
+class RatType(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class SubInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class SubRat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Unit(Builtin):
     pass
 
 
@@ -233,33 +348,8 @@ class UnitType(Builtin):
 
 
 @dataclass(frozen=True)
-class BoolType(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class IndexType(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class NatType(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class IntType(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class RatType(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class ListType(Builtin):
-    pass
+class Vector(Builtin):
+    value: int
 
 
 @dataclass(frozen=True)
@@ -279,19 +369,6 @@ class Expression(AST):
 
 
 @dataclass(frozen=True)
-class Binder(AST):
-    provenance: Provenance
-    name: Optional[Name]
-    type: Expression
-
-
-@dataclass(frozen=True)
-class Universe(Expression):
-    provenance: Provenance
-    level: UniverseLevel
-
-
-@dataclass(frozen=True)
 class App(Expression):
     provenance: Provenance
     func: Expression
@@ -299,16 +376,10 @@ class App(Expression):
 
 
 @dataclass(frozen=True)
-class Pi(Expression):
+class Binder(AST):
     provenance: Provenance
-    binder: Binder
-    body: Expression
-
-
-@dataclass(frozen=True)
-class BuiltinOp(Expression):
-    provenance: Provenance
-    builtin: Builtin
+    name: Optional[Name]
+    type: Expression
 
 
 @dataclass(frozen=True)
@@ -318,9 +389,22 @@ class BoundVar(Expression):
 
 
 @dataclass(frozen=True)
+class BuiltinOp(Expression):
+    provenance: Provenance
+    builtin: Builtin
+
+
+@dataclass(frozen=True)
 class FreeVar(Expression):
     provenance: Provenance
     name: Name
+
+
+@dataclass(frozen=True)
+class Lam(Expression):
+    provenance: Provenance
+    binder: Binder
+    body: Expression
 
 
 @dataclass(frozen=True)
@@ -332,10 +416,16 @@ class Let(Expression):
 
 
 @dataclass(frozen=True)
-class Lam(Expression):
+class Pi(Expression):
     provenance: Provenance
     binder: Binder
     body: Expression
+
+
+@dataclass(frozen=True)
+class Universe(Expression):
+    provenance: Provenance
+    level: UniverseLevel
 
 
 ################################################################################

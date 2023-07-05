@@ -75,11 +75,11 @@ class BuiltinInterpreter(
         return lambda x: lambda xs: (x, *xs)
 
     @abstractmethod
-    def interpret_Div(self, _cls: Optional[Type[_HasDiv]] = None) -> Operator2[_HasDiv]:
+    def interpret_DivRat(self) -> Operator2[_Rat]:
         ...
 
     @abstractmethod
-    def interpret_Eq(self, _cls: Optional[Type[_T]] = None) -> Relation[_T, _Bool]:
+    def interpret_Eq(self) -> Relation[_T, _Bool]:
         ...
 
     @abstractmethod
@@ -88,22 +88,26 @@ class BuiltinInterpreter(
 
     @abstractmethod
     def interpret_Fold(
-        self, _cls: Optional[Type[_T]] = None
+        self,
     ) -> Function[
         Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_T], _S]]
     ]:
         ...
 
     @abstractmethod
-    def interpret_Forall(
-        self, _cls: Optional[Type[_T]] = None
-    ) -> Function[Function[_T, _Bool], _Bool]:
+    def interpret_Forall(self) -> Function[Function[_T, _Bool], _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Ge(
-        self, _cls: Optional[Type[_HasOrd]] = None
-    ) -> Relation[_HasOrd, _Bool]:
+    def interpret_GeNat(self) -> Relation[_Nat, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_GeInt(self) -> Relation[_Int, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_GeRat(self) -> Relation[_Rat, _Bool]:
         ...
 
     @abstractmethod
