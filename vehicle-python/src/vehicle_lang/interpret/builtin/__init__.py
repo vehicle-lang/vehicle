@@ -16,14 +16,15 @@ _HasDiv = TypeVar("_HasDiv")
 _HasMin = TypeVar("_HasMin")
 _HasMax = TypeVar("_HasMax")
 _HasPow = TypeVar("_HasPow")
+_HasOrd = TypeVar("_HasOrd")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 Function: TypeAlias = Callable[[_S], _T]
 Relation: TypeAlias = Function[_T, Function[_T, _Bool]]
-UnaryOp: TypeAlias = Function[_T, _T]
-BinaryOp: TypeAlias = Function[_T, Function[_T, _T]]
+Operator1: TypeAlias = Function[_T, _T]
+Operator2: TypeAlias = Function[_T, Function[_T, _T]]
 
 
 class InterpretBuiltin(
@@ -40,6 +41,7 @@ class InterpretBuiltin(
         _HasMin,
         _HasMax,
         _HasPow,
+        _HasOrd,
     ],
     metaclass=ABCMeta,
 ):
@@ -59,24 +61,24 @@ class InterpretBuiltin(
 
     @abstractmethod
     def interpret_If(
-        self, cls: Type[_T]
+        self, _cls: Type[_T]
     ) -> Function[_Bool, Function[_T, Function[_T, _T]]]:
         ...
 
     @abstractmethod
-    def interpret_Not(self) -> UnaryOp[_Bool]:
+    def interpret_Not(self) -> Operator1[_Bool]:
         ...
 
     @abstractmethod
-    def interpret_And(self) -> BinaryOp[_Bool]:
+    def interpret_And(self) -> Operator2[_Bool]:
         ...
 
     @abstractmethod
-    def interpret_Or(self) -> BinaryOp[_Bool]:
+    def interpret_Or(self) -> Operator2[_Bool]:
         ...
 
     @abstractmethod
-    def interpret_Implies(self) -> BinaryOp[_Bool]:
+    def interpret_Implies(self) -> Operator2[_Bool]:
         ...
 
     @abstractmethod
@@ -96,19 +98,19 @@ class InterpretBuiltin(
         ...
 
     @abstractmethod
-    def interpret_Le(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Le(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Lt(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Lt(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Ge(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Ge(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Gt(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Gt(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
@@ -148,39 +150,39 @@ class InterpretBuiltin(
         ...
 
     @abstractmethod
-    def interpret_Neg(self, _cls: Type[_HasNeg]) -> UnaryOp[_HasNeg]:
+    def interpret_Neg(self, _cls: Type[_HasNeg]) -> Operator1[_HasNeg]:
         ...
 
     @abstractmethod
-    def interpret_Add(self, _cls: Type[_HasAdd]) -> BinaryOp[_HasAdd]:
+    def interpret_Add(self, _cls: Type[_HasAdd]) -> Operator2[_HasAdd]:
         ...
 
     @abstractmethod
-    def interpret_Sub(self, _cls: Type[_HasSub]) -> BinaryOp[_HasSub]:
+    def interpret_Sub(self, _cls: Type[_HasSub]) -> Operator2[_HasSub]:
         ...
 
     @abstractmethod
-    def interpret_Mul(self, _cls: Type[_HasMul]) -> BinaryOp[_HasMul]:
+    def interpret_Mul(self, _cls: Type[_HasMul]) -> Operator2[_HasMul]:
         ...
 
     @abstractmethod
-    def interpret_Div(self, _cls: Type[_HasDiv]) -> BinaryOp[_HasDiv]:
+    def interpret_Div(self, _cls: Type[_HasDiv]) -> Operator2[_HasDiv]:
         ...
 
     @abstractmethod
-    def interpret_Min(self, _cls: Type[_HasMin]) -> BinaryOp[_HasMin]:
+    def interpret_Min(self, _cls: Type[_HasMin]) -> Operator2[_HasMin]:
         ...
 
     @abstractmethod
-    def interpret_Max(self, _cls: Type[_HasMax]) -> BinaryOp[_HasMax]:
+    def interpret_Max(self, _cls: Type[_HasMax]) -> Operator2[_HasMax]:
         ...
 
     @abstractmethod
-    def interpret_Pow(self, _cls: Type[_HasPow]) -> BinaryOp[_HasPow]:
+    def interpret_Pow(self, _cls: Type[_HasPow]) -> Operator2[_HasPow]:
         ...
 
     @abstractmethod
-    def interpret_Indicator(self, cls: Type[_T]) -> BinaryOp[_T]:
+    def interpret_Indicator(self, cls: Type[_T]) -> Relation[_T, _Nat]:
         ...
 
     def interpret_ListType(self) -> Function[Type[_T], Type[Sequence[_T]]]:
@@ -198,7 +200,7 @@ class InterpretBuiltin(
     def interpret_Fold(
         self, _cls: Type[_T]
     ) -> Function[
-        Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_S], _T]]
+        Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_T], _S]]
     ]:
         ...
 
