@@ -1,24 +1,24 @@
 from abc import ABCMeta, abstractmethod
-from typing import Generic, Optional, Sequence, Tuple, Type, cast
+from typing import Any, Generic, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar
 
-from ._functools import Function, Operator1, Operator2, Relation
+from ._functools import (
+    Function1,
+    Function2,
+    Function3,
+    Operator1,
+    Operator2,
+    Relation2,
+    cons,
+    foldRight,
+)
 
 _Bool = TypeVar("_Bool")
+_Index = TypeVar("_Index")
 _Nat = TypeVar("_Nat")
 _Int = TypeVar("_Int")
 _Rat = TypeVar("_Rat")
-
-_HasNeg = TypeVar("_HasNeg")
-_HasAdd = TypeVar("_HasAdd")
-_HasSub = TypeVar("_HasSub")
-_HasMul = TypeVar("_HasMul")
-_HasDiv = TypeVar("_HasDiv")
-_HasMin = TypeVar("_HasMin")
-_HasMax = TypeVar("_HasMax")
-_HasPow = TypeVar("_HasPow")
-_HasOrd = TypeVar("_HasOrd")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -27,23 +27,23 @@ _T = TypeVar("_T")
 class BuiltinInterpreter(
     Generic[
         _Bool,
+        _Index,
         _Nat,
         _Int,
         _Rat,
-        _HasNeg,
-        _HasAdd,
-        _HasSub,
-        _HasMul,
-        _HasDiv,
-        _HasMin,
-        _HasMax,
-        _HasPow,
-        _HasOrd,
     ],
     metaclass=ABCMeta,
 ):
     @abstractmethod
-    def interpret_Add(self, _cls: Optional[Type[_HasAdd]] = None) -> Operator2[_HasAdd]:
+    def interpret_AddInt(self) -> Operator2[_Int]:
+        ...
+
+    @abstractmethod
+    def interpret_AddNat(self) -> Operator2[_Nat]:
+        ...
+
+    @abstractmethod
+    def interpret_AddRat(self) -> Operator2[_Rat]:
         ...
 
     @abstractmethod
@@ -51,9 +51,7 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_At(
-        self, _cls: Optional[Type[_T]] = None
-    ) -> Function[Sequence[_T], Function[_Nat, _T]]:
+    def interpret_AtVector(self) -> Function2[Sequence[_T], _Nat, _T]:
         ...
 
     @abstractmethod
@@ -64,62 +62,72 @@ class BuiltinInterpreter(
     def interpret_BoolType(self) -> Type[_Bool]:
         ...
 
-    def interpret_Cons(
-        self, _cls: Optional[Type[_T]] = None
-    ) -> Function[_T, Function[Sequence[_T], Sequence[_T]]]:
-        return lambda x: lambda xs: (x, *xs)
+    def interpret_ConsList(self) -> Function2[_T, Sequence[_T], Sequence[_T]]:
+        return cons
 
-    def interpret_ConsVector(
-        self,
-    ) -> Function[_T, Function[Sequence[_T], Sequence[_T]]]:
-        return lambda x: lambda xs: (x, *xs)
+    def interpret_ConsVector(self) -> Function2[_T, Sequence[_T], Sequence[_T]]:
+        return cons
 
     @abstractmethod
     def interpret_DivRat(self) -> Operator2[_Rat]:
         ...
 
     @abstractmethod
-    def interpret_Eq(self) -> Relation[_T, _Bool]:
+    def interpret_Eq(self) -> Relation2[_T, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Exists(self) -> Function[Function[_T, _Bool], _Bool]:
+    def interpret_Exists(self) -> Function1[Function1[_T, _Bool], _Bool]:
         ...
 
-    @abstractmethod
-    def interpret_Fold(
+    def interpret_FoldList(
         self,
-    ) -> Function[
-        Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_T], _S]]
-    ]:
+    ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
+        return foldRight
+
+    def interpret_FoldVector(
+        self,
+    ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
+        return foldRight
+
+    @abstractmethod
+    def interpret_Forall(self) -> Function1[Function1[_T, _Bool], _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Forall(self) -> Function[Function[_T, _Bool], _Bool]:
+    def interpret_GeIndex(self) -> Relation2[_Index, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_GeNat(self) -> Relation[_Nat, _Bool]:
+    def interpret_GeInt(self) -> Relation2[_Int, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_GeInt(self) -> Relation[_Int, _Bool]:
+    def interpret_GeNat(self) -> Relation2[_Nat, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_GeRat(self) -> Relation[_Rat, _Bool]:
+    def interpret_GeRat(self) -> Relation2[_Rat, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Gt(
-        self, _cls: Optional[Type[_HasOrd]] = None
-    ) -> Relation[_HasOrd, _Bool]:
+    def interpret_GtIndex(self) -> Relation2[_Index, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_If(
-        self, _cls: Optional[Type[_T]] = None
-    ) -> Function[_Bool, Function[_T, Function[_T, _T]]]:
+    def interpret_GtInt(self) -> Relation2[_Int, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_GtNat(self) -> Relation2[_Nat, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_GtRat(self) -> Relation2[_Rat, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_If(self) -> Function3[_Bool, _T, _T, _T]:
         ...
 
     @abstractmethod
@@ -127,19 +135,15 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_Index(self, value: int) -> _Nat:
+    def interpret_Index(self, value: int) -> _Index:
         ...
 
     @abstractmethod
-    def interpret_IndexType(self) -> Type[_Nat]:
+    def interpret_IndexType(self) -> Type[_Index]:
         ...
 
     @abstractmethod
-    def interpret_Indicator(self, cls: Type[_T]) -> Relation[_T, _Nat]:
-        ...
-
-    @abstractmethod
-    def interpret_Indices(self) -> Function[_Nat, Sequence[_Nat]]:
+    def interpret_Indices(self) -> Function1[_Index, Sequence[_Index]]:
         ...
 
     @abstractmethod
@@ -150,30 +154,82 @@ class BuiltinInterpreter(
     def interpret_IntType(self) -> Type[_Int]:
         ...
 
-    def interpret_ListType(self) -> Function[Type[_T], Type[Sequence[_T]]]:
-        return lambda cls: Sequence[cls]  # type: ignore[valid-type]
-
     @abstractmethod
-    def interpret_Max(self, _cls: Optional[Type[_HasMax]] = None) -> Operator2[_HasMax]:
+    def interpret_LeIndex(self) -> Relation2[_Index, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Min(self, _cls: Optional[Type[_HasMin]] = None) -> Operator2[_HasMin]:
+    def interpret_LeInt(self) -> Relation2[_Int, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Mul(self, _cls: Optional[Type[_HasMul]] = None) -> Operator2[_HasMul]:
+    def interpret_LeNat(self) -> Relation2[_Nat, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Ne(self, _cls: Optional[Type[_T]] = None) -> Relation[_T, _Bool]:
+    def interpret_LeRat(self) -> Relation2[_Rat, _Bool]:
+        ...
+
+    def interpret_ListType(self) -> Function1[Type[_T], Type[Sequence[_T]]]:
+        return lambda T: Sequence[T]  # type: ignore[valid-type]
+
+    @abstractmethod
+    def interpret_LtIndex(self) -> Relation2[_Index, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Neg(self, _cls: Optional[Type[_HasNeg]] = None) -> Operator1[_HasNeg]:
+    def interpret_LtInt(self) -> Relation2[_Int, _Bool]:
         ...
 
-    def interpret_Nil(self, _cls: Optional[Type[_T]] = None) -> Sequence[_T]:
+    @abstractmethod
+    def interpret_LtNat(self) -> Relation2[_Nat, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_LtRat(self) -> Relation2[_Rat, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_MaxRat(self) -> Operator2[_Rat]:
+        ...
+
+    @abstractmethod
+    def interpret_MinRat(self) -> Operator2[_Rat]:
+        ...
+
+    @abstractmethod
+    def interpret_MulInt(self) -> Operator2[_Int]:
+        ...
+
+    @abstractmethod
+    def interpret_MulNat(self) -> Operator2[_Nat]:
+        ...
+
+    @abstractmethod
+    def interpret_MulRat(self) -> Operator2[_Rat]:
+        ...
+
+    @abstractmethod
+    def interpret_Nat(self, value: int) -> _Nat:
+        ...
+
+    @abstractmethod
+    def interpret_NatType(self) -> Type[_Nat]:
+        ...
+
+    @abstractmethod
+    def interpret_Ne(self) -> Relation2[_T, _Bool]:
+        ...
+
+    @abstractmethod
+    def interpret_NegInt(self) -> Operator1[_Int]:
+        ...
+
+    @abstractmethod
+    def interpret_NegRat(self) -> Operator1[_Rat]:
+        ...
+
+    def interpret_NilList(self) -> Sequence[_T]:
         return ()
 
     @abstractmethod
@@ -185,31 +241,11 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_Pow(self, _cls: Optional[Type[_HasPow]] = None) -> Operator2[_HasPow]:
+    def interpret_PowRat(self) -> Operator2[_Rat]:
         ...
 
     @abstractmethod
-    def interpret_Le(
-        self, _cls: Optional[Type[_HasOrd]] = None
-    ) -> Relation[_HasOrd, _Bool]:
-        ...
-
-    @abstractmethod
-    def interpret_Lt(
-        self, _cls: Optional[Type[_HasOrd]] = None
-    ) -> Relation[_HasOrd, _Bool]:
-        ...
-
-    @abstractmethod
-    def interpret_NatType(self) -> Type[_Nat]:
-        ...
-
-    @abstractmethod
-    def interpret_Nat(self, value: int) -> _Nat:
-        ...
-
-    @abstractmethod
-    def interpret_Rat(self, numerator: int, denominator: int) -> _Rat:
+    def interpret_Rat(self, numerator: int, denomenator: int) -> _Rat:
         ...
 
     @abstractmethod
@@ -217,7 +253,11 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_Sub(self, _cls: Optional[Type[_HasSub]] = None) -> Operator2[_HasSub]:
+    def interpret_SubInt(self) -> Operator2[_Int]:
+        ...
+
+    @abstractmethod
+    def interpret_SubRat(self) -> Operator2[_Rat]:
         ...
 
     def interpret_Unit(self) -> Tuple[()]:
@@ -226,12 +266,8 @@ class BuiltinInterpreter(
     def interpret_UnitType(self) -> Type[Tuple[()]]:
         return cast(Type[Tuple[()]], Tuple[()])
 
-    def interpret_Vector(
-        self, _cls: Optional[Type[_T]] = None
-    ) -> Function[Sequence[_T], Sequence[_T]]:
-        return lambda xs: tuple(xs)
+    def interpret_Vector(self) -> Function1[Sequence[_T], Sequence[_T]]:
+        return tuple
 
-    def interpret_VectorType(
-        self,
-    ) -> Function[_Nat, Function[Type[_T], Type[Sequence[_T]]]]:
-        return lambda _n: lambda cls: Sequence[cls]  # type: ignore[valid-type]
+    def interpret_VectorType(self) -> Function1[Type[_T], Type[Sequence[_T]]]:
+        return lambda T: Sequence[T]  # type: ignore[valid-type]

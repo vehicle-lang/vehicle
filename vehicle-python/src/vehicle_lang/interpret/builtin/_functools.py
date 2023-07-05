@@ -1,4 +1,4 @@
-from functools import reduce
+from functools import partial, reduce
 from typing import Callable, Sequence
 
 from typing_extensions import TypeAlias, TypeVar
@@ -6,21 +6,32 @@ from typing_extensions import TypeAlias, TypeVar
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+_V = TypeVar("_V")
 
-Function: TypeAlias = Callable[[_S], _T]
-Relation: TypeAlias = Function[_S, Function[_S, _T]]
+Function1: TypeAlias = Callable[[_S], _T]
+Function2: TypeAlias = Function1[_S, Function1[_T, _U]]
+Function3: TypeAlias = Function2[_S, _T, Function1[_U, _V]]
+Relation2: TypeAlias = Function2[_S, _S, _T]
+Operator1: TypeAlias = Function1[_T, _T]
+Operator2: TypeAlias = Function2[_T, _T, _T]
 
-Operator1: TypeAlias = Function[_T, _T]
-Operator2: TypeAlias = Function[_T, Function[_T, _T]]
 
-
-def flip(f: Function[_S, Function[_T, _U]]) -> Function[_T, Function[_S, _U]]:
+def flip(f: Function2[_S, _T, _U]) -> Function2[_T, _S, _U]:
     return lambda y: lambda x: f(x)(y)
 
 
-def uncurry(f: Function[_S, Function[_T, _U]]) -> Callable[[_S, _T], _U]:
+def curry(f: Callable[[_S, _T], _U]) -> Function2[_S, _T, _U]:
+    return lambda x: partial(f, x)
+
+
+def uncurry(f: Function2[_S, _T, _U]) -> Callable[[_S, _T], _U]:
     return lambda x, y: f(x)(y)
 
 
-def foldRight(f: Function[_T, Function[_S, _S]], x: _S, xs: Sequence[_T]) -> _S:
-    return reduce(uncurry(flip(f)), xs, initial=x)
+def cons(x: _T) -> Function1[Sequence[_T], Sequence[_T]]:
+    return lambda xs: (x, *xs)
+
+
+def foldRight(f: Function2[_T, _S, _S]) -> Function2[_S, Sequence[_T], _S]:
+    _uncurry_f = uncurry(flip(f))
+    return lambda x: lambda xs: reduce(_uncurry_f, xs, initial=x)

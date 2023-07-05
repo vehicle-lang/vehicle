@@ -72,7 +72,7 @@ class And(Builtin):
 
 
 @dataclass(frozen=True)
-class At(Builtin):
+class AtVector(Builtin):
     pass
 
 
@@ -87,7 +87,7 @@ class BoolType(Builtin):
 
 
 @dataclass(frozen=True)
-class Cons(Builtin):
+class ConsList(Builtin):
     pass
 
 
@@ -297,7 +297,7 @@ class NegRat(Builtin):
 
 
 @dataclass(frozen=True)
-class Nil(Builtin):
+class NilList(Builtin):
     pass
 
 
