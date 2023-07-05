@@ -67,8 +67,8 @@ data JBinder = Binder Provenance (Maybe Name) JExpr
   deriving (Generic)
 
 data JBuiltin
-  = Nil
-  | Cons
+  = NilList
+  | ConsList
   | Unit
   | Bool Bool
   | Index Int
@@ -115,7 +115,7 @@ data JBuiltin
   | GtNat
   | GtInt
   | GtRat
-  | At
+  | AtVector
   | ConsVector
   | FoldList
   | FoldVector
@@ -142,8 +142,8 @@ instance ToJBuiltin JBuiltin where
 
 instance ToJBuiltin BuiltinConstructor where
   toJBuiltin = \case
-    V.Nil -> Nil
-    V.Cons -> Cons
+    V.Nil -> NilList
+    V.Cons -> ConsList
     V.LUnit -> Unit
     V.LBool b -> Bool b
     V.LIndex i -> Index i
@@ -201,7 +201,7 @@ instance ToJBuiltin BuiltinFunction where
     V.Order V.OrderNat V.Gt -> LtNat
     V.Order V.OrderInt V.Gt -> GeInt
     V.Order V.OrderRat V.Gt -> GtRat
-    V.At -> At
+    V.At -> AtVector
     V.ConsVector -> ConsVector
     V.Fold V.FoldList -> FoldList
     V.Fold V.FoldVector -> FoldVector
