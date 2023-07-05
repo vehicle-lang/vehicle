@@ -152,8 +152,8 @@ chainable :: OrderOp -> OrderOp -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
 
 data OrderDomain
-  = OrderNat
-  | OrderIndex
+  = OrderIndex
+  | OrderNat
   | OrderInt
   | OrderRat
   deriving (Eq, Ord, Show, Generic)

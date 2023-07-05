@@ -83,20 +83,38 @@ data JBuiltin
   | Forall
   | Exists
   | If
-  | Neg V.NegDomain
-  | Add V.AddDomain
-  | Sub V.SubDomain
-  | Mul V.MulDomain
-  | Div V.DivDomain
-  | Min -- TODO: V.MinDomain
-  | Max -- TODO: V.MaxDomain
-  | Pow -- TODO: V.PowDomain
-  | Eq V.EqualityDomain
-  | Ne V.EqualityDomain
-  | Le V.OrderDomain
-  | Lt V.OrderDomain
-  | Ge V.OrderDomain
-  | Gt V.OrderDomain
+  | NegInt
+  | NegRat
+  | AddNat
+  | AddInt
+  | AddRat
+  | SubInt
+  | SubRat
+  | MulNat
+  | MulInt
+  | MulRat
+  | DivRat
+  | MinRat
+  | MaxRat
+  | PowRat
+  | Eq
+  | Ne
+  | LeIndex
+  | LeNat
+  | LeInt
+  | LeRat
+  | LtIndex
+  | LtNat
+  | LtInt
+  | LtRat
+  | GeIndex
+  | GeNat
+  | GeInt
+  | GeRat
+  | GtIndex
+  | GtNat
+  | GtInt
+  | GtRat
   | At
   | ConsVector
   | Fold V.FoldDomain
@@ -109,7 +127,6 @@ data JBuiltin
   | RatType
   | ListType
   | VectorType
-  | Indicator
   | Sample Name
   deriving (Generic)
 
@@ -154,17 +171,35 @@ instance ToJBuiltin BuiltinFunction where
     V.If -> If
     V.FromNat {} -> developerError "`FromNat` should have been removed after type-checking."
     V.FromRat {} -> developerError "`FromRat` should have been removed after type-checking."
-    V.Neg dom -> Neg dom
-    V.Add dom -> Add dom
-    V.Sub dom -> Sub dom
-    V.Mul dom -> Mul dom
-    V.Div dom -> Div dom
-    V.Equals dom V.Eq -> Eq dom
-    V.Equals dom V.Neq -> Ne dom
-    V.Order dom V.Le -> Le dom
-    V.Order dom V.Lt -> Lt dom
-    V.Order dom V.Ge -> Ge dom
-    V.Order dom V.Gt -> Gt dom
+    V.Neg V.NegInt -> NegInt
+    V.Neg V.NegRat -> NegRat
+    V.Add V.AddNat -> AddNat
+    V.Add V.AddInt -> AddInt
+    V.Add V.AddRat -> AddRat
+    V.Sub V.SubInt -> SubInt
+    V.Sub V.SubRat -> SubRat
+    V.Mul V.MulNat -> MulNat
+    V.Mul V.MulInt -> MulInt
+    V.Mul V.MulRat -> MulRat
+    V.Div V.DivRat -> DivRat
+    V.Equals _dom V.Eq -> Eq
+    V.Equals _dom V.Neq -> Ne
+    V.Order V.OrderIndex V.Le -> LeIndex
+    V.Order V.OrderNat V.Le -> LtNat
+    V.Order V.OrderInt V.Le -> GeInt
+    V.Order V.OrderRat V.Le -> GtRat
+    V.Order V.OrderIndex V.Lt -> LeIndex
+    V.Order V.OrderNat V.Lt -> LtNat
+    V.Order V.OrderInt V.Lt -> GeInt
+    V.Order V.OrderRat V.Lt -> GtRat
+    V.Order V.OrderIndex V.Ge -> LeIndex
+    V.Order V.OrderNat V.Ge -> LtNat
+    V.Order V.OrderInt V.Ge -> GeInt
+    V.Order V.OrderRat V.Ge -> GtRat
+    V.Order V.OrderIndex V.Gt -> LeIndex
+    V.Order V.OrderNat V.Gt -> LtNat
+    V.Order V.OrderInt V.Gt -> GeInt
+    V.Order V.OrderRat V.Gt -> GtRat
     V.At -> At
     V.ConsVector -> ConsVector
     V.Fold dom -> Fold dom

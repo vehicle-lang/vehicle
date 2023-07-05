@@ -32,31 +32,31 @@ op2 op x y = builtin op @@ [x, y]
 
 -- | Addition
 (+:) :: PLExpr -> PLExpr -> PLExpr
-(+:) = op2 (J.Add AddRat)
+(+:) = op2 (J.AddRat)
 
 -- | Multiplication
 (*:) :: PLExpr -> PLExpr -> PLExpr
-(*:) = op2 (J.Mul MulRat)
+(*:) = op2 (J.MulRat)
 
 -- | Subtraction
 (-:) :: PLExpr -> PLExpr -> PLExpr
-(-:) = op2 (J.Sub SubRat)
+(-:) = op2 (J.SubRat)
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
-(^:) x y = op2 J.Pow x (lcon y)
+(^:) x y = op2 J.PowRat x (lcon y)
 
 -- | Indicator function
 ind :: PLExpr -> PLExpr -> PLExpr
-ind = op2 J.Indicator
+ind x y = builtin J.If @@ [op2 J.Eq x y, builtin $ J.Rat 0 1, builtin $ J.Rat 1 1]
 
 -- | Maximum operator
 lmax :: PLExpr -> PLExpr -> PLExpr
-lmax = op2 J.Max
+lmax = op2 J.MaxRat
 
 -- | Minimum operator
 lmin :: PLExpr -> PLExpr -> PLExpr
-lmin = op2 J.Min
+lmin = op2 J.MinRat
 
 -- | Constant
 lcon :: Rational -> PLExpr
@@ -145,8 +145,8 @@ dl2Translation =
       compileBool = builtin J.RatType,
       compileTrue = lcon 0,
       compileFalse = lcon 1, -- TODO this should be infinity???
-      compileAnd = BinaryAnd $ builtin (J.Add AddRat),
-      compileOr = BinaryOr $ builtin (J.Mul MulRat),
+      compileAnd = BinaryAnd $ builtin (J.AddRat),
+      compileOr = BinaryOr $ builtin (J.MulRat),
       compileNot = TryToEliminate,
       compileImplies = mkOp2 rat $ \x y -> lmax (lcon 0) (x *: y),
       compileForall = forallSampler,
