@@ -11,6 +11,7 @@ import Vehicle.Backend.JSON as J
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
 import Vehicle.Expr.DSL
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -61,8 +62,24 @@ lmin = op2 J.Min
 lcon :: Rational -> PLExpr
 lcon x = builtin (toJBuiltin x)
 
+-- | Rational type
 rat :: PLExpr
 rat = builtin J.RatType
+
+-- | Compiles a quantifier to a sampling procedure.
+quantifierSampler :: StdLibFunction -> Name -> PLExpr
+quantifierSampler bigOp varName = explLam "f" (builtin J.Unit) $ \f ->
+  -- We are not getting the instance or the implicit arguments right here,
+  -- but as they are erased, hopefully it's okay!
+  free bigOp @@ [free StdMapVector @@ [f, builtin (Sample varName)]]
+
+-- | Compiles a `Forall` to a sampling procedure
+forallSampler :: Name -> PLExpr
+forallSampler = quantifierSampler StdBigAnd
+
+-- | Compiles an `Exists` to a sampling procedure
+existsSampler :: Name -> PLExpr
+existsSampler = quantifierSampler StdBigOr
 
 --------------------------------------------------------------------------------
 -- Logics
@@ -87,18 +104,20 @@ data NotTranslation
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { logicID :: DifferentiableLogicID,
     compileBool :: PLExpr,
+    compileTrue :: PLExpr,
+    compileFalse :: PLExpr,
     compileAnd :: AndTranslation,
     compileOr :: OrTranslation,
     compileNot :: NotTranslation,
     compileImplies :: PLExpr,
+    compileForall :: Name -> PLExpr,
+    compileExists :: Name -> PLExpr,
     compileLe :: PLExpr,
     compileLt :: PLExpr,
     compileGe :: PLExpr,
     compileGt :: PLExpr,
     compileEq :: PLExpr,
-    compileNeq :: PLExpr,
-    compileTrue :: PLExpr,
-    compileFalse :: PLExpr
+    compileNeq :: PLExpr
   }
 
 --------------------------------------------------------------------------------
@@ -124,18 +143,20 @@ dl2Translation =
   DifferentialLogicImplementation
     { logicID = DL2Loss,
       compileBool = builtin J.RatType,
+      compileTrue = lcon 0,
+      compileFalse = lcon 1, -- TODO this should be infinity???
       compileAnd = BinaryAnd $ builtin (J.Add AddRat),
       compileOr = BinaryOr $ builtin (J.Mul MulRat),
       compileNot = TryToEliminate,
       compileImplies = mkOp2 rat $ \x y -> lmax (lcon 0) (x *: y),
+      compileForall = forallSampler,
+      compileExists = existsSampler,
       compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y) +: ind x y,
       compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x) +: ind y x,
       compileNeq = mkOp2 rat ind,
-      compileEq = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y) +: lmax (lcon 0) (x -: y),
-      compileTrue = lcon 0,
-      compileFalse = lcon 1
+      compileEq = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y) +: lmax (lcon 0) (x -: y)
     }
 
 --------------------------------------------------------------------------------
@@ -148,18 +169,20 @@ godelTranslation =
   DifferentialLogicImplementation
     { logicID = GodelLoss,
       compileBool = builtin J.RatType,
+      compileTrue = lcon 0,
+      compileFalse = lcon 1,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmin x y),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmax x y),
       compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
       compileImplies = mkOp2 rat $ \x y -> lcon 1 -: lmax (lcon 1 -: x) y,
+      compileForall = forallSampler,
+      compileExists = existsSampler,
       compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind,
-      compileTrue = lcon 0,
-      compileFalse = lcon 1
+      compileNeq = mkOp2 rat ind
     }
 
 --------------------------------------------------------------------------------
@@ -172,18 +195,20 @@ lukasiewiczTranslation =
   DifferentialLogicImplementation
     { logicID = LukasiewiczLoss,
       compileBool = builtin J.RatType,
+      compileTrue = lcon 0,
+      compileFalse = lcon 1,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: lmax (lcon 0) ((x +: y) -: lcon 1)),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: lmin (x +: y) (lcon 1)),
       compileNot = UnaryNot (mkOp1 rat $ \arg -> lcon 1 -: arg),
       compileImplies = mkOp2 rat $ \x y -> lcon 1 -: lmin (lcon 1) ((lcon 1 -: x) +: y),
+      compileForall = forallSampler,
+      compileExists = existsSampler,
       compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind,
-      compileTrue = lcon 0,
-      compileFalse = lcon 1
+      compileNeq = mkOp2 rat ind
     }
 
 --------------------------------------------------------------------------------
@@ -196,18 +221,20 @@ productTranslation =
   DifferentialLogicImplementation
     { logicID = ProductLoss,
       compileBool = builtin J.RatType,
+      compileTrue = lcon 0,
+      compileFalse = lcon 1,
       compileAnd = BinaryAnd (mkOp2 rat $ \x y -> lcon 1 -: (x *: y)),
       compileOr = BinaryOr (mkOp2 rat $ \x y -> lcon 1 -: ((x +: y) -: (x *: y))),
       compileNot = UnaryNot (mkOp1 rat $ \x -> lcon 1 -: x),
       compileImplies = mkOp2 rat $ \x y -> lcon 1 -: ((lcon 1 -: x) +: (x *: y)),
+      compileForall = forallSampler,
+      compileExists = existsSampler,
       compileLe = mkOp2 rat $ \x y -> lcon 0 `lmax` (x -: y),
       compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind,
-      compileTrue = lcon 0,
-      compileFalse = lcon 1
+      compileNeq = mkOp2 rat ind
     }
 
 --------------------------------------------------------------------------------
@@ -224,6 +251,8 @@ parameterisedYagerTranslation p =
   DifferentialLogicImplementation
     { logicID = YagerLoss,
       compileBool = builtin J.RatType,
+      compileTrue = lcon 0,
+      compileFalse = lcon 1,
       compileAnd =
         BinaryAnd
           ( mkOp2 rat $ \x y ->
@@ -254,14 +283,14 @@ parameterisedYagerTranslation p =
                 ^: (1 / p)
             )
             (lcon 1),
+      compileForall = forallSampler,
+      compileExists = existsSampler,
       compileLe = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileLt = mkOp2 rat $ \x y -> lmax (lcon 0) (x -: y),
       compileGe = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileGt = mkOp2 rat $ \x y -> lmax (lcon 0) (y -: x),
       compileEq = mkOp2 rat $ \x y -> lcon 1 -: ind x y,
-      compileNeq = mkOp2 rat ind,
-      compileTrue = lcon 0,
-      compileFalse = lcon 1
+      compileNeq = mkOp2 rat ind
     }
 
 --------------------------------------------------------------------------------

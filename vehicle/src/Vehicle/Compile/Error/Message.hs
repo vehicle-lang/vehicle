@@ -1322,7 +1322,7 @@ instance MeaningfulError CompileError where
                 <+> "does not contain any neural networks.",
             fix = Just "choose a different compilation target than VNNLib"
           }
-    UnsupportedNegatedOperation logic notProv expr ->
+    UnsupportedNegatedOperation logic notProv ->
       UError $
         UserError
           { provenance = notProv,
@@ -1334,12 +1334,17 @@ instance MeaningfulError CompileError where
                 <+> quotePretty Not
                 <+> "at"
                 <+> pretty notProv
-                <+> "applied to"
-                <+> "an expression with the following subterm"
-                <+> squotes (prettyFriendly expr)
-                <+> "at"
-                <+> pretty (provenanceOf expr)
-                <> ".",
+                <+> "because it cannot be eliminated by pushing it inwards.",
+            fix = Just "choose a different differential logic"
+          }
+    UnsupportedIfOperation _declProv ifProv ->
+      UError $
+        UserError
+          { provenance = ifProv,
+            problem =
+              "Loss functions do not yet support compilation of"
+                <+> quotePretty If
+                <+> ".",
             fix = Just "choose a different differential logic"
           }
     DuplicateQuantifierNames (identifier, p) name ->

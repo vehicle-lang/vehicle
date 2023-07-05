@@ -3,20 +3,22 @@
 module Vehicle.Expr.Hashing () where
 
 import Data.Hashable (Hashable (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
+import Vehicle.Syntax.AST
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices
 -- but this proved to be unnecessary. It's still in the repo's history if
 -- need be though.
 
-instance Hashable StandardNormArg
+instance (Hashable builtin) => Hashable (VArg builtin)
 
-instance Hashable StandardNormBinder
+instance (Hashable builtin) => Hashable (VBinder builtin)
 
-instance Hashable StandardNormExpr
+instance (Hashable builtin) => Hashable (Value builtin)
 
-instance Hashable TypeCheckedArg
+instance (Hashable builtin) => Hashable (Arg Ix builtin)
 
-instance Hashable TypeCheckedBinder
+instance (Hashable builtin) => Hashable (Binder Ix builtin)
 
-instance Hashable TypeCheckedExpr
+instance (Hashable builtin) => Hashable (Expr Ix builtin)

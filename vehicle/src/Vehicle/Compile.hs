@@ -60,7 +60,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
     VerifierQueries queryFormatID ->
       compileToQueryFormat result resources queryFormatID outputFile
     LossFunction differentiableLogic ->
-      compileToLossFunction result resources differentiableLogic outputFile
+      compileToLossFunction result differentiableLogic outputFile
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
@@ -92,12 +92,12 @@ mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
   (ImportedModules, StandardGluedProg) ->
-  Resources ->
   DifferentiableLogicID ->
   Maybe FilePath ->
   m ()
-compileToLossFunction (_, typedProg) resources differentiableLogic outputFile = do
-  result <- LossFunction.compile resources differentiableLogic typedProg
+compileToLossFunction (imports, typedProg) differentiableLogic outputFile = do
+  let mergedProg = mergeImports imports typedProg
+  result <- LossFunction.compile differentiableLogic mergedProg
   writeResultToFile Nothing outputFile result
 
 compileToAgda ::

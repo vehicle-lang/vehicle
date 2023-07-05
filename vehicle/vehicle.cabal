@@ -170,6 +170,7 @@ library
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Backend.LossFunction.Monomorphisation2
     Vehicle.Backend.LossFunction.Syntax
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency

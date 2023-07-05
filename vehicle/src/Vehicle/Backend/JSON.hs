@@ -110,6 +110,7 @@ data JBuiltin
   | ListType
   | VectorType
   | Indicator
+  | Sample Name
   deriving (Generic)
 
 --------------------------------------------------------------------------------

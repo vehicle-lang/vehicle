@@ -80,7 +80,7 @@
                             ]
                           },
                           {
-                            "tag": "Bool"
+                            "tag": "BoolType"
                           }
                         ]
                       }
@@ -102,7 +102,7 @@
                   ]
                 },
                 {
-                  "tag": "Bool"
+                  "tag": "BoolType"
                 }
               ]
             }
@@ -174,7 +174,7 @@
                             ]
                           },
                           {
-                            "tag": "Bool"
+                            "tag": "BoolType"
                           }
                         ]
                       }
@@ -218,7 +218,7 @@
                                 ]
                               },
                               {
-                                "tag": "Bool"
+                                "tag": "BoolType"
                               }
                             ]
                           }
@@ -304,7 +304,7 @@
                     ]
                   },
                   {
-                    "tag": "LBool",
+                    "tag": "Bool",
                     "contents": true
                   }
                 ]
@@ -393,7 +393,7 @@
                             ]
                           },
                           {
-                            "tag": "Bool"
+                            "tag": "BoolType"
                           }
                         ]
                       }
@@ -415,7 +415,7 @@
                   ]
                 },
                 {
-                  "tag": "Bool"
+                  "tag": "BoolType"
                 }
               ]
             }
@@ -487,7 +487,7 @@
                             ]
                           },
                           {
-                            "tag": "Bool"
+                            "tag": "BoolType"
                           }
                         ]
                       }
@@ -531,7 +531,7 @@
                                 ]
                               },
                               {
-                                "tag": "Bool"
+                                "tag": "BoolType"
                               }
                             ]
                           }
@@ -617,7 +617,7 @@
                     ]
                   },
                   {
-                    "tag": "LBool",
+                    "tag": "Bool",
                     "contents": false
                   }
                 ]
@@ -720,7 +720,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -814,7 +814,7 @@
                       ]
                     },
                     {
-                      "tag": "Bool"
+                      "tag": "BoolType"
                     }
                   ]
                 }
@@ -902,7 +902,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -1174,7 +1174,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -1268,7 +1268,7 @@
                       ]
                     },
                     {
-                      "tag": "Bool"
+                      "tag": "BoolType"
                     }
                   ]
                 }
@@ -1356,7 +1356,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -1598,7 +1598,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -1663,7 +1663,7 @@
                       ]
                     },
                     {
-                      "tag": "Vector"
+                      "tag": "VectorType"
                     }
                   ]
                 },
@@ -1753,7 +1753,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -1961,7 +1961,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -2026,7 +2026,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -2277,7 +2277,7 @@
                                         ]
                                       },
                                       {
-                                        "tag": "Vector"
+                                        "tag": "VectorType"
                                       }
                                     ]
                                   },
@@ -2456,7 +2456,7 @@
                               ]
                             },
                             {
-                              "tag": "LVec",
+                              "tag": "Vector",
                               "contents": 0
                             }
                           ]
@@ -2559,7 +2559,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -2628,7 +2628,7 @@
                       ]
                     },
                     {
-                      "tag": "Vector"
+                      "tag": "VectorType"
                     }
                   ]
                 },
@@ -2743,7 +2743,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -3078,7 +3078,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -3168,7 +3168,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Vector"
+                                  "tag": "VectorType"
                                 }
                               ]
                             },
@@ -3233,7 +3233,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -3457,7 +3457,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -3547,7 +3547,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Vector"
+                                  "tag": "VectorType"
                                 }
                               ]
                             },
@@ -3665,7 +3665,7 @@
                                             ]
                                           },
                                           {
-                                            "tag": "Index"
+                                            "tag": "IndexType"
                                           }
                                         ]
                                       },
@@ -3923,7 +3923,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -4013,7 +4013,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -4078,7 +4078,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -4365,7 +4365,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -4455,7 +4455,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -4520,7 +4520,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -4807,7 +4807,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -4897,7 +4897,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -4950,7 +4950,7 @@
                       ]
                     },
                     {
-                      "tag": "Bool"
+                      "tag": "BoolType"
                     }
                   ]
                 }
@@ -5008,7 +5008,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -5098,7 +5098,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -5448,7 +5448,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -5538,7 +5538,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -5591,7 +5591,7 @@
                       ]
                     },
                     {
-                      "tag": "Bool"
+                      "tag": "BoolType"
                     }
                   ]
                 }
@@ -5649,7 +5649,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -5739,7 +5739,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -6114,7 +6114,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -6152,7 +6152,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -6173,7 +6173,7 @@
                   ]
                 },
                 {
-                  "tag": "Bool"
+                  "tag": "BoolType"
                 }
               ]
             }
@@ -6254,7 +6254,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -6292,7 +6292,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -6406,7 +6406,7 @@
                                           ]
                                         },
                                         {
-                                          "tag": "Index"
+                                          "tag": "IndexType"
                                         }
                                       ]
                                     },
@@ -6577,7 +6577,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -6615,7 +6615,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -6636,7 +6636,7 @@
                   ]
                 },
                 {
-                  "tag": "Bool"
+                  "tag": "BoolType"
                 }
               ]
             }
@@ -6717,7 +6717,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Index"
+                                  "tag": "IndexType"
                                 }
                               ]
                             },
@@ -6755,7 +6755,7 @@
                           ]
                         },
                         {
-                          "tag": "Bool"
+                          "tag": "BoolType"
                         }
                       ]
                     }
@@ -6869,7 +6869,7 @@
                                           ]
                                         },
                                         {
-                                          "tag": "Index"
+                                          "tag": "IndexType"
                                         }
                                       ]
                                     },
@@ -7057,7 +7057,7 @@
                               ]
                             },
                             {
-                              "tag": "List"
+                              "tag": "ListType"
                             }
                           ]
                         },
@@ -7075,7 +7075,7 @@
                                 ]
                               },
                               {
-                                "tag": "Nat"
+                                "tag": "NatType"
                               }
                             ]
                           }
@@ -7195,7 +7195,7 @@
                               ]
                             },
                             {
-                              "tag": "List"
+                              "tag": "ListType"
                             }
                           ]
                         },
@@ -7213,7 +7213,7 @@
                                 ]
                               },
                               {
-                                "tag": "Nat"
+                                "tag": "NatType"
                               }
                             ]
                           }
@@ -7291,7 +7291,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Nat"
+                                    "tag": "NatType"
                                   }
                                 ]
                               }
@@ -7364,7 +7364,7 @@
                                         ]
                                       },
                                       {
-                                        "tag": "Vector"
+                                        "tag": "VectorType"
                                       }
                                     ]
                                   },
@@ -7508,7 +7508,7 @@
                           ]
                         },
                         {
-                          "tag": "Vector"
+                          "tag": "VectorType"
                         }
                       ]
                     },
@@ -7573,7 +7573,7 @@
                       ]
                     },
                     {
-                      "tag": "List"
+                      "tag": "ListType"
                     }
                   ]
                 },
@@ -7884,7 +7884,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "List"
+                                    "tag": "ListType"
                                   }
                                 ]
                               },
@@ -8147,7 +8147,7 @@
                               ]
                             },
                             {
-                              "tag": "List"
+                              "tag": "ListType"
                             }
                           ]
                         },
@@ -8197,7 +8197,7 @@
                           ]
                         },
                         {
-                          "tag": "List"
+                          "tag": "ListType"
                         }
                       ]
                     },
@@ -8433,7 +8433,7 @@
                                         ]
                                       },
                                       {
-                                        "tag": "List"
+                                        "tag": "ListType"
                                       }
                                     ]
                                   },
@@ -8618,7 +8618,7 @@
                   ]
                 },
                 {
-                  "tag": "Vector"
+                  "tag": "VectorType"
                 }
               ]
             },
@@ -8636,7 +8636,7 @@
                     ]
                   },
                   {
-                    "tag": "Rat"
+                    "tag": "RatType"
                   }
                 ]
               },
@@ -8653,7 +8653,7 @@
                     ]
                   },
                   {
-                    "tag": "LNat",
+                    "tag": "Nat",
                     "contents": 0
                   }
                 ]
@@ -8702,7 +8702,7 @@
                     ]
                   },
                   {
-                    "tag": "LVec",
+                    "tag": "Vector",
                     "contents": 0
                   }
                 ]
@@ -8800,7 +8800,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Vector"
+                                  "tag": "VectorType"
                                 }
                               ]
                             },
@@ -8818,7 +8818,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Rat"
+                                    "tag": "RatType"
                                   }
                                 ]
                               },
@@ -8835,7 +8835,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "LNat",
+                                    "tag": "Nat",
                                     "contents": 1
                                   }
                                 ]
@@ -8870,7 +8870,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -8888,7 +8888,7 @@
                                 ]
                               },
                               {
-                                "tag": "Rat"
+                                "tag": "RatType"
                               }
                             ]
                           },
@@ -8905,7 +8905,7 @@
                                 ]
                               },
                               {
-                                "tag": "LNat",
+                                "tag": "Nat",
                                 "contents": 1
                               }
                             ]
@@ -8930,7 +8930,7 @@
                   ]
                 },
                 {
-                  "tag": "Bool"
+                  "tag": "BoolType"
                 }
               ]
             }
@@ -9011,7 +9011,7 @@
                                   ]
                                 },
                                 {
-                                  "tag": "Vector"
+                                  "tag": "VectorType"
                                 }
                               ]
                             },
@@ -9029,7 +9029,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "Rat"
+                                    "tag": "RatType"
                                   }
                                 ]
                               },
@@ -9046,7 +9046,7 @@
                                     ]
                                   },
                                   {
-                                    "tag": "LNat",
+                                    "tag": "Nat",
                                     "contents": 1
                                   }
                                 ]
@@ -9081,7 +9081,7 @@
                               ]
                             },
                             {
-                              "tag": "Vector"
+                              "tag": "VectorType"
                             }
                           ]
                         },
@@ -9099,7 +9099,7 @@
                                 ]
                               },
                               {
-                                "tag": "Rat"
+                                "tag": "RatType"
                               }
                             ]
                           },
@@ -9116,7 +9116,7 @@
                                 ]
                               },
                               {
-                                "tag": "LNat",
+                                "tag": "Nat",
                                 "contents": 1
                               }
                             ]
@@ -9270,7 +9270,7 @@
                                               ]
                                             },
                                             {
-                                              "tag": "LVec",
+                                              "tag": "Vector",
                                               "contents": 1
                                             }
                                           ]
@@ -9289,7 +9289,7 @@
                                                 ]
                                               },
                                               {
-                                                "tag": "LRat",
+                                                "tag": "Rat",
                                                 "contents": [
                                                   0,
                                                   1
@@ -9319,7 +9319,7 @@
                               ]
                             },
                             {
-                              "tag": "LIndex",
+                              "tag": "Index",
                               "contents": 0
                             }
                           ]
@@ -9340,7 +9340,7 @@
                         ]
                       },
                       {
-                        "tag": "LRat",
+                        "tag": "Rat",
                         "contents": [
                           0,
                           1
