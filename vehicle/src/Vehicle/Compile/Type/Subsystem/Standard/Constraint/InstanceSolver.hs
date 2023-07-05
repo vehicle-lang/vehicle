@@ -29,10 +29,10 @@ import Vehicle.Expr.Normalised
 
 solveInstanceConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
 solveInstanceConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ b _) <- substMetas constraint
+  normConstraint@(Has _ expr) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
-  tc <- getTypeClass b
+  (tc, _) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
   solve tc nConstraint
 
@@ -52,8 +52,8 @@ solveInstanceGoal ::
   [Provenance -> InstanceCandidate] ->
   WithContext StandardTypeClassConstraint ->
   m ()
-solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta b spine) ctx) = do
-  tc <- getTypeClass b
+solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta expr) ctx) = do
+  (tc, spine) <- getTypeClass expr
   let p = provenanceOf ctx
   let boundCtx = boundContext ctx
 
@@ -100,7 +100,7 @@ solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta b spi
       logDebug MaxDetail "Multiple possible candidates found so deferring."
       let constraint = WithContext (TypeClassConstraint tcConstraint) ctx
       -- TODO can we be more precise with the set of blocking metas?
-      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @StandardBuiltinType)
+      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @StandardBuiltin)
       addConstraints [blockedConstraint]
 
 -- | Locates any more candidates that are in the bound context of the constraint
@@ -135,7 +135,7 @@ checkCandidate ::
   MetaID ->
   InstanceGoal ->
   WithContext InstanceCandidate ->
-  m (Maybe (WithContext InstanceCandidate, TypeCheckerState StandardBuiltinType))
+  m (Maybe (WithContext InstanceCandidate, TypeCheckerState StandardBuiltin))
 checkCandidate ctx meta goal candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
@@ -155,7 +155,7 @@ checkCandidate ctx meta goal candidate = do
         -- then we wouldn't need to do this manually).
         solveMeta meta substCandidateSolution (boundContext newCtx)
 
-      runUnificationSolver (Proxy @StandardBuiltinType) mempty
+      runUnificationSolver (Proxy @StandardBuiltin) mempty
 
     case result of
       Left err -> do
@@ -204,5 +204,5 @@ prettyCandidate (WithContext candidate ctx) =
 
 getConstraintOrigin :: StandardConstraintContext -> (StandardExpr, [StandardArg])
 getConstraintOrigin ctx = case origin ctx of
-  CheckingTypeClass fun args _ _ -> (fun, args)
+  CheckingTypeClass fun args _ -> (fun, args)
   _ -> developerError "The origin of an instance constraint should be an instance argument"

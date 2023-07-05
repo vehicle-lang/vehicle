@@ -10,7 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalisable (NormalisableArg)
+import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (QueryFormatID)
 
@@ -52,7 +52,7 @@ data CompileError
       StandardType -- The expected type.
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
-      (NormalisableArg StandardBuiltinType) -- The non-explicit argument
+      (Arg Ix StandardBuiltin) -- The non-explicit argument
       StandardType -- Expected type of the argument
   | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))

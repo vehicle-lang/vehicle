@@ -14,7 +14,6 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
@@ -25,26 +24,26 @@ import Prelude hiding (pi)
 -- Inserts meta-variables for missing implicit and instance arguments and
 -- gathers the constraints over those meta-variables.
 
-type MonadBidirectionalInternal types m =
-  ( MonadTypeChecker types m,
-    MonadReader (TypingBoundCtx types) m
+type MonadBidirectionalInternal builtin m =
+  ( MonadTypeChecker builtin m,
+    MonadReader (TypingBoundCtx builtin) m
   )
 
 -- | Type checking monad with additional bound context for the bidirectional
 -- type-checking pass.
-type MonadBidirectional types m =
-  ( MonadBidirectionalInternal types m,
-    TypableBuiltin types
+type MonadBidirectional builtin m =
+  ( MonadBidirectionalInternal builtin m,
+    TypableBuiltin builtin
   )
 
 --------------------------------------------------------------------------------
 -- Checking
 
 checkExpr ::
-  (MonadBidirectional types m) =>
-  NormalisableType types -> -- Type we're checking against
-  NormalisableExpr types -> -- Expression being type-checked
-  m (NormalisableExpr types) -- Checked expression
+  (MonadBidirectional builtin m) =>
+  Type Ix builtin -> -- Type we're checking against
+  Expr Ix builtin -> -- Expression being type-checked
+  m (Expr Ix builtin) -- Checked expression
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
@@ -102,7 +101,7 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: (MonadBidirectional types m) => NormalisableType types -> NormalisableExpr types -> m (NormalisableExpr types)
+viaInfer :: (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m (Expr Ix builtin)
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -119,9 +118,9 @@ viaInfer expectedType expr = do
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr ::
-  (MonadBidirectional types m) =>
-  NormalisableExpr types ->
-  m (NormalisableExpr types, NormalisableType types)
+  (MonadBidirectional builtin m) =>
+  Expr Ix builtin ->
+  m (Expr Ix builtin, Type Ix builtin)
 inferExpr e = do
   showInferEntry e
   res <- case e of
@@ -226,12 +225,12 @@ inferExpr e = do
 -- or instance arguments and then returns the function applied to the full
 -- list of arguments as well as the result type.
 inferApp ::
-  (MonadBidirectional types m) =>
+  (MonadBidirectional builtin m) =>
   Provenance ->
-  NormalisableExpr types ->
-  NormalisableType types ->
-  [NormalisableArg types] ->
-  m (NormalisableExpr types, NormalisableType types)
+  Expr Ix builtin ->
+  Type Ix builtin ->
+  [Arg Ix builtin] ->
+  m (Expr Ix builtin, Type Ix builtin)
 inferApp p fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args) funType args
   return (normAppList p fun checkedArgs, appliedFunType)
@@ -242,11 +241,11 @@ inferApp p fun funType args = do
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
 inferArgs ::
-  (MonadBidirectional types m) =>
-  (NormalisableExpr types, [NormalisableArg types]) -> -- The original function and its arguments
-  NormalisableType types -> -- Type of the function
-  [NormalisableArg types] -> -- User-provided arguments of the function
-  m (NormalisableType types, [NormalisableArg types])
+  (MonadBidirectional builtin m) =>
+  (Expr Ix builtin, [Arg Ix builtin]) -> -- The original function and its arguments
+  Type Ix builtin -> -- Type of the function
+  [Arg Ix builtin] -> -- User-provided arguments of the function
+  m (Type Ix builtin, [Arg Ix builtin])
 inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
@@ -292,7 +291,7 @@ inferArgs (fun, originalArgs) nonPiType args
 -------------------------------------------------------------------------------
 -- Utility functions
 
-universeLevel :: (MonadBidirectional types m) => NormalisableExpr types -> m Int
+universeLevel :: (MonadBidirectional builtin m) => Expr Ix builtin -> m Int
 universeLevel = \case
   TypeUniverse _ l -> return l
   -- These next cases are probably going to bite us, apologies.
@@ -303,18 +302,18 @@ universeLevel = \case
     compilerDeveloperError $
       "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
 
-tMax :: (MonadBidirectional types m) => NormalisableExpr types -> NormalisableExpr types -> m (NormalisableExpr types)
+tMax :: (MonadBidirectional builtin m) => Expr Ix builtin -> Expr Ix builtin -> m (Expr Ix builtin)
 tMax t1 t2 = do
   l1 <- universeLevel t1
   l2 <- universeLevel t2
   return $ if l1 > l2 then t1 else t2
 
 checkExprTypesEqual ::
-  (MonadBidirectionalInternal types m) =>
+  (MonadBidirectionalInternal builtin m) =>
   Provenance ->
-  NormalisableExpr types ->
-  NormalisableType types ->
-  NormalisableType types ->
+  Expr Ix builtin ->
+  Type Ix builtin ->
+  Type Ix builtin ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
   ctx <- ask
@@ -322,11 +321,11 @@ checkExprTypesEqual p expr expectedType actualType = do
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
 checkBinderTypesEqual ::
-  (MonadBidirectional types m) =>
+  (MonadBidirectional builtin m) =>
   Provenance ->
   Maybe Name ->
-  NormalisableType types ->
-  NormalisableType types ->
+  Type Ix builtin ->
+  Type Ix builtin ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
   ctx <- ask
@@ -336,22 +335,22 @@ checkBinderTypesEqual p binderName expectedType actualType = do
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showCheckEntry :: (MonadBidirectional types m) => NormalisableType types -> NormalisableExpr types -> m ()
+showCheckEntry :: (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
   incrCallDepth
 
-showCheckExit :: (MonadBidirectional types m) => NormalisableExpr types -> m ()
+showCheckExit :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
 
-showInferEntry :: (MonadBidirectional types m) => NormalisableExpr types -> m ()
+showInferEntry :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
 showInferEntry e = do
   logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showInferExit :: (MonadBidirectional types m) => (NormalisableExpr types, NormalisableType types) -> m ()
+showInferExit :: (MonadBidirectional builtin m) => (Expr Ix builtin, Type Ix builtin) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t)

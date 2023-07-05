@@ -35,6 +35,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean (BooleanExpr (..), DisjunctAll (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 import Vehicle.Verify.Core

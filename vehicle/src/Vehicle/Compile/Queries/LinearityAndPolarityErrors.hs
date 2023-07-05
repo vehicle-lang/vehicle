@@ -73,16 +73,16 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
     _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier
 
 typeCheckWithSubsystem ::
-  forall types m.
-  (TypableBuiltin types, MonadCompile m) =>
+  forall builtin m.
+  (TypableBuiltin builtin, MonadCompile m) =>
   StandardGluedProg ->
-  m (GluedProg types)
+  m (GluedProg builtin)
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
   monomorphisedProg <- monomorphise False typeClassFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
-  runTypeChecker @m @types mempty $
+  runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg
 
 resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
@@ -92,7 +92,7 @@ resolveInstanceArguments prog =
     logCompilerPassOutput $ prettyFriendly result
     return result
   where
-    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin StandardBuiltin
+    builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       CType (StandardTypeClassOp {}) -> do
         let (inst, remainingArgs) = findInstanceArg args

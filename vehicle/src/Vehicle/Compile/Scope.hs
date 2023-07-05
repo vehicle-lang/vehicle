@@ -249,7 +249,7 @@ logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: MonadTraverse m => NormalisableExpr -> m ()
+logScopeExit :: MonadTraverse m => Expr Ix -> m ()
 logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth

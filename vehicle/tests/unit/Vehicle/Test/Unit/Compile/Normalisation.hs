@@ -9,7 +9,7 @@ import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltin, StandardBuiltinType (..), StandardExpr, StandardType)
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn (Lv)
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
@@ -66,7 +66,7 @@ data NBETest = NBETest
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- runEmptyNormT @StandardBuiltinType $ whnf (mkNoOpEnv dbLevel) input
+    normInput <- runEmptyNormT @StandardBuiltin $ whnf (mkNoOpEnv dbLevel) input
     actual <- quote mempty dbLevel normInput
 
     let errorMessage =

@@ -15,12 +15,13 @@ import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker, freshMeta)
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeLinearityBuiltin :: Provenance -> NormalisableBuiltin LinearityType -> NormalisableType LinearityType
+typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> Type Ix LinearityBuiltin
 typeLinearityBuiltin p b = fromDSL p $ case b of
   CConstructor c -> typeOfConstructor c
   CFunction f -> typeOfBuiltinFunction f
@@ -139,40 +140,40 @@ typeOfVecLiteral n = go n constant
                 ~~~> li
                 ~> go (i - 1) newMax
 
-handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityType -> m a
+handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityBuiltin -> m a
 handleLinearityTypingError b =
   compilerDeveloperError $ "Linearity type system should not be throwing error:" <+> pretty b
 
 relevanceOfTypeClass :: (MonadCompile m) => LinearityType -> m Relevance
 relevanceOfTypeClass _b = return Relevant
 
-freshLinearityMeta :: (MonadTypeChecker LinearityType m) => Provenance -> m (GluedExpr LinearityType)
+freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
 freshLinearityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
 
 convertToLinearityTypes ::
   forall m.
-  (MonadTypeChecker LinearityType m) =>
-  Provenance ->
-  StandardBuiltinType ->
-  [NormalisableArg LinearityType] ->
-  m (NormalisableExpr LinearityType)
-convertToLinearityTypes p b args = case b of
-  StandardBuiltinType s -> case s of
-    Unit -> return $ Builtin p $ CType $ Linearity Constant
-    Bool -> unnormalised <$> freshLinearityMeta p
-    Index -> unnormalised <$> freshLinearityMeta p
-    Nat -> unnormalised <$> freshLinearityMeta p
-    Int -> unnormalised <$> freshLinearityMeta p
-    Rat -> unnormalised <$> freshLinearityMeta p
-    List -> case args of
-      [tElem] -> return $ argExpr tElem
-      _ -> monomorphisationError "List"
-    Vector -> case args of
-      [tElem, _] -> return $ argExpr tElem
-      _ -> monomorphisationError "Vector"
-  StandardTypeClass {} -> monomorphisationError "TypeClass"
-  StandardTypeClassOp {} ->
-    compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
+  (MonadTypeChecker LinearityBuiltin m) =>
+  BuiltinUpdate m Ix StandardBuiltin LinearityBuiltin
+convertToLinearityTypes p1 p2 b args = case b of
+  CFunction f -> return $ normAppList p1 (Builtin p2 (CFunction f)) args
+  CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args
+  CType t -> case t of
+    StandardBuiltinType s -> case s of
+      Unit -> return $ Builtin p2 $ CType $ Linearity Constant
+      Bool -> unnormalised <$> freshLinearityMeta p2
+      Index -> unnormalised <$> freshLinearityMeta p2
+      Nat -> unnormalised <$> freshLinearityMeta p2
+      Int -> unnormalised <$> freshLinearityMeta p2
+      Rat -> unnormalised <$> freshLinearityMeta p2
+      List -> case args of
+        [tElem] -> return $ argExpr tElem
+        _ -> monomorphisationError "List"
+      Vector -> case args of
+        [tElem, _] -> return $ argExpr tElem
+        _ -> monomorphisationError "Vector"
+    StandardTypeClass {} -> monomorphisationError "TypeClass"
+    StandardTypeClassOp {} ->
+      compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
   where
     monomorphisationError :: Doc () -> m a
     monomorphisationError name =

@@ -46,7 +46,7 @@ mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
 -- Utilities for traversing auxiliary arguments.
 
 -- | Function for updating an auxiliary argument (which may be missing)
-type BuiltinUpdate m binder var builtin1 builtin2 =
+type BuiltinUpdate m var builtin1 builtin2 =
   Provenance -> Provenance -> builtin1 -> [Arg var builtin2] -> m (Expr var builtin2)
 
 -- | Traverses all the auxiliary type arguments in the provided element,
@@ -54,7 +54,7 @@ type BuiltinUpdate m binder var builtin1 builtin2 =
 -- where they should be).
 traverseBuiltinsM ::
   (Monad m) =>
-  BuiltinUpdate m binder var builtin1 builtin2 ->
+  BuiltinUpdate m var builtin1 builtin2 ->
   Expr var builtin1 ->
   m (Expr var builtin2)
 traverseBuiltinsM f expr = case expr of
@@ -73,10 +73,10 @@ traverseBuiltinsM f expr = case expr of
   Hole p n -> return $ Hole p n
   Meta p m -> return $ Meta p m
 
-traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m binder var builtin1 builtin2 -> Arg var builtin1 -> m (Arg var builtin2)
+traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m var builtin1 builtin2 -> Arg var builtin1 -> m (Arg var builtin2)
 traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
 
-traverseBuiltinsBinder :: (Monad m) => BuiltinUpdate m binder var builtin1 builtin2 -> Binder var builtin1 -> m (Binder var builtin2)
+traverseBuiltinsBinder :: (Monad m) => BuiltinUpdate m var builtin1 builtin2 -> Binder var builtin1 -> m (Binder var builtin2)
 traverseBuiltinsBinder f = traverse (traverseBuiltinsM f)
 
 traverseBuiltins ::
