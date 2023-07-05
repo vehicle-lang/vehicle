@@ -88,6 +88,9 @@ data JBuiltin
   | Sub V.SubDomain
   | Mul V.MulDomain
   | Div V.DivDomain
+  | Min -- TODO: V.MinDomain
+  | Max -- TODO: V.MaxDomain
+  | Pow -- TODO: V.PowDomain
   | Eq V.EqualityDomain
   | Ne V.EqualityDomain
   | Le V.OrderDomain
@@ -106,9 +109,6 @@ data JBuiltin
   | RatType
   | ListType
   | VectorType
-  | Min
-  | Max
-  | Power
   | Indicator
   deriving (Generic)
 

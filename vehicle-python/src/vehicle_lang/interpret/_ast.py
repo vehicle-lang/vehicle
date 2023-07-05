@@ -158,6 +158,21 @@ class Div(Builtin):
 
 
 @dataclass(frozen=True)
+class Min(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Max(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class Pow(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
 class Eq(Builtin):
     domain: Literal["Nat", "Int", "Rat", "Index"]
 
@@ -204,21 +219,6 @@ class Fold(Builtin):
 
 @dataclass(frozen=True)
 class Indices(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Min(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Max(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Power(Builtin):
     pass
 
 

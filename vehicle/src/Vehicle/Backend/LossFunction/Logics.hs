@@ -43,7 +43,7 @@ op2 op x y = builtin op @@ [x, y]
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
-(^:) x y = op2 J.Power x (lcon y)
+(^:) x y = op2 J.Pow x (lcon y)
 
 -- | Indicator function
 ind :: PLExpr -> PLExpr -> PLExpr
