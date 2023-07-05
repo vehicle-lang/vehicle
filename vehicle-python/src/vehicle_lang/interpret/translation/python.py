@@ -14,9 +14,9 @@ from ._ast_compat import unparse as py_ast_unparse
 
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
-    builtinInterpreter: BuiltinInterpreter[Any, Any, Any, Any, Any]
-    moduleHeader: ClassVar[Sequence[py.stmt]] = []
-    moduleFooter: ClassVar[Sequence[py.stmt]] = []
+    builtin_interpreter: BuiltinInterpreter[Any, Any, Any, Any, Any]
+    module_header: ClassVar[Sequence[py.stmt]] = []
+    module_footer: ClassVar[Sequence[py.stmt]] = []
 
     def compile(
         self,
@@ -26,7 +26,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
-            declaration_context["builtinInterpreter"] = self.builtinInterpreter
+            declaration_context["__vehicle__"] = self.builtin_interpreter
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
@@ -41,9 +41,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                *self.__class__.moduleHeader,
+                *self.__class__.module_header,
                 *map(self.translate_declaration, program.declarations),
-                *self.__class__.moduleFooter,
+                *self.__class__.module_footer,
             ],
             type_ignores=[],
         )
@@ -77,16 +77,24 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                         **asdict(declaration.provenance),
                     )
                 ],
-                msg=py.Str(
-                    s=f"The postulate {declaration.name} is undefined",
-                    **asdict(declaration.provenance),
-                ),
-            )
+                **asdict(declaration.provenance),
+            ),
+            msg=py.Str(
+                s=f"The postulate {declaration.name} is undefined",
+                **asdict(declaration.provenance),
+            ),
+            **asdict(declaration.provenance),
         )
 
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
         return py.Assign(
-            targets=[py.Name(id=declaration.name, ctx=py.Load())],
+            targets=[
+                py.Name(
+                    id=declaration.name,
+                    ctx=py.Store(),
+                    **asdict(declaration.provenance),
+                )
+            ],
             value=self.translate_expression(declaration.body),
             **asdict(declaration.provenance),
         )
@@ -178,7 +186,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py.Call(
             func=py.Attribute(
                 value=py.Name(
-                    id="builtinInterpreter",
+                    id="__vehicle__",
                     ctx=py.Load(),
                     **asdict(expression.provenance),
                 ),
