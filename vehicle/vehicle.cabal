@@ -121,6 +121,7 @@ library
     Vehicle.Compile.ExpandResources.Dataset
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
+    Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
@@ -170,13 +171,11 @@ library
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
-    Vehicle.Backend.LossFunction.Monomorphisation2
     Vehicle.Backend.LossFunction.Syntax
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
-    Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile

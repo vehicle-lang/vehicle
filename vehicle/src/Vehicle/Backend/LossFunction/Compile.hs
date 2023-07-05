@@ -15,7 +15,6 @@ import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
@@ -41,7 +40,7 @@ compile logic typedProg = do
   let logicImplementation = implementationOf logic
   reformattedProg <- reformatLogicalOperators logicImplementation unnormalisedProg
   lossProg <- compileProg logicImplementation reformattedProg
-  monomorphisedProg <- _
+  -- monomorphisedProg <- _
   let descopedProg = descopeNamed lossProg
   compileProgToJSON descopedProg
 

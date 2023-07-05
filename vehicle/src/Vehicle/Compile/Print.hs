@@ -329,7 +329,7 @@ convertExprBuiltins ::
   (PrintableBuiltin builtin) =>
   Expr var builtin ->
   Expr var Builtin
-convertExprBuiltins = traverseBuiltins $ \p1 p2 b args ->
+convertExprBuiltins = mapBuiltins $ \p1 p2 b args ->
   normAppList p1 (convertBuiltin p2 b) args
 
 --------------------------------------------------------------------------------
