@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Uni
 
 from typing_extensions import Self, TypeAlias
 
+from . import interpret as vehicle
 from . import loss_function
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
 from ._temporary_files import temporary_files
@@ -103,6 +104,27 @@ class Session(SessionContextManager):
             self.close()
         return None
 
+    def loads_program(self, spec: str) -> vehicle.Program:
+        with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
+            loss_function_spec.write(spec)
+            return self.load_program(loss_function_spec.name)
+
+    def load_program(self, path: Union[str, Path]) -> vehicle.Program:
+        exc, out, err, log = self.check_output(
+            [
+                "compile",
+                "--target",
+                "JSON",
+                "--specification",
+                str(path),
+            ]
+        )
+        if exc != 0:
+            raise VehicleError(err or out or log or "unknown error")
+        if out is None:
+            raise VehicleError("no output")
+        return vehicle.Program.from_json(out)
+
     def loads(self, spec: str) -> loss_function.Module:
         with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
             loss_function_spec.write(spec)
@@ -133,6 +155,10 @@ def check_output(
     args: Sequence[str],
 ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
     return Session().__enter__().check_output(args)
+
+
+def load_program(path: Union[str, Path]) -> vehicle.Program:
+    return Session().__enter__().load_program(path)
 
 
 def load(path: Union[str, Path]) -> loss_function.Module:
