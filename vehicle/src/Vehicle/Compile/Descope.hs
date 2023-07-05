@@ -7,7 +7,6 @@ where
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
 
 --------------------------------------------------------------------------------
@@ -83,7 +82,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Value types) (Expr Name (NormalisableBuiltin types)) where
+instance DescopeNaive (Value builtin) (Expr Name builtin) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -154,8 +153,8 @@ descopeArg f = traverse (descopeExpr f)
 -- used for printing `Value`s in a readable form.
 descopeNormExpr ::
   (Provenance -> Lv -> Name) ->
-  Value types ->
-  Expr Name (NormalisableBuiltin types)
+  Value builtin ->
+  Expr Name builtin
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
@@ -181,14 +180,14 @@ descopeNormExpr f e = case e of
 
 descopeSpine ::
   (Provenance -> Lv -> Name) ->
-  Spine types ->
-  [Arg Name (NormalisableBuiltin types)]
+  Spine builtin ->
+  [Arg Name builtin]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> Lv -> Name) ->
-  VBinder types ->
-  Binder Name (NormalisableBuiltin types)
+  VBinder builtin ->
+  Binder Name builtin
 descopeNormBinder f = fmap (descopeNormExpr f)
 
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name

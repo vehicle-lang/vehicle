@@ -28,16 +28,6 @@ instance Pretty StandardBuiltinType where
     StandardTypeClass t -> pretty t
     StandardTypeClassOp t -> pretty t
 
-instance PrintableBuiltin StandardBuiltinType where
-  convertBuiltin p b = Builtin p $ case b of
-    StandardBuiltinType t -> BuiltinType t
-    StandardTypeClass t -> TypeClass t
-    StandardTypeClassOp t -> TypeClassOp t
-
-  isTypeClassOp = \case
-    StandardTypeClassOp {} -> True
-    _ -> False
-
 instance Hashable StandardBuiltinType
 
 instance Serialize StandardBuiltinType
@@ -60,47 +50,47 @@ convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
 
 type StandardBuiltin = NormalisableBuiltin StandardBuiltinType
 
-type StandardExpr = NormalisableExpr StandardBuiltinType
+type StandardExpr = Expr Ix StandardBuiltin
 
-type StandardBinder = NormalisableBinder StandardBuiltinType
+type StandardBinder = Binder Ix StandardBuiltin
 
-type StandardArg = NormalisableArg StandardBuiltinType
+type StandardArg = Arg Ix StandardBuiltin
 
-type StandardDecl = NormalisableDecl StandardBuiltinType
+type StandardDecl = Decl Ix StandardBuiltin
 
-type StandardProg = NormalisableProg StandardBuiltinType
+type StandardProg = Prog Ix StandardBuiltin
 
 type StandardType = StandardExpr
 
-type StandardTelescope = NormalisableTelescope StandardBuiltinType
+type StandardTelescope = Telescope Ix StandardBuiltin
 
-type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
+type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Norm expressions
 
-type StandardNormExpr = Value StandardBuiltinType
+type StandardNormExpr = Value StandardBuiltin
 
-type StandardNormBinder = VBinder StandardBuiltinType
+type StandardNormBinder = VBinder StandardBuiltin
 
-type StandardNormArg = VArg StandardBuiltinType
+type StandardNormArg = VArg StandardBuiltin
 
-type StandardNormType = VType StandardBuiltinType
+type StandardNormType = VType StandardBuiltin
 
-type StandardSpine = Spine StandardBuiltinType
+type StandardSpine = Spine StandardBuiltin
 
-type StandardExplicitSpine = ExplicitSpine StandardBuiltinType
+type StandardExplicitSpine = ExplicitSpine StandardBuiltin
 
-type StandardEnv = Env StandardBuiltinType
+type StandardEnv = Env StandardBuiltin
 
-type StandardNormDeclCtx = NormDeclCtx StandardBuiltinType
+type StandardNormDeclCtx = NormDeclCtx StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Glued expressions
 
-type StandardGluedExpr = GluedExpr StandardBuiltinType
+type StandardGluedExpr = GluedExpr StandardBuiltin
 
-type StandardGluedType = GluedType StandardBuiltinType
+type StandardGluedType = GluedType StandardBuiltin
 
 type StandardGluedProg = GenericProg StandardGluedExpr
 
@@ -111,15 +101,15 @@ type ImportedModules = [StandardGluedProg]
 -----------------------------------------------------------------------------
 -- Constraints
 
-type StandardConstraintProgress = ConstraintProgress StandardBuiltinType
+type StandardConstraintProgress = ConstraintProgress StandardBuiltin
 
-type StandardTypeClassConstraint = TypeClassConstraint StandardBuiltinType
+type StandardTypeClassConstraint = TypeClassConstraint StandardBuiltin
 
-type StandardUnificationConstraint = UnificationConstraint StandardBuiltinType
+type StandardUnificationConstraint = UnificationConstraint StandardBuiltin
 
-type StandardConstraintContext = ConstraintContext StandardBuiltinType
+type StandardConstraintContext = ConstraintContext StandardBuiltin
 
-type StandardConstraint = Constraint StandardBuiltinType
+type StandardConstraint = Constraint StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Normalised patterns

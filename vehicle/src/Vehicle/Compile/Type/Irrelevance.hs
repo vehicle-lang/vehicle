@@ -6,9 +6,9 @@ where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Normalise.NBE (MonadNorm)
+import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalisable
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -- | Removes all irrelevant code from the program/expression.
@@ -36,7 +36,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m (NormalisableExpr types) where
+instance RemoveIrrelevantCode m (Expr Ix builtin) where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of
@@ -64,7 +64,7 @@ instance RemoveIrrelevantCode m (NormalisableExpr types) where
     showRemoveExit result
     return result
 
-instance (MonadNorm types m) => RemoveIrrelevantCode m (Value types) where
+instance (MonadNorm builtin m) => RemoveIrrelevantCode m (Value builtin) where
   remove expr = case expr of
     VUniverse {} -> return expr
     VPi binder res
@@ -88,7 +88,7 @@ instance (MonadNorm types m) => RemoveIrrelevantCode m (Value types) where
     VMeta m spine -> VMeta m <$> removeArgs spine
     VBuiltin b spine -> VBuiltin b <$> traverse remove spine
 
-instance (MonadNorm types m) => RemoveIrrelevantCode m (GluedExpr types) where
+instance (MonadNorm builtin m) => RemoveIrrelevantCode m (GluedExpr builtin) where
   remove (Glued u n) = Glued <$> remove u <*> remove n
 
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
@@ -97,7 +97,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg exp
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder expr) where
   remove = traverse remove
 
-instance (MonadNorm types m) => RemoveIrrelevantCode m (Env types) where
+instance (MonadNorm builtin m) => RemoveIrrelevantCode m (Env builtin) where
   remove = traverse (\(n, e) -> (n,) <$> remove e)
 
 removeArgs ::
@@ -109,12 +109,12 @@ removeArgs = traverse remove . filter isRelevant
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showRemoveEntry :: (MonadRemove m) => NormalisableExpr types -> m ()
+showRemoveEntry :: (MonadRemove m) => Expr Ix builtin -> m ()
 showRemoveEntry _e = do
   -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showRemoveExit :: (MonadRemove m) => NormalisableExpr types -> m ()
+showRemoveExit :: (MonadRemove m) => Expr Ix builtin -> m ()
 showRemoveExit _e = do
   decrCallDepth
 

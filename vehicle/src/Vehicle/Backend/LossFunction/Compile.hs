@@ -293,7 +293,7 @@ reformatLogicalOperators ::
   m (V.Prog V.Name V.StandardBuiltin)
 reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: V.BuiltinUpdate m () V.Name V.StandardBuiltin V.StandardBuiltin
+    builtinUpdateFunction :: V.BuiltinUpdate m V.Name V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       V.CFunction V.Not
         | isNothing (compileNot (implementationOf logic)) ->

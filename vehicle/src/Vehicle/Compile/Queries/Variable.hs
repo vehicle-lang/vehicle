@@ -47,6 +47,7 @@ import Prettyprinter (brackets, list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn (Lv (..))
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (fromFiniteQuantifier, toFiniteQuantifier)
 
@@ -333,7 +334,14 @@ lookupAndRemoveAll assignment = foldM op ([], assignment)
 --------------------------------------------------------------------------------
 -- Other
 
-pattern VInfiniteQuantifier :: Quantifier -> QuantifierDomain -> [StandardNormExpr] -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
+pattern VInfiniteQuantifier ::
+  Quantifier ->
+  QuantifierDomain ->
+  [StandardNormExpr] ->
+  StandardNormBinder ->
+  StandardEnv ->
+  TypeCheckedExpr ->
+  StandardNormExpr
 pattern VInfiniteQuantifier q dom args binder env body <-
   VBuiltinFunction (Quantifier q dom) (reverse -> VLam binder env body : args)
   where

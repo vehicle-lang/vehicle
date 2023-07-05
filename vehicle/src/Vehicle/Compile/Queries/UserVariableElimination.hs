@@ -23,7 +23,8 @@ import Data.Set qualified as Set
 import Data.Traversable (for)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, evalMul, reeval, runNormT)
+import Vehicle.Compile.Normalise.Builtin (evalMul)
+import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
@@ -38,6 +39,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 import Vehicle.Verify.Core

@@ -466,14 +466,14 @@ pattern AppConsExpr p tElem x xs <-
 pattern NullaryBuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
-  Expr var (NormalisableBuiltin types)
+  Expr var StandardBuiltin
 pattern NullaryBuiltinFunctionExpr p b = Builtin p (CFunction b)
 
 pattern BuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
-  NonEmpty (Arg var (NormalisableBuiltin types)) ->
-  Expr var (NormalisableBuiltin types)
+  NonEmpty (Arg var StandardBuiltin) ->
+  Expr var StandardBuiltin
 pattern BuiltinFunctionExpr p b args = BuiltinExpr p (CFunction b) args
 
 pattern QuantifierExpr ::

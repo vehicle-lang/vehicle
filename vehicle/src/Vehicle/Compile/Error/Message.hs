@@ -340,7 +340,7 @@ instance MeaningfulError CompileError where
               <+> squotes (prettyFriendly $ WithContext expectedType boundCtx)
               <+> "but was found to be of type"
               <+> squotes (prettyFriendly $ WithContext actualType boundCtx)
-          CheckingTypeClass fun args _ _ ->
+          CheckingTypeClass fun args _ ->
             "unable to find a consistent type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -371,7 +371,7 @@ instance MeaningfulError CompileError where
               <+> "to be of type"
               <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
               <+> "but was unable to prove it."
-          CheckingTypeClass fun args _ _ ->
+          CheckingTypeClass fun args _ ->
             "insufficient information to find a valid type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
@@ -413,7 +413,7 @@ instance MeaningfulError CompileError where
                 <> line
                 <> "Type checking has deduced that it is of type:"
                 <> line
-                <> indent 2 (inferredOpType (boundContextOf ctx) tcArgs)
+                <> indent 2 (inferredOpType (boundContextOf ctx) (NonEmpty.toList tcArgs))
                 <> line
                 <> "but the list of valid types for it is:"
                 <> line
@@ -422,7 +422,7 @@ instance MeaningfulError CompileError where
           }
       where
         (tcOp, tcOpArgs, tc, tcArgs) = case origin ctx of
-          CheckingTypeClass tcOp' tcOpArgs' (StandardTypeClass tc') tcArgs' -> (tcOp', tcOpArgs', tc', tcArgs')
+          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ (CType (StandardTypeClass tc')) tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
           _ -> developerError "Type class constraints should only have `CheckingTypeClass` origins"
 
         originExpr :: Doc a
@@ -1508,7 +1508,7 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [NormalisableArg StandardBuiltinType] -> Doc a
+prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [StandardArg] -> Doc a
 prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring
