@@ -3,6 +3,7 @@ from typing import Any, Generic, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar
 
+from .. import _ast as vcl
 from ._functools import (
     Function1,
     Function2,
