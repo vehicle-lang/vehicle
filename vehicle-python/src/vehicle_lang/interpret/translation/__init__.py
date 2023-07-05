@@ -50,7 +50,7 @@ from .._ast import (
     Not,
     Or,
     Pi,
-    Power,
+    Pow,
     Rat,
     RatType,
     Sub,
@@ -101,6 +101,10 @@ class ABCTranslation(
             return self.translate_Main(program)
         raise NotImplementedError(type(program).__name__)
 
+    @abstractmethod
+    def translate_Main(self, main: Main) -> _Program:
+        ...
+
     @override
     def translate_declaration(self, declaration: Declaration) -> _Declaration:
         if isinstance(declaration, DefFunction):
@@ -108,120 +112,6 @@ class ABCTranslation(
         if isinstance(declaration, DefPostulate):
             return self.translate_DefPostulate(declaration)
         raise NotImplementedError(type(declaration).__name__)
-
-    @override
-    def translate_expression(self, expression: Expression) -> _Expression:
-        if isinstance(expression, Universe):
-            return self.translate_Universe(expression)
-        if isinstance(expression, App):
-            return self.translate_App(expression)
-        if isinstance(expression, Pi):
-            return self.translate_Pi(expression)
-        if isinstance(expression, BuiltinOp):
-            return self.translate_BuiltinOp(expression)
-        if isinstance(expression, BoundVar):
-            return self.translate_BoundVar(expression)
-        if isinstance(expression, FreeVar):
-            return self.translate_FreeVar(expression)
-        if isinstance(expression, Let):
-            return self.translate_Let(expression)
-        if isinstance(expression, Lam):
-            return self.translate_Lam(expression)
-        raise NotImplementedError(type(expression).__name__)
-
-    @override
-    def translate_builtin(self, builtin: Builtin) -> _Builtin:
-        if isinstance(builtin, Nil):
-            return self.translate_Nil(builtin)
-        if isinstance(builtin, Cons):
-            return self.translate_Cons(builtin)
-        if isinstance(builtin, Unit):
-            return self.translate_Unit(builtin)
-        if isinstance(builtin, Bool):
-            return self.translate_Bool(builtin)
-        if isinstance(builtin, Index):
-            return self.translate_Index(builtin)
-        if isinstance(builtin, Nat):
-            return self.translate_Nat(builtin)
-        if isinstance(builtin, Int):
-            return self.translate_Int(builtin)
-        if isinstance(builtin, Rat):
-            return self.translate_Rat(builtin)
-        if isinstance(builtin, Vector):
-            return self.translate_Vector(builtin)
-        if isinstance(builtin, Not):
-            return self.translate_Not(builtin)
-        if isinstance(builtin, And):
-            return self.translate_And(builtin)
-        if isinstance(builtin, Or):
-            return self.translate_Or(builtin)
-        if isinstance(builtin, Implies):
-            return self.translate_Implies(builtin)
-        if isinstance(builtin, Forall):
-            return self.translate_Forall(builtin)
-        if isinstance(builtin, Exists):
-            return self.translate_Exists(builtin)
-        if isinstance(builtin, If):
-            return self.translate_If(builtin)
-        if isinstance(builtin, Neg):
-            return self.translate_Neg(builtin)
-        if isinstance(builtin, Add):
-            return self.translate_Add(builtin)
-        if isinstance(builtin, Sub):
-            return self.translate_Sub(builtin)
-        if isinstance(builtin, Mul):
-            return self.translate_Mul(builtin)
-        if isinstance(builtin, Div):
-            return self.translate_Div(builtin)
-        if isinstance(builtin, Eq):
-            return self.translate_Eq(builtin)
-        if isinstance(builtin, Ne):
-            return self.translate_Ne(builtin)
-        if isinstance(builtin, Le):
-            return self.translate_Le(builtin)
-        if isinstance(builtin, Lt):
-            return self.translate_Lt(builtin)
-        if isinstance(builtin, Ge):
-            return self.translate_Ge(builtin)
-        if isinstance(builtin, Gt):
-            return self.translate_Gt(builtin)
-        if isinstance(builtin, At):
-            return self.translate_At(builtin)
-        if isinstance(builtin, ConsVector):
-            return self.translate_ConsVector(builtin)
-        if isinstance(builtin, Fold):
-            return self.translate_Fold(builtin)
-        if isinstance(builtin, Indices):
-            return self.translate_Indices(builtin)
-        if isinstance(builtin, UnitType):
-            return self.translate_UnitType(builtin)
-        if isinstance(builtin, BoolType):
-            return self.translate_BoolType(builtin)
-        if isinstance(builtin, IndexType):
-            return self.translate_IndexType(builtin)
-        if isinstance(builtin, NatType):
-            return self.translate_NatType(builtin)
-        if isinstance(builtin, IntType):
-            return self.translate_IntType(builtin)
-        if isinstance(builtin, RatType):
-            return self.translate_RatType(builtin)
-        if isinstance(builtin, ListType):
-            return self.translate_ListType(builtin)
-        if isinstance(builtin, VectorType):
-            return self.translate_VectorType(builtin)
-        if isinstance(builtin, Min):
-            return self.translate_Min(builtin)
-        if isinstance(builtin, Max):
-            return self.translate_Max(builtin)
-        if isinstance(builtin, Power):
-            return self.translate_Power(builtin)
-        if isinstance(builtin, Indicator):
-            return self.translate_Indicator(builtin)
-        raise NotImplementedError(type(builtin).__name__)
-
-    @abstractmethod
-    def translate_Main(self, main: Main) -> _Program:
-        ...
 
     @abstractmethod
     def translate_DefPostulate(self, defPostulate: DefPostulate) -> _Declaration:
@@ -231,206 +121,317 @@ class ABCTranslation(
     def translate_DefFunction(self, defFunction: DefFunction) -> _Declaration:
         ...
 
+    @override
+    def translate_expression(self, expression: Expression) -> _Expression:
+        # NOTE: maintain alphabetic ordering
+        if isinstance(expression, App):
+            return self.translate_App(expression)
+        if isinstance(expression, BoundVar):
+            return self.translate_BoundVar(expression)
+        if isinstance(expression, BuiltinOp):
+            return self.translate_BuiltinOp(expression)
+        if isinstance(expression, FreeVar):
+            return self.translate_FreeVar(expression)
+        if isinstance(expression, Lam):
+            return self.translate_Lam(expression)
+        if isinstance(expression, Let):
+            return self.translate_Let(expression)
+        if isinstance(expression, Pi):
+            return self.translate_Pi(expression)
+        if isinstance(expression, Universe):
+            return self.translate_Universe(expression)
+        raise NotImplementedError(type(expression).__name__)
+
     @abstractmethod
-    def translate_Universe(self, universe: Universe) -> _Expression:
+    def translate_App(self, expression: App) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_App(self, app: App) -> _Expression:
+    def translate_BoundVar(self, expression: BoundVar) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_Pi(self, pi: Pi) -> _Expression:
+    def translate_BuiltinOp(self, expression: BuiltinOp) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_BuiltinOp(self, builtinOp: BuiltinOp) -> _Expression:
+    def translate_FreeVar(self, expression: FreeVar) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_BoundVar(self, boundVar: BoundVar) -> _Expression:
+    def translate_Lam(self, expression: Lam) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_FreeVar(self, freeVar: FreeVar) -> _Expression:
+    def translate_Let(self, expression: Let) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_Let(self, let: Let) -> _Expression:
+    def translate_Pi(self, expression: Pi) -> _Expression:
         ...
 
     @abstractmethod
-    def translate_Lam(self, lam: Lam) -> _Expression:
+    def translate_Universe(self, expression: Universe) -> _Expression:
+        ...
+
+    @override
+    def translate_builtin(self, builtin: Builtin) -> _Builtin:
+        if isinstance(builtin, Add):
+            return self.translate_Add(builtin)
+        if isinstance(builtin, And):
+            return self.translate_And(builtin)
+        if isinstance(builtin, At):
+            return self.translate_At(builtin)
+        if isinstance(builtin, Bool):
+            return self.translate_Bool(builtin)
+        if isinstance(builtin, BoolType):
+            return self.translate_BoolType(builtin)
+        if isinstance(builtin, Cons):
+            return self.translate_Cons(builtin)
+        if isinstance(builtin, ConsVector):
+            return self.translate_ConsVector(builtin)
+        if isinstance(builtin, Div):
+            return self.translate_Div(builtin)
+        if isinstance(builtin, Eq):
+            return self.translate_Eq(builtin)
+        if isinstance(builtin, Exists):
+            return self.translate_Exists(builtin)
+        if isinstance(builtin, Fold):
+            return self.translate_Fold(builtin)
+        if isinstance(builtin, Forall):
+            return self.translate_Forall(builtin)
+        if isinstance(builtin, Ge):
+            return self.translate_Ge(builtin)
+        if isinstance(builtin, Gt):
+            return self.translate_Gt(builtin)
+        if isinstance(builtin, If):
+            return self.translate_If(builtin)
+        if isinstance(builtin, Implies):
+            return self.translate_Implies(builtin)
+        if isinstance(builtin, Index):
+            return self.translate_Index(builtin)
+        if isinstance(builtin, IndexType):
+            return self.translate_IndexType(builtin)
+        if isinstance(builtin, Indicator):
+            return self.translate_Indicator(builtin)
+        if isinstance(builtin, Indices):
+            return self.translate_Indices(builtin)
+        if isinstance(builtin, Int):
+            return self.translate_Int(builtin)
+        if isinstance(builtin, IntType):
+            return self.translate_IntType(builtin)
+        if isinstance(builtin, Le):
+            return self.translate_Le(builtin)
+        if isinstance(builtin, Lt):
+            return self.translate_Lt(builtin)
+        if isinstance(builtin, ListType):
+            return self.translate_ListType(builtin)
+        if isinstance(builtin, Max):
+            return self.translate_Max(builtin)
+        if isinstance(builtin, Min):
+            return self.translate_Min(builtin)
+        if isinstance(builtin, Mul):
+            return self.translate_Mul(builtin)
+        if isinstance(builtin, Nat):
+            return self.translate_Nat(builtin)
+        if isinstance(builtin, NatType):
+            return self.translate_NatType(builtin)
+        if isinstance(builtin, Ne):
+            return self.translate_Ne(builtin)
+        if isinstance(builtin, Neg):
+            return self.translate_Neg(builtin)
+        if isinstance(builtin, Nil):
+            return self.translate_Nil(builtin)
+        if isinstance(builtin, Not):
+            return self.translate_Not(builtin)
+        if isinstance(builtin, Or):
+            return self.translate_Or(builtin)
+        if isinstance(builtin, Pow):
+            return self.translate_Pow(builtin)
+        if isinstance(builtin, Rat):
+            return self.translate_Rat(builtin)
+        if isinstance(builtin, RatType):
+            return self.translate_RatType(builtin)
+        if isinstance(builtin, Sub):
+            return self.translate_Sub(builtin)
+        if isinstance(builtin, Unit):
+            return self.translate_Unit(builtin)
+        if isinstance(builtin, UnitType):
+            return self.translate_UnitType(builtin)
+        if isinstance(builtin, Vector):
+            return self.translate_Vector(builtin)
+        if isinstance(builtin, VectorType):
+            return self.translate_VectorType(builtin)
+        raise NotImplementedError(type(builtin).__name__)
+
+    @abstractmethod
+    def translate_Add(self, builtin: Add) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Nil(self, nil: Nil) -> _Builtin:
+    def translate_And(self, builtin: And) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Cons(self, cons: Cons) -> _Builtin:
+    def translate_At(self, builtin: At) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Unit(self, unit: Unit) -> _Builtin:
+    def translate_Bool(self, builtin: Bool) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Bool(self, bool: Bool) -> _Builtin:
+    def translate_BoolType(self, builtin: BoolType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Index(self, index: Index) -> _Builtin:
+    def translate_Cons(self, builtin: Cons) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Nat(self, nat: Nat) -> _Builtin:
+    def translate_ConsVector(self, builtin: ConsVector) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Int(self, int: Int) -> _Builtin:
+    def translate_Div(self, builtin: Div) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Rat(self, rat: Rat) -> _Builtin:
+    def translate_Eq(self, builtin: Eq) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Vector(self, vector: Vector) -> _Builtin:
+    def translate_Exists(self, builtin: Exists) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Not(self, notBuiltin: Not) -> _Builtin:
+    def translate_Fold(self, builtin: Fold) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_And(self, andBuiltin: And) -> _Builtin:
+    def translate_Forall(self, builtin: Forall) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Or(self, orBuiltin: Or) -> _Builtin:
+    def translate_Ge(self, builtin: Ge) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Implies(self, implies: Implies) -> _Builtin:
+    def translate_Gt(self, builtin: Gt) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Forall(self, forall: Forall) -> _Builtin:
+    def translate_If(self, builtin: If) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Exists(self, exists: Exists) -> _Builtin:
+    def translate_Implies(self, builtin: Implies) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_If(self, ifBuiltin: If) -> _Builtin:
+    def translate_Index(self, builtin: Index) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Neg(self, neg: Neg) -> _Builtin:
+    def translate_IndexType(self, builtin: IndexType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Add(self, add: Add) -> _Builtin:
+    def translate_Indicator(self, builtin: Indicator) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Sub(self, sub: Sub) -> _Builtin:
+    def translate_Indices(self, builtin: Indices) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Mul(self, mul: Mul) -> _Builtin:
+    def translate_Int(self, builtin: Int) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Div(self, div: Div) -> _Builtin:
+    def translate_IntType(self, builtin: IntType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Eq(self, eq: Eq) -> _Builtin:
+    def translate_Le(self, builtin: Le) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Ne(self, ne: Ne) -> _Builtin:
+    def translate_Lt(self, builtin: Lt) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Le(self, le: Le) -> _Builtin:
+    def translate_ListType(self, builtin: ListType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Lt(self, lt: Lt) -> _Builtin:
+    def translate_Max(self, builtin: Max) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Ge(self, ge: Ge) -> _Builtin:
+    def translate_Min(self, builtin: Min) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Gt(self, gt: Gt) -> _Builtin:
+    def translate_Mul(self, builtin: Mul) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_At(self, at: At) -> _Builtin:
+    def translate_Nat(self, builtin: Nat) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_ConsVector(self, consVector: ConsVector) -> _Builtin:
+    def translate_NatType(self, builtin: NatType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Fold(self, fold: Fold) -> _Builtin:
+    def translate_Ne(self, builtin: Ne) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Indices(self, indices: Indices) -> _Builtin:
+    def translate_Neg(self, builtin: Neg) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_UnitType(self, unitType: UnitType) -> _Builtin:
+    def translate_Nil(self, builtin: Nil) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_BoolType(self, boolType: BoolType) -> _Builtin:
+    def translate_Not(self, builtin: Not) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_IndexType(self, indexType: IndexType) -> _Builtin:
+    def translate_Or(self, builtin: Or) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_NatType(self, natType: NatType) -> _Builtin:
+    def translate_Pow(self, builtin: Pow) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_IntType(self, intType: IntType) -> _Builtin:
+    def translate_Rat(self, builtin: Rat) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_RatType(self, ratType: RatType) -> _Builtin:
+    def translate_RatType(self, builtin: RatType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_ListType(self, listType: ListType) -> _Builtin:
+    def translate_Sub(self, builtin: Sub) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_VectorType(self, vectorType: VectorType) -> _Builtin:
+    def translate_Unit(self, builtin: Unit) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Min(self, min: Min) -> _Builtin:
+    def translate_UnitType(self, builtin: UnitType) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Max(self, max: Max) -> _Builtin:
+    def translate_Vector(self, builtin: Vector) -> _Builtin:
         ...
 
     @abstractmethod
-    def translate_Power(self, power: Power) -> _Builtin:
-        ...
-
-    @abstractmethod
-    def translate_Indicator(self, indicator: Indicator) -> _Builtin:
+    def translate_VectorType(self, builtin: VectorType) -> _Builtin:
         ...

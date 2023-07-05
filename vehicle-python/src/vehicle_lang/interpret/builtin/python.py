@@ -2,7 +2,7 @@ from typing import Sequence, Type
 
 from typing_extensions import TypeAlias, TypeVar
 
-from . import InterpretBuiltin
+from . import BuiltinInterpreter
 from ._functools import Function, Operator1, Operator2, Relation, foldRight
 
 _S = TypeVar("_S")
@@ -13,8 +13,8 @@ _HasDiv: TypeAlias = float
 _HasOrd = TypeVar("_HasOrd", int, float, bool)
 
 
-class PythonBuiltin(
-    InterpretBuiltin[
+class PythonBuiltinInterpreter(
+    BuiltinInterpreter[
         bool,
         int,
         int,

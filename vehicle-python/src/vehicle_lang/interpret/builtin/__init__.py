@@ -24,7 +24,7 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 
-class InterpretBuiltin(
+class BuiltinInterpreter(
     Generic[
         _Bool,
         _Nat,
