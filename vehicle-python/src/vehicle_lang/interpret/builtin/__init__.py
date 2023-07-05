@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Generic, Sequence, Tuple, Type, cast
+from typing import Generic, Optional, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar
 
@@ -43,7 +43,7 @@ class BuiltinInterpreter(
     metaclass=ABCMeta,
 ):
     @abstractmethod
-    def interpret_Add(self, _cls: Type[_HasAdd]) -> Operator2[_HasAdd]:
+    def interpret_Add(self, _cls: Optional[Type[_HasAdd]] = None) -> Operator2[_HasAdd]:
         ...
 
     @abstractmethod
@@ -52,7 +52,7 @@ class BuiltinInterpreter(
 
     @abstractmethod
     def interpret_At(
-        self, _cls: Type[_T]
+        self, _cls: Optional[Type[_T]] = None
     ) -> Function[Sequence[_T], Function[_Nat, _T]]:
         ...
 
@@ -65,7 +65,7 @@ class BuiltinInterpreter(
         ...
 
     def interpret_Cons(
-        self, _cls: Type[_T]
+        self, _cls: Optional[Type[_T]] = None
     ) -> Function[_T, Function[Sequence[_T], Sequence[_T]]]:
         return lambda x: lambda xs: (x, *xs)
 
@@ -75,11 +75,11 @@ class BuiltinInterpreter(
         return lambda x: lambda xs: (x, *xs)
 
     @abstractmethod
-    def interpret_Div(self, _cls: Type[_HasDiv]) -> Operator2[_HasDiv]:
+    def interpret_Div(self, _cls: Optional[Type[_HasDiv]] = None) -> Operator2[_HasDiv]:
         ...
 
     @abstractmethod
-    def interpret_Eq(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Eq(self, _cls: Optional[Type[_T]] = None) -> Relation[_T, _Bool]:
         ...
 
     @abstractmethod
@@ -88,27 +88,33 @@ class BuiltinInterpreter(
 
     @abstractmethod
     def interpret_Fold(
-        self, _cls: Type[_T]
+        self, _cls: Optional[Type[_T]] = None
     ) -> Function[
         Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_T], _S]]
     ]:
         ...
 
     @abstractmethod
-    def interpret_Forall(self, _cls: Type[_T]) -> Function[Function[_T, _Bool], _Bool]:
+    def interpret_Forall(
+        self, _cls: Optional[Type[_T]] = None
+    ) -> Function[Function[_T, _Bool], _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Ge(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
+    def interpret_Ge(
+        self, _cls: Optional[Type[_HasOrd]] = None
+    ) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Gt(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
+    def interpret_Gt(
+        self, _cls: Optional[Type[_HasOrd]] = None
+    ) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
     def interpret_If(
-        self, _cls: Type[_T]
+        self, _cls: Optional[Type[_T]] = None
     ) -> Function[_Bool, Function[_T, Function[_T, _T]]]:
         ...
 
@@ -144,26 +150,26 @@ class BuiltinInterpreter(
         return lambda cls: Sequence[cls]  # type: ignore[valid-type]
 
     @abstractmethod
-    def interpret_Max(self, _cls: Type[_HasMax]) -> Operator2[_HasMax]:
+    def interpret_Max(self, _cls: Optional[Type[_HasMax]] = None) -> Operator2[_HasMax]:
         ...
 
     @abstractmethod
-    def interpret_Min(self, _cls: Type[_HasMin]) -> Operator2[_HasMin]:
+    def interpret_Min(self, _cls: Optional[Type[_HasMin]] = None) -> Operator2[_HasMin]:
         ...
 
     @abstractmethod
-    def interpret_Mul(self, _cls: Type[_HasMul]) -> Operator2[_HasMul]:
+    def interpret_Mul(self, _cls: Optional[Type[_HasMul]] = None) -> Operator2[_HasMul]:
         ...
 
     @abstractmethod
-    def interpret_Ne(self, _cls: Type[_T]) -> Relation[_T, _Bool]:
+    def interpret_Ne(self, _cls: Optional[Type[_T]] = None) -> Relation[_T, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Neg(self, _cls: Type[_HasNeg]) -> Operator1[_HasNeg]:
+    def interpret_Neg(self, _cls: Optional[Type[_HasNeg]] = None) -> Operator1[_HasNeg]:
         ...
 
-    def interpret_Nil(self, _cls: Type[_T]) -> Sequence[_T]:
+    def interpret_Nil(self, _cls: Optional[Type[_T]] = None) -> Sequence[_T]:
         return ()
 
     @abstractmethod
@@ -175,15 +181,19 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_Pow(self, _cls: Type[_HasPow]) -> Operator2[_HasPow]:
+    def interpret_Pow(self, _cls: Optional[Type[_HasPow]] = None) -> Operator2[_HasPow]:
         ...
 
     @abstractmethod
-    def interpret_Le(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
+    def interpret_Le(
+        self, _cls: Optional[Type[_HasOrd]] = None
+    ) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
-    def interpret_Lt(self, _cls: Type[_HasOrd]) -> Relation[_HasOrd, _Bool]:
+    def interpret_Lt(
+        self, _cls: Optional[Type[_HasOrd]] = None
+    ) -> Relation[_HasOrd, _Bool]:
         ...
 
     @abstractmethod
@@ -203,7 +213,7 @@ class BuiltinInterpreter(
         ...
 
     @abstractmethod
-    def interpret_Sub(self, _cls: Type[_HasSub]) -> Operator2[_HasSub]:
+    def interpret_Sub(self, _cls: Optional[Type[_HasSub]] = None) -> Operator2[_HasSub]:
         ...
 
     def interpret_Unit(self) -> Tuple[()]:
@@ -212,7 +222,9 @@ class BuiltinInterpreter(
     def interpret_UnitType(self) -> Type[Tuple[()]]:
         return cast(Type[Tuple[()]], Tuple[()])
 
-    def interpret_Vector(self, _cls: Type[_T]) -> Function[Sequence[_T], Sequence[_T]]:
+    def interpret_Vector(
+        self, _cls: Optional[Type[_T]] = None
+    ) -> Function[Sequence[_T], Sequence[_T]]:
         return lambda xs: tuple(xs)
 
     def interpret_VectorType(
