@@ -6,7 +6,6 @@ module Test.Tasty.Golden.Executable.TestSpec
 where
 
 import Control.Exception (Exception, throw)
-import Control.Monad.Catch (handle)
 import Data.Aeson.Types
   ( FromJSON (parseJSON),
     KeyValue ((.=)),
@@ -24,13 +23,13 @@ import Data.Tagged (Tagged (..))
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
-import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, handleExitFailure, handleGoldenFilesError, handleNeededFilesError, handleProducedFilesError, makeLooseEq, runTestIO, runTestRun)
+import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
 import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
 import Test.Tasty.Options (OptionDescription, OptionSet)
-import Test.Tasty.Providers (IsTest (..), Result, testPassed)
+import Test.Tasty.Providers (IsTest (..), Result)
 import Test.Tasty.Runners (Progress)
 
 data TestSpec = TestSpec
@@ -70,9 +69,8 @@ data TestSpecIgnore = TestSpecIgnore
   deriving (Eq, Show)
 
 instance IsTest TestSpec where
-  -- \| Run a 'TestSpec'.
   run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
-  run options TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} _ = do
+  run _options TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} _progress = do
     -- Create loose equality based on the ignore options
     let maybeLooseEq
           | null testSpecIgnoreLines = Nothing
