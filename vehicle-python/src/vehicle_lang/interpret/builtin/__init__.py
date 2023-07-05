@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Generic, Sequence, Tuple, Type, cast, overload
+from typing import Generic, Sequence, Tuple, Type, cast
 
-from typing_extensions import TypeAlias, TypeVar
+from typing_extensions import TypeVar
+
+from ._functools import Function, Operator1, Operator2, Relation
 
 _Bool = TypeVar("_Bool")
 _Nat = TypeVar("_Nat")
@@ -20,11 +22,6 @@ _HasOrd = TypeVar("_HasOrd")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
-
-Function: TypeAlias = Callable[[_S], _T]
-Relation: TypeAlias = Function[_T, Function[_T, _Bool]]
-Operator1: TypeAlias = Function[_T, _T]
-Operator2: TypeAlias = Function[_T, Function[_T, _T]]
 
 
 class InterpretBuiltin(

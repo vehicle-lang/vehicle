@@ -1,9 +1,9 @@
-from functools import reduce
 from typing import Sequence, Type
 
 from typing_extensions import TypeAlias, TypeVar
 
-from . import Function, InterpretBuiltin, Operator1, Operator2, Relation
+from . import InterpretBuiltin
+from ._functools import Function, Operator1, Operator2, Relation, foldRight
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -11,15 +11,6 @@ _T = TypeVar("_T")
 _AnyNum = TypeVar("_AnyNum", int, float)
 _HasDiv: TypeAlias = float
 _HasOrd = TypeVar("_HasOrd", int, float, bool)
-
-
-def _foldr(f: Function[_T, Function[_S, _S]], x: _S, xs: Sequence[_T]) -> _S:
-    """A definition of foldr in terms of reduce."""
-
-    def _uncurry_f(x: _S, y: _T) -> _S:
-        return f(y)(x)
-
-    return reduce(_uncurry_f, xs, initial=x)
 
 
 class PythonBuiltin(
@@ -145,7 +136,7 @@ class PythonBuiltin(
     ) -> Function[
         Function[_T, Function[_S, _S]], Function[_S, Function[Sequence[_T], _S]]
     ]:
-        return lambda f: lambda x: lambda xs: _foldr(f, x, xs)
+        return lambda f: lambda x: lambda xs: foldRight(f, x, xs)
 
     def interpret_At(self, _cls: Type[_T]) -> Function[Sequence[_T], Function[int, _T]]:
         return lambda xs: lambda n: xs[n]
