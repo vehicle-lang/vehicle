@@ -9,7 +9,7 @@ from .lossabc import ABCLossBuiltins, Number
 class LossGodelBuiltins(ABCLossBuiltins):
     @override
     def And(self) -> Operator2[float]:
-        return lambda x: lambda y: min(x, y)
+        return curry(min)
 
     @override
     def Bool(self, value: bool) -> float:
@@ -33,4 +33,4 @@ class LossGodelBuiltins(ABCLossBuiltins):
 
     @override
     def Or(self) -> Operator2[float]:
-        return lambda x: lambda y: max(x, y)
+        return curry(max)
