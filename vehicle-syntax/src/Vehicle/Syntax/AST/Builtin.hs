@@ -250,32 +250,12 @@ instance Hashable FoldDomain
 
 instance Serialize FoldDomain
 
-data QuantifierDomain
-  = QuantNat
-  | QuantInt
-  | QuantRat
-  | QuantVec
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData QuantifierDomain
-
-instance Hashable QuantifierDomain
-
-instance Serialize QuantifierDomain
-
-instance Pretty QuantifierDomain where
-  pretty = \case
-    QuantNat -> "Nat"
-    QuantInt -> "Int"
-    QuantRat -> "Rat"
-    QuantVec -> "Vec"
-
 data BuiltinFunction
   = Not
   | And
   | Or
   | Implies
-  | Quantifier Quantifier QuantifierDomain
+  | Quantifier Quantifier
   | If
   | -- Numeric conversion
     FromNat FromNatDomain
@@ -309,7 +289,7 @@ instance Pretty BuiltinFunction where
     And -> "and"
     Or -> "or"
     Implies -> "=>"
-    Quantifier q dom -> pretty q <> pretty dom
+    Quantifier q -> pretty q
     If -> "if"
     Neg dom -> "neg" <> pretty dom
     Add dom -> "add" <> pretty dom

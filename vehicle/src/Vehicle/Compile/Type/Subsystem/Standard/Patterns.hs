@@ -479,71 +479,38 @@ pattern BuiltinFunctionExpr p b args = BuiltinExpr p (CFunction b) args
 pattern QuantifierExpr ::
   Provenance ->
   Quantifier ->
-  QuantifierDomain ->
   Binder var StandardBuiltin ->
   Expr var StandardBuiltin ->
   Expr var StandardBuiltin
-pattern QuantifierExpr p q dom binder body <-
+pattern QuantifierExpr p q binder body <-
   BuiltinFunctionExpr
     p
-    (Quantifier q dom)
+    (Quantifier q)
     [ ExplicitArg _ (Lam _ binder body)
       ]
   where
-    QuantifierExpr p q dom binder body =
+    QuantifierExpr p q binder body =
       BuiltinFunctionExpr
         p
-        (Quantifier q dom)
+        (Quantifier q)
         [ ExplicitArg p (Lam p binder body)
         ]
 
-pattern ExistsNatExpr ::
+pattern ExistsExpr ::
   Provenance ->
   Binder var StandardBuiltin ->
   Expr var StandardBuiltin ->
   Expr var StandardBuiltin
-pattern ExistsNatExpr p binder body =
-  QuantifierExpr p Exists QuantNat binder body
+pattern ExistsExpr p binder body =
+  QuantifierExpr p Exists binder body
 
-pattern ForallNatExpr ::
+pattern ForallExpr ::
   Provenance ->
   Binder var StandardBuiltin ->
   Expr var StandardBuiltin ->
   Expr var StandardBuiltin
-pattern ForallNatExpr p binder body =
-  QuantifierExpr p Forall QuantNat binder body
-
-pattern ExistsIntExpr ::
-  Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern ExistsIntExpr p binder body =
-  QuantifierExpr p Exists QuantInt binder body
-
-pattern ForallIntExpr ::
-  Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern ForallIntExpr p binder body =
-  QuantifierExpr p Forall QuantInt binder body
-
-pattern ExistsRatExpr ::
-  Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern ExistsRatExpr p binder body =
-  QuantifierExpr p Exists QuantRat binder body
-
-pattern ForallRatExpr ::
-  Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern ForallRatExpr p binder body =
-  QuantifierExpr p Forall QuantRat binder body
+pattern ForallExpr p binder body =
+  QuantifierExpr p Forall binder body
 
 --------------------------------------------------------------------------------
 -- IfExpr

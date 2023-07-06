@@ -10,6 +10,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
 import Vehicle.Compile.Type (typeCheckProg)
@@ -95,7 +96,7 @@ resolveInstanceArguments prog =
     builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       CType (StandardTypeClassOp {}) -> do
-        let (inst, remainingArgs) = findInstanceArg args
+        (inst, remainingArgs) <- findInstanceArg b args
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args
 

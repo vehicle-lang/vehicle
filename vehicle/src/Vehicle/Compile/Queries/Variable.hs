@@ -336,17 +336,16 @@ lookupAndRemoveAll assignment = foldM op ([], assignment)
 
 pattern VInfiniteQuantifier ::
   Quantifier ->
-  QuantifierDomain ->
   [StandardNormExpr] ->
   StandardNormBinder ->
   StandardEnv ->
   TypeCheckedExpr ->
   StandardNormExpr
-pattern VInfiniteQuantifier q dom args binder env body <-
-  VBuiltinFunction (Quantifier q dom) (reverse -> VLam binder env body : args)
+pattern VInfiniteQuantifier q args binder env body <-
+  VBuiltinFunction (Quantifier q) (reverse -> VLam binder env body : args)
   where
-    VInfiniteQuantifier q dom args binder env body =
-      VBuiltinFunction (Quantifier q dom) (reverse (VLam binder env body : args))
+    VInfiniteQuantifier q args binder env body =
+      VBuiltinFunction (Quantifier q) (reverse (VLam binder env body : args))
 
 pattern VFiniteQuantifier :: Quantifier -> StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VFiniteQuantifier q spine binder env body <-

@@ -16,6 +16,7 @@ module Vehicle.Compile.Normalise.NBE
     NormT,
     runNormT,
     runEmptyNormT,
+    findInstanceArg,
   )
 where
 
@@ -118,7 +119,9 @@ evalApp fun (arg : args) = do
       | not (isTypeClassOp b) -> do
           evalBuiltin evalApp b (spine <> mapMaybe getExplicitArg (arg : args))
       | otherwise -> do
-          let (inst, remainingArgs) = findInstanceArg args
+          logDebug MaxDetail $ "Spine" <+> prettyVerbose spine
+          logDebug MaxDetail $ "Args" <+> prettyVerbose args
+          (inst, remainingArgs) <- findInstanceArg b args
           evalApp inst remainingArgs
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
     VPi {} -> unexpectedExprError currentPass "VPi"
@@ -240,16 +243,16 @@ currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m ()
-showEntry _env _expr = do
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+showEntry _env expr = do
+  logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
-  -- incrCallDepth
+  incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
-showExit _env _result = do
-  -- decrCallDepth
-  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+showExit _env result = do
+  decrCallDepth
+  logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
@@ -268,8 +271,8 @@ showNormExit _env _result = do
   return ()
 
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp _fun _spine =
-  return ()
+showApp fun spine =
+  logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
 
 outOfBoundsError :: (MonadCompile m) => BoundCtx a -> Provenance -> Ix -> m b
 outOfBoundsError env p i =
@@ -280,3 +283,9 @@ outOfBoundsError env p i =
       <+> "is smaller than the found DB index"
       <+> pretty i
       <+> parens (pretty p)
+
+findInstanceArg :: (MonadCompile m) => (Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
+findInstanceArg op = \case
+  (InstanceArg _ inst : xs) -> return (inst, xs)
+  (_ : xs) -> findInstanceArg op xs
+  [] -> compilerDeveloperError $ "Malformed type class operation:" <+> pretty (show op)

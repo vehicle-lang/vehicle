@@ -36,7 +36,7 @@ typeOfBuiltinFunction = \case
   Implies -> typeOfOp2 impliesPolarity
   And -> typeOfOp2 maxPolarity
   Or -> typeOfOp2 maxPolarity
-  Quantifier q _ -> typeOfQuantifier q
+  Quantifier q -> typeOfQuantifier q
   If -> typeOfIf
   -- Comparisons
   Equals {} -> typeOfOp2 maxPolarity

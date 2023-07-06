@@ -107,7 +107,7 @@ cheatDelab n = B.Var (delabSymbol n)
 delabNameBinder :: (MonadDelab m) => V.Binder V.Name V.Builtin -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
-    developerError $
+    developerError
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
@@ -118,7 +118,7 @@ delabNameBinder b = case V.binderNamingForm b of
 delabTypeBinder :: (MonadDelab m) => V.Binder V.Name V.Builtin -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
   V.OnlyName {} ->
-    developerError $
+    developerError
       "Should not be delaborating an `OnlyName` binder to a `TypeBinder`"
   V.NameAndType {} -> B.BasicTypeBinder <$> delabM b
   V.OnlyType {} -> case V.visibilityOf b of
@@ -176,7 +176,7 @@ delabBuiltinFunction fun args = case fun of
   V.Sub {} -> delabTypeClassOp V.SubTC args
   V.Mul {} -> delabTypeClassOp V.MulTC args
   V.Div {} -> delabTypeClassOp V.DivTC args
-  V.Quantifier q _ -> delabTypeClassOp (V.QuantifierTC q) args
+  V.Quantifier q -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
   V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args

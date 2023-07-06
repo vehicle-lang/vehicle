@@ -105,6 +105,7 @@ monomorphiseProg (Main decls) =
 monomorphiseDecls :: (MonadCollect builtin m) => Decl Ix builtin -> m [Decl Ix builtin]
 monomorphiseDecls decl = do
   logCompilerSection MaxDetail ("Checking" <+> quotePretty (identifierOf decl)) $ do
+    logDebug MaxDetail $ prettyVerbose decl
     newDecls <- monomorphiseDecl decl
     forM_ newDecls (traverse collectReferences)
     return newDecls
@@ -128,7 +129,8 @@ monomorphiseDecl decl = case decl of
       Just applications -> do
         let numberOfApplications = Set.size applications
         let createNewName = numberOfApplications > 1
-        logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications"
+        logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications:"
+        logDebug MaxDetail $ indent 2 $ prettyVerbose (Set.toList applications)
         traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) (Set.toList applications)
 
 performMonomorphisation ::
@@ -144,6 +146,7 @@ performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   let (newType, newBody) = substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
   let newDecl = DefFunction p newIdent anns newType newBody
+  logDebug MaxDetail $ line <> "Partial result:" <> line <> indent 2 (prettyFriendly newDecl)
   return newDecl
 
 substituteArgsThrough :: (Expr Ix builtin, Expr Ix builtin, [Arg Ix builtin]) -> (Expr Ix builtin, Expr Ix builtin)

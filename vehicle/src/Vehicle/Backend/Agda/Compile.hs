@@ -24,6 +24,7 @@ import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -505,14 +506,8 @@ agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 compileBuiltin :: (MonadAgdaCompile m) => StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
 compileBuiltin (CType (StandardTypeClassOp op)) allArgs
   | not (isTypeClassInAgda op) = do
-      let result = nfTypeClassOp mempty op allArgs
-      case result of
-        Nothing ->
-          compilerDeveloperError $
-            "Unable to normalise type-class op:" <+> pretty op
-        Just res -> do
-          (fn, args) <- res
-          compileApp fn args
+      (fn, args) <- nfTypeClassOp mempty op allArgs
+      compileApp fn args
 compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
   BoolType {} -> compileBooleanType
   NatType {} -> return $ annotateConstant [DataNat] natQualifier
@@ -580,18 +575,19 @@ nfTypeClassOp ::
   Provenance ->
   TypeClassOp ->
   [Arg var StandardBuiltin] ->
-  Maybe (m (Expr var StandardBuiltin, NonEmpty (Arg var StandardBuiltin)))
+  m (Expr var StandardBuiltin, NonEmpty (Arg var StandardBuiltin))
 nfTypeClassOp _p op args = do
-  let (inst, remainingArgs) = findInstanceArg args
+  (inst, remainingArgs) <- findInstanceArg op args
   case (inst, remainingArgs) of
-    (Meta {}, _) -> Nothing
+    (Meta {}, _) ->
+      compilerDeveloperError $
+        "Unable to normalise type-class op:" <+> pretty op
     (_, v : vs) -> do
       let (fn, args') = toHead inst
-      Just $ return (fn, prependList args' (v :| vs))
+      return (fn, prependList args' (v :| vs))
     (_, []) ->
-      Just $
-        compilerDeveloperError $
-          "Type class operation with no further arguments:" <+> pretty op
+      compilerDeveloperError $
+        "Type class operation with no further arguments:" <+> pretty op
 
 compileTypeClass :: (MonadAgdaCompile m) => Code -> Expr Name StandardBuiltin -> m Code
 compileTypeClass name arg = do

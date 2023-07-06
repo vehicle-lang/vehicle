@@ -67,8 +67,3 @@ getImplicitArg _ = Nothing
 
 filterOutNonExplicitArgs :: NonEmpty (Arg var builtin) -> [Expr var builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
-
-findInstanceArg :: [GenericArg a] -> (a, [GenericArg a])
-findInstanceArg (InstanceArg _ inst : xs) = (inst, xs)
-findInstanceArg (_ : xs) = findInstanceArg xs
-findInstanceArg [] = developerError "Malformed type class operation"

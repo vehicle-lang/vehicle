@@ -169,8 +169,8 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
       V.EqualityExpr p dom eq args -> return $ V.EqualityExpr p dom (neg eq) args
       V.NotExpr _ [e] -> return $ argExpr e
       -- Inductive cases
-      V.ForallRatExpr p binder body -> V.ExistsRatExpr p binder <$> lowerNot notProv body
-      V.ExistsRatExpr p binder body -> V.ForallRatExpr p binder <$> lowerNot notProv body
+      V.ForallExpr p binder body -> V.ExistsExpr p binder <$> lowerNot notProv body
+      V.ExistsExpr p binder body -> V.ForallExpr p binder <$> lowerNot notProv body
       V.ImpliesExpr p [e1, e2] -> do
         ne2 <- traverse (lowerNot notProv) e2
         return $ V.AndExpr p [e1, ne2]

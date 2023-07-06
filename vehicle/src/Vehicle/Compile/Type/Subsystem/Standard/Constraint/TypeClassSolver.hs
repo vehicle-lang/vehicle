@@ -68,9 +68,9 @@ solveHasQuantifier _ _ [lamType]
 solveHasQuantifier q c [VPi binder body]
   | isNMeta domain = blockOnMetas [domain]
   | isIndexType domain = solveIndexQuantifier q ctx binder body
-  | isNatType domain = solveSimpleQuantifier QuantNat q ctx binder body
-  | isIntType domain = solveSimpleQuantifier QuantInt q ctx binder body
-  | isRatType domain = solveSimpleQuantifier QuantRat q ctx binder body
+  | isNatType domain = solveSimpleQuantifier q ctx binder body
+  | isIntType domain = solveSimpleQuantifier q ctx binder body
+  | isRatType domain = solveSimpleQuantifier q ctx binder body
   | isVectorType domain = solveVectorQuantifier q ctx binder body
   | otherwise = blockOrThrowErrors ctx [domain] tcError
   where
@@ -105,16 +105,15 @@ solveIndexQuantifier q c domainBinder body = do
 
   return $ Right ([domainEq, bodyEq], solution)
 
-solveSimpleQuantifier :: QuantifierDomain -> HasQuantifierSolver
-solveSimpleQuantifier dom q c _domainBinder body = do
+solveSimpleQuantifier :: HasQuantifierSolver
+solveSimpleQuantifier q c _domainBinder body = do
   let p = provenanceOf c
   bodyEq <- unify c body VBoolType
-  let solution = NullaryBuiltinFunctionExpr p (Quantifier q dom)
+  let solution = NullaryBuiltinFunctionExpr p (Quantifier q)
   return $ Right ([bodyEq], solution)
 
 solveVectorQuantifier :: HasQuantifierSolver
 solveVectorQuantifier q c domainBinder body = do
-  let p = provenanceOf c
   dim <- freshDimMeta c
   (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf domainBinder)
 
@@ -123,16 +122,7 @@ solveVectorQuantifier q c domainBinder body = do
   let expr = VBuiltin (CType (StandardTypeClass (HasQuantifier q))) [VPi elemDomainBinder body]
   (metaExpr, recTC) <- createTC c expr
 
-  let solution =
-        BuiltinFunctionExpr
-          p
-          (Quantifier q QuantVec)
-          [ ImplicitArg p (unnormalised vecElem),
-            ImplicitArg p (unnormalised dim),
-            InstanceArg p metaExpr
-          ]
-
-  return $ Right ([domainEq, recTC], solution)
+  return $ Right ([domainEq, recTC], metaExpr)
 
 --------------------------------------------------------------------------------
 -- InDomain

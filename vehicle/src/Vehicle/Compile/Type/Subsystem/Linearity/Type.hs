@@ -34,7 +34,7 @@ typeOfBuiltinFunction = \case
   Implies -> typeOfOp2 maxLinearity
   And -> typeOfOp2 maxLinearity
   Or -> typeOfOp2 maxLinearity
-  Quantifier q _dom -> typeOfQuantifier q
+  Quantifier q -> typeOfQuantifier q
   If -> typeOfIf
   -- Arithmetic operations
   Neg {} -> typeOfOp1
