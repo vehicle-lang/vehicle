@@ -21,10 +21,10 @@
     "produces": ["Agda.agda"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.json",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"]
+    "produces": ["DL2Loss.json"]
   },
   {
     "name": "JSON",
