@@ -16,11 +16,11 @@ from vehicle_lang.exec.translation.python import PythonTranslation
             {},
             {"addition": 8},
         ),
-        # (
-        #     "test_at.vcl",
-        #     {},
-        #     {"at": 2},
-        # ),
+        (
+            "test_at.vcl",
+            {},
+            {"at": 2},
+        ),
         # (
         #     "test_constant.vcl",
         #     {},
