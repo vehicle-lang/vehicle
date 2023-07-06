@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
 
-from vehicle_lang.compile import PythonTranslation, to_python
+from vehicle_lang.compile import to_python
 from vehicle_lang.compile.lossgodel import LossGodelBuiltins
 
 
@@ -108,9 +108,9 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    builtins = LossGodelBuiltins(samplers=samplers)
-    translation = PythonTranslation(builtins)
-    output = to_python(specification_path, translation=translation)
+    output = to_python(
+        specification_path, builtins=LossGodelBuiltins(samplers=samplers)
+    )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
             if validate_output[key] is not ...:

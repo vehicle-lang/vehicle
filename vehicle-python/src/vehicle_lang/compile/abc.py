@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generic, Iterator, Sequence, Tuple, Type, cast
 
-from typing_extensions import TypeVar, override
+from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
 from ._functools import (
@@ -30,6 +30,8 @@ _SupportsEq = TypeVar("_SupportsEq")
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 
+Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
+
 
 @dataclass(frozen=True)
 class Builtins(
@@ -43,9 +45,7 @@ class Builtins(
     ],
     metaclass=ABCMeta,
 ):
-    samplers: Dict[str, Callable[[Dict[str, Any]], Iterator[Any]]] = field(
-        default_factory=dict
-    )
+    samplers: Dict[str, Sampler] = field(default_factory=dict)
 
     @abstractmethod
     def AddInt(self) -> Operator2[_Int]:

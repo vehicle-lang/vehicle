@@ -3,9 +3,9 @@ import operator
 from dataclasses import asdict, dataclass, field
 from functools import partial, reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Type, Union
+from typing import Any, Dict, List, NoReturn, Optional, Sequence, Type, Union
 
-from typing_extensions import TypeVar, override
+from typing_extensions import TypeVar, overload, override
 
 from .. import ast as vcl
 from .. import session as global_session
@@ -23,7 +23,7 @@ from ._functools import (
     Relation2,
     curry,
 )
-from .abc import ABCTranslation, Builtins
+from .abc import ABCTranslation, Builtins, Sampler
 
 _T = TypeVar("_T")
 
@@ -608,12 +608,70 @@ def py_builtin(
 ################################################################################
 
 
+@overload
 def to_python(
     specification_path: Union[str, Path],
     *,
     target: Target = Target.DEFAULT,
     context: Dict[str, Any] = {},
     session: Optional[Session] = None,
+    samplers: Dict[str, Sampler],
+    builtins: None = None,
+    translation: None = None,
+) -> Dict[str, Any]:
+    ...
+
+
+@overload
+def to_python(
+    specification_path: Union[str, Path],
+    *,
+    target: Target = Target.DEFAULT,
+    context: Dict[str, Any] = {},
+    session: Optional[Session] = None,
+    samplers: None = None,
+    builtins: Builtins[Any, Any, Any, Any, Any, Any],
+    translation: None = None,
+) -> Dict[str, Any]:
+    ...
+
+
+@overload
+def to_python(
+    specification_path: Union[str, Path],
+    *,
+    target: Target = Target.DEFAULT,
+    context: Dict[str, Any] = {},
+    session: Optional[Session] = None,
+    samplers: None = None,
+    builtins: None = None,
+    translation: PythonTranslation,
+) -> Dict[str, Any]:
+    ...
+
+
+@overload
+def to_python(
+    specification_path: Union[str, Path],
+    *,
+    target: Target = Target.DEFAULT,
+    context: Dict[str, Any] = {},
+    session: Optional[Session] = None,
+    samplers: None = None,
+    builtins: None = None,
+    translation: None = None,
+) -> Dict[str, Any]:
+    ...
+
+
+def to_python(
+    specification_path: Union[str, Path],
+    *,
+    target: Target = Target.DEFAULT,
+    context: Dict[str, Any] = {},
+    session: Optional[Session] = None,
+    samplers: Optional[Dict[str, Sampler]] = None,
+    builtins: Optional[Builtins[Any, Any, Any, Any, Any, Any]] = None,
     translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:
     # Ensure that specification_path is a Path
@@ -626,8 +684,22 @@ def to_python(
     else:
         program = global_session.load(specification_path, target=target)
 
-    # Ensure that translation has its default value:
-    if translation is None:
+    # The user can provide one of samplers, builtins, or translation:
+    if samplers is not None:
+        assert (
+            builtins is None and translation is None
+        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
+        translation = PythonTranslation(builtins=PythonBuiltins(samplers=samplers))
+    elif builtins is not None:
+        assert (
+            samplers is None and translation is None
+        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
+        translation = PythonTranslation(builtins=builtins)
+    elif translation is not None:
+        assert (
+            samplers is None and builtins is None
+        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
+    else:
         translation = PythonTranslation(builtins=PythonBuiltins())
 
     # Translate the specification to a Python module:

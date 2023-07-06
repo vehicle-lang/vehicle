@@ -107,9 +107,7 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    builtins = PythonBuiltins(samplers=samplers)
-    translation = PythonTranslation(builtins)
-    output = to_python(specification_path, translation=translation)
+    output = to_python(specification_path, samplers=samplers)
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
             if validate_output[key] is not ...:
