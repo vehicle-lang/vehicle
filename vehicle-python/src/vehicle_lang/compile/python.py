@@ -7,9 +7,10 @@ from typing import Any, ClassVar, Dict, List, Optional, Sequence, Type, Union
 
 from typing_extensions import TypeVar, override
 
+from .. import ast as vcl
 from .. import session as global_session
+from .._target import Target
 from ..session import Session
-from . import _ast as vcl
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
@@ -22,7 +23,6 @@ from ._functools import (
     Relation2,
     curry,
 )
-from ._target import Target
 from .abc import ABCTranslation, Builtins
 
 _T = TypeVar("_T")
@@ -371,12 +371,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 ],
                 provenance=expression.provenance,
             )
-        else:
-            return reduce(
-                partial(py_app, provenance=expression.provenance),
-                [self.translate_expression(arg) for arg in expression.args],
-                self.translate_expression(expression.func),
-            )
+        return reduce(
+            partial(py_app, provenance=expression.provenance),
+            [self.translate_expression(arg) for arg in expression.args],
+            self.translate_expression(expression.func),
+        )
 
     def translate_BoundVar(self, expression: vcl.BoundVar) -> py.expr:
         return py.Name(

@@ -3,7 +3,7 @@ from abc import ABCMeta
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
-from typing_extensions import Literal, Self, TypeAlias, override
+from typing_extensions import Self, TypeAlias, override
 
 from ._decode import JsonValue, decode
 
@@ -330,6 +330,7 @@ class RatType(Builtin):
 @dataclass(frozen=True)
 class Sample(Builtin):
     name: Name
+    locals: Sequence[Name]
 
 
 @dataclass(frozen=True)

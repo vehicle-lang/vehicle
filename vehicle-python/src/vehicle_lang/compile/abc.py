@@ -3,7 +3,7 @@ from typing import Any, Generic, Iterator, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar, override
 
-from . import _ast as vcl
+from .. import ast as vcl
 from ._functools import (
     Function1,
     Function2,
