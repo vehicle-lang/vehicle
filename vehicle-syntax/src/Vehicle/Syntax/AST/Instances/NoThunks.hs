@@ -61,7 +61,6 @@ instance NoThunks DivDomain
 instance NoThunks FromNatDomain
 instance NoThunks FromRatDomain
 instance NoThunks FoldDomain
-instance NoThunks QuantifierDomain
 instance NoThunks Builtin
 
 -- Vehicle.Syntax.AST.Decl

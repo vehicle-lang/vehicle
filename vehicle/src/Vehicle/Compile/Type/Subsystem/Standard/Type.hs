@@ -35,11 +35,7 @@ typeOfBuiltinFunction = \case
   Implies -> tBool ~> tBool ~> tBool
   And -> tBool ~> tBool ~> tBool
   Or -> tBool ~> tBool ~> tBool
-  Quantifier _ dom -> case dom of
-    QuantNat -> typeOfQuantifier (tNat ~> tBool)
-    QuantInt -> typeOfQuantifier (tInt ~> tBool)
-    QuantRat -> typeOfQuantifier (tRat ~> tBool)
-    QuantVec -> developerError "Unsure about type of quantified vectors"
+  Quantifier _ -> forAllExpl "A" type0 $ \a -> (a ~> tBool) ~> tBool
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of

@@ -197,11 +197,11 @@ compileBoolExpr = go False
         -- As the expression is of type `Bool` we can immediately unfold the `if`.
         let unfoldedExpr = unfoldIf c x y
         go alreadyLiftedIfs quantifiedVariables unfoldedExpr
-      VInfiniteQuantifier q dom _ binder env body -> case q of
+      VInfiniteQuantifier q _ binder env body -> case q of
         -- If we're at a `Forall` we know we must have alternating quantifiers.
         Forall -> return $ Left $ SeriousError AlternatingQuantifiers
         -- Otherwise try to compile away the quantifier.
-        Exists -> compileInfiniteQuantifier quantifiedVariables dom binder env body
+        Exists -> compileInfiniteQuantifier quantifiedVariables binder env body
       VFiniteQuantifier q args binder env body ->
         compileFiniteQuantifier quantifiedVariables q args binder env body
       ------------
@@ -314,10 +314,10 @@ eliminateNot arg = case arg of
   -- the body is not yet unnormalised. However, it's fine to stop here as we'll
   -- simply continue to normalise it once we re-encounter it again after
   -- normalising the quantifier.
-  VInfiniteQuantifier q dom args binder env body -> do
+  VInfiniteQuantifier q args binder env body -> do
     let p = mempty
     let negatedBody = NotExpr p [ExplicitArg p body]
-    Just $ VInfiniteQuantifier (neg q) dom args binder env negatedBody
+    Just $ VInfiniteQuantifier (neg q) args binder env negatedBody
   VFiniteQuantifier q args binder env body -> do
     let p = mempty
     let negatedBody = NotExpr p [ExplicitArg p body]
@@ -368,14 +368,8 @@ canLeaveFiniteQuantifierUnexpanded ctx env expr = do
   let (usedFunctions, usedFreeVars) = getUsedFunctions ctx (getUsedFunctionsCtx ctx env) expr
   let forbiddenFunctions =
         HashSet.fromList
-          [ Quantifier Exists QuantRat,
-            Quantifier Forall QuantRat,
-            Quantifier Exists QuantInt,
-            Quantifier Forall QuantInt,
-            Quantifier Exists QuantNat,
-            Quantifier Forall QuantNat,
-            Quantifier Exists QuantVec,
-            Quantifier Forall QuantVec
+          [ Quantifier Exists,
+            Quantifier Forall
           ]
 
   let doesNotHaveDisjunction = HashSet.null (HashSet.intersection usedFunctions forbiddenFunctions)
@@ -388,12 +382,11 @@ canLeaveFiniteQuantifierUnexpanded ctx env expr = do
 compileInfiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  QuantifierDomain ->
   StandardNormBinder ->
   StandardEnv ->
   TypeCheckedExpr ->
   m QueryStructureResult
-compileInfiniteQuantifier quantifiedVariables _ binder env body = do
+compileInfiniteQuantifier quantifiedVariables binder env body = do
   let variableName = getBinderName binder
   let variableDoc = "variable" <+> quotePretty variableName
   logCompilerPass MidDetail ("compilation of quantified" <+> variableDoc) $ do
