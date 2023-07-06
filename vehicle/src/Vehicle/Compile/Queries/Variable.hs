@@ -284,7 +284,7 @@ foldConstant mkValue mkVec dims value = go dims (Vector.toList value)
       mkVec elems
 
 constantExpr :: TensorDimensions -> Constant -> StandardNormExpr
-constantExpr = foldConstant (VRatLiteral . toRational) VVecLiteral
+constantExpr = foldConstant (VRatLiteral . toRational) mkVLVec
 
 -- | Pretty prints a constant value given a set of dimensions.
 -- Note, an alternative would be to go via the Vehicle AST and pretty print
@@ -336,16 +336,16 @@ lookupAndRemoveAll assignment = foldM op ([], assignment)
 
 pattern VInfiniteQuantifier ::
   Quantifier ->
-  [StandardNormExpr] ->
+  [StandardNormArg] ->
   StandardNormBinder ->
   StandardEnv ->
   TypeCheckedExpr ->
   StandardNormExpr
 pattern VInfiniteQuantifier q args binder env body <-
-  VBuiltinFunction (Quantifier q) (reverse -> VLam binder env body : args)
+  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder env body) : args)
   where
     VInfiniteQuantifier q args binder env body =
-      VBuiltinFunction (Quantifier q) (reverse (VLam binder env body : args))
+      VBuiltinFunction (Quantifier q) (reverse (RelevantExplicitArg mempty (VLam binder env body) : args))
 
 pattern VFiniteQuantifier :: Quantifier -> StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VFiniteQuantifier q spine binder env body <-
@@ -355,7 +355,7 @@ pattern VFiniteQuantifier q spine binder env body <-
       VFreeVar (fromFiniteQuantifier q) (VFiniteQuantifierSpine spine binder env body)
 
 pattern VFiniteQuantifierSpine :: StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardSpine
-pattern VFiniteQuantifierSpine spine binder env body <- (reverse -> ExplicitArg _ (VLam binder env body) : spine)
+pattern VFiniteQuantifierSpine spine binder env body <- (reverse -> RelevantExplicitArg _ (VLam binder env body) : spine)
   where
     VFiniteQuantifierSpine spine binder env body =
-      reverse (ExplicitArg mempty (VLam binder env body) : spine)
+      reverse (RelevantExplicitArg mempty (VLam binder env body) : spine)

@@ -1,32 +1,24 @@
-bigAnd : (\ A -> Vector A 1) Rat -> Rat;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - max (** (1.0 - (** (1.0 - x) 1.0 + ** (1.0 - y) 1.0)) 1.0) 0.0) 0.0
+bigAnd : (\ A -> Vector A) Rat -> Rat;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> 1.0 - max (** (1.0 - (** (1.0 - x) 1.0 + ** (1.0 - y) 1.0)) 1.0) 0.0) 0.0
 
-bigOr : (\ A -> Vector A 1) Rat -> Rat;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - min (** (** x 1.0 + ** y 1.0) 1.0) 1.0) 1.0
+bigOr : (\ A -> Vector A) Rat -> Rat;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> 1.0 - min (** (** x 1.0 + ** y 1.0) 1.0) 1.0) 1.0
 
-vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector : Vector Rat -> Vector Rat;
 vectorToVector xs = xs
 
-mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
-mapVector f = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
-
-foreachVector : (Index 1 -> Rat) -> Vector Rat 1;
-foreachVector f = mapVector f (indices 1)
-
-zipWith : (Rat -> Rat -> Rat) -> Vector Rat 1 -> Vector Rat 1 -> Vector Rat 1;
-zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
-
 @noinline;
-equalsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
+equalsVector : Vector Rat -> Vector Rat -> Rat;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
-notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
+@noinline;
+notEqualsVector : Vector Rat -> Vector Rat -> Rat;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 mapList : (Rat -> Rat) -> List Rat -> List Rat;
 mapList f = fold (\ x -> \ xs -> f x :: xs) nil

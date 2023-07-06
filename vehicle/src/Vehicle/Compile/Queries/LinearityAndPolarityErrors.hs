@@ -15,6 +15,7 @@ import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type (typeCheckProg)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
@@ -84,7 +85,8 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
-  monomorphisedProg <- monomorphise isPropertyDecl typeClassFreeProg
+  irrelevantFreeProg <- removeIrrelevantCode typeClassFreeProg
+  monomorphisedProg <- monomorphise isPropertyDecl irrelevantFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg
@@ -92,9 +94,9 @@ typeCheckWithSubsystem prog = do
 resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
-    result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
-    logCompilerPassOutput $ prettyFriendly result
-    return result
+    flip traverseDecls prog $ \decl -> do
+      result <- traverse (traverseBuiltinsM builtinUpdateFunction) decl
+      return result
   where
     builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
@@ -116,11 +118,11 @@ removeLiteralCoercions =
     )
   where
     updateBuiltin decl p1 p2 b args = case b of
-      (CFunction (FromNat dom)) -> case (dom, args) of
-        (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
-        (FromNatToNat, [e, _]) -> return $ argExpr e
-        (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
-        (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+      (CFunction (FromNat dom)) -> case (dom, filter isExplicit args) of
+        (FromNatToIndex, [ExplicitArg _ _ (NatLiteral p n)]) -> return $ IndexLiteral p n
+        (FromNatToNat, [e]) -> return $ argExpr e
+        (FromNatToInt, [ExplicitArg _ _ (NatLiteral p n)]) -> return $ IntLiteral p n
+        (FromNatToRat, [ExplicitArg _ _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
         -- Hack until https://github.com/vehicle-lang/vehicle/issues/621 is fixed.
         _ -> return $ normAppList p1 (Builtin p2 b) args -- partialApplication decl (pretty b) args
       (CFunction (FromRat dom)) -> case (dom, args) of
@@ -133,7 +135,7 @@ removeLiteralCoercions =
         vec : _ -> return $ argExpr vec
         _ -> partialApplication decl (pretty v) args
       Just StdVectorToList -> case reverse args of
-        ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+        ExplicitArg _ _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
         _ -> partialApplication decl (pretty v) args
       _ -> return $ normAppList p1 (FreeVar p2 v) args
 

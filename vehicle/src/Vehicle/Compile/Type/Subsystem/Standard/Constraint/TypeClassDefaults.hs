@@ -213,12 +213,13 @@ getCandidatesFromConstraint ctx (Has _ expr) = do
     (HasVecLits, [_n, t]) -> return $ getCandidates HasVecLits VRawListType [t]
     (HasMap, [t]) -> return $ getCandidates HasMap VRawListType [t]
     (HasFold, [t]) -> return $ getCandidates HasFold VRawListType [t]
-    (NatInDomainConstraint, [n, t]) -> case t of
+    (NatInDomainConstraint, [n, t]) -> case argExpr t of
       VIndexType size -> do
         succN <- do
-          let maybeResult = evalAddNat [n, VNatLiteral 1]
-          return $ fromMaybe (VBuiltin (CFunction (Add AddNat)) [n, VNatLiteral 1]) maybeResult
-        return $ getCandidates NatInDomainConstraint succN [size]
+          let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
+          let defaultExpr = VBuiltin (CFunction (Add AddNat)) [n, RelevantExplicitArg mempty (VNatLiteral 1)]
+          return $ fromMaybe defaultExpr maybeNormResult
+        return $ getCandidates NatInDomainConstraint succN [IrrelevantImplicitArg mempty size]
       _ -> return []
     _ -> return []
 
@@ -226,14 +227,14 @@ getCandidatesFromArgs ::
   StandardConstraintContext ->
   TypeClass ->
   StandardNormExpr ->
-  [StandardNormExpr] ->
+  StandardSpine ->
   [Candidate]
-getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter isNMeta ts)
+getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
   where
     mkCandidate t =
       Candidate
         { candidateTypeClass = tc,
-          candidateMetaExpr = t,
+          candidateMetaExpr = argExpr t,
           candidateCtx = ctx,
           candidateSolution = solution
         }

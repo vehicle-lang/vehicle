@@ -140,7 +140,7 @@ functionaliseExpr = \case
         Just [] -> return $ FreeVar p v
         Just (arg : args) -> do
           tell (Set.fromList (arg : args))
-          let extraArgs = fmap (ExplicitArg p . BoundVar p) (arg :| args)
+          let extraArgs = fmap (RelevantExplicitArg p . BoundVar p) (arg :| args)
           return $ App p (FreeVar p v) extraArgs
   App p fun args -> do
     fun' <- functionaliseExpr fun

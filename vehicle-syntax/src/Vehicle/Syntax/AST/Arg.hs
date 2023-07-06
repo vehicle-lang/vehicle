@@ -41,23 +41,32 @@ instance HasRelevance (GenericArg expr) where
 --------------------------------------------------------------------------------
 -- Patterns
 
-pattern ExplicitArg :: Provenance -> expr -> GenericArg expr
-pattern ExplicitArg p e = Arg p Explicit Relevant e
+pattern ExplicitArg :: Provenance -> Relevance -> expr -> GenericArg expr
+pattern ExplicitArg p r e = Arg p Explicit r e
 
-pattern ImplicitArg :: Provenance -> expr -> GenericArg expr
-pattern ImplicitArg p e <- Arg p Implicit {} Relevant e
+pattern RelevantExplicitArg :: Provenance -> expr -> GenericArg expr
+pattern RelevantExplicitArg p e = Arg p Explicit Relevant e
+
+pattern IrrelevantExplicitArg :: Provenance -> expr -> GenericArg expr
+pattern IrrelevantExplicitArg p e = Arg p Explicit Irrelevant e
+
+pattern RelevantImplicitArg :: Provenance -> expr -> GenericArg expr
+pattern RelevantImplicitArg p e <- Arg p Implicit {} Relevant e
   where
-    ImplicitArg p e = Arg p (Implicit True) Relevant e
+    RelevantImplicitArg p e = Arg p (Implicit True) Relevant e
 
 pattern IrrelevantImplicitArg :: Provenance -> expr -> GenericArg expr
 pattern IrrelevantImplicitArg p e <- Arg p Implicit {} Irrelevant e
   where
     IrrelevantImplicitArg p e = Arg p (Implicit True) Irrelevant e
 
-pattern InstanceArg :: Provenance -> expr -> GenericArg expr
-pattern InstanceArg p e <- Arg p Instance {} Relevant e
+pattern InstanceArg :: Provenance -> Relevance -> expr -> GenericArg expr
+pattern InstanceArg p r e = Arg p (Instance True) r e
+
+pattern RelevantInstanceArg :: Provenance -> expr -> GenericArg expr
+pattern RelevantInstanceArg p e <- Arg p Instance {} Relevant e
   where
-    InstanceArg p e = Arg p (Instance True) Relevant e
+    RelevantInstanceArg p e = Arg p (Instance True) Relevant e
 
 --------------------------------------------------------------------------------
 -- Helper functions

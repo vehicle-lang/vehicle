@@ -1,17 +1,17 @@
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector : Vector Bool -> Vector Bool;
 vectorToVector xs = xs
 
-mapVector : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
-mapVector f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 2 -> Bool) -> Vector Bool 2;
-foreachVector f = mapVector f (indices 2)
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 @property;
 index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Bool (2 :: nil);
-index f = foreachVector (\ i -> f [0.0, 0.0] ! i >= 0.0)
+index f = foreachVector 2 (\ i -> f [0.0, 0.0] ! i >= 0.0)

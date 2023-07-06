@@ -4,6 +4,7 @@ module Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
 where
 
 import Control.Monad.Except (MonadError (..))
+import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core
@@ -22,7 +23,7 @@ solvePolarityConstraint (WithContext constraint ctx) = do
   normConstraint@(Has _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
-  progress <- solve tc nConstraint spine
+  progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
   handleConstraintProgress (WithContext normConstraint ctx) progress
 
 --------------------------------------------------------------------------------
@@ -66,7 +67,7 @@ solveQuantifierPolarity q c [lam, res] = case lam of
     let ctx = contextOf c
     binderEq <- unify ctx (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityTypeClass $ AddPolarity q
-    (_, addConstraint) <- createTC ctx (VBuiltin (CType tc) [resPol, res])
+    (_, addConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [resPol, res]))
     return $ Progress [binderEq, addConstraint]
   _ -> malformedConstraintError c
 solveQuantifierPolarity _ c _ = malformedConstraintError c
@@ -138,8 +139,8 @@ solveFunctionPolarity functionPosition c [arg, res] = case (arg, res) of
   (VPi binder1 body1, VPi binder2 body2) -> do
     let ctx = contextOf c
     let tc = PolarityTypeClass $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createTC ctx (VBuiltin (CType tc) [typeOf binder1, typeOf binder2])
-    (_, bodyConstraint) <- createTC ctx (VBuiltin (CType tc) [body1, body2])
+    (_, binderConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
+    (_, bodyConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
   _ -> malformedConstraintError c
 solveFunctionPolarity _ c _ = malformedConstraintError c
@@ -236,7 +237,7 @@ handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => PolarityNormExpr -> m (PolarityTypeClass, PolarityExplicitSpine)
+getTypeClass :: (MonadCompile m) => PolarityNormExpr -> m (PolarityTypeClass, PolaritySpine)
 getTypeClass = \case
   (VBuiltin (CType (PolarityTypeClass tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

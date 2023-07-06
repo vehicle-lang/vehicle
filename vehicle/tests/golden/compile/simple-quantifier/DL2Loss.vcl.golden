@@ -11,13 +11,13 @@ unused : Rat;
 unused = bigAnd (mapList (\ (x : Int) -> 0.0) sample[x][])
 
 @property;
-expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Rat;
 expandedExpr f = bigAnd (mapList (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][f])
 
 @property;
-sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+sequential : forallT (f : Vector Rat -> Vector Rat) . Rat;
 sequential f = bigAnd (mapList (\ x -> bigAnd (mapList (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x, f])) sample[x][f])
 
 @property;
-parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+parallel : forallT (f : Vector Rat -> Vector Rat) . Rat;
 parallel f = bigAnd (mapList (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][f]) + bigOr (mapList (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][f])

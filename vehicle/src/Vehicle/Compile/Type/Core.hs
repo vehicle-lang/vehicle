@@ -86,22 +86,21 @@ type MetaSubstitution builtin = MetaMap (GluedExpr builtin)
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
 type TypingBoundCtxEntry builtin =
-  ( Maybe Name,
-    Type Ix builtin
+  ( Binder Ix builtin
   )
 
 mkTypingBoundCtxEntry :: Binder Ix builtin -> TypingBoundCtxEntry builtin
-mkTypingBoundCtxEntry binder = (nameOf binder, binderType binder)
+mkTypingBoundCtxEntry binder = binder
 
 type TypingBoundCtx builtin = BoundCtx (TypingBoundCtxEntry builtin)
 
 instance HasBoundCtx (TypingBoundCtx builtin) where
-  boundContextOf = map fst
+  boundContextOf = map nameOf
 
 typingBoundContextToEnv :: TypingBoundCtx builtin -> Env builtin
 typingBoundContextToEnv ctx = do
   let levels = reverse (fmap Lv [0 .. length ctx - 1])
-  zipWith (\level (n, _) -> (n, VBoundVar level [])) levels ctx
+  zipWith (\level binder -> (nameOf binder, VBoundVar level [])) levels ctx
 
 --------------------------------------------------------------------------------
 -- Constraints

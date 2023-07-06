@@ -3,7 +3,6 @@ module Vehicle.Compile.Type.Subsystem.Standard.Patterns where
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalisable
-import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -33,7 +32,7 @@ pattern RatType :: Provenance -> Expr var StandardBuiltin
 pattern RatType p = NullaryTypeExpr p Rat
 
 pattern ListType :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern ListType p tElem <- TypeExpr p List [ExplicitArg _ tElem]
+pattern ListType p tElem <- TypeExpr p List [RelevantExplicitArg _ tElem]
 
 pattern RawListType :: Provenance -> Expr var StandardBuiltin
 pattern RawListType p = NullaryTypeExpr p List
@@ -47,37 +46,16 @@ pattern VectorType p tElem tDim <-
   TypeExpr
     p
     Vector
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tDim
+    [ RelevantExplicitArg _ tElem,
+      IrrelevantExplicitArg _ tDim
       ]
   where
     VectorType p tElem tDim =
       TypeExpr
         p
         Vector
-        [ ExplicitArg p tElem,
-          ExplicitArg p tDim
-        ]
-
-pattern TensorType ::
-  Provenance ->
-  Expr var builtin ->
-  Expr var builtin ->
-  Expr var builtin
-pattern TensorType p tElem tDims <-
-  App
-    p
-    (FreeVar _ TensorIdent)
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tDims
-      ]
-  where
-    TensorType p tElem tDims =
-      App
-        p
-        (FreeVar p TensorIdent)
-        [ ExplicitArg p tElem,
-          ExplicitArg p tDims
+        [ RelevantExplicitArg p tElem,
+          IrrelevantExplicitArg p tDim
         ]
 
 --------------------------------------------------------------------------------
@@ -103,9 +81,9 @@ pattern HasVecLitsExpr p tElem n tCont <-
   BuiltinTypeClass
     p
     HasVecLits
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ n,
-      ExplicitArg _ tCont
+    [ RelevantExplicitArg _ tElem,
+      IrrelevantExplicitArg _ n,
+      RelevantExplicitArg _ tCont
       ]
 
 pattern HasFoldExpr ::
@@ -117,8 +95,8 @@ pattern HasFoldExpr p tElem tCont <-
   BuiltinTypeClass
     p
     HasFold
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tCont
+    [ RelevantExplicitArg _ tElem,
+      RelevantExplicitArg _ tCont
       ]
 
 pattern HasQuantifierInExpr ::
@@ -131,8 +109,8 @@ pattern HasQuantifierInExpr p q tElem tCont <-
   BuiltinTypeClass
     p
     (HasQuantifierIn q)
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tCont
+    [ RelevantExplicitArg _ tElem,
+      RelevantExplicitArg _ tCont
       ]
 
 pattern HasNatLitsExpr ::
@@ -143,7 +121,7 @@ pattern HasNatLitsExpr p t <-
   BuiltinTypeClass
     p
     HasNatLits
-    [ ExplicitArg _ t
+    [ RelevantExplicitArg _ t
       ]
 
 pattern HasRatLitsExpr ::
@@ -154,7 +132,7 @@ pattern HasRatLitsExpr p t <-
   BuiltinTypeClass
     p
     HasRatLits
-    [ ExplicitArg _ t
+    [ RelevantExplicitArg _ t
       ]
 
 pattern HasArithOp2Expr ::
@@ -168,9 +146,9 @@ pattern HasArithOp2Expr p tc t1 t2 t3 <-
   BuiltinTypeClass
     p
     tc
-    [ ExplicitArg _ t1,
-      ExplicitArg _ t2,
-      ExplicitArg _ t3
+    [ RelevantExplicitArg _ t1,
+      RelevantExplicitArg _ t2,
+      RelevantExplicitArg _ t3
       ]
 
 pattern HasAddExpr ::
@@ -214,8 +192,8 @@ pattern HasNegExpr p argType resType <-
   BuiltinTypeClass
     p
     HasNeg
-    [ ExplicitArg _ argType,
-      ExplicitArg _ resType
+    [ RelevantExplicitArg _ argType,
+      RelevantExplicitArg _ resType
       ]
 
 pattern HasOrdExpr ::
@@ -229,9 +207,9 @@ pattern HasOrdExpr p ord arg1Type arg2Type resType <-
   BuiltinTypeClass
     p
     (HasOrd ord)
-    [ ExplicitArg _ arg1Type,
-      ExplicitArg _ arg2Type,
-      ExplicitArg _ resType
+    [ RelevantExplicitArg _ arg1Type,
+      RelevantExplicitArg _ arg2Type,
+      RelevantExplicitArg _ resType
       ]
 
 pattern HasEqExpr ::
@@ -245,9 +223,9 @@ pattern HasEqExpr p eq arg1Type arg2Type resType <-
   BuiltinTypeClass
     p
     (HasEq eq)
-    [ ExplicitArg _ arg1Type,
-      ExplicitArg _ arg2Type,
-      ExplicitArg _ resType
+    [ RelevantExplicitArg _ arg1Type,
+      RelevantExplicitArg _ arg2Type,
+      RelevantExplicitArg _ resType
       ]
 
 --------------------------------------------------------------------------------
@@ -274,9 +252,9 @@ pattern QuantifierTCExpr p q binder body <-
   BuiltinTypeClassOp
     p
     (QuantifierTC q)
-    [ ImplicitArg _ _,
-      InstanceArg _ _,
-      ExplicitArg _ (Lam _ binder body)
+    [ RelevantImplicitArg _ _,
+      RelevantInstanceArg _ _,
+      RelevantExplicitArg _ (Lam _ binder body)
       ]
 
 pattern ForallTCExpr ::
@@ -301,10 +279,10 @@ pattern AddTCExpr p args <-
   BuiltinTypeClassOp
     p
     AddTC
-    ( ImplicitArg _ _
-        :| ImplicitArg _ _
-        : ImplicitArg _ _
-        : InstanceArg _ _
+    ( RelevantImplicitArg _ _
+        :| RelevantImplicitArg _ _
+        : RelevantImplicitArg _ _
+        : RelevantInstanceArg _ _
         : args
       )
 
@@ -316,10 +294,10 @@ pattern SubTCExpr p args <-
   BuiltinTypeClassOp
     p
     SubTC
-    ( ImplicitArg _ _
-        :| ImplicitArg _ _
-        : ImplicitArg _ _
-        : InstanceArg _ _
+    ( RelevantImplicitArg _ _
+        :| RelevantImplicitArg _ _
+        : RelevantImplicitArg _ _
+        : RelevantInstanceArg _ _
         : args
       )
 
@@ -335,9 +313,9 @@ pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
   BuiltinTypeClassOp
     p
     (EqualsTC op)
-    ( ImplicitArg _ t1
-        :| ImplicitArg _ t2
-        : InstanceArg _ solution
+    ( RelevantImplicitArg _ t1
+        :| RelevantImplicitArg _ t2
+        : RelevantInstanceArg _ solution
         : explicitArgs
       )
   where
@@ -345,9 +323,9 @@ pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
       BuiltinTypeClassOp
         p
         (EqualsTC op)
-        ( ImplicitArg p t1
-            :| ImplicitArg p t2
-            : InstanceArg p solution
+        ( RelevantImplicitArg p t1
+            :| RelevantImplicitArg p t2
+            : RelevantInstanceArg p solution
             : explicitArgs
         )
 
@@ -363,9 +341,9 @@ pattern OrderTCExpr p op t1 t2 solution explicitArgs <-
   BuiltinTypeClassOp
     p
     (OrderTC op)
-    ( ImplicitArg _ t1
-        :| ImplicitArg _ t2
-        : InstanceArg _ solution
+    ( RelevantImplicitArg _ t1
+        :| RelevantImplicitArg _ t2
+        : RelevantInstanceArg _ solution
         : explicitArgs
       )
 
@@ -407,10 +385,10 @@ pattern VecLiteral ::
   [Arg var StandardBuiltin] ->
   Expr var StandardBuiltin
 pattern VecLiteral p tElem xs <-
-  ConstructorExpr p (LVec _) (ImplicitArg _ tElem :| xs)
+  ConstructorExpr p (LVec _) (RelevantImplicitArg _ tElem :| xs)
   where
     VecLiteral p tElem xs =
-      ConstructorExpr p (LVec (length xs)) (ImplicitArg p tElem :| xs)
+      ConstructorExpr p (LVec (length xs)) (RelevantImplicitArg p tElem :| xs)
 
 pattern TrueExpr :: Provenance -> Expr var StandardBuiltin
 pattern TrueExpr p = BoolLiteral p True
@@ -419,9 +397,9 @@ pattern FalseExpr :: Provenance -> Expr var StandardBuiltin
 pattern FalseExpr p = BoolLiteral p False
 
 pattern NilExpr :: Provenance -> Type var StandardBuiltin -> Expr var StandardBuiltin
-pattern NilExpr p tElem <- ConstructorExpr p Nil [ImplicitArg _ tElem]
+pattern NilExpr p tElem <- ConstructorExpr p Nil [RelevantImplicitArg _ tElem]
   where
-    NilExpr p tElem = ConstructorExpr p Nil [ImplicitArg p tElem]
+    NilExpr p tElem = ConstructorExpr p Nil [RelevantImplicitArg p tElem]
 
 pattern ConsExpr ::
   Provenance ->
@@ -432,7 +410,7 @@ pattern ConsExpr p tElem explicitArgs <-
   ConstructorExpr
     p
     Cons
-    ( ImplicitArg _ tElem
+    ( RelevantImplicitArg _ tElem
         :| explicitArgs
       )
   where
@@ -440,7 +418,7 @@ pattern ConsExpr p tElem explicitArgs <-
       ConstructorExpr
         p
         Cons
-        ( ImplicitArg p tElem
+        ( RelevantImplicitArg p tElem
             :| explicitArgs
         )
 
@@ -454,8 +432,8 @@ pattern AppConsExpr p tElem x xs <-
   ConsExpr
     p
     tElem
-    [ ExplicitArg _ x,
-      ExplicitArg _ xs
+    [ RelevantExplicitArg _ x,
+      RelevantExplicitArg _ xs
       ]
 
 --------------------------------------------------------------------------------
@@ -486,14 +464,14 @@ pattern QuantifierExpr p q binder body <-
   BuiltinFunctionExpr
     p
     (Quantifier q)
-    [ ExplicitArg _ (Lam _ binder body)
+    [ RelevantExplicitArg _ (Lam _ binder body)
       ]
   where
     QuantifierExpr p q binder body =
       BuiltinFunctionExpr
         p
         (Quantifier q)
-        [ ExplicitArg p (Lam p binder body)
+        [ RelevantExplicitArg p (Lam p binder body)
         ]
 
 pattern ExistsExpr ::
@@ -524,7 +502,7 @@ pattern IfExpr p tRes args <-
   BuiltinFunctionExpr
     p
     If
-    ( ImplicitArg _ tRes
+    ( RelevantImplicitArg _ tRes
         :| args
       )
   where
@@ -532,7 +510,7 @@ pattern IfExpr p tRes args <-
       BuiltinFunctionExpr
         p
         If
-        ( ImplicitArg p tRes
+        ( RelevantImplicitArg p tRes
             :| args
         )
 
@@ -589,12 +567,6 @@ pattern ImpliesExpr p explicitArgs = BooleanOp2Expr Implies p explicitArgs
 
 pattern NotExpr :: Provenance -> NonEmpty (Arg var StandardBuiltin) -> Expr var StandardBuiltin
 pattern NotExpr p explicitArgs = BuiltinFunctionExpr p Not explicitArgs
-
-pattern AppliedAndExpr :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern AppliedAndExpr p x y <- AndExpr p [ExplicitArg _ x, ExplicitArg _ y]
-
-pattern AppliedOrExpr :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern AppliedOrExpr p x y <- OrExpr p [ExplicitArg _ x, ExplicitArg _ y]
 
 --------------------------------------------------------------------------------
 -- NumericOp2
@@ -669,8 +641,8 @@ pattern AtExpr p tElem tDim explicitArgs <-
   BuiltinFunctionExpr
     p
     At
-    ( ImplicitArg _ tElem
-        :| ImplicitArg _ tDim
+    ( RelevantImplicitArg _ tElem
+        :| IrrelevantImplicitArg _ tDim
         : explicitArgs
       )
 
@@ -688,9 +660,9 @@ pattern FoldVectorExpr p tElem size tRes explicitArgs <-
   BuiltinFunctionExpr
     p
     (Fold FoldVector)
-    ( ImplicitArg _ tElem
-        :| ImplicitArg _ size
-        : ImplicitArg _ tRes
+    ( RelevantImplicitArg _ tElem
+        :| IrrelevantImplicitArg _ size
+        : RelevantImplicitArg _ tRes
         : explicitArgs
       )
 
@@ -709,6 +681,6 @@ mkList p elemType = foldr cons nil
       ConsExpr
         p
         elemType
-        [ ExplicitArg p x,
-          ExplicitArg p xs
+        [ RelevantExplicitArg p x,
+          RelevantExplicitArg p xs
         ]

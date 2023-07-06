@@ -114,13 +114,14 @@ findCandidatesInBoundCtx goal ctx = go ctx
     go :: (MonadCompile m) => StandardTypingBoundCtx -> m [WithContext InstanceCandidate]
     go = \case
       [] -> return []
-      ((_, t) : localCtx) -> do
+      (binder : localCtx) -> do
         candidates <- go localCtx
-        case findTypeClassOfCandidate t of
+        let binderType = typeOf binder
+        case findTypeClassOfCandidate binderType of
           Right tc | tc == goalHead goal -> do
             let candidate =
                   InstanceCandidate
-                    { candidateExpr = t,
+                    { candidateExpr = binderType,
                       candidateSolution = BoundVar mempty (dbLevelToIndex (Lv $ length ctx) (Lv $ length localCtx))
                     }
             return $ WithContext candidate localCtx : candidates

@@ -2,13 +2,13 @@ unused : Bool;
 unused = forall (x : Int) . True
 
 @property;
-expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Bool;
 expandedExpr f = forall x . x ! 0 >= f x ! 0
 
 @property;
-sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+sequential : forallT (f : Vector Rat -> Vector Rat) . Bool;
 sequential f = forall x . forall y . f x ! 0 >= f y ! 0
 
 @property;
-parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+parallel : forallT (f : Vector Rat -> Vector Rat) . Bool;
 parallel f = (forall x . f x ! 0 >= 0.0) and (exists x . f x ! 0 >= 5.0)

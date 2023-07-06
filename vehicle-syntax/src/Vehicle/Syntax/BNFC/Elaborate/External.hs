@@ -326,6 +326,7 @@ elabExpr = \case
   B.At e1 tk e2 -> builtinFunction V.At tk [e1, e2]
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
+  B.ZipWith tk -> builtinFunction V.ZipWith tk []
   B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
   B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
@@ -355,7 +356,7 @@ elabBasicBinder folded = \case
 
 elabNameBinder :: (MonadElab m) => Bool -> B.NameBinder -> m (V.Binder V.Name V.Builtin)
 elabNameBinder folded = \case
-  B.ExplicitNameBinder n -> mkBinder folded V.Relevant V.Explicit (This n)
+  B.ExplicitNameBinder m n -> mkBinder folded (mkRelevance m) V.Explicit (This n)
   B.ImplicitNameBinder m n -> mkBinder folded (mkRelevance m) (V.Implicit False) (This n)
   B.InstanceNameBinder m n -> mkBinder folded (mkRelevance m) (V.Instance False) (This n)
   B.BasicNameBinder b -> elabBasicBinder folded b
@@ -593,7 +594,8 @@ elabForeach tk binder body = do
     V.normAppList
       p'
       builtin
-      [ mkArg V.Explicit (V.Lam p' binder' body')
+      [ mkArg V.Explicit (V.mkHole p "n"),
+        mkArg V.Explicit (V.Lam p' binder' body')
       ]
 
 elabLet :: (MonadElab m) => B.TokLet -> [B.LetDecl] -> B.Expr -> m (V.Expr V.Name V.Builtin)

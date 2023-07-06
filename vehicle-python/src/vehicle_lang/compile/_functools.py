@@ -36,3 +36,10 @@ def cons(x: _T) -> Function1[Sequence[_T], Sequence[_T]]:
 def foldRight(f: Function2[_T, _S, _S]) -> Function2[_S, Sequence[_T], _S]:
     _uncurry_f = uncurry(flip(f))
     return lambda x: lambda xs: reduce(_uncurry_f, xs, x)
+
+
+def zipWith(
+    f: Function2[_S, _T, _U]
+) -> Function2[Sequence[_S], Sequence[_T], Sequence[_U]]:
+    _uncurry_f = uncurry(f)
+    return lambda xs: lambda ys: [_uncurry_f(x, y) for (x, y) in zip(xs, ys)]

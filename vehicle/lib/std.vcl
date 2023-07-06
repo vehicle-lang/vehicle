@@ -24,11 +24,8 @@ vectorToVector xs = xs
 mapVector : forallT {@0 n} {A} {B} . (A -> B) -> Vector A n -> Vector B n
 mapVector {n} {A} {B} f = dfold {A} {n} {Vector B} (\{l} x xs -> f x ::v xs) []
 
-foreachVector : (Index n -> A) -> Vector A n
-foreachVector {A} {n} f = map f (indices n)
-
-zipWith : forallT {@0 n} . (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n
-zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)
+foreachVector : forallT n . (Index n -> A) -> Vector A n
+foreachVector n f = map f (indices n)
 
 @noinline
 addVector : forallT {@0 n} . {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n
@@ -42,6 +39,7 @@ subVector = zipWith (\x y -> x - y)
 equalsVector : forallT {@0 n} . {{HasEq A B}} -> Vector A n -> Vector B n -> Bool
 equalsVector xs ys = bigAnd (zipWith (\x y -> x == y) xs ys)
 
+@noinline
 notEqualsVector : forallT {@0 n} . {{HasNotEq A B}} -> Vector A n -> Vector B n -> Bool
 notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 
@@ -49,11 +47,11 @@ notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 -- Index
 --------------------------------------------------------------------------------
 
-existsIndex : (Index n -> Bool) -> Bool
-existsIndex f = bigOr (foreach i . f i)
+existsIndex : forallT n . (Index n -> Bool) -> Bool
+existsIndex n f = bigOr (foreach i . f i)
 
-forallIndex : (Index n -> Bool) -> Bool
-forallIndex f = bigAnd (foreach i . f i)
+forallIndex : forallT n . (Index n -> Bool) -> Bool
+forallIndex n f = bigAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------
 -- Tensor

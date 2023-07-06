@@ -356,11 +356,11 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
 abstractOverCtx :: TypingBoundCtx builtin -> Expr Ix builtin -> Expr Ix builtin
 abstractOverCtx ctx body = do
   let p = mempty
-  let lamBinderForm (n, _) = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
-  -- WARNING: in theory the type of this binder should be `t` but because these binders
+  let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
+  -- WARNING: in theory the type of this binder should be `typeOf binder` but because these binders
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.
-  let lam i@(_, _t) = Lam p (Binder p (lamBinderForm i) Explicit Relevant (TypeUniverse p 0))
+  let lam binder = Lam p (Binder p (lamBinderForm (nameOf binder)) Explicit (relevanceOf binder) (TypeUniverse p 0))
   foldr lam body (reverse ctx)
 
 solveMeta ::

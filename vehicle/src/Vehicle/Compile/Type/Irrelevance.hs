@@ -5,20 +5,23 @@ module Vehicle.Compile.Type.Irrelevance
 where
 
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Normalise.Monad (MonadNorm)
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns (pattern UnitLiteral)
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode ::
-  (MonadCompile m, RemoveIrrelevantCode m a) =>
-  a ->
-  m a
+  (MonadCompile m) =>
+  Prog Ix StandardBuiltin ->
+  m (Prog Ix StandardBuiltin)
 removeIrrelevantCode x = do
-  -- logCompilerPass MinDetail "removal of irrelevant code" $
-  remove x
+  logCompilerPass MinDetail "removal of irrelevant code" $ do
+    result <- remove x
+    logDebug MaxDetail $ prettyFriendly result
+    return result
 
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
@@ -36,7 +39,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m (Expr Ix builtin) where
+instance RemoveIrrelevantCode m (Expr Ix StandardBuiltin) where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of
@@ -44,14 +47,12 @@ instance RemoveIrrelevantCode m (Expr Ix builtin) where
         normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
       Pi p binder res ->
         if isIrrelevant binder
-          then compilerDeveloperError "Should not be using irrelevance any more"
-          else -- then remove $ UnitLiteral p `substDBInto` res
-            Pi p <$> remove binder <*> remove res
+          then remove $ UnitLiteral p `substDBInto` res
+          else Pi p <$> remove binder <*> remove res
       Lam p binder body ->
         if isIrrelevant binder
-          then compilerDeveloperError "Should not be using irrelevance any more"
-          else -- then remove $ UnitLiteral p `substDBInto` body
-            Lam p <$> remove binder <*> remove body
+          then remove $ UnitLiteral p `substDBInto` body
+          else Lam p <$> remove binder <*> remove body
       Ann p e t -> Ann p <$> remove e <*> remove t
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Universe {} -> return expr
@@ -64,41 +65,11 @@ instance RemoveIrrelevantCode m (Expr Ix builtin) where
     showRemoveExit result
     return result
 
-instance (MonadNorm builtin m) => RemoveIrrelevantCode m (Value builtin) where
-  remove expr = case expr of
-    VUniverse {} -> return expr
-    VPi binder res
-      -- Don't need to substitute through here as irrelevent
-      -- bound variables should only be used in irrelevent positions
-      -- which will also be removed.
-      | isIrrelevant binder -> remove res
-      | otherwise -> VPi <$> remove binder <*> remove res
-    VLam binder env body
-      -- However, passing in the empty decl context here does feel like a bug...
-      -- But don't have access to it here. Tried adding it to the `Env` type, but then
-      -- every lambda stores an independent copy.
-      | isIrrelevant binder -> do
-          -- newExpr <- eval (VUnitLiteral : env) body
-          -- remove newExpr
-          compilerDeveloperError "Should not be using irrelevance any more"
-      | otherwise -> do
-          VLam <$> remove binder <*> remove env <*> remove body
-    VFreeVar v spine -> VFreeVar v <$> removeArgs spine
-    VBoundVar v spine -> VBoundVar v <$> removeArgs spine
-    VMeta m spine -> VMeta m <$> removeArgs spine
-    VBuiltin b spine -> VBuiltin b <$> traverse remove spine
-
-instance (MonadNorm builtin m) => RemoveIrrelevantCode m (GluedExpr builtin) where
-  remove (Glued u n) = Glued <$> remove u <*> remove n
-
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
   remove = traverse remove
 
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder expr) where
   remove = traverse remove
-
-instance (MonadNorm builtin m) => RemoveIrrelevantCode m (Env builtin) where
-  remove = traverse (\(n, e) -> (n,) <$> remove e)
 
 removeArgs ::
   (MonadRemove m, RemoveIrrelevantCode m expr) =>
@@ -116,6 +87,5 @@ showRemoveEntry _e = do
 
 showRemoveExit :: (MonadRemove m) => Expr Ix builtin -> m ()
 showRemoveExit _e = do
+  -- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)
   decrCallDepth
-
--- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)

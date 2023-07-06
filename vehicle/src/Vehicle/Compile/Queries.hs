@@ -141,7 +141,7 @@ compileMultiProperty queryFormat networkCtx declCtx p ident = go []
     go indices expr = case expr of
       VVecLiteral es -> do
         let es' = zip [0 :: QueryID ..] es
-        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
       _ -> do
         let logFunction =
               if null indices
@@ -192,17 +192,17 @@ compilePropertyTopLevelStructure = go
         | ident == identifierOf StdEqualsVector ->
             Query <$> compileQuerySet False expr
       VBuiltinFunction And [e1, e2] ->
-        smartConjunct <$> go e1 <*> go e2
+        smartConjunct <$> go (argExpr e1) <*> go (argExpr e2)
       VBuiltinFunction Or [e1, e2] ->
-        smartDisjunct <$> go e1 <*> go e2
+        smartDisjunct <$> go (argExpr e1) <*> go (argExpr e2)
       VBuiltinFunction Not [e] ->
-        case eliminateNot e of
+        case eliminateNot (argExpr e) of
           Nothing -> compilerDeveloperError $ "Unable to push not through:" <+> prettyVerbose e
           Just r -> go r
-      VBuiltinFunction If [c, x, y] -> do
-        let unfoldedIf = unfoldIf c x y
+      VBuiltinFunction If [_, c, x, y] -> do
+        let unfoldedIf = unfoldIf c (argExpr x) (argExpr y)
         logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendly (WithContext unfoldedIf emptyDBCtx)
-        go $ unfoldIf c x y
+        go unfoldedIf
       VInfiniteQuantifier q args binder env body -> do
         let subsectionDoc = "compilation of set of queries:" <+> prettyFriendly (WithContext expr emptyDBCtx)
         logCompilerPass MaxDetail subsectionDoc $ do
@@ -215,7 +215,7 @@ compilePropertyTopLevelStructure = go
               -- If the property is universally quantified then we negate the expression.
               logDebug MinDetail ("Negating property..." <> line)
               let p = mempty
-              return (True, BuiltinFunctionExpr p Not [ExplicitArg p body])
+              return (True, BuiltinFunctionExpr p Not [RelevantExplicitArg p body])
 
           let negatedExpr = VInfiniteQuantifier Exists args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr

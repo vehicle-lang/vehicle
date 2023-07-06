@@ -204,12 +204,12 @@ substArgsThrough p originalFun initialFun initialArgs = go initialFun initialArg
       V.Expr Ix V.StandardBuiltin ->
       [V.Arg Ix V.StandardBuiltin] ->
       m (V.Expr Ix V.StandardBuiltin)
-    go fun args = case (fun, args) of
+    go fun args = case (fun, filter V.isExplicit args) of
       (V.Lam _ binder body, a : as)
         | visibilityMatches binder a -> go (argExpr a `substDBInto` body) as
         | otherwise ->
             compilerDeveloperError $
-              "Loss function subsitution not well-typed"
+              "Loss function substitution not well-typed"
                 <> line
                 <> indent
                   2
@@ -217,7 +217,7 @@ substArgsThrough p originalFun initialFun initialArgs = go initialFun initialArg
                       <> line
                       <> "loss op:" <+> prettyVerbose initialFun
                       <> line
-                      <> "argument:" <+> prettyVerbose initialArgs
+                      <> "arguments:" <+> prettyVerbose initialArgs
                   )
       _ -> return $ V.normAppList p fun args
 
@@ -231,7 +231,7 @@ compileQuantifier ::
   [V.StandardArg] ->
   m (Maybe (Either StandardDSLExpr StandardDSLExpr))
 compileQuantifier logic q args = case reverse args of
-  V.ExplicitArg _ (V.Lam _ binder _) : _ -> do
+  V.ExplicitArg _ _ (V.Lam _ binder _) : _ -> do
     ctx <- ask
     let typ = V.typeOf binder
     let names = fmap (fromMaybe "<no-name>" . nameOf) ctx
@@ -258,10 +258,10 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
           TryToEliminate -> Just <$> lowerNot p2 (argExpr $ head args)
           UnaryNot {} -> return Nothing
         V.CFunction V.And -> case compileAnd logic of
-          NaryAnd {} -> return $ Just (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
+          NaryAnd {} -> return $ Just (V.AndExpr p1 (flattenAnds (V.RelevantExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
           BinaryAnd {} -> return Nothing
         V.CFunction V.Or -> case compileOr logic of
-          NaryOr {} -> return $ Just (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
+          NaryOr {} -> return $ Just (V.OrExpr p1 (flattenOrs (V.RelevantExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
           BinaryOr {} -> return Nothing
         _ -> return Nothing
 
