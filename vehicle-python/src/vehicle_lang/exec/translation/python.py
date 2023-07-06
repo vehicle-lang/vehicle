@@ -26,7 +26,7 @@ def py_binder(*args: py.arg) -> py.arguments:
     )
 
 
-def py_app(func: py.expr, arg: py.arg, provenance: vcl.Provenance) -> py.expr:
+def py_app(func: py.expr, arg: py.arg, *, provenance: vcl.Provenance) -> py.expr:
     """Make a function call."""
     return py.Call(
         func=func,
@@ -37,7 +37,7 @@ def py_app(func: py.expr, arg: py.arg, provenance: vcl.Provenance) -> py.expr:
 
 
 def py_builtin(
-    builtin: str, keywords: Sequence[py.keyword], provenance: vcl.Provenance
+    builtin: str, keywords: Sequence[py.keyword], *, provenance: vcl.Provenance
 ) -> py.expr:
     """Make a builtin function call."""
     return py.Call(
@@ -145,9 +145,13 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
-        # NOTE: Vector literals are handled separately, as Vehicle represents
-        #       these as N-ary functions. These are intercepted here, at the
-        #       App node, and passed directly to the Vector builtin.
+        # NOTE: Vector literals are handled separately:
+        #       Vehicle represents Vector literals as N-ary functions,
+        #       but (1) we cannot easily represent these in mypy,
+        #       and (2) we risk exceeding the maximum recursion depth
+        #       if we constructor vectors with recursive function calls.
+        #       We intercept Vector literals and pass the list of arguments
+        #       directly to the Vector builtin.
         if (
             isinstance(expression.func, vcl.BuiltinOp)
             and isinstance(expression.func.builtin, vcl.Vector)
@@ -158,12 +162,18 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 [
                     py.keyword(
                         arg="values",
-                        value=[
-                            self.translate_expression(arg) for arg in expression.args
-                        ],
+                        value=py.Tuple(
+                            elts=[
+                                self.translate_expression(arg)
+                                for arg in expression.args
+                            ],
+                            ctx=py.Load(),
+                            **asdict(expression.provenance),
+                        ),
+                        **asdict(expression.provenance),
                     )
                 ],
-                expression.provenance,
+                provenance=expression.provenance,
             )
         else:
             return reduce(
@@ -253,18 +263,10 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             assert (
                 expression.builtin.value == 0
             ), "Found non-empty vector. These should be handled at their corresponding App node."
-            keywords.append(
-                py.keyword(
-                    arg="values",
-                    value=py.Num(
-                        n=py.Tuple(elts=[], ctx=py.Load()),
-                        **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
-                )
-            )
         return py_builtin(
-            expression.builtin.__class__.__name__, keywords, expression.provenance
+            builtin=expression.builtin.__class__.__name__,
+            keywords=keywords,
+            provenance=expression.provenance,
         )
 
     def translate_FreeVar(self, expression: vcl.FreeVar) -> py.expr:

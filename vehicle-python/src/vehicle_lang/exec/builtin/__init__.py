@@ -267,7 +267,7 @@ class Builtins(
     def UnitType(self) -> Type[Tuple[()]]:
         return cast(Type[Tuple[()]], Tuple[()])
 
-    def Vector(self, values: Sequence[_T]) -> Sequence[_T]:
+    def Vector(self, values: Sequence[_T] = ()) -> Sequence[_T]:
         return tuple(values)
 
     def VectorType(self) -> Function2[Type[_T], int, Type[Sequence[_T]]]:
