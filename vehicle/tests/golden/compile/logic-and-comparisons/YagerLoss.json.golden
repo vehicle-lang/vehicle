@@ -15921,7 +15921,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "a"
+                                      "contents": [
+                                        "a",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -17780,7 +17783,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "a"
+                                      "contents": [
+                                        "a",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -17978,7 +17984,12 @@
                                               },
                                               {
                                                 "tag": "Sample",
-                                                "contents": "b"
+                                                "contents": [
+                                                  "b",
+                                                  [
+                                                    "a"
+                                                  ]
+                                                ]
                                               }
                                             ]
                                           }
@@ -21104,7 +21115,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "a"
+                                      "contents": [
+                                        "a",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -21302,7 +21316,12 @@
                                               },
                                               {
                                                 "tag": "Sample",
-                                                "contents": "b"
+                                                "contents": [
+                                                  "b",
+                                                  [
+                                                    "a"
+                                                  ]
+                                                ]
                                               }
                                             ]
                                           }

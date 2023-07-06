@@ -14943,7 +14943,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -15141,7 +15144,12 @@
                                               },
                                               {
                                                 "tag": "Sample",
-                                                "contents": "y"
+                                                "contents": [
+                                                  "y",
+                                                  [
+                                                    "x"
+                                                  ]
+                                                ]
                                               }
                                             ]
                                           }
@@ -16429,7 +16437,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -16627,7 +16638,12 @@
                                               },
                                               {
                                                 "tag": "Sample",
-                                                "contents": "y"
+                                                "contents": [
+                                                  "y",
+                                                  [
+                                                    "x"
+                                                  ]
+                                                ]
                                               }
                                             ]
                                           }
@@ -18551,7 +18567,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -18749,7 +18768,12 @@
                                               },
                                               {
                                                 "tag": "Sample",
-                                                "contents": "y"
+                                                "contents": [
+                                                  "y",
+                                                  [
+                                                    "x"
+                                                  ]
+                                                ]
                                               }
                                             ]
                                           }
@@ -20781,7 +20805,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }

@@ -14884,7 +14884,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }
@@ -15932,7 +15935,10 @@
                                     },
                                     {
                                       "tag": "Sample",
-                                      "contents": "x"
+                                      "contents": [
+                                        "x",
+                                        []
+                                      ]
                                     }
                                   ]
                                 }

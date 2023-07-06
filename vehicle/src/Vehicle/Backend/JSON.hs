@@ -130,7 +130,7 @@ data JBuiltin
   | RatType
   | ListType
   | VectorType
-  | Sample Name
+  | Sample Name [Name]
   deriving (Show, Eq, Generic)
 
 instance Hashable JBuiltin
@@ -199,7 +199,7 @@ instance PrintableBuiltin JBuiltin where
     RatType -> V.Builtin p (V.BuiltinType V.Rat)
     ListType -> V.Builtin p (V.BuiltinType V.List)
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
-    Sample n -> V.FreeVar p $ V.Identifier V.StdLib ("Sample[" <> n <> "]")
+    Sample n _ctx -> V.FreeVar p $ V.Identifier V.StdLib ("Sample[" <> n <> "]")
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins

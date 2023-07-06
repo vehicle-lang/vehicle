@@ -14721,7 +14721,10 @@
                                           },
                                           {
                                             "tag": "Sample",
-                                            "contents": "x"
+                                            "contents": [
+                                              "x",
+                                              []
+                                            ]
                                           }
                                         ]
                                       }

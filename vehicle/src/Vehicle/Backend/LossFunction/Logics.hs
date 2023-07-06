@@ -67,18 +67,18 @@ ratType :: PLExpr
 ratType = builtin J.RatType
 
 -- | Compiles a quantifier to a sampling procedure.
-quantifierSampler :: StdLibFunction -> Name -> PLExpr
-quantifierSampler bigOp varName = explLam "f" (builtin J.Unit) $ \f ->
+quantifierSampler :: StdLibFunction -> Name -> [Name] -> PLExpr
+quantifierSampler bigOp varName ctx = explLam "f" (builtin J.Unit) $ \f ->
   -- We are not getting the instance or the implicit arguments right here,
   -- but as they are erased, hopefully it's okay!
-  free bigOp @@ [free StdMapVector @@ [f, builtin (Sample varName)]]
+  free bigOp @@ [free StdMapVector @@ [f, builtin (Sample varName ctx)]]
 
 -- | Compiles a `Forall` to a sampling procedure
-forallSampler :: Name -> PLExpr
+forallSampler :: Name -> [Name] -> PLExpr
 forallSampler = quantifierSampler StdBigAnd
 
 -- | Compiles an `Exists` to a sampling procedure
-existsSampler :: Name -> PLExpr
+existsSampler :: Name -> [Name] -> PLExpr
 existsSampler = quantifierSampler StdBigOr
 
 --------------------------------------------------------------------------------
@@ -110,8 +110,8 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
     compileOr :: OrTranslation,
     compileNot :: NotTranslation,
     compileImplies :: PLExpr,
-    compileForall :: Name -> PLExpr,
-    compileExists :: Name -> PLExpr,
+    compileForall :: Name -> [Name] -> PLExpr,
+    compileExists :: Name -> [Name] -> PLExpr,
     compileLe :: PLExpr,
     compileLt :: PLExpr,
     compileGe :: PLExpr,
@@ -145,8 +145,8 @@ dl2Translation =
       compileBool = builtin J.RatType,
       compileTrue = lcon 0,
       compileFalse = lcon 1, -- TODO this should be infinity???
-      compileAnd = BinaryAnd $ builtin (J.AddRat),
-      compileOr = BinaryOr $ builtin (J.MulRat),
+      compileAnd = BinaryAnd $ builtin J.AddRat,
+      compileOr = BinaryOr $ builtin J.MulRat,
       compileNot = TryToEliminate,
       compileImplies = mkOp2 ratType $ \x y -> lmax (lcon 0) (x *: y),
       compileForall = forallSampler,
