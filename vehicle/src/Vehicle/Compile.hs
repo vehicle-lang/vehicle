@@ -120,9 +120,9 @@ compileToJSON (imports, typedProg) outputFile = do
   let mergedProg = mergeImports imports typedProg
   let unnormalisedProg = fmap unnormalised mergedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
-  literalCoercionFreeProg <- removeLiteralCoercions resolvedProg
-  monomorphiseProg <- monomorphise False literalCoercionFreeProg
-  let namedProg = descopeNamed monomorphiseProg
+  monomorphiseProg <- monomorphise False resolvedProg
+  literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
+  let namedProg = descopeNamed literalCoercionFreeProg
   result <- compileProgToJSON namedProg
   writeResultToFile Nothing outputFile result
   where
@@ -135,7 +135,7 @@ compileToJSON (imports, typedProg) outputFile = do
             (FromNatToNat, [e, _]) -> return $ argExpr e
             (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
             (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
-            _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> prettyVerbose args
+            _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> pretty (show args)
           (CFunction (FromRat dom)) -> case (dom, args) of
             (FromRatToRat, [e]) -> return $ argExpr e
             _ -> compilerDeveloperError $ "Found partially applied `FromRat`:" <+> pretty b <+> prettyVerbose args
