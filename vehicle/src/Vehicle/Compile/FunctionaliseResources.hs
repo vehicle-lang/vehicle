@@ -120,7 +120,7 @@ functionaliseExpr :: (MonadJSONExpr m builtin) => Expr Name builtin -> m (Expr N
 functionaliseExpr = \case
   Hole {} -> resolutionError currentPass "Hole"
   Meta {} -> resolutionError currentPass "Meta"
-  Ann {} -> resolutionError currentPass "Ann"
+  Ann p e t -> Ann p <$> functionaliseExpr e <*> functionaliseExpr t
   Universe p l -> return $ Universe p l
   Builtin p b -> return $ Builtin p b
   BoundVar p v -> return $ BoundVar p v

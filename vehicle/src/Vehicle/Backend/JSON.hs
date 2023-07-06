@@ -392,7 +392,7 @@ toJExpr :: (MonadCompile m, ToJBuiltin builtin) => V.Expr Name builtin -> m JExp
 toJExpr = \case
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
-  V.Ann {} -> resolutionError currentPass "Ann"
+  V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
   V.Builtin p b -> return $ BuiltinOp p $ toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v

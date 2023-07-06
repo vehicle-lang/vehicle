@@ -15,7 +15,7 @@ import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
@@ -45,6 +45,7 @@ compile logic typedProg = do
   literalCoercionFreeProg <- removeLiteralCoercions reformattedProg
 
   lossProg <- compileProg logicImplementation literalCoercionFreeProg
+  logDebug MaxDetail $ prettyFriendly lossProg
   -- monomorphisedProg <- monomorphise False lossProg
   let descopedProg = descopeNamed lossProg
   compileProgToJSON descopedProg

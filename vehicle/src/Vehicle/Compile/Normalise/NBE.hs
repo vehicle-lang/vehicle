@@ -119,8 +119,6 @@ evalApp fun (arg : args) = do
       | not (isTypeClassOp b) -> do
           evalBuiltin evalApp b (spine <> mapMaybe getExplicitArg (arg : args))
       | otherwise -> do
-          logDebug MaxDetail $ "Spine" <+> prettyVerbose spine
-          logDebug MaxDetail $ "Args" <+> prettyVerbose args
           (inst, remainingArgs) <- findInstanceArg b args
           evalApp inst remainingArgs
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
@@ -271,8 +269,9 @@ showNormExit _env _result = do
   return ()
 
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp fun spine =
-  logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+showApp _fun _spine =
+  -- logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+  return ()
 
 outOfBoundsError :: (MonadCompile m) => BoundCtx a -> Provenance -> Ix -> m b
 outOfBoundsError env p i =
