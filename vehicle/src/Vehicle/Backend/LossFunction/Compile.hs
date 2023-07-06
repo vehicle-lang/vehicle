@@ -8,18 +8,19 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
-import Vehicle.Backend.JSON (ToJBuiltin (..))
+import Vehicle.Backend.JSON (JBuiltin (..), ToJBuiltin (..))
 import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.LossFunction.Syntax
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude qualified as V
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
-import Vehicle.Expr.DSL (fromDSL)
+import Vehicle.Expr.DSL (builtin, fromDSL)
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalisable qualified as V
 import Vehicle.Expr.Normalised (GluedExpr (..))
@@ -37,12 +38,16 @@ compile ::
   V.StandardGluedProg ->
   m (Doc a)
 compile logic typedProg = do
-  let unnormalisedProg = fmap unnormalised typedProg
   let logicImplementation = implementationOf logic
-  reformattedProg <- reformatLogicalOperators logicImplementation unnormalisedProg
+  let unnormalisedProg = fmap unnormalised typedProg
+  resolvedProg <- resolveInstanceArguments unnormalisedProg
+  reformattedProg <- reformatLogicalOperators logicImplementation resolvedProg
+
+  logDebug MaxDetail $ prettyVerbose reformattedProg
+  logDebug MaxDetail $ prettyFriendly reformattedProg
   lossProg <- compileProg logicImplementation reformattedProg
-  monomorphisedProg <- monomorphise False lossProg
-  let _descopedProg = descopeNamed monomorphisedProg
+  -- monomorphisedProg <- monomorphise False lossProg
+  let _descopedProg = descopeNamed lossProg
   return "" -- compileProgToJSON descopedProg
 
 --------------------------------------------------------------------------------
@@ -104,7 +109,7 @@ compileExpr DifferentialLogicImplementation {..} declProv =
           V.ExplicitArg _ (V.Lam _ binder _) : _ -> return $ Just $ case q of
             V.Forall -> compileForall (V.getBinderName binder)
             V.Exists -> compileExists (V.getBinderName binder)
-          _ -> unexpectedExprError currentPass (pretty op)
+          _ -> unexpectedExprError currentPass (pretty op <+> "@" <+> prettyVerbose args <+> "in" <+> pretty (fst declProv))
         V.If -> throwError $ UnsupportedIfOperation declProv p2
         -- TODO really not safe to throw away the type information here, but
         -- in the short term it might work.
@@ -119,7 +124,7 @@ compileExpr DifferentialLogicImplementation {..} declProv =
         StandardBuiltinType y -> return $ case y of
           V.Bool -> Just compileBool
           _ -> Nothing
-        StandardTypeClass {} -> unexpectedExprError currentPass (pretty x)
+        StandardTypeClass {} -> return $ Just (builtin UnitType)
         StandardTypeClassOp {} -> unexpectedExprError currentPass (pretty x)
 
     let newOp = case maybeLossOp of
