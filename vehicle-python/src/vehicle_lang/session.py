@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Uni
 
 from typing_extensions import Self, TypeAlias
 
-from . import interpret as vehicle
+from . import exec as vehicle
 from . import loss_function
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
 from ._temporary_files import temporary_files

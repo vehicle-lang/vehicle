@@ -1,8 +1,9 @@
 from functools import partial, reduce
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Union
 
 from typing_extensions import TypeAlias, TypeVar
 
+_R = TypeVar("_R")
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -34,4 +35,4 @@ def cons(x: _T) -> Function1[Sequence[_T], Sequence[_T]]:
 
 def foldRight(f: Function2[_T, _S, _S]) -> Function2[_S, Sequence[_T], _S]:
     _uncurry_f = uncurry(flip(f))
-    return lambda x: lambda xs: reduce(_uncurry_f, xs, initial=x)
+    return lambda x: lambda xs: reduce(_uncurry_f, xs, x)

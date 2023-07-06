@@ -1,20 +1,65 @@
 import ast as py
 from dataclasses import asdict, dataclass
-from typing import Any, ClassVar, Dict, List, Optional, Sequence
+from functools import partial, reduce
+from typing import Any, ClassVar, Dict, List, Sequence
 
 from typing_extensions import override
 
 from .. import _ast as vcl
-from ..builtin import BuiltinInterpreter
+from ..builtin import Builtins
 from . import ABCTranslation
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
 
 
+def py_binder(*args: py.arg) -> py.arguments:
+    """Make a binder which only uses args."""
+    return py_arguments(
+        posonlyargs=[],
+        args=list(args),
+        vararg=None,
+        kwonlyargs=[],
+        kw_defaults=[],
+        kwarg=None,
+        defaults=[],
+    )
+
+
+def py_app(func: py.expr, arg: py.arg, provenance: vcl.Provenance) -> py.expr:
+    """Make a function call."""
+    return py.Call(
+        func=func,
+        args=[arg],
+        keywords=[],
+        **asdict(provenance),
+    )
+
+
+def py_builtin(
+    builtin: str, keywords: Sequence[py.keyword], provenance: vcl.Provenance
+) -> py.expr:
+    """Make a builtin function call."""
+    return py.Call(
+        func=py.Attribute(
+            value=py.Name(
+                id="__vehicle__",
+                ctx=py.Load(),
+                **asdict(provenance),
+            ),
+            attr=builtin,
+            ctx=py.Load(),
+            **asdict(provenance),
+        ),
+        args=[],
+        keywords=list(keywords),
+        **asdict(provenance),
+    )
+
+
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
-    builtin_interpreter: BuiltinInterpreter[Any, Any, Any, Any, Any]
+    builtins: Builtins[Any, Any, Any, Any, Any]
     module_header: ClassVar[Sequence[py.stmt]] = []
     module_footer: ClassVar[Sequence[py.stmt]] = []
 
@@ -26,7 +71,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
-            declaration_context["__vehicle__"] = self.builtin_interpreter
+            declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
@@ -100,12 +145,32 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
-        return py.Call(
-            func=self.translate_expression(expression.func),
-            args=[self.translate_expression(arg) for arg in expression.args],
-            keywords=[],
-            **asdict(expression.provenance),
-        )
+        # NOTE: Vector literals are handled separately, as Vehicle represents
+        #       these as N-ary functions. These are intercepted here, at the
+        #       App node, and passed directly to the Vector builtin.
+        if (
+            isinstance(expression.func, vcl.BuiltinOp)
+            and isinstance(expression.func.builtin, vcl.Vector)
+            and expression.func.builtin.value > 0
+        ):
+            return py_builtin(
+                "Vector",
+                [
+                    py.keyword(
+                        arg="values",
+                        value=[
+                            self.translate_expression(arg) for arg in expression.args
+                        ],
+                    )
+                ],
+                expression.provenance,
+            )
+        else:
+            return reduce(
+                partial(py_app, provenance=expression.provenance),
+                [self.translate_expression(arg) for arg in expression.args],
+                self.translate_expression(expression.func),
+            )
 
     def translate_BoundVar(self, expression: vcl.BoundVar) -> py.expr:
         return py.Name(
@@ -115,7 +180,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_BuiltinOp(self, expression: vcl.BuiltinOp) -> py.expr:
-        # Make the arguments for 'interpret_*':
         keywords: List[py.keyword] = []
         if isinstance(expression.builtin, vcl.Bool):
             keywords.append(
@@ -182,21 +246,25 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     **asdict(expression.provenance),
                 )
             )
-        # Make the function call to 'interpret_*':
-        return py.Call(
-            func=py.Attribute(
-                value=py.Name(
-                    id="__vehicle__",
-                    ctx=py.Load(),
+        elif isinstance(expression.builtin, vcl.Vector):
+            # NOTE: Vector literals are handled separately, as Vehicle represents
+            #       these as N-ary functions. The only vectors that should be found
+            #       at this point are empty vectors.
+            assert (
+                expression.builtin.value == 0
+            ), "Found non-empty vector. These should be handled at their corresponding App node."
+            keywords.append(
+                py.keyword(
+                    arg="values",
+                    value=py.Num(
+                        n=py.Tuple(elts=[], ctx=py.Load()),
+                        **asdict(expression.provenance),
+                    ),
                     **asdict(expression.provenance),
-                ),
-                attr=f"interpret_{expression.builtin.__class__.__name__}",
-                ctx=py.Load(),
-                **asdict(expression.provenance),
-            ),
-            args=[],
-            keywords=keywords,
-            **asdict(expression.provenance),
+                )
+            )
+        return py_builtin(
+            expression.builtin.__class__.__name__, keywords, expression.provenance
         )
 
     def translate_FreeVar(self, expression: vcl.FreeVar) -> py.expr:
@@ -218,15 +286,3 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     def translate_Universe(self, _expression: vcl.Universe) -> py.expr:
         return NotImplemented
-
-
-def py_binder(*args: py.arg) -> py.arguments:
-    return py_arguments(
-        posonlyargs=[],
-        args=list(args),
-        vararg=None,
-        kwonlyargs=[],
-        kw_defaults=[],
-        kwarg=None,
-        defaults=[],
-    )
