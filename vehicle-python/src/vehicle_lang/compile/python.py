@@ -26,6 +26,7 @@ from ._target import Target
 from .abc import ABCTranslation, Builtins
 
 _T = TypeVar("_T")
+_SupportsEq = TypeVar("_SupportsEq")
 
 ################################################################################
 ### Implementation of Vehicle builtins in Python
@@ -39,6 +40,7 @@ class PythonBuiltins(
         int,
         int,
         float,
+        _SupportsEq,
     ],
 ):
     @override
@@ -74,7 +76,7 @@ class PythonBuiltins(
         return curry(operator.truediv)
 
     @override
-    def Eq(self) -> Relation2[_T, bool]:
+    def Eq(self) -> Relation2[_SupportsEq, bool]:
         return curry(operator.eq)
 
     @override
@@ -206,7 +208,7 @@ class PythonBuiltins(
         return int
 
     @override
-    def Ne(self) -> Relation2[_T, bool]:
+    def Ne(self) -> Relation2[_SupportsEq, bool]:
         return curry(operator.ne)
 
     @override
@@ -253,7 +255,7 @@ class PythonBuiltins(
 
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
-    builtins: Builtins[Any, Any, Any, Any, Any]
+    builtins: Builtins[Any, Any, Any, Any, Any, Any]
     module_header: ClassVar[Sequence[py.stmt]] = []
     module_footer: ClassVar[Sequence[py.stmt]] = []
 
@@ -275,7 +277,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 py_ast_str = py_ast_unparse(py_ast)
             except:
                 py_ast_str = py_ast_dump(py_ast)
-            raise TypeError(f"{e}:\n{py_ast_str}")
+            raise TypeError(f"{e}\n{py_ast_str}")
 
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(

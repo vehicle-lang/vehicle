@@ -24,6 +24,7 @@ _Index = TypeVar("_Index")
 _Nat = TypeVar("_Nat")
 _Int = TypeVar("_Int")
 _Rat = TypeVar("_Rat")
+_SupportsEq = TypeVar("_SupportsEq")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -36,6 +37,7 @@ class Builtins(
         _Nat,
         _Int,
         _Rat,
+        _SupportsEq,
     ],
     metaclass=ABCMeta,
 ):
@@ -78,7 +80,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Eq(self) -> Relation2[_T, _Bool]:
+    def Eq(self) -> Relation2[_SupportsEq, _Bool]:
         ...
 
     @abstractmethod
@@ -223,7 +225,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Ne(self) -> Relation2[_T, _Bool]:
+    def Ne(self) -> Relation2[_SupportsEq, _Bool]:
         ...
 
     @abstractmethod

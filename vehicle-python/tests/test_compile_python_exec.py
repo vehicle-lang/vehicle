@@ -1,13 +1,19 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Union
 
 import pytest
 
 from vehicle_lang.compile import to_python
 
 
+def validate_output_test_network(expected_declarations: Dict[str, Any]) -> None:
+    net = lambda xs: (sum(xs),)
+    assert "net_prop" in expected_declarations
+    assert expected_declarations["net_prop"](net)
+
+
 @pytest.mark.parametrize(
-    "specification_filename,golden_declarations",
+    "specification_filename,expected_declarations",
     [
         (
             "test_addition.vcl",
@@ -47,7 +53,7 @@ from vehicle_lang.compile import to_python
         ),
         (
             "test_network.vcl",
-            {"net_prop": ...},
+            validate_output_test_network,
         ),
         (
             "test_subtraction.vcl",
@@ -65,17 +71,16 @@ from vehicle_lang.compile import to_python
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
-    golden_declarations: Dict[str, Any],
+    expected_declarations: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
     actual_declarations = to_python(specification_path)
-    print(repr(actual_declarations))
-    for key in golden_declarations.keys():
-        if golden_declarations[key] is not ...:
-            actual_declarations_at_key = (
-                actual_declarations[key] if key in actual_declarations else None
-            )
-            assert golden_declarations[key] == actual_declarations_at_key
-        else:
-            assert key in actual_declarations
+    if isinstance(expected_declarations, dict):
+        for key in expected_declarations.keys():
+            if expected_declarations[key] is not ...:
+                assert expected_declarations[key] == actual_declarations.get(key, None)
+            else:
+                assert key in actual_declarations
+    elif callable(expected_declarations):
+        expected_declarations(actual_declarations)
