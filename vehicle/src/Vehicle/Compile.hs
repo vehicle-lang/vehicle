@@ -15,12 +15,9 @@ import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core
@@ -125,18 +122,3 @@ compileToJSON (imports, typedProg) outputFile = do
   let namedProg = descopeNamed literalCoercionFreeProg
   result <- compileProgToJSON namedProg
   writeResultToFile Nothing outputFile result
-  where
-    removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
-    removeLiteralCoercions = traverse (traverseBuiltinsM update)
-      where
-        update p1 p2 b args = case b of
-          (CFunction (FromNat dom)) -> case (dom, args) of
-            (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
-            (FromNatToNat, [e, _]) -> return $ argExpr e
-            (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
-            (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
-            _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> pretty (show args)
-          (CFunction (FromRat dom)) -> case (dom, args) of
-            (FromRatToRat, [e]) -> return $ argExpr e
-            _ -> compilerDeveloperError $ "Found partially applied `FromRat`:" <+> pretty b <+> prettyVerbose args
-          _ -> return $ normAppList p1 (Builtin p2 b) args

@@ -8,15 +8,15 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
-import Vehicle.Backend.JSON (JBuiltin (..), ToJBuiltin (..))
+import Vehicle.Backend.JSON (JBuiltin (..), ToJBuiltin (..), compileProgToJSON)
 import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.LossFunction.Syntax
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
@@ -42,13 +42,12 @@ compile logic typedProg = do
   let unnormalisedProg = fmap unnormalised typedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
   reformattedProg <- reformatLogicalOperators logicImplementation resolvedProg
+  literalCoercionFreeProg <- removeLiteralCoercions reformattedProg
 
-  logDebug MaxDetail $ prettyVerbose reformattedProg
-  logDebug MaxDetail $ prettyFriendly reformattedProg
-  lossProg <- compileProg logicImplementation reformattedProg
+  lossProg <- compileProg logicImplementation literalCoercionFreeProg
   -- monomorphisedProg <- monomorphise False lossProg
-  let _descopedProg = descopeNamed lossProg
-  return "" -- compileProgToJSON descopedProg
+  let descopedProg = descopeNamed lossProg
+  compileProgToJSON descopedProg
 
 --------------------------------------------------------------------------------
 -- Utilities

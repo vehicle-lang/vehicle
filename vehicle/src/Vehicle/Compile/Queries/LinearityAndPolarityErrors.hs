@@ -3,6 +3,7 @@ module Vehicle.Compile.Queries.LinearityAndPolarityErrors
     diagnoseAlternatingQuantifiers,
     typeCheckWithSubsystem,
     resolveInstanceArguments,
+    removeLiteralCoercions,
   )
 where
 
@@ -12,12 +13,13 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedProg)
@@ -98,6 +100,21 @@ resolveInstanceArguments prog =
       CType (StandardTypeClassOp {}) -> do
         (inst, remainingArgs) <- findInstanceArg b args
         return $ normAppList p1 inst remainingArgs
+      _ -> return $ normAppList p1 (Builtin p2 b) args
+
+removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
+removeLiteralCoercions = traverse (traverseBuiltinsM update)
+  where
+    update p1 p2 b args = case b of
+      (CFunction (FromNat dom)) -> case (dom, args) of
+        (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
+        (FromNatToNat, [e, _]) -> return $ argExpr e
+        (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
+        (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+        _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> pretty (show args)
+      (CFunction (FromRat dom)) -> case (dom, args) of
+        (FromRatToRat, [e]) -> return $ argExpr e
+        _ -> compilerDeveloperError $ "Found partially applied `FromRat`:" <+> pretty b <+> prettyVerbose args
       _ -> return $ normAppList p1 (Builtin p2 b) args
 
 removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
