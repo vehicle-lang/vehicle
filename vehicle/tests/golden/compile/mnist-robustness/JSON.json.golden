@@ -1419,97 +1419,127 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "BoundVar",
-                    "contents": [
-                      [],
-                      "A"
-                    ]
                   }
                 ]
               },
               "binderProvenance": [],
               "binderDisplayForm": {
                 "namingForm": {
-                  "tag": "OnlyType"
+                  "tag": "OnlyName",
+                  "contents": "n"
                 },
                 "foldingForm": false
               }
             },
             {
-              "tag": "UnsafeApp",
+              "tag": "Pi",
               "contents": [
                 [],
                 {
-                  "tag": "Builtin",
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
+                                "contents": [
+                                  [],
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "BoundVar",
+                        "contents": [
+                          [],
+                          "A"
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyType"
+                    },
+                    "foldingForm": false
+                  }
+                },
+                {
+                  "tag": "UnsafeApp",
                   "contents": [
                     [],
                     {
-                      "tag": "CType",
-                      "contents": {
-                        "tag": "StandardBuiltinType",
-                        "contents": "Vector"
+                      "tag": "Builtin",
+                      "contents": [
+                        [],
+                        {
+                          "tag": "CType",
+                          "contents": {
+                            "tag": "StandardBuiltinType",
+                            "contents": "Vector"
+                          }
+                        }
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "BoundVar",
+                        "contents": [
+                          [],
+                          "A"
+                        ]
+                      },
+                      {
+                        "tag": "BoundVar",
+                        "contents": [
+                          [],
+                          "n"
+                        ]
                       }
-                    }
+                    ]
                   ]
-                },
-                [
-                  {
-                    "tag": "BoundVar",
-                    "contents": [
-                      [],
-                      "A"
-                    ]
-                  },
-                  {
-                    "tag": "BoundVar",
-                    "contents": [
-                      [],
-                      "n"
-                    ]
-                  }
-                ]
+                }
               ]
             }
           ]
@@ -1521,53 +1551,15 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "BoundVar",
-                    "contents": [
-                      [],
-                      "A"
-                    ]
                   }
                 ]
               },
@@ -1575,61 +1567,129 @@
               "binderDisplayForm": {
                 "namingForm": {
                   "tag": "OnlyName",
-                  "contents": "f"
+                  "contents": "n"
                 },
                 "foldingForm": true
               }
             },
             {
-              "tag": "UnsafeApp",
+              "tag": "Lam",
               "contents": [
                 [],
                 {
-                  "tag": "FreeVar",
-                  "contents": [
-                    [],
-                    [
-                      "StdLib",
-                      "mapVector"
-                    ]
-                  ]
-                },
-                [
-                  {
-                    "tag": "BoundVar",
-                    "contents": [
-                      [],
-                      "f"
-                    ]
-                  },
-                  {
-                    "tag": "UnsafeApp",
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
                     "contents": [
                       [],
                       {
-                        "tag": "Builtin",
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
+                                "contents": [
+                                  [],
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "BoundVar",
+                        "contents": [
+                          [],
+                          "A"
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyName",
+                      "contents": "f"
+                    },
+                    "foldingForm": true
+                  }
+                },
+                {
+                  "tag": "UnsafeApp",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "StdLib",
+                          "mapVector"
+                        ]
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "BoundVar",
+                        "contents": [
+                          [],
+                          "f"
+                        ]
+                      },
+                      {
+                        "tag": "UnsafeApp",
                         "contents": [
                           [],
                           {
-                            "tag": "CFunction",
-                            "contents": {
-                              "tag": "Indices"
+                            "tag": "Builtin",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "CFunction",
+                                "contents": {
+                                  "tag": "Indices"
+                                }
+                              }
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "BoundVar",
+                              "contents": [
+                                [],
+                                "n"
+                              ]
                             }
-                          }
-                        ]
-                      },
-                      [
-                        {
-                          "tag": "BoundVar",
-                          "contents": [
-                            [],
-                            "n"
                           ]
-                        }
-                      ]
+                        ]
+                      }
                     ]
-                  }
-                ]
+                  ]
+                }
               ]
             }
           ]
@@ -2033,6 +2093,13 @@
                           ]
                         },
                         [
+                          {
+                            "tag": "BoundVar",
+                            "contents": [
+                              [],
+                              "n"
+                            ]
+                          },
                           {
                             "tag": "Lam",
                             "contents": [
@@ -3383,80 +3450,110 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "Builtin",
-                    "contents": [
-                      [],
-                      {
-                        "tag": "CType",
-                        "contents": {
-                          "tag": "StandardBuiltinType",
-                          "contents": "Bool"
-                        }
-                      }
-                    ]
                   }
                 ]
               },
               "binderProvenance": [],
               "binderDisplayForm": {
                 "namingForm": {
-                  "tag": "OnlyType"
+                  "tag": "OnlyName",
+                  "contents": "n"
                 },
                 "foldingForm": false
               }
             },
             {
-              "tag": "Builtin",
+              "tag": "Pi",
               "contents": [
                 [],
                 {
-                  "tag": "CType",
-                  "contents": {
-                    "tag": "StandardBuiltinType",
-                    "contents": "Bool"
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
+                                "contents": [
+                                  [],
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Bool"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyType"
+                    },
+                    "foldingForm": false
                   }
+                },
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CType",
+                      "contents": {
+                        "tag": "StandardBuiltinType",
+                        "contents": "Bool"
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -3469,59 +3566,15 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "Builtin",
-                    "contents": [
-                      [],
-                      {
-                        "tag": "CType",
-                        "contents": {
-                          "tag": "StandardBuiltinType",
-                          "contents": "Bool"
-                        }
-                      }
-                    ]
                   }
                 ]
               },
@@ -3529,112 +3582,193 @@
               "binderDisplayForm": {
                 "namingForm": {
                   "tag": "OnlyName",
-                  "contents": "f"
+                  "contents": "n"
                 },
                 "foldingForm": true
               }
             },
             {
-              "tag": "UnsafeApp",
+              "tag": "Lam",
               "contents": [
                 [],
                 {
-                  "tag": "FreeVar",
-                  "contents": [
-                    [],
-                    [
-                      "StdLib",
-                      "bigOr"
-                    ]
-                  ]
-                },
-                [
-                  {
-                    "tag": "UnsafeApp",
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
                     "contents": [
                       [],
                       {
-                        "tag": "FreeVar",
-                        "contents": [
-                          [],
-                          [
-                            "StdLib",
-                            "foreachVector"
-                          ]
-                        ]
-                      },
-                      [
-                        {
-                          "tag": "Lam",
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
                           "contents": [
                             [],
                             {
-                              "tag": "JBinder",
-                              "binderType": {
-                                "tag": "UnsafeApp",
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
                                 "contents": [
                                   [],
-                                  {
-                                    "tag": "Builtin",
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Bool"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyName",
+                      "contents": "f"
+                    },
+                    "foldingForm": true
+                  }
+                },
+                {
+                  "tag": "UnsafeApp",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "StdLib",
+                          "bigOr"
+                        ]
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "UnsafeApp",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "FreeVar",
+                            "contents": [
+                              [],
+                              [
+                                "StdLib",
+                                "foreachVector"
+                              ]
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "BoundVar",
+                              "contents": [
+                                [],
+                                "n"
+                              ]
+                            },
+                            {
+                              "tag": "Lam",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "JBinder",
+                                  "binderType": {
+                                    "tag": "UnsafeApp",
                                     "contents": [
                                       [],
                                       {
-                                        "tag": "CType",
-                                        "contents": {
-                                          "tag": "StandardBuiltinType",
-                                          "contents": "Index"
+                                        "tag": "Builtin",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "CType",
+                                            "contents": {
+                                              "tag": "StandardBuiltinType",
+                                              "contents": "Index"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      [
+                                        {
+                                          "tag": "BoundVar",
+                                          "contents": [
+                                            [],
+                                            "n"
+                                          ]
                                         }
-                                      }
+                                      ]
                                     ]
                                   },
-                                  [
+                                  "binderProvenance": [],
+                                  "binderDisplayForm": {
+                                    "namingForm": {
+                                      "tag": "OnlyName",
+                                      "contents": "i"
+                                    },
+                                    "foldingForm": false
+                                  }
+                                },
+                                {
+                                  "tag": "UnsafeApp",
+                                  "contents": [
+                                    [],
                                     {
                                       "tag": "BoundVar",
                                       "contents": [
                                         [],
-                                        "n"
+                                        "f"
                                       ]
-                                    }
-                                  ]
-                                ]
-                              },
-                              "binderProvenance": [],
-                              "binderDisplayForm": {
-                                "namingForm": {
-                                  "tag": "OnlyName",
-                                  "contents": "i"
-                                },
-                                "foldingForm": false
-                              }
-                            },
-                            {
-                              "tag": "UnsafeApp",
-                              "contents": [
-                                [],
-                                {
-                                  "tag": "BoundVar",
-                                  "contents": [
-                                    [],
-                                    "f"
-                                  ]
-                                },
-                                [
-                                  {
-                                    "tag": "BoundVar",
-                                    "contents": [
-                                      [],
-                                      "i"
+                                    },
+                                    [
+                                      {
+                                        "tag": "BoundVar",
+                                        "contents": [
+                                          [],
+                                          "i"
+                                        ]
+                                      }
                                     ]
-                                  }
-                                ]
+                                  ]
+                                }
                               ]
                             }
                           ]
-                        }
-                      ]
+                        ]
+                      }
                     ]
-                  }
-                ]
+                  ]
+                }
               ]
             }
           ]
@@ -3656,80 +3790,110 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "Builtin",
-                    "contents": [
-                      [],
-                      {
-                        "tag": "CType",
-                        "contents": {
-                          "tag": "StandardBuiltinType",
-                          "contents": "Bool"
-                        }
-                      }
-                    ]
                   }
                 ]
               },
               "binderProvenance": [],
               "binderDisplayForm": {
                 "namingForm": {
-                  "tag": "OnlyType"
+                  "tag": "OnlyName",
+                  "contents": "n"
                 },
                 "foldingForm": false
               }
             },
             {
-              "tag": "Builtin",
+              "tag": "Pi",
               "contents": [
                 [],
                 {
-                  "tag": "CType",
-                  "contents": {
-                    "tag": "StandardBuiltinType",
-                    "contents": "Bool"
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
+                          "contents": [
+                            [],
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
+                                "contents": [
+                                  [],
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Bool"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyType"
+                    },
+                    "foldingForm": false
                   }
+                },
+                {
+                  "tag": "Builtin",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "CType",
+                      "contents": {
+                        "tag": "StandardBuiltinType",
+                        "contents": "Bool"
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -3742,59 +3906,15 @@
             {
               "tag": "JBinder",
               "binderType": {
-                "tag": "Pi",
+                "tag": "Builtin",
                 "contents": [
                   [],
                   {
-                    "tag": "JBinder",
-                    "binderType": {
-                      "tag": "UnsafeApp",
-                      "contents": [
-                        [],
-                        {
-                          "tag": "Builtin",
-                          "contents": [
-                            [],
-                            {
-                              "tag": "CType",
-                              "contents": {
-                                "tag": "StandardBuiltinType",
-                                "contents": "Index"
-                              }
-                            }
-                          ]
-                        },
-                        [
-                          {
-                            "tag": "BoundVar",
-                            "contents": [
-                              [],
-                              "n"
-                            ]
-                          }
-                        ]
-                      ]
-                    },
-                    "binderProvenance": [],
-                    "binderDisplayForm": {
-                      "namingForm": {
-                        "tag": "OnlyType"
-                      },
-                      "foldingForm": false
+                    "tag": "CType",
+                    "contents": {
+                      "tag": "StandardBuiltinType",
+                      "contents": "Nat"
                     }
-                  },
-                  {
-                    "tag": "Builtin",
-                    "contents": [
-                      [],
-                      {
-                        "tag": "CType",
-                        "contents": {
-                          "tag": "StandardBuiltinType",
-                          "contents": "Bool"
-                        }
-                      }
-                    ]
                   }
                 ]
               },
@@ -3802,112 +3922,193 @@
               "binderDisplayForm": {
                 "namingForm": {
                   "tag": "OnlyName",
-                  "contents": "f"
+                  "contents": "n"
                 },
                 "foldingForm": true
               }
             },
             {
-              "tag": "UnsafeApp",
+              "tag": "Lam",
               "contents": [
                 [],
                 {
-                  "tag": "FreeVar",
-                  "contents": [
-                    [],
-                    [
-                      "StdLib",
-                      "bigAnd"
-                    ]
-                  ]
-                },
-                [
-                  {
-                    "tag": "UnsafeApp",
+                  "tag": "JBinder",
+                  "binderType": {
+                    "tag": "Pi",
                     "contents": [
                       [],
                       {
-                        "tag": "FreeVar",
-                        "contents": [
-                          [],
-                          [
-                            "StdLib",
-                            "foreachVector"
-                          ]
-                        ]
-                      },
-                      [
-                        {
-                          "tag": "Lam",
+                        "tag": "JBinder",
+                        "binderType": {
+                          "tag": "UnsafeApp",
                           "contents": [
                             [],
                             {
-                              "tag": "JBinder",
-                              "binderType": {
-                                "tag": "UnsafeApp",
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CType",
+                                  "contents": {
+                                    "tag": "StandardBuiltinType",
+                                    "contents": "Index"
+                                  }
+                                }
+                              ]
+                            },
+                            [
+                              {
+                                "tag": "BoundVar",
                                 "contents": [
                                   [],
-                                  {
-                                    "tag": "Builtin",
+                                  "n"
+                                ]
+                              }
+                            ]
+                          ]
+                        },
+                        "binderProvenance": [],
+                        "binderDisplayForm": {
+                          "namingForm": {
+                            "tag": "OnlyType"
+                          },
+                          "foldingForm": false
+                        }
+                      },
+                      {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CType",
+                            "contents": {
+                              "tag": "StandardBuiltinType",
+                              "contents": "Bool"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "binderProvenance": [],
+                  "binderDisplayForm": {
+                    "namingForm": {
+                      "tag": "OnlyName",
+                      "contents": "f"
+                    },
+                    "foldingForm": true
+                  }
+                },
+                {
+                  "tag": "UnsafeApp",
+                  "contents": [
+                    [],
+                    {
+                      "tag": "FreeVar",
+                      "contents": [
+                        [],
+                        [
+                          "StdLib",
+                          "bigAnd"
+                        ]
+                      ]
+                    },
+                    [
+                      {
+                        "tag": "UnsafeApp",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "FreeVar",
+                            "contents": [
+                              [],
+                              [
+                                "StdLib",
+                                "foreachVector"
+                              ]
+                            ]
+                          },
+                          [
+                            {
+                              "tag": "BoundVar",
+                              "contents": [
+                                [],
+                                "n"
+                              ]
+                            },
+                            {
+                              "tag": "Lam",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "JBinder",
+                                  "binderType": {
+                                    "tag": "UnsafeApp",
                                     "contents": [
                                       [],
                                       {
-                                        "tag": "CType",
-                                        "contents": {
-                                          "tag": "StandardBuiltinType",
-                                          "contents": "Index"
+                                        "tag": "Builtin",
+                                        "contents": [
+                                          [],
+                                          {
+                                            "tag": "CType",
+                                            "contents": {
+                                              "tag": "StandardBuiltinType",
+                                              "contents": "Index"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      [
+                                        {
+                                          "tag": "BoundVar",
+                                          "contents": [
+                                            [],
+                                            "n"
+                                          ]
                                         }
-                                      }
+                                      ]
                                     ]
                                   },
-                                  [
+                                  "binderProvenance": [],
+                                  "binderDisplayForm": {
+                                    "namingForm": {
+                                      "tag": "OnlyName",
+                                      "contents": "i"
+                                    },
+                                    "foldingForm": false
+                                  }
+                                },
+                                {
+                                  "tag": "UnsafeApp",
+                                  "contents": [
+                                    [],
                                     {
                                       "tag": "BoundVar",
                                       "contents": [
                                         [],
-                                        "n"
+                                        "f"
                                       ]
-                                    }
-                                  ]
-                                ]
-                              },
-                              "binderProvenance": [],
-                              "binderDisplayForm": {
-                                "namingForm": {
-                                  "tag": "OnlyName",
-                                  "contents": "i"
-                                },
-                                "foldingForm": false
-                              }
-                            },
-                            {
-                              "tag": "UnsafeApp",
-                              "contents": [
-                                [],
-                                {
-                                  "tag": "BoundVar",
-                                  "contents": [
-                                    [],
-                                    "f"
-                                  ]
-                                },
-                                [
-                                  {
-                                    "tag": "BoundVar",
-                                    "contents": [
-                                      [],
-                                      "i"
+                                    },
+                                    [
+                                      {
+                                        "tag": "BoundVar",
+                                        "contents": [
+                                          [],
+                                          "i"
+                                        ]
+                                      }
                                     ]
-                                  }
-                                ]
+                                  ]
+                                }
                               ]
                             }
                           ]
-                        }
-                      ]
+                        ]
+                      }
                     ]
-                  }
-                ]
+                  ]
+                }
               ]
             }
           ]
@@ -5225,6 +5426,19 @@
                 },
                 [
                   {
+                    "tag": "Builtin",
+                    "contents": [
+                      [],
+                      {
+                        "tag": "CConstructor",
+                        "contents": {
+                          "tag": "LNat",
+                          "contents": 28
+                        }
+                      }
+                    ]
+                  },
+                  {
                     "tag": "Lam",
                     "contents": [
                       [],
@@ -5288,6 +5502,19 @@
                             ]
                           },
                           [
+                            {
+                              "tag": "Builtin",
+                              "contents": [
+                                [],
+                                {
+                                  "tag": "CConstructor",
+                                  "contents": {
+                                    "tag": "LNat",
+                                    "contents": 28
+                                  }
+                                }
+                              ]
+                            },
                             {
                               "tag": "Lam",
                               "contents": [
@@ -6063,6 +6290,19 @@
                         },
                         [
                           {
+                            "tag": "Builtin",
+                            "contents": [
+                              [],
+                              {
+                                "tag": "CConstructor",
+                                "contents": {
+                                  "tag": "LNat",
+                                  "contents": 10
+                                }
+                              }
+                            ]
+                          },
+                          {
                             "tag": "Lam",
                             "contents": [
                               [],
@@ -6521,6 +6761,19 @@
                     },
                     [
                       {
+                        "tag": "Builtin",
+                        "contents": [
+                          [],
+                          {
+                            "tag": "CConstructor",
+                            "contents": {
+                              "tag": "LNat",
+                              "contents": 28
+                            }
+                          }
+                        ]
+                      },
+                      {
                         "tag": "Lam",
                         "contents": [
                           [],
@@ -6584,6 +6837,19 @@
                                 ]
                               },
                               [
+                                {
+                                  "tag": "Builtin",
+                                  "contents": [
+                                    [],
+                                    {
+                                      "tag": "CConstructor",
+                                      "contents": {
+                                        "tag": "LNat",
+                                        "contents": 28
+                                      }
+                                    }
+                                  ]
+                                },
                                 {
                                   "tag": "Lam",
                                   "contents": [
@@ -8384,6 +8650,13 @@
                                   ]
                                 },
                                 [
+                                  {
+                                    "tag": "BoundVar",
+                                    "contents": [
+                                      [],
+                                      "n"
+                                    ]
+                                  },
                                   {
                                     "tag": "Lam",
                                     "contents": [
