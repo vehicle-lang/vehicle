@@ -17,20 +17,20 @@ from .lossabc import ABCLossBuiltins, Number
 _T = TypeVar("_T")
 
 
-class LossDL2Builtins(ABCLossBuiltins):
+class LossGodelBuiltins(ABCLossBuiltins):
     samplers: Dict[str, Callable[[Dict[str, Any]], Any]]
 
     @override
     def And(self) -> Operator2[float]:
-        return curry(operator.add)
+        return curry(min)
 
     @override
     def Bool(self, value: bool) -> float:
-        return 0.0 if value else 1.0
+        return 1.0 if value else 0.0
 
     @override
     def Eq(self) -> Relation2[Number, float]:
-        return lambda x: lambda y: -abs(x - y)
+        return lambda x: lambda y: 1 - abs(x - y / x + y)
 
     @override
     def Exists(self) -> Function1[Function1[_T, float], float]:
@@ -39,22 +39,6 @@ class LossDL2Builtins(ABCLossBuiltins):
     @override
     def Forall(self) -> Function1[Function1[_T, float], float]:
         return NotImplemented
-
-    @override
-    def GeInt(self) -> Relation2[int, float]:
-        return curry(operator.ge)
-
-    @override
-    def GeRat(self) -> Relation2[float, float]:
-        return curry(operator.ge)
-
-    @override
-    def GtIndex(self) -> Relation2[int, float]:
-        return curry(operator.gt)
-
-    @override
-    def GtNat(self) -> Relation2[int, float]:
-        return curry(operator.gt)
 
     @override
     def Implies(self) -> Operator2[float]:

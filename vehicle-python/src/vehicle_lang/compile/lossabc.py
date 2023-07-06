@@ -83,16 +83,32 @@ class ABCLossBuiltins(
         return self.GeInt()
 
     @override
+    def GeInt(self) -> Relation2[int, float]:
+        return curry(operator.ge)
+
+    @override
     def GeNat(self) -> Relation2[int, float]:
         return self.GeInt()
 
     @override
+    def GeRat(self) -> Relation2[float, float]:
+        return curry(operator.ge)
+
+    @override
     def GtIndex(self) -> Relation2[int, float]:
-        return self.GtInt()
+        return curry(operator.gt)
+
+    @override
+    def GtInt(self) -> Relation2[int, float]:
+        return curry(operator.gt)
 
     @override
     def GtNat(self) -> Relation2[int, float]:
-        return self.GtInt()
+        return curry(operator.gt)
+
+    @override
+    def GtRat(self) -> Relation2[float, float]:
+        return curry(operator.gt)
 
     @override
     def LeIndex(self) -> Relation2[int, float]:
@@ -107,8 +123,16 @@ class ABCLossBuiltins(
         return self.LtInt()
 
     @override
+    def LtInt(self) -> Relation2[int, float]:
+        ...
+
+    @override
     def LtNat(self) -> Relation2[int, float]:
         return self.LtInt()
+
+    @override
+    def LtRat(self) -> Relation2[float, float]:
+        ...
 
     @override
     def MaxRat(self) -> Operator2[float]:
