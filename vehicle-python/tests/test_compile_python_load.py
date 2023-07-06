@@ -12,6 +12,6 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "JSON.json.gold
     GOLDEN_LOSS_FUNCTION_FILES,
 )  # type: ignore[misc]
 def test_interpret_load(interpret_json: Path) -> None:
-    from vehicle_lang.exec import Program
+    from vehicle_lang.compile import Program
 
     Program.from_json(interpret_json.read_text())

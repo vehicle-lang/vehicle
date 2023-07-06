@@ -3,9 +3,7 @@ from typing import Any, Dict
 
 import pytest
 
-from vehicle_lang.exec import compile
-from vehicle_lang.exec.builtin.python import PythonBuiltins
-from vehicle_lang.exec.translation.python import PythonTranslation
+from vehicle_lang.compile import to_python
 
 
 @pytest.mark.parametrize(
@@ -69,15 +67,9 @@ def test_loss_function_exec(
     specification_filename: str,
     golden_declarations: Dict[str, Any],
 ) -> None:
-    builtins = PythonBuiltins()
-    translation = PythonTranslation(builtins=builtins)
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = compile.to_python(
-        specification_path=str(specification_path),
-        declaration_context={},
-        translation=translation,
-    )
+    actual_declarations = to_python(specification_path)
     print(repr(actual_declarations))
     for key in golden_declarations.keys():
         if golden_declarations[key] is not ...:
