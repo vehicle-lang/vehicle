@@ -13,6 +13,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries
@@ -120,7 +121,8 @@ compileToJSON (imports, typedProg) outputFile = do
   let unnormalisedProg = fmap unnormalised mergedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
   literalCoercionFreeProg <- removeLiteralCoercions resolvedProg
-  let namedProg = descopeNamed literalCoercionFreeProg
+  monomorphiseProg <- monomorphise False literalCoercionFreeProg
+  let namedProg = descopeNamed monomorphiseProg
   result <- compileProgToJSON namedProg
   writeResultToFile Nothing outputFile result
   where

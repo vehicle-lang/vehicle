@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Monomorphisation where
+module Vehicle.Compile.Monomorphisation (monomorphise) where
 
 import Control.Monad (forM_)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
@@ -51,9 +51,6 @@ monomorphise keepUnused prog = logCompilerPass MinDetail "monomorphisation" $ do
 
 --------------------------------------------------------------------------------
 -- Definitions and utilites
-
--- | Candidate monomorphisable functions
-type Candidates = HashMap Identifier Int
 
 -- | Applications of monomorphisable functions
 type CandidateApplications builtin = HashMap Identifier (HashSet [Arg Ix builtin])
@@ -121,9 +118,9 @@ monomorphiseDecl decl = case decl of
     case Map.lookup ident freeVarApplications of
       Nothing -> do
         logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
-        if keepUnused || isProperty anns
+        if keepUnused || isProperty anns || moduleOf ident == User
           then do
-            logDebug MaxDetail "Keeping declaration as it is a property"
+            logDebug MaxDetail "Keeping declaration"
             return [decl]
           else do
             logDebug MaxDetail "Discarding declaration"
