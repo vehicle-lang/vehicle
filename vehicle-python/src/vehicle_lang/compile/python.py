@@ -1,9 +1,9 @@
 import ast as py
 import operator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from functools import partial, reduce
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional, Sequence, Type, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Type, Union
 
 from typing_extensions import TypeVar, override
 
@@ -26,13 +26,13 @@ from ._functools import (
 from .abc import ABCTranslation, Builtins
 
 _T = TypeVar("_T")
-_SupportsEq = TypeVar("_SupportsEq")
 
 ################################################################################
 ### Implementation of Vehicle builtins in Python
 ################################################################################
 
 
+@dataclass(frozen=True)
 class PythonBuiltins(
     Builtins[
         bool,
@@ -40,7 +40,7 @@ class PythonBuiltins(
         int,
         int,
         float,
-        _SupportsEq,
+        Any,
     ],
 ):
     @override
@@ -76,16 +76,8 @@ class PythonBuiltins(
         return curry(operator.truediv)
 
     @override
-    def Eq(self) -> Relation2[_SupportsEq, bool]:
+    def Eq(self) -> Relation2[Any, bool]:
         return curry(operator.eq)
-
-    @override
-    def Exists(self) -> Function1[Function1[_T, bool], bool]:
-        return NotImplemented
-
-    @override
-    def Forall(self) -> Function1[Function1[_T, bool], bool]:
-        return NotImplemented
 
     @override
     def GeIndex(self) -> Relation2[int, bool]:
@@ -208,7 +200,7 @@ class PythonBuiltins(
         return int
 
     @override
-    def Ne(self) -> Relation2[_SupportsEq, bool]:
+    def Ne(self) -> Relation2[Any, bool]:
         return curry(operator.ne)
 
     @override
@@ -256,8 +248,8 @@ class PythonBuiltins(
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     builtins: Builtins[Any, Any, Any, Any, Any, Any]
-    module_header: ClassVar[Sequence[py.stmt]] = []
-    module_footer: ClassVar[Sequence[py.stmt]] = []
+    module_header: Sequence[py.stmt] = field(default_factory=tuple)
+    module_footer: Sequence[py.stmt] = field(default_factory=tuple)
 
     def compile(
         self,
@@ -266,6 +258,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
+        print(py_ast_unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
@@ -282,9 +275,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                *self.__class__.module_header,
+                *self.module_header,
                 *map(self.translate_declaration, program.declarations),
-                *self.__class__.module_footer,
+                *self.module_footer,
             ],
             type_ignores=[],
         )
@@ -308,11 +301,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 ops=[py.In()],
                 comparators=[
                     py.Call(
-                        func=py.Name(
-                            id="vars",
-                            ctx=py.Load(),
-                            **asdict(declaration.provenance),
-                        ),
+                        func=py_name("vars", declaration.provenance),
                         args=[],
                         keywords=[],
                         **asdict(declaration.provenance),
@@ -354,8 +343,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             and expression.func.builtin.value > 0
         ):
             return py_builtin(
-                "Vector",
-                [
+                builtin="Vector",
+                keywords=[
                     py.keyword(
                         arg="values",
                         value=py.Tuple(
@@ -371,6 +360,50 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 ],
                 provenance=expression.provenance,
             )
+        # NOTE: Quantifiers are handled separately:
+        #       Vehicle represents Quantifiers as builtins, but in order
+        #       to interpret them using sampling, we must have access to
+        #       the name of the quantified variable.
+        if isinstance(expression.func, vcl.BuiltinOp) and isinstance(
+            expression.func.builtin, (vcl.Forall, vcl.Exists)
+        ):
+            quantifier = expression.func.builtin
+            assert (
+                len(expression.args) == 1
+            ), f"Found {quantifier.__class__.__name__} with {len(expression.args)} arguments."
+            assert isinstance(
+                expression.args[0], vcl.Lam
+            ), f"Found {quantifier.__class__.__name__} applied to {expression.args[0].__class__.__name__}"
+            lam = expression.args[0]
+            return py_app(
+                func=py_builtin(
+                    builtin=quantifier.__class__.__name__,
+                    keywords=[
+                        py.keyword(
+                            arg="name",
+                            value=py.Str(
+                                s=lam.binder.name,
+                                **asdict(lam.provenance),
+                            ),
+                            **asdict(lam.provenance),
+                        ),
+                        py.keyword(
+                            arg="context",
+                            value=py.Call(
+                                func=py_name("locals", lam.provenance),
+                                args=[],
+                                keywords=[],
+                                **asdict(lam.provenance),
+                            ),
+                            **asdict(lam.provenance),
+                        ),
+                    ],
+                    provenance=expression.func.provenance,
+                ),
+                arg=self.translate_expression(lam),
+                provenance=expression.provenance,
+            )
+
         return reduce(
             partial(py_app, provenance=expression.provenance),
             [self.translate_expression(arg) for arg in expression.args],
@@ -378,11 +411,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_BoundVar(self, expression: vcl.BoundVar) -> py.expr:
-        return py.Name(
-            id=expression.name,
-            ctx=py.Load(),
-            **asdict(expression.provenance),
-        )
+        return py_name(expression.name, expression.provenance)
 
     def translate_BuiltinOp(self, expression: vcl.BuiltinOp) -> py.expr:
         keywords: List[py.keyword] = []
@@ -451,6 +480,32 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     **asdict(expression.provenance),
                 )
             )
+        elif isinstance(expression.builtin, vcl.Sample):
+            keywords.append(
+                py.keyword(
+                    arg="name",
+                    value=py.Str(
+                        s=expression.builtin.name, **asdict(expression.provenance)
+                    ),
+                )
+            )
+            keywords.append(
+                py.keyword(
+                    arg="context",
+                    value=py.Dict(
+                        keys=[
+                            py.Str(s=local, **asdict(expression.provenance))
+                            for local in expression.builtin.locals
+                        ],
+                        values=[
+                            py_name(local, expression.provenance)
+                            for local in expression.builtin.locals
+                        ],
+                        **asdict(expression.provenance),
+                    ),
+                    **asdict(expression.provenance),
+                )
+            )
         elif isinstance(expression.builtin, vcl.Vector):
             # NOTE: Vector literals are handled separately, as Vehicle represents
             #       these as N-ary functions. The only vectors that should be found
@@ -465,11 +520,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_FreeVar(self, expression: vcl.FreeVar) -> py.expr:
-        return py.Name(
-            id=expression.name,
-            ctx=py.Load(),
-            **asdict(expression.provenance),
-        )
+        return py_name(expression.name, expression.provenance)
 
     def translate_Lam(self, expression: vcl.Lam) -> py.expr:
         return py.Lambda(
@@ -485,6 +536,33 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return NotImplemented
 
 
+def py_name(name: vcl.Name, provenance: vcl.Provenance) -> py.Name:
+    """Make a name."""
+    return py.Name(
+        id=name,
+        ctx=py.Load(),
+        **asdict(provenance),
+    )
+
+
+def py_sampler(
+    name: vcl.Name, locals: Sequence[vcl.Name], *, provenance: vcl.Provenance
+) -> py.expr:
+    """Make a call to a sampler."""
+    return py.Call(
+        func=py_name(f"sampler_for_{name}", provenance),
+        args=[
+            py.Dict(
+                keys=[py.Str(s=local, **asdict(provenance)) for local in locals],
+                values=[py_name(local, provenance) for local in locals],
+                **asdict(provenance),
+            )
+        ],
+        keywords=[],
+        **asdict(provenance),
+    )
+
+
 def py_binder(*args: py.arg) -> py.arguments:
     """Make a binder which only uses args."""
     return py_arguments(
@@ -498,7 +576,7 @@ def py_binder(*args: py.arg) -> py.arguments:
     )
 
 
-def py_app(func: py.expr, arg: py.arg, *, provenance: vcl.Provenance) -> py.expr:
+def py_app(func: py.expr, arg: py.expr, *, provenance: vcl.Provenance) -> py.expr:
     """Make a function call."""
     return py.Call(
         func=func,
@@ -514,11 +592,7 @@ def py_builtin(
     """Make a builtin function call."""
     return py.Call(
         func=py.Attribute(
-            value=py.Name(
-                id="__vehicle__",
-                ctx=py.Load(),
-                **asdict(provenance),
-            ),
+            value=py_name("__vehicle__", provenance),
             attr=builtin,
             ctx=py.Load(),
             **asdict(provenance),

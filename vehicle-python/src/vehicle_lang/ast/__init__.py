@@ -1,6 +1,6 @@
 import json
 from abc import ABCMeta
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 from typing_extensions import Self, TypeAlias, override
@@ -376,46 +376,46 @@ class Expression(AST):
 
 @dataclass(frozen=True)
 class App(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     func: Expression
     args: Sequence[Expression]
 
 
 @dataclass(frozen=True)
 class Binder(AST):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     name: Optional[Name]
     type: Expression
 
 
 @dataclass(frozen=True)
 class BoundVar(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     name: Name
 
 
 @dataclass(frozen=True)
 class BuiltinOp(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     builtin: Builtin
 
 
 @dataclass(frozen=True)
 class FreeVar(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     name: Name
 
 
 @dataclass(frozen=True)
 class Lam(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     binder: Binder
     body: Expression
 
 
 @dataclass(frozen=True)
 class Let(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     bound: Expression
     binder: Binder
     body: Expression
@@ -423,14 +423,14 @@ class Let(Expression):
 
 @dataclass(frozen=True)
 class Pi(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     binder: Binder
     body: Expression
 
 
 @dataclass(frozen=True)
 class Universe(Expression):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     level: UniverseLevel
 
 
@@ -447,7 +447,7 @@ class Declaration(AST):
 
 @dataclass(frozen=True)
 class DefFunction(Declaration):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     name: Name
     type: Expression
     body: Expression
@@ -455,7 +455,7 @@ class DefFunction(Declaration):
 
 @dataclass(frozen=True)
 class DefPostulate(Declaration):
-    provenance: Provenance
+    provenance: Provenance = field(repr=False)
     name: Name
     body: Expression
 

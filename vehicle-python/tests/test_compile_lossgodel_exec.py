@@ -3,13 +3,14 @@ from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
 
-from vehicle_lang.compile import PythonBuiltins, PythonTranslation, to_python
+from vehicle_lang.compile import PythonTranslation, to_python
+from vehicle_lang.compile.lossgodel import LossGodelBuiltins
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
     net = lambda xs: (sum(xs),)
     assert "net_prop" in output
-    assert output["net_prop"](net)
+    assert output["net_prop"](net) == 0.0
 
 
 def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
@@ -46,17 +47,17 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_indicator.vcl",
             {},
-            {"indicator": False},
+            {"indicator": 0.0},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"maximum": False},
+            {"maximum": -4.8},
         ),
         (
             "test_minimum.vcl",
             {},
-            {"minimum": True},
+            {"minimum": 0.0},
         ),
         (
             "test_multiplication.vcl",
@@ -76,12 +77,12 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_quantifier_all.vcl",
             {"x": quantifier_all_sampler},
-            {"quantifierForall": False},
+            {"quantifierForall": -1},
         ),
         (
             "test_quantifier_any.vcl",
             {"x": quantifier_any_sampler},
-            {"quantifierExists": True},
+            {"quantifierExists": 9.0},
         ),
         (
             "test_subtraction.vcl",
@@ -107,7 +108,7 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    builtins = PythonBuiltins(samplers=samplers)
+    builtins = LossGodelBuiltins(samplers=samplers)
     translation = PythonTranslation(builtins)
     output = to_python(specification_path, translation=translation)
     if isinstance(validate_output, dict):

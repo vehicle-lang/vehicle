@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Generic, Iterator, Sequence, Tuple, Type, cast
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Generic, Iterator, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar, override
 
@@ -30,6 +31,7 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 
+@dataclass(frozen=True)
 class Builtins(
     Generic[
         _Bool,
@@ -41,6 +43,10 @@ class Builtins(
     ],
     metaclass=ABCMeta,
 ):
+    samplers: Dict[str, Callable[[Dict[str, Any]], Iterator[Any]]] = field(
+        default_factory=dict
+    )
+
     @abstractmethod
     def AddInt(self) -> Operator2[_Int]:
         ...
@@ -95,9 +101,15 @@ class Builtins(
     def EqRat(self) -> Relation2[_Rat, _Bool]:
         return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
 
-    @abstractmethod
-    def Exists(self) -> Function1[Function1[_T, _Bool], _Bool]:
-        ...
+    def Exists(
+        self, name: str, context: Dict[str, Any]
+    ) -> Function1[Function1[_T, _Bool], _Bool]:
+        def _ExistsSample(predicate: Function1[_T, _Bool]) -> _Bool:
+            return foldRight(self.Or())(self.Bool(False))(
+                [predicate(cast(_T, sample)) for sample in self.Sample(name, context)]
+            )
+
+        return _ExistsSample
 
     def FoldList(
         self,
@@ -109,9 +121,15 @@ class Builtins(
     ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
         return foldRight
 
-    @abstractmethod
-    def Forall(self) -> Function1[Function1[_T, _Bool], _Bool]:
-        ...
+    def Forall(
+        self, name: str, context: Dict[str, Any]
+    ) -> Function1[Function1[_T, _Bool], _Bool]:
+        def _ForallSample(predicate: Function1[_T, _Bool]) -> _Bool:
+            return foldRight(self.And())(self.Bool(True))(
+                [predicate(cast(_T, sample)) for sample in self.Sample(name, context)]
+            )
+
+        return _ForallSample
 
     def GeIndex(self) -> Relation2[_Index, _Bool]:
         return lambda x: lambda y: self.Not()(self.LtIndex()(x)(y))
@@ -257,6 +275,12 @@ class Builtins(
     @abstractmethod
     def RatType(self) -> Type[_Rat]:
         ...
+
+    def Sample(self, name: str, context: Dict[str, Iterator[Any]]) -> Iterator[Any]:
+        if name in self.samplers:
+            return self.samplers[name](context)
+        else:
+            raise TypeError(f"Could not find sampler for '{name}'.")
 
     @abstractmethod
     def SubInt(self) -> Operator2[_Int]:
