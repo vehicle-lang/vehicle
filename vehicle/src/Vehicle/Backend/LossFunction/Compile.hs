@@ -14,6 +14,7 @@ import Vehicle.Backend.LossFunction.Syntax
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
@@ -40,8 +41,8 @@ compile logic typedProg = do
   let logicImplementation = implementationOf logic
   reformattedProg <- reformatLogicalOperators logicImplementation unnormalisedProg
   lossProg <- compileProg logicImplementation reformattedProg
-  -- monomorphisedProg <- _
-  let _descopedProg = descopeNamed lossProg
+  monomorphisedProg <- monomorphise False lossProg
+  let _descopedProg = descopeNamed monomorphisedProg
   return "" -- compileProgToJSON descopedProg
 
 --------------------------------------------------------------------------------

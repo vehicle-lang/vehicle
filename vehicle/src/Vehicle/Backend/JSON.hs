@@ -11,15 +11,16 @@ import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, gen
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
 import Data.ByteString.Lazy.Char8 (unpack)
+import Data.Hashable (Hashable)
 import Data.List (stripPrefix)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Ratio (denominator, numerator)
+import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, developerError, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
-import Vehicle.Compile.Print (PrintableBuiltin)
+import Vehicle.Compile.Print (PrintableBuiltin (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
@@ -130,7 +131,75 @@ data JBuiltin
   | ListType
   | VectorType
   | Sample Name
-  deriving (Generic)
+  deriving (Eq, Generic)
+
+instance Hashable JBuiltin
+
+instance PrintableBuiltin JBuiltin where
+  convertBuiltin :: Provenance -> JBuiltin -> V.Expr var V.Builtin
+  convertBuiltin p b = case b of
+    NilList -> V.Builtin p (V.Constructor V.Nil)
+    ConsList -> V.Builtin p (V.Constructor V.Cons)
+    Unit -> V.Builtin p (V.Constructor V.LUnit)
+    Bool x -> V.Builtin p (V.Constructor $ V.LBool x)
+    Index i -> V.Builtin p (V.Constructor $ V.LIndex i)
+    Nat n -> V.Builtin p (V.Constructor $ V.LNat n)
+    Int i -> V.Builtin p (V.Constructor $ V.LInt i)
+    Rat n d -> V.Builtin p (V.Constructor $ V.LRat (fromIntegral n % fromIntegral d))
+    Vector n -> V.Builtin p (V.Constructor $ V.LVec n)
+    Not -> V.Builtin p (V.BuiltinFunction V.Not)
+    And -> V.Builtin p (V.BuiltinFunction V.And)
+    Or -> V.Builtin p (V.BuiltinFunction V.Or)
+    Implies -> V.Builtin p (V.BuiltinFunction V.Implies)
+    Forall -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Forall V.QuantRat))
+    Exists -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Exists V.QuantRat))
+    If -> V.Builtin p (V.BuiltinFunction V.If)
+    NegInt -> V.Builtin p (V.BuiltinFunction $ V.Neg V.NegInt)
+    NegRat -> V.Builtin p (V.BuiltinFunction $ V.Neg V.NegRat)
+    AddNat -> V.Builtin p (V.BuiltinFunction $ V.Add V.AddNat)
+    AddInt -> V.Builtin p (V.BuiltinFunction $ V.Add V.AddInt)
+    AddRat -> V.Builtin p (V.BuiltinFunction $ V.Add V.AddRat)
+    SubInt -> V.Builtin p (V.BuiltinFunction $ V.Sub V.SubInt)
+    SubRat -> V.Builtin p (V.BuiltinFunction $ V.Sub V.SubRat)
+    MulNat -> V.Builtin p (V.BuiltinFunction $ V.Mul V.MulNat)
+    MulInt -> V.Builtin p (V.BuiltinFunction $ V.Mul V.MulInt)
+    MulRat -> V.Builtin p (V.BuiltinFunction $ V.Mul V.MulRat)
+    DivRat -> V.Builtin p (V.BuiltinFunction $ V.Div V.DivRat)
+    MinRat -> V.FreeVar p $ V.Identifier V.StdLib "minRat"
+    MaxRat -> V.FreeVar p $ V.Identifier V.StdLib "maxRat"
+    PowRat -> V.FreeVar p $ V.Identifier V.StdLib "powRat"
+    Eq -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Eq)
+    Ne -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Neq)
+    LeIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Le)
+    LeNat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderNat V.Le)
+    LeInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Le)
+    LeRat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderRat V.Le)
+    LtIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Lt)
+    LtNat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderNat V.Lt)
+    LtInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Lt)
+    LtRat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderRat V.Lt)
+    GeIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Ge)
+    GeNat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderNat V.Ge)
+    GeInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Ge)
+    GeRat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderRat V.Ge)
+    GtIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Gt)
+    GtNat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderNat V.Gt)
+    GtInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Gt)
+    GtRat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderRat V.Gt)
+    AtVector -> V.Builtin p (V.BuiltinFunction V.At)
+    ConsVector -> V.Builtin p (V.BuiltinFunction V.ConsVector)
+    FoldList -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldList)
+    FoldVector -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldVector)
+    Indices -> V.Builtin p (V.BuiltinFunction V.Indices)
+    UnitType -> V.Builtin p (V.BuiltinType V.Unit)
+    BoolType -> V.Builtin p (V.BuiltinType V.Bool)
+    IndexType -> V.Builtin p (V.BuiltinType V.Index)
+    NatType -> V.Builtin p (V.BuiltinType V.Nat)
+    IntType -> V.Builtin p (V.BuiltinType V.Int)
+    RatType -> V.Builtin p (V.BuiltinType V.Rat)
+    ListType -> V.Builtin p (V.BuiltinType V.List)
+    VectorType -> V.Builtin p (V.BuiltinType V.Vector)
+    Sample n -> V.FreeVar p $ V.Identifier V.StdLib ("Sample[" <> n <> "]")
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins

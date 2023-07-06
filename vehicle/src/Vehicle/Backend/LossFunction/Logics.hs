@@ -32,15 +32,15 @@ op2 op x y = builtin op @@ [x, y]
 
 -- | Addition
 (+:) :: PLExpr -> PLExpr -> PLExpr
-(+:) = op2 (J.AddRat)
+(+:) = op2 J.AddRat
 
 -- | Multiplication
 (*:) :: PLExpr -> PLExpr -> PLExpr
-(*:) = op2 (J.MulRat)
+(*:) = op2 J.MulRat
 
 -- | Subtraction
 (-:) :: PLExpr -> PLExpr -> PLExpr
-(-:) = op2 (J.SubRat)
+(-:) = op2 J.SubRat
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
