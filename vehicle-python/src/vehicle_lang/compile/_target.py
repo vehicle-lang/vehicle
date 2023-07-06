@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Target(Enum):
-    DIRECT = 1
+    DEFAULT = 1
     LOSS_DL2 = 2
     LOSS_GODEL = 3
     LOSS_LUKASIEWICZ = 4
@@ -12,7 +12,7 @@ class Target(Enum):
     @property
     def vehicle_cli_name(self) -> str:
         return {
-            Target.DIRECT: "JSON",
+            Target.DEFAULT: "JSON",
             Target.LOSS_DL2: "DL2Loss",
             Target.LOSS_GODEL: "GodelLoss",
             Target.LOSS_LUKASIEWICZ: "LukasiewiczLoss",

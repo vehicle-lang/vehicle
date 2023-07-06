@@ -105,13 +105,13 @@ class Session(SessionContextManager):
             self.close()
         return None
 
-    def loads(self, spec: str, *, target: Target = Target.DIRECT) -> Program:
+    def loads(self, spec: str, *, target: Target = Target.DEFAULT) -> Program:
         with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
             loss_function_spec.write(spec)
             return self.load(loss_function_spec.name, target=target)
 
     def load(
-        self, path: Union[str, Path], *, target: Target = Target.DIRECT
+        self, path: Union[str, Path], *, target: Target = Target.DEFAULT
     ) -> Program:
         exc, out, err, log = self.check_output(
             [
@@ -139,9 +139,9 @@ def check_output(
     return Session().__enter__().check_output(args)
 
 
-def loads(spec: str, *, target: Target = Target.DIRECT) -> Program:
+def loads(spec: str, *, target: Target = Target.DEFAULT) -> Program:
     return Session().__enter__().load(spec, target=target)
 
 
-def load(path: Union[str, Path], *, target: Target = Target.DIRECT) -> Program:
+def load(path: Union[str, Path], *, target: Target = Target.DEFAULT) -> Program:
     return Session().__enter__().load(path, target=target)

@@ -536,7 +536,7 @@ def py_builtin(
 def to_python(
     specification_path: Union[str, Path],
     *,
-    target: Target = Target.DIRECT,
+    target: Target = Target.DEFAULT,
     context: Dict[str, Any] = {},
     session: Optional[Session] = None,
     translation: Optional[PythonTranslation] = None,
