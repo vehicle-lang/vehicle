@@ -8,7 +8,6 @@ from typing import Any, ClassVar, Dict, List, Optional, Sequence, Type, Union
 from typing_extensions import TypeVar, override
 
 from .. import session as global_session
-from .._target import Target
 from ..session import Session
 from . import _ast as vcl
 from ._ast_compat import arguments as py_arguments
@@ -23,9 +22,9 @@ from ._functools import (
     Relation2,
     curry,
 )
+from ._target import Target
 from .abc import ABCTranslation, Builtins
 
-_S = TypeVar("_S")
 _T = TypeVar("_T")
 
 ################################################################################

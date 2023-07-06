@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Generic, Sequence, Tuple, Type, cast
+from typing import Any, Generic, Iterator, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeVar, override
 
@@ -14,6 +14,10 @@ from ._functools import (
     cons,
     foldRight,
 )
+
+################################################################################
+### Interpretations of Vehicle builtins in Python
+################################################################################
 
 _Bool = TypeVar("_Bool")
 _Index = TypeVar("_Index")
@@ -272,6 +276,11 @@ class Builtins(
 
     def VectorType(self) -> Function2[Type[_T], int, Type[Sequence[_T]]]:
         return lambda T: lambda _i: Sequence[T]  # type: ignore[valid-type]
+
+
+################################################################################
+### Translation from Vehicle AST to Python AST
+################################################################################
 
 
 _Program = TypeVar("_Program")

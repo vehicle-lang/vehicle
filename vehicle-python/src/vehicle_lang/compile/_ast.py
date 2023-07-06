@@ -328,6 +328,11 @@ class RatType(Builtin):
 
 
 @dataclass(frozen=True)
+class Sample(Builtin):
+    name: Name
+
+
+@dataclass(frozen=True)
 class SubInt(Builtin):
     pass
 
