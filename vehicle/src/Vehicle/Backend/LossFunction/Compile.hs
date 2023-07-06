@@ -213,7 +213,7 @@ compileStdLibFunction fn t args = case fn of
   StdMapVector -> compileOp2 Map t =<< compileExplicitArgs t args
   StdMapList -> compileOp2 Map t =<< compileExplicitArgs t args
   StdForeach -> case args of
-    _ :| [V.ImplicitArg _ size, V.ExplicitArg _ f] -> do
+    _ :| [V.ExplicitArg _ size, V.ExplicitArg _ f] -> do
       size' <- compileExpr t size
       indices <- compileBuiltin (V.CFunction V.Indices) t [size']
       f' <- compileExpr t f
