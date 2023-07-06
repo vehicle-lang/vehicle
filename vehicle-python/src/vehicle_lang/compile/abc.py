@@ -64,7 +64,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def AtVector(self) -> Function2[Sequence[_T], _Nat, _T]:
+    def AtVector(self) -> Function2[Sequence[_T], _Index, _T]:
         ...
 
     @abstractmethod
