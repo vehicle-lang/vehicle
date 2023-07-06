@@ -19,16 +19,17 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, developerError, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
-import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel, isExplicit)
+import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
 
 --------------------------------------------------------------------------------
 -- Public method
 
 compileProgToJSON ::
-  (MonadCompile m, ToJBuiltin builtin) =>
+  (MonadCompile m, ToJBuiltin builtin, PrintableBuiltin builtin) =>
   V.Prog Name builtin ->
   m (Doc a)
 compileProgToJSON prog = do
@@ -333,12 +334,8 @@ toJExpr = \case
     return $ case args' of
       [] -> fun'
       (a : as) -> App p fun' (a : as)
-  V.Pi p binder body
-    | isExplicit binder -> Pi p <$> toJBinder binder <*> toJExpr body
-    | otherwise -> toJExpr body
-  V.Lam p binder body
-    | isExplicit binder -> Lam p <$> toJBinder binder <*> toJExpr body
-    | otherwise -> toJExpr body
+  V.Pi p binder body -> Pi p <$> toJBinder binder <*> toJExpr body
+  V.Lam p binder body -> Lam p <$> toJBinder binder <*> toJExpr body
   V.Let p bound binder body ->
     Let p <$> toJExpr bound <*> toJBinder binder <*> toJExpr body
 

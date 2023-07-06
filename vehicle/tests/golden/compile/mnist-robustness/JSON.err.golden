@@ -1,0 +1,2 @@
+vehicle: Something went wrong internally. Please report the error shown below to `https://github.com/vehicle-lang/vehicle/issues`.
+Error: Type-classes should have been resolved before calling the JSON backend

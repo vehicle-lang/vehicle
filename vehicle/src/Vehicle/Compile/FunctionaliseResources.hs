@@ -14,6 +14,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
 import Vehicle.Compile.Error (MonadCompile, internalScopingError, resolutionError)
 import Vehicle.Compile.Prelude.Contexts (DeclCtx)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Prelude (traverseListLocal)
 import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Prettyprinter
@@ -42,7 +43,7 @@ import Vehicle.Syntax.AST
 -- Note that the semantics of properties therefore change slightly as they
 -- are no longer guaranteed to be of type `Bool`.
 functionaliseResources ::
-  (MonadCompile m) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   Prog Name builtin ->
   m (Prog Name builtin)
 functionaliseResources prog =
@@ -76,7 +77,8 @@ addResourceUsage ident newArgNames FuncState {..} =
 
 type MonadJSON m builtin =
   ( MonadCompile m,
-    MonadReader (FuncState builtin) m
+    MonadReader (FuncState builtin) m,
+    PrintableBuiltin builtin
   )
 
 type MonadJSONExpr m builtin =
@@ -110,7 +112,9 @@ functionaliseDecl d = case d of
     let boundType = abstractOverBinders t' binders
     let boundExpr = abstractOverBinders e' binders
     let fun = DefFunction p i anns boundType boundExpr
-    logDebug MaxDetail $ "Prepending decl" <+> quotePretty i <+> "binders" <+> pretty binderNames
+    logDebug MaxDetail $ prettyFriendly d
+    logDebug MaxDetail $ prettyFriendly fun
+    logDebug MaxDetail $ "Prepending decl" <+> quotePretty i <+> "with binders" <+> pretty binderNames
     return (addResourceUsage i binderNames, Just fun)
 
 functionaliseExpr :: (MonadJSONExpr m builtin) => Expr Name builtin -> m (Expr Name builtin)
@@ -139,12 +143,8 @@ functionaliseExpr = \case
     fun' <- functionaliseExpr fun
     args' <- traverse (traverse functionaliseExpr) args
     return $ App p fun' args'
-  Pi p binder body
-    | isExplicit binder -> Pi p <$> functionaliseBinder binder <*> functionaliseExpr body
-    | otherwise -> functionaliseExpr body
-  Lam p binder body
-    | isExplicit binder -> Lam p <$> functionaliseBinder binder <*> functionaliseExpr body
-    | otherwise -> functionaliseExpr body
+  Pi p binder body -> Pi p <$> functionaliseBinder binder <*> functionaliseExpr body
+  Lam p binder body -> Lam p <$> functionaliseBinder binder <*> functionaliseExpr body
   Let p bound binder body ->
     Let p <$> functionaliseExpr bound <*> functionaliseBinder binder <*> functionaliseExpr body
 

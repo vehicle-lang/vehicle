@@ -8,7 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
-import Vehicle.Backend.JSON (ToJBuiltin (..), compileProgToJSON)
+import Vehicle.Backend.JSON (ToJBuiltin (..))
 import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.LossFunction.Syntax
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
@@ -41,8 +41,8 @@ compile logic typedProg = do
   reformattedProg <- reformatLogicalOperators logicImplementation unnormalisedProg
   lossProg <- compileProg logicImplementation reformattedProg
   -- monomorphisedProg <- _
-  let descopedProg = descopeNamed lossProg
-  compileProgToJSON descopedProg
+  let _descopedProg = descopeNamed lossProg
+  return "" -- compileProgToJSON descopedProg
 
 --------------------------------------------------------------------------------
 -- Utilities
