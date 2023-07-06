@@ -26,7 +26,7 @@ class LossGodelBuiltins(ABCLossBuiltins):
 
     @override
     def Bool(self, value: bool) -> float:
-        return 1.0 if value else 0.0
+        return float(value)
 
     @override
     def Eq(self) -> Relation2[Number, float]:
@@ -41,33 +41,17 @@ class LossGodelBuiltins(ABCLossBuiltins):
         return NotImplemented
 
     @override
-    def Implies(self) -> Operator2[float]:
-        return lambda x: lambda y: (not x) or y
-
-    @override
-    def LeInt(self) -> Relation2[int, float]:
-        return curry(operator.le)
-
-    @override
-    def LeRat(self) -> Relation2[float, float]:
-        return curry(operator.le)
-
-    @override
     def LtInt(self) -> Relation2[int, float]:
-        return curry(operator.lt)
+        return lambda x: lambda y: 1 - max(x - y / x + y, 0)
 
     @override
     def LtRat(self) -> Relation2[float, float]:
-        return curry(operator.lt)
-
-    @override
-    def Ne(self) -> Relation2[Number, float]:
-        return curry(operator.ne)
+        return lambda x: lambda y: 1 - max(x - y / x + y, 0)
 
     @override
     def Not(self) -> Operator1[float]:
-        return operator.not_
+        return operator.neg
 
     @override
     def Or(self) -> Operator2[float]:
-        return curry(operator.or_)
+        return curry(max)

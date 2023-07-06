@@ -83,6 +83,18 @@ class Builtins(
     def Eq(self) -> Relation2[_SupportsEq, _Bool]:
         ...
 
+    def EqIndex(self) -> Relation2[_Index, _Bool]:
+        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+
+    def EqInt(self) -> Relation2[_Int, _Bool]:
+        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+
+    def EqNat(self) -> Relation2[_Nat, _Bool]:
+        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+
+    def EqRat(self) -> Relation2[_Rat, _Bool]:
+        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+
     @abstractmethod
     def Exists(self) -> Function1[Function1[_T, _Bool], _Bool]:
         ...
@@ -101,37 +113,29 @@ class Builtins(
     def Forall(self) -> Function1[Function1[_T, _Bool], _Bool]:
         ...
 
-    @abstractmethod
     def GeIndex(self) -> Relation2[_Index, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LtIndex()(x)(y))
 
-    @abstractmethod
     def GeInt(self) -> Relation2[_Int, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LtInt()(x)(y))
 
-    @abstractmethod
     def GeNat(self) -> Relation2[_Nat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LtNat()(x)(y))
 
-    @abstractmethod
     def GeRat(self) -> Relation2[_Rat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LtRat()(x)(y))
 
-    @abstractmethod
     def GtIndex(self) -> Relation2[_Index, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LeIndex()(x)(y))
 
-    @abstractmethod
     def GtInt(self) -> Relation2[_Int, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LeInt()(x)(y))
 
-    @abstractmethod
     def GtNat(self) -> Relation2[_Nat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LeNat()(x)(y))
 
-    @abstractmethod
     def GtRat(self) -> Relation2[_Rat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.LeRat()(x)(y))
 
     @abstractmethod
     def If(self) -> Function3[_Bool, _T, _T, _T]:
@@ -161,21 +165,17 @@ class Builtins(
     def IntType(self) -> Type[_Int]:
         ...
 
-    @abstractmethod
     def LeIndex(self) -> Relation2[_Index, _Bool]:
-        ...
+        return lambda x: lambda y: self.Or()(self.EqIndex()(x)(y))(self.LtIndex()(x)(y))
 
-    @abstractmethod
     def LeInt(self) -> Relation2[_Int, _Bool]:
-        ...
+        return lambda x: lambda y: self.Or()(self.EqInt()(x)(y))(self.LtInt()(x)(y))
 
-    @abstractmethod
     def LeNat(self) -> Relation2[_Nat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Or()(self.EqNat()(x)(y))(self.LtNat()(x)(y))
 
-    @abstractmethod
     def LeRat(self) -> Relation2[_Rat, _Bool]:
-        ...
+        return lambda x: lambda y: self.Or()(self.EqRat()(x)(y))(self.LtRat()(x)(y))
 
     def ListType(self) -> Function1[Type[_T], Type[Sequence[_T]]]:
         return lambda T: Sequence[T]  # type: ignore[valid-type]
@@ -224,9 +224,8 @@ class Builtins(
     def NatType(self) -> Type[_Nat]:
         ...
 
-    @abstractmethod
     def Ne(self) -> Relation2[_SupportsEq, _Bool]:
-        ...
+        return lambda x: lambda y: self.Not()(self.Eq()(x)(y))
 
     @abstractmethod
     def NegInt(self) -> Operator1[_Int]:
