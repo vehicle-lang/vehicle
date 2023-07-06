@@ -57,7 +57,7 @@ class PythonBuiltins(
 
     @override
     def And(self) -> Operator2[bool]:
-        return curry(operator.and_)
+        return lambda x: lambda y: x and y
 
     @override
     def AtVector(self) -> Function2[Sequence[_T], int, _T]:
@@ -217,7 +217,7 @@ class PythonBuiltins(
 
     @override
     def Or(self) -> Operator2[bool]:
-        return curry(operator.or_)
+        return lambda x: lambda y: x or y
 
     @override
     def PowRat(self) -> Operator2[float]:
@@ -258,7 +258,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
-        print(py_ast_unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
