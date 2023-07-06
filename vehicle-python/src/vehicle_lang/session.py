@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Uni
 from typing_extensions import Self, TypeAlias
 
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
-from ._error import VehicleError, VehicleSessionClosed, VehicleSessionUsed
-from ._target import Target
+from ._error import VehicleError as VehicleError
+from ._error import VehicleSessionClosed as VehicleSessionClosed
+from ._error import VehicleSessionUsed as VehicleSessionUsed
 from ._temporary_files import temporary_files
-from .compile import Program
+from .compile import Program, Target
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     SessionContextManager: TypeAlias = AbstractContextManager["Session"]

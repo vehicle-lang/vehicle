@@ -3,8 +3,7 @@ from typing import Any, Dict
 
 import pytest
 
-from vehicle_lang import Target
-from vehicle_lang.compile import to_python
+from vehicle_lang.compile import Target, to_python
 
 
 @pytest.mark.parametrize(
