@@ -7,13 +7,16 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Control.Monad.State
   ( MonadState (..),
     evalStateT,
+    gets,
     modify,
   )
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map
-  ( insert,
+  ( delete,
+    insert,
     lookup,
+    member,
     singleton,
   )
 import Data.HashSet (HashSet)
@@ -40,11 +43,11 @@ import Vehicle.Expr.Hashing ()
 -- by Wen et al is a good starting point.
 monomorphise ::
   (MonadCompile m, Eq builtin, Hashable builtin, PrintableBuiltin builtin) =>
-  Bool ->
+  (Decl Ix builtin -> Bool) ->
   Prog Ix builtin ->
   m (Prog Ix builtin)
-monomorphise keepUnused prog = logCompilerPass MinDetail "monomorphisation" $ do
-  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) keepUnused
+monomorphise keepEvenIfUnused prog = logCompilerPass MinDetail "monomorphisation" $ do
+  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) keepEvenIfUnused
   result <- runReaderT (insert prog2) substitutions
   logCompilerPassOutput $ prettyFriendly result
   return result
@@ -93,7 +96,7 @@ type MonadCollect builtin m =
   ( MonadCompile m,
     MonadState (CandidateApplications builtin) m,
     MonadWriter (SubsitutionSolutions builtin) m,
-    MonadReader Bool m,
+    MonadReader (Decl Ix builtin -> Bool) m,
     Hashable builtin,
     PrintableBuiltin builtin
   )
@@ -104,34 +107,42 @@ monomorphiseProg (Main decls) =
 
 monomorphiseDecls :: (MonadCollect builtin m) => Decl Ix builtin -> m [Decl Ix builtin]
 monomorphiseDecls decl = do
-  logCompilerSection MaxDetail ("Checking" <+> quotePretty (identifierOf decl)) $ do
-    logDebug MaxDetail $ prettyVerbose decl
+  let ident = identifierOf decl
+  logCompilerSection MaxDetail ("Checking" <+> quotePretty ident) $ do
     newDecls <- monomorphiseDecl decl
     forM_ newDecls (traverse collectReferences)
-    return newDecls
+    recursiveReferences <- gets (Map.member ident)
+    resursiveDecls <-
+      if recursiveReferences
+        then monomorphiseDecls decl
+        else return []
+    return (newDecls <> resursiveDecls)
 
 monomorphiseDecl :: (MonadCollect builtin m) => Decl Ix builtin -> m [Decl Ix builtin]
-monomorphiseDecl decl = case decl of
-  DefAbstract {} -> return [decl]
-  DefFunction p ident anns t e -> do
-    freeVarApplications <- get
-    keepUnused <- ask
-    case Map.lookup ident freeVarApplications of
-      Nothing -> do
-        logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
-        if keepUnused || isProperty anns || moduleOf ident == User
-          then do
-            logDebug MaxDetail "Keeping declaration"
-            return [decl]
-          else do
-            logDebug MaxDetail "Discarding declaration"
-            return []
-      Just applications -> do
-        let numberOfApplications = Set.size applications
-        let createNewName = numberOfApplications > 1
-        logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications:"
-        logDebug MaxDetail $ indent 2 $ prettyVerbose (Set.toList applications)
-        traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) (Set.toList applications)
+monomorphiseDecl decl = do
+  let ident = identifierOf decl
+  freeVarApplications <- get
+  modify (Map.delete ident)
+  case decl of
+    DefAbstract {} -> return [decl]
+    DefFunction p _ anns t e -> do
+      keepEvenIfUnused <- ask
+      case Map.lookup ident freeVarApplications of
+        Nothing -> do
+          logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
+          if keepEvenIfUnused decl
+            then do
+              logDebug MaxDetail "Keeping declaration"
+              return [decl]
+            else do
+              logDebug MaxDetail "Discarding declaration"
+              return []
+        Just applications -> do
+          let numberOfApplications = Set.size applications
+          let createNewName = numberOfApplications > 1
+          logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications:"
+          logDebug MaxDetail $ indent 2 $ prettyVerbose (Set.toList applications)
+          traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) (Set.toList applications)
 
 performMonomorphisation ::
   (MonadCollect builtin m) =>

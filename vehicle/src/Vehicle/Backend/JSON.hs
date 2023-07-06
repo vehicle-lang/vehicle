@@ -131,7 +131,7 @@ data JBuiltin
   | ListType
   | VectorType
   | Sample Name
-  deriving (Eq, Generic)
+  deriving (Show, Eq, Generic)
 
 instance Hashable JBuiltin
 
@@ -151,8 +151,8 @@ instance PrintableBuiltin JBuiltin where
     And -> V.Builtin p (V.BuiltinFunction V.And)
     Or -> V.Builtin p (V.BuiltinFunction V.Or)
     Implies -> V.Builtin p (V.BuiltinFunction V.Implies)
-    Forall -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Forall V.QuantRat))
-    Exists -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Exists V.QuantRat))
+    Forall -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Forall))
+    Exists -> V.Builtin p (V.BuiltinFunction (V.Quantifier V.Exists))
     If -> V.Builtin p (V.BuiltinFunction V.If)
     NegInt -> V.Builtin p (V.BuiltinFunction $ V.Neg V.NegInt)
     NegRat -> V.Builtin p (V.BuiltinFunction $ V.Neg V.NegRat)
@@ -237,8 +237,8 @@ instance ToJBuiltin BuiltinFunction where
     V.And -> And
     V.Or -> Or
     V.Implies -> Implies
-    V.Quantifier V.Forall _dom -> Forall
-    V.Quantifier V.Exists _dom -> Exists
+    V.Quantifier V.Forall -> Forall
+    V.Quantifier V.Exists -> Exists
     V.If -> If
     V.FromNat {} -> developerError "`FromNat` should have been removed after type-checking."
     V.FromRat {} -> developerError "`FromRat` should have been removed after type-checking."

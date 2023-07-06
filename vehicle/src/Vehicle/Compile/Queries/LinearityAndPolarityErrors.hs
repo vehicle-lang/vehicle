@@ -81,7 +81,7 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
-  monomorphisedProg <- monomorphise False typeClassFreeProg
+  monomorphisedProg <- monomorphise isPropertyDecl typeClassFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg

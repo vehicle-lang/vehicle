@@ -105,7 +105,7 @@ compileExpr DifferentialLogicImplementation {..} declProv =
           NaryOr orFn -> return $ Just orFn
           BinaryOr orFn -> return $ Just orFn
         V.Implies -> return $ Just compileImplies
-        V.Quantifier q _ -> case reverse args of
+        V.Quantifier q -> case reverse args of
           V.ExplicitArg _ (V.Lam _ binder _) : _ -> return $ Just $ case q of
             V.Forall -> compileForall (V.getBinderName binder)
             V.Exists -> compileExists (V.getBinderName binder)

@@ -7,9 +7,6 @@ natLitNatLitDiv = 1 / 2
 @network
 f : Vector Rat 1 -> Vector Rat 1
 
-natNatDiv : Nat -> Nat -> Rat
-natNatDiv x y = f [ x / y ] ! 0
-
 @property
 property : Bool
-property = natNatDiv 1 2 >= 0
+property = f [natLitNatLitDiv] ! 0 >= 0

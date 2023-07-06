@@ -120,7 +120,7 @@ compileToJSON (imports, typedProg) outputFile = do
   let mergedProg = mergeImports imports typedProg
   let unnormalisedProg = fmap unnormalised mergedProg
   resolvedProg <- resolveInstanceArguments unnormalisedProg
-  monomorphiseProg <- monomorphise False resolvedProg
+  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) resolvedProg
   literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
   let namedProg = descopeNamed literalCoercionFreeProg
   result <- compileProgToJSON namedProg

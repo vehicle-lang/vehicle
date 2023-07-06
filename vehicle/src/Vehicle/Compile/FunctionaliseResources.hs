@@ -93,7 +93,7 @@ functionaliseDecl ::
   (MonadJSON m builtin) =>
   Decl Name builtin ->
   m (FuncState builtin -> FuncState builtin, Maybe (Decl Name builtin))
-functionaliseDecl d = case d of
+functionaliseDecl d = logCompilerPass MaxDetail ("functionalising" <+> pretty (nameOf d)) $ case d of
   DefAbstract p i s t -> do
     (t', typeResourceUsage) <- runWriterT $ functionaliseExpr t
     case s of
@@ -112,7 +112,6 @@ functionaliseDecl d = case d of
     let boundType = abstractOverBinders t' binders
     let boundExpr = abstractOverBinders e' binders
     let fun = DefFunction p i anns boundType boundExpr
-    logDebug MaxDetail $ prettyFriendly d
     logDebug MaxDetail $ prettyFriendly fun
     logDebug MaxDetail $ "Prepending decl" <+> quotePretty i <+> "with binders" <+> pretty binderNames
     return (addResourceUsage i binderNames, Just fun)
