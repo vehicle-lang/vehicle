@@ -179,7 +179,7 @@ compileBuiltinFunction f t args = case f of
   V.At -> compileOp2 At t args
   V.Not -> compileNotOp t args
   V.Implies -> compileOp2 (compileImplies t) t args
-  V.Quantifier q _ -> compileQuantifier q t args
+  V.Quantifier q -> compileQuantifier q t args
   -- Arithmetic operations
   V.Neg {} -> compileOp1 Negation t args
   V.Add {} -> compileOp2 Addition t args
@@ -314,8 +314,8 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
       V.EqualityExpr p dom eq args -> return $ V.EqualityExpr p dom (neg eq) args
       V.NotExpr _ [e] -> return $ argExpr e
       -- Inductive cases
-      V.ForallRatExpr p binder body -> V.ExistsRatExpr p binder <$> lowerNot notProv body
-      V.ExistsRatExpr p binder body -> V.ForallRatExpr p binder <$> lowerNot notProv body
+      V.ForallExpr p binder body -> V.ExistsExpr p binder <$> lowerNot notProv body
+      V.ExistsExpr p binder body -> V.ForallExpr p binder <$> lowerNot notProv body
       V.ImpliesExpr p [e1, e2] -> do
         ne2 <- traverse (lowerNot notProv) e2
         return $ V.AndExpr p [e1, ne2]

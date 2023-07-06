@@ -203,7 +203,7 @@ compilePropertyTopLevelStructure = go
         let unfoldedIf = unfoldIf c x y
         logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendly (WithContext unfoldedIf emptyDBCtx)
         go $ unfoldIf c x y
-      VInfiniteQuantifier q dom args binder env body -> do
+      VInfiniteQuantifier q args binder env body -> do
         let subsectionDoc = "compilation of set of queries:" <+> prettyFriendly (WithContext expr emptyDBCtx)
         logCompilerPass MaxDetail subsectionDoc $ do
           -- Have to check whether to negate the quantifier here, rather than at the top
@@ -217,7 +217,7 @@ compilePropertyTopLevelStructure = go
               let p = mempty
               return (True, BuiltinFunctionExpr p Not [ExplicitArg p body])
 
-          let negatedExpr = VInfiniteQuantifier Exists dom args binder env existsBody
+          let negatedExpr = VInfiniteQuantifier Exists args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
       _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
 

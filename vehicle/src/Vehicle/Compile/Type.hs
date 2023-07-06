@@ -337,7 +337,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
           Just decl ->
             "current-decl:"
               <> line
-              <> indent 2 (prettyExternal decl)
+              <> indent 2 (prettyVerbose decl)
               <> line
 
     return $

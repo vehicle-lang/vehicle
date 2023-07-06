@@ -7648,10 +7648,7 @@
                                   "tag": "CFunction",
                                   "contents": {
                                     "tag": "Quantifier",
-                                    "contents": [
-                                      "Forall",
-                                      "QuantVec"
-                                    ]
+                                    "contents": "Forall"
                                   }
                                 }
                               ]

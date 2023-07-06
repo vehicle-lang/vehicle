@@ -268,7 +268,7 @@ instance (PrettyUsing rest (Binder Name Builtin)) => PrettyUsing ('ConvertBuilti
 --------------------------------------------------------------------------------
 -- Printing builtins
 
-class (Eq builtin) => PrintableBuiltin builtin where
+class (Eq builtin, Show builtin) => PrintableBuiltin builtin where
   -- | Convert expressions with the builtin back to expressions with the standard
   -- builtin type. Used for printing.
   convertBuiltin ::

@@ -182,7 +182,7 @@ delabBuiltinFunction fun args = case fun of
   V.Sub {} -> delabTypeClassOp V.SubTC args
   V.Mul {} -> delabTypeClassOp V.MulTC args
   V.Div {} -> delabTypeClassOp V.DivTC args
-  V.Quantifier q _ -> delabTypeClassOp (V.QuantifierTC q) args
+  V.Quantifier q -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
   V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
