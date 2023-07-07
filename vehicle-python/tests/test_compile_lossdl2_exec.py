@@ -1,36 +1,38 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
 
 from vehicle_lang.compile import Target, to_python
 
 
-def validate_output_test_network(output: Dict[str, Any]) -> None:
+def network_validate_output(output: Dict[str, Any]) -> None:
     net = lambda xs: (sum(xs),)
     assert "net_prop" in output
-    assert output["net_prop"](net)
+    assert output["net_prop"](net) == 0.0
 
 
-def validate_output_test_quantifier_all(output: Dict[str, Any]) -> None:
-    assert "quantifierForall" in output
-    assert output["quantifierForall"](lambda x: x)(1) == True
+def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+    yield from [-10.0, -1.0, 1.0, 10.0]
+
+
+def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+    yield from [-10.0, -1.0, 1.0, 10.0]
 
 
 @pytest.mark.parametrize(
-    "specification_filename,context,validate_output",
+    "specification_filename,samplers,validate_output",
     [
         (
             "test_addition.vcl",
             {},
             {"addition": 8},
         ),
-        # TODO: Requires monomorphisation.
-        # (
-        #     "test_at.vcl",
-        #     {},
-        #     {"at": 3.0},
-        # ),
+        (
+            "test_at.vcl",
+            {},
+            {"at": 3.0},
+        ),
         (
             "test_constant.vcl",
             {},
@@ -44,7 +46,7 @@ def validate_output_test_quantifier_all(output: Dict[str, Any]) -> None:
         (
             "test_indicator.vcl",
             {},
-            {"indicator": False},
+            {"indicator": 0.0},
         ),
         (
             "test_maximum.vcl",
@@ -66,28 +68,31 @@ def validate_output_test_quantifier_all(output: Dict[str, Any]) -> None:
             {},
             {"negation": -5},
         ),
-        # TODO: Requires monomorphisation.
-        # (
-        #     "test_network.vcl",
-        #     {},
-        #     validate_output_test_network,
-        # ),
+        (
+            "test_network.vcl",
+            {},
+            network_validate_output,
+        ),
         (
             "test_quantifier_all.vcl",
-            {"sampler_for_x": lambda _ctx: [-10.0]},
-            validate_output_test_quantifier_all,
+            {"x": quantifier_all_sampler},
+            {"quantifierForall": False},
+        ),
+        (
+            "test_quantifier_any.vcl",
+            {"x": quantifier_any_sampler},
+            {"quantifierExists": True},
         ),
         (
             "test_subtraction.vcl",
             {},
             {"subtraction": 4},
         ),
-        # TODO: Requires monomorphisation.
-        # (
-        #     "test_tensor.vcl",
-        #     {},
-        #     {"tensor": (5, 2, 16, 7)},
-        # ),
+        (
+            "test_tensor.vcl",
+            {},
+            {"tensor": (5, 2, 16, 7)},
+        ),
         (
             "test_variable.vcl",
             {},
@@ -97,13 +102,13 @@ def validate_output_test_quantifier_all(output: Dict[str, Any]) -> None:
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
-    context: Dict[str, Any],
+    samplers: Dict[str, Any],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
     actual_declarations = to_python(
-        specification_path, target=Target.LOSS_DL2, context=context
+        specification_path, target=Target.LOSS_DL2, samplers=samplers
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():

@@ -12,7 +12,7 @@ class Target(Enum):
     @property
     def vehicle_cli_name(self) -> str:
         return {
-            Target.DEFAULT: "JSON",
+            Target.DEFAULT: "Explicit",
             Target.LOSS_DL2: "DL2Loss",
             Target.LOSS_GODEL: "GodelLoss",
             Target.LOSS_LUKASIEWICZ: "LukasiewiczLoss",

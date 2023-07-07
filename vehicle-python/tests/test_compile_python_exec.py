@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
 
-from vehicle_lang.compile import PythonBuiltins, PythonTranslation, to_python
+from vehicle_lang.compile import to_python
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:

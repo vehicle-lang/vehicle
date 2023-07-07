@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 GOLDEN_PATH = Path("vendor") / "vehicle" / "tests" / "golden" / "compile"
-GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "DL2Loss.json.golden"))
+GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "spec.vcl"))
 
 
 @pytest.mark.parametrize(
