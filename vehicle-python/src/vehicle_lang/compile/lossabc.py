@@ -1,5 +1,6 @@
 import operator
 from functools import partial
+from numbers import Integral, Rational
 from typing import Sequence, Type, Union
 
 from typing_extensions import TypeAlias, TypeVar, override
@@ -63,8 +64,8 @@ class ABCLossBuiltins(
         return lambda x: lambda y: self.Or()(self.Not()(x))(y)
 
     @override
-    def Index(self, value: int) -> int:
-        return value
+    def Index(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def IndexType(self) -> Type[int]:
@@ -75,8 +76,8 @@ class ABCLossBuiltins(
         return partial(range, 0)
 
     @override
-    def Int(self, value: int) -> int:
-        return value
+    def Int(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def IntType(self) -> Type[int]:
@@ -111,8 +112,8 @@ class ABCLossBuiltins(
         return curry(operator.mul)
 
     @override
-    def Nat(self, value: int) -> int:
-        return value
+    def Nat(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def NatType(self) -> Type[int]:
@@ -135,8 +136,8 @@ class ABCLossBuiltins(
         return curry(operator.pow)
 
     @override
-    def Rat(self, numerator: int, denominator: int) -> float:
-        return numerator / denominator
+    def Rat(self, value: Rational) -> float:
+        return value.__float__()
 
     @override
     def RatType(self) -> Type[float]:

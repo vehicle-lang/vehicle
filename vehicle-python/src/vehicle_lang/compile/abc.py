@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
+from numbers import Integral, Rational
 from typing import Any, Callable, Dict, Generic, Iterator, Sequence, Tuple, Type, cast
 
 from typing_extensions import TypeAlias, TypeVar, override
@@ -164,7 +165,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Index(self, value: int) -> _Index:
+    def Index(self, value: Integral) -> _Index:
         ...
 
     @abstractmethod
@@ -176,7 +177,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Int(self, value: int) -> _Int:
+    def Int(self, value: Integral) -> _Int:
         ...
 
     @abstractmethod
@@ -235,7 +236,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Nat(self, value: int) -> _Nat:
+    def Nat(self, value: Integral) -> _Nat:
         ...
 
     @abstractmethod
@@ -269,7 +270,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Rat(self, numerator: int, denomenator: int) -> _Rat:
+    def Rat(self, value: Rational) -> _Rat:
         ...
 
     @abstractmethod

@@ -1,7 +1,9 @@
 import ast as py
 import operator
 from dataclasses import asdict, dataclass, field
+from fractions import Fraction
 from functools import partial, reduce
+from numbers import Integral, Rational
 from pathlib import Path
 from typing import Any, Dict, List, NoReturn, Optional, Sequence, Type, Union
 
@@ -65,7 +67,7 @@ class PythonBuiltins(
 
     @override
     def Bool(self, value: bool) -> bool:
-        return value
+        return value.__bool__()
 
     @override
     def BoolType(self) -> Type[bool]:
@@ -120,8 +122,8 @@ class PythonBuiltins(
         return lambda x: lambda y: (not x) or y
 
     @override
-    def Index(self, value: int) -> int:
-        return value
+    def Index(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def IndexType(self) -> Type[int]:
@@ -132,8 +134,8 @@ class PythonBuiltins(
         return partial(range, 0)
 
     @override
-    def Int(self, value: int) -> int:
-        return value
+    def Int(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def IntType(self) -> Type[int]:
@@ -192,8 +194,8 @@ class PythonBuiltins(
         return curry(operator.mul)
 
     @override
-    def Nat(self, value: int) -> int:
-        return value
+    def Nat(self, value: Integral) -> int:
+        return value.__int__()
 
     @override
     def NatType(self) -> Type[int]:
@@ -224,8 +226,8 @@ class PythonBuiltins(
         return curry(operator.pow)
 
     @override
-    def Rat(self, numerator: int, denominator: int) -> float:
-        return numerator / denominator
+    def Rat(self, value: Rational) -> float:
+        return value.__float__()
 
     @override
     def RatType(self) -> Type[float]:
@@ -274,6 +276,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
+                py.ImportFrom(
+                    module="fractions",
+                    names=[
+                        py.alias(name="Fraction", asname=None, **asdict(vcl.MISSING))
+                    ],
+                    level=0,
+                    **asdict(vcl.MISSING),
+                ),
                 *self.module_header,
                 *map(self.translate_declaration, program.declarations),
                 *self.module_footer,
@@ -461,19 +471,28 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         elif isinstance(expression.builtin, vcl.Rat):
             keywords.append(
                 py.keyword(
-                    arg="numerator",
-                    value=py.Num(
-                        n=expression.builtin.numerator,
-                        **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
-                )
-            )
-            keywords.append(
-                py.keyword(
-                    arg="denominator",
-                    value=py.Num(
-                        n=expression.builtin.denominator,
+                    arg="value",
+                    value=py.Call(
+                        func=py_name("Fraction", expression.provenance),
+                        args=[],
+                        keywords=[
+                            py.keyword(
+                                arg="numerator",
+                                value=py.Num(
+                                    n=expression.builtin.numerator,
+                                    **asdict(expression.provenance),
+                                ),
+                                **asdict(expression.provenance),
+                            ),
+                            py.keyword(
+                                arg="denominator",
+                                value=py.Num(
+                                    n=expression.builtin.denominator,
+                                    **asdict(expression.provenance),
+                                ),
+                                **asdict(expression.provenance),
+                            ),
+                        ],
                         **asdict(expression.provenance),
                     ),
                     **asdict(expression.provenance),
@@ -486,6 +505,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     value=py.Str(
                         s=expression.builtin.name, **asdict(expression.provenance)
                     ),
+                    **asdict(expression.provenance),
                 )
             )
             keywords.append(
