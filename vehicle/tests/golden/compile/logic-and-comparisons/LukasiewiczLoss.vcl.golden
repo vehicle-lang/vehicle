@@ -1,8 +1,8 @@
 bigAnd : (\ A -> Vector A 1) Rat -> Rat;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - x * y) 0.0
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - max 0.0 (x + y - 1.0)) 0.0
 
 bigOr : (\ A -> Vector A 1) Rat -> Rat;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - (x + y - x * y)) 1.0
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - min (x + y) 1.0) 1.0
 
 mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
 mapVector f = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
@@ -27,12 +27,12 @@ mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test1 f = bigOr (mapList (\ a -> 1.0 - (max 0.0 (a - 0.0) + equalsVector (f [a + 2.0]) [0.0] - max 0.0 (a - 0.0) * equalsVector (f [a + 2.0]) [0.0])) sample[a][f])
+test1 f = bigOr (mapList (\ a -> 1.0 - min (max 0.0 (a - 0.0) + equalsVector (f [a + 2.0]) [0.0]) 1.0) sample[a][f])
 
 @property;
 test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test2 g = bigOr (mapList (\ a -> bigOr (mapList (\ b -> 1.0 - max 0.0 (1.0 - a) * (1.0 - (1.0 - max 0.0 (a - b)) * equalsVector (g [a + b, a + 2.0 * b]) [0.0])) sample[b][a, g])) sample[a][g])
+test2 g = bigOr (mapList (\ a -> bigOr (mapList (\ b -> 1.0 - max 0.0 (max 0.0 (1.0 - a) + (1.0 - max 0.0 (1.0 - max 0.0 (a - b) + equalsVector (g [a + b, a + 2.0 * b]) [0.0] - 1.0)) - 1.0)) sample[b][a, g])) sample[a][g])
 
 @property;
 test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test3 g = bigAnd (mapList (\ a -> bigAnd (mapList (\ b -> 1.0 - (1.0 - (1.0 - max 0.0 (a - 0.0) * (if b == 0.0 then 1.0 else 0.0) + notEqualsVector (g [a, b]) [0.0] - (1.0 - max 0.0 (a - 0.0) * (if b == 0.0 then 1.0 else 0.0)) * notEqualsVector (g [a, b]) [0.0]))) sample[b][a, g])) sample[a][g])
+test3 g = bigAnd (mapList (\ a -> bigAnd (mapList (\ b -> 1.0 - (1.0 - min (1.0 - max 0.0 (max 0.0 (a - 0.0) + (if b == 0.0 then 1.0 else 0.0) - 1.0) + notEqualsVector (g [a, b]) [0.0]) 1.0)) sample[b][a, g])) sample[a][g])

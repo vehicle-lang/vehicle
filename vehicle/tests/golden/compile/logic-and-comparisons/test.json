@@ -6,27 +6,27 @@
     },
     {
       "name": "DL2Loss",
-      "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.json",
+      "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["DL2Loss.json"]
+      "produces": ["DL2Loss.vcl"]
     },
     {
       "name": "GodelLoss",
-      "run": "vehicle compile -s spec.vcl -t GodelLoss -o GodelLoss.json",
+      "run": "vehicle compile -s spec.vcl -t GodelLoss -o GodelLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["GodelLoss.json"]
+      "produces": ["GodelLoss.vcl"]
     },
     {
       "name": "LukasiewiczLoss",
-      "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LukasiewiczLoss.json",
+      "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LukasiewiczLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LukasiewiczLoss.json"]
+      "produces": ["LukasiewiczLoss.vcl"]
     },
     {
       "name": "YagerLoss",
-      "run": "vehicle compile -s spec.vcl -t YagerLoss -o YagerLoss.json",
+      "run": "vehicle compile -s spec.vcl -t YagerLoss -o YagerLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["YagerLoss.json"]
+      "produces": ["YagerLoss.vcl"]
     },
     {
       "name": "ProductLoss",

@@ -59,7 +59,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
           outputFile = Just tempDir,
           moduleName = Nothing,
           proofCache = Nothing,
-          printPreJSONOutput = False,
+          outputAsJSON = False,
           ..
         }
 

@@ -1,0 +1,11 @@
+bigAnd : List Rat -> Rat;
+bigAnd = fold (\ x -> \ y -> x + y) 0.0
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+mapList : (Rat -> Rat) -> List Rat -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+@property;
+spec : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
+spec f = bigAnd (mapList (\ x -> max 0.0 (0.0 - f [x, 0.0] ! 0)) sample[x][f])

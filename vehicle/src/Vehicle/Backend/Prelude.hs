@@ -57,7 +57,7 @@ data Target
   = ITP ITP
   | VerifierQueries QueryFormatID
   | LossFunction DifferentiableLogicID
-  | JSON
+  | ExplicitVehicle
   deriving (Eq)
 
 findTarget :: String -> Maybe Target
@@ -65,7 +65,7 @@ findTarget s = do
   let itp = lookup s (fmap (\t -> (show t, ITP t)) (enumerate @ITP))
   let queries = lookup s (fmap (\t -> (show t, VerifierQueries t)) (enumerate @QueryFormatID))
   let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogicID))
-  let json = if s == show JSON then Just JSON else Nothing
+  let json = if s == show ExplicitVehicle then Just ExplicitVehicle else Nothing
   catMaybes [itp, queries, dl, json] !!? 0
 
 instance Show Target where
@@ -73,14 +73,14 @@ instance Show Target where
     ITP x -> show x
     VerifierQueries x -> show x
     LossFunction x -> show x
-    JSON -> "JSON"
+    ExplicitVehicle -> "Explicit"
 
 instance Pretty Target where
   pretty = \case
     ITP x -> pretty x
     VerifierQueries x -> pretty x
     LossFunction x -> pretty x
-    JSON -> pretty $ show JSON
+    ExplicitVehicle -> pretty $ show ExplicitVehicle
 
 -- | Generate the file header given the token used to start comments in the
 --  target language

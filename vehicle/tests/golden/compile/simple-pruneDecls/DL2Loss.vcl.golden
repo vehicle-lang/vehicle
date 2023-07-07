@@ -1,0 +1,16 @@
+bigAnd : List Rat -> Rat;
+bigAnd = fold (\ x -> \ y -> x + y) 0.0
+
+mapList : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+add1 : Rat -> Rat;
+add1 x = x + 1.0
+
+@property;
+p1 : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+p1 f = bigAnd (mapList (\ x -> max 0.0 (add1 0.0 - f x ! 0)) sample[x][f])
+
+@property;
+p2 : forallT (g : Vector Rat 2 -> Vector Rat 1) . Rat;
+p2 g = bigAnd (mapList (\ x -> max 0.0 (0.0 - g x ! 0)) sample[x][g])

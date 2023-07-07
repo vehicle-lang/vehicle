@@ -22,14 +22,14 @@
   },
   {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.json --print-json-prog",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["DL2Loss.json"]
+    "produces": ["DL2Loss.vcl"]
   },
   {
-    "name": "JSON",
-    "run": "vehicle compile -s spec.vcl -t JSON -o JSON.json --print-json-prog",
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["JSON.json"]
+    "produces": ["Explicit.vcl"]
   }
 ]

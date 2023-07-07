@@ -212,7 +212,7 @@ compileParser =
     <*> outputFileParser
     <*> modulePrefixOption
     <*> compileProofCacheParser
-    <*> printPreJSONOutputParser
+    <*> outputAsJSONParser
 
 compileParserInfo :: ParserInfo ModeOptions
 compileParserInfo = info (Compile <$> compileParser) compileDescription
@@ -299,7 +299,7 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
 allTargets :: [String]
-allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show JSON]
+allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show ExplicitVehicle]
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case
@@ -465,12 +465,12 @@ outputFileParser =
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
 
-printPreJSONOutputParser :: Parser Bool
-printPreJSONOutputParser =
+outputAsJSONParser :: Parser Bool
+outputAsJSONParser =
   switch $
-    long "print-json-prog"
+    long "json"
       <> short 'j'
-      <> help "Print the program to stdout prior to outputting it to JSON."
+      <> help "Output the program as JSON instead of text."
       <> internal
 
 propertyParser :: Parser [Text]

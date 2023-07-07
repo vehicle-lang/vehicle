@@ -32,5 +32,5 @@ export loggingSettings ExportOptions {..} = do
         outputFile = outputFile,
         moduleName = moduleName,
         proofCache = Just proofCacheLocation,
-        printPreJSONOutput = False
+        outputAsJSON = False
       }
