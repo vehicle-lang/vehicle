@@ -7,7 +7,6 @@ import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CInt (..))
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (Ptr)
-import System.IO (hPutStrLn, stderr)
 import Vehicle (mainWithArgsAndExitCode)
 
 _unsafe_vehicle_main :: CInt -> Ptr CString -> IO CInt
