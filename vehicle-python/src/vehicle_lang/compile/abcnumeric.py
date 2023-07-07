@@ -17,7 +17,6 @@ _Bool = TypeVar("_Bool")
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
 _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
 _SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
-_Any = TypeVar("_Any")
 
 Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
 
@@ -29,7 +28,6 @@ class ABCNumericBuiltins(
         _SupportsNat,
         _SupportsInt,
         _SupportsRat,
-        _Any,
     ],
     metaclass=ABCMeta,
 ):

@@ -38,10 +38,15 @@ _Bool = TypeVar("_Bool")
 _Nat = TypeVar("_Nat")
 _Int = TypeVar("_Int")
 _Rat = TypeVar("_Rat")
-_SupportsEq = TypeVar("_SupportsEq")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
+
+
+@dataclass(frozen=True)
+class UnsupportedBuiltin(Exception):
+    builtin: vcl.Builtin
+
 
 Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
 
@@ -53,7 +58,6 @@ class Builtins(
         _Nat,
         _Int,
         _Rat,
-        _SupportsEq,
     ],
     metaclass=ABCMeta,
 ):
@@ -93,20 +97,20 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Eq(self) -> Relation2[_SupportsEq, _Bool]:
+    def EqIndex(self) -> Relation2[int, _Bool]:
         ...
 
-    def EqIndex(self) -> Relation2[int, _Bool]:
-        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
-
+    @abstractmethod
     def EqInt(self) -> Relation2[_Int, _Bool]:
-        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+        ...
 
+    @abstractmethod
     def EqNat(self) -> Relation2[_Nat, _Bool]:
-        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+        ...
 
+    @abstractmethod
     def EqRat(self) -> Relation2[_Rat, _Bool]:
-        return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
+        ...
 
     def Exists(
         self, name: str, context: Dict[str, Any]
@@ -231,8 +235,17 @@ class Builtins(
     def Nat(self, value: SupportsInt) -> _Nat:
         ...
 
-    def Ne(self) -> Relation2[_SupportsEq, _Bool]:
-        return lambda x: lambda y: self.Not()(self.Eq()(x)(y))
+    def NeIndex(self) -> Relation2[int, _Bool]:
+        return lambda x: lambda y: self.Not()(self.EqIndex()(x)(y))
+
+    def NeInt(self) -> Relation2[_Int, _Bool]:
+        return lambda x: lambda y: self.Not()(self.EqInt()(x)(y))
+
+    def NeNat(self) -> Relation2[_Nat, _Bool]:
+        return lambda x: lambda y: self.Not()(self.EqNat()(x)(y))
+
+    def NeRat(self) -> Relation2[_Rat, _Bool]:
+        return lambda x: lambda y: self.Not()(self.EqRat()(x)(y))
 
     @abstractmethod
     def NegInt(self) -> Operator1[_Int]:
@@ -282,7 +295,7 @@ class Builtins(
         return tuple(values)
 
 
-AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any, Any]
+AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST

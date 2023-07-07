@@ -12,17 +12,17 @@ from .abcnumeric import ABCNumericBuiltins
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
 _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
 _SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
+
 _T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
-class ABCBoolBuiltins(
+class ABCBoolAsBoolBuiltins(
     ABCNumericBuiltins[
         bool,
         _SupportsNat,
         _SupportsInt,
         _SupportsRat,
-        Any,
     ],
     metaclass=ABCMeta,
 ):
@@ -38,7 +38,22 @@ class ABCBoolBuiltins(
 
     @final
     @override
-    def Eq(self) -> Relation2[Any, bool]:
+    def EqIndex(self) -> Relation2[int, bool]:
+        return curry(operator.eq)
+
+    @final
+    @override
+    def EqInt(self) -> Relation2[_SupportsInt, bool]:
+        return curry(operator.eq)
+
+    @final
+    @override
+    def EqNat(self) -> Relation2[_SupportsNat, bool]:
+        return curry(operator.eq)
+
+    @final
+    @override
+    def EqRat(self) -> Relation2[_SupportsRat, bool]:
         return curry(operator.eq)
 
     @final
@@ -130,11 +145,6 @@ class ABCBoolBuiltins(
     @override
     def LtRat(self) -> Relation2[_SupportsRat, bool]:
         return curry(operator.lt)
-
-    @final
-    @override
-    def Ne(self) -> Relation2[Any, bool]:
-        return curry(operator.ne)
 
     @final
     @override

@@ -14,18 +14,25 @@ _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
 _SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
 
 
-@dataclass(frozen=True)
-class UnsupportedBuiltin(Exception):
-    builtin: Builtin
-
-
 @dataclass(frozen=True, init=False)
-class ABCLossBuiltins(
-    ABCNumericBuiltins[
-        _SupportsRat, _SupportsNat, _SupportsInt, _SupportsRat, SupportsFloat
-    ],
+class ABCBoolAsFloatBuiltins(
+    ABCNumericBuiltins[_SupportsRat, _SupportsNat, _SupportsInt, _SupportsRat],
     metaclass=ABCMeta,
 ):
+    @override
+    def EqIndex(self) -> Relation2[int, _SupportsRat]:
+        return lambda x: lambda y: self.EqRat()(self.RatFromInt(self.Int(x)))(
+            self.RatFromInt(self.Int(y))
+        )
+
+    @override
+    def EqInt(self) -> Relation2[_SupportsInt, _SupportsRat]:
+        return lambda x: lambda y: self.EqRat()(self.RatFromInt(x))(self.RatFromInt(y))
+
+    @override
+    def EqNat(self) -> Relation2[_SupportsNat, _SupportsRat]:
+        return lambda x: lambda y: self.EqRat()(self.RatFromNat(x))(self.RatFromNat(y))
+
     @override
     def LtIndex(self) -> Relation2[int, _SupportsRat]:
         return lambda x: lambda y: self.LtRat()(self.Rat(x))(self.Rat(x))

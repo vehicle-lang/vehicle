@@ -6,7 +6,8 @@ from typing_extensions import TypeVar, final, override
 from ..ast import If
 from . import _numeric
 from ._functools import Function3, Operator1, Operator2, Relation2
-from .abcloss import ABCLossBuiltins, UnsupportedBuiltin
+from .abc import UnsupportedBuiltin
+from .abcboolasfloat import ABCBoolAsFloatBuiltins
 
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
 _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
@@ -15,7 +16,9 @@ _T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
-class ABCLossGodelBuiltins(ABCLossBuiltins[_SupportsRat, _SupportsNat, _SupportsInt]):
+class ABCLossGodelBuiltins(
+    ABCBoolAsFloatBuiltins[_SupportsRat, _SupportsNat, _SupportsInt]
+):
     @override
     def And(self) -> Operator2[_SupportsRat]:
         return self.MinRat()
@@ -25,11 +28,8 @@ class ABCLossGodelBuiltins(ABCLossBuiltins[_SupportsRat, _SupportsNat, _Supports
         return self.Rat(1) if value else self.Rat(0)
 
     @override
-    def Eq(self) -> Relation2[SupportsFloat, _SupportsRat]:
-        return (
-            lambda x: lambda y: self.Rat(1)
-            - (self.Rat(x) - self.Rat(y) / self.Rat(x) + self.Rat(y)).__abs__()
-        )
+    def EqRat(self) -> Relation2[_SupportsRat, _SupportsRat]:
+        return lambda x: lambda y: self.Rat(1) - (x - y / x + y).__abs__()
 
     @override
     def If(self) -> Function3[_SupportsRat, _T, _T, _T]:

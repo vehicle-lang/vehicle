@@ -102,7 +102,22 @@ class DivRat(Builtin):
 
 
 @dataclass(frozen=True)
-class Eq(Builtin):
+class EqIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class EqInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class EqNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class EqRat(Builtin):
     pass
 
 
@@ -282,7 +297,22 @@ class NatType(Builtin):
 
 
 @dataclass(frozen=True)
-class Ne(Builtin):
+class NeIndex(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class NeInt(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class NeNat(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
+class NeRat(Builtin):
     pass
 
 

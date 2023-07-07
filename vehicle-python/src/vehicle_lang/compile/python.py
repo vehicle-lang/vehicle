@@ -25,7 +25,7 @@ from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
 from .abc import ABCTranslation, AnyBuiltins, Sampler
-from .abcbool import ABCBoolBuiltins
+from .abcboolasbool import ABCBoolAsBoolBuiltins
 
 _T = TypeVar("_T")
 
@@ -36,7 +36,7 @@ _T = TypeVar("_T")
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(ABCBoolBuiltins[int, int, float]):
+class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
     @final
     @override
     def Int(self, value: SupportsInt) -> int:
