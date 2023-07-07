@@ -1,7 +1,13 @@
 bigOr : List Rat -> Rat;
 bigOr = fold (\ x -> \ y -> x * y) 1.0
 
+vectorToVector : Vector Rat 1 -> Vector Rat 1;
+vectorToVector xs = xs
+
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
 
 mapList : (Rat -> Rat) -> List Rat -> List Rat;
 mapList f = fold (\ x -> \ xs -> f x :: xs) nil

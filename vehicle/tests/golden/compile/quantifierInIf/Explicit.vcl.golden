@@ -1,0 +1,3 @@
+@property;
+p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+p f = if (forall x . f x ! 0 > 0.0) then True else False

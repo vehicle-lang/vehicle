@@ -1,0 +1,14 @@
+unused : Bool;
+unused = forall (x : Int) . True
+
+@property;
+expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+expandedExpr f = forall x . x ! 0 >= f x ! 0
+
+@property;
+sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+sequential f = forall x . forall y . f x ! 0 >= f y ! 0
+
+@property;
+parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+parallel f = (forall x . f x ! 0 >= 0.0) and (exists x . f x ! 0 >= 5.0)

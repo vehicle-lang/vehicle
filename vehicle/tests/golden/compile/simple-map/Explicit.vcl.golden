@@ -1,0 +1,17 @@
+vectorToVector : Vector Nat 0 -> Vector Nat 0;
+vectorToVector xs = xs
+
+mapVector : (Nat -> Nat) -> Vector Nat 1 -> Vector Nat 1;
+mapVector f = dfold {Nat} {1} {Vector Nat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+mapList : (Nat -> Nat) -> List Nat -> List Nat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+mapListId : List Nat;
+mapListId = mapList (\ x -> x) (1 :: nil)
+
+mapVec : Vector Nat 1;
+mapVec = mapVector (\ x -> x) [1]

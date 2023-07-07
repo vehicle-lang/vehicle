@@ -1,6 +1,9 @@
 bigAnd : (\ A -> Vector A 28) Bool -> Bool;
 bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
 
+vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector xs = xs
+
 mapVector : (Index 28 -> Rat) -> Vector (Index 28) 28 -> Vector Rat 28;
 mapVector f = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
@@ -22,6 +25,9 @@ forallIndex : (Index 28 -> Bool) -> Bool;
 forallIndex f = bigAnd (foreachVector (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 2 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
 
 type Image = Tensor Rat (28 :: 28 :: nil)
 

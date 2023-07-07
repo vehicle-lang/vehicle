@@ -54,8 +54,7 @@ functionaliseResources prog =
     -- The scoping and descoping here is a massive hack.
     let namedProg = descopeNamed prog
     result <- runReaderT (functionaliseProg namedProg) (FuncState LinkedHashMap.empty mempty)
-    _ <- return $ runCompileMonadSilently "scoping" $ scopeCheck mempty result
-    scopeCheck mempty result
+    return $ runCompileMonadSilently "scoping" $ scopeCheck mempty result
 
 --------------------------------------------------------------------------------
 -- Conversion Expr to JExpr

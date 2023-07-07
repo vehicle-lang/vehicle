@@ -130,9 +130,9 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  literalCoercionFreeProg <- removeLiteralCoercions prog
-  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) literalCoercionFreeProg
-  let namedProg = descopeNamed monomorphiseProg
+  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) prog
+  literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
+  let namedProg = descopeNamed literalCoercionFreeProg
   result <-
     if outputAsJSON
       then do

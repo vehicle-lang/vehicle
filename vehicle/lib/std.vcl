@@ -8,10 +8,10 @@ bigAnd = fold (\x y -> x and y) True
 bigOr : forallT {f : Type -> Type} . {{HasFold f}} -> f Bool -> Bool
 bigOr = fold (\x y -> x or y) False
 
-forallIn : forallT {f : Type -> Type} . {{HasFold f}} -> {{HasMap f}} -> (A -> Bool) -> f A -> Bool
+forallIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
 forallIn f xs = bigAnd (map f xs)
 
-existsIn : forallT {f : Type -> Type} . {{HasFold f}} -> {{HasMap f}} -> (A -> Bool) -> f A -> Bool
+existsIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
 existsIn f xs = bigOr (map f xs)
 
 --------------------------------------------------------------------------------

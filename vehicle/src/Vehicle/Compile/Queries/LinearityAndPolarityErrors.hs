@@ -105,35 +105,56 @@ resolveInstanceArguments prog =
 
 removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 removeLiteralCoercions =
-  traverse
-    ( \e -> do
-        e' <- traverseBuiltinsM updateBuiltin e
-        traverseFreeVarsM updateFreeVar e'
+  traverseDecls
+    ( \d ->
+        traverse
+          ( \e -> do
+              e' <- traverseBuiltinsM (updateBuiltin d) e
+              traverseFreeVarsM (updateFreeVar d) e'
+          )
+          d
     )
   where
-    updateBuiltin p1 p2 b args = case b of
+    updateBuiltin decl p1 p2 b args = case b of
       (CFunction (FromNat dom)) -> case (dom, args) of
         (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
         (FromNatToNat, [e, _]) -> return $ argExpr e
         (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
         (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
-        _ -> partialApplication (pretty b) args
+        -- Hack until https://github.com/vehicle-lang/vehicle/issues/621 is fixed.
+        _ -> return $ normAppList p1 (Builtin p2 b) args -- partialApplication decl (pretty b) args
       (CFunction (FromRat dom)) -> case (dom, args) of
         (FromRatToRat, [e]) -> return $ argExpr e
-        _ -> partialApplication (pretty b) args
+        _ -> partialApplication decl (pretty b) args
       _ -> return $ normAppList p1 (Builtin p2 b) args
 
-    updateFreeVar p1 p2 v args = case findStdLibFunction v of
+    updateFreeVar decl p1 p2 v args = case findStdLibFunction v of
       Just StdVectorToVector -> case reverse args of
         vec : _ -> return $ argExpr vec
-        _ -> partialApplication (pretty v) args
+        _ -> partialApplication decl (pretty v) args
       Just StdVectorToList -> case reverse args of
         ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
-        _ -> partialApplication (pretty v) args
+        _ -> partialApplication decl (pretty v) args
       _ -> return $ normAppList p1 (FreeVar p2 v) args
 
-    partialApplication v args =
-      compilerDeveloperError $ "Found partially applied" <+> squotes v <+> "@" <+> prettyVerbose args
+    partialApplication decl v args =
+      compilerDeveloperError $
+        "Found partially applied"
+          <+> squotes v
+          <+> "@"
+          <+> prettyVerbose args
+          <+> "in"
+          <> line
+          <> indent
+            2
+            ( prettyFriendly decl
+                <> line
+                <> line
+                <> prettyVerbose decl
+                <> line
+                <> line
+                <> pretty (show $ bodyOf decl)
+            )
 
 removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =

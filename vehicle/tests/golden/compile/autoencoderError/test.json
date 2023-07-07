@@ -15,6 +15,12 @@
     }
   },
   {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
+  },
+  {
     "name": "Agda",
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network encode:NO_FILE --network decode:NO_FILE",
     "needs": ["spec.vcl"],

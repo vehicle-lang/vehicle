@@ -154,19 +154,24 @@ performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   let newIdent
         | createNewName = Identifier (moduleOf ident) $ nameOf ident <> getMonomorphisedSuffix args
         | otherwise = ident
-  let (newType, newBody) = substituteArgsThrough (typ, body, args)
+  (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
   let newDecl = DefFunction p newIdent anns newType newBody
-  logDebug MaxDetail $ line <> "Partial result:" <> line <> indent 2 (prettyFriendly newDecl)
+  logDebug MaxDetail $ prettyFriendly newDecl
   return newDecl
 
-substituteArgsThrough :: (Expr Ix builtin, Expr Ix builtin, [Arg Ix builtin]) -> (Expr Ix builtin, Expr Ix builtin)
+substituteArgsThrough ::
+  (MonadCollect builtin m) =>
+  (Expr Ix builtin, Expr Ix builtin, [Arg Ix builtin]) ->
+  m (Expr Ix builtin, Expr Ix builtin)
 substituteArgsThrough = \case
-  (t, e, []) -> (t, e)
+  (t, e, []) -> return (t, e)
   (Pi _ _ t, Lam _ _ e, arg : args) -> do
     let expr = argExpr arg
-    substituteArgsThrough (expr `substDBInto` t, expr `substDBInto` e, args)
-  _ -> developerError "Unexpected type/body of function undergoing monomorphisation"
+    let t' = expr `substDBInto` t
+    let e' = expr `substDBInto` e
+    substituteArgsThrough (t', e', args)
+  _ -> compilerDeveloperError "Unexpected type/body of function undergoing monomorphisation"
 
 collectReferences :: (MonadCollect builtin m) => Expr Ix builtin -> m ()
 collectReferences expr = do
