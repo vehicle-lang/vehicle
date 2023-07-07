@@ -212,6 +212,7 @@ compileParser =
     <*> outputFileParser
     <*> modulePrefixOption
     <*> compileProofCacheParser
+    <*> printPreJSONOutputParser
 
 compileParserInfo :: ParserInfo ModeOptions
 compileParserInfo = info (Compile <$> compileParser) compileDescription
@@ -463,6 +464,14 @@ outputFileParser =
         <> short 'o'
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
+
+printPreJSONOutputParser :: Parser Bool
+printPreJSONOutputParser =
+  switch $
+    long "print-json-prog"
+      <> short 'j'
+      <> help "Print the program to stdout prior to outputting it to JSON."
+      <> internal
 
 propertyParser :: Parser [Text]
 propertyParser =

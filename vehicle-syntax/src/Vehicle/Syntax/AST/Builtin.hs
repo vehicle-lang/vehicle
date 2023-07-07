@@ -19,6 +19,7 @@ import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
+import Vehicle.Syntax.AST.Name (Name)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -266,6 +267,10 @@ data BuiltinFunction
   | Sub SubDomain
   | Mul MulDomain
   | Div DivDomain
+  | PowRat
+  | MinRat
+  | MaxRat
+  | Sample Name [Name]
   | -- Comparison expressions
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
@@ -296,6 +301,9 @@ instance Pretty BuiltinFunction where
     Sub dom -> "sub" <> pretty dom
     Mul dom -> "mul" <> pretty dom
     Div dom -> "div" <> pretty dom
+    PowRat -> "**"
+    MinRat -> "min"
+    MaxRat -> "max"
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
@@ -304,6 +312,7 @@ instance Pretty BuiltinFunction where
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
+    Sample n ctx -> "sample[" <> pretty n <> "]" <> pretty ctx
 
 -- | Builtins in the Vehicle language
 data Builtin

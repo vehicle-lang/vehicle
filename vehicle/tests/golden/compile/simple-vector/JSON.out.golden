@@ -1,0 +1,6 @@
+empty : Vector Rat 0;
+empty = []
+
+@property;
+p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+p f = f [0.0] ! 0 >= 0.0

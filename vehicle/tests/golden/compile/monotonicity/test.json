@@ -21,8 +21,14 @@
     "produces": ["Agda.agda"]
   },
   {
+    "name": "JSON",
+    "run": "vehicle compile -s spec.vcl -t JSON -o JSON.json --print-json-prog",
+    "needs": ["spec.vcl"],
+    "produces": ["JSON.json"]
+  },
+  {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.json",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.json --print-json-prog",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.json"]
   }

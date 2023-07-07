@@ -40,7 +40,9 @@ pattern TensorIdent :: Identifier
 pattern TensorIdent = Identifier StdLib "Tensor"
 
 data StdLibFunction
-  = StdBigAnd
+  = StdMin
+  | StdMax
+  | StdBigAnd
   | StdBigOr
   | StdExistsIndex
   | StdForallIndex
@@ -62,6 +64,8 @@ data StdLibFunction
 
 instance Show StdLibFunction where
   show = \case
+    StdMin -> "min"
+    StdMax -> "max"
     StdBigAnd -> "bigAnd"
     StdBigOr -> "bigOr"
     StdMapList -> "mapList"

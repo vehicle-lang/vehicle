@@ -54,6 +54,9 @@ typeOfBuiltinFunction = \case
     MulRat -> tRat ~> tRat ~> tRat
   Div dom -> case dom of
     DivRat -> tRat ~> tRat ~> tRat
+  PowRat -> tRat ~> tInt ~> tRat
+  MinRat -> tRat ~> tRat ~> tRat
+  MaxRat -> tRat ~> tRat ~> tRat
   -- Comparisons
   Equals dom _op -> case dom of
     EqIndex {} ->
@@ -86,6 +89,7 @@ typeOfBuiltinFunction = \case
     FoldVector -> typeOfFoldVector
   At -> typeOfAt
   Indices -> typeOfIndices
+  b@Sample {} -> developerError $ "Should not be typing" <+> pretty b
 
 typeOfBuiltinType :: BuiltinType -> StandardDSLExpr
 typeOfBuiltinType = \case

@@ -329,6 +329,7 @@ elabExpr = \case
   B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
   B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
+  B.HasLeq tk -> builtinTypeClass (V.HasOrd V.Le) tk []
   B.HasAdd tk -> builtinTypeClass V.HasAdd tk []
   B.HasSub tk -> builtinTypeClass V.HasSub tk []
   B.HasMul tk -> builtinTypeClass V.HasMul tk []

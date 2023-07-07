@@ -1,0 +1,5 @@
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+@property;
+monotonic : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+monotonic f = forall x1 . forall x2 . x1 <= x2 => f [x1] ! 0 <= f [x2] ! 0

@@ -92,6 +92,9 @@ evalBuiltinFunction evalApp b args
             Sub dom -> return <$> evalSub dom args
             Mul dom -> return <$> evalMul dom args
             Div dom -> return <$> evalDiv dom args
+            PowRat -> return <$> evalPowRat args
+            MinRat -> return <$> evalMinRat args
+            MaxRat -> return <$> evalMaxRat args
             Equals dom op -> return <$> evalEquals dom op args
             Order dom op -> return <$> evalOrder dom op args
             If -> return <$> evalIf args
@@ -102,6 +105,7 @@ evalBuiltinFunction evalApp b args
             FromRat dom -> return <$> evalFromRat dom args
             Indices -> return <$> evalIndices args
             Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
+            Sample {} -> Just $ compilerDeveloperError $ "Should not be evaluating" <+> pretty b
 
       case result of
         Nothing -> return $ VBuiltinFunction b args
@@ -224,6 +228,21 @@ evalDiv = \case
 evalDivRat :: EvalSimpleBuiltin types
 evalDivRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x / y)
+  _ -> Nothing
+
+evalPowRat :: EvalSimpleBuiltin types
+evalPowRat = \case
+  [VRatLiteral x, VIntLiteral y] -> Just $ VRatLiteral (x ^^ y)
+  _ -> Nothing
+
+evalMinRat :: EvalSimpleBuiltin types
+evalMinRat = \case
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (min x y)
+  _ -> Nothing
+
+evalMaxRat :: EvalSimpleBuiltin types
+evalMaxRat = \case
+  [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (max x y)
   _ -> Nothing
 
 evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin types

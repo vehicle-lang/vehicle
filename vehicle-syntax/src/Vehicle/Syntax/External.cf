@@ -68,6 +68,7 @@ position token TokIndices    {"indices"};
 position token TokFromNat    {"fromNat"};
 position token TokFromInt    {"fromInt"};
 
+position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
 position token TokHasAdd    {"HasAdd"};
@@ -201,6 +202,7 @@ Index.   Expr14 ::= TokIndex;
 -- Type classes.
 HasEq.    Expr15 ::= TokHasEq;
 HasNotEq. Expr15 ::= TokHasNotEq;
+HasLeq.   Expr15 ::= TokHasLeq;
 HasAdd.   Expr15 ::= TokHasAdd;
 HasSub.   Expr15 ::= TokHasSub;
 HasMul.   Expr15 ::= TokHasMul;

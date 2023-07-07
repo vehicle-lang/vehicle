@@ -95,6 +95,9 @@ type StandardGluedDecl = GenericDecl StandardGluedExpr
 
 type ImportedModules = [StandardGluedProg]
 
+mergeImports :: ImportedModules -> StandardGluedProg -> StandardGluedProg
+mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
+
 -----------------------------------------------------------------------------
 -- Constraints
 

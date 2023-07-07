@@ -8,6 +8,7 @@ module Vehicle.Expr.DSL
     PolarityDSLExpr,
     LinearityDSLExpr,
     fromDSL,
+    toDSL,
     type0,
     (~>),
     (~~>),
@@ -55,6 +56,7 @@ module Vehicle.Expr.DSL
     hasQuantifier,
     natInDomainConstraint,
     natLit,
+    ratLit,
     unitLit,
     addNat,
     tHole,
@@ -114,6 +116,12 @@ newtype DSLExpr builtin = DSL
 
 fromDSL :: Provenance -> DSLExpr builtin -> Expr Ix builtin
 fromDSL p e = unDSL e p 0
+
+toDSL :: Expr Ix builtin -> DSLExpr builtin
+toDSL e = DSL $ \_p l ->
+  if l > 0
+    then liftDBIndices l e
+    else e
 
 boundVar :: Lv -> DSLExpr builtin
 boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
@@ -355,6 +363,9 @@ cons tElem x xs = builtinConstructor Cons @@@ [tElem] @@ [x, xs]
 
 natLit :: Int -> StandardDSLExpr
 natLit n = builtinConstructor (LNat n)
+
+ratLit :: Rational -> StandardDSLExpr
+ratLit r = builtinConstructor (LRat r)
 
 unitLit :: StandardDSLExpr
 unitLit = builtinConstructor LUnit

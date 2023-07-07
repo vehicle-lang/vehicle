@@ -4,6 +4,7 @@ module Vehicle.Compile
   )
 where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Backend.Agda
@@ -13,8 +14,10 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
+import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -37,7 +40,8 @@ data CompileOptions = CompileOptions
     parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
-    proofCache :: Maybe FilePath
+    proofCache :: Maybe FilePath,
+    printPreJSONOutput :: Bool
   }
   deriving (Eq, Show)
 
@@ -58,12 +62,12 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
     VerifierQueries queryFormatID ->
       compileToQueryFormat result resources queryFormatID outputFile
     LossFunction differentiableLogic ->
-      compileToLossFunction result differentiableLogic outputFile
+      compileToLossFunction result differentiableLogic outputFile printPreJSONOutput
     ITP Agda -> do
       let agdaOptions = AgdaOptions proofCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
     JSON -> do
-      compileToJSON result outputFile
+      compileDirectToJSON result outputFile printPreJSONOutput
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -84,20 +88,6 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = d
   let verificationPlan = VerificationPlan queryStructure integrityInfo
   outputCompilationResults queryFormatID outputFile (verificationPlan, queryText)
 
-mergeImports :: ImportedModules -> StandardGluedProg -> StandardGluedProg
-mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
-
-compileToLossFunction ::
-  (MonadCompile m, MonadIO m) =>
-  (ImportedModules, StandardGluedProg) ->
-  DifferentiableLogicID ->
-  Maybe FilePath ->
-  m ()
-compileToLossFunction (imports, typedProg) differentiableLogic outputFile = do
-  let mergedProg = mergeImports imports typedProg
-  result <- LossFunction.compile differentiableLogic mergedProg
-  writeResultToFile Nothing outputFile result
-
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
   AgdaOptions ->
@@ -108,17 +98,43 @@ compileToAgda agdaOptions (_, typedProg) outputFile = do
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
 
-compileToJSON ::
+compileToLossFunction ::
+  (MonadCompile m, MonadIO m) =>
+  (ImportedModules, StandardGluedProg) ->
+  DifferentiableLogicID ->
+  Maybe FilePath ->
+  Bool ->
+  m ()
+compileToLossFunction (imports, typedProg) differentiableLogic outputFile printPreJSONOutput = do
+  let mergedProg = unnormalised <$> mergeImports imports typedProg
+  functionalisedProg <- functionaliseResources mergedProg
+  resolvedProg <- resolveInstanceArguments functionalisedProg
+  lossProg <- LossFunction.compile differentiableLogic resolvedProg
+  compileToJSON lossProg outputFile printPreJSONOutput
+
+compileDirectToJSON ::
   (MonadCompile m, MonadIO m) =>
   (ImportedModules, StandardGluedProg) ->
   Maybe FilePath ->
+  Bool ->
   m ()
-compileToJSON (imports, typedProg) outputFile = do
-  let mergedProg = mergeImports imports typedProg
-  let unnormalisedProg = fmap unnormalised mergedProg
-  resolvedProg <- resolveInstanceArguments unnormalisedProg
-  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) resolvedProg
-  literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
-  let namedProg = descopeNamed literalCoercionFreeProg
+compileDirectToJSON (imports, typedProg) outputFile printPreJSONOutput = do
+  let mergedProg = unnormalised <$> mergeImports imports typedProg
+  functionalisedProg <- functionaliseResources mergedProg
+  resolvedProg <- resolveInstanceArguments functionalisedProg
+  compileToJSON resolvedProg outputFile printPreJSONOutput
+
+compileToJSON ::
+  (MonadCompile m, MonadIO m) =>
+  StandardProg ->
+  Maybe FilePath ->
+  Bool ->
+  m ()
+compileToJSON prog outputFile printPreJSONOutput = do
+  literalCoercionFreeProg <- removeLiteralCoercions prog
+  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) literalCoercionFreeProg
+  let namedProg = descopeNamed monomorphiseProg
+  when printPreJSONOutput $ do
+    liftIO $ putStrLn $ layoutAsString $ prettyFriendly namedProg
   result <- compileProgToJSON namedProg
   writeResultToFile Nothing outputFile result

@@ -1,6 +1,5 @@
 module Vehicle.Backend.LossFunction.Compile
-  ( LDecl,
-    compile,
+  ( compile,
   )
 where
 
@@ -9,22 +8,18 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
-import Vehicle.Backend.JSON (JBuiltin (..), ToJBuiltin (..), compileProgToJSON)
 import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
-import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (BoundCtx, HasName (..))
+import Vehicle.Compile.Prelude (BoundCtx, HasName (..), visibilityMatches)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
-import Vehicle.Expr.DSL (builtin, fromDSL)
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn (Ix, substDBInto)
 import Vehicle.Expr.Normalisable qualified as V
-import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (argExpr)
@@ -36,21 +31,13 @@ import Vehicle.Syntax.AST (argExpr)
 compile ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
-  V.StandardGluedProg ->
-  m (Doc a)
+  V.Prog Ix V.StandardBuiltin ->
+  m (V.Prog Ix V.StandardBuiltin)
 compile logic typedProg = do
   let logicImplementation = implementationOf logic
-  let unnormalisedProg = fmap unnormalised typedProg
-  resolvedProg <- resolveInstanceArguments unnormalisedProg
-  reformattedProg <- reformatLogicalOperators logicImplementation resolvedProg
-  literalCoercionFreeProg <- removeLiteralCoercions reformattedProg
-
-  lossProg <- runReaderT (compileProg logicImplementation literalCoercionFreeProg) mempty
-
-  logDebug MaxDetail $ prettyFriendly lossProg
-  -- monomorphisedProg <- monomorphise False lossProg
-  let descopedProg = descopeNamed lossProg
-  compileProgToJSON descopedProg
+  reformattedProg <- reformatLogicalOperators logicImplementation typedProg
+  lossProg <- runReaderT (compileProg logicImplementation reformattedProg) mempty
+  return lossProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -61,22 +48,16 @@ currentPass = "compilation to loss functions"
 --------------------------------------------------------------------------------
 -- Main compilation pass
 
-type LProg = V.Prog Ix JBuiltin
-
-type LDecl = V.Decl Ix JBuiltin
-
-type LExpr = V.Expr Ix JBuiltin
-
 type MonadLoss m =
   ( MonadCompile m,
-    MonadReader (BoundCtx (V.Binder Ix JBuiltin)) m
+    MonadReader (BoundCtx V.StandardBinder) m
   )
 
 compileProg ::
   (MonadLoss m) =>
   DifferentialLogicImplementation ->
-  V.Prog Ix V.StandardBuiltin ->
-  m LProg
+  V.StandardProg ->
+  m V.StandardProg
 compileProg logic (V.Main ds) =
   logCompilerPass MinDetail currentPass $
     V.Main <$> traverse (compileDecl logic) ds
@@ -84,24 +65,26 @@ compileProg logic (V.Main ds) =
 compileDecl ::
   (MonadLoss m) =>
   DifferentialLogicImplementation ->
-  V.Decl Ix V.StandardBuiltin ->
-  m LDecl
+  V.StandardDecl ->
+  m V.StandardDecl
 compileDecl logic decl = do
   let declProv = (V.identifierOf decl, V.provenanceOf decl)
-  logCompilerPass MinDetail ("compilation of" <+> quotePretty (V.identifierOf decl) <+> "to loss function") $
-    traverse (compileExpr logic declProv) decl
+  let sectionText = "compilation of" <+> quotePretty (V.identifierOf decl) <+> "to loss function"
+  logCompilerPass MinDetail sectionText $ do
+    result <- traverse (compileExpr logic declProv) decl
+    logDebug MaxDetail $ prettyFriendly result
+    return result
 
--- | Compile a property or single expression
 compileExpr ::
   forall m.
   (MonadLoss m) =>
   DifferentialLogicImplementation ->
   V.DeclProvenance ->
-  V.Expr Ix V.StandardBuiltin ->
-  m LExpr
+  V.StandardExpr ->
+  m V.StandardExpr
 compileExpr logic declProv = go
   where
-    go :: V.Expr Ix V.StandardBuiltin -> m LExpr
+    go :: V.StandardExpr -> m V.StandardExpr
     go = \case
       V.Hole {} -> resolutionError currentPass "Hole"
       V.Meta {} -> resolutionError currentPass "Meta"
@@ -109,13 +92,13 @@ compileExpr logic declProv = go
       V.Universe p l -> return $ V.Universe p l
       V.Builtin p b -> compileBuiltin logic declProv p p b []
       V.App p1 (V.Builtin p2 b) args -> do
-        args' <- goSpine (NonEmpty.toList args)
+        args' <- traverse goArg (NonEmpty.toList args)
         compileBuiltin logic declProv p1 p2 b args'
       V.BoundVar p v -> return $ V.BoundVar p v
       V.FreeVar p v -> return $ V.FreeVar p v
       V.App p fun args -> do
         fun' <- go fun
-        args' <- goSpine args
+        args' <- traverse goArg args
         return $ V.App p fun' args'
       V.Pi p binder body -> do
         binder' <- goBinder binder
@@ -131,69 +114,131 @@ compileExpr logic declProv = go
         body' <- underBinder binder' (go body)
         return $ V.Let p bound' binder' body'
 
-    goSpine :: (Traversable f) => f (V.Arg Ix V.StandardBuiltin) -> m (f (V.Arg Ix JBuiltin))
-    goSpine = traverse (traverse go)
+    goArg :: V.StandardArg -> m V.StandardArg
+    goArg arg
+      -- Need to filter instance arguments otherwise we visit quantifiers twice,
+      -- once for the type-class op and once for the instantiation.
+      | V.isInstance arg = return arg
+      | otherwise = traverse go arg
 
-    goBinder :: V.Binder Ix V.StandardBuiltin -> m (V.Binder Ix JBuiltin)
+    goBinder :: V.StandardBinder -> m V.StandardBinder
     goBinder = traverse go
 
-    underBinder :: V.Binder Ix JBuiltin -> m a -> m a
+    underBinder :: V.StandardBinder -> m a -> m a
     underBinder binder = local (binder :)
 
 compileBuiltin ::
   (MonadLoss m) =>
   DifferentialLogicImplementation ->
   V.DeclProvenance ->
-  V.BuiltinUpdate m Ix V.StandardBuiltin JBuiltin
-compileBuiltin DifferentialLogicImplementation {..} declProv p1 p2 op args = do
+  V.BuiltinUpdate m Ix V.StandardBuiltin V.StandardBuiltin
+compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args = do
+  let originalExpr = V.normAppList p1 (V.Builtin p2 op) args
   maybeLossOp <- case op of
     V.CConstructor x -> return $ case x of
-      V.LBool True -> Just compileTrue
-      V.LBool False -> Just compileFalse
+      V.LBool True -> Just $ Left compileTrue
+      V.LBool False -> Just $ Left compileFalse
       _ -> Nothing
     V.CFunction x -> case x of
       V.Not -> case compileNot of
         TryToEliminate ->
           compilerDeveloperError
             "Should have eliminated `not` already in compilation to loss functions"
-        UnaryNot notFn -> return $ Just notFn
+        UnaryNot notFn -> return $ Just $ Left notFn
       V.And -> case compileAnd of
-        NaryAnd andFn -> return $ Just andFn
-        BinaryAnd andFn -> return $ Just andFn
+        NaryAnd andFn -> return $ Just $ Left andFn
+        BinaryAnd andFn -> return $ Just $ Left andFn
       V.Or -> case compileOr of
-        NaryOr orFn -> return $ Just orFn
-        BinaryOr orFn -> return $ Just orFn
-      V.Implies -> return $ Just compileImplies
-      V.Quantifier q -> case reverse args of
-        V.ExplicitArg _ (V.Lam _ binder _) : _ -> do
-          ctx <- ask
-          let names = fmap (fromMaybe "<no-name>" . nameOf) ctx
-          return $ Just $ case q of
-            V.Forall -> compileForall (V.getBinderName binder) names
-            V.Exists -> compileExists (V.getBinderName binder) names
-        _ -> unexpectedExprError currentPass (pretty op <+> "@" <+> prettyVerbose args <+> "in" <+> pretty (fst declProv))
+        NaryOr orFn -> return $ Just $ Left orFn
+        BinaryOr orFn -> return $ Just $ Left orFn
+      V.Implies -> return $ Just $ Left compileImplies
+      V.Quantifier q -> compileQuantifier logic q args
       V.If -> throwError $ UnsupportedIfOperation declProv p2
       -- TODO really not safe to throw away the type information here, but
       -- in the short term it might work.
-      V.Equals _ V.Eq -> return $ Just compileEq
-      V.Equals _ V.Neq -> return $ Just compileNeq
-      V.Order _ V.Le -> return $ Just compileLe
-      V.Order _ V.Lt -> return $ Just compileLt
-      V.Order _ V.Ge -> return $ Just compileGe
-      V.Order _ V.Gt -> return $ Just compileGt
+      V.Equals V.EqRat V.Eq -> return $ Just $ Left compileEq
+      V.Equals _ V.Eq -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Equals V.EqRat V.Neq -> return $ Just $ Left compileNeq
+      V.Equals _ V.Neq -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Le -> return $ Just $ Left compileLe
+      V.Order _ V.Le -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Lt -> return $ Just $ Left compileLt
+      V.Order _ V.Lt -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Ge -> return $ Just $ Left compileGe
+      V.Order _ V.Ge -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Gt -> return $ Just $ Left compileGt
+      V.Order _ V.Gt -> return $ Just $ Right $ castToBool logic originalExpr
       _ -> return Nothing
     V.CType x -> case x of
       StandardBuiltinType y -> return $ case y of
-        V.Bool -> Just compileBool
+        V.Bool -> Just $ Left compileBool
         _ -> Nothing
-      StandardTypeClass {} -> return $ Just (builtin UnitType)
-      StandardTypeClassOp {} -> unexpectedExprError currentPass (pretty x)
+      StandardTypeClass {} -> return Nothing
+      StandardTypeClassOp tc -> case tc of
+        V.QuantifierTC q -> compileQuantifier logic q args
+        V.EqualsTC V.Eq -> return $ Just $ Left compileEq
+        V.EqualsTC V.Neq -> return $ Just $ Left compileNeq
+        V.OrderTC V.Le -> return $ Just $ Left compileLe
+        V.OrderTC V.Lt -> return $ Just $ Left compileLt
+        V.OrderTC V.Ge -> return $ Just $ Left compileGe
+        V.OrderTC V.Gt -> return $ Just $ Left compileGt
+        _ -> return Nothing
 
-  let newOp = case maybeLossOp of
-        Nothing -> V.Builtin p2 $ toJBuiltin op
-        Just lossOp -> fromDSL p2 lossOp
+  case maybeLossOp of
+    Nothing -> return originalExpr
+    Just (Left lossOp) -> substArgsThrough p1 op (fromDSL p2 lossOp) args
+    Just (Right lossExpr) -> return $ fromDSL p2 lossExpr
 
-  return $ V.normAppList p1 newOp args
+-- | We perform a tiny bit of subsitution to tidy up the expression afterwards.
+substArgsThrough ::
+  forall m.
+  (MonadLoss m) =>
+  V.Provenance ->
+  V.StandardBuiltin ->
+  V.Expr Ix V.StandardBuiltin ->
+  [V.Arg Ix V.StandardBuiltin] ->
+  m (V.Expr Ix V.StandardBuiltin)
+substArgsThrough p originalFun initialFun initialArgs = go initialFun initialArgs
+  where
+    go ::
+      V.Expr Ix V.StandardBuiltin ->
+      [V.Arg Ix V.StandardBuiltin] ->
+      m (V.Expr Ix V.StandardBuiltin)
+    go fun args = case (fun, args) of
+      (V.Lam _ binder body, a : as)
+        | visibilityMatches binder a -> go (argExpr a `substDBInto` body) as
+        | otherwise ->
+            compilerDeveloperError $
+              "Loss function subsitution not well-typed"
+                <> line
+                <> indent
+                  2
+                  ( "original op:" <+> pretty originalFun
+                      <> line
+                      <> "loss op:" <+> prettyVerbose initialFun
+                      <> line
+                      <> "argument:" <+> prettyVerbose initialArgs
+                  )
+      _ -> return $ V.normAppList p fun args
+
+castToBool :: DifferentialLogicImplementation -> V.Expr Ix V.StandardBuiltin -> StandardDSLExpr
+castToBool logic x = builtinFunction V.If @@ [toDSL x, compileTrue logic, compileFalse logic]
+
+compileQuantifier ::
+  (MonadLoss m) =>
+  DifferentialLogicImplementation ->
+  V.Quantifier ->
+  [V.StandardArg] ->
+  m (Maybe (Either StandardDSLExpr StandardDSLExpr))
+compileQuantifier logic q args = case reverse args of
+  V.ExplicitArg _ (V.Lam _ binder _) : _ -> do
+    ctx <- ask
+    let typ = V.typeOf binder
+    let names = fmap (fromMaybe "<no-name>" . nameOf) ctx
+    return $ Just $ Left $ case q of
+      V.Forall -> compileForall logic typ (V.getBinderName binder) names
+      V.Exists -> compileExists logic typ (V.getBinderName binder) names
+  _ -> unexpectedExprError currentPass (pretty q <+> "@" <+> prettyVerbose args)
 
 --------------------------------------------------------------------------------
 -- Reformating logical operators

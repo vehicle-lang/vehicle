@@ -45,7 +45,7 @@ mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
 -------------------------------------------------------------------------------
 -- Utilities for traversing auxiliary arguments.
 
--- | Function for updating an auxiliary argument (which may be missing)
+-- | Function for updating a builtin application
 type BuiltinUpdate m var builtin1 builtin2 =
   Provenance -> Provenance -> builtin1 -> [Arg var builtin2] -> m (Expr var builtin2)
 
@@ -84,3 +84,37 @@ mapBuiltins ::
   Expr var builtin1 ->
   Expr var builtin2
 mapBuiltins f e = runIdentity (traverseBuiltinsM (\p1 p2 b args -> return $ f p1 p2 b args) e)
+
+-- | Function for updating a free variable application
+type FreeVarUpdate m var builtin =
+  Provenance -> Provenance -> Identifier -> [Arg var builtin] -> m (Expr var builtin)
+
+-- | Traverses all the auxiliary type arguments in the provided element,
+-- applying the provided update function when it finds them (or a space
+-- where they should be).
+traverseFreeVarsM ::
+  (Monad m) =>
+  FreeVarUpdate m var builtin ->
+  Expr var builtin ->
+  m (Expr var builtin)
+traverseFreeVarsM f expr = case expr of
+  FreeVar p v -> f p p v []
+  App p1 (FreeVar p2 v) args -> do
+    args' <- traverse (traverseFreeVarsArg f) args
+    f p1 p2 v (NonEmpty.toList args')
+  Ann p e t -> Ann p <$> traverseFreeVarsM f e <*> traverseFreeVarsM f t
+  App p fun args -> App p <$> traverseFreeVarsM f fun <*> traverse (traverseFreeVarsArg f) args
+  Pi p binder res -> Pi p <$> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f res
+  Let p bound binder body -> Let p <$> traverseFreeVarsM f bound <*> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f body
+  Lam p binder body -> Lam p <$> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f body
+  Universe p u -> return $ Universe p u
+  Builtin p v -> return $ Builtin p v
+  BoundVar p v -> return $ BoundVar p v
+  Hole p n -> return $ Hole p n
+  Meta p m -> return $ Meta p m
+
+traverseFreeVarsArg :: (Monad m) => FreeVarUpdate m var builtin -> Arg var builtin -> m (Arg var builtin)
+traverseFreeVarsArg f = traverse (traverseFreeVarsM f)
+
+traverseFreeVarsBinder :: (Monad m) => FreeVarUpdate m var builtin -> Binder var builtin -> m (Binder var builtin)
+traverseFreeVarsBinder f = traverse (traverseFreeVarsM f)

@@ -12,9 +12,12 @@ import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
-import Vehicle.Compile.Error (MonadCompile, internalScopingError, resolutionError)
+import Vehicle.Compile.Descope (DescopeNamed (..))
+import Vehicle.Compile.Error (MonadCompile, internalScopingError, resolutionError, runCompileMonadSilently)
 import Vehicle.Compile.Prelude.Contexts (DeclCtx)
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
+import Vehicle.Compile.Scope (scopeCheck)
+import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Prelude (traverseListLocal)
 import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Prettyprinter
@@ -44,11 +47,15 @@ import Vehicle.Syntax.AST
 -- are no longer guaranteed to be of type `Bool`.
 functionaliseResources ::
   (MonadCompile m, PrintableBuiltin builtin) =>
-  Prog Name builtin ->
-  m (Prog Name builtin)
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
 functionaliseResources prog =
   logCompilerPass MidDetail currentPass $ do
-    runReaderT (functionaliseProg prog) (FuncState LinkedHashMap.empty mempty)
+    -- The scoping and descoping here is a massive hack.
+    let namedProg = descopeNamed prog
+    result <- runReaderT (functionaliseProg namedProg) (FuncState LinkedHashMap.empty mempty)
+    _ <- return $ runCompileMonadSilently "scoping" $ scopeCheck mempty result
+    scopeCheck mempty result
 
 --------------------------------------------------------------------------------
 -- Conversion Expr to JExpr
@@ -101,19 +108,17 @@ functionaliseDecl d = logCompilerPass MaxDetail ("functionalising" <+> pretty (n
       DatasetDef -> return (addResourceDeclaration i t', Nothing)
       ParameterDef _ -> return (addResourceDeclaration i t', Nothing)
       PostulateDef -> do
-        (binderNames, binders) <- unzip <$> createBinders p typeResourceUsage
-        let boundType = abstractOverBinders t' binders
-        return (addResourceUsage i binderNames, Just (DefAbstract p i PostulateDef boundType))
+        (absType, binderNames) <- createBinders True p typeResourceUsage t'
+        return (addResourceUsage i binderNames, Just (DefAbstract p i PostulateDef absType))
   DefFunction p i anns t e -> do
     (t', typeResourceUsage) <- runWriterT $ functionaliseExpr t
     (e', bodyResourceUsage) <- runWriterT $ functionaliseExpr e
     let resourceUsage = typeResourceUsage <> bodyResourceUsage
-    (binderNames, binders) <- unzip <$> createBinders p resourceUsage
-    let boundType = abstractOverBinders t' binders
-    let boundExpr = abstractOverBinders e' binders
-    let fun = DefFunction p i anns boundType boundExpr
+    (absType, binderNames) <- createBinders True p resourceUsage t'
+    (absExpr, _) <- createBinders False p resourceUsage e'
+    let fun = DefFunction p i anns absType absExpr
+    logDebug MaxDetail $ "Prepending resources" <+> pretty binderNames
     logDebug MaxDetail $ prettyFriendly fun
-    logDebug MaxDetail $ "Prepending decl" <+> quotePretty i <+> "with binders" <+> pretty binderNames
     return (addResourceUsage i binderNames, Just fun)
 
 functionaliseExpr :: (MonadJSONExpr m builtin) => Expr Name builtin -> m (Expr Name builtin)
@@ -150,14 +155,24 @@ functionaliseExpr = \case
 functionaliseBinder :: (MonadJSONExpr m builtin) => Binder Name builtin -> m (Binder Name builtin)
 functionaliseBinder = traverse functionaliseExpr
 
-createBinders :: (MonadJSON m builtin) => Provenance -> Set Name -> m [(Name, Binder Name builtin)]
-createBinders p idents = do
+createBinders ::
+  (MonadJSON m builtin) =>
+  Bool ->
+  Provenance ->
+  Set Name ->
+  Expr Name builtin ->
+  m (Expr Name builtin, [Name])
+createBinders isType p idents expr = do
   FuncState {..} <- ask
   let identsAndTypes = LinkedHashMap.filterWithKey (\i _ -> Set.member i idents) resourceDeclarations
   let identsAndTypesList = LinkedHashMap.toList identsAndTypes
-  let mkBindingForm ident = BinderDisplayForm (NameAndType (nameOf ident)) False
+  let mkBindingForm ident
+        | isType = BinderDisplayForm (NameAndType (nameOf ident)) True
+        | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
   let mkBinder (ident, typ) = (nameOf ident, Binder p (mkBindingForm ident) Explicit Relevant typ)
-  return $ fmap mkBinder identsAndTypesList
-
-abstractOverBinders :: Expr Name builtin -> [Binder Name builtin] -> Expr Name builtin
-abstractOverBinders = foldr (\binder expr -> Lam (provenanceOf binder) binder expr)
+  let (binderNames, binders) = unzip $ fmap mkBinder identsAndTypesList
+  let constructor
+        | isType = Pi p
+        | otherwise = Lam p
+  let absExpr = foldr constructor expr binders
+  return (absExpr, binderNames)

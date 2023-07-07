@@ -23,6 +23,7 @@ import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedProg)
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction)
 import Vehicle.Verify.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
@@ -103,19 +104,36 @@ resolveInstanceArguments prog =
       _ -> return $ normAppList p1 (Builtin p2 b) args
 
 removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
-removeLiteralCoercions = traverse (traverseBuiltinsM update)
+removeLiteralCoercions =
+  traverse
+    ( \e -> do
+        e' <- traverseBuiltinsM updateBuiltin e
+        traverseFreeVarsM updateFreeVar e'
+    )
   where
-    update p1 p2 b args = case b of
+    updateBuiltin p1 p2 b args = case b of
       (CFunction (FromNat dom)) -> case (dom, args) of
         (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
         (FromNatToNat, [e, _]) -> return $ argExpr e
         (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
         (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
-        _ -> compilerDeveloperError $ "Found partially applied `FromNat`:" <+> pretty b <+> pretty (show args)
+        _ -> partialApplication (pretty b) args
       (CFunction (FromRat dom)) -> case (dom, args) of
         (FromRatToRat, [e]) -> return $ argExpr e
-        _ -> compilerDeveloperError $ "Found partially applied `FromRat`:" <+> pretty b <+> prettyVerbose args
+        _ -> partialApplication (pretty b) args
       _ -> return $ normAppList p1 (Builtin p2 b) args
+
+    updateFreeVar p1 p2 v args = case findStdLibFunction v of
+      Just StdVectorToVector -> case reverse args of
+        vec : _ -> return $ argExpr vec
+        _ -> partialApplication (pretty v) args
+      Just StdVectorToList -> case reverse args of
+        ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+        _ -> partialApplication (pretty v) args
+      _ -> return $ normAppList p1 (FreeVar p2 v) args
+
+    partialApplication v args =
+      compilerDeveloperError $ "Found partially applied" <+> squotes v <+> "@" <+> prettyVerbose args
 
 removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =

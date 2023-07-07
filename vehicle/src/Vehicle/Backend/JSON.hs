@@ -18,7 +18,6 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
-import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, developerError, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Print (PrintableBuiltin (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -34,8 +33,7 @@ compileProgToJSON ::
   V.Prog Name builtin ->
   m (Doc a)
 compileProgToJSON prog = do
-  functionalisedProg <- functionaliseResources prog
-  jProg <- toJSON <$> toJProg functionalisedProg
+  jProg <- toJSON <$> toJProg prog
   return $ pretty $ unpack $ encodePretty' prettyJSONConfig jProg
 
 --------------------------------------------------------------------------------
@@ -96,9 +94,9 @@ data JBuiltin
   | MulInt
   | MulRat
   | DivRat
+  | PowRat
   | MinRat
   | MaxRat
-  | PowRat
   | Eq
   | Ne
   | LeIndex
@@ -165,9 +163,9 @@ instance PrintableBuiltin JBuiltin where
     MulInt -> V.Builtin p (V.BuiltinFunction $ V.Mul V.MulInt)
     MulRat -> V.Builtin p (V.BuiltinFunction $ V.Mul V.MulRat)
     DivRat -> V.Builtin p (V.BuiltinFunction $ V.Div V.DivRat)
-    MinRat -> V.FreeVar p $ V.Identifier V.StdLib "minRat"
-    MaxRat -> V.FreeVar p $ V.Identifier V.StdLib "maxRat"
-    PowRat -> V.FreeVar p $ V.Identifier V.StdLib "powRat"
+    PowRat -> V.Builtin p (V.BuiltinFunction V.PowRat)
+    MinRat -> V.Builtin p (V.BuiltinFunction V.MinRat)
+    MaxRat -> V.Builtin p (V.BuiltinFunction V.MaxRat)
     Eq -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Eq)
     Ne -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Neq)
     LeIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Le)
@@ -253,6 +251,9 @@ instance ToJBuiltin BuiltinFunction where
     V.Mul V.MulInt -> MulInt
     V.Mul V.MulRat -> MulRat
     V.Div V.DivRat -> DivRat
+    V.PowRat -> PowRat
+    V.MinRat -> MinRat
+    V.MaxRat -> MaxRat
     V.Equals _dom V.Eq -> Eq
     V.Equals _dom V.Neq -> Ne
     V.Order V.OrderIndex V.Le -> LeIndex
@@ -276,6 +277,7 @@ instance ToJBuiltin BuiltinFunction where
     V.Fold V.FoldList -> FoldList
     V.Fold V.FoldVector -> FoldVector
     V.Indices -> Indices
+    V.Sample n ctx -> Sample n ctx
 
 instance ToJBuiltin BuiltinType where
   toJBuiltin = \case
