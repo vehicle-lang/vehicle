@@ -48,7 +48,7 @@ weakLeft : Index 5;
 weakLeft = 1
 
 weakRight : forallT {_x0} . {{NatInDomainConstraint 2 _x0 }} -> {{HasNatLiterals _x0 }} -> _x0;
-weakRight {_x0} {{_ }} {{_ }} = _ 2
+weakRight {_x0} {{@0 _ }} {{_ }} = _ 2
 
 strongLeft : Index 5;
 strongLeft = 3

@@ -36,7 +36,7 @@ numberOfDogs = 6
 type Dog = Index numberOfDogs
 
 unknownDog : forallT {_x0} . {{NatInDomainConstraint 0 _x0 }} -> {{HasNatLiterals _x0 }} -> _x0;
-unknownDog {_x0} {{_ }} {{_ }} = _ 0
+unknownDog {_x0} {{@0 _ }} {{_ }} = _ 0
 
 greatDane : Index 6;
 greatDane = 1

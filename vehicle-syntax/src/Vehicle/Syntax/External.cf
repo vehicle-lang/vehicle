@@ -84,16 +84,21 @@ position token DeclAnnOptionValue ((letter | digit)+);
 
 separator Name "";
 
+-- * Modalities
+
+Irrelevant. Modality ::= "@0";
+
+separator Modality "";
 
 -- * Binders
 
-ExplicitBinder. BasicBinder ::= "("  Name TokElemOf Expr1 ")";
-ImplicitBinder. BasicBinder ::= "{"  Name TokElemOf Expr1 "}";
-InstanceBinder. BasicBinder ::= "{{" Name TokElemOf Expr1 "}}";
+ExplicitBinder. BasicBinder ::= "("  [Modality] Name TokElemOf Expr1 ")";
+ImplicitBinder. BasicBinder ::= "{"  [Modality] Name TokElemOf Expr1 "}";
+InstanceBinder. BasicBinder ::= "{{" [Modality] Name TokElemOf Expr1 "}}";
 
 ExplicitNameBinder. NameBinder ::= Name;
-ImplicitNameBinder. NameBinder ::= "{" Name "}";
-InstanceNameBinder. NameBinder ::= "{{" Name "}}";
+ImplicitNameBinder. NameBinder ::= "{" [Modality] Name "}";
+InstanceNameBinder. NameBinder ::= "{{" [Modality] Name "}}";
 BasicNameBinder.    NameBinder ::= BasicBinder;
 
 separator NameBinder "";

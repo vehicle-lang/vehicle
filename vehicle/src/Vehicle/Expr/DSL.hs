@@ -11,6 +11,7 @@ module Vehicle.Expr.DSL
     toDSL,
     type0,
     (~>),
+    (.~>),
     (~~>),
     (~~~>),
     (.~~~>),
@@ -26,6 +27,7 @@ module Vehicle.Expr.DSL
     forAll,
     forAllInstance,
     forAllNat,
+    forAllIrrelevantNat,
     forAllTypeTriples,
     implTypeTripleLam,
     builtin,
@@ -169,6 +171,12 @@ infixr 4 ~>
 (~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x ~> y = pi Nothing Explicit Relevant x (const y)
 
+-- | Irrelevant explicit function type
+infixr 4 .~>
+
+(.~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+x .~> y = pi Nothing Explicit Relevant x (const y)
+
 -- | Implicit function type
 infixr 4 ~~>
 
@@ -294,6 +302,9 @@ tHole name = DSL $ \p _ -> Hole p name
 
 forAllNat :: (StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
 forAllNat = forAll "n" tNat
+
+forAllIrrelevantNat :: Name -> (StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
+forAllIrrelevantNat name = pi (Just name) (Implicit False) Relevant tNat
 
 --------------------------------------------------------------------------------
 -- TypeClass

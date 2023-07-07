@@ -434,7 +434,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.5.1`.
+   This should print `0.6.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -560,14 +560,14 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    ```
 
 This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages.
-These wheels will have file names such as `vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64`:
+These wheels will have file names such as `vehicle_lang-0.6.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.6.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -716,7 +716,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.5.1`.
+   This should print `0.6.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -915,11 +915,11 @@ The procedure to create a new release is:
    If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.5.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.6.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.6.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.6.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.6.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.6.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:

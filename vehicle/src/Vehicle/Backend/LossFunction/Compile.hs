@@ -297,7 +297,6 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
     flattenAnds arg = case argExpr arg of
       V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
       _ -> [arg]
-
     flattenOrs :: V.Arg Ix V.StandardBuiltin -> NonEmpty (V.Arg Ix V.StandardBuiltin)
     flattenOrs arg = case argExpr arg of
       V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2

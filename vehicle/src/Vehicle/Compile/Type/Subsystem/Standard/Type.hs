@@ -60,23 +60,23 @@ typeOfBuiltinFunction = \case
   -- Comparisons
   Equals dom _op -> case dom of
     EqIndex {} ->
-      forAll "n1" tNat $ \n1 ->
-        forAll "n2" tNat $ \n2 ->
+      forAllIrrelevantNat "n1" $ \n1 ->
+        forAllIrrelevantNat "n2" $ \n2 ->
           typeOfComparisonOp (tIndex n1) (tIndex n2)
     EqNat {} -> typeOfComparisonOp tNat tNat
     EqInt {} -> typeOfComparisonOp tInt tInt
     EqRat {} -> typeOfComparisonOp tRat tRat
   Order dom _op -> case dom of
     OrderIndex {} ->
-      forAll "n1" tNat $ \n1 ->
-        forAll "n2" tNat $ \n2 ->
+      forAllIrrelevantNat "n1" $ \n1 ->
+        forAllIrrelevantNat "n2" $ \n2 ->
           tIndex n1 ~> tIndex n2 ~> tBool
     OrderNat {} -> tNat ~> tNat ~> tBool
     OrderInt {} -> tInt ~> tInt ~> tBool
     OrderRat {} -> tInt ~> tInt ~> tBool
   -- Conversion functions
   FromNat dom -> case dom of
-    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat (tIndex s)
+    FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
     FromNatToNat -> typeOfFromNat tNat
     FromNatToInt -> typeOfFromNat tInt
     FromNatToRat -> typeOfFromNat tRat
@@ -99,8 +99,8 @@ typeOfBuiltinType = \case
   Rat -> type0
   Bool -> type0
   List -> type0 ~> type0
-  Vector -> type0 ~> tNat ~> type0
-  Index -> tNat ~> type0
+  Vector -> type0 ~> tNat .~> type0
+  Index -> tNat .~> type0
 
 typeOfConstructor :: BuiltinConstructor -> StandardDSLExpr
 typeOfConstructor = \case
@@ -108,7 +108,7 @@ typeOfConstructor = \case
   Cons -> typeOfCons
   LUnit -> tUnit
   LBool _ -> tBool
-  LIndex x -> forAllNat $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
+  LIndex x -> forAllIrrelevantNat "n" $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
   LNat {} -> tNat
   LInt {} -> tInt
   LRat {} -> tRat
@@ -194,7 +194,7 @@ typeOfCons =
 typeOfAt :: StandardDSLExpr
 typeOfAt =
   forAll "A" type0 $ \tElem ->
-    forAll "n" tNat $ \tDim ->
+    forAllIrrelevantNat "n" $ \tDim ->
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
 typeOfMap :: StandardDSLExpr -> StandardDSLExpr
@@ -212,13 +212,13 @@ typeOfFold f =
 typeOfConsVector :: StandardDSLExpr
 typeOfConsVector =
   forAll "A" type0 $ \a ->
-    forAll "n" tNat $ \n ->
+    forAllIrrelevantNat "n" $ \n ->
       a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
 typeOfFoldVector :: StandardDSLExpr
 typeOfFoldVector =
   forAll "A" type0 $ \a ->
-    forAll "n" tNat $ \n ->
+    forAllIrrelevantNat "n" $ \n ->
       forAll "P" (tNat ~> type0) $ \p ->
         forAll "l" tNat (\l -> a ~> p @@ [l] ~> p @@ [addNat l (natLit 1)])
           ~> p

@@ -89,11 +89,12 @@ instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
 instance Delaborate (V.Binder V.Name V.Builtin) B.BasicBinder where
   delabM binder = do
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
+    let m' = delabModalities binder
     t' <- delabM (V.binderType binder)
     return $ case V.visibilityOf binder of
-      V.Explicit -> B.ExplicitBinder n' tokElemOf t'
-      V.Implicit {} -> B.ImplicitBinder n' tokElemOf t'
-      V.Instance {} -> B.InstanceBinder n' tokElemOf t'
+      V.Explicit -> B.ExplicitBinder m' n' tokElemOf t'
+      V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
+      V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
 
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
@@ -112,8 +113,13 @@ delabNameBinder b = case V.binderNamingForm b of
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
     V.Explicit -> B.ExplicitNameBinder (delabSymbol name)
-    V.Implicit {} -> B.ImplicitNameBinder (delabSymbol name)
-    V.Instance {} -> B.InstanceNameBinder (delabSymbol name)
+    V.Implicit {} -> B.ImplicitNameBinder (delabModalities b) (delabSymbol name)
+    V.Instance {} -> B.InstanceNameBinder (delabModalities b) (delabSymbol name)
+
+delabModalities :: V.Binder V.Name V.Builtin -> [B.Modality]
+delabModalities binder
+  | V.isRelevant binder = mempty
+  | otherwise = [B.Irrelevant]
 
 delabTypeBinder :: (MonadDelab m) => V.Binder V.Name V.Builtin -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
