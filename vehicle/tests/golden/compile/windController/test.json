@@ -23,8 +23,7 @@
     "name": "DL2Loss",
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
-    "produces": ["DL2Loss.vcl"],
-    "enabled": false
+    "produces": ["DL2Loss.vcl"]
   },
   {
     "name": "MarabouVerify",

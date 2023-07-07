@@ -59,11 +59,11 @@ ind x y = builtinFunction If @@ [builtinFunction (Equals EqRat Eq) @@ [x, y], ra
 
 -- | Maximum operator
 lmax :: PLExpr -> PLExpr -> PLExpr
-lmax x y = free StdMax @@ [x, y]
+lmax x y = builtinFunction MaxRat @@ [x, y]
 
 -- | Minimum operator
 lmin :: PLExpr -> PLExpr -> PLExpr
-lmin x y = free StdMin @@ [x, y]
+lmin x y = builtinFunction MinRat @@ [x, y]
 
 -- | Big operation (e.g. bigAnd, bigOr)
 bigOp :: StdLibFunction -> PLExpr -> PLExpr

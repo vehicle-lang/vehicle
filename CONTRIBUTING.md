@@ -292,11 +292,10 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "produces": ["Agda.agda"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network controller:controller.onnx",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"],
-    "enabled": false
+    "produces": ["DL2Loss.json"]
   },
   {
     "name": "MarabouVerify",

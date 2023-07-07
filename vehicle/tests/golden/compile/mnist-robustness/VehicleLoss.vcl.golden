@@ -1,0 +1,53 @@
+bigAnd : (\ A -> Vector A 28) Rat -> Rat;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
+
+vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector xs = xs
+
+mapVector : (Index 28 -> Rat) -> Vector (Index 28) 28 -> Vector Rat 28;
+mapVector f = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 28 -> Rat) -> Vector Rat 28;
+foreachVector f = mapVector f (indices 28)
+
+zipWith : (Rat -> Rat -> Rat) -> Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
+zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
+
+@noinline;
+subVector : Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
+subVector = zipWith (\ x -> \ y -> x - y)
+
+@noinline;
+subVector : Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28;
+subVector = zipWith (\ x -> \ y -> subVector x y)
+
+forallIndex : (Index 28 -> Rat) -> Rat;
+forallIndex f = bigAnd (foreachVector (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 2 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+mapList : (Vector (Vector Rat 28) 28 -> Rat) -> List (Vector (Vector Rat 28) 28) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+type Image = Tensor Rat (28 :: 28 :: nil)
+
+type Label = Index 10
+
+validImage : Image -> Rat;
+validImage x = forallIndex (\ i -> forallIndex (\ j -> max (0.0 - x ! i ! j) (x ! i ! j - 1.0)))
+
+advises : forallT (classifier : Image -> Vector Rat 10) . Image -> Label -> Rat;
+advises classifier x i = forallIndex (\ j -> max (- (if j != i then -100000.0 else 100000.0)) (classifier x ! j - classifier x ! i))
+
+boundedByEpsilon : forallT (epsilon : Rat) . Image -> Rat;
+boundedByEpsilon epsilon x = forallIndex (\ i -> forallIndex (\ j -> max (- epsilon - x ! i ! j) (x ! i ! j - epsilon)))
+
+robustAround : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . Image -> Label -> Rat;
+robustAround classifier epsilon image label = bigAnd (mapList (\ pertubation -> let perturbedImage = subVector image pertubation in max (- max (boundedByEpsilon epsilon pertubation) (validImage perturbedImage)) (advises classifier perturbedImage label)) sample[pertubation][label, image, epsilon, classifier])
+
+@property;
+robust : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (n : Nat) . forallT (trainingImages : Vector Image n) . forallT (trainingLabels : Vector Label n) . Vector Rat n;
+robust classifier epsilon n trainingImages trainingLabels = foreachVector (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))

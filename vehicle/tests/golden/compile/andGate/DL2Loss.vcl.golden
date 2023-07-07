@@ -1,0 +1,29 @@
+bigAnd : List Rat -> Rat;
+bigAnd = fold (\ x -> \ y -> x + y) 0.0
+
+vectorToVector : Vector Rat 2 -> Vector Rat 2;
+vectorToVector xs = xs
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+mapList : (Rat -> Rat) -> List Rat -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+truthy : Rat -> Rat;
+truthy x = max 0.0 (0.5 - x)
+
+falsey : Rat -> Rat;
+falsey x = max 0.0 (x - 0.5)
+
+validInput : Rat -> Rat;
+validInput x = max 0.0 (0.0 - x) + max 0.0 (x - 1.0)
+
+correctOutput : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat -> Rat -> Rat;
+correctOutput andGate x1 x2 = let y = andGate [x1, x2] ! 0 in max 0.0 ((truthy x1 + truthy x2) * truthy y) + (max 0.0 ((truthy x1 + falsey x2) * falsey y) + (max 0.0 ((falsey x1 + truthy x2) * falsey y) + max 0.0 ((falsey x1 + falsey x2) * falsey y)))
+
+@property;
+andGateCorrect : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
+andGateCorrect andGate = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 ((validInput x1 + validInput x2) * correctOutput andGate x1 x2)) sample[x2][x1, andGate])) sample[x1][andGate])
