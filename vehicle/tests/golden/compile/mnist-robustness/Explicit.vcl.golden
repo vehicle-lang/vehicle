@@ -43,7 +43,7 @@ boundedByEpsilon : forallT (epsilon : Rat) . Image -> Bool;
 boundedByEpsilon epsilon x = forallIndex (\ i -> forallIndex (\ j -> - epsilon <= x ! i ! j and x ! i ! j <= epsilon))
 
 robustAround : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . Image -> Label -> Bool;
-robustAround classifier epsilon image label = forall pertubation . let in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
+robustAround classifier epsilon image label = forall pertubation . let perturbedImage = subVector image pertubation in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
 
 @property;
 robust : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (n : Nat) . forallT (trainingImages : Vector Image n) . forallT (trainingLabels : Vector Label n) . Vector Bool n;

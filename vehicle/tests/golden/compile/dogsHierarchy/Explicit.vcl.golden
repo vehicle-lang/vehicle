@@ -67,10 +67,10 @@ validImage : Image -> Bool;
 validImage x = forallIndex (\ i -> forallIndex (\ j -> validPixel (x ! i ! j)))
 
 isFirstChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isFirstChoice score x dog1 = let in forallIndex (\ d -> d != dog1 => scores ! dog1 > scores ! d)
+isFirstChoice score x dog1 = let scores = score x in forallIndex (\ d -> d != dog1 => scores ! dog1 > scores ! d)
 
 isSecondChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isSecondChoice score x dog2 = let in existsIndex (\ dog1 -> isFirstChoice score x dog1 and forallIndex (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
+isSecondChoice score x dog2 = let scores = score x in existsIndex (\ dog1 -> isFirstChoice score x dog1 and forallIndex (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
 
 noConfusionWith : forallT (score : Image -> Vector Score numberOfDogs) . Image -> List Dog -> List Dog -> Bool;
 noConfusionWith score x dogs1 dogs2 = forallIn (\ dog1 -> forallIn (\ dog2 -> not (isFirstChoice score x dog1 and isSecondChoice score x dog2)) dogs2) dogs1

@@ -12,40 +12,40 @@ mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 e1 : Bool;
-e1 = let in let in x and y
+e1 = let x = True in let y = False in x and y
 
 @property;
 e2 : Bool;
-e2 = let in y >= 2
+e2 = let y = 1 in y >= 2
 
 e3 : Nat;
-e3 = let in y
+e3 = let y = 1 + 1 in y
 
 lamLet : Nat -> Nat;
-lamLet = \ (x : Nat) -> let in y
+lamLet = \ (x : Nat) -> let y = x in y
 
 letLam : Nat -> Nat;
-letLam = let in y
+letLam = let y = \ x -> x in y
 
 @property;
 forallLet : Bool;
-forallLet = forall (x : Nat) . let in y == 1
+forallLet = forall (x : Nat) . let y = x in y == 1
 
 @property;
 letForall : Bool;
-letForall = let in forall (x : Nat) . y == x
+letForall = let y = 1 in forall (x : Nat) . y == x
 
 @property;
 forallInLet : Bool;
-forallInLet = forallIn (\ x -> let in y == 1) (1 :: nil)
+forallInLet = forallIn (\ x -> let y = x in y == 1) (1 :: nil)
 
 @property;
 letForallIn : Bool;
-letForallIn = let in forallIn (\ x -> y == x) (1 :: nil)
+letForallIn = let y = 1 in forallIn (\ x -> y == x) (1 :: nil)
 
 falsey : Rat -> Bool;
 falsey x = x <= 0.5
 
 @property;
 correctOutput : Bool;
-correctOutput = let in falsey y
+correctOutput = let y = 0.0 in falsey y

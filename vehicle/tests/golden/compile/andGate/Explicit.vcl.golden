@@ -16,7 +16,7 @@ validInput : Rat -> Bool;
 validInput x = 0.0 <= x and x <= 1.0
 
 correctOutput : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat -> Rat -> Bool;
-correctOutput andGate x1 x2 = let in (truthy x1 and truthy x2 => truthy y) and (truthy x1 and falsey x2 => falsey y) and (falsey x1 and truthy x2 => falsey y) and (falsey x1 and falsey x2 => falsey y)
+correctOutput andGate x1 x2 = let y = andGate [x1, x2] ! 0 in (truthy x1 and truthy x2 => truthy y) and (truthy x1 and falsey x2 => falsey y) and (falsey x1 and truthy x2 => falsey y) and (falsey x1 and falsey x2 => falsey y)
 
 @property;
 andGateCorrect : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Bool;

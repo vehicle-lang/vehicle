@@ -13,7 +13,8 @@ import Vehicle.Verify.Core
 
 -- | Different ways of translating from the logical constraints to loss functions.
 data DifferentiableLogicID
-  = DL2Loss
+  = VehicleLoss
+  | DL2Loss
   | GodelLoss
   | LukasiewiczLoss
   | ProductLoss

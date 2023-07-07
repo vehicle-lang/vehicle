@@ -27,6 +27,9 @@ mkOp1 t f = explLam "x" t (\x -> f x)
 mkOp2 :: PLExpr -> (PLExpr -> PLExpr -> PLExpr) -> PLExpr
 mkOp2 t f = explLam "x" t (\x -> explLam "y" t (\y -> f x y))
 
+op1 :: BuiltinFunction -> PLExpr -> PLExpr
+op1 op x = builtinFunction op @@ [x]
+
 op2 :: BuiltinFunction -> PLExpr -> PLExpr -> PLExpr
 op2 op x y = builtinFunction op @@ [x, y]
 
@@ -41,6 +44,10 @@ op2 op x y = builtinFunction op @@ [x, y]
 -- | Subtraction
 (-:) :: PLExpr -> PLExpr -> PLExpr
 (-:) = op2 (Sub SubRat)
+
+-- | Negation
+neg :: PLExpr -> PLExpr
+neg = op1 (Neg NegRat)
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
@@ -127,12 +134,37 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
 
 implementationOf :: DifferentiableLogicID -> DifferentialLogicImplementation
 implementationOf = \case
+  VehicleLoss -> vehicleTranslation
   DL2Loss -> dl2Translation
   GodelLoss -> godelTranslation
   LukasiewiczLoss -> lukasiewiczTranslation
   ProductLoss -> productTranslation
   YagerLoss -> yagerTranslation
   STLLoss -> stlTranslation
+
+--------------------------------------------------------------------------------
+-- Main vehicle logic
+
+vehicleTranslation :: DifferentialLogicImplementation
+vehicleTranslation =
+  DifferentialLogicImplementation
+    { logicID = DL2Loss,
+      compileBool = tRat,
+      compileTrue = ratLit (-100000),
+      compileFalse = ratLit 100000,
+      compileAnd = BinaryAnd $ builtinFunction MaxRat,
+      compileOr = BinaryOr $ builtinFunction MinRat,
+      compileNot = UnaryNot $ builtinFunction (Neg NegRat),
+      compileImplies = mkOp2 tRat $ \x y -> lmax (neg x) y,
+      compileForall = forallSampler,
+      compileExists = existsSampler,
+      compileLe = mkOp2 tRat $ \x y -> x -: y,
+      compileLt = mkOp2 tRat $ \x y -> x -: y,
+      compileGe = mkOp2 tRat $ \x y -> y -: x,
+      compileGt = mkOp2 tRat $ \x y -> y -: x,
+      compileNeq = mkOp2 tRat ind,
+      compileEq = mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x)
+    }
 
 --------------------------------------------------------------------------------
 -- DL2

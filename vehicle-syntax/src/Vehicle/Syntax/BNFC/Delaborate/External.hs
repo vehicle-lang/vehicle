@@ -320,7 +320,8 @@ delabPi binder body = case V.binderNamingForm binder of
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr V.Name V.Builtin -> V.Binder V.Name V.Builtin -> V.Expr V.Name V.Builtin -> m B.Expr
 delabLet bound binder body = do
-  let (boundExprs, foldedBody) = foldLetBinders body
+  let (otherBoundExprs, foldedBody) = foldLetBinders body
+  let boundExprs = (binder, bound) : otherBoundExprs
   binders' <- traverse delabLetBinding boundExprs
   body' <- delabM foldedBody
   return $ B.Let tokLet binders' body'
