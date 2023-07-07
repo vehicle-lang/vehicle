@@ -76,12 +76,12 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_quantifier_all.vcl",
             {"x": quantifier_all_sampler},
-            {"quantifierForall": False},
+            {"quantifierForall": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
             {"x": quantifier_any_sampler},
-            {"quantifierExists": True},
+            {"quantifierExists": 0.0},
         ),
         (
             "test_subtraction.vcl",

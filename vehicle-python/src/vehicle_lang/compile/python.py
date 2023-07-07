@@ -130,6 +130,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> py.stmt:
+        # NOTE: Postulates are compiled in one of two ways:
+        #       (1) If the builtins object has a method of the same name, the
+        #           postulate is compiled to the result of calling that method.
         if hasattr(self.builtins, declaration.name) and callable(
             getattr(self.builtins, declaration.name)
         ):
@@ -148,6 +151,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 ),
                 **asdict(declaration.provenance),
             )
+        #       (2) Otherwise, the postulate is compiled to an assertion that
+        #           checks that a function with that name is in the globals.
         else:
             return py.Assert(
                 test=py.Compare(
