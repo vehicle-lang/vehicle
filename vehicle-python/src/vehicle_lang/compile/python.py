@@ -130,29 +130,48 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> py.stmt:
-        return py.Assert(
-            test=py.Compare(
-                left=py.Str(
-                    s=declaration.name,
-                    **asdict(declaration.provenance),
-                ),
-                ops=[py.In()],
-                comparators=[
-                    py.Call(
-                        func=py_name("vars", declaration.provenance),
-                        args=[],
-                        keywords=[],
+        if hasattr(self.builtins, declaration.name) and callable(
+            getattr(self.builtins, declaration.name)
+        ):
+            return py.Assign(
+                targets=[
+                    py.Name(
+                        id=declaration.name,
+                        ctx=py.Store(),
                         **asdict(declaration.provenance),
                     )
                 ],
+                value=py_builtin(
+                    builtin=declaration.name,
+                    keywords=[],
+                    provenance=declaration.provenance,
+                ),
                 **asdict(declaration.provenance),
-            ),
-            msg=py.Str(
-                s=f"The postulate {declaration.name} is undefined",
+            )
+        else:
+            return py.Assert(
+                test=py.Compare(
+                    left=py.Str(
+                        s=declaration.name,
+                        **asdict(declaration.provenance),
+                    ),
+                    ops=[py.In()],
+                    comparators=[
+                        py.Call(
+                            func=py_name("vars", declaration.provenance),
+                            args=[],
+                            keywords=[],
+                            **asdict(declaration.provenance),
+                        )
+                    ],
+                    **asdict(declaration.provenance),
+                ),
+                msg=py.Str(
+                    s=f"The postulate {declaration.name} is undefined",
+                    **asdict(declaration.provenance),
+                ),
                 **asdict(declaration.provenance),
-            ),
-            **asdict(declaration.provenance),
-        )
+            )
 
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
         return py.Assign(
