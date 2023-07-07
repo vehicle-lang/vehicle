@@ -97,8 +97,14 @@ data JBuiltin
   | PowRat
   | MinRat
   | MaxRat
-  | Eq
-  | Ne
+  | EqIndex
+  | EqNat
+  | EqInt
+  | EqRat
+  | NeIndex
+  | NeNat
+  | NeInt
+  | NeRat
   | LeIndex
   | LeNat
   | LeInt
@@ -166,8 +172,14 @@ instance PrintableBuiltin JBuiltin where
     PowRat -> V.Builtin p (V.BuiltinFunction V.PowRat)
     MinRat -> V.Builtin p (V.BuiltinFunction V.MinRat)
     MaxRat -> V.Builtin p (V.BuiltinFunction V.MaxRat)
-    Eq -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Eq)
-    Ne -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Neq)
+    EqIndex -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqIndex V.Eq)
+    EqNat -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqNat V.Eq)
+    EqInt -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqInt V.Eq)
+    EqRat -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Eq)
+    NeIndex -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqIndex V.Neq)
+    NeNat -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqNat V.Neq)
+    NeInt -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqInt V.Neq)
+    NeRat -> V.Builtin p (V.BuiltinFunction $ V.Equals V.EqRat V.Neq)
     LeIndex -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderIndex V.Le)
     LeNat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderNat V.Le)
     LeInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Le)
@@ -254,8 +266,14 @@ instance ToJBuiltin BuiltinFunction where
     V.PowRat -> PowRat
     V.MinRat -> MinRat
     V.MaxRat -> MaxRat
-    V.Equals _dom V.Eq -> Eq
-    V.Equals _dom V.Neq -> Ne
+    V.Equals V.EqIndex V.Eq -> EqRat
+    V.Equals V.EqNat V.Eq -> EqNat
+    V.Equals V.EqInt V.Eq -> EqInt
+    V.Equals V.EqRat V.Eq -> EqRat
+    V.Equals V.EqIndex V.Neq -> NeRat
+    V.Equals V.EqNat V.Neq -> NeNat
+    V.Equals V.EqInt V.Neq -> NeInt
+    V.Equals V.EqRat V.Neq -> NeRat
     V.Order V.OrderIndex V.Le -> LeIndex
     V.Order V.OrderNat V.Le -> LtNat
     V.Order V.OrderInt V.Le -> GeInt
