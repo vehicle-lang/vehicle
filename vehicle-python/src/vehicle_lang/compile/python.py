@@ -1,9 +1,7 @@
 import ast as py
-import operator
 from dataclasses import asdict, dataclass, field
 from functools import partial, reduce
 from logging import warning
-from numbers import Integral, Rational
 from pathlib import Path
 from typing import (
     Any,
