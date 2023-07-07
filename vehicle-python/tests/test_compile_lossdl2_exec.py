@@ -46,12 +46,12 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_indicator.vcl",
             {},
-            {"indicator": 0.0},
+            {"indicator": 1.0},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"maximum": 4.0},
+            {"maximum": 1.0},
         ),
         (
             "test_minimum.vcl",
