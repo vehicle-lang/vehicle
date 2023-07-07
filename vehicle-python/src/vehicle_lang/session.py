@@ -4,7 +4,7 @@ import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Union
+from typing import TYPE_CHECKING, ClassVar, List, Optional, Sequence, Tuple, Type, Union
 
 from typing_extensions import Self, TypeAlias
 
@@ -15,6 +15,15 @@ from ._error import VehicleSessionUsed as VehicleSessionUsed
 from ._target import Target
 from ._temporary_files import temporary_files
 from .ast import Program
+
+__all__: List[str] = [
+    "Target",
+    "Session",
+    "check_call",
+    "check_output",
+    "loads",
+    "load",
+]
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     SessionContextManager: TypeAlias = AbstractContextManager["Session"]
@@ -119,6 +128,7 @@ class Session(SessionContextManager):
                 "compile",
                 "--target",
                 target.vehicle_cli_name,
+                "--json",
                 "--specification",
                 str(path),
             ]

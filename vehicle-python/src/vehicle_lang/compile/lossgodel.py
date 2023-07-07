@@ -1,36 +1,73 @@
-import operator
+from dataclasses import dataclass
+from typing import SupportsFloat, SupportsInt
 
-from typing_extensions import override
+from typing_extensions import TypeVar, final, override
 
-from ._functools import Operator1, Operator2, Relation2, curry
-from .lossabc import ABCLossBuiltins, Number
+from ..ast import If
+from . import _numeric
+from ._functools import Function3, Operator1, Operator2, Relation2
+from .abcloss import ABCLossBuiltins, UnsupportedBuiltin
+
+_SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
+_SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
+_SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
+_T = TypeVar("_T")
 
 
-class LossGodelBuiltins(ABCLossBuiltins):
+@dataclass(frozen=True)
+class ABCLossGodelBuiltins(ABCLossBuiltins[_SupportsRat, _SupportsNat, _SupportsInt]):
     @override
-    def And(self) -> Operator2[float]:
-        return curry(min)
-
-    @override
-    def Bool(self, value: bool) -> float:
-        return float(value)
-
-    @override
-    def Eq(self) -> Relation2[Number, float]:
-        return lambda x: lambda y: 1 - abs(x - y / x + y)
-
-    @override
-    def LtInt(self) -> Relation2[int, float]:
-        return lambda x: lambda y: 1 - max(x - y / x + y, 0)
+    def And(self) -> Operator2[_SupportsRat]:
+        return self.MinRat()
 
     @override
-    def LtRat(self) -> Relation2[float, float]:
-        return lambda x: lambda y: 1 - max(x - y / x + y, 0)
+    def Bool(self, value: bool) -> _SupportsRat:
+        return self.Rat(1) if value else self.Rat(0)
 
     @override
-    def Not(self) -> Operator1[float]:
-        return operator.neg
+    def Eq(self) -> Relation2[SupportsFloat, _SupportsRat]:
+        return (
+            lambda x: lambda y: self.Rat(1)
+            - (self.Rat(x) - self.Rat(y) / self.Rat(x) + self.Rat(y)).__abs__()
+        )
 
     @override
-    def Or(self) -> Operator2[float]:
-        return curry(max)
+    def If(self) -> Function3[_SupportsRat, _T, _T, _T]:
+        raise UnsupportedBuiltin(builtin=If())
+
+    @override
+    def LtInt(self) -> Relation2[_SupportsInt, _SupportsRat]:
+        return lambda x: lambda y: self.LtRat()(self.RatFromInt(x))(self.RatFromInt(y))
+
+    @override
+    def LtRat(self) -> Relation2[_SupportsRat, _SupportsRat]:
+        return lambda x: lambda y: self.Rat(1) - self.MaxRat()(x - y / x + y)(
+            self.Rat(0)
+        )
+
+    @override
+    def Not(self) -> Operator1[_SupportsRat]:
+        return self.NegRat()
+
+    @override
+    def Or(self) -> Operator2[_SupportsRat]:
+        return self.MaxRat()
+
+
+@final
+@dataclass(frozen=True)
+class PythonLossGodelBuiltins(ABCLossGodelBuiltins[float, int, int]):
+    @final
+    @override
+    def Int(self, value: SupportsInt) -> int:
+        return value.__int__()
+
+    @final
+    @override
+    def Nat(self, value: SupportsInt) -> int:
+        return value.__int__()
+
+    @final
+    @override
+    def Rat(self, value: SupportsFloat) -> float:
+        return value.__float__()

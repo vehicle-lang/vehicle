@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Iterator, Union
 import pytest
 
 from vehicle_lang.compile import to_python
-from vehicle_lang.compile.lossgodel import LossGodelBuiltins
+from vehicle_lang.compile.lossgodel import PythonLossGodelBuiltins
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -109,7 +109,7 @@ def test_loss_function_exec(
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
     output = to_python(
-        specification_path, builtins=LossGodelBuiltins(samplers=samplers)
+        specification_path, builtins=PythonLossGodelBuiltins(samplers=samplers)
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():

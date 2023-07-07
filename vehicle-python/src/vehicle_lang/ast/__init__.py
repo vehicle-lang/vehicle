@@ -1,5 +1,5 @@
 import json
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
@@ -440,9 +440,13 @@ class Universe(Expression):
 
 
 @dataclass(frozen=True, init=False)
-class Declaration(AST):
+class Declaration(AST, metaclass=ABCMeta):
     def __init__(self) -> None:
         raise TypeError("Cannot instantiate abstract class Declaration")
+
+    @abstractmethod
+    def get_name(self) -> Name:
+        ...
 
 
 @dataclass(frozen=True)
@@ -452,12 +456,20 @@ class DefFunction(Declaration):
     type: Expression
     body: Expression
 
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
 
 @dataclass(frozen=True)
 class DefPostulate(Declaration):
     provenance: Provenance = field(repr=False)
     name: Name
     body: Expression
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
 
 
 ################################################################################

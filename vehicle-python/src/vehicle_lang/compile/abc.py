@@ -1,7 +1,19 @@
+import operator
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from numbers import Integral, Rational
-from typing import Any, Callable, Dict, Generic, Iterator, Sequence, Tuple, Type, cast
+from functools import partial
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterator,
+    Sequence,
+    SupportsFloat,
+    SupportsInt,
+    Tuple,
+    cast,
+)
 
 from typing_extensions import TypeAlias, TypeVar, override
 
@@ -14,6 +26,7 @@ from ._functools import (
     Operator2,
     Relation2,
     cons,
+    curry,
     foldRight,
 )
 
@@ -22,7 +35,6 @@ from ._functools import (
 ################################################################################
 
 _Bool = TypeVar("_Bool")
-_Index = TypeVar("_Index")
 _Nat = TypeVar("_Nat")
 _Int = TypeVar("_Int")
 _Rat = TypeVar("_Rat")
@@ -34,11 +46,10 @@ _T = TypeVar("_T")
 Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Builtins(
     Generic[
         _Bool,
-        _Index,
         _Nat,
         _Int,
         _Rat,
@@ -64,16 +75,11 @@ class Builtins(
     def And(self) -> Operator2[_Bool]:
         ...
 
-    @abstractmethod
-    def AtVector(self) -> Function2[Sequence[_T], _Index, _T]:
-        ...
+    def AtVector(self) -> Function2[Sequence[_T], int, _T]:
+        return curry(operator.getitem)
 
     @abstractmethod
     def Bool(self, value: bool) -> _Bool:
-        ...
-
-    @abstractmethod
-    def BoolType(self) -> Type[_Bool]:
         ...
 
     def ConsList(self) -> Function2[_T, Sequence[_T], Sequence[_T]]:
@@ -90,7 +96,7 @@ class Builtins(
     def Eq(self) -> Relation2[_SupportsEq, _Bool]:
         ...
 
-    def EqIndex(self) -> Relation2[_Index, _Bool]:
+    def EqIndex(self) -> Relation2[int, _Bool]:
         return lambda x: lambda y: self.Eq()(cast(_SupportsEq, x))(cast(_SupportsEq, y))
 
     def EqInt(self) -> Relation2[_Int, _Bool]:
@@ -132,7 +138,7 @@ class Builtins(
 
         return _ForallSample
 
-    def GeIndex(self) -> Relation2[_Index, _Bool]:
+    def GeIndex(self) -> Relation2[int, _Bool]:
         return lambda x: lambda y: self.Not()(self.LtIndex()(x)(y))
 
     def GeInt(self) -> Relation2[_Int, _Bool]:
@@ -144,7 +150,7 @@ class Builtins(
     def GeRat(self) -> Relation2[_Rat, _Bool]:
         return lambda x: lambda y: self.Not()(self.LtRat()(x)(y))
 
-    def GtIndex(self) -> Relation2[_Index, _Bool]:
+    def GtIndex(self) -> Relation2[int, _Bool]:
         return lambda x: lambda y: self.Not()(self.LeIndex()(x)(y))
 
     def GtInt(self) -> Relation2[_Int, _Bool]:
@@ -160,31 +166,20 @@ class Builtins(
     def If(self) -> Function3[_Bool, _T, _T, _T]:
         ...
 
-    @abstractmethod
     def Implies(self) -> Operator2[_Bool]:
-        ...
+        return lambda x: lambda y: self.Or()(self.Not()(x))(y)
+
+    def Index(self, value: SupportsInt) -> int:
+        return value.__int__()
+
+    def Indices(self) -> Function1[int, Sequence[int]]:
+        return partial(range, 0)
 
     @abstractmethod
-    def Index(self, value: Integral) -> _Index:
+    def Int(self, value: SupportsInt) -> _Int:
         ...
 
-    @abstractmethod
-    def IndexType(self) -> Type[_Index]:
-        ...
-
-    @abstractmethod
-    def Indices(self) -> Function1[_Index, Sequence[_Index]]:
-        ...
-
-    @abstractmethod
-    def Int(self, value: Integral) -> _Int:
-        ...
-
-    @abstractmethod
-    def IntType(self) -> Type[_Int]:
-        ...
-
-    def LeIndex(self) -> Relation2[_Index, _Bool]:
+    def LeIndex(self) -> Relation2[int, _Bool]:
         return lambda x: lambda y: self.Or()(self.EqIndex()(x)(y))(self.LtIndex()(x)(y))
 
     def LeInt(self) -> Relation2[_Int, _Bool]:
@@ -196,11 +191,8 @@ class Builtins(
     def LeRat(self) -> Relation2[_Rat, _Bool]:
         return lambda x: lambda y: self.Or()(self.EqRat()(x)(y))(self.LtRat()(x)(y))
 
-    def ListType(self) -> Function1[Type[_T], Type[Sequence[_T]]]:
-        return lambda T: Sequence[T]  # type: ignore[valid-type]
-
     @abstractmethod
-    def LtIndex(self) -> Relation2[_Index, _Bool]:
+    def LtIndex(self) -> Relation2[int, _Bool]:
         ...
 
     @abstractmethod
@@ -236,11 +228,7 @@ class Builtins(
         ...
 
     @abstractmethod
-    def Nat(self, value: Integral) -> _Nat:
-        ...
-
-    @abstractmethod
-    def NatType(self) -> Type[_Nat]:
+    def Nat(self, value: SupportsInt) -> _Nat:
         ...
 
     def Ne(self) -> Relation2[_SupportsEq, _Bool]:
@@ -266,15 +254,11 @@ class Builtins(
         ...
 
     @abstractmethod
-    def PowRat(self) -> Operator2[_Rat]:
+    def PowRat(self) -> Function2[_Rat, _Int, _Rat]:
         ...
 
     @abstractmethod
-    def Rat(self, value: Rational) -> _Rat:
-        ...
-
-    @abstractmethod
-    def RatType(self) -> Type[_Rat]:
+    def Rat(self, value: SupportsFloat) -> _Rat:
         ...
 
     def Sample(self, name: str, context: Dict[str, Iterator[Any]]) -> Iterator[Any]:
@@ -294,15 +278,11 @@ class Builtins(
     def Unit(self) -> Tuple[()]:
         return ()
 
-    def UnitType(self) -> Type[Tuple[()]]:
-        return cast(Type[Tuple[()]], Tuple[()])
-
     def Vector(self, values: Sequence[_T] = ()) -> Sequence[_T]:
         return tuple(values)
 
-    def VectorType(self) -> Function2[Type[_T], int, Type[Sequence[_T]]]:
-        return lambda T: lambda _i: Sequence[T]  # type: ignore[valid-type]
 
+AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
