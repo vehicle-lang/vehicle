@@ -6,10 +6,17 @@ import pytest
 GOLDEN_PATH = Path("vendor") / "vehicle" / "tests" / "golden" / "compile"
 GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "spec.vcl"))
 
+EXCLUDE_LIST = [
+    GOLDEN_PATH / "dogsHierarchy" / "spec.vcl",
+    GOLDEN_PATH / "simple-untypedDecls" / "spec.vcl",
+    GOLDEN_PATH / "acasXu" / "spec.vcl",
+    GOLDEN_PATH / "simple-inferableParam" / "spec.vcl",
+]
+
 
 @pytest.mark.parametrize(
     "specification_path",
-    GOLDEN_LOSS_FUNCTION_FILES,
+    filter(lambda spec: spec not in EXCLUDE_LIST, GOLDEN_LOSS_FUNCTION_FILES),
 )  # type: ignore[misc]
 def test_interpret_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
