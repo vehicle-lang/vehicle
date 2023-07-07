@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.7.0
+
+* Undocumented release of tensorflow loss function bindings.
+
 ## Version 0.6.0
 
 * Shadowing of declaration names by local variables is no longer allowed.
