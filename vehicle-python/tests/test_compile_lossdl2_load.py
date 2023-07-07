@@ -8,10 +8,11 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "DL2Loss.vcl.go
 
 
 @pytest.mark.parametrize(
-    "specification_path",
+    "dl2loss_specification_path",
     GOLDEN_LOSS_FUNCTION_FILES,
 )  # type: ignore[misc]
-def test_interpret_load(specification_path: Path) -> None:
+def test_interpret_load(dl2loss_specification_path: Path) -> None:
+    specification_path = dl2loss_specification_path.parent / "spec.vcl"
     print(f"Load {specification_path}")
     from vehicle_lang.session import Target, load
 
