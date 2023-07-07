@@ -20,16 +20,21 @@
     "produces": ["Agda.agda"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network controller:controller.onnx",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"],
-    "enabled": false
+    "produces": ["DL2Loss.vcl"]
   },
   {
     "name": "MarabouVerify",
     "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "external": ["Marabou"]
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   }
 ]

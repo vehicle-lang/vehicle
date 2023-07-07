@@ -4,14 +4,26 @@ import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, ClassVar, Optional, Sequence, Tuple, Type, Union
+from typing import TYPE_CHECKING, ClassVar, List, Optional, Sequence, Tuple, Type, Union
 
 from typing_extensions import Self, TypeAlias
 
-from . import loss_function
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
+from ._error import VehicleError as VehicleError
+from ._error import VehicleSessionClosed as VehicleSessionClosed
+from ._error import VehicleSessionUsed as VehicleSessionUsed
+from ._target import Target
 from ._temporary_files import temporary_files
-from .error import VehicleError, VehicleSessionClosed, VehicleSessionUsed
+from .ast import Program
+
+__all__: List[str] = [
+    "Target",
+    "Session",
+    "check_call",
+    "check_output",
+    "loads",
+    "load",
+]
 
 if TYPE_CHECKING or sys.version_info >= (3, 9):
     SessionContextManager: TypeAlias = AbstractContextManager["Session"]
@@ -103,17 +115,20 @@ class Session(SessionContextManager):
             self.close()
         return None
 
-    def loads(self, spec: str) -> loss_function.Module:
+    def loads(self, spec: str, *, target: Target = Target.DEFAULT) -> Program:
         with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
             loss_function_spec.write(spec)
-            return self.load(loss_function_spec.name)
+            return self.load(loss_function_spec.name, target=target)
 
-    def load(self, path: Union[str, Path]) -> loss_function.Module:
+    def load(
+        self, path: Union[str, Path], *, target: Target = Target.DEFAULT
+    ) -> Program:
         exc, out, err, log = self.check_output(
             [
                 "compile",
                 "--target",
-                "DL2Loss",
+                target.vehicle_cli_name,
+                "--json",
                 "--specification",
                 str(path),
             ]
@@ -122,7 +137,7 @@ class Session(SessionContextManager):
             raise VehicleError(err or out or log or "unknown error")
         if out is None:
             raise VehicleError("no output")
-        return loss_function.Module.from_json(out)
+        return Program.from_json(out)
 
 
 def check_call(args: Sequence[str]) -> int:
@@ -135,5 +150,9 @@ def check_output(
     return Session().__enter__().check_output(args)
 
 
-def load(path: Union[str, Path]) -> loss_function.Module:
-    return Session().__enter__().load(path)
+def loads(spec: str, *, target: Target = Target.DEFAULT) -> Program:
+    return Session().__enter__().load(spec, target=target)
+
+
+def load(path: Union[str, Path], *, target: Target = Target.DEFAULT) -> Program:
+    return Session().__enter__().load(path, target=target)

@@ -175,8 +175,6 @@ delabBuiltinFunction fun args = case fun of
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.Not -> delabOp1 B.Not tokNot args
   V.If -> delabIf args
-  V.FromNat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
-  V.FromRat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
   V.Neg {} -> delabTypeClassOp V.NegTC args
   V.Add {} -> delabTypeClassOp V.AddTC args
   V.Sub {} -> delabTypeClassOp V.SubTC args
@@ -190,6 +188,15 @@ delabBuiltinFunction fun args = case fun of
   V.ConsVector -> delabInfixOp2 B.ConsVector tokConsVector args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
+  -- Builtins not in the surface syntax.
+  V.FromNat {} -> rawDelab
+  V.FromRat {} -> rawDelab
+  V.MinRat {} -> rawDelab
+  V.MaxRat {} -> rawDelab
+  V.PowRat -> rawDelab
+  V.Sample {} -> rawDelab
+  where
+    rawDelab = delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 
 delabBuiltinType :: (MonadDelab m) => V.BuiltinType -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltinType fun args = case fun of
@@ -207,6 +214,7 @@ delabTypeClass tc args = case tc of
   V.HasEq eq -> case eq of
     V.Eq -> delabApp (B.HasEq tokHasEq) args
     V.Neq -> delabApp (B.HasNotEq tokHasNotEq) args
+  V.HasOrd V.Le -> delabApp (B.HasLeq tokHasLeq) args
   V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
   V.HasSub -> delabApp (B.HasSub tokHasSub) args
   V.HasMul -> delabApp (B.HasMul tokHasMul) args
@@ -318,7 +326,8 @@ delabPi binder body = case V.binderNamingForm binder of
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr V.Name V.Builtin -> V.Binder V.Name V.Builtin -> V.Expr V.Name V.Builtin -> m B.Expr
 delabLet bound binder body = do
-  let (boundExprs, foldedBody) = foldLetBinders body
+  let (otherBoundExprs, foldedBody) = foldLetBinders body
+  let boundExprs = (binder, bound) : otherBoundExprs
   binders' <- traverse delabLetBinding boundExprs
   body' <- delabM foldedBody
   return $ B.Let tokLet binders' body'

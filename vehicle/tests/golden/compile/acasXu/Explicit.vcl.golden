@@ -1,0 +1,150 @@
+bigAnd : (\ A -> Vector A 5) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+
+bigOr : (\ A -> Vector A 5) Bool -> Bool;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
+
+vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector xs = xs
+
+mapVector : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
+mapVector f = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 5 -> Bool) -> Vector Bool 5;
+foreachVector f = mapVector f (indices 5)
+
+existsIndex : (Index 5 -> Bool) -> Bool;
+existsIndex f = bigOr (foreachVector (\ i -> f i))
+
+forallIndex : (Index 5 -> Bool) -> Bool;
+forallIndex f = bigAnd (foreachVector (\ i -> f i))
+
+pi : Rat;
+pi = 3.141592
+
+type InputVector = Vector Rat 5
+
+distanceToIntruder : Index 5;
+distanceToIntruder = 0
+
+angleToIntruder : Index 5;
+angleToIntruder = 1
+
+intruderHeading : Index 5;
+intruderHeading = 2
+
+speed : Index 5;
+speed = 3
+
+intruderSpeed : Index 5;
+intruderSpeed = 4
+
+type OutputVector = Vector Rat 5
+
+clearOfConflict : Index 5;
+clearOfConflict = 0
+
+weakLeft : Index 5;
+weakLeft = 1
+
+weakRight : forallT {_x0} . {{NatInDomainConstraint 2 _x0 }} -> {{HasNatLiterals _x0 }} -> _x0;
+weakRight {_x0} {{@0 _ }} {{_ }} = _ 2
+
+strongLeft : Index 5;
+strongLeft = 3
+
+strongRight : Index 5;
+strongRight = 4
+
+type UnnormalisedInputVector = Vector Rat 5
+
+minimumInputValues : UnnormalisedInputVector;
+minimumInputValues = [0.0, 0.0, 0.0, 0.0, 0.0]
+
+maximumInputValues : UnnormalisedInputVector;
+maximumInputValues = [60261.0, 2.0 * pi, 2.0 * pi, 1100.0, 1200.0]
+
+validInput : UnnormalisedInputVector -> Bool;
+validInput x = forallIndex (\ i -> minimumInputValues ! i <= x ! i and x ! i <= maximumInputValues ! i)
+
+meanScalingValues : UnnormalisedInputVector;
+meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
+
+normalise : UnnormalisedInputVector -> InputVector;
+normalise x = foreachVector (\ i -> (x ! i - meanScalingValues ! i) - maximumInputValues ! i)
+
+normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
+normAcasXu acasXu x = acasXu (normalise x)
+
+advises : forallT (acasXu : InputVector -> OutputVector) . Index 5 -> UnnormalisedInputVector -> Bool;
+advises acasXu i x = forallIndex (\ j -> i != j => normAcasXu acasXu x ! i < normAcasXu acasXu x ! j)
+
+intruderDistantAndSlower : UnnormalisedInputVector -> Bool;
+intruderDistantAndSlower x = x ! distanceToIntruder >= 55947.691 and x ! speed >= 1145.0 and x ! intruderSpeed <= 60.0
+
+@property;
+property1 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property1 acasXu = forall x . validInput x and intruderDistantAndSlower x => normAcasXu acasXu x ! clearOfConflict <= 1500.0
+
+@property;
+property2 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property2 acasXu = forall x . validInput x and intruderDistantAndSlower x => existsIndex (\ j -> normAcasXu acasXu x ! j > normAcasXu acasXu x ! clearOfConflict)
+
+directlyAhead : UnnormalisedInputVector -> Bool;
+directlyAhead x = (1500.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 1800.0) and - 6.0e-2 <= x ! angleToIntruder and x ! angleToIntruder <= 6.0e-2
+
+movingTowards : UnnormalisedInputVector -> Bool;
+movingTowards x = x ! intruderHeading >= 3.1 and x ! speed >= 980.0 and x ! intruderSpeed >= 960.0
+
+@property;
+property3 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property3 acasXu = forall x . validInput x and directlyAhead x and movingTowards x => not advises acasXu clearOfConflict x
+
+movingAway : UnnormalisedInputVector -> Bool;
+movingAway x = x ! intruderHeading == 0.0 and 1000.0 <= x ! speed and 700.0 <= x ! intruderSpeed and x ! intruderSpeed <= 800.0
+
+@property;
+property4 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property4 acasXu = forall x . validInput x and directlyAhead x and movingAway x => not advises acasXu clearOfConflict x
+
+nearAndApproachingFromLeft : UnnormalisedInputVector -> Bool;
+nearAndApproachingFromLeft x = (250.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 400.0) and (0.2 <= x ! angleToIntruder and x ! angleToIntruder <= 0.4) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 5.0e-3) and (100.0 <= x ! speed and x ! speed <= 400.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 400.0
+
+@property;
+property5 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property5 acasXu = forall x . validInput x and nearAndApproachingFromLeft x => advises acasXu strongRight x
+
+intruderFarAway : UnnormalisedInputVector -> Bool;
+intruderFarAway x = (12000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 62000.0) and ((- pi <= x ! angleToIntruder and x ! angleToIntruder <= - 0.7) or 0.7 <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 5.0e-3) and (100.0 <= x ! speed and x ! speed <= 1200.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+
+@property;
+property6 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property6 acasXu = forall x . validInput x and intruderFarAway x => advises acasXu clearOfConflict x
+
+largeVerticalSeparation : UnnormalisedInputVector -> Bool;
+largeVerticalSeparation x = (0.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (- pi <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= pi) and (100.0 <= x ! speed and x ! speed <= 1200.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+
+@property;
+property7 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property7 acasXu = forall x . validInput x and largeVerticalSeparation x => not advises acasXu strongLeft x and not advises acasXu strongRight x
+
+largeVerticalSeparationAndPreviousWeakLeft : UnnormalisedInputVector -> Bool;
+largeVerticalSeparationAndPreviousWeakLeft x = (0.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (- pi <= x ! angleToIntruder and x ! angleToIntruder <= - 0.75 * pi) and (- 0.1 <= x ! intruderHeading and x ! intruderHeading <= 0.1) and (600.0 <= x ! speed and x ! speed <= 1200.0) and 600.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+
+@property;
+property8 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property8 acasXu = forall x . validInput x and largeVerticalSeparationAndPreviousWeakLeft x => advises acasXu clearOfConflict x or advises acasXu weakLeft x
+
+previousWeakRightAndNearbyIntruder : UnnormalisedInputVector -> Bool;
+previousWeakRightAndNearbyIntruder x = (2000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 7000.0) and (- 0.4 <= x ! angleToIntruder and x ! angleToIntruder <= - 0.14) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 1.0e-2) and (100.0 <= x ! speed and x ! speed <= 150.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 150.0
+
+@property;
+property9 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property9 acasXu = forall x . validInput x and previousWeakRightAndNearbyIntruder x => advises acasXu strongLeft x
+
+intruderFarAway2 : UnnormalisedInputVector -> Bool;
+intruderFarAway2 x = (36000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (0.7 <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 1.0e-2) and (900.0 <= x ! speed and x ! speed <= 1200.0) and 600.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+
+@property;
+property10 : forallT (acasXu : InputVector -> OutputVector) . Bool;
+property10 acasXu = forall x . validInput x and intruderFarAway2 x => advises acasXu clearOfConflict x

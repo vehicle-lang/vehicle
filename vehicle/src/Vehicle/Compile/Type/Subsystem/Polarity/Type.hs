@@ -47,6 +47,9 @@ typeOfBuiltinFunction = \case
   Sub {} -> unquantified ~> unquantified ~> unquantified
   Mul {} -> unquantified ~> unquantified ~> unquantified
   Div {} -> unquantified ~> unquantified ~> unquantified
+  PowRat {} -> unquantified ~> unquantified ~> unquantified
+  MinRat {} -> unquantified ~> unquantified ~> unquantified
+  MaxRat {} -> unquantified ~> unquantified ~> unquantified
   -- Conversion functions
   FromNat {} -> unquantified ~> unquantified
   FromRat {} -> unquantified ~> unquantified
@@ -57,6 +60,7 @@ typeOfBuiltinFunction = \case
     FoldList -> typeOfFoldList
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
+  b@Sample {} -> developerError $ "Should not be polarity typing" <+> pretty b
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

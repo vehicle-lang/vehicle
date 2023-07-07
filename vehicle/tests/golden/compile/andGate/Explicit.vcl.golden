@@ -1,0 +1,23 @@
+vectorToVector : Vector Rat 2 -> Vector Rat 2;
+vectorToVector xs = xs
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+truthy : Rat -> Bool;
+truthy x = x >= 0.5
+
+falsey : Rat -> Bool;
+falsey x = x <= 0.5
+
+validInput : Rat -> Bool;
+validInput x = 0.0 <= x and x <= 1.0
+
+correctOutput : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat -> Rat -> Bool;
+correctOutput andGate x1 x2 = let y = andGate [x1, x2] ! 0 in (truthy x1 and truthy x2 => truthy y) and (truthy x1 and falsey x2 => falsey y) and (falsey x1 and truthy x2 => falsey y) and (falsey x1 and falsey x2 => falsey y)
+
+@property;
+andGateCorrect : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+andGateCorrect andGate = forall x1 . forall x2 . validInput x1 and validInput x2 => correctOutput andGate x1 x2

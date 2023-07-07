@@ -121,6 +121,7 @@ library
     Vehicle.Compile.ExpandResources.Dataset
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
+    Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
@@ -169,13 +170,11 @@ library
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
-    Vehicle.Backend.LossFunction.Interact
     Vehicle.Backend.LossFunction.Logics
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
-    Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile

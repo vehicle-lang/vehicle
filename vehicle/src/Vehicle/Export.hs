@@ -31,5 +31,6 @@ export loggingSettings ExportOptions {..} = do
         parameterValues = parameters resources,
         outputFile = outputFile,
         moduleName = moduleName,
-        proofCache = Just proofCacheLocation
+        proofCache = Just proofCacheLocation,
+        outputAsJSON = False
       }

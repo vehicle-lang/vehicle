@@ -5,7 +5,7 @@ def base_version(version: str) -> str:
 
 
 def test_main() -> None:
-    from vehicle_lang import VERSION, session
+    from vehicle_lang import VERSION
     from vehicle_lang.session import check_output
 
     exc, out, err, log = check_output(["--version"])

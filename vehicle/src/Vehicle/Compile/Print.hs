@@ -215,7 +215,9 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 -- Printing to internal language
 
 instance PrettyUsing ('PrintAs 'Internal) (Prog Name Builtin) where
-  prettyUsing = printInternal
+  prettyUsing (Main decls) =
+    -- BNFC doesn't add empty lines so add them manually here.
+    vsep2 $ fmap (prettyUsing @('PrintAs 'Internal)) decls
 
 instance PrettyUsing ('PrintAs 'Internal) (Decl Name Builtin) where
   prettyUsing = printInternal
@@ -233,7 +235,9 @@ instance PrettyUsing ('PrintAs 'Internal) (Binder Name Builtin) where
 -- Printing to external language
 
 instance PrettyUsing ('PrintAs 'External) (Prog Name Builtin) where
-  prettyUsing = printExternal
+  prettyUsing (Main decls) =
+    -- BNFC doesn't add empty lines so add them manually here.
+    vsep2 $ fmap (prettyUsing @('PrintAs 'External)) decls
 
 instance PrettyUsing ('PrintAs 'External) (Decl Name Builtin) where
   prettyUsing = printExternal
@@ -329,7 +333,7 @@ convertExprBuiltins ::
   (PrintableBuiltin builtin) =>
   Expr var builtin ->
   Expr var Builtin
-convertExprBuiltins = traverseBuiltins $ \p1 p2 b args ->
+convertExprBuiltins = mapBuiltins $ \p1 p2 b args ->
   normAppList p1 (convertBuiltin p2 b) args
 
 --------------------------------------------------------------------------------

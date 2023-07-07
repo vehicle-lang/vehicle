@@ -1,6 +1,5 @@
 {
   "name": "Marabou",
   "run": "vehicle compile -s negativeNat.vcl -t MarabouQueries -d trainingDataset:dataset-int-4.idx",
-  "enabled": false,
   "needs": ["negativeNat.vcl", "dataset-int-4.idx"]
 }

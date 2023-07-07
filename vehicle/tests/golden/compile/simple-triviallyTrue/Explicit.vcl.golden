@@ -1,0 +1,15 @@
+vectorToVector : Vector (Vector Bool 3) 2 -> Vector (Vector Bool 3) 2;
+vectorToVector xs = xs
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 2 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+@property;
+p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+p f = (forall x . f x ! 0 > 0.0) or True
+
+@property;
+multiProperty : Tensor Bool (2 :: 3 :: nil);
+multiProperty = [[True, True, True], [False, True, False]]

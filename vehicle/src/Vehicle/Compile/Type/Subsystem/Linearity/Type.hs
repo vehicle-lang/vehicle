@@ -42,6 +42,9 @@ typeOfBuiltinFunction = \case
   Sub {} -> typeOfOp2 maxLinearity
   Mul {} -> typeOfOp2 mulLinearity
   Div {} -> typeOfOp2 mulLinearity
+  PowRat {} -> typeOfOp2 mulLinearity
+  MinRat {} -> typeOfOp2 maxLinearity
+  MaxRat {} -> typeOfOp2 maxLinearity
   -- Comparisons
   Equals {} -> typeOfOp2 maxLinearity
   Order {} -> typeOfOp2 maxLinearity
@@ -55,6 +58,7 @@ typeOfBuiltinFunction = \case
     FoldList -> typeOfFoldList
   At -> typeOfAt
   Indices -> constant ~> constant
+  b@Sample {} -> developerError $ "Should not be linearity typing" <+> pretty b
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

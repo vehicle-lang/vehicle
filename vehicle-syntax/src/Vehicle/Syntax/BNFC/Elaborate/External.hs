@@ -329,6 +329,7 @@ elabExpr = \case
   B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
   B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
+  B.HasLeq tk -> builtinTypeClass (V.HasOrd V.Le) tk []
   B.HasAdd tk -> builtinTypeClass V.HasAdd tk []
   B.HasSub tk -> builtinTypeClass V.HasSub tk []
   B.HasMul tk -> builtinTypeClass V.HasMul tk []
@@ -592,8 +593,7 @@ elabForeach tk binder body = do
     V.normAppList
       p'
       builtin
-      [ mkArg V.Explicit (V.mkHole p "n"),
-        mkArg V.Explicit (V.Lam p' binder' body')
+      [ mkArg V.Explicit (V.Lam p' binder' body')
       ]
 
 elabLet :: (MonadElab m) => B.TokLet -> [B.LetDecl] -> B.Expr -> m (V.Expr V.Name V.Builtin)

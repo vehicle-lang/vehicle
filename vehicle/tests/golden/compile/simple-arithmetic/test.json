@@ -5,10 +5,10 @@
     "needs": ["spec.vcl"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -e precedence -o LossFunction.json",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -e precedence -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"]
+    "produces": ["DL2Loss.vcl"]
   },
   {
     "name": "Marabou",
@@ -25,5 +25,11 @@
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   }
 ]

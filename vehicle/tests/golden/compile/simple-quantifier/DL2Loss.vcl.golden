@@ -1,0 +1,23 @@
+bigAnd : List Rat -> Rat;
+bigAnd = fold (\ x -> \ y -> x + y) 0.0
+
+bigOr : List Rat -> Rat;
+bigOr = fold (\ x -> \ y -> x * y) 1.0
+
+mapList : (Int -> Rat) -> List Int -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+unused : Rat;
+unused = bigAnd (mapList (\ (x : Int) -> 0.0) sample[x][])
+
+@property;
+expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+expandedExpr f = bigAnd (mapList (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][f])
+
+@property;
+sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+sequential f = bigAnd (mapList (\ x -> bigAnd (mapList (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x, f])) sample[x][f])
+
+@property;
+parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+parallel f = bigAnd (mapList (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][f]) + bigOr (mapList (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][f])

@@ -141,14 +141,6 @@ candidates =
           ------------
           -- HasDiv --
           ------------
-          ( hasDiv tNat tNat tRat,
-            explLam "x" tNat $ \x ->
-              explLam "y" tNat $ \y ->
-                builtin (Div DivRat)
-                  @@ [ builtin (FromNat FromNatToRat) @@ [x] .@@@@ [unitLit],
-                       builtin (FromNat FromNatToRat) @@ [y] .@@@@ [unitLit]
-                     ]
-          ),
           ( hasDiv tRat tRat tRat,
             builtin (Div DivRat)
           ),

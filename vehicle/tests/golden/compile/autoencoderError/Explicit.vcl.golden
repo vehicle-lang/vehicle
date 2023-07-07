@@ -1,0 +1,37 @@
+bigAnd : (\ A -> Vector A 5) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+
+vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector xs = xs
+
+mapVector : (Index 5 -> Rat) -> Vector (Index 5) 5 -> Vector Rat 5;
+mapVector f = dfold {Index 5} {5} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 5 -> Rat) -> Vector Rat 5;
+foreachVector f = mapVector f (indices 5)
+
+zipWith : (Rat -> Rat -> Rat) -> Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
+zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
+
+@noinline;
+addVector : Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
+addVector = zipWith (\ x -> \ y -> x + y)
+
+@noinline;
+subVector : Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
+subVector = zipWith (\ x -> \ y -> x - y)
+
+forallIndex : (Index 5 -> Bool) -> Bool;
+forallIndex f = bigAnd (foreachVector (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+epsilon : Tensor Rat (5 :: nil);
+epsilon = foreachVector (\ i -> 0.1)
+
+@property;
+identity : forallT (encode : Tensor Rat (5 :: nil) -> Tensor Rat (2 :: nil)) . forallT (decode : Tensor Rat (2 :: nil) -> Tensor Rat (5 :: nil)) . Bool;
+identity encode decode = forall x . forallIndex (\ i -> subVector x epsilon ! i <= decode (encode x) ! i and decode (encode x) ! i <= addVector x epsilon ! i)

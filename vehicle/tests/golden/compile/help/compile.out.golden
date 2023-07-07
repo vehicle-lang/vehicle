@@ -8,9 +8,10 @@ Usage: vehicle compile (-t|--target TARGET) (-s|--specification FILE)
 
 Available options:
   -t,--target TARGET       The target that the specification should be compiled
-                           to. Supported options: DL2Loss, GodelLoss,
-                           LukasiewiczLoss, ProductLoss, YagerLoss, STLLoss,
-                           MarabouQueries, VNNLibQueries, Agda, JSON.
+                           to. Supported options: VehicleLoss, DL2Loss,
+                           GodelLoss, LukasiewiczLoss, ProductLoss, YagerLoss,
+                           STLLoss, MarabouQueries, VNNLibQueries, Agda,
+                           Explicit.
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not

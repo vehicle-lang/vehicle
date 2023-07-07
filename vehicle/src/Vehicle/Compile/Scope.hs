@@ -16,29 +16,25 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
-  (MonadCompile m) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   ImportedModules ->
-  Prog Name Builtin ->
-  m (Prog Ix Builtin)
+  Prog Name builtin ->
+  m (Prog Ix builtin)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
   prog <- runReaderT (scopeProg e) importCtx
   return prog
 
-scopeCheckClosedExpr :: (MonadCompile m) => Expr Name Builtin -> m (Expr Ix Builtin)
+scopeCheckClosedExpr :: (MonadCompile m) => Expr Name builtin -> m (Expr Ix builtin)
 scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
-
-type DeclScopeCtx = Map Name Identifier
-
-type LocalScopeCtx = [Maybe Name]
 
 type MonadScope m =
   ( MonadCompile m,
@@ -48,10 +44,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: (MonadScope m) => Prog Name Builtin -> m (Prog Ix Builtin)
+scopeProg :: (MonadScope m, PrintableBuiltin builtin) => Prog Name builtin -> m (Prog Ix builtin)
 scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: (MonadScope m) => [Decl Name Builtin] -> m [Decl Ix Builtin]
+scopeDecls :: (MonadScope m, PrintableBuiltin builtin) => [Decl Name builtin] -> m [Decl Ix builtin]
 scopeDecls = \case
   [] -> return []
   (d : ds) -> do
@@ -66,7 +62,7 @@ scopeDecls = \case
         ds' <- bindDecl ident (scopeDecls ds)
         return (d' : ds')
 
-scopeDecl :: (MonadScope m) => Decl Name Builtin -> m (Decl Ix Builtin)
+scopeDecl :: (MonadScope m, PrintableBuiltin builtin) => Decl Name builtin -> m (Decl Ix builtin)
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefAbstract p ident r t ->
@@ -79,8 +75,8 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
 scopeDeclExpr ::
   (MonadScope m) =>
   Bool ->
-  Expr Name Builtin ->
-  m (Expr Ix Builtin)
+  Expr Name builtin ->
+  m (Expr Ix builtin)
 scopeDeclExpr generalise expr = do
   declCtx <- ask
 
@@ -99,7 +95,7 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr Name Builtin -> m (Expr Name Builtin)
+generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr Name builtin -> m (Expr Name builtin)
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
@@ -107,7 +103,7 @@ generaliseExpr declContext expr = do
 findGeneralisableVariables ::
   (MonadCompile m) =>
   DeclScopeCtx ->
-  Expr Name Builtin ->
+  Expr Name builtin ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
   execWriterT (runReaderT (traverseExpr registerUnusedVars binderNoOp expr) (declContext, mempty))
@@ -129,15 +125,15 @@ findGeneralisableVariables declContext expr =
 generaliseOverVariables ::
   (MonadCompile m) =>
   [GeneralisableVariable] ->
-  Expr Name Builtin ->
-  m (Expr Name Builtin)
+  Expr Name builtin ->
+  m (Expr Name builtin)
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
       (MonadCompile m) =>
-      (Expr Name Builtin, Set Name) ->
+      (Expr Name builtin, Set Name) ->
       GeneralisableVariable ->
-      m (Expr Name Builtin, Set Name)
+      m (Expr Name builtin, Set Name)
     generalise (expr, seenNames) (p, name)
       | name `Set.member` seenNames = return (expr, seenNames)
       | otherwise = do
@@ -157,7 +153,7 @@ type MonadScopeExpr m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-scopeExpr :: (MonadScopeExpr m) => Expr Name Builtin -> m (Expr Ix Builtin)
+scopeExpr :: (MonadScopeExpr m) => Expr Name builtin -> m (Expr Ix builtin)
 scopeExpr = traverseExpr scopeVar scopeBinder
 
 -- | Find the index for a given name of a given sort.
@@ -200,6 +196,10 @@ type VarUpdate m var1 var2 =
 
 type BinderUpdate m var1 =
   forall builtin. Binder var1 builtin -> m ()
+
+type DeclScopeCtx = Map Name Identifier
+
+type LocalScopeCtx = [Maybe Name]
 
 traverseExpr ::
   (MonadTraverse m) =>

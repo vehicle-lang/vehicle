@@ -4,4 +4,3 @@ module Vehicle.Backend.LossFunction
 where
 
 import Vehicle.Backend.LossFunction.Compile as X
-import Vehicle.Backend.LossFunction.Interact as X

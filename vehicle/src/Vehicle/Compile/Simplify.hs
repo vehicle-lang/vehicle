@@ -45,7 +45,7 @@ instance Simplify (Expr Name Builtin) where
         then argExpr $ last args'
         else normAppList p fun' args'
 
-  shortenVec = traverseBuiltins $ \p1 p2 b args ->
+  shortenVec = mapBuiltins $ \p1 p2 b args ->
     case b of
       Constructor (LVec n)
         | length args > 5 ->

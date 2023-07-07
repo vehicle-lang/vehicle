@@ -3,6 +3,7 @@ module Vehicle.Compile.Queries.LinearityAndPolarityErrors
     diagnoseAlternatingQuantifiers,
     typeCheckWithSubsystem,
     resolveInstanceArguments,
+    removeLiteralCoercions,
   )
 where
 
@@ -12,15 +13,17 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedProg)
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction)
 import Vehicle.Verify.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
@@ -81,7 +84,7 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
-  monomorphisedProg <- monomorphise False typeClassFreeProg
+  monomorphisedProg <- monomorphise isPropertyDecl typeClassFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg
@@ -99,6 +102,59 @@ resolveInstanceArguments prog =
         (inst, remainingArgs) <- findInstanceArg b args
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args
+
+removeLiteralCoercions :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
+removeLiteralCoercions =
+  traverseDecls
+    ( \d ->
+        traverse
+          ( \e -> do
+              e' <- traverseBuiltinsM (updateBuiltin d) e
+              traverseFreeVarsM (updateFreeVar d) e'
+          )
+          d
+    )
+  where
+    updateBuiltin decl p1 p2 b args = case b of
+      (CFunction (FromNat dom)) -> case (dom, args) of
+        (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
+        (FromNatToNat, [e, _]) -> return $ argExpr e
+        (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
+        (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+        -- Hack until https://github.com/vehicle-lang/vehicle/issues/621 is fixed.
+        _ -> return $ normAppList p1 (Builtin p2 b) args -- partialApplication decl (pretty b) args
+      (CFunction (FromRat dom)) -> case (dom, args) of
+        (FromRatToRat, [e]) -> return $ argExpr e
+        _ -> partialApplication decl (pretty b) args
+      _ -> return $ normAppList p1 (Builtin p2 b) args
+
+    updateFreeVar decl p1 p2 v args = case findStdLibFunction v of
+      Just StdVectorToVector -> case reverse args of
+        vec : _ -> return $ argExpr vec
+        _ -> partialApplication decl (pretty v) args
+      Just StdVectorToList -> case reverse args of
+        ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+        _ -> partialApplication decl (pretty v) args
+      _ -> return $ normAppList p1 (FreeVar p2 v) args
+
+    partialApplication decl v args =
+      compilerDeveloperError $
+        "Found partially applied"
+          <+> squotes v
+          <+> "@"
+          <+> prettyVerbose args
+          <+> "in"
+          <> line
+          <> indent
+            2
+            ( prettyFriendly decl
+                <> line
+                <> line
+                <> prettyVerbose decl
+                <> line
+                <> line
+                <> pretty (show $ bodyOf decl)
+            )
 
 removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =

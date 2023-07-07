@@ -1,0 +1,33 @@
+bigAnd : (\ A -> Vector A 1) Rat -> Rat;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0
+
+bigOr : List Rat -> Rat;
+bigOr = fold (\ x -> \ y -> x * y) 1.0
+
+vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector xs = xs
+
+mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
+mapVector f = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 1 -> Rat) -> Vector Rat 1;
+foreachVector f = mapVector f (indices 1)
+
+zipWith : (Rat -> Rat -> Rat) -> Vector Rat 1 -> Vector Rat 1 -> Vector Rat 1;
+zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
+
+@noinline;
+equalsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
+equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+mapList : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+@property;
+reachable : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
+reachable f = bigOr (mapList (\ x -> equalsVector (f x) [0.0]) sample[x][f])

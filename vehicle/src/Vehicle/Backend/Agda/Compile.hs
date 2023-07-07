@@ -23,7 +23,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Monomorphisation
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -47,7 +47,7 @@ compileProgToAgda :: (MonadCompile m) => StandardGluedProg -> AgdaOptions -> m (
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let unnormalisedProg = fmap unnormalised prog
-    monoProg <- monomorphise False unnormalisedProg
+    monoProg <- monomorphise isPropertyDecl unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = descopeNamed prog2

@@ -1,7 +1,6 @@
 module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (ToJSON)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Binder
@@ -27,8 +26,6 @@ data GenericArg expr = Arg
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericArg expr)
-
-instance (ToJSON expr) => ToJSON (GenericArg expr)
 
 instance (Serialize expr) => Serialize (GenericArg expr)
 

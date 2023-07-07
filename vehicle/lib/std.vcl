@@ -8,10 +8,10 @@ bigAnd = fold (\x y -> x and y) True
 bigOr : forallT {f : Type -> Type} . {{HasFold f}} -> f Bool -> Bool
 bigOr = fold (\x y -> x or y) False
 
-forallIn : forallT {f : Type -> Type} . {{HasFold f}} -> {{HasMap f}} -> (A -> Bool) -> f A -> Bool
+forallIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
 forallIn f xs = bigAnd (map f xs)
 
-existsIn : forallT {f : Type -> Type} . {{HasFold f}} -> {{HasMap f}} -> (A -> Bool) -> f A -> Bool
+existsIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
 existsIn f xs = bigOr (map f xs)
 
 --------------------------------------------------------------------------------
@@ -24,8 +24,8 @@ vectorToVector xs = xs
 mapVector : forallT {@0 n} {A} {B} . (A -> B) -> Vector A n -> Vector B n
 mapVector {n} {A} {B} f = dfold {A} {n} {Vector B} (\{l} x xs -> f x ::v xs) []
 
-foreachVector : forallT n . (Index n -> A) -> Vector A n
-foreachVector n f = map f (indices n)
+foreachVector : (Index n -> A) -> Vector A n
+foreachVector {A} {n} f = map f (indices n)
 
 zipWith : forallT {@0 n} . (A -> B -> C) -> Vector A n -> Vector B n -> Vector C n
 zipWith f xs ys = foreach i . f (xs ! i) (ys ! i)
@@ -49,11 +49,11 @@ notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 -- Index
 --------------------------------------------------------------------------------
 
-existsIndex : forallT n . (Index n -> Bool) -> Bool
-existsIndex n f = bigOr (foreach i . f i)
+existsIndex : (Index n -> Bool) -> Bool
+existsIndex f = bigOr (foreach i . f i)
 
-forallIndex : forallT n . (Index n -> Bool) -> Bool
-forallIndex n f = bigAnd (foreach i . f i)
+forallIndex : (Index n -> Bool) -> Bool
+forallIndex f = bigAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------
 -- Tensor

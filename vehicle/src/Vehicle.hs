@@ -6,15 +6,23 @@ module Vehicle
   )
 where
 
-import Control.Exception (bracket, handle)
+import Control.Exception (Exception (..), Handler (..), SomeException (..), bracket, catches, handle, throwIO)
 import GHC.IO.Encoding (setLocaleEncoding)
 import GHC.IO.Handle (hDuplicate, hDuplicateTo)
 import Options.Applicative (ParserInfo, defaultPrefs, execParserPure, handleParseResult)
 import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
-import System.Exit (ExitCode (..), exitSuccess, exitWith)
+import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import System.FilePath (takeDirectory)
 import System.IO
+  ( Handle,
+    IOMode (AppendMode),
+    hPutStrLn,
+    stderr,
+    stdout,
+    utf8,
+    withFile,
+  )
 import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
@@ -42,22 +50,32 @@ mainWithArgsAndExitCode args = do
     runVehicle options
     exitSuccess
 
+rethrowExitCode :: ExitCode -> IO ()
+rethrowExitCode = throwIO
+
+uncaughtException :: SomeException -> IO ()
+uncaughtException (SomeException e) = do
+  hPutStrLn stderr (displayException e)
+  exitFailure
+
 runVehicle :: Options -> IO ()
 runVehicle Options {..} = do
   redirections globalOptions $ \ioSettings -> do
-    -- Handle --version
-    if version globalOptions
-      then putStrLn preciseVehicleVersion
-      else case modeOptions of
-        Nothing ->
-          fatalError
-            "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
-        Just mode -> case mode of
-          Check options -> typeCheck ioSettings options
-          Compile options -> compile ioSettings options
-          Verify options -> verify ioSettings options
-          Validate options -> validate ioSettings options
-          Export options -> export ioSettings options
+    -- Catch uncaught exceptions
+    flip catches [Handler rethrowExitCode, Handler uncaughtException] $ do
+      -- Handle --version
+      if version globalOptions
+        then putStrLn preciseVehicleVersion
+        else case modeOptions of
+          Nothing ->
+            fatalError
+              "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
+          Just mode -> case mode of
+            Check options -> typeCheck ioSettings options
+            Compile options -> compile ioSettings options
+            Verify options -> verify ioSettings options
+            Validate options -> validate ioSettings options
+            Export options -> export ioSettings options
 
 redirections :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 redirections go = redirectStdout go . redirectStderr go . withLogger go

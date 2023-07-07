@@ -6,10 +6,12 @@ module Vehicle.Syntax.AST.Builtin
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON)
-import Data.Aeson.Types (ToJSON)
+import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions, genericParseJSON, genericToJSON)
+import Data.Aeson.Types (FromJSON (..), ToJSON)
 import Data.Bifunctor (first)
 import Data.Hashable (Hashable (..))
+import Data.List (stripPrefix)
+import Data.Maybe (fromMaybe)
 import Data.Serialize (Serialize)
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
@@ -17,6 +19,7 @@ import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Builtin.Core as X
 import Vehicle.Syntax.AST.Builtin.TypeClass as X
+import Vehicle.Syntax.AST.Name (Name)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -106,10 +109,6 @@ instance NFData NegDomain
 
 instance Hashable NegDomain
 
-instance ToJSON NegDomain
-
-instance FromJSON NegDomain
-
 instance Serialize NegDomain
 
 instance Pretty NegDomain where
@@ -132,10 +131,6 @@ instance NFData AddDomain
 
 instance Hashable AddDomain
 
-instance ToJSON AddDomain
-
-instance FromJSON AddDomain
-
 instance Serialize AddDomain
 
 instance Pretty AddDomain where
@@ -152,10 +147,6 @@ data SubDomain
 instance NFData SubDomain
 
 instance Hashable SubDomain
-
-instance ToJSON SubDomain
-
-instance FromJSON SubDomain
 
 instance Serialize SubDomain
 
@@ -184,10 +175,6 @@ instance NFData MulDomain
 
 instance Hashable MulDomain
 
-instance ToJSON MulDomain
-
-instance FromJSON MulDomain
-
 instance Serialize MulDomain
 
 instance Pretty MulDomain where
@@ -203,10 +190,6 @@ data DivDomain
 instance NFData DivDomain
 
 instance Hashable DivDomain
-
-instance ToJSON DivDomain
-
-instance FromJSON DivDomain
 
 instance Serialize DivDomain
 
@@ -232,15 +215,11 @@ instance Pretty FromNatDomain where
     FromNatToInt -> "Int"
     FromNatToRat -> "Rat"
 
+instance Serialize FromNatDomain
+
 instance NFData FromNatDomain
 
 instance Hashable FromNatDomain
-
-instance ToJSON FromNatDomain
-
-instance FromJSON FromNatDomain
-
-instance Serialize FromNatDomain
 
 data FromRatDomain
   = FromRatToRat
@@ -253,10 +232,6 @@ instance Pretty FromRatDomain where
 instance NFData FromRatDomain
 
 instance Hashable FromRatDomain
-
-instance ToJSON FromRatDomain
-
-instance FromJSON FromRatDomain
 
 instance Serialize FromRatDomain
 
@@ -273,10 +248,6 @@ instance Pretty FoldDomain where
 instance NFData FoldDomain
 
 instance Hashable FoldDomain
-
-instance ToJSON FoldDomain
-
-instance FromJSON FoldDomain
 
 instance Serialize FoldDomain
 
@@ -296,6 +267,10 @@ data BuiltinFunction
   | Sub SubDomain
   | Mul MulDomain
   | Div DivDomain
+  | PowRat
+  | MinRat
+  | MaxRat
+  | Sample Name [Name]
   | -- Comparison expressions
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
@@ -308,8 +283,6 @@ data BuiltinFunction
 instance NFData BuiltinFunction
 
 instance Hashable BuiltinFunction
-
-instance ToJSON BuiltinFunction
 
 instance Serialize BuiltinFunction
 
@@ -328,6 +301,9 @@ instance Pretty BuiltinFunction where
     Sub dom -> "sub" <> pretty dom
     Mul dom -> "mul" <> pretty dom
     Div dom -> "div" <> pretty dom
+    PowRat -> "**"
+    MinRat -> "min"
+    MaxRat -> "max"
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
@@ -336,6 +312,7 @@ instance Pretty BuiltinFunction where
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
+    Sample n ctx -> "sample[" <> pretty n <> "]" <> pretty ctx
 
 -- | Builtins in the Vehicle language
 data Builtin
@@ -349,8 +326,6 @@ data Builtin
 instance NFData Builtin
 
 instance Hashable Builtin
-
-instance ToJSON Builtin
 
 instance Serialize Builtin
 

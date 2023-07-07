@@ -119,8 +119,6 @@ evalApp fun (arg : args) = do
       | not (isTypeClassOp b) -> do
           evalBuiltin evalApp b (spine <> mapMaybe getExplicitArg (arg : args))
       | otherwise -> do
-          logDebug MaxDetail $ "Spine" <+> prettyVerbose spine
-          logDebug MaxDetail $ "Args" <+> prettyVerbose args
           (inst, remainingArgs) <- findInstanceArg b args
           evalApp inst remainingArgs
     VUniverse {} -> unexpectedExprError currentPass "VUniverse"
@@ -243,16 +241,16 @@ currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m ()
-showEntry _env expr = do
-  logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+showEntry _env _expr = do
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
-  incrCallDepth
+  -- incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
-showExit _env result = do
-  decrCallDepth
-  logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+showExit _env _result = do
+  -- decrCallDepth
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
@@ -271,8 +269,9 @@ showNormExit _env _result = do
   return ()
 
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp fun spine =
-  logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+showApp _fun _spine =
+  -- logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+  return ()
 
 outOfBoundsError :: (MonadCompile m) => BoundCtx a -> Provenance -> Ix -> m b
 outOfBoundsError env p i =

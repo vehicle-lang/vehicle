@@ -1,0 +1,37 @@
+bigAnd : (\ A -> Vector A 2) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+
+vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector xs = xs
+
+mapVector : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
+mapVector f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 2 -> Bool) -> Vector Bool 2;
+foreachVector f = mapVector f (indices 2)
+
+forallIndex : (Index 2 -> Bool) -> Bool;
+forallIndex f = bigAnd (foreachVector (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+
+vectorToList : Vector Nat 1 -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+type InputVector = Tensor Rat (2 :: nil)
+
+currentSensor : Index 2;
+currentSensor = 0
+
+previousSensor : Index 2;
+previousSensor = 1
+
+safeInput : InputVector -> Bool;
+safeInput x = forallIndex (\ i -> - 3.25 <= x ! i and x ! i <= 3.25)
+
+safeOutput : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . InputVector -> Bool;
+safeOutput controller x = - 1.25 < controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor and controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor < 1.25
+
+@property;
+safe : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . Bool;
+safe controller = forall x . safeInput x => safeOutput controller x

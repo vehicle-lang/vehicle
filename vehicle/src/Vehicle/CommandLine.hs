@@ -41,7 +41,7 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogic, ITP, Target (..), TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, Target (..), TypingSystem (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
@@ -212,6 +212,7 @@ compileParser =
     <*> outputFileParser
     <*> modulePrefixOption
     <*> compileProofCacheParser
+    <*> outputAsJSONParser
 
 compileParserInfo :: ParserInfo ModeOptions
 compileParserInfo = info (Compile <$> compileParser) compileDescription
@@ -295,10 +296,10 @@ allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)
 
 allLossFunctionDLs :: [String]
-allLossFunctionDLs = map show (enumerate @DifferentiableLogic)
+allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
 allTargets :: [String]
-allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show JSON]
+allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show ExplicitVehicle]
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case
@@ -463,6 +464,14 @@ outputFileParser =
         <> short 'o'
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
+
+outputAsJSONParser :: Parser Bool
+outputAsJSONParser =
+  switch $
+    long "json"
+      <> short 'j'
+      <> help "Output the program as JSON instead of text."
+      <> internal
 
 propertyParser :: Parser [Text]
 propertyParser =

@@ -1,0 +1,52 @@
+bigAnd : List Bool -> Bool;
+bigAnd = fold (\ x -> \ y -> x and y) True
+
+bigOr : (\ A -> Vector A 1) Bool -> Bool;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
+
+forallIn : (Vector Rat 2 -> Bool) -> List (Vector Rat 2) -> Bool;
+forallIn f xs = bigAnd (mapList f xs)
+
+vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector xs = xs
+
+mapVector : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
+mapVector f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector : (Index 2 -> Bool) -> Vector Bool 2;
+foreachVector f = mapVector f (indices 2)
+
+zipWith : (Rat -> Rat -> Bool) -> Vector Rat 2 -> Vector Rat 2 -> Vector Bool 2;
+zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
+
+@noinline;
+equalsVector : Vector Rat 2 -> Vector Rat 2 -> Bool;
+equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+
+notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Bool;
+notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
+
+vectorToList : Vector (Vector Rat 2) 1 -> List (Vector Rat 2);
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+
+mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
+mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
+
+dataset : List (Vector Rat 2);
+dataset = [0.5, 1.0] :: nil
+
+@property;
+empty : Bool;
+empty = forallIn (\ x -> True) dataset
+
+@property;
+double : Bool;
+double = forallIn (\ x -> forallIn (\ y -> equalsVector x y) dataset) dataset
+
+@property;
+forallForallIn : Bool;
+forallForallIn = forall x . forallIn (\ y -> equalsVector x y) dataset
+
+@property;
+forallInForall : forallT (f : Vector Rat 2 -> Vector Rat 1) . Bool;
+forallInForall f = forallIn (\ x -> forall y . notEqualsVector (f x) y) dataset

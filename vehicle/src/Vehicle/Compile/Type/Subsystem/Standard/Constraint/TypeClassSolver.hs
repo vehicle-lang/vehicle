@@ -100,7 +100,7 @@ solveIndexQuantifier q c domainBinder body = do
         App
           p
           (FreeVar p method)
-          [ ExplicitArg p indexSize
+          [ ImplicitArg p indexSize
           ]
 
   return $ Right ([domainEq, bodyEq], solution)
