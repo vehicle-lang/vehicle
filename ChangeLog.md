@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.7.1
+
+* Expose `LOSS_VEHICLE` logic in the tensorflow loss function bindings.
+
 ## Version 0.7.0
 
 * Undocumented release of tensorflow loss function bindings.
