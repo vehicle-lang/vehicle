@@ -8,6 +8,7 @@ class Target(Enum):
     LOSS_LUKASIEWICZ = 4
     LOSS_PRODUCT = 5
     LOSS_YAGER = 6
+    LOSS_VEHICLE = 7
 
     @property
     def vehicle_cli_name(self) -> str:
@@ -18,4 +19,5 @@ class Target(Enum):
             Target.LOSS_LUKASIEWICZ: "LukasiewiczLoss",
             Target.LOSS_PRODUCT: "ProductLoss",
             Target.LOSS_YAGER: "YagerLoss",
+            Target.LOSS_VEHICLE: "VehicleLoss",
         }[self]
