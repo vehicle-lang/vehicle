@@ -112,15 +112,30 @@ class Builtins(
     def EqRat(self) -> Relation2[_Rat, _Bool]:
         ...
 
+    def QuantifierViaSample(
+        self,
+        name: str,
+        context: Dict[str, Any],
+        *,
+        function: Operator2[_Bool],
+        initial: _Bool,
+    ) -> Function1[Function1[_T, _Bool], _Bool]:
+        def _QuantifierViaSample(predicate: Function1[_T, _Bool]) -> _Bool:
+            return foldRight(function)(initial)(
+                [
+                    predicate(cast(_T, sample))
+                    for sample in self.Sample(name, {"predicate": predicate, **context})
+                ]
+            )
+
+        return _QuantifierViaSample
+
     def Exists(
         self, name: str, context: Dict[str, Any]
     ) -> Function1[Function1[_T, _Bool], _Bool]:
-        def _ExistsSample(predicate: Function1[_T, _Bool]) -> _Bool:
-            return foldRight(self.Or())(self.Bool(False))(
-                [predicate(cast(_T, sample)) for sample in self.Sample(name, context)]
-            )
-
-        return _ExistsSample
+        return self.QuantifierViaSample(
+            name, context, function=self.Or(), initial=self.Bool(False)
+        )
 
     def FoldList(
         self,
@@ -135,12 +150,9 @@ class Builtins(
     def Forall(
         self, name: str, context: Dict[str, Any]
     ) -> Function1[Function1[_T, _Bool], _Bool]:
-        def _ForallSample(predicate: Function1[_T, _Bool]) -> _Bool:
-            return foldRight(self.And())(self.Bool(True))(
-                [predicate(cast(_T, sample)) for sample in self.Sample(name, context)]
-            )
-
-        return _ForallSample
+        return self.QuantifierViaSample(
+            name, context, function=self.And(), initial=self.Bool(True)
+        )
 
     def GeIndex(self) -> Relation2[int, _Bool]:
         return lambda x: lambda y: self.Not()(self.LtIndex()(x)(y))
@@ -274,7 +286,7 @@ class Builtins(
     def Rat(self, value: SupportsFloat) -> _Rat:
         ...
 
-    def Sample(self, name: str, context: Dict[str, Iterator[Any]]) -> Iterator[Any]:
+    def Sample(self, name: str, context: Dict[str, Any]) -> Iterator[Any]:
         if name in self.samplers:
             return self.samplers[name](context)
         else:
