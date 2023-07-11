@@ -20,11 +20,10 @@ Contents
    :maxdepth: 2
 
    installation.md
-   CONTRIBUTING.md
    language/index.rst
    typeChecking.rst
    training.rst
    verification.rst
    exportingToITP.rst
    other/index.rst
-   backends/verifiers/overview.md
+   developerDocs/index.rst
