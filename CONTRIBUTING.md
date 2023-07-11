@@ -45,6 +45,12 @@ To install the latest version of Vehicle, run the following command:
 pip install vehicle-lang
 ```
 
+To upgrade to a newer version of Vehicle, run the following command:
+
+```sh
+pip install vehicle-lang --upgrade
+```
+
 ## Building Vehicle
 
 ### Getting the source
