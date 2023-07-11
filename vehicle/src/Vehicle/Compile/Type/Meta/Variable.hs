@@ -78,12 +78,12 @@ makeMetaType ::
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi ::
-      (Maybe Name, Type Ix builtin) ->
+      Binder Ix builtin ->
       Type Ix builtin ->
       Type Ix builtin
-    entryToPi (name, t) = do
-      let n = fromMaybe "_" name
-      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant t)
+    entryToPi binder = do
+      let n = fromMaybe "_" (nameOf binder)
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant (typeOf binder))
 
 getMetaDependencies :: [Arg Ix builtin] -> [Ix]
 getMetaDependencies = \case

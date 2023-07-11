@@ -171,6 +171,7 @@ library
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
@@ -216,6 +217,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug
+    Vehicle.Expr.Relevant
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend

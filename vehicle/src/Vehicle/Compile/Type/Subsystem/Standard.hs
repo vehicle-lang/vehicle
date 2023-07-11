@@ -9,6 +9,7 @@ import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (relevanceOfTypeClass)
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core

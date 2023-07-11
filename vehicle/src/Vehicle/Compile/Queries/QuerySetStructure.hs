@@ -19,7 +19,7 @@ import Data.HashSet qualified as HashSet (fromList, intersection, null, singleto
 import Data.Map qualified as Map (keysSet, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (difference, null, singleton)
+import Data.Set qualified as Set (intersection, map, null, singleton)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -27,6 +27,7 @@ import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
@@ -49,11 +50,12 @@ compileQueryStructure ::
   (MonadCompile m) =>
   DeclProvenance ->
   QueryDeclCtx ->
+  NetworkContext ->
   StandardNormExpr ->
   m (Either SeriousPropertyError (BoundCtx UserVariable, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
-compileQueryStructure declProv queryDeclCtx expr =
+compileQueryStructure declProv queryDeclCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
-    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx)
+    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx, networkCtx)
     case result of
       Left (TemporaryError err) ->
         compilerDeveloperError $ "Something went wrong in query compilation:" <+> pretty err
@@ -140,7 +142,7 @@ getTensorDimensions = \case
 
 type MonadQueryStructure m =
   ( MonadCompile m,
-    MonadReader (DeclProvenance, QueryDeclCtx) m
+    MonadReader (DeclProvenance, QueryDeclCtx, NetworkContext) m
   )
 
 -- | For efficiency reasons, we sometimes want to avoid expanding out
@@ -151,7 +153,7 @@ evalWhilePreservingFiniteQuantifiers ::
   TypeCheckedExpr ->
   m StandardNormExpr
 evalWhilePreservingFiniteQuantifiers env body = do
-  (_, queryDeclCtx) <- ask
+  (_, queryDeclCtx, _) <- ask
   let evalOptions = EvalOptions {evalFiniteQuantifiers = False}
   let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
   runNormT evalOptions declCtx mempty (eval env body)
@@ -258,7 +260,7 @@ compileBoolExpr = go False
             Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
-              (_, queryDeclCtx) <- ask
+              (_, queryDeclCtx, _) <- ask
               let env = variableCtxToNormEnv quantifiedVariables
               let normDeclCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
               normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx mempty $ reeval env exprWithoutIf
@@ -338,9 +340,8 @@ compileFiniteQuantifier ::
   TypeCheckedExpr ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
-  (_, queryDeclCtx) <- ask
+  (_, queryDeclCtx, _) <- ask
   let normCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
-  let funcCtx = queryDeclCtxToInfoDeclCtx queryDeclCtx
 
   let foldedResult = do
         let foldedExpr = VFiniteQuantifier q quantSpine binder env body
@@ -348,7 +349,8 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
         logDebug MidDetail $ "Keeping folded:" <+> pretty q <+> prettyVerbose binder
         return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
 
-  if canLeaveFiniteQuantifierUnexpanded funcCtx env body
+  canLeaveUnexpanded <- canLeaveFiniteQuantifierUnexpanded env body
+  if canLeaveUnexpanded
     then foldedResult
     else do
       normResult <- runNormT defaultEvalOptions normCtx mempty $ do
@@ -360,12 +362,15 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
 -- we can leave the finite quantifier folded as it will only contain
 -- conjunctions.
 canLeaveFiniteQuantifierUnexpanded ::
-  DeclCtx UsedFunctionsInfo ->
+  (MonadQueryStructure m) =>
   StandardEnv ->
   StandardExpr ->
-  Bool
-canLeaveFiniteQuantifierUnexpanded ctx env expr = do
-  let (usedFunctions, usedFreeVars) = getUsedFunctions ctx (getUsedFunctionsCtx ctx env) expr
+  m Bool
+canLeaveFiniteQuantifierUnexpanded env expr = do
+  (_, queryDeclCtx, networkCtx) <- ask
+  let declUsageCtx = queryDeclCtxToInfoDeclCtx queryDeclCtx
+
+  let (usedFunctions, usedFreeVars) = getUsedFunctions declUsageCtx (getUsedFunctionsCtx declUsageCtx env) expr
   let forbiddenFunctions =
         HashSet.fromList
           [ Quantifier Exists,
@@ -373,8 +378,9 @@ canLeaveFiniteQuantifierUnexpanded ctx env expr = do
           ]
 
   let doesNotHaveDisjunction = HashSet.null (HashSet.intersection usedFunctions forbiddenFunctions)
-  let doesNotHaveNetwork = Set.null (Set.difference usedFreeVars (Map.keysSet ctx))
-  doesNotHaveDisjunction && doesNotHaveNetwork
+  let networks = Set.map (Identifier User) (Map.keysSet networkCtx)
+  let doesNotHaveNetwork = Set.null (Set.intersection usedFreeVars networks)
+  return $ doesNotHaveDisjunction && doesNotHaveNetwork
 
 --------------------------------------------------------------------------------
 -- Infinite quantifier elimination
@@ -393,7 +399,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
     let isDuplicateName = any (\v -> userVarName v == variableName) quantifiedVariables
     if isDuplicateName
       then do
-        (declProv, _) <- ask
+        (declProv, _, _) <- ask
         throwError $ DuplicateQuantifierNames declProv variableName
       else do
         let currentLevel = Lv $ length quantifiedVariables
@@ -529,7 +535,7 @@ getUsedFunctionsFreeVar ::
   Identifier ->
   UsedFunctionsInfo
 getUsedFunctionsFreeVar declCtx ident =
-  fromMaybe (mempty, Set.singleton ident) (Map.lookup ident declCtx)
+  (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident declCtx)
 
 getUsedVarsBoundVar ::
   BoundCtx UsedFunctionsInfo ->

@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Type
   ( typeStandardBuiltin,
     handleStandardTypingError,
-    relevanceOfTypeClass,
     typeOfTypeClassOp,
   )
 where
@@ -12,7 +11,6 @@ import Data.Text (pack)
 import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (getTypeClass)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
@@ -263,8 +261,3 @@ handleStandardTypingError = \case
     throwError (FailedUnificationConstraints constraints)
   UnsolvableConstraints constraints ->
     throwError $ UnsolvedConstraints constraints
-
-relevanceOfTypeClass :: (MonadCompile m) => StandardNormType -> m Relevance
-relevanceOfTypeClass t = do
-  (tc, _) <- getTypeClass t
-  return $ relevanceOf tc

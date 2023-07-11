@@ -5,10 +5,9 @@ import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT (..), mapWriterT)
-import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, lookupInDeclCtx)
 import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
@@ -356,11 +355,11 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
 abstractOverCtx :: TypingBoundCtx builtin -> Expr Ix builtin -> Expr Ix builtin
 abstractOverCtx ctx body = do
   let p = mempty
-  let lamBinderForm (n, _) = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
+  let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
   -- WARNING: in theory the type of this binder should be `t` but because these binders
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.
-  let lam i@(_, _t) = Lam p (Binder p (lamBinderForm i) Explicit Relevant (TypeUniverse p 0))
+  let lam binder = Lam p (Binder p (lamBinderForm (nameOf binder)) Explicit Relevant (TypeUniverse p 0))
   foldr lam body (reverse ctx)
 
 solveMeta ::
@@ -426,22 +425,11 @@ clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
   modifyMetaCtx @builtin (const emptyTypeCheckerState)
 
-getDeclType :: (MonadTypeChecker builtin m) => Provenance -> Identifier -> m (Type Ix builtin)
-getDeclType p ident = do
+getDeclType :: (MonadTypeChecker builtin m) => Identifier -> m (Type Ix builtin)
+getDeclType ident = do
   ctx <- getDeclContext
-  case Map.lookup ident ctx of
-    Just TypingDeclCtxEntry {..} ->
-      return $ unnormalised declType
-    -- This should have been caught during scope checking
-    Nothing ->
-      compilerDeveloperError $
-        "Declaration"
-          <+> quotePretty ident
-          <+> "not found when"
-          <+> "looking up variable in context"
-          <+> pretty (Map.keys ctx)
-          <+> "at"
-          <+> pretty p
+  TypingDeclCtxEntry {..} <- lookupInDeclCtx "type-checking" ident ctx
+  return $ unnormalised declType
 
 --------------------------------------------------------------------------------
 -- Constraints

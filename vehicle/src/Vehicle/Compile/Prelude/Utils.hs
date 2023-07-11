@@ -61,7 +61,7 @@ getExplicitArg :: GenericArg expr -> Maybe expr
 getExplicitArg (ExplicitArg _ expr) = Just expr
 getExplicitArg _ = Nothing
 
-getImplicitArg :: Arg var builtin -> Maybe (Expr var builtin)
+getImplicitArg :: GenericArg expr -> Maybe expr
 getImplicitArg (ImplicitArg _ arg) = Just arg
 getImplicitArg _ = Nothing
 

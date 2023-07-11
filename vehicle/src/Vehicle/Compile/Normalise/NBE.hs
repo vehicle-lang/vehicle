@@ -22,8 +22,8 @@ where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
-import Data.Map qualified as Map (lookup)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (Normalisable (..))
 import Vehicle.Compile.Normalise.Monad
@@ -67,9 +67,9 @@ eval env expr = do
       let newEnv = extendEnvOverBinder binder env
       body' <- eval newEnv body
       return $ VPi binder' body'
-    BoundVar p i -> case lookupIx env i of
-      Just (_, value) -> return value
-      Nothing -> outOfBoundsError env p i
+    BoundVar _ i -> do
+      (_, value) <- lookupIxInBoundCtx currentPass i env
+      return value
     FreeVar _ ident -> lookupFreeVar ident
     Let _ bound binder body -> do
       boundNormExpr <- eval env bound
@@ -90,10 +90,11 @@ lookupFreeVar ident = do
   evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @builtin)
   if isFiniteQuantifier && not evalFiniteQuants
     then return $ VFreeVar ident []
-    else case Map.lookup ident declSubst of
-      Just NormDeclCtxEntry {..}
-        | isInlinable declAnns -> return declExpr
-      _ -> return $ VFreeVar ident []
+    else do
+      TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
+      case declBody of
+        Just expr | isInlinable declAnns -> return expr
+        _ -> return $ VFreeVar ident []
 
 evalBinder :: (MonadNorm builtin m) => Env builtin -> Binder Ix builtin -> m (VBinder builtin)
 evalBinder env = traverse (eval env)
@@ -132,16 +133,16 @@ evalFreeVarApp ::
   m (Value builtin)
 evalFreeVarApp ident spine = do
   declSubst <- getDeclSubstitution
-  case Map.lookup ident declSubst of
+  TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
+  case declBody of
     -- If free variable was annotated with a `@noinline` annotation but all
     -- it's explicit arguments are actually values then we should actually
     -- substitute it through and evaluate.
-    Just NormDeclCtxEntry {..}
-      | not (isInlinable declAnns) && length spine == declArity -> do
-          let allExplicitArgsAreValues = all (isFullyReduced . argExpr) $ filter isExplicit spine
-          if allExplicitArgsAreValues
-            then evalApp declExpr spine
-            else return $ VFreeVar ident spine
+    Just expr | not (isInlinable declAnns) && length spine == arityFromVType (normalised declType) -> do
+      let allExplicitArgsAreValues = all (isFullyReduced . argExpr) $ filter isExplicit spine
+      if allExplicitArgsAreValues
+        then evalApp expr spine
+        else return $ VFreeVar ident spine
     _ -> return $ VFreeVar ident spine
 
 isFullyReduced :: (Normalisable builtin) => Value builtin -> Bool
@@ -176,11 +177,9 @@ reeval env expr = do
       spine' <- reevalSpine env spine
       evalApp value spine'
     VBoundVar v spine -> do
-      case lookupLv env v of
-        Nothing -> outOfBoundsError env mempty (dbLevelToIndex (Lv $ length env) v)
-        Just (_, value) -> do
-          spine' <- reevalSpine env spine
-          evalApp value spine'
+      (_, value) <- lookupLvInBoundCtx currentPass v env
+      spine' <- reevalSpine env spine
+      evalApp value spine'
     VBuiltin b spine ->
       evalBuiltin evalApp b =<< traverse (reeval env) spine
   showNormExit env result
@@ -272,16 +271,6 @@ showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
 showApp _fun _spine =
   -- logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
   return ()
-
-outOfBoundsError :: (MonadCompile m) => BoundCtx a -> Provenance -> Ix -> m b
-outOfBoundsError env p i =
-  compilerDeveloperError $
-    "Environment of size"
-      <+> pretty (length env)
-      <+> "in which NBE is being performed"
-      <+> "is smaller than the found DB index"
-      <+> pretty i
-      <+> parens (pretty p)
 
 findInstanceArg :: (MonadCompile m) => (Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case

@@ -11,7 +11,6 @@ import Vehicle.Backend.JSON (compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
-import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (monomorphise)
@@ -130,13 +129,13 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) prog
+  let monomorphiseIf d = moduleOf (identifierOf d) == User
+  monomorphiseProg <- monomorphise monomorphiseIf "_" prog
   literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
-  let namedProg = descopeNamed literalCoercionFreeProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON namedProg
+        compileProgToJSON literalCoercionFreeProg
       else do
-        return $ prettyFriendly namedProg
+        return $ prettyFriendly literalCoercionFreeProg
   writeResultToFile Nothing outputFile result

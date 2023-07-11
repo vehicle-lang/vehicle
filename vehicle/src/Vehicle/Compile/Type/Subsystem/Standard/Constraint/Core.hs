@@ -18,3 +18,8 @@ getTypeClass :: (MonadCompile m) => StandardNormExpr -> m (TypeClass, StandardEx
 getTypeClass = \case
   (VBuiltin (CType (StandardTypeClass tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."
+
+relevanceOfTypeClass :: (MonadCompile m) => StandardNormType -> m Relevance
+relevanceOfTypeClass t = do
+  (tc, _) <- getTypeClass t
+  return $ relevanceOf tc

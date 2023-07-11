@@ -7,21 +7,31 @@ module Vehicle.Backend.JSON
   )
 where
 
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
+import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Hashable (Hashable)
 import Data.List (stripPrefix)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
-import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, developerError, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
-import Vehicle.Compile.Print (PrintableBuiltin (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Arity (Arity, arityFromVType, builtinArity, vlamArity)
+import Vehicle.Compile.Descope (DescopeNamed (..))
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, lookupInDeclCtx, lookupLvInBoundCtx, resolutionError)
+import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, eval, runNormT)
+import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DeclCtx, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), developerError, foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, traverseListLocal, (<+>))
+import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
+import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalised (GluedExpr (..), Value (..), normalised)
+import Vehicle.Expr.Relevant
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
 
@@ -29,12 +39,15 @@ import Vehicle.Syntax.AST qualified as V
 -- Public method
 
 compileProgToJSON ::
-  (MonadCompile m, ToJBuiltin builtin, PrintableBuiltin builtin) =>
-  V.Prog Name builtin ->
+  (MonadCompile m) =>
+  StandardProg ->
   m (Doc a)
 compileProgToJSON prog = do
-  jProg <- toJSON <$> toJProg prog
-  return $ pretty $ unpack $ encodePretty' prettyJSONConfig jProg
+  logCompilerPass MinDetail currentPass $ do
+    jProg <- toJProg prog
+    let namedProg = descopeNamed jProg
+    let json = toJSON namedProg
+    return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
 
 --------------------------------------------------------------------------------
 -- Datatype
@@ -43,28 +56,13 @@ compileProgToJSON prog = do
 -- can maintain backwards compatability, even when the core
 -- Vehicle AST changes.
 
-newtype JProg
-  = Main [JDecl]
-  deriving (Generic)
+type JProg var = RelProg var JBuiltin
 
-data JDecl
-  = DefPostulate Provenance Name JExpr
-  | DefFunction Provenance Name JExpr JExpr
-  deriving (Generic)
+type JDecl var = RelDecl var JBuiltin
 
-data JExpr
-  = Universe Provenance Int
-  | App Provenance JExpr [JExpr]
-  | Pi Provenance JBinder JExpr
-  | BuiltinOp Provenance JBuiltin
-  | BoundVar Provenance Name
-  | FreeVar Provenance Name
-  | Let Provenance JExpr JBinder JExpr
-  | Lam Provenance JBinder JExpr
-  deriving (Generic)
+type JExpr var = RelExpr var JBuiltin
 
-data JBinder = Binder Provenance (Maybe Name) JExpr
-  deriving (Generic)
+type JBinder var = RelBinder var JBuiltin
 
 data JBuiltin
   = NilList
@@ -337,16 +335,16 @@ jsonOptions =
     { tagSingleConstructors = True
     }
 
-instance ToJSON JProg where
+instance (ToJSON var) => ToJSON (JProg var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JDecl where
+instance (ToJSON var) => ToJSON (JDecl var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JExpr where
+instance (ToJSON var) => ToJSON (JExpr var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JBinder where
+instance (ToJSON var) => ToJSON (JBinder var) where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JBuiltin where
@@ -395,40 +393,68 @@ instance ToJSON V.FoldDomain where
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
-toJProg :: (MonadCompile m, ToJBuiltin builtin) => V.Prog Name builtin -> m JProg
-toJProg (V.Main ds) = Main <$> traverse toJDecl ds
+type Ctx = (DeclCtx StandardGluedDecl, TypingBoundCtx StandardBuiltin)
 
-toJDecl :: (MonadCompile m, ToJBuiltin builtin) => V.Decl Name builtin -> m JDecl
-toJDecl d = case d of
-  V.DefAbstract p i s t -> do
-    case s of
-      NetworkDef -> resourceError s
-      DatasetDef -> resourceError s
-      ParameterDef {} -> resourceError s
-      PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
-  V.DefFunction p i _anns t e -> DefFunction p (V.nameOf i) <$> toJExpr t <*> toJExpr e
+type MonadJSON m =
+  ( MonadCompile m,
+    MonadReader Ctx m
+  )
 
-toJExpr :: (MonadCompile m, ToJBuiltin builtin) => V.Expr Name builtin -> m JExpr
-toJExpr = \case
+toJProg :: (MonadCompile m) => StandardProg -> m (JProg Ix)
+toJProg (V.Main ds) = Main <$> runReaderT (traverseListLocal toJDecl ds) mempty
+
+toJDecl :: (MonadJSON m) => StandardDecl -> m (Ctx -> Ctx, JDecl Ix)
+toJDecl d = do
+  logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf d)) $ do
+    newDecl <- case d of
+      V.DefAbstract p i s t -> do
+        case s of
+          NetworkDef -> resourceError s
+          DatasetDef -> resourceError s
+          ParameterDef {} -> resourceError s
+          PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
+      V.DefFunction p i _anns t e -> do
+        logDebug MaxDetail $ prettyVerbose t
+        t' <- toJExpr t
+        logDebug MaxDetail $ prettyVerbose e
+        e' <- toJExpr e
+        return $ DefFunction p (V.nameOf i) t' e'
+    gluedDecl <- traverse (\e -> Glued e <$> normalise e) d
+    let extendCtx = first (Map.insert (V.identifierOf d) gluedDecl)
+    return (extendCtx, newDecl)
+
+toJExpr :: (MonadJSON m) => StandardExpr -> m (JExpr Ix)
+toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> return $ BuiltinOp p $ toJBuiltin b
+  V.Builtin p b -> return $ Builtin p $ toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
     fun' <- toJExpr fun
     args' <- traverse toJExpr (mapMaybe getExplicitArg (NonEmpty.toList args))
+    arity <- functionArity fun
     return $ case args' of
       [] -> fun'
-      (a : as) -> App p fun' (a : as)
-  V.Pi p binder body -> Pi p <$> toJBinder binder <*> toJExpr body
-  V.Lam p binder body -> Lam p <$> toJBinder binder <*> toJExpr body
+      _ : _
+        | arity == length args -> App p fun' args'
+        | otherwise -> PartialApp p arity fun' args'
+  V.Pi p binder body -> Pi p <$> toJBinder binder <*> underBinder binder (toJExpr body)
+  V.Lam p _ _ -> do
+    let (foldedBinders, body) = foldLamBinders expr
+    Lam p <$> toJBinders foldedBinders <*> underBinders foldedBinders (toJExpr body)
   V.Let p bound binder body ->
-    Let p <$> toJExpr bound <*> toJBinder binder <*> toJExpr body
+    Let p <$> toJExpr bound <*> toJBinder binder <*> underBinder binder (toJExpr body)
 
-toJBinder :: (MonadCompile m, ToJBuiltin builtin) => V.Binder Name builtin -> m JBinder
+underBinder :: (MonadJSON m) => StandardBinder -> m a -> m a
+underBinder binder = local (second (binder :))
+
+underBinders :: (MonadJSON m) => [StandardBinder] -> m a -> m a
+underBinders binders = local (second (reverse binders <>))
+
+toJBinder :: (MonadJSON m) => StandardBinder -> m (JBinder Ix)
 toJBinder binder = do
   type' <- toJExpr $ V.binderType binder
   let p = V.binderProvenance binder
@@ -438,7 +464,48 @@ toJBinder binder = do
         V.OnlyType -> Nothing
   return $ Binder p maybeName type'
 
-resourceError :: (MonadCompile m) => DefAbstractSort -> m a
+toJBinders :: (MonadJSON m) => [StandardBinder] -> m [JBinder Ix]
+toJBinders = \case
+  [] -> return []
+  (b : bs) -> do
+    b' <- toJBinder b
+    bs' <- underBinder b $ toJBinders bs
+    return $ b' : bs'
+
+functionArity :: (MonadJSON m) => StandardExpr -> m Arity
+functionArity fun = do
+  normFun <- normalise fun
+  case normFun of
+    VUniverse {} -> illTypedError currentPass (prettyVerbose normFun)
+    VPi {} -> illTypedError currentPass (prettyVerbose normFun)
+    VMeta {} -> illTypedError currentPass (prettyVerbose normFun)
+    -- Should be no free-variables left, after having appended resources as lambdas
+    -- and having normalised.
+    VFreeVar v _ -> do
+      (declCtx, _) <- ask
+      decl <- lookupInDeclCtx currentPass v declCtx
+      return $ arityFromVType $ normalised (typeOf decl)
+    VBoundVar v _ -> do
+      (_, boundCtx) <- ask
+      binder <- lookupLvInBoundCtx currentPass v boundCtx
+      arityFromVType <$> normalise (typeOf binder)
+    VBuiltin b spine -> return $ builtinArity b - length spine
+    VLam {} -> return $ vlamArity normFun
+
+normalise :: (MonadJSON m) => StandardExpr -> m StandardNormExpr
+normalise expr = do
+  (declCtx, boundCtx) <- ask
+  let env = typingBoundContextToEnv boundCtx
+  let normDeclCtx = flip fmap declCtx $ \d ->
+        TypingDeclCtxEntry
+          { declAnns = V.annotationsOf d,
+            declType = typeOf d,
+            declBody = normalised <$> V.bodyOf d
+          }
+
+  runNormT defaultEvalOptions normDeclCtx mempty $ eval env expr
+
+resourceError :: (MonadJSON m) => DefAbstractSort -> m a
 resourceError resourceType =
   compilerDeveloperError $
     "All"

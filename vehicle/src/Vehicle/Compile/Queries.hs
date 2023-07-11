@@ -8,10 +8,10 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Map qualified as Map
-import Data.Maybe (maybeToList)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Traversable (for)
 import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources (expandResources, splitResourceCtx)
+import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
@@ -22,7 +22,7 @@ import Vehicle.Compile.Queries.QuerySetStructure
 import Vehicle.Compile.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
 import Vehicle.Compile.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..))
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
@@ -63,8 +63,7 @@ compileProgToQueries ::
   GenericProg StandardGluedExpr ->
   m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
 compileProgToQueries queryFormat resources prog = do
-  resourceCtx <- expandResources resources prog
-  let (networkCtx, declCtx) = splitResourceCtx resourceCtx
+  (networkCtx, declCtx) <- expandResources resources prog
   let queryDeclCtx = fmap (,mempty) declCtx
   let Main decls = prog
   compileDecls prog queryFormat networkCtx queryDeclCtx decls
@@ -78,20 +77,20 @@ compileDecls ::
   [StandardGluedDecl] ->
   m [(Name, MultiProperty (Property (QueryMetaData, QueryText)))]
 compileDecls _ _ _ _ [] = return []
-compileDecls prog queryFormat networkCtx queryDeclCtx (d : ds) = case d of
-  DefAbstract {} -> compileDecls prog queryFormat networkCtx queryDeclCtx ds
-  DefFunction p ident anns typ body -> do
-    maybeProperty <-
-      if not (isProperty anns)
-        then return Nothing
-        else Just <$> compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident body
+compileDecls prog queryFormat networkCtx queryDeclCtx (d : ds) = do
+  maybeProperty <- case d of
+    DefFunction p ident anns _ body
+      | isProperty anns -> Just <$> compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident body
+    _ -> return Nothing
 
-    let declCtxEntry = NormDeclCtxEntry (normalised body) anns (arity (normalised typ))
-    let usedFunctionsInfo = getUsedFunctions (queryDeclCtxToInfoDeclCtx queryDeclCtx) mempty (unnormalised body)
-    let newQueryDeclCtx = Map.insert ident (declCtxEntry, usedFunctionsInfo) queryDeclCtx
-    properties <- compileDecls prog queryFormat networkCtx newQueryDeclCtx ds
+  let declCtxEntry = TypingDeclCtxEntry (annotationsOf d) (typeOf d) (normalised <$> bodyOf d)
+  let maybeUsedFunctionsInfo = getUsedFunctions (queryDeclCtxToInfoDeclCtx queryDeclCtx) mempty . unnormalised <$> bodyOf d
+  let usedFunctionsInfo = fromMaybe mempty maybeUsedFunctionsInfo
+  -- We use `insertWith` to choose the old value here because expanded resources already exist in the map.
+  let newQueryDeclCtx = Map.insertWith (const id) (identifierOf d) (declCtxEntry, usedFunctionsInfo) queryDeclCtx
+  properties <- compileDecls prog queryFormat networkCtx newQueryDeclCtx ds
 
-    return $ maybeToList maybeProperty ++ properties
+  return $ maybeToList maybeProperty ++ properties
 
 compilePropertyDecl ::
   (MonadCompile m) =>
@@ -230,7 +229,7 @@ compileQuerySet isPropertyNegated expr = do
   PropertyState {..} <- ask
   -- First we attempt to recursively compile down the remaining boolean structure,
   -- stopping at the level of individual propositions (e.g. equality or ordering assertions)
-  queryStructureResult <- compileQueryStructure declProvenance queryDeclCtx expr
+  queryStructureResult <- compileQueryStructure declProvenance queryDeclCtx networkCtx expr
   case queryStructureResult of
     Left err -> case err of
       AlternatingQuantifiers ->

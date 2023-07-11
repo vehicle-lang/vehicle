@@ -5,7 +5,11 @@ module Vehicle.Compile.Prelude
 where
 
 import Control.Monad.Identity (Identity (..))
+import Control.Monad.Writer (MonadWriter (..), execWriter)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Prelude as X
@@ -41,6 +45,11 @@ instance HasType (GenericDecl expr) expr where
 
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
+
+foldLamBinders :: Expr var builtin -> ([Binder var builtin], Expr var builtin)
+foldLamBinders = \case
+  Lam _ binder body -> first (binder :) (foldLamBinders body)
+  expr -> ([], expr)
 
 -------------------------------------------------------------------------------
 -- Utilities for traversing auxiliary arguments.
@@ -89,7 +98,7 @@ mapBuiltins f e = runIdentity (traverseBuiltinsM (\p1 p2 b args -> return $ f p1
 type FreeVarUpdate m var builtin =
   Provenance -> Provenance -> Identifier -> [Arg var builtin] -> m (Expr var builtin)
 
--- | Traverses all the auxiliary type arguments in the provided element,
+-- | Traverses all the free variables in the provided element,
 -- applying the provided update function when it finds them (or a space
 -- where they should be).
 traverseFreeVarsM ::
@@ -118,3 +127,12 @@ traverseFreeVarsArg f = traverse (traverseFreeVarsM f)
 
 traverseFreeVarsBinder :: (Monad m) => FreeVarUpdate m var builtin -> Binder var builtin -> m (Binder var builtin)
 traverseFreeVarsBinder f = traverse (traverseFreeVarsM f)
+
+freeVarsIn :: Expr var builtin -> Set Identifier
+freeVarsIn =
+  execWriter
+    . traverseFreeVarsM
+      ( \p1 p2 i args -> do
+          tell $ Set.singleton i
+          return $ normAppList p1 (FreeVar p2 i) args
+      )

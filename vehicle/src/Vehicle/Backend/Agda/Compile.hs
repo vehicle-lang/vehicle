@@ -47,7 +47,7 @@ compileProgToAgda :: (MonadCompile m) => StandardGluedProg -> AgdaOptions -> m (
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let unnormalisedProg = fmap unnormalised prog
-    monoProg <- monomorphise isPropertyDecl unnormalisedProg
+    monoProg <- monomorphise isPropertyDecl "-" unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = descopeNamed prog2

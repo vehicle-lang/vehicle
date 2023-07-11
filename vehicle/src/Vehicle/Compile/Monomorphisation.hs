@@ -14,16 +14,17 @@ import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map
   ( delete,
-    insert,
+    insertWith,
     lookup,
     member,
     singleton,
   )
 import Data.HashSet (HashSet)
-import Data.HashSet qualified as Set (singleton, size, toList)
+import Data.HashSet qualified as HashSet (singleton, toList)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty qualified as NonEmpty (span)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
@@ -44,10 +45,11 @@ import Vehicle.Expr.Hashing ()
 monomorphise ::
   (MonadCompile m, Eq builtin, Hashable builtin, PrintableBuiltin builtin) =>
   (Decl Ix builtin -> Bool) ->
+  Text ->
   Prog Ix builtin ->
   m (Prog Ix builtin)
-monomorphise keepEvenIfUnused prog = logCompilerPass MinDetail "monomorphisation" $ do
-  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) keepEvenIfUnused
+monomorphise keepEvenIfUnused nameJoiner prog = logCompilerPass MinDetail "monomorphisation" $ do
+  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) (keepEvenIfUnused, nameJoiner)
   result <- runReaderT (insert prog2) substitutions
   logCompilerPassOutput $ prettyFriendly result
   return result
@@ -96,37 +98,37 @@ type MonadCollect builtin m =
   ( MonadCompile m,
     MonadState (CandidateApplications builtin) m,
     MonadWriter (SubsitutionSolutions builtin) m,
-    MonadReader (Decl Ix builtin -> Bool) m,
+    MonadReader (Decl Ix builtin -> Bool, Text) m,
     Hashable builtin,
     PrintableBuiltin builtin
   )
 
 monomorphiseProg :: (MonadCollect builtin m) => Prog Ix builtin -> m (Prog Ix builtin)
 monomorphiseProg (Main decls) =
-  Main . reverse . concat <$> traverse monomorphiseDecls (reverse decls)
+  Main . reverse . concat <$> traverse (monomorphiseDecls True) (reverse decls)
 
-monomorphiseDecls :: (MonadCollect builtin m) => Decl Ix builtin -> m [Decl Ix builtin]
-monomorphiseDecls decl = do
+monomorphiseDecls :: (MonadCollect builtin m) => Bool -> Decl Ix builtin -> m [Decl Ix builtin]
+monomorphiseDecls top decl = do
   let ident = identifierOf decl
   logCompilerSection MaxDetail ("Checking" <+> quotePretty ident) $ do
-    newDecls <- monomorphiseDecl decl
+    newDecls <- monomorphiseDecl top decl
     forM_ newDecls (traverse collectReferences)
     recursiveReferences <- gets (Map.member ident)
     resursiveDecls <-
       if recursiveReferences
-        then monomorphiseDecls decl
+        then monomorphiseDecls False decl
         else return []
     return (newDecls <> resursiveDecls)
 
-monomorphiseDecl :: (MonadCollect builtin m) => Decl Ix builtin -> m [Decl Ix builtin]
-monomorphiseDecl decl = do
+monomorphiseDecl :: (MonadCollect builtin m) => Bool -> Decl Ix builtin -> m [Decl Ix builtin]
+monomorphiseDecl top decl = do
   let ident = identifierOf decl
   freeVarApplications <- get
   modify (Map.delete ident)
   case decl of
     DefAbstract {} -> return [decl]
     DefFunction p _ anns t e -> do
-      keepEvenIfUnused <- ask
+      (keepEvenIfUnused, _) <- ask
       case Map.lookup ident freeVarApplications of
         Nothing -> do
           logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
@@ -138,11 +140,13 @@ monomorphiseDecl decl = do
               logDebug MaxDetail "Discarding declaration"
               return []
         Just applications -> do
-          let numberOfApplications = Set.size applications
-          let createNewName = numberOfApplications > 1
+          let applicationList = HashSet.toList applications
+          let numberOfApplications = length applicationList
+          let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat applicationList)
+          let createNewName = numberOfApplications > 1 || not top || ident `Set.member` allFreeVarsInArgs
           logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications:"
-          logDebug MaxDetail $ indent 2 $ prettyVerbose (Set.toList applications)
-          traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) (Set.toList applications)
+          logDebug MaxDetail $ indent 2 $ prettyVerbose applicationList
+          traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) applicationList
 
 performMonomorphisation ::
   (MonadCollect builtin m) =>
@@ -151,9 +155,10 @@ performMonomorphisation ::
   [Arg Ix builtin] ->
   m (Decl Ix builtin)
 performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
-  let newIdent
-        | createNewName = Identifier (moduleOf ident) $ nameOf ident <> getMonomorphisedSuffix args
-        | otherwise = ident
+  newIdent <-
+    if createNewName
+      then Identifier (moduleOf ident) <$> getMonomorphisedName (nameOf ident) args
+      else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
   let newDecl = DefFunction p newIdent anns newType newBody
@@ -187,7 +192,7 @@ collectApplication ::
   m (Expr Ix builtin)
 collectApplication p ident argsToMono remainingArgs = do
   logDebug MaxDetail $ "Found application:" <+> quotePretty ident <+> prettyVerbose argsToMono
-  modify (Map.insert ident (Set.singleton argsToMono))
+  modify (Map.insertWith (<>) ident (HashSet.singleton argsToMono))
   return $ normAppList p (FreeVar p ident) (argsToMono <> remainingArgs)
 
 --------------------------------------------------------------------------------
@@ -215,12 +220,17 @@ replaceCandidateApplication p ident monoArgs remainingArgs = do
     Nothing -> return $ normAppList p (FreeVar p ident) (monoArgs <> remainingArgs)
     Just replacementIdent -> return $ normAppList p (FreeVar p replacementIdent) remainingArgs
 
-getMonomorphisedSuffix :: (PrintableBuiltin builtin) => [Arg Ix builtin] -> Text
-getMonomorphisedSuffix args = do
+getMonomorphisedName ::
+  (MonadCollect builtin m) =>
+  Text ->
+  [Arg Ix builtin] ->
+  m Text
+getMonomorphisedName name args = do
+  (_, nameJoiner) <- ask
+  let typeJoiner = nameJoiner <> nameJoiner
   let implicits = mapMaybe getImplicitArg args
-  let typesText = fmap getImplicitName implicits
-  let typeNames = fmap (\v -> "[" <> Text.replace " " "-" v <> "]") typesText
-  Text.intercalate "-" typeNames
+  let parts = name : fmap getImplicitName implicits
+  return $ Text.replace "\\" "lam" $ Text.replace " " nameJoiner $ Text.intercalate typeJoiner parts
 
 getImplicitName :: (PrintableBuiltin builtin) => Type Ix builtin -> Text
 getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx
