@@ -1,5 +1,5 @@
-The specification language
-==========================
+Vehicle specification language
+==============================
 
 Vehicle specifications are written in the *Vehicle Specification Language*,
 which is designed for clearly and concisely expressing mathematical properties

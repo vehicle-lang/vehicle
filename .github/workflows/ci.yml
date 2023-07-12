@@ -30,8 +30,10 @@ jobs:
       - uses: actions/checkout@v3
       - run: pipx run bumpver update --patch --dry
 
-  test-integration-marabou:
-    uses: ./.github/workflows/test-integration-marabou.yml
+  # NOTE: This job is disabled because Marabou reliably runs out of memory.
+  #
+  # test-integration-marabou:
+  #   uses: ./.github/workflows/test-integration-marabou.yml
 
   test-integration-ormolu:
     runs-on: ubuntu-latest
