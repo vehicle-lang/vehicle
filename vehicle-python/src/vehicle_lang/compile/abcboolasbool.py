@@ -1,12 +1,9 @@
-import operator
 from abc import ABCMeta
 from dataclasses import dataclass
-from typing import Any, SupportsFloat, SupportsInt
 
-from typing_extensions import TypeVar, final, override
+from typing_extensions import TypeVar, override
 
 from . import _numeric
-from ._functools import Function3, Operator1, Operator2, Relation2, curry
 from .abcnumeric import ABCNumericBuiltins
 
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
@@ -26,132 +23,54 @@ class ABCBoolAsBoolBuiltins(
     ],
     metaclass=ABCMeta,
 ):
-    @final
     @override
-    def And(self) -> Operator2[bool]:
-        return lambda x: lambda y: x and y
+    def And(self, x: bool, y: bool) -> bool:
+        return x and y
 
-    @final
     @override
     def Bool(self, value: bool) -> bool:
-        return value.__bool__()
+        return bool(value)
 
-    @final
     @override
-    def EqIndex(self) -> Relation2[int, bool]:
-        return curry(operator.eq)
+    def EqIndex(self, x: int, y: int) -> bool:
+        return x == y
 
-    @final
     @override
-    def EqInt(self) -> Relation2[_SupportsInt, bool]:
-        return curry(operator.eq)
+    def EqInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        return x == y
 
-    @final
     @override
-    def EqNat(self) -> Relation2[_SupportsNat, bool]:
-        return curry(operator.eq)
+    def EqNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        return x == y
 
-    @final
     @override
-    def EqRat(self) -> Relation2[_SupportsRat, bool]:
-        return curry(operator.eq)
+    def EqRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        return x == y
 
-    @final
     @override
-    def GeIndex(self) -> Relation2[int, bool]:
-        return curry(operator.ge)
+    def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
+        return if_true if cond else if_false
 
-    @final
     @override
-    def GeInt(self) -> Relation2[_SupportsInt, bool]:
-        return curry(operator.ge)
+    def LtIndex(self, x: int, y: int) -> bool:
+        return x < y
 
-    @final
     @override
-    def GeNat(self) -> Relation2[_SupportsNat, bool]:
-        return curry(operator.ge)
+    def LtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        return x < y
 
-    @final
     @override
-    def GeRat(self) -> Relation2[_SupportsRat, bool]:
-        return curry(operator.ge)
+    def LtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        return x < y
 
-    @final
     @override
-    def GtIndex(self) -> Relation2[int, bool]:
-        return curry(operator.gt)
+    def LtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        return x < y
 
-    @final
     @override
-    def GtInt(self) -> Relation2[_SupportsInt, bool]:
-        return curry(operator.gt)
+    def Not(self, x: bool) -> bool:
+        return not x
 
-    @final
     @override
-    def GtNat(self) -> Relation2[_SupportsNat, bool]:
-        return curry(operator.gt)
-
-    @final
-    @override
-    def GtRat(self) -> Relation2[_SupportsRat, bool]:
-        return curry(operator.gt)
-
-    @final
-    @override
-    def If(self) -> Function3[bool, _T, _T, _T]:
-        return lambda i: lambda t: lambda e: t if i else e
-
-    @final
-    @override
-    def Implies(self) -> Operator2[bool]:
-        return lambda x: lambda y: (not x) or y
-
-    @final
-    @override
-    def LeIndex(self) -> Relation2[int, bool]:
-        return curry(operator.le)
-
-    @final
-    @override
-    def LeInt(self) -> Relation2[_SupportsInt, bool]:
-        return curry(operator.le)
-
-    @final
-    @override
-    def LeNat(self) -> Relation2[_SupportsNat, bool]:
-        return curry(operator.le)
-
-    @final
-    @override
-    def LeRat(self) -> Relation2[_SupportsRat, bool]:
-        return curry(operator.le)
-
-    @final
-    @override
-    def LtIndex(self) -> Relation2[int, bool]:
-        return curry(operator.lt)
-
-    @final
-    @override
-    def LtInt(self) -> Relation2[_SupportsInt, bool]:
-        return curry(operator.lt)
-
-    @final
-    @override
-    def LtNat(self) -> Relation2[_SupportsNat, bool]:
-        return curry(operator.lt)
-
-    @final
-    @override
-    def LtRat(self) -> Relation2[_SupportsRat, bool]:
-        return curry(operator.lt)
-
-    @final
-    @override
-    def Not(self) -> Operator1[bool]:
-        return operator.not_
-
-    @final
-    @override
-    def Or(self) -> Operator2[bool]:
-        return lambda x: lambda y: x or y
+    def Or(self, x: bool, y: bool) -> bool:
+        return x or y

@@ -1,6 +1,6 @@
 import ast as py
 from dataclasses import asdict, dataclass, field
-from functools import partial, reduce
+from functools import reduce
 from logging import warning
 from pathlib import Path
 from typing import (
@@ -15,7 +15,7 @@ from typing import (
     Union,
 )
 
-from typing_extensions import TypeVar, final, overload, override
+from typing_extensions import final, overload, override
 
 from .. import ast as vcl
 from .. import session as global_session
@@ -27,8 +27,6 @@ from ._ast_compat import unparse as py_ast_unparse
 from .abc import ABCTranslation, AnyBuiltins, Sampler
 from .abcboolasbool import ABCBoolAsBoolBuiltins
 
-_T = TypeVar("_T")
-
 ################################################################################
 ### Implementation of Vehicle builtins in Python
 ################################################################################
@@ -37,17 +35,14 @@ _T = TypeVar("_T")
 @final
 @dataclass(frozen=True)
 class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
-    @final
     @override
     def Int(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    @final
     @override
     def Nat(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    @final
     @override
     def Rat(self, value: SupportsFloat) -> float:
         return value.__float__()
@@ -92,11 +87,17 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                py.ImportFrom(
-                    module="fractions",
-                    names=[
-                        py.alias(name="Fraction", asname=None, **asdict(vcl.MISSING))
-                    ],
+                # NOTE: 'fractions' is imported for 'Fraction'
+                #       which is used to translate vcl.Rat
+                py.Import(
+                    names=[py.alias(name="fractions", **asdict(vcl.MISSING))],
+                    level=0,
+                    **asdict(vcl.MISSING),
+                ),
+                # NOTE: 'functools' is imported for 'partial'
+                #       which is used to translate vcl.PartialApp
+                py.Import(
+                    names=[py.alias(name="functools", **asdict(vcl.MISSING))],
                     level=0,
                     **asdict(vcl.MISSING),
                 ),
@@ -105,6 +106,13 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 *self.module_footer,
             ],
             type_ignores=[],
+        )
+
+    def translate_binder(self, binder: vcl.Binder) -> py.arg:
+        return py.arg(
+            arg=binder.name or "_",
+            annotation=None,
+            **asdict(binder.provenance),
         )
 
     def translate_declarations(
@@ -118,14 +126,37 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 warning(f"ignored declaration {name}")
                 self.ignored_types.append(name)
 
-    def translate_binder(self, binder: vcl.Binder) -> py.arguments:
-        return py_binder(
-            py.arg(
-                arg=binder.name or "_",
-                annotation=None,
-                **asdict(binder.provenance),
+    def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
+        if isinstance(declaration.body, vcl.Lam):
+            return py.FunctionDef(
+                name=declaration.name,
+                args=py_binder(
+                    *(
+                        self.translate_binder(binder)
+                        for binder in declaration.body.binders
+                    )
+                ),
+                body=[
+                    py.Return(
+                        value=self.translate_expression(declaration.body.body),
+                        **asdict(declaration.provenance),
+                    )
+                ],
+                decorator_list=[],
+                **asdict(declaration.provenance),
             )
-        )
+        else:
+            return py.Assign(
+                targets=[
+                    py.Name(
+                        id=declaration.name,
+                        ctx=py.Store(),
+                        **asdict(declaration.provenance),
+                    )
+                ],
+                value=self.translate_expression(declaration.body),
+                **asdict(declaration.provenance),
+            )
 
     def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> py.stmt:
         # NOTE: Postulates are compiled in one of two ways:
@@ -144,7 +175,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 ],
                 value=py_builtin(
                     builtin=declaration.name,
-                    keywords=[],
                     provenance=declaration.provenance,
                 ),
                 **asdict(declaration.provenance),
@@ -161,7 +191,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     ops=[py.In()],
                     comparators=[
                         py.Call(
-                            func=py_name("vars", declaration.provenance),
+                            func=py_name("vars", provenance=declaration.provenance),
                             args=[],
                             keywords=[],
                             **asdict(declaration.provenance),
@@ -176,105 +206,20 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 **asdict(declaration.provenance),
             )
 
-    def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
-        return py.Assign(
-            targets=[
-                py.Name(
-                    id=declaration.name,
-                    ctx=py.Store(),
-                    **asdict(declaration.provenance),
-                )
-            ],
-            value=self.translate_expression(declaration.body),
-            **asdict(declaration.provenance),
-        )
-
     def translate_App(self, expression: vcl.App) -> py.expr:
-        # NOTE: Vector literals are handled separately:
-        #       Vehicle represents Vector literals as N-ary functions,
-        #       but (1) we cannot easily represent these in mypy,
-        #       and (2) we risk exceeding the maximum recursion depth
-        #       if we constructor vectors with recursive function calls.
-        #       We intercept Vector literals and pass the list of arguments
-        #       directly to the Vector builtin.
-        if (
-            isinstance(expression.func, vcl.BuiltinOp)
-            and isinstance(expression.func.builtin, vcl.Vector)
-            and expression.func.builtin.value > 0
-        ):
-            return py_builtin(
-                builtin="Vector",
-                keywords=[
-                    py.keyword(
-                        arg="values",
-                        value=py.Tuple(
-                            elts=[
-                                self.translate_expression(arg)
-                                for arg in expression.args
-                            ],
-                            ctx=py.Load(),
-                            **asdict(expression.provenance),
-                        ),
-                        **asdict(expression.provenance),
-                    )
-                ],
-                provenance=expression.provenance,
-            )
-        # NOTE: Quantifiers are handled separately:
-        #       Vehicle represents Quantifiers as builtins, but in order
-        #       to interpret them using sampling, we must have access to
-        #       the name of the quantified variable.
-        if isinstance(expression.func, vcl.BuiltinOp) and isinstance(
-            expression.func.builtin, (vcl.Forall, vcl.Exists)
-        ):
-            quantifier = expression.func.builtin
-            assert (
-                len(expression.args) == 1
-            ), f"Found {quantifier.__class__.__name__} with {len(expression.args)} arguments."
-            assert isinstance(
-                expression.args[0], vcl.Lam
-            ), f"Found {quantifier.__class__.__name__} applied to {expression.args[0].__class__.__name__}"
-            lam = expression.args[0]
-            return py_app(
-                func=py_builtin(
-                    builtin=quantifier.__class__.__name__,
-                    keywords=[
-                        py.keyword(
-                            arg="name",
-                            value=py.Str(
-                                s=lam.binder.name,
-                                **asdict(lam.provenance),
-                            ),
-                            **asdict(lam.provenance),
-                        ),
-                        py.keyword(
-                            arg="context",
-                            value=py.Call(
-                                func=py_name("locals", lam.provenance),
-                                args=[],
-                                keywords=[],
-                                **asdict(lam.provenance),
-                            ),
-                            **asdict(lam.provenance),
-                        ),
-                    ],
-                    provenance=expression.func.provenance,
-                ),
-                arg=self.translate_expression(lam),
-                provenance=expression.provenance,
-            )
-
-        return reduce(
-            partial(py_app, provenance=expression.provenance),
-            [self.translate_expression(arg) for arg in expression.args],
-            self.translate_expression(expression.func),
+        return py_app(
+            self.translate_expression(expression.function),
+            *map(self.translate_expression, expression.arguments),
+            provenance=expression.provenance,
         )
 
     def translate_BoundVar(self, expression: vcl.BoundVar) -> py.expr:
-        return py_name(expression.name, expression.provenance)
+        return py_name(expression.name, provenance=expression.provenance)
 
-    def translate_BuiltinOp(self, expression: vcl.BuiltinOp) -> py.expr:
-        # NOTE: We ignore any declaration where translation touches a type.
+    def translate_Builtin(self, expression: vcl.Builtin) -> py.expr:
+        # TYPES
+        #   When we encounter a type, we raise `EraseType`,
+        #   which is handled by `translation_declarations`.
         if isinstance(
             expression.builtin,
             (
@@ -289,144 +234,147 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             ),
         ):
             raise EraseType
-
-        keywords: List[py.keyword] = []
-        if isinstance(expression.builtin, vcl.Bool):
-            keywords.append(
-                py.keyword(
-                    arg="value",
-                    value=py.NameConstant(
-                        value=True,
+        # CONSTANTS
+        #   When we encounter a constant, we translate it to an application
+        #   of the builtin function to the constant value, e.g., we translate
+        #   `Index(value=3)` to `__vehicle__.Index(3)`.
+        #
+        #   The `Vector` builtin is a special case. Vehicle represents the
+        #   empty vector as `Builtin(Vector(0))` but represents the vector with
+        #   some elements as `App(Builtin(Vector(n)), [...])`.
+        #   If the length of the vector is zero, we translate the vector as a
+        #   constant, but otherwise translate it as a function.
+        elif isinstance(
+            expression.builtin,
+            (
+                vcl.Bool,
+                vcl.Index,
+                vcl.Int,
+                vcl.Nat,
+                vcl.NilList,
+                vcl.Rat,
+                vcl.Sample,
+            ),
+        ) or (
+            isinstance(expression.builtin, vcl.Vector) and expression.builtin.value == 0
+        ):
+            arguments: List[py.expr] = []
+            if isinstance(expression.builtin, vcl.Bool):
+                arguments.append(
+                    py.NameConstant(
+                        value=expression.builtin.value,
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
-            )
-        elif isinstance(expression.builtin, vcl.Index):
-            keywords.append(
-                py.keyword(
-                    arg="value",
-                    value=py.Num(
-                        n=expression.builtin.value,
+            elif isinstance(expression.builtin, vcl.Index):
+                arguments.append(
+                    py.Num(
+                        value=expression.builtin.value,
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
-            )
-        elif isinstance(expression.builtin, vcl.Int):
-            keywords.append(
-                py.keyword(
-                    arg="value",
-                    value=py.Num(
-                        n=expression.builtin.value,
+            elif isinstance(expression.builtin, vcl.Int):
+                arguments.append(
+                    py.Num(
+                        value=expression.builtin.value,
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
-            )
-        elif isinstance(expression.builtin, vcl.Nat):
-            keywords.append(
-                py.keyword(
-                    arg="value",
-                    value=py.Num(
-                        n=expression.builtin.value,
+            elif isinstance(expression.builtin, vcl.Nat):
+                arguments.append(
+                    py.Num(
+                        value=expression.builtin.value,
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
-            )
-        elif isinstance(expression.builtin, vcl.Rat):
-            keywords.append(
-                py.keyword(
-                    arg="value",
-                    value=py.Call(
-                        func=py_name("Fraction", expression.provenance),
-                        args=[],
-                        keywords=[
-                            py.keyword(
-                                arg="numerator",
-                                value=py.Num(
-                                    n=expression.builtin.numerator,
-                                    **asdict(expression.provenance),
-                                ),
-                                **asdict(expression.provenance),
-                            ),
-                            py.keyword(
-                                arg="denominator",
-                                value=py.Num(
-                                    n=expression.builtin.denominator,
-                                    **asdict(expression.provenance),
-                                ),
-                                **asdict(expression.provenance),
-                            ),
-                        ],
+            elif isinstance(expression.builtin, vcl.Rat):
+                arguments.append(
+                    py_app(
+                        py_qualified_name(
+                            "fractions",
+                            "Fraction",
+                            provenance=expression.provenance,
+                        ),
+                        py.Num(
+                            n=expression.builtin.numerator,
+                            **asdict(expression.provenance),
+                        ),
+                        py.Num(
+                            n=expression.builtin.denominator,
+                            **asdict(expression.provenance),
+                        ),
+                        provenance=expression.provenance,
+                    )
+                )
+            elif isinstance(expression.builtin, vcl.Sample):
+                arguments.append(
+                    py.Str(
+                        s=expression.builtin.name,
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
-            )
-        elif isinstance(expression.builtin, vcl.Sample):
-            keywords.append(
-                py.keyword(
-                    arg="name",
-                    value=py.Str(
-                        s=expression.builtin.name, **asdict(expression.provenance)
-                    ),
-                    **asdict(expression.provenance),
-                )
-            )
-            keywords.append(
-                py.keyword(
-                    arg="context",
-                    value=py.Dict(
+                arguments.append(
+                    py.Dict(
                         keys=[
-                            py.Str(s=local, **asdict(expression.provenance))
+                            py.Str(
+                                s=local,
+                                **asdict(expression.provenance),
+                            )
                             for local in expression.builtin.locals
                         ],
                         values=[
-                            py_name(local, expression.provenance)
+                            py_name(local, provenance=expression.provenance)
                             for local in expression.builtin.locals
                         ],
                         **asdict(expression.provenance),
-                    ),
-                    **asdict(expression.provenance),
+                    )
                 )
+            return py_app(
+                py_builtin(
+                    expression.builtin.__class__.__name__,
+                    provenance=expression.provenance,
+                ),
+                *arguments,
+                provenance=expression.provenance,
             )
-        elif isinstance(expression.builtin, vcl.Vector):
-            # NOTE: Vector literals are handled separately, as Vehicle represents
-            #       these as N-ary functions. The only vectors that should be found
-            #       at this point are empty vectors.
-            assert (
-                expression.builtin.value == 0
-            ), "Found non-empty vector. These should be handled at their corresponding App node."
-        return py_builtin(
-            builtin=expression.builtin.__class__.__name__,
-            keywords=keywords,
-            provenance=expression.provenance,
-        )
+        # FUNCTIONS
+        #   When we encounter a function, we translate it to the unapplied
+        #   function name, e.g., we translate `AddInt` as `__vehicle__.AddInt`.
+        else:
+            return py_builtin(
+                builtin=expression.builtin.__class__.__name__,
+                provenance=expression.provenance,
+            )
 
     def translate_FreeVar(self, expression: vcl.FreeVar) -> py.expr:
         # NOTE: We ignore any declaration where translation touches a type.
         if expression.name in self.ignored_types:
             raise EraseType()
         else:
-            return py_name(expression.name, expression.provenance)
+            return py_name(expression.name, provenance=expression.provenance)
 
     def translate_Lam(self, expression: vcl.Lam) -> py.expr:
         return py.Lambda(
-            args=self.translate_binder(expression.binder),
+            args=py_binder(*(map(self.translate_binder, expression.binders))),
             body=self.translate_expression(expression.body),
             **asdict(expression.provenance),
         )
 
     def translate_Pi(self, _expression: vcl.Pi) -> py.expr:
-        return NotImplemented
+        raise EraseType()
+
+    def translate_PartialApp(self, expression: vcl.PartialApp) -> py.expr:
+        return py_partial_app(
+            self.translate_expression(expression.function),
+            *map(self.translate_expression, expression.arguments),
+            provenance=expression.provenance,
+        )
 
     def translate_Universe(self, _expression: vcl.Universe) -> py.expr:
-        return NotImplemented
+        raise EraseType()
 
 
-def py_name(name: vcl.Name, provenance: vcl.Provenance) -> py.Name:
+def py_name(name: vcl.Name, *, provenance: vcl.Provenance) -> py.Name:
     """Make a name."""
     return py.Name(
         id=name,
@@ -435,22 +383,16 @@ def py_name(name: vcl.Name, provenance: vcl.Provenance) -> py.Name:
     )
 
 
-def py_sampler(
-    name: vcl.Name, locals: Sequence[vcl.Name], *, provenance: vcl.Provenance
-) -> py.expr:
-    """Make a call to a sampler."""
-    return py.Call(
-        func=py_name(f"sampler_for_{name}", provenance),
-        args=[
-            py.Dict(
-                keys=[py.Str(s=local, **asdict(provenance)) for local in locals],
-                values=[py_name(local, provenance) for local in locals],
-                **asdict(provenance),
-            )
-        ],
-        keywords=[],
-        **asdict(provenance),
-    )
+def py_qualified_name(*parts: vcl.Name, provenance: vcl.Provenance) -> py.expr:
+    """Make a qualified name."""
+    if not parts:
+        raise ValueError("A qualified name should have at least one part.")
+
+    def py_attribute(value: py.expr, attr: str) -> py.expr:
+        return py.Attribute(value=value, attr=attr, ctx=py.Load(), **asdict(provenance))
+
+    initial: py.expr = py_name(parts[0], provenance=provenance)
+    return reduce(py_attribute, parts[1:], initial)
 
 
 def py_binder(*args: py.arg) -> py.arguments:
@@ -466,30 +408,32 @@ def py_binder(*args: py.arg) -> py.arguments:
     )
 
 
-def py_app(func: py.expr, arg: py.expr, *, provenance: vcl.Provenance) -> py.expr:
+def py_builtin(builtin: str, *, provenance: vcl.Provenance) -> py.expr:
+    """Make a builtin function call."""
+    return py_qualified_name("__vehicle__", builtin, provenance=provenance)
+
+
+def py_app(
+    function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
+) -> py.expr:
     """Make a function call."""
     return py.Call(
-        func=func,
-        args=[arg],
+        func=function,
+        args=list(arguments),
         keywords=[],
         **asdict(provenance),
     )
 
 
-def py_builtin(
-    builtin: str, keywords: Sequence[py.keyword], *, provenance: vcl.Provenance
+def py_partial_app(
+    function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
 ) -> py.expr:
-    """Make a builtin function call."""
-    return py.Call(
-        func=py.Attribute(
-            value=py_name("__vehicle__", provenance),
-            attr=builtin,
-            ctx=py.Load(),
-            **asdict(provenance),
-        ),
-        args=[],
-        keywords=list(keywords),
-        **asdict(provenance),
+    """Make a partial function call."""
+    return py_app(
+        py_qualified_name("functools", "partial", provenance=provenance),
+        function,
+        *arguments,
+        provenance=provenance,
     )
 
 
@@ -505,7 +449,7 @@ def to_python(
     target: Target = Target.DEFAULT,
     context: Dict[str, Any] = {},
     session: Optional[Session] = None,
-    samplers: Dict[str, Sampler],
+    samplers: Dict[str, Sampler[Any]],
     builtins: None = None,
     translation: None = None,
 ) -> Dict[str, Any]:
@@ -560,7 +504,7 @@ def to_python(
     target: Target = Target.DEFAULT,
     context: Dict[str, Any] = {},
     session: Optional[Session] = None,
-    samplers: Optional[Dict[str, Sampler]] = None,
+    samplers: Optional[Dict[str, Sampler[Any]]] = None,
     builtins: Optional[AnyBuiltins] = None,
     translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:

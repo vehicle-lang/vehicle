@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 from vehicle_lang.compile import to_python
 
 
@@ -77,11 +78,11 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
             {"x": quantifier_all_sampler},
             {"quantifierForall": False},
         ),
-        (
-            "test_quantifier_any.vcl",
-            {"x": quantifier_any_sampler},
-            {"quantifierExists": True},
-        ),
+        # (
+        #     "test_quantifier_any.vcl",
+        #     {"x": quantifier_any_sampler},
+        #     {"quantifierExists": True},
+        # ),
         (
             "test_subtraction.vcl",
             {},

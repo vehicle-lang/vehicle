@@ -165,8 +165,8 @@ class TaggedObjectDecoder(Decoder[_T]):
                     args.append(decoder.decode(fld.type, value_args[index]))
                 except DecodeError as e:
                     raise DecodeError(
-                        value,
-                        subcls,
+                        e.value,
+                        e.cls,
                         e.reason,
                         telescope=((subcls, fld.name), *e.telescope),
                     )

@@ -1,7 +1,6 @@
-import operator
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from functools import partial
+from functools import reduce
 from typing import (
     Any,
     Callable,
@@ -12,23 +11,11 @@ from typing import (
     SupportsFloat,
     SupportsInt,
     Tuple,
-    cast,
 )
 
 from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
-from ._functools import (
-    Function1,
-    Function2,
-    Function3,
-    Operator1,
-    Operator2,
-    Relation2,
-    cons,
-    curry,
-    foldRight,
-)
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
@@ -45,10 +32,11 @@ _T = TypeVar("_T")
 
 @dataclass(frozen=True)
 class UnsupportedBuiltin(Exception):
-    builtin: vcl.Builtin
+    builtin: vcl.BuiltinFunction
 
 
-Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
+# Sampler: TypeAlias = Callable[[Callable[[_T], _Bool], Dict[str, Any]], Iterator[_T]]
+Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[_T]]
 
 
 @dataclass(frozen=True, init=False)
@@ -61,250 +49,233 @@ class Builtins(
     ],
     metaclass=ABCMeta,
 ):
-    samplers: Dict[str, Sampler] = field(default_factory=dict)
+    samplers: Dict[str, Sampler[Any]] = field(default_factory=dict)
 
     @abstractmethod
-    def AddInt(self) -> Operator2[_Int]:
+    def AddInt(self, x: _Int, y: _Int) -> _Int:
         ...
 
     @abstractmethod
-    def AddNat(self) -> Operator2[_Nat]:
+    def AddNat(self, x: _Nat, y: _Nat) -> _Nat:
         ...
 
     @abstractmethod
-    def AddRat(self) -> Operator2[_Rat]:
+    def AddRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     @abstractmethod
-    def And(self) -> Operator2[_Bool]:
+    def And(self, x: _Bool, y: _Bool) -> _Bool:
         ...
 
-    def AtVector(self) -> Function2[Sequence[_T], int, _T]:
-        return curry(operator.getitem)
+    def AtVector(self, sequence: Sequence[_T], index: int) -> _T:
+        return sequence[index]
 
     @abstractmethod
     def Bool(self, value: bool) -> _Bool:
         ...
 
-    def ConsList(self) -> Function2[_T, Sequence[_T], Sequence[_T]]:
-        return cons
+    def ConsList(self, item: _T, sequence: Sequence[_T]) -> Sequence[_T]:
+        return (item, *sequence)
 
-    def ConsVector(self) -> Function2[_T, Sequence[_T], Sequence[_T]]:
-        return cons
+    def ConsVector(self, item: _T, sequence: Sequence[_T]) -> Sequence[_T]:
+        return (item, *sequence)
 
     @abstractmethod
-    def DivRat(self) -> Operator2[_Rat]:
+    def DivRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     @abstractmethod
-    def EqIndex(self) -> Relation2[int, _Bool]:
+    def EqIndex(self, x: int, y: int) -> _Bool:
         ...
 
     @abstractmethod
-    def EqInt(self) -> Relation2[_Int, _Bool]:
+    def EqInt(self, x: _Int, y: _Int) -> _Bool:
         ...
 
     @abstractmethod
-    def EqNat(self) -> Relation2[_Nat, _Bool]:
+    def EqNat(self, x: _Nat, y: _Nat) -> _Bool:
         ...
 
     @abstractmethod
-    def EqRat(self) -> Relation2[_Rat, _Bool]:
+    def EqRat(self, x: _Rat, y: _Rat) -> _Bool:
         ...
-
-    def QuantifierViaSample(
-        self,
-        name: str,
-        context: Dict[str, Any],
-        *,
-        function: Operator2[_Bool],
-        initial: _Bool,
-    ) -> Function1[Function1[_T, _Bool], _Bool]:
-        def _QuantifierViaSample(predicate: Function1[_T, _Bool]) -> _Bool:
-            return foldRight(function)(initial)(
-                [
-                    predicate(cast(_T, sample))
-                    for sample in self.Sample(name, {"predicate": predicate, **context})
-                ]
-            )
-
-        return _QuantifierViaSample
 
     def Exists(
-        self, name: str, context: Dict[str, Any]
-    ) -> Function1[Function1[_T, _Bool], _Bool]:
-        return self.QuantifierViaSample(
-            name, context, function=self.Or(), initial=self.Bool(False)
-        )
+        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
+    ) -> _Bool:
+        raise UnsupportedBuiltin(vcl.Exists())
 
     def FoldList(
-        self,
-    ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
-        return foldRight
+        self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
+    ) -> _T:
+        return reduce(lambda x, y: function(y, x), sequence, initial)
 
     def FoldVector(
-        self,
-    ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
-        return foldRight
+        self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
+    ) -> _T:
+        return reduce(lambda x, y: function(y, x), sequence, initial)
 
     def Forall(
-        self, name: str, context: Dict[str, Any]
-    ) -> Function1[Function1[_T, _Bool], _Bool]:
-        return self.QuantifierViaSample(
-            name, context, function=self.And(), initial=self.Bool(True)
-        )
+        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
+    ) -> _Bool:
+        raise UnsupportedBuiltin(vcl.Forall())
 
-    def GeIndex(self) -> Relation2[int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LtIndex()(x)(y))
+    def GeIndex(self, x: int, y: int) -> _Bool:
+        return self.Not(self.LtIndex(x, y))
 
-    def GeInt(self) -> Relation2[_Int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LtInt()(x)(y))
+    def GeInt(self, x: _Int, y: _Int) -> _Bool:
+        return self.Not(self.LtInt(x, y))
 
-    def GeNat(self) -> Relation2[_Nat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LtNat()(x)(y))
+    def GeNat(self, x: _Nat, y: _Nat) -> _Bool:
+        return self.Not(self.LtNat(x, y))
 
-    def GeRat(self) -> Relation2[_Rat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LtRat()(x)(y))
+    def GeRat(self, x: _Rat, y: _Rat) -> _Bool:
+        return self.Not(self.LtRat(x, y))
 
-    def GtIndex(self) -> Relation2[int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LeIndex()(x)(y))
+    def GtIndex(self, x: int, y: int) -> _Bool:
+        return self.Not(self.LeIndex(x, y))
 
-    def GtInt(self) -> Relation2[_Int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LeInt()(x)(y))
+    def GtInt(self, x: _Int, y: _Int) -> _Bool:
+        return self.Not(self.LeInt(x, y))
 
-    def GtNat(self) -> Relation2[_Nat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LeNat()(x)(y))
+    def GtNat(self, x: _Nat, y: _Nat) -> _Bool:
+        return self.Not(self.LeNat(x, y))
 
-    def GtRat(self) -> Relation2[_Rat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.LeRat()(x)(y))
+    def GtRat(self, x: _Rat, y: _Rat) -> _Bool:
+        return self.Not(self.LeRat(x, y))
 
     @abstractmethod
-    def If(self) -> Function3[_Bool, _T, _T, _T]:
+    def If(self, cond: _Bool, if_true: _T, if_false: _T) -> _T:
         ...
 
-    def Implies(self) -> Operator2[_Bool]:
-        return lambda x: lambda y: self.Or()(self.Not()(x))(y)
+    def Implies(self, x: _Bool, y: _Bool) -> _Bool:
+        return self.Or(self.Not(x), y)
 
     def Index(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    def Indices(self) -> Function1[int, Sequence[int]]:
-        return partial(range, 0)
+    def Indices(self, upto: int) -> Sequence[int]:
+        return range(0, upto)
 
     @abstractmethod
     def Int(self, value: SupportsInt) -> _Int:
         ...
 
-    def LeIndex(self) -> Relation2[int, _Bool]:
-        return lambda x: lambda y: self.Or()(self.EqIndex()(x)(y))(self.LtIndex()(x)(y))
+    def LeIndex(self, x: int, y: int) -> _Bool:
+        return self.Or(self.EqIndex(x, y), self.LtIndex(x, y))
 
-    def LeInt(self) -> Relation2[_Int, _Bool]:
-        return lambda x: lambda y: self.Or()(self.EqInt()(x)(y))(self.LtInt()(x)(y))
+    def LeInt(self, x: _Int, y: _Int) -> _Bool:
+        return self.Or(self.EqInt(x, y), self.LtInt(x, y))
 
-    def LeNat(self) -> Relation2[_Nat, _Bool]:
-        return lambda x: lambda y: self.Or()(self.EqNat()(x)(y))(self.LtNat()(x)(y))
+    def LeNat(self, x: _Nat, y: _Nat) -> _Bool:
+        return self.Or(self.EqNat(x, y), self.LtNat(x, y))
 
-    def LeRat(self) -> Relation2[_Rat, _Bool]:
-        return lambda x: lambda y: self.Or()(self.EqRat()(x)(y))(self.LtRat()(x)(y))
+    def LeRat(self, x: _Rat, y: _Rat) -> _Bool:
+        return self.Or(self.EqRat(x, y), self.LtRat(x, y))
 
     @abstractmethod
-    def LtIndex(self) -> Relation2[int, _Bool]:
+    def LtIndex(self, x: int, y: int) -> _Bool:
         ...
 
     @abstractmethod
-    def LtInt(self) -> Relation2[_Int, _Bool]:
+    def LtInt(self, x: _Int, y: _Int) -> _Bool:
         ...
 
     @abstractmethod
-    def LtNat(self) -> Relation2[_Nat, _Bool]:
+    def LtNat(self, x: _Nat, y: _Nat) -> _Bool:
         ...
 
     @abstractmethod
-    def LtRat(self) -> Relation2[_Rat, _Bool]:
+    def LtRat(self, x: _Rat, y: _Rat) -> _Bool:
         ...
 
     @abstractmethod
-    def MaxRat(self) -> Operator2[_Rat]:
+    def MaxRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     @abstractmethod
-    def MinRat(self) -> Operator2[_Rat]:
+    def MinRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     @abstractmethod
-    def MulInt(self) -> Operator2[_Int]:
+    def MulInt(self, x: _Int, y: _Int) -> _Int:
         ...
 
     @abstractmethod
-    def MulNat(self) -> Operator2[_Nat]:
+    def MulNat(self, x: _Nat, y: _Nat) -> _Nat:
         ...
 
     @abstractmethod
-    def MulRat(self) -> Operator2[_Rat]:
+    def MulRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     @abstractmethod
     def Nat(self, value: SupportsInt) -> _Nat:
         ...
 
-    def NeIndex(self) -> Relation2[int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.EqIndex()(x)(y))
+    def NeIndex(self, x: int, y: int) -> _Bool:
+        return self.Not(self.EqIndex(x, y))
 
-    def NeInt(self) -> Relation2[_Int, _Bool]:
-        return lambda x: lambda y: self.Not()(self.EqInt()(x)(y))
+    def NeInt(self, x: _Int, y: _Int) -> _Bool:
+        return self.Not(self.EqInt(x, y))
 
-    def NeNat(self) -> Relation2[_Nat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.EqNat()(x)(y))
+    def NeNat(self, x: _Nat, y: _Nat) -> _Bool:
+        return self.Not(self.EqNat(x, y))
 
-    def NeRat(self) -> Relation2[_Rat, _Bool]:
-        return lambda x: lambda y: self.Not()(self.EqRat()(x)(y))
+    def NeRat(self, x: _Rat, y: _Rat) -> _Bool:
+        return self.Not(self.EqRat(x, y))
 
     @abstractmethod
-    def NegInt(self) -> Operator1[_Int]:
+    def NegInt(self, x: _Int) -> _Int:
         ...
 
     @abstractmethod
-    def NegRat(self) -> Operator1[_Rat]:
+    def NegRat(self, x: _Rat) -> _Rat:
         ...
 
     def NilList(self) -> Sequence[_T]:
         return ()
 
     @abstractmethod
-    def Not(self) -> Operator1[_Bool]:
+    def Not(self, x: _Bool) -> _Bool:
         ...
 
     @abstractmethod
-    def Or(self) -> Operator2[_Bool]:
+    def Or(self, x: _Bool, y: _Bool) -> _Bool:
         ...
 
     @abstractmethod
-    def PowRat(self) -> Function2[_Rat, _Int, _Rat]:
+    def PowRat(self, x: _Rat, y: _Int) -> _Rat:
         ...
 
     @abstractmethod
     def Rat(self, value: SupportsFloat) -> _Rat:
         ...
 
-    def Sample(self, name: str, context: Dict[str, Any]) -> Iterator[Any]:
+    def Sample(
+        self,
+        name: str,
+        # predicate: Callable[[_T], _Bool],
+        context: Dict[str, Any],
+    ) -> Iterator[_T]:
         if name in self.samplers:
             return self.samplers[name](context)
         else:
             raise TypeError(f"Could not find sampler for '{name}'.")
 
     @abstractmethod
-    def SubInt(self) -> Operator2[_Int]:
+    def SubInt(self, x: _Int, y: _Int) -> _Int:
         ...
 
     @abstractmethod
-    def SubRat(self) -> Operator2[_Rat]:
+    def SubRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
     def Unit(self) -> Tuple[()]:
         return ()
 
-    def Vector(self, values: Sequence[_T] = ()) -> Sequence[_T]:
-        return tuple(values)
+    def Vector(self, *values: _T) -> Sequence[_T]:
+        return values
 
 
 AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
@@ -353,11 +324,11 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         raise NotImplementedError(type(declaration).__name__)
 
     @abstractmethod
-    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> _Declaration:
+    def translate_DefFunction(self, declaration: vcl.DefFunction) -> _Declaration:
         ...
 
     @abstractmethod
-    def translate_DefFunction(self, declaration: vcl.DefFunction) -> _Declaration:
+    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> _Declaration:
         ...
 
     @override
@@ -366,14 +337,16 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
             return self.translate_App(expression)
         if isinstance(expression, vcl.BoundVar):
             return self.translate_BoundVar(expression)
-        if isinstance(expression, vcl.BuiltinOp):
-            return self.translate_BuiltinOp(expression)
+        if isinstance(expression, vcl.Builtin):
+            return self.translate_Builtin(expression)
         if isinstance(expression, vcl.FreeVar):
             return self.translate_FreeVar(expression)
         if isinstance(expression, vcl.Lam):
             return self.translate_Lam(expression)
         if isinstance(expression, vcl.Let):
             return self.translate_Let(expression)
+        if isinstance(expression, vcl.PartialApp):
+            return self.translate_PartialApp(expression)
         if isinstance(expression, vcl.Pi):
             return self.translate_Pi(expression)
         if isinstance(expression, vcl.Universe):
@@ -389,7 +362,7 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         ...
 
     @abstractmethod
-    def translate_BuiltinOp(self, expression: vcl.BuiltinOp) -> _Expression:
+    def translate_Builtin(self, expression: vcl.Builtin) -> _Expression:
         ...
 
     @abstractmethod
@@ -404,14 +377,18 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         return self.translate_expression(
             vcl.App(
                 provenance=expression.provenance,
-                func=vcl.Lam(
+                function=vcl.Lam(
                     provenance=expression.provenance,
-                    binder=expression.binder,
+                    binders=(expression.binder,),
                     body=expression.body,
                 ),
-                args=[expression.bound],
+                arguments=[expression.bound],
             )
         )
+
+    @abstractmethod
+    def translate_PartialApp(self, expression: vcl.PartialApp) -> _Expression:
+        ...
 
     @abstractmethod
     def translate_Pi(self, expression: vcl.Pi) -> _Expression:
