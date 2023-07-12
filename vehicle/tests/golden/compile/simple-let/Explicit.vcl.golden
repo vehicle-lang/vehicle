@@ -4,12 +4,6 @@ bigAnd = fold (\ x -> \ y -> x and y) True
 forallIn : (Nat -> Bool) -> List Nat -> Bool;
 forallIn f xs = bigAnd (mapList f xs)
 
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
-
-mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
-mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
-
 @property;
 e1 : Bool;
 e1 = let x = True in let y = False in x and y

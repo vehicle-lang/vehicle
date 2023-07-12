@@ -4,20 +4,23 @@ bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) T
 bigOr : (\ A -> Vector A 5) Bool -> Bool;
 bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
-vectorToVector xs = xs
+mapVector__5__Index_5__Rat : (Index 5 -> Rat) -> Vector (Index 5) 5 -> Vector Rat 5;
+mapVector__5__Index_5__Rat f = dfold {Index 5} {5} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
-mapVector : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
-mapVector f = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__5__Index_5__Bool : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
+mapVector__5__Index_5__Bool f = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 5 -> Bool) -> Vector Bool 5;
-foreachVector f = mapVector f (indices 5)
+foreachVector__Bool__5 : (Index 5 -> Bool) -> Vector Bool 5;
+foreachVector__Bool__5 f = mapVector__5__Index_5__Bool f (indices 5)
+
+foreachVector__Rat__5 : (Index 5 -> Rat) -> Vector Rat 5;
+foreachVector__Rat__5 f = mapVector__5__Index_5__Rat f (indices 5)
 
 existsIndex : (Index 5 -> Bool) -> Bool;
-existsIndex f = bigOr (foreachVector (\ i -> f i))
+existsIndex f = bigOr (foreachVector__Bool__5 (\ i -> f i))
 
 forallIndex : (Index 5 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+forallIndex f = bigAnd (foreachVector__Bool__5 (\ i -> f i))
 
 pi : Rat;
 pi = 3.141592
@@ -71,7 +74,7 @@ meanScalingValues : UnnormalisedInputVector;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : UnnormalisedInputVector -> InputVector;
-normalise x = foreachVector (\ i -> (x ! i - meanScalingValues ! i) - maximumInputValues ! i)
+normalise x = foreachVector__Rat__5 (\ i -> (x ! i - meanScalingValues ! i) - maximumInputValues ! i)
 
 normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
 normAcasXu acasXu x = acasXu (normalise x)

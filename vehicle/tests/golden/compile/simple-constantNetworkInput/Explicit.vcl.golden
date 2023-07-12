@@ -1,9 +1,6 @@
 bigAnd : (\ A -> Vector A 1) Bool -> Bool;
 bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
-vectorToVector xs = xs
-
 mapVector : (Index 1 -> Bool) -> Vector (Index 1) 1 -> Vector Bool 1;
 mapVector f = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 

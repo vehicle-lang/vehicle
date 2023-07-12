@@ -129,13 +129,15 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
+  -- Need to remove literal coercions before monomorphisation otherwise
+  -- the coercion functions in the standard library stick around.
+  literalCoercionFreeProg <- removeLiteralCoercions prog
   let monomorphiseIf d = moduleOf (identifierOf d) == User
-  monomorphiseProg <- monomorphise monomorphiseIf "_" prog
-  literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
+  monomorphiseProg <- monomorphise monomorphiseIf "_" literalCoercionFreeProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON literalCoercionFreeProg
+        compileProgToJSON monomorphiseProg
       else do
-        return $ prettyFriendly literalCoercionFreeProg
+        return $ prettyFriendly monomorphiseProg
   writeResultToFile Nothing outputFile result

@@ -1,11 +1,14 @@
-bigAnd : (\ A -> Vector A 1) Rat -> Rat;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - max 0.0 (x + y - 1.0)) 0.0
+bigAnd__lam_A__Vector_A_1 : (\ A -> Vector A 1) Rat -> Rat;
+bigAnd__lam_A__Vector_A_1 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - max 0.0 (x + y - 1.0)) 0.0
 
-bigOr : (\ A -> Vector A 1) Rat -> Rat;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - min (x + y) 1.0) 1.0
+bigAnd__List : List Rat -> Rat;
+bigAnd__List = fold (\ x -> \ y -> 1.0 - max 0.0 (x + y - 1.0)) 0.0
 
-vectorToVector : Vector Rat 0 -> Vector Rat 0;
-vectorToVector xs = xs
+bigOr__lam_A__Vector_A_1 : (\ A -> Vector A 1) Rat -> Rat;
+bigOr__lam_A__Vector_A_1 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - min (x + y) 1.0) 1.0
+
+bigOr__List : List Rat -> Rat;
+bigOr__List = fold (\ x -> \ y -> 1.0 - min (x + y) 1.0) 1.0
 
 mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
 mapVector f = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
@@ -18,27 +21,24 @@ zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
 
 @noinline;
 equalsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+equalsVector xs ys = bigAnd__lam_A__Vector_A_1 (zipWith (\ x -> \ y -> x == y) xs ys)
 
 notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
-notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
+notEqualsVector xs ys = bigOr__lam_A__Vector_A_1 (zipWith (\ x -> \ y -> x != y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
 
 mapList : (Rat -> Rat) -> List Rat -> List Rat;
 mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test1 f = bigOr (mapList (\ a -> 1.0 - min (max 0.0 (a - 0.0) + equalsVector (f [a + 2.0]) [0.0]) 1.0) sample[a][f])
+test1 f = bigOr__List (mapList (\ a -> 1.0 - min (max 0.0 (a - 0.0) + equalsVector (f [a + 2.0]) [0.0]) 1.0) sample[a][f])
 
 @property;
 test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test2 g = bigOr (mapList (\ a -> bigOr (mapList (\ b -> 1.0 - max 0.0 (max 0.0 (1.0 - a) + (1.0 - max 0.0 (1.0 - max 0.0 (a - b) + equalsVector (g [a + b, a + 2.0 * b]) [0.0] - 1.0)) - 1.0)) sample[b][a, g])) sample[a][g])
+test2 g = bigOr__List (mapList (\ a -> bigOr__List (mapList (\ b -> 1.0 - max 0.0 (max 0.0 (1.0 - a) + (1.0 - max 0.0 (1.0 - max 0.0 (a - b) + equalsVector (g [a + b, a + 2.0 * b]) [0.0] - 1.0)) - 1.0)) sample[b][a, g])) sample[a][g])
 
 @property;
 test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test3 g = bigAnd (mapList (\ a -> bigAnd (mapList (\ b -> 1.0 - (1.0 - min (1.0 - max 0.0 (max 0.0 (a - 0.0) + (if b == 0.0 then 1.0 else 0.0) - 1.0) + notEqualsVector (g [a, b]) [0.0]) 1.0)) sample[b][a, g])) sample[a][g])
+test3 g = bigAnd__List (mapList (\ a -> bigAnd__List (mapList (\ b -> 1.0 - (1.0 - min (1.0 - max 0.0 (max 0.0 (a - 0.0) + (if b == 0.0 then 1.0 else 0.0) - 1.0) + notEqualsVector (g [a, b]) [0.0]) 1.0)) sample[b][a, g])) sample[a][g])

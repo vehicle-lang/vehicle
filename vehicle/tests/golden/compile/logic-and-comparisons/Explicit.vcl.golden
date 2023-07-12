@@ -4,9 +4,6 @@ bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) T
 bigOr : (\ A -> Vector A 1) Bool -> Bool;
 bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
-vectorToVector xs = xs
-
 mapVector : (Index 1 -> Bool) -> Vector (Index 1) 1 -> Vector Bool 1;
 mapVector f = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
@@ -24,9 +21,6 @@ notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Bool;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;

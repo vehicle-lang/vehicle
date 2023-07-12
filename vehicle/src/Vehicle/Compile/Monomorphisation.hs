@@ -31,6 +31,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
 
@@ -49,7 +50,7 @@ monomorphise ::
   Prog Ix builtin ->
   m (Prog Ix builtin)
 monomorphise keepEvenIfUnused nameJoiner prog = logCompilerPass MinDetail "monomorphisation" $ do
-  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) (keepEvenIfUnused, nameJoiner)
+  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) (mempty, mempty, keepEvenIfUnused, nameJoiner)
   result <- runReaderT (insert prog2) substitutions
   logCompilerPassOutput $ prettyFriendly result
   return result
@@ -74,9 +75,9 @@ traverseCandidateApplications processApp = go
       FreeVar p ident ->
         processApp p ident mempty mempty
       App p (FreeVar _ ident) args -> do
-        args' <- traverse (traverse go) args
-        let (argsToMono, remainingArgs) = NonEmpty.span (not . isExplicit) args'
-        processApp p ident argsToMono remainingArgs
+        let (argsToMono, remainingArgs) = NonEmpty.span (not . isExplicit) args
+        remainingArgs' <- traverse (traverse go) remainingArgs
+        processApp p ident argsToMono remainingArgs'
       App p fun args -> do
         fun' <- go fun
         args' <- traverse (traverse go) args
@@ -98,7 +99,7 @@ type MonadCollect builtin m =
   ( MonadCompile m,
     MonadState (CandidateApplications builtin) m,
     MonadWriter (SubsitutionSolutions builtin) m,
-    MonadReader (Decl Ix builtin -> Bool, Text) m,
+    MonadReader (DeclCtx StandardNormDecl, StandardEnv, Decl Ix builtin -> Bool, Text) m,
     Hashable builtin,
     PrintableBuiltin builtin
   )
@@ -122,13 +123,14 @@ monomorphiseDecls top decl = do
 
 monomorphiseDecl :: (MonadCollect builtin m) => Bool -> Decl Ix builtin -> m [Decl Ix builtin]
 monomorphiseDecl top decl = do
+  logDebug MaxDetail $ prettyVerbose decl
   let ident = identifierOf decl
   freeVarApplications <- get
   modify (Map.delete ident)
   case decl of
     DefAbstract {} -> return [decl]
     DefFunction p _ anns t e -> do
-      (keepEvenIfUnused, _) <- ask
+      (_, _, keepEvenIfUnused, _) <- ask
       case Map.lookup ident freeVarApplications of
         Nothing -> do
           logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
@@ -144,8 +146,8 @@ monomorphiseDecl top decl = do
           let numberOfApplications = length applicationList
           let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat applicationList)
           let createNewName = numberOfApplications > 1 || not top || ident `Set.member` allFreeVarsInArgs
-          logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique applications:"
-          logDebug MaxDetail $ indent 2 $ prettyVerbose applicationList
+          logDebug MaxDetail $ "Found" <+> pretty numberOfApplications <+> "type-unique application(s):"
+          logDebug MaxDetail $ indent 2 $ prettyVerbose applicationList <> line
           traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) applicationList
 
 performMonomorphisation ::
@@ -162,7 +164,7 @@ performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
   let newDecl = DefFunction p newIdent anns newType newBody
-  logDebug MaxDetail $ prettyFriendly newDecl
+  logDebug MaxDetail $ prettyFriendly newDecl <> line
   return newDecl
 
 substituteArgsThrough ::
@@ -226,11 +228,15 @@ getMonomorphisedName ::
   [Arg Ix builtin] ->
   m Text
 getMonomorphisedName name args = do
-  (_, nameJoiner) <- ask
+  (_, _, _, nameJoiner) <- ask
   let typeJoiner = nameJoiner <> nameJoiner
   let implicits = mapMaybe getImplicitArg args
   let parts = name : fmap getImplicitName implicits
-  return $ Text.replace "\\" "lam" $ Text.replace " " nameJoiner $ Text.intercalate typeJoiner parts
+  return $
+    Text.replace "\\" "lam" $
+      Text.replace " " nameJoiner $
+        Text.replace "->" "" $
+          Text.intercalate typeJoiner parts
 
 getImplicitName :: (PrintableBuiltin builtin) => Type Ix builtin -> Text
 getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx

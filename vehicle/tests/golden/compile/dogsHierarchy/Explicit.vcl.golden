@@ -1,34 +1,40 @@
-bigAnd : List Bool -> Bool;
-bigAnd = fold (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A_4 : (\ A -> Vector A 4) Bool -> Bool;
+bigAnd__lam_A__Vector_A_4 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+
+bigAnd__lam_A__Vector_A_6 : (\ A -> Vector A 6) Bool -> Bool;
+bigAnd__lam_A__Vector_A_6 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+
+bigAnd__List : List Bool -> Bool;
+bigAnd__List = fold (\ x -> \ y -> x and y) True
 
 bigOr : (\ A -> Vector A 6) Bool -> Bool;
 bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
 
 forallIn : (Index 6 -> Bool) -> List (Index 6) -> Bool;
-forallIn f xs = bigAnd (mapList f xs)
+forallIn f xs = bigAnd__List (mapList f xs)
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
-vectorToVector xs = xs
+mapVector__4__Index_4__Bool : (Index 4 -> Bool) -> Vector (Index 4) 4 -> Vector Bool 4;
+mapVector__4__Index_4__Bool f = dfold {Index 4} {4} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
-mapVector : (Index 6 -> Bool) -> Vector (Index 6) 6 -> Vector Bool 6;
-mapVector f = dfold {Index 6} {6} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__6__Index_6__Bool : (Index 6 -> Bool) -> Vector (Index 6) 6 -> Vector Bool 6;
+mapVector__6__Index_6__Bool f = dfold {Index 6} {6} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 6 -> Bool) -> Vector Bool 6;
-foreachVector f = mapVector f (indices 6)
+foreachVector__Bool__6 : (Index 6 -> Bool) -> Vector Bool 6;
+foreachVector__Bool__6 f = mapVector__6__Index_6__Bool f (indices 6)
+
+foreachVector__Bool__4 : (Index 4 -> Bool) -> Vector Bool 4;
+foreachVector__Bool__4 f = mapVector__4__Index_4__Bool f (indices 4)
 
 existsIndex : (Index 6 -> Bool) -> Bool;
-existsIndex f = bigOr (foreachVector (\ i -> f i))
+existsIndex f = bigOr (foreachVector__Bool__6 (\ i -> f i))
 
-forallIndex : (Index 4 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+forallIndex__6 : (Index 6 -> Bool) -> Bool;
+forallIndex__6 f = bigAnd__lam_A__Vector_A_6 (foreachVector__Bool__6 (\ i -> f i))
+
+forallIndex__4 : (Index 4 -> Bool) -> Bool;
+forallIndex__4 f = bigAnd__lam_A__Vector_A_4 (foreachVector__Bool__4 (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-vectorToList : Vector (Index 6) 2 -> List (Index 6);
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
-
-mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
-mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
 
 numberOfDogs : Nat;
 numberOfDogs = 6
@@ -64,13 +70,13 @@ validPixel : Rat -> Bool;
 validPixel p = 0.0 <= p and p <= 1.0
 
 validImage : Image -> Bool;
-validImage x = forallIndex (\ i -> forallIndex (\ j -> validPixel (x ! i ! j)))
+validImage x = forallIndex__4 (\ i -> forallIndex__4 (\ j -> validPixel (x ! i ! j)))
 
 isFirstChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isFirstChoice score x dog1 = let scores = score x in forallIndex (\ d -> d != dog1 => scores ! dog1 > scores ! d)
+isFirstChoice score x dog1 = let scores = score x in forallIndex__6 (\ d -> d != dog1 => scores ! dog1 > scores ! d)
 
 isSecondChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isSecondChoice score x dog2 = let scores = score x in existsIndex (\ dog1 -> isFirstChoice score x dog1 and forallIndex (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
+isSecondChoice score x dog2 = let scores = score x in existsIndex (\ dog1 -> isFirstChoice score x dog1 and forallIndex__6 (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
 
 noConfusionWith : forallT (score : Image -> Vector Score numberOfDogs) . Image -> List Dog -> List Dog -> Bool;
 noConfusionWith score x dogs1 dogs2 = forallIn (\ dog1 -> forallIn (\ dog2 -> not (isFirstChoice score x dog1 and isSecondChoice score x dog2)) dogs2) dogs1

@@ -1,10 +1,4 @@
-vectorToVector : Vector Rat 2 -> Vector Rat 2;
-vectorToVector xs = xs
-
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-vectorToList : Vector Nat 1 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
 
 @property;
 spec : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
