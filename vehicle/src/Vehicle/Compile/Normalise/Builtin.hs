@@ -7,6 +7,7 @@ module Vehicle.Compile.Normalise.Builtin where
 import Data.Foldable (foldrM)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (unions)
 import Vehicle.Expr.Normalisable
@@ -16,7 +17,7 @@ type EvalApp builtin m = Value builtin -> Spine builtin -> m (Value builtin)
 
 type ForceArg builtin m = Value builtin -> m (Value builtin, Bool, MetaSet)
 
-class Normalisable builtin where
+class (PrintableBuiltin builtin) => Normalisable builtin where
   evalBuiltin ::
     (MonadCompile m) =>
     EvalApp builtin m ->

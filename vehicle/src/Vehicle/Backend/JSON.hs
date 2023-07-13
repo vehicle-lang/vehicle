@@ -7,26 +7,23 @@ module Vehicle.Backend.JSON
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
-import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 (unpack)
+import Data.Data (Proxy (..))
 import Data.Hashable (Hashable)
 import Data.List (stripPrefix)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity, arityFromVType, builtinArity, vlamArity)
 import Vehicle.Compile.Descope (DescopeNamed (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, lookupInDeclCtx, lookupLvInBoundCtx, resolutionError)
-import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, eval, runNormT)
-import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DeclCtx, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), developerError, foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, traverseListLocal, (<+>))
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
+import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), developerError, foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
@@ -39,12 +36,13 @@ import Vehicle.Syntax.AST qualified as V
 -- Public method
 
 compileProgToJSON ::
+  forall m a.
   (MonadCompile m) =>
   StandardProg ->
   m (Doc a)
 compileProgToJSON prog = do
   logCompilerPass MinDetail currentPass $ do
-    jProg <- toJProg prog
+    jProg <- runContextT @m @StandardBuiltin $ toJProg prog
     let namedProg = descopeNamed jProg
     let json = toJSON namedProg
     return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
@@ -393,20 +391,19 @@ instance ToJSON V.FoldDomain where
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
-type Ctx = (DeclCtx StandardGluedDecl, TypingBoundCtx StandardBuiltin)
-
 type MonadJSON m =
   ( MonadCompile m,
-    MonadReader Ctx m
+    MonadContext StandardBuiltin m
   )
 
-toJProg :: (MonadCompile m) => StandardProg -> m (JProg Ix)
-toJProg (V.Main ds) = Main <$> runReaderT (traverseListLocal toJDecl ds) mempty
+toJProg :: (MonadJSON m) => StandardProg -> m (JProg Ix)
+toJProg (V.Main ds) = Main <$> toJDecls ds
 
-toJDecl :: (MonadJSON m) => StandardDecl -> m (Ctx -> Ctx, JDecl Ix)
-toJDecl d = do
-  logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf d)) $ do
-    newDecl <- case d of
+toJDecls :: (MonadJSON m) => [StandardDecl] -> m [JDecl Ix]
+toJDecls [] = return []
+toJDecls (decl : decls) = do
+  logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
+    decl' <- case decl of
       V.DefAbstract p i s t -> do
         case s of
           NetworkDef -> resourceError s
@@ -419,9 +416,9 @@ toJDecl d = do
         logDebug MaxDetail $ prettyVerbose e
         e' <- toJExpr e
         return $ DefFunction p (V.nameOf i) t' e'
-    gluedDecl <- traverse (\e -> Glued e <$> normalise e) d
-    let extendCtx = first (Map.insert (V.identifierOf d) gluedDecl)
-    return (extendCtx, newDecl)
+
+    decls' <- addDeclToContext decl (toJDecls decls)
+    return $ decl' : decls'
 
 toJExpr :: (MonadJSON m) => StandardExpr -> m (JExpr Ix)
 toJExpr expr = case expr of
@@ -441,18 +438,12 @@ toJExpr expr = case expr of
       _ : _
         | arity == length args -> App p fun' args'
         | otherwise -> PartialApp p arity fun' args'
-  V.Pi p binder body -> Pi p <$> toJBinder binder <*> underBinder binder (toJExpr body)
+  V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
   V.Lam p _ _ -> do
     let (foldedBinders, body) = foldLamBinders expr
-    Lam p <$> toJBinders foldedBinders <*> underBinders foldedBinders (toJExpr body)
+    Lam p <$> toJBinders foldedBinders <*> addBindersToContext foldedBinders (toJExpr body)
   V.Let p bound binder body ->
-    Let p <$> toJExpr bound <*> toJBinder binder <*> underBinder binder (toJExpr body)
-
-underBinder :: (MonadJSON m) => StandardBinder -> m a -> m a
-underBinder binder = local (second (binder :))
-
-underBinders :: (MonadJSON m) => [StandardBinder] -> m a -> m a
-underBinders binders = local (second (reverse binders <>))
+    Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
 
 toJBinder :: (MonadJSON m) => StandardBinder -> m (JBinder Ix)
 toJBinder binder = do
@@ -469,7 +460,7 @@ toJBinders = \case
   [] -> return []
   (b : bs) -> do
     b' <- toJBinder b
-    bs' <- underBinder b $ toJBinders bs
+    bs' <- addBinderToContext b $ toJBinders bs
     return $ b' : bs'
 
 functionArity :: (MonadJSON m) => StandardExpr -> m Arity
@@ -482,28 +473,13 @@ functionArity fun = do
     -- Should be no free-variables left, after having appended resources as lambdas
     -- and having normalised.
     VFreeVar v _ -> do
-      (declCtx, _) <- ask
-      decl <- lookupInDeclCtx currentPass v declCtx
+      decl <- getDecl (Proxy @StandardBuiltin) currentPass v
       return $ arityFromVType $ normalised (typeOf decl)
     VBoundVar v _ -> do
-      (_, boundCtx) <- ask
-      binder <- lookupLvInBoundCtx currentPass v boundCtx
+      binder <- getBoundVarByLv (Proxy @StandardBuiltin) currentPass v
       arityFromVType <$> normalise (typeOf binder)
     VBuiltin b spine -> return $ builtinArity b - length spine
     VLam {} -> return $ vlamArity normFun
-
-normalise :: (MonadJSON m) => StandardExpr -> m StandardNormExpr
-normalise expr = do
-  (declCtx, boundCtx) <- ask
-  let env = typingBoundContextToEnv boundCtx
-  let normDeclCtx = flip fmap declCtx $ \d ->
-        TypingDeclCtxEntry
-          { declAnns = V.annotationsOf d,
-            declType = typeOf d,
-            declBody = normalised <$> V.bodyOf d
-          }
-
-  runNormT defaultEvalOptions normDeclCtx mempty $ eval env expr
 
 resourceError :: (MonadJSON m) => DefAbstractSort -> m a
 resourceError resourceType =

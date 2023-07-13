@@ -133,7 +133,7 @@ compileToJSON prog outputFile outputAsJSON = do
   -- the coercion functions in the standard library stick around.
   literalCoercionFreeProg <- removeLiteralCoercions prog
   let monomorphiseIf d = moduleOf (identifierOf d) == User
-  monomorphiseProg <- monomorphise monomorphiseIf "_" literalCoercionFreeProg
+  monomorphiseProg <- monomorphise monomorphiseIf True "_" literalCoercionFreeProg
   result <-
     if outputAsJSON
       then do

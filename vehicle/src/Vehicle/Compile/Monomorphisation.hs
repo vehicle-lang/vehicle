@@ -2,7 +2,7 @@
 
 module Vehicle.Compile.Monomorphisation (monomorphise) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, (<=<))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Control.Monad.State
   ( MonadState (..),
@@ -21,15 +21,16 @@ import Data.HashMap.Strict qualified as Map
   )
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet (singleton, toList)
-import Data.Hashable (Hashable)
 import Data.List.NonEmpty qualified as NonEmpty (span)
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Prelude.MonadContext
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
@@ -44,32 +45,34 @@ import Vehicle.Expr.Hashing ()
 -- http://mrg.doc.ic.ac.uk/publications/featherweight-go/main.pdf
 -- by Wen et al is a good starting point.
 monomorphise ::
-  (MonadCompile m, Eq builtin, Hashable builtin, PrintableBuiltin builtin) =>
-  (Decl Ix builtin -> Bool) ->
+  forall m.
+  (MonadCompile m) =>
+  (StandardDecl -> Bool) ->
+  Bool ->
   Text ->
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
-monomorphise keepEvenIfUnused nameJoiner prog = logCompilerPass MinDetail "monomorphisation" $ do
-  (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) (mempty, mempty, keepEvenIfUnused, nameJoiner)
-  result <- runReaderT (insert prog2) substitutions
-  logCompilerPassOutput $ prettyFriendly result
-  return result
+  StandardProg ->
+  m StandardProg
+monomorphise keepEvenIfUnused simplifyTypes nameJoiner prog =
+  logCompilerPass MinDetail "monomorphisation" $ do
+    progWithNormalisedTypes <-
+      if simplifyTypes
+        then runContextT @m @StandardBuiltin $ normTypeArgsInProg prog
+        else return prog
+    (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg progWithNormalisedTypes)) mempty) (keepEvenIfUnused, nameJoiner)
+    result <- runReaderT (insert prog2) substitutions
+    logCompilerPassOutput $ prettyFriendly result
+    return result
 
 --------------------------------------------------------------------------------
--- Definitions and utilites
-
--- | Applications of monomorphisable functions
-type CandidateApplications builtin = HashMap Identifier (HashSet [Arg Ix builtin])
-
--- | Solution identifier for a candidate monomorphisation application
-type SubsitutionSolutions builtin = HashMap (Identifier, [Arg Ix builtin]) Identifier
+-- Utilities
 
 traverseCandidateApplications ::
   (MonadCompile m) =>
-  (Provenance -> Identifier -> [Arg Ix builtin] -> [Arg Ix builtin] -> m (Expr Ix builtin)) ->
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
-traverseCandidateApplications processApp = go
+  (StandardBinder -> m StandardExpr -> m StandardExpr) ->
+  (Provenance -> Identifier -> [StandardArg] -> [StandardArg] -> m StandardExpr) ->
+  StandardExpr ->
+  m StandardExpr
+traverseCandidateApplications underBinder processApp = go
   where
     go expr = case expr of
       FreeVar p ident ->
@@ -88,27 +91,86 @@ traverseCandidateApplications processApp = go
       Hole {} -> return expr
       Builtin {} -> return expr
       Ann p e t -> Ann p <$> go e <*> go t
-      Pi p binder res -> Pi p <$> traverse go binder <*> go res
-      Lam p binder body -> Lam p <$> traverse go binder <*> go body
-      Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
+      Pi p binder res -> do
+        binder' <- traverse go binder
+        res' <- underBinder binder' (go res)
+        return $ Pi p binder' res'
+      Lam p binder body -> do
+        binder' <- traverse go binder
+        body' <- underBinder binder' (go body)
+        return $ Lam p binder' body'
+      Let p bound binder body -> do
+        bound' <- go bound
+        binder' <- traverse go binder
+        body' <- underBinder binder' (go body)
+        return $ Let p bound' binder' body'
 
 --------------------------------------------------------------------------------
--- Initial pass - collects the sites for monomorphisation
+-- Pass 1 - normalise types in the program
 
-type MonadCollect builtin m =
-  ( MonadCompile m,
-    MonadState (CandidateApplications builtin) m,
-    MonadWriter (SubsitutionSolutions builtin) m,
-    MonadReader (DeclCtx StandardNormDecl, StandardEnv, Decl Ix builtin -> Bool, Text) m,
-    Hashable builtin,
-    PrintableBuiltin builtin
+type MonadTypeNormalise builtin m =
+  ( MonadContext builtin m,
+    Normalisable builtin
   )
 
-monomorphiseProg :: (MonadCollect builtin m) => Prog Ix builtin -> m (Prog Ix builtin)
+normTypeArgsPass :: CompilerPass
+normTypeArgsPass = "normalisation of type arguments"
+
+normTypeArgsInProg ::
+  (MonadTypeNormalise StandardBuiltin m) =>
+  StandardProg ->
+  m StandardProg
+normTypeArgsInProg (Main decls) =
+  logCompilerPass MaxDetail normTypeArgsPass $ do
+    Main <$> normTypeArgsInDecls decls
+
+normTypeArgsInDecls ::
+  (MonadTypeNormalise StandardBuiltin m) =>
+  [StandardDecl] ->
+  m [StandardDecl]
+normTypeArgsInDecls [] = return []
+normTypeArgsInDecls (decl : decls) = do
+  let passDoc = normTypeArgsPass <+> "for" <+> quotePretty (identifierOf decl)
+  decl' <- logCompilerPass MaxDetail passDoc $ case decl of
+    DefAbstract p s e t -> DefAbstract p s e <$> normTypeArgsInExpr t
+    DefFunction p i anns t e -> DefFunction p i anns <$> normTypeArgsInExpr t <*> normTypeArgsInExpr e
+
+  decls' <- addDeclToContext decl' (normTypeArgsInDecls decls)
+  return $ decl' : decls'
+
+normTypeArgsInExpr ::
+  (MonadTypeNormalise StandardBuiltin m) =>
+  StandardExpr ->
+  m StandardExpr
+normTypeArgsInExpr = traverseCandidateApplications addBinderToContext $
+  \p f argsToMono otherArgs -> do
+    let normAndQuote arg
+          | isInstance arg = return arg
+          | otherwise = traverse (unnormalise <=< normalise) arg
+    normArgsToMono <- traverse normAndQuote argsToMono
+    return $ normAppList p (FreeVar p f) (normArgsToMono <> otherArgs)
+
+--------------------------------------------------------------------------------
+-- Pass 2 - collects the sites for monomorphisation
+
+-- | Applications of monomorphisable functions
+type CandidateApplications = HashMap Identifier (HashSet [StandardArg])
+
+-- | Solution identifier for a candidate monomorphisation application
+type SubsitutionSolutions = HashMap (Identifier, [StandardArg]) Identifier
+
+type MonadCollect m =
+  ( MonadCompile m,
+    MonadState CandidateApplications m,
+    MonadWriter SubsitutionSolutions m,
+    MonadReader (StandardDecl -> Bool, Text) m
+  )
+
+monomorphiseProg :: (MonadCollect m) => StandardProg -> m StandardProg
 monomorphiseProg (Main decls) =
   Main . reverse . concat <$> traverse (monomorphiseDecls True) (reverse decls)
 
-monomorphiseDecls :: (MonadCollect builtin m) => Bool -> Decl Ix builtin -> m [Decl Ix builtin]
+monomorphiseDecls :: (MonadCollect m) => Bool -> StandardDecl -> m [StandardDecl]
 monomorphiseDecls top decl = do
   let ident = identifierOf decl
   logCompilerSection MaxDetail ("Checking" <+> quotePretty ident) $ do
@@ -121,7 +183,7 @@ monomorphiseDecls top decl = do
         else return []
     return (newDecls <> resursiveDecls)
 
-monomorphiseDecl :: (MonadCollect builtin m) => Bool -> Decl Ix builtin -> m [Decl Ix builtin]
+monomorphiseDecl :: (MonadCollect m) => Bool -> StandardDecl -> m [StandardDecl]
 monomorphiseDecl top decl = do
   logDebug MaxDetail $ prettyVerbose decl
   let ident = identifierOf decl
@@ -130,7 +192,7 @@ monomorphiseDecl top decl = do
   case decl of
     DefAbstract {} -> return [decl]
     DefFunction p _ anns t e -> do
-      (_, _, keepEvenIfUnused, _) <- ask
+      (keepEvenIfUnused, _) <- ask
       case Map.lookup ident freeVarApplications of
         Nothing -> do
           logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
@@ -151,11 +213,11 @@ monomorphiseDecl top decl = do
           traverse (performMonomorphisation (p, ident, anns, t, e) createNewName) applicationList
 
 performMonomorphisation ::
-  (MonadCollect builtin m) =>
-  (Provenance, Identifier, [Annotation], Type Ix builtin, Expr Ix builtin) ->
+  (MonadCollect m) =>
+  (Provenance, Identifier, [Annotation], StandardType, StandardExpr) ->
   Bool ->
-  [Arg Ix builtin] ->
-  m (Decl Ix builtin)
+  [StandardArg] ->
+  m StandardDecl
 performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   newIdent <-
     if createNewName
@@ -168,9 +230,9 @@ performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   return newDecl
 
 substituteArgsThrough ::
-  (MonadCollect builtin m) =>
-  (Expr Ix builtin, Expr Ix builtin, [Arg Ix builtin]) ->
-  m (Expr Ix builtin, Expr Ix builtin)
+  (MonadCollect m) =>
+  (StandardExpr, StandardExpr, [StandardArg]) ->
+  m (StandardExpr, StandardExpr)
 substituteArgsThrough = \case
   (t, e, []) -> return (t, e)
   (Pi _ _ t, Lam _ _ e, arg : args) -> do
@@ -180,42 +242,41 @@ substituteArgsThrough = \case
     substituteArgsThrough (t', e', args)
   _ -> compilerDeveloperError "Unexpected type/body of function undergoing monomorphisation"
 
-collectReferences :: (MonadCollect builtin m) => Expr Ix builtin -> m ()
+collectReferences :: (MonadCollect m) => StandardExpr -> m ()
 collectReferences expr = do
-  _ <- traverseCandidateApplications collectApplication expr
+  _ <- traverseCandidateApplications (const id) collectApplication expr
   return ()
 
 collectApplication ::
-  (MonadCollect builtin m) =>
+  (MonadCollect m) =>
   Provenance ->
   Identifier ->
-  [Arg Ix builtin] ->
-  [Arg Ix builtin] ->
-  m (Expr Ix builtin)
+  [StandardArg] ->
+  [StandardArg] ->
+  m StandardExpr
 collectApplication p ident argsToMono remainingArgs = do
   logDebug MaxDetail $ "Found application:" <+> quotePretty ident <+> prettyVerbose argsToMono
   modify (Map.insertWith (<>) ident (HashSet.singleton argsToMono))
   return $ normAppList p (FreeVar p ident) (argsToMono <> remainingArgs)
 
 --------------------------------------------------------------------------------
--- Insertion pass
+-- Pass 3 - insert the monorphised identifiers
 
-type MonadInsert builtin m =
+type MonadInsert m =
   ( MonadCompile m,
-    MonadReader (SubsitutionSolutions builtin) m,
-    Hashable builtin
+    MonadReader SubsitutionSolutions m
   )
 
-insert :: (MonadInsert builtin m) => Prog Ix builtin -> m (Prog Ix builtin)
-insert = traverse (traverseCandidateApplications replaceCandidateApplication)
+insert :: (MonadInsert m) => StandardProg -> m StandardProg
+insert = traverse (traverseCandidateApplications (const id) replaceCandidateApplication)
 
 replaceCandidateApplication ::
-  (MonadInsert builtin m) =>
+  (MonadInsert m) =>
   Provenance ->
   Identifier ->
-  [Arg Ix builtin] ->
-  [Arg Ix builtin] ->
-  m (Expr Ix builtin)
+  [StandardArg] ->
+  [StandardArg] ->
+  m StandardExpr
 replaceCandidateApplication p ident monoArgs remainingArgs = do
   solution <- asks (Map.lookup (ident, monoArgs))
   case solution of
@@ -223,12 +284,12 @@ replaceCandidateApplication p ident monoArgs remainingArgs = do
     Just replacementIdent -> return $ normAppList p (FreeVar p replacementIdent) remainingArgs
 
 getMonomorphisedName ::
-  (MonadCollect builtin m) =>
+  (MonadCollect m) =>
   Text ->
-  [Arg Ix builtin] ->
+  [StandardArg] ->
   m Text
 getMonomorphisedName name args = do
-  (_, _, _, nameJoiner) <- ask
+  (_, nameJoiner) <- ask
   let typeJoiner = nameJoiner <> nameJoiner
   let implicits = mapMaybe getImplicitArg args
   let parts = name : fmap getImplicitName implicits
@@ -238,5 +299,5 @@ getMonomorphisedName name args = do
         Text.replace "->" "" $
           Text.intercalate typeJoiner parts
 
-getImplicitName :: (PrintableBuiltin builtin) => Type Ix builtin -> Text
+getImplicitName :: StandardType -> Text
 getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx
