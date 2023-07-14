@@ -12,14 +12,16 @@ arityFromVType = \case
   VPi _ r -> 1 + arityFromVType r
   _ -> 0
 
-builtinArity :: StandardBuiltin -> Arity
-builtinArity = unsafeArityFromType . typeStandardBuiltin mempty
+builtinExplicitArity :: StandardBuiltin -> Arity
+builtinExplicitArity = unsafeArityFromType . typeStandardBuiltin mempty
   where
     -- This is only safe because typing a builtin is guaranteed to
     -- return a normalised type.
     unsafeArityFromType :: StandardType -> Arity
     unsafeArityFromType = \case
-      Pi _ _ r -> 1 + unsafeArityFromType r
+      Pi _ binder r
+        | isExplicit binder -> 1 + unsafeArityFromType r
+        | otherwise -> unsafeArityFromType r
       _ -> 0
 
 lamArity :: Expr var builtin -> Arity

@@ -18,7 +18,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Vehicle.Compile.Arity (Arity, arityFromVType, builtinArity, vlamArity)
+import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity, vlamArity)
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
 import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
@@ -427,7 +427,7 @@ toJExpr expr = case expr of
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> Builtin p <$> toJBuiltin b
+  V.Builtin p b -> BuiltinOp p <$> toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
@@ -479,7 +479,7 @@ functionArity fun = do
     VBoundVar v _ -> do
       binder <- getBoundVarByLv (Proxy @StandardBuiltin) currentPass v
       arityFromVType <$> normalise (typeOf binder)
-    VBuiltin b spine -> return $ builtinArity b - length spine
+    VBuiltin b spine -> return $ builtinExplicitArity b - length spine
     VLam {} -> return $ vlamArity normFun
 
 resourceError :: (MonadJSON m) => DefAbstractSort -> m a

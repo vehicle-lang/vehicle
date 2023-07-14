@@ -11,9 +11,6 @@ EXCLUDE_LIST = [
     GOLDEN_PATH / "simple-untypedDecls" / "spec.vcl",
     GOLDEN_PATH / "acasXu" / "spec.vcl",
     GOLDEN_PATH / "simple-inferableParam" / "spec.vcl",
-    GOLDEN_PATH / "simple-quantifierIn" / "spec.vcl",
-    GOLDEN_PATH / "simple-let" / "spec.vcl",
-    GOLDEN_PATH / "windController" / "spec.vcl",
     GOLDEN_PATH / "mnist-robustness" / "spec.vcl",
 ]
 

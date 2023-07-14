@@ -160,7 +160,7 @@ descopeRelExpr ::
   m (RelExpr Name builtin)
 descopeRelExpr f e = case e of
   R.Universe p l -> return $ R.Universe p l
-  R.Builtin p op -> return $ R.Builtin p op
+  R.BuiltinOp p op -> return $ R.BuiltinOp p op
   R.FreeVar p v -> return $ R.FreeVar p v
   R.BoundVar p v -> R.BoundVar p <$> f p v
   R.App p fun args -> R.App p <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
