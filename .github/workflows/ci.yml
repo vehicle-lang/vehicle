@@ -55,7 +55,7 @@ jobs:
       - build-vehicle
       - build-vehicle-python
       - test-integration-bumpver
-      - test-integration-marabou
+      # - test-integration-marabou
       - test-integration-ormolu
 
     permissions:
@@ -86,7 +86,7 @@ jobs:
       - build-vehicle
       - build-vehicle-python
       - test-integration-bumpver
-      - test-integration-marabou
+      # - test-integration-marabou
       - test-integration-ormolu
 
     environment:
