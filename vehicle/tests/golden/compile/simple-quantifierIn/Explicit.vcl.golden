@@ -1,3 +1,6 @@
+mapList : (Vector Rat 2 -> Bool) -> List (Vector Rat 2) -> List Bool;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd__lam_A__Vector_A_2 : (\ A -> Vector A 2) Bool -> Bool;
 bigAnd__lam_A__Vector_A_2 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
 

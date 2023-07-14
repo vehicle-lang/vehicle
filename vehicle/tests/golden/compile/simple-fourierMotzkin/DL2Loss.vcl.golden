@@ -1,13 +1,13 @@
-bigOr : List Rat -> Rat;
-bigOr = fold (\ x -> \ y -> x * y) 1.0
-
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
 mapList__Vector_Rat_4__Rat : (Vector Rat 4 -> Rat) -> List (Vector Rat 4) -> List Rat;
 mapList__Vector_Rat_4__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
 
 mapList__Rat__Rat : (Rat -> Rat) -> List Rat -> List Rat;
 mapList__Rat__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
+
+bigOr : List Rat -> Rat;
+bigOr = fold (\ x -> \ y -> x * y) 1.0
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
 
 @property;
 unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;

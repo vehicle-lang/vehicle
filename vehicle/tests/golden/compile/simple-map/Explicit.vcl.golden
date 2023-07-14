@@ -1,8 +1,8 @@
-mapVector : (Nat -> Nat) -> Vector Nat 1 -> Vector Nat 1;
-mapVector f = dfold {Nat} {1} {Vector Nat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
-
 mapList : (Nat -> Nat) -> List Nat -> List Nat;
 mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+mapVector : (Nat -> Nat) -> Vector Nat 1 -> Vector Nat 1;
+mapVector f = dfold {Nat} {1} {Vector Nat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
 mapListId : List Nat;
 mapListId = mapList (\ x -> x) (1 :: nil)

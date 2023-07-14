@@ -1,10 +1,10 @@
+mapList : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd : List Rat -> Rat;
 bigAnd = fold (\ x -> \ y -> x + y) 0.0
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-mapList : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;

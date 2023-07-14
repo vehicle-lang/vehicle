@@ -1,3 +1,6 @@
+mapList : (Rat -> Rat) -> List Rat -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd__lam_A__Vector_A_1 : (\ A -> Vector A 1) Rat -> Rat;
 bigAnd__lam_A__Vector_A_1 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> 1.0 - x * y) 0.0
 
@@ -27,9 +30,6 @@ notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
 notEqualsVector xs ys = bigOr__lam_A__Vector_A_1 (zipWith (\ x -> \ y -> x != y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;

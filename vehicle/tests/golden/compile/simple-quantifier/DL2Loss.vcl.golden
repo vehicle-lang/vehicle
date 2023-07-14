@@ -1,14 +1,14 @@
-bigAnd : List Rat -> Rat;
-bigAnd = fold (\ x -> \ y -> x + y) 0.0
-
-bigOr : List Rat -> Rat;
-bigOr = fold (\ x -> \ y -> x * y) 1.0
-
 mapList__Int__Rat : (Int -> Rat) -> List Int -> List Rat;
 mapList__Int__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
 
 mapList__Vector_Rat_1__Rat : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
 mapList__Vector_Rat_1__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
+
+bigAnd : List Rat -> Rat;
+bigAnd = fold (\ x -> \ y -> x + y) 0.0
+
+bigOr : List Rat -> Rat;
+bigOr = fold (\ x -> \ y -> x * y) 1.0
 
 unused : Rat;
 unused = bigAnd (mapList__Int__Rat (\ (x : Int) -> 0.0) sample[x][])

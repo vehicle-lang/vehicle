@@ -1,3 +1,6 @@
+mapList : (Nat -> Bool) -> List Nat -> List Bool;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd : List Bool -> Bool;
 bigAnd = fold (\ x -> \ y -> x and y) True
 

@@ -1,3 +1,6 @@
+mapList : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd__lam_A__Vector_A_2 : (\ A -> Vector A 2) Rat -> Rat;
 bigAnd__lam_A__Vector_A_2 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0
 
@@ -14,9 +17,6 @@ forallIndex : (Index 2 -> Rat) -> Rat;
 forallIndex f = bigAnd__lam_A__Vector_A_2 (foreachVector (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-mapList : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 type InputVector = Tensor Rat (2 :: nil)
 

@@ -1,3 +1,6 @@
+mapList : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
 bigAnd : (\ A -> Vector A 1) Rat -> Rat;
 bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0
 
@@ -18,9 +21,6 @@ equalsVector : Vector Rat 1 -> Vector Rat 1 -> Rat;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-mapList : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
 
 @property;
 reachable : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
