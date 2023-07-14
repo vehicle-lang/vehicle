@@ -17,7 +17,7 @@ import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -129,11 +129,8 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  -- Need to remove literal coercions before monomorphisation otherwise
-  -- the coercion functions in the standard library stick around.
-  literalCoercionFreeProg <- removeLiteralCoercions prog
   let monomorphiseIf d = moduleOf (identifierOf d) == User
-  monomorphiseProg <- monomorphise monomorphiseIf True "_" literalCoercionFreeProg
+  monomorphiseProg <- monomorphise monomorphiseIf True "_" prog
   result <-
     if outputAsJSON
       then do

@@ -21,7 +21,7 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity, arityFromVType, builtinArity, vlamArity)
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
-import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), developerError, foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -211,90 +211,92 @@ instance PrintableBuiltin JBuiltin where
 -- Conversion to JBuiltins
 
 class ToJBuiltin builtin where
-  toJBuiltin :: builtin -> JBuiltin
+  toJBuiltin :: (MonadCompile m) => builtin -> m JBuiltin
 
 instance ToJBuiltin JBuiltin where
-  toJBuiltin = id
+  toJBuiltin = return
 
 instance ToJBuiltin BuiltinConstructor where
-  toJBuiltin = \case
-    V.Nil -> NilList
-    V.Cons -> ConsList
-    V.LUnit -> Unit
-    V.LBool b -> Bool b
-    V.LIndex i -> Index i
-    V.LNat n -> Nat n
-    V.LInt i -> Int i
+  toJBuiltin b = case b of
+    V.Nil -> return NilList
+    V.Cons -> return ConsList
+    V.LUnit -> return Unit
+    V.LBool v -> return $ Bool v
+    V.LIndex i -> return $ Index i
+    V.LNat n -> return $ Nat n
+    V.LInt i -> return $ Int i
     V.LRat r -> toJBuiltin r
-    V.LVec n -> Vector n
+    V.LVec n -> return $ Vector n
 
 instance ToJBuiltin Rational where
-  toJBuiltin r = Rat (toInt $ numerator r) (toInt $ denominator r)
+  toJBuiltin r = do
+    num <- toInt $ numerator r
+    denom <- toInt $ denominator r
+    return $ Rat num denom
     where
-      toInt :: Integer -> Int
       toInt x
-        | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
-        | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
-        | otherwise = fromInteger x
+        | x < toInteger (minBound :: Int) = compilerDeveloperError $ "Underflow converting" <+> pretty x <+> "to `Int`"
+        | x > toInteger (maxBound :: Int) = compilerDeveloperError $ "Overflow converting" <+> pretty x <+> "to `Int`"
+        | otherwise = return $ fromInteger x
 
 instance ToJBuiltin BuiltinFunction where
   toJBuiltin = \case
-    V.Not -> Not
-    V.And -> And
-    V.Or -> Or
-    V.Implies -> Implies
-    V.Quantifier V.Forall -> Forall
-    V.Quantifier V.Exists -> Exists
-    V.If -> If
-    V.FromNat {} -> developerError "`FromNat` should have been removed after type-checking."
-    V.FromRat {} -> developerError "`FromRat` should have been removed after type-checking."
-    V.Neg V.NegInt -> NegInt
-    V.Neg V.NegRat -> NegRat
-    V.Add V.AddNat -> AddNat
-    V.Add V.AddInt -> AddInt
-    V.Add V.AddRat -> AddRat
-    V.Sub V.SubInt -> SubInt
-    V.Sub V.SubRat -> SubRat
-    V.Mul V.MulNat -> MulNat
-    V.Mul V.MulInt -> MulInt
-    V.Mul V.MulRat -> MulRat
-    V.Div V.DivRat -> DivRat
-    V.PowRat -> PowRat
-    V.MinRat -> MinRat
-    V.MaxRat -> MaxRat
-    V.Equals V.EqIndex V.Eq -> EqRat
-    V.Equals V.EqNat V.Eq -> EqNat
-    V.Equals V.EqInt V.Eq -> EqInt
-    V.Equals V.EqRat V.Eq -> EqRat
-    V.Equals V.EqIndex V.Neq -> NeRat
-    V.Equals V.EqNat V.Neq -> NeNat
-    V.Equals V.EqInt V.Neq -> NeInt
-    V.Equals V.EqRat V.Neq -> NeRat
-    V.Order V.OrderIndex V.Le -> LeIndex
-    V.Order V.OrderNat V.Le -> LtNat
-    V.Order V.OrderInt V.Le -> GeInt
-    V.Order V.OrderRat V.Le -> GtRat
-    V.Order V.OrderIndex V.Lt -> LeIndex
-    V.Order V.OrderNat V.Lt -> LtNat
-    V.Order V.OrderInt V.Lt -> GeInt
-    V.Order V.OrderRat V.Lt -> GtRat
-    V.Order V.OrderIndex V.Ge -> LeIndex
-    V.Order V.OrderNat V.Ge -> LtNat
-    V.Order V.OrderInt V.Ge -> GeInt
-    V.Order V.OrderRat V.Ge -> GtRat
-    V.Order V.OrderIndex V.Gt -> LeIndex
-    V.Order V.OrderNat V.Gt -> LtNat
-    V.Order V.OrderInt V.Gt -> GeInt
-    V.Order V.OrderRat V.Gt -> GtRat
-    V.At -> AtVector
-    V.ConsVector -> ConsVector
-    V.Fold V.FoldList -> FoldList
-    V.Fold V.FoldVector -> FoldVector
-    V.Indices -> Indices
-    V.Sample n ctx -> Sample n ctx
+    V.FromNat {} -> compilerDeveloperError "`FromNat` should have been removed after type-checking."
+    V.FromRat {} -> compilerDeveloperError "`FromRat` should have been removed after type-checking."
+    V.Not -> return Not
+    V.And -> return And
+    V.Or -> return Or
+    V.Implies -> return Implies
+    V.Quantifier V.Forall -> return Forall
+    V.Quantifier V.Exists -> return Exists
+    V.If -> return If
+    V.Neg V.NegInt -> return NegInt
+    V.Neg V.NegRat -> return NegRat
+    V.Add V.AddNat -> return AddNat
+    V.Add V.AddInt -> return AddInt
+    V.Add V.AddRat -> return AddRat
+    V.Sub V.SubInt -> return SubInt
+    V.Sub V.SubRat -> return SubRat
+    V.Mul V.MulNat -> return MulNat
+    V.Mul V.MulInt -> return MulInt
+    V.Mul V.MulRat -> return MulRat
+    V.Div V.DivRat -> return DivRat
+    V.PowRat -> return PowRat
+    V.MinRat -> return MinRat
+    V.MaxRat -> return MaxRat
+    V.Equals V.EqIndex V.Eq -> return EqRat
+    V.Equals V.EqNat V.Eq -> return EqNat
+    V.Equals V.EqInt V.Eq -> return EqInt
+    V.Equals V.EqRat V.Eq -> return EqRat
+    V.Equals V.EqIndex V.Neq -> return NeRat
+    V.Equals V.EqNat V.Neq -> return NeNat
+    V.Equals V.EqInt V.Neq -> return NeInt
+    V.Equals V.EqRat V.Neq -> return NeRat
+    V.Order V.OrderIndex V.Le -> return LeIndex
+    V.Order V.OrderNat V.Le -> return LtNat
+    V.Order V.OrderInt V.Le -> return GeInt
+    V.Order V.OrderRat V.Le -> return GtRat
+    V.Order V.OrderIndex V.Lt -> return LeIndex
+    V.Order V.OrderNat V.Lt -> return LtNat
+    V.Order V.OrderInt V.Lt -> return GeInt
+    V.Order V.OrderRat V.Lt -> return GtRat
+    V.Order V.OrderIndex V.Ge -> return LeIndex
+    V.Order V.OrderNat V.Ge -> return LtNat
+    V.Order V.OrderInt V.Ge -> return GeInt
+    V.Order V.OrderRat V.Ge -> return GtRat
+    V.Order V.OrderIndex V.Gt -> return LeIndex
+    V.Order V.OrderNat V.Gt -> return LtNat
+    V.Order V.OrderInt V.Gt -> return GeInt
+    V.Order V.OrderRat V.Gt -> return GtRat
+    V.At -> return AtVector
+    V.ConsVector -> return ConsVector
+    V.Fold V.FoldList -> return FoldList
+    V.Fold V.FoldVector -> return FoldVector
+    V.Indices -> return Indices
+    V.Sample n ctx -> return $ Sample n ctx
 
 instance ToJBuiltin BuiltinType where
-  toJBuiltin = \case
+  toJBuiltin b = return $ case b of
     V.Unit -> UnitType
     V.Bool -> BoolType
     V.Index -> IndexType
@@ -312,11 +314,10 @@ instance ToJBuiltin StandardBuiltin where
       StandardBuiltinType y -> toJBuiltin y
       StandardTypeClass {} -> typeClassesUnresolvedError
       StandardTypeClassOp {} -> typeClassesUnresolvedError
-
-typeClassesUnresolvedError :: a
-typeClassesUnresolvedError =
-  developerError
-    "Type-classes should have been resolved before calling the JSON backend"
+    where
+      typeClassesUnresolvedError =
+        compilerDeveloperError
+          "Type-classes should have been resolved before calling the JSON backend"
 
 --------------------------------------------------------------------------------
 -- Conversion of JExpr to JSON
@@ -402,8 +403,8 @@ toJProg (V.Main ds) = Main <$> toJDecls ds
 toJDecls :: (MonadJSON m) => [StandardDecl] -> m [JDecl Ix]
 toJDecls [] = return []
 toJDecls (decl : decls) = do
-  logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
-    decl' <- case decl of
+  decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
+    case decl of
       V.DefAbstract p i s t -> do
         case s of
           NetworkDef -> resourceError s
@@ -417,8 +418,8 @@ toJDecls (decl : decls) = do
         e' <- toJExpr e
         return $ DefFunction p (V.nameOf i) t' e'
 
-    decls' <- addDeclToContext decl (toJDecls decls)
-    return $ decl' : decls'
+  decls' <- addDeclToContext decl (toJDecls decls)
+  return $ decl' : decls'
 
 toJExpr :: (MonadJSON m) => StandardExpr -> m (JExpr Ix)
 toJExpr expr = case expr of
@@ -426,7 +427,7 @@ toJExpr expr = case expr of
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> return $ Builtin p $ toJBuiltin b
+  V.Builtin p b -> Builtin p <$> toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do

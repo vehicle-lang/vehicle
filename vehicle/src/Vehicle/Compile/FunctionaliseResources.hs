@@ -3,21 +3,22 @@ module Vehicle.Compile.FunctionaliseResources
   )
 where
 
+import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Data.Bifunctor (Bifunctor (..))
 import Data.LinkedHashMap (LinkedHashMap)
 import Data.LinkedHashMap qualified as LinkedHashMap (empty, filterWithKey, insert, member, toList)
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map qualified as Map (insert, lookup)
+import Data.Map (Map)
+import Data.Map qualified as Map (fromList, insert, lookup)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
-import Vehicle.Compile.Descope (DescopeNamed (..))
-import Vehicle.Compile.Error (MonadCompile, internalScopingError, resolutionError, runCompileMonadSilently)
+import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInDeclCtx)
+import Vehicle.Compile.Prelude (FreeVarUpdate, traverseFreeVarsM)
 import Vehicle.Compile.Prelude.Contexts (DeclCtx)
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
-import Vehicle.Compile.Scope (scopeCheck)
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.DeBruijn (Ix, Lv (..), dbLevelToIndex)
 import Vehicle.Prelude (traverseListLocal)
 import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Prettyprinter
@@ -51,23 +52,20 @@ functionaliseResources ::
   m (Prog Ix builtin)
 functionaliseResources prog =
   logCompilerPass MidDetail currentPass $ do
-    -- The scoping and descoping here is a massive hack.
-    let namedProg = descopeNamed prog
-    result <- runReaderT (functionaliseProg namedProg) (FuncState LinkedHashMap.empty mempty)
-    return $ runCompileMonadSilently "scoping" $ scopeCheck mempty result
+    runReaderT (functionaliseProg prog) (FuncState LinkedHashMap.empty mempty)
 
 --------------------------------------------------------------------------------
--- Conversion Expr to JExpr
+-- Utilities
 
-currentPass :: Doc a
+currentPass :: CompilerPass
 currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
-  { resourceDeclarations :: LinkedHashMap Name (Type Name builtin),
+  { resourceDeclarations :: LinkedHashMap Name (Type Ix builtin),
     resourceUsageDeclCtx :: DeclCtx [Name]
   }
 
-addResourceDeclaration :: Identifier -> Type Name builtin -> FuncState builtin -> FuncState builtin
+addResourceDeclaration :: Identifier -> Type Ix builtin -> FuncState builtin -> FuncState builtin
 addResourceDeclaration resource typ FuncState {..} =
   FuncState
     { resourceDeclarations = LinkedHashMap.insert (nameOf resource) typ resourceDeclarations,
@@ -81,97 +79,126 @@ addResourceUsage ident newArgNames FuncState {..} =
       ..
     }
 
-type MonadJSON m builtin =
+type MonadResource m builtin =
   ( MonadCompile m,
     MonadReader (FuncState builtin) m,
     PrintableBuiltin builtin
   )
 
-type MonadJSONExpr m builtin =
-  ( MonadJSON m builtin,
-    MonadWriter (Set Name) m
-  )
+--------------------------------------------------------------------------------
+-- Utilities
 
-functionaliseProg :: (MonadJSON m builtin) => Prog Name builtin -> m (Prog Name builtin)
-functionaliseProg (Main ds) = Main . catMaybes <$> traverseListLocal functionaliseDecl ds
+functionaliseProg ::
+  (MonadResource m builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
+functionaliseProg (Main ds) =
+  Main . catMaybes <$> traverseListLocal functionaliseDecl ds
 
 functionaliseDecl ::
-  (MonadJSON m builtin) =>
-  Decl Name builtin ->
-  m (FuncState builtin -> FuncState builtin, Maybe (Decl Name builtin))
-functionaliseDecl d = logCompilerPass MaxDetail ("functionalising" <+> pretty (nameOf d)) $ case d of
-  DefAbstract p i s t -> do
-    (t', typeResourceUsage) <- runWriterT $ functionaliseExpr t
-    case s of
-      NetworkDef -> return (addResourceDeclaration i t', Nothing)
-      DatasetDef -> return (addResourceDeclaration i t', Nothing)
-      ParameterDef _ -> return (addResourceDeclaration i t', Nothing)
-      PostulateDef -> do
-        (absType, binderNames) <- createBinders True p typeResourceUsage t'
-        return (addResourceUsage i binderNames, Just (DefAbstract p i PostulateDef absType))
-  DefFunction p i anns t e -> do
-    (t', typeResourceUsage) <- runWriterT $ functionaliseExpr t
-    (e', bodyResourceUsage) <- runWriterT $ functionaliseExpr e
-    let resourceUsage = typeResourceUsage <> bodyResourceUsage
-    (absType, binderNames) <- createBinders True p resourceUsage t'
-    (absExpr, _) <- createBinders False p resourceUsage e'
-    let fun = DefFunction p i anns absType absExpr
-    logDebug MaxDetail $ "Prepending resources" <+> pretty binderNames
-    logDebug MaxDetail $ prettyFriendly fun
-    return (addResourceUsage i binderNames, Just fun)
+  (MonadResource m builtin) =>
+  Decl Ix builtin ->
+  m (FuncState builtin -> FuncState builtin, Maybe (Decl Ix builtin))
+functionaliseDecl d =
+  logCompilerPass MaxDetail ("functionalising" <+> quotePretty (nameOf d)) $ case d of
+    DefAbstract p i s initialType -> do
+      typeResourceUsage <- findResourceUses initialType
+      (mkBinder, binders, binderNames) <- createBinders True p typeResourceUsage
+      finalType <- replaceResourceUses (mkBinder, binders, binderNames) initialType
 
-functionaliseExpr :: (MonadJSONExpr m builtin) => Expr Name builtin -> m (Expr Name builtin)
-functionaliseExpr = \case
-  Hole {} -> resolutionError currentPass "Hole"
-  Meta {} -> resolutionError currentPass "Meta"
-  Ann p e t -> Ann p <$> functionaliseExpr e <*> functionaliseExpr t
-  Universe p l -> return $ Universe p l
-  Builtin p b -> return $ Builtin p b
-  BoundVar p v -> return $ BoundVar p v
-  FreeVar p v -> do
-    FuncState {..} <- ask
-    let name = nameOf v
-    if name `LinkedHashMap.member` resourceDeclarations
-      then do
+      return $
+        if isExternalResourceSort s
+          then (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
+          else (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
+    DefFunction p i anns initialType initialBody -> do
+      typeResourceUsage <- findResourceUses initialType
+      bodyResourceUsage <- findResourceUses initialBody
+      let resourceUsage = typeResourceUsage <> bodyResourceUsage
+
+      (mkTypeBinder, typeBinders, _) <- createBinders True p resourceUsage
+      (mkBodyBinder, bodyBinders, binderNames) <- createBinders False p resourceUsage
+
+      finalType <- replaceResourceUses (mkTypeBinder, typeBinders, binderNames) initialType
+      finalBody <- replaceResourceUses (mkBodyBinder, bodyBinders, binderNames) initialBody
+
+      let fun = DefFunction p i anns finalType finalBody
+      logDebug MaxDetail $ "Prepending resources" <+> pretty binderNames
+      logDebug MaxDetail $ prettyFriendly fun
+      return (addResourceUsage i binderNames, Just fun)
+
+findResourceUses ::
+  (MonadResource m builtin) =>
+  Expr Ix builtin ->
+  m (Set Name)
+findResourceUses e = execWriterT $ traverseFreeVarsM (const id) updateFn e
+  where
+    updateFn recGo p1 p2 ident args = do
+      args' <- traverse (traverse recGo) args
+      FuncState {..} <- ask
+      let name = nameOf ident
+      when (name `LinkedHashMap.member` resourceDeclarations) $ do
         tell (Set.singleton name)
-        return $ BoundVar p name
-      else case v `Map.lookup` resourceUsageDeclCtx of
-        Nothing -> internalScopingError currentPass v
-        Just [] -> return $ FreeVar p v
-        Just (arg : args) -> do
-          tell (Set.fromList (arg : args))
-          let extraArgs = fmap (ExplicitArg p . BoundVar p) (arg :| args)
-          return $ App p (FreeVar p v) extraArgs
-  App p fun args -> do
-    fun' <- functionaliseExpr fun
-    args' <- traverse (traverse functionaliseExpr) args
-    return $ App p fun' args'
-  Pi p binder body -> Pi p <$> functionaliseBinder binder <*> functionaliseExpr body
-  Lam p binder body -> Lam p <$> functionaliseBinder binder <*> functionaliseExpr body
-  Let p bound binder body ->
-    Let p <$> functionaliseExpr bound <*> functionaliseBinder binder <*> functionaliseExpr body
+      resourceArgs <- lookupInDeclCtx currentPass ident resourceUsageDeclCtx
+      tell (Set.fromList resourceArgs)
+      return $ normAppList p1 (FreeVar p2 ident) args'
 
-functionaliseBinder :: (MonadJSONExpr m builtin) => Binder Name builtin -> m (Binder Name builtin)
-functionaliseBinder = traverse functionaliseExpr
+replaceResourceUses ::
+  forall m builtin.
+  (MonadResource m builtin) =>
+  (Binder Ix builtin -> Expr Ix builtin -> Expr Ix builtin, [Binder Ix builtin], [Name]) ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
+replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
+  funcState <- ask
+  let resourceLevels = Map.fromList (zip binderNames [(0 :: Lv) ..])
+  let underBinder _b = local (first (+ 1))
+  let readerState = (Lv 0, (funcState, resourceLevels))
+  processedAppsExpr <- runReaderT (traverseFreeVarsM underBinder updateFn initialExpr) readerState
+  return $ foldr mkBinder processedAppsExpr binders
+  where
+    updateFn :: FreeVarUpdate (ReaderT (Lv, (FuncState builtin, Map Name Lv)) m) Ix builtin
+    updateFn recGo p1 p2 ident args = do
+      args' <- traverse (traverse recGo) args
+      (currentOldLv, (FuncState {..}, resourceLevels)) <- ask
+      let currentNewLv = Lv (length resourceLevels) + currentOldLv
+      let name = nameOf ident
+
+      let mkResourceVar resourceName = do
+            let maybeResourceLevel = Map.lookup resourceName resourceLevels
+            case maybeResourceLevel of
+              Nothing -> internalScopingError currentPass ident
+              Just resourceLv -> do
+                let resourceIx = dbLevelToIndex currentNewLv resourceLv
+                -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx
+                return $ BoundVar p1 resourceIx
+
+      newFun <-
+        if name `LinkedHashMap.member` resourceDeclarations
+          then mkResourceVar name
+          else return $ FreeVar p2 ident
+
+      extraResourceNames <- lookupInDeclCtx currentPass ident resourceUsageDeclCtx
+      extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
+      let extraResourceArgs = fmap (ExplicitArg p1) extraResourceVarArgs
+      return $ normAppList p1 newFun (extraResourceArgs <> args')
 
 createBinders ::
-  (MonadJSON m builtin) =>
+  (MonadResource m builtin) =>
   Bool ->
   Provenance ->
   Set Name ->
-  Expr Name builtin ->
-  m (Expr Name builtin, [Name])
-createBinders isType p idents expr = do
+  m (Binder Ix builtin -> Expr Ix builtin -> Expr Ix builtin, [Binder Ix builtin], [Name])
+createBinders isType p idents = do
   FuncState {..} <- ask
   let identsAndTypes = LinkedHashMap.filterWithKey (\i _ -> Set.member i idents) resourceDeclarations
   let identsAndTypesList = LinkedHashMap.toList identsAndTypes
   let mkBindingForm ident
         | isType = BinderDisplayForm (NameAndType (nameOf ident)) True
         | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
-  let mkBinder (ident, typ) = (nameOf ident, Binder p (mkBindingForm ident) Explicit Relevant typ)
-  let (binderNames, binders) = unzip $ fmap mkBinder identsAndTypesList
-  let constructor
+  let mkBinder (ident, typ) = Binder p (mkBindingForm ident) Explicit Relevant typ
+  let binders = fmap mkBinder identsAndTypesList
+  let binderConstructor
         | isType = Pi p
         | otherwise = Lam p
-  let absExpr = foldr constructor expr binders
-  return (absExpr, binderNames)
+  let binderNames = fmap (nameOf . fst) identsAndTypesList
+  return (binderConstructor, binders, binderNames)

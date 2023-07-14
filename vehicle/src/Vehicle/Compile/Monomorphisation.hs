@@ -21,8 +21,7 @@ import Data.HashMap.Strict qualified as Map
   )
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet (singleton, toList)
-import Data.List.NonEmpty qualified as NonEmpty (span)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -33,8 +32,11 @@ import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Libraries.StandardLibrary
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -44,6 +46,9 @@ import Vehicle.Expr.Hashing ()
 -- Not very sophisticated at the moment, if this needs to be improved perhaps
 -- http://mrg.doc.ic.ac.uk/publications/featherweight-go/main.pdf
 -- by Wen et al is a good starting point.
+--
+-- It also gets rid of automatically inserted coercions of literals
+-- (e.g. naturals, rationals and tensors)
 monomorphise ::
   forall m.
   (MonadCompile m) =>
@@ -52,14 +57,18 @@ monomorphise ::
   Text ->
   StandardProg ->
   m StandardProg
-monomorphise keepEvenIfUnused simplifyTypes nameJoiner prog =
+monomorphise keepEvenIfUnused simplifyTypesAndRemoveCoercions nameJoiner prog =
   logCompilerPass MinDetail "monomorphisation" $ do
     progWithNormalisedTypes <-
-      if simplifyTypes
+      if simplifyTypesAndRemoveCoercions
         then runContextT @m @StandardBuiltin $ normTypeArgsInProg prog
         else return prog
     (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg progWithNormalisedTypes)) mempty) (keepEvenIfUnused, nameJoiner)
-    result <- runReaderT (insert prog2) substitutions
+    prog3 <- runReaderT (insert prog2) substitutions
+    result <-
+      if simplifyTypesAndRemoveCoercions
+        then removeLiteralCoercions nameJoiner prog3
+        else return prog3
     logCompilerPassOutput $ prettyFriendly result
     return result
 
@@ -72,38 +81,13 @@ traverseCandidateApplications ::
   (Provenance -> Identifier -> [StandardArg] -> [StandardArg] -> m StandardExpr) ->
   StandardExpr ->
   m StandardExpr
-traverseCandidateApplications underBinder processApp = go
+traverseCandidateApplications underBinder processApp =
+  traverseFreeVarsM underBinder processApp2
   where
-    go expr = case expr of
-      FreeVar p ident ->
-        processApp p ident mempty mempty
-      App p (FreeVar _ ident) args -> do
-        let (argsToMono, remainingArgs) = NonEmpty.span (not . isExplicit) args
-        remainingArgs' <- traverse (traverse go) remainingArgs
-        processApp p ident argsToMono remainingArgs'
-      App p fun args -> do
-        fun' <- go fun
-        args' <- traverse (traverse go) args
-        return $ App p fun' args'
-      BoundVar {} -> return expr
-      Universe {} -> return expr
-      Meta {} -> return expr
-      Hole {} -> return expr
-      Builtin {} -> return expr
-      Ann p e t -> Ann p <$> go e <*> go t
-      Pi p binder res -> do
-        binder' <- traverse go binder
-        res' <- underBinder binder' (go res)
-        return $ Pi p binder' res'
-      Lam p binder body -> do
-        binder' <- traverse go binder
-        body' <- underBinder binder' (go body)
-        return $ Lam p binder' body'
-      Let p bound binder body -> do
-        bound' <- go bound
-        binder' <- traverse go binder
-        body' <- underBinder binder' (go body)
-        return $ Let p bound' binder' body'
+    processApp2 recGo p1 _p2 ident args = do
+      let (argsToMono, remainingArgs) = break isExplicit args
+      remainingArgs' <- traverse (traverse recGo) remainingArgs
+      processApp p1 ident argsToMono remainingArgs'
 
 --------------------------------------------------------------------------------
 -- Pass 1 - normalise types in the program
@@ -290,7 +274,7 @@ getMonomorphisedName ::
   m Text
 getMonomorphisedName name args = do
   (_, nameJoiner) <- ask
-  let typeJoiner = nameJoiner <> nameJoiner
+  let typeJoiner = getTypeJoiner nameJoiner
   let implicits = mapMaybe getImplicitArg args
   let parts = name : fmap getImplicitName implicits
   return $
@@ -301,3 +285,80 @@ getMonomorphisedName name args = do
 
 getImplicitName :: StandardType -> Text
 getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx
+
+getTypeJoiner :: Text -> Text
+getTypeJoiner nameJoiner = nameJoiner <> nameJoiner
+
+--------------------------------------------------------------------------------
+-- Coercions
+
+removeLiteralCoercions ::
+  forall m.
+  (MonadCompile m) =>
+  Text ->
+  StandardProg ->
+  m StandardProg
+removeLiteralCoercions nameJoiner (Main ds) =
+  Main . catMaybes <$> traverse goDecl ds
+  where
+    goDecl :: StandardDecl -> m (Maybe StandardDecl)
+    goDecl decl = case getVectorCoercion (identifierOf decl) of
+      Just StdVectorToVector -> return Nothing
+      Just StdVectorToList -> return Nothing
+      _ ->
+        Just
+          <$> traverse
+            ( \e -> do
+                e' <- traverseBuiltinsM (updateBuiltin decl) e
+                traverseFreeVarsM (const id) (updateFreeVar decl) e'
+            )
+            decl
+
+    getVectorCoercion :: Identifier -> Maybe StdLibFunction
+    getVectorCoercion ident = do
+      let typeJoiner = getTypeJoiner nameJoiner
+      let shortIdent = Identifier (moduleOf ident) $ fst $ Text.breakOn typeJoiner (nameOf ident)
+      findStdLibFunction shortIdent
+
+    updateBuiltin decl p1 p2 b args = case b of
+      (CFunction (FromNat dom)) -> case (dom, args) of
+        (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
+        (FromNatToNat, [e, _]) -> return $ argExpr e
+        (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
+        (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+        _ -> partialApplication decl (pretty b) args
+      (CFunction (FromRat dom)) -> case (dom, args) of
+        (FromRatToRat, [e]) -> return $ argExpr e
+        _ -> partialApplication decl (pretty b) args
+      _ -> return $ normAppList p1 (Builtin p2 b) args
+
+    updateFreeVar decl recGo p1 p2 ident args = do
+      let vectorCoercion = getVectorCoercion ident
+      args' <- traverse (traverse recGo) args
+      case vectorCoercion of
+        Just StdVectorToVector -> case reverse args' of
+          vec : _ -> return $ argExpr vec
+          _ -> partialApplication decl (pretty ident) args'
+        Just StdVectorToList -> case reverse args' of
+          ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+          _ -> partialApplication decl (pretty ident) args'
+        _ -> return $ normAppList p1 (FreeVar p2 ident) args'
+
+    partialApplication decl v args =
+      compilerDeveloperError $
+        "Found partially applied"
+          <+> squotes v
+          <+> "@"
+          <+> prettyVerbose args
+          <+> "in"
+          <> line
+          <> indent
+            2
+            ( prettyFriendly decl
+                <> line
+                <> line
+                <> prettyVerbose decl
+                <> line
+                <> line
+                <> pretty (show $ bodyOf decl)
+            )

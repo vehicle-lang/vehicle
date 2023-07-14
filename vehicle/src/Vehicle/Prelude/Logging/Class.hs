@@ -1,5 +1,6 @@
 module Vehicle.Prelude.Logging.Class
-  ( Severity,
+  ( CompilerPass,
+    Severity,
     LoggingLevel (..),
     Message (..),
     MonadLogger (..),
@@ -34,6 +35,8 @@ import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Logging settings
+
+type CompilerPass = Doc ()
 
 data Severity
   = Debug

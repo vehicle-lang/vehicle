@@ -20,8 +20,6 @@ import Vehicle.Expr.Normalised
 --------------------------------------------------------------------------------
 -- Context monad class
 
-type CompilerPass = Doc ()
-
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
 class (Normalisable builtin, MonadCompile m) => MonadContext builtin m where

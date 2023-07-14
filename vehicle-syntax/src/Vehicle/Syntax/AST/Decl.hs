@@ -117,6 +117,13 @@ instance Pretty DefAbstractSort where
       ParameterDef paramTyp -> "parameter"
       PostulateDef -> "property"
 
+isExternalResourceSort :: DefAbstractSort -> Bool
+isExternalResourceSort = \case
+  NetworkDef -> True
+  DatasetDef -> True
+  ParameterDef {} -> True
+  PostulateDef -> False
+
 --------------------------------------------------------------------------------
 -- Annotations options
 
