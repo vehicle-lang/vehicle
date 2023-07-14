@@ -127,7 +127,7 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  let monomorphiseIf d = moduleOf (identifierOf d) == User
+  let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf True "_" prog
   functionalisedProg <- functionaliseResources monomorphiseProg
   result <-

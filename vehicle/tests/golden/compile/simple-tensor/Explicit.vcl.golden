@@ -55,9 +55,6 @@ oneD = [zeroD, 1.0]
 twoD : Tensor Rat (2 :: 2 :: nil);
 twoD = [oneD, [2.0, 3.0]]
 
-lookup2D : Rat;
-lookup2D = twoD ! 0 ! 1
-
 addition : Tensor Rat (2 :: 2 :: nil);
 addition = addVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 twoD twoD
 

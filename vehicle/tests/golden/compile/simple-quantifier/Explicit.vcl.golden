@@ -1,6 +1,3 @@
-unused : Bool;
-unused = forall (x : Int) . True
-
 @property;
 expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
 expandedExpr f = forall x . x ! 0 >= f x ! 0
