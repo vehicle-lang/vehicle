@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Iterator
 import tensorflow as tf
 from typing_extensions import TypeAlias, override
 
-from ._functools import Function2, Operator1, Operator2, curry
 from .abc import Builtins
 
 ################################################################################
@@ -28,57 +27,57 @@ class TensorflowBuiltins(
     dtypeRat: tf.DType = tf.float64
 
     @override
-    def AddInt(self) -> Operator2[tf.Tensor]:
-        return curry(tf.add)
+    def AddInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.add(x, y)
 
     @override
-    def AddNat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.add)
+    def AddNat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.add(x, y)
 
     @override
-    def AddRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.add)
+    def AddRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.add(x, y)
 
     @override
-    def DivRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.divide)
+    def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.divide(x, y)
 
     @override
-    def MaxRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.maximum)
+    def MaxRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.maximum(x, y)
 
     @override
-    def MinRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.minimum)
+    def MinRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.minimum(x, y)
 
     @override
-    def MulInt(self) -> Operator2[tf.Tensor]:
-        return curry(tf.multiply)
+    def MulInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.multiply(x, y)
 
     @override
-    def MulNat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.multiply)
+    def MulNat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.multiply(x, y)
 
     @override
-    def MulRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.multiply)
+    def MulRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.multiply(x, y)
 
     @override
-    def NegInt(self) -> Operator1[tf.Tensor]:
-        return lambda x: tf.negative(x)
+    def NegInt(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.negative(x)
 
     @override
-    def NegRat(self) -> Operator1[tf.Tensor]:
-        return lambda x: tf.negative(x)
+    def NegRat(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.negative(x)
 
     @override
-    def PowRat(self) -> Function2[tf.Tensor, tf.Tensor, tf.Tensor]:
-        return curry(tf.pow)
+    def PowRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.pow(x, y)
 
     @override
-    def SubInt(self) -> Operator2[tf.Tensor]:
-        return curry(tf.subtract)
+    def SubInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.subtract(x, y)
 
     @override
-    def SubRat(self) -> Operator2[tf.Tensor]:
-        return curry(tf.subtract)
+    def SubRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.subtract(x, y)
