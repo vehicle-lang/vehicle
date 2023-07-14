@@ -51,7 +51,7 @@ jobs:
           python-version: "${{ matrix.python.version }}"
 
       - name: Setup Marabou
-        run: pip install "https://github.com/vehicle-lang/Marabou/releases/download/v${{ matrix.marabou.version }}/maraboupy-${{ matrix.marabou.version }}-${{ matrix.python.tag }}-${{ matrix.python.tag }}-${{ matrix.os.plat }}.whl"
+        run: pip install maraboupy==${{ matrix.marabou.version }}
 
       - name: Test Vehicle-Marabou interaction
         run: |
