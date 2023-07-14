@@ -427,7 +427,7 @@ toJExpr expr = case expr of
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> BuiltinOp p <$> toJBuiltin b
+  V.Builtin p b -> Builtin p <$> toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do

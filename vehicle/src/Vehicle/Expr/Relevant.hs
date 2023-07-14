@@ -28,8 +28,7 @@ data RelExpr var builtin
     -- need to mark partial applications as such to avoid excessive currying.
     PartialApp Provenance Arity (RelExpr var builtin) [RelExpr var builtin]
   | Pi Provenance (RelBinder var builtin) (RelExpr var builtin)
-  | -- Needs to be `BuiltinOp` not `Builtin` due to naming issues on the Python side.
-    BuiltinOp Provenance builtin
+  | Builtin Provenance builtin
   | BoundVar Provenance var
   | FreeVar Provenance Name
   | Let Provenance (RelExpr var builtin) (RelBinder var builtin) (RelExpr var builtin)
