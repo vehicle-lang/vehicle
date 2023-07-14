@@ -1,2 +1,3 @@
-indicator : Bool
-indicator = 1 != 1
+@property
+prop : Bool
+prop = 1 != 1
