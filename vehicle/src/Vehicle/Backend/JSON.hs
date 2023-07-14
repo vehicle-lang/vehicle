@@ -434,10 +434,11 @@ toJExpr expr = case expr of
     fun' <- toJExpr fun
     args' <- traverse toJExpr (mapMaybe getExplicitArg (NonEmpty.toList args))
     arity <- functionArity fun
+    logDebug MaxDetail $ prettyVerbose fun <+> pretty (length args') <+> pretty arity
     return $ case args' of
       [] -> fun'
       _ : _
-        | arity == length args -> App p fun' args'
+        | arity == length args' -> App p fun' args'
         | otherwise -> PartialApp p arity fun' args'
   V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
   V.Lam p _ _ -> do
