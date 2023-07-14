@@ -71,6 +71,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
+        print(py_ast_unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
