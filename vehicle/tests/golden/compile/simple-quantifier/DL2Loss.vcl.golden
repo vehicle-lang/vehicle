@@ -15,12 +15,12 @@ unused = bigAnd (mapList__Int__Rat (\ (x : Int) -> 0.0) sample[x][])
 
 @property;
 expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-expandedExpr f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][f])
+expandedExpr f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][])
 
 @property;
 sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-sequential f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> bigAnd (mapList__Vector_Rat_1__Rat (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x, f])) sample[x][f])
+sequential f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> bigAnd (mapList__Vector_Rat_1__Rat (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x])) sample[x][])
 
 @property;
 parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-parallel f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][f]) + bigOr (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][f])
+parallel f = bigAnd (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][]) + bigOr (mapList__Vector_Rat_1__Rat (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][])

@@ -105,8 +105,7 @@ compileToLossFunction ::
   m ()
 compileToLossFunction (imports, typedProg) differentiableLogic outputFile outputAsJSON = do
   let mergedProg = unnormalised <$> mergeImports imports typedProg
-  functionalisedProg <- functionaliseResources mergedProg
-  resolvedProg <- resolveInstanceArguments functionalisedProg
+  resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
   compileToJSON lossProg outputFile outputAsJSON
 
@@ -118,8 +117,7 @@ compileDirect ::
   m ()
 compileDirect (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = unnormalised <$> mergeImports imports typedProg
-  functionalisedProg <- functionaliseResources mergedProg
-  resolvedProg <- resolveInstanceArguments functionalisedProg
+  resolvedProg <- resolveInstanceArguments mergedProg
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
@@ -131,10 +129,11 @@ compileToJSON ::
 compileToJSON prog outputFile outputAsJSON = do
   let monomorphiseIf d = moduleOf (identifierOf d) == User
   monomorphiseProg <- monomorphise monomorphiseIf True "_" prog
+  functionalisedProg <- functionaliseResources monomorphiseProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON monomorphiseProg
+        compileProgToJSON functionalisedProg
       else do
-        return $ prettyFriendly monomorphiseProg
+        return $ prettyFriendly functionalisedProg
   writeResultToFile Nothing outputFile result

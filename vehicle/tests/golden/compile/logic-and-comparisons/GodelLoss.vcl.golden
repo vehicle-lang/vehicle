@@ -33,12 +33,12 @@ type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test1 f = bigOr__List (mapList (\ a -> 1.0 - max (max 0.0 (a - 0.0)) (equalsVector (f [a + 2.0]) [0.0])) sample[a][f])
+test1 f = bigOr__List (mapList (\ a -> 1.0 - max (max 0.0 (a - 0.0)) (equalsVector (f [a + 2.0]) [0.0])) sample[a][])
 
 @property;
 test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test2 g = bigOr__List (mapList (\ a -> bigOr__List (mapList (\ b -> 1.0 - min (max 0.0 (1.0 - a)) (1.0 - min (1.0 - max 0.0 (a - b)) (equalsVector (g [a + b, a + 2.0 * b]) [0.0]))) sample[b][a, g])) sample[a][g])
+test2 g = bigOr__List (mapList (\ a -> bigOr__List (mapList (\ b -> 1.0 - min (max 0.0 (1.0 - a)) (1.0 - min (1.0 - max 0.0 (a - b)) (equalsVector (g [a + b, a + 2.0 * b]) [0.0]))) sample[b][a])) sample[a][])
 
 @property;
 test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test3 g = bigAnd__List (mapList (\ a -> bigAnd__List (mapList (\ b -> 1.0 - (1.0 - max (1.0 - min (max 0.0 (a - 0.0)) (if b == 0.0 then 1.0 else 0.0)) (notEqualsVector (g [a, b]) [0.0]))) sample[b][a, g])) sample[a][g])
+test3 g = bigAnd__List (mapList (\ a -> bigAnd__List (mapList (\ b -> 1.0 - (1.0 - max (1.0 - min (max 0.0 (a - 0.0)) (if b == 0.0 then 1.0 else 0.0)) (notEqualsVector (g [a, b]) [0.0]))) sample[b][a])) sample[a][])

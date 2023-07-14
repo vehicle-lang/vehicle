@@ -20,4 +20,4 @@ correctOutput andGate x1 x2 = let y = andGate [x1, x2] ! 0 in max 0.0 ((truthy x
 
 @property;
 andGateCorrect : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-andGateCorrect andGate = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 ((validInput x1 + validInput x2) * correctOutput andGate x1 x2)) sample[x2][x1, andGate])) sample[x1][andGate])
+andGateCorrect andGate = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 ((validInput x1 + validInput x2) * correctOutput andGate x1 x2)) sample[x2][x1])) sample[x1][])

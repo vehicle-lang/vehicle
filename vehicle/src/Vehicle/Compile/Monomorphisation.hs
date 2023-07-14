@@ -67,7 +67,7 @@ monomorphise keepEvenIfUnused simplifyTypesAndRemoveCoercions nameJoiner prog =
     prog3 <- runReaderT (insert prog2) substitutions
     result <-
       if simplifyTypesAndRemoveCoercions
-        then removeLiteralCoercions nameJoiner prog3
+        then hoistInferableParameters =<< removeLiteralCoercions nameJoiner prog3
         else return prog3
     logCompilerPassOutput $ prettyFriendly result
     return result
@@ -290,7 +290,7 @@ getTypeJoiner :: Text -> Text
 getTypeJoiner nameJoiner = nameJoiner <> nameJoiner
 
 --------------------------------------------------------------------------------
--- Coercions
+-- Step 4. Coercions
 
 removeLiteralCoercions ::
   forall m.
@@ -362,3 +362,21 @@ removeLiteralCoercions nameJoiner (Main ds) =
                 <> line
                 <> pretty (show $ bodyOf decl)
             )
+
+--------------------------------------------------------------------------------
+-- Step 5. Hoisting. Massive hack. Should be done with erasure.
+
+hoistInferableParameters :: (MonadCompile m) => StandardProg -> m StandardProg
+hoistInferableParameters (Main ds) = do
+  (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
+  return $ Main (inferableParameters <> otherDecls)
+  where
+    goDecls :: (MonadWriter [StandardDecl] m) => [StandardDecl] -> m [StandardDecl]
+    goDecls [] = return []
+    goDecls (decl : decls) = do
+      decls' <- goDecls decls
+      case decl of
+        DefAbstract _ _ (ParameterDef Inferable) _ -> do
+          tell [decl]
+          return decls'
+        _ -> return $ decl : decls'

@@ -106,10 +106,10 @@ functionaliseDecl d =
       (mkBinder, binders, binderNames) <- createBinders True p typeResourceUsage
       finalType <- replaceResourceUses (mkBinder, binders, binderNames) initialType
 
-      return $
-        if isExternalResourceSort s
-          then (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
-          else (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
+      return $ case s of
+        PostulateDef -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
+        ParameterDef Inferable -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
+        _ -> (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
     DefFunction p i anns initialType initialBody -> do
       typeResourceUsage <- findResourceUses initialType
       bodyResourceUsage <- findResourceUses initialBody

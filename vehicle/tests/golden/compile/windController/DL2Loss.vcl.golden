@@ -34,4 +34,4 @@ safeOutput controller x = max 0.0 (- 1.25 - (controller x ! 0 + 2.0 * x ! curren
 
 @property;
 safe : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . Rat;
-safe controller = bigAnd__List (mapList (\ x -> max 0.0 (safeInput x * safeOutput controller x)) sample[x][controller])
+safe controller = bigAnd__List (mapList (\ x -> max 0.0 (safeInput x * safeOutput controller x)) sample[x][])

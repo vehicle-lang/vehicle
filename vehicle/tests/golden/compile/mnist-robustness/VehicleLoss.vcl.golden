@@ -1,53 +1,80 @@
-bigAnd : (\ A -> Vector A 28) Rat -> Rat;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
-
-vectorToVector : Vector Rat 0 -> Vector Rat 0;
-vectorToVector xs = xs
-
-mapVector : (Index 28 -> Rat) -> Vector (Index 28) 28 -> Vector Rat 28;
-mapVector f = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
-
-foreachVector : (Index 28 -> Rat) -> Vector Rat 28;
-foreachVector f = mapVector f (indices 28)
-
-zipWith : (Rat -> Rat -> Rat) -> Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
-zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
-
-@noinline;
-subVector : Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
-subVector = zipWith (\ x -> \ y -> x - y)
-
-@noinline;
-subVector : Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28;
-subVector = zipWith (\ x -> \ y -> subVector x y)
-
-forallIndex : (Index 28 -> Rat) -> Rat;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
-
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
-
-vectorToList : Vector Nat 2 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+@parameter (infer = True);
+n : Nat
 
 mapList : (Vector (Vector Rat 28) 28 -> Rat) -> List (Vector (Vector Rat 28) 28) -> List Rat;
 mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+bigAnd__List : List Rat -> Rat;
+bigAnd__List = fold (\ x -> \ y -> max x y) -100000.0
+
+bigAnd__lam_A__Vector_A_10 : (\ A -> Vector A 10) Rat -> Rat;
+bigAnd__lam_A__Vector_A_10 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
+
+bigAnd__lam_A__Vector_A_28 : (\ A -> Vector A 28) Rat -> Rat;
+bigAnd__lam_A__Vector_A_28 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
+
+mapVector__n__Index_n__Rat : (Index n -> Rat) -> Vector (Index n) n -> Vector Rat n;
+mapVector__n__Index_n__Rat f = dfold {Index n} {n} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+mapVector__10__Index_10__Rat : (Index 10 -> Rat) -> Vector (Index 10) 10 -> Vector Rat 10;
+mapVector__10__Index_10__Rat f = dfold {Index 10} {10} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+mapVector__28__Index_28__Rat : (Index 28 -> Rat) -> Vector (Index 28) 28 -> Vector Rat 28;
+mapVector__28__Index_28__Rat f = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+mapVector__28__Index_28__Vector_Rat_28 : (Index 28 -> Vector Rat 28) -> Vector (Index 28) 28 -> Vector (Vector Rat 28) 28;
+mapVector__28__Index_28__Vector_Rat_28 f = dfold {Index 28} {28} {Vector (Vector Rat 28)} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+
+foreachVector__Rat__10 : (Index 10 -> Rat) -> Vector Rat 10;
+foreachVector__Rat__10 f = mapVector__10__Index_10__Rat f (indices 10)
+
+foreachVector__Vector_Rat_28__28 : (Index 28 -> Vector Rat 28) -> Vector (Vector Rat 28) 28;
+foreachVector__Vector_Rat_28__28 f = mapVector__28__Index_28__Vector_Rat_28 f (indices 28)
+
+foreachVector__Rat__28 : (Index 28 -> Rat) -> Vector Rat 28;
+foreachVector__Rat__28 f = mapVector__28__Index_28__Rat f (indices 28)
+
+foreachVector__Rat__n : (Index n -> Rat) -> Vector Rat n;
+foreachVector__Rat__n f = mapVector__n__Index_n__Rat f (indices n)
+
+zipWith__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28 : (Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28) -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28;
+zipWith__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28 f xs ys = foreachVector__Vector_Rat_28__28 (\ i -> f (xs ! i) (ys ! i))
+
+zipWith__Rat__Rat__Rat : (Rat -> Rat -> Rat) -> Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
+zipWith__Rat__Rat__Rat f xs ys = foreachVector__Rat__28 (\ i -> f (xs ! i) (ys ! i))
+
+@noinline;
+subVector__Rat__Rat__Rat__28 : Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
+subVector__Rat__Rat__Rat__28 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x - y)
+
+@noinline;
+subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 : Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28;
+subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 = zipWith__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28 (\ x -> \ y -> subVector__Rat__Rat__Rat__28 x y)
+
+forallIndex__10 : (Index 10 -> Rat) -> Rat;
+forallIndex__10 f = bigAnd__lam_A__Vector_A_10 (foreachVector__Rat__10 (\ i -> f i))
+
+forallIndex__28 : (Index 28 -> Rat) -> Rat;
+forallIndex__28 f = bigAnd__lam_A__Vector_A_28 (foreachVector__Rat__28 (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
 
 type Image = Tensor Rat (28 :: 28 :: nil)
 
 type Label = Index 10
 
 validImage : Image -> Rat;
-validImage x = forallIndex (\ i -> forallIndex (\ j -> max (0.0 - x ! i ! j) (x ! i ! j - 1.0)))
+validImage x = forallIndex__28 (\ i -> forallIndex__28 (\ j -> max (0.0 - x ! i ! j) (x ! i ! j - 1.0)))
 
 advises : forallT (classifier : Image -> Vector Rat 10) . Image -> Label -> Rat;
-advises classifier x i = forallIndex (\ j -> max (- (if j != i then -100000.0 else 100000.0)) (classifier x ! j - classifier x ! i))
+advises classifier x i = forallIndex__10 (\ j -> max (- (if j != i then -100000.0 else 100000.0)) (classifier x ! j - classifier x ! i))
 
 boundedByEpsilon : forallT (epsilon : Rat) . Image -> Rat;
-boundedByEpsilon epsilon x = forallIndex (\ i -> forallIndex (\ j -> max (- epsilon - x ! i ! j) (x ! i ! j - epsilon)))
+boundedByEpsilon epsilon x = forallIndex__28 (\ i -> forallIndex__28 (\ j -> max (- epsilon - x ! i ! j) (x ! i ! j - epsilon)))
 
 robustAround : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . Image -> Label -> Rat;
-robustAround classifier epsilon image label = bigAnd (mapList (\ pertubation -> let perturbedImage = subVector image pertubation in max (- max (boundedByEpsilon epsilon pertubation) (validImage perturbedImage)) (advises classifier perturbedImage label)) sample[pertubation][label, image, epsilon, classifier])
+robustAround classifier epsilon image label = bigAnd__List (mapList (\ pertubation -> let perturbedImage = subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 image pertubation in max (- max (boundedByEpsilon epsilon pertubation) (validImage perturbedImage)) (advises classifier perturbedImage label)) sample[pertubation][label, image])
 
 @property;
-robust : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (n : Nat) . forallT (trainingImages : Vector Image n) . forallT (trainingLabels : Vector Label n) . Vector Rat n;
-robust classifier epsilon n trainingImages trainingLabels = foreachVector (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))
+robust : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (trainingImages : Vector Image n) . forallT (trainingLabels : Vector Label n) . Vector Rat n;
+robust classifier epsilon trainingImages trainingLabels = foreachVector__Rat__n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))

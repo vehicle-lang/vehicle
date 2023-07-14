@@ -8,4 +8,4 @@ type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
 
 @property;
 monotonic : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-monotonic f = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 (max 0.0 (x1 - x2) * max 0.0 (f [x1] ! 0 - f [x2] ! 0))) sample[x2][x1, f])) sample[x1][f])
+monotonic f = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 (max 0.0 (x1 - x2) * max 0.0 (f [x1] ! 0 - f [x2] ! 0))) sample[x2][x1])) sample[x1][])
