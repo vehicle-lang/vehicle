@@ -8,10 +8,7 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "spec.vcl"))
 
 EXCLUDE_LIST = [
     GOLDEN_PATH / "dogsHierarchy" / "spec.vcl",
-    GOLDEN_PATH / "simple-untypedDecls" / "spec.vcl",
-    GOLDEN_PATH / "acasXu" / "spec.vcl",
     GOLDEN_PATH / "simple-inferableParam" / "spec.vcl",
-    GOLDEN_PATH / "mnist-robustness" / "spec.vcl",
 ]
 
 

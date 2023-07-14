@@ -1,6 +1,6 @@
-subtraction : Rat
-subtraction = 6 - 2
+rat : Rat
+rat = 6 - 2
 
 @property
 prop : Bool
-prop = subtraction == 4
+prop = rat == 4

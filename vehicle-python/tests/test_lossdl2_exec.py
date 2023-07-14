@@ -2,13 +2,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 from vehicle_lang.compile import Target, to_python
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
-    net = lambda xs: (sum(xs),)
-    assert "net_prop" in output
-    assert output["net_prop"](net) == 0.0
+    network = lambda xs: (sum(xs),)
+    assert "prop" in output
+    assert output["prop"](network) == 0.0
 
 
 def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
@@ -25,47 +26,47 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_addition.vcl",
             {},
-            {"addition": 8},
+            {"prop": 0.0},
         ),
         (
             "test_at.vcl",
             {},
-            {"at": 3.0},
+            {"prop": 0.0},
         ),
         (
             "test_constant.vcl",
             {},
-            {"constant": 5},
+            {"prop": 0.0},
         ),
         (
             "test_division.vcl",
             {},
-            {"division": 3.0},
+            {"prop": 0.0},
         ),
         (
             "test_indicator.vcl",
             {},
-            {"indicator": 1.0},
+            {"prop": 1.0},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"maximum": 1.0},
+            {"prop": 1.0},
         ),
         (
             "test_minimum.vcl",
             {},
-            {"minimum": 0.0},
+            {"prop": 0.0},
         ),
         (
             "test_multiplication.vcl",
             {},
-            {"multiplication": 12},
+            {"prop": 0.0},
         ),
         (
             "test_negation.vcl",
             {},
-            {"negation": -5},
+            {"prop": 0.0},
         ),
         (
             "test_network.vcl",
@@ -75,27 +76,27 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_quantifier_all.vcl",
             {"x": quantifier_all_sampler},
-            {"quantifierForall": 11.0},
+            {"prop": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
             {"x": quantifier_any_sampler},
-            {"quantifierExists": 0.0},
+            {"prop": 0.0},
         ),
         (
             "test_subtraction.vcl",
             {},
-            {"subtraction": 4},
+            {"prop": 0.0},
         ),
         (
             "test_tensor.vcl",
             {},
-            {"tensor": (5, 2, 16, 7)},
+            {"prop": 0.0},
         ),
         (
             "test_variable.vcl",
             {},
-            {"variable": 2},
+            {"prop": 0.0},
         ),
     ],
 )  # type: ignore[misc]
