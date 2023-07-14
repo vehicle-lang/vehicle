@@ -27,13 +27,12 @@ def test_lossdl2_exec_tf_bounded() -> None:
 
         def sampler_for_x(_context: Dict[str, Any]) -> Iterator[float]:
             for _ in range(0, 10):
-                yield random.uniform(0.5, 0.5)
+                yield random.uniform(0.0, 1.0)
 
         bounded_loss = vcl.load_loss_function(
             specification_path,
             property_name="bounded",
             target=vcl.DifferentiableLogic.DL2,
-            samplers={"x": sampler_for_x},
         )
 
         # Prepare training data

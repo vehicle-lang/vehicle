@@ -1,6 +1,3 @@
-bigAnd : List Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 truthy : Rat -> Rat;
@@ -17,4 +14,4 @@ correctOutput andGate x1 x2 = let y = andGate [x1, x2] ! 0 in max 0.0 ((truthy x
 
 @property;
 andGateCorrect : forallT (andGate : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-andGateCorrect andGate = bigAnd (map (\ x1 -> bigAnd (map (\ x2 -> max 0.0 ((validInput x1 + validInput x2) * correctOutput andGate x1 x2)) sample[x2][x1])) sample[x1][])
+andGateCorrect andGate = Optimise[x1][min] (+) (\ x1 -> Optimise[x2][min][x1] (+) (\ x2 -> max 0.0 ((validInput x1 + validInput x2) * correctOutput andGate x1 x2)))

@@ -1,13 +1,10 @@
-bigAnd : List Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
 add1 : Rat -> Rat;
 add1 x = x + 1.0
 
 @property;
 p1 : forallT (f : Vector Rat -> Vector Rat) . Rat;
-p1 f = bigAnd (map (\ x -> max 0.0 (add1 0.0 - f x ! 0)) sample[x][])
+p1 f = Optimise[x][min] (+) (\ x -> max 0.0 (add1 0.0 - f x ! 0))
 
 @property;
 p2 : forallT (g : Vector Rat -> Vector Rat) . Rat;
-p2 g = bigAnd (map (\ x -> max 0.0 (0.0 - g x ! 0)) sample[x][])
+p2 g = Optimise[x][min] (+) (\ x -> max 0.0 (0.0 - g x ! 0))

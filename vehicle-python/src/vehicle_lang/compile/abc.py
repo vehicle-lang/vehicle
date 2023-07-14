@@ -260,14 +260,15 @@ class Builtins(
     def Rat(self, value: SupportsFloat) -> _Rat:
         ...
 
-    def Sample(
+    def Optimise(
         self,
         name: str,
+        minimise: bool,
         # predicate: Callable[[_T], _Bool],
-        context: Dict[str, Any],
+        body: Dict[str, Any],
     ) -> SupportsList[_T]:
         if name in self.samplers:
-            return tuple(self.samplers[name](context))
+            return tuple(self.samplers[name](minimise, body))
         else:
             raise TypeError(f"Could not find sampler for '{name}'.")
 

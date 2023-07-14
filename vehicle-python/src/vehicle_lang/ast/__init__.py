@@ -372,8 +372,9 @@ class RatType(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class Sample(BuiltinFunction):
+class Optimise(BuiltinFunction):
     name: Name
+    minimise: Bool
     locals: Sequence[Name]
 
 

@@ -266,7 +266,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 vcl.Nat,
                 vcl.NilList,
                 vcl.Rat,
-                vcl.Sample,
+                vcl.Optimise,
             ),
         ) or (
             isinstance(expression.builtin, vcl.Vector) and expression.builtin.value == 0
@@ -319,7 +319,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                         provenance=expression.provenance,
                     )
                 )
-            elif isinstance(expression.builtin, vcl.Sample):
+            elif isinstance(expression.builtin, vcl.Optimise):
                 arguments.append(
                     py.Str(
                         s=expression.builtin.name,
@@ -327,18 +327,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     )
                 )
                 arguments.append(
-                    py.Dict(
-                        keys=[
-                            py.Str(
-                                s=local,
-                                **asdict(expression.provenance),
-                            )
-                            for local in expression.builtin.locals
-                        ],
-                        values=[
-                            py_name(local, provenance=expression.provenance)
-                            for local in expression.builtin.locals
-                        ],
+                    py.Constant(
+                        value=expression.builtin.minimise,
                         **asdict(expression.provenance),
                     )
                 )
