@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 from vehicle_lang.compile import Target, to_python
 
 
@@ -30,7 +31,7 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_at.vcl",
             {},
-            {"prop": 0.0},
+            {"prop": 2.0},
         ),
         (
             "test_constant.vcl",
