@@ -1,14 +1,11 @@
-@parameter (infer = True);
-n : Nat
-
 bigAnd__lam_A__Vector_A_10 : (\ A -> Vector A 10) Bool -> Bool;
 bigAnd__lam_A__Vector_A_10 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
 
 bigAnd__lam_A__Vector_A_28 : (\ A -> Vector A 28) Bool -> Bool;
 bigAnd__lam_A__Vector_A_28 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
 
-mapVector__n__Index_n__Bool : (Index n -> Bool) -> Vector (Index n) n -> Vector Bool n;
-mapVector__n__Index_n__Bool f = dfold {Index n} {n} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__n__Index_n__Bool : forallT (n : Nat) . (Index n -> Bool) -> Vector (Index n) n -> Vector Bool n;
+mapVector__n__Index_n__Bool n f = dfold {Index n} {n} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
 
 mapVector__10__Index_10__Bool : (Index 10 -> Bool) -> Vector (Index 10) 10 -> Vector Bool 10;
 mapVector__10__Index_10__Bool f = dfold {Index 10} {10} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
@@ -31,8 +28,8 @@ foreachVector__Vector_Rat_28__28 f = mapVector__28__Index_28__Vector_Rat_28 f (i
 foreachVector__Bool__28 : (Index 28 -> Bool) -> Vector Bool 28;
 foreachVector__Bool__28 f = mapVector__28__Index_28__Bool f (indices 28)
 
-foreachVector__Bool__n : (Index n -> Bool) -> Vector Bool n;
-foreachVector__Bool__n f = mapVector__n__Index_n__Bool f (indices n)
+foreachVector__Bool__n : forallT (n : Nat) . (Index n -> Bool) -> Vector Bool n;
+foreachVector__Bool__n n f = mapVector__n__Index_n__Bool n f (indices n)
 
 foreachVector__Rat__28 : (Index 28 -> Rat) -> Vector Rat 28;
 foreachVector__Rat__28 f = mapVector__28__Index_28__Rat f (indices 28)
@@ -76,5 +73,5 @@ robustAround : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon 
 robustAround classifier epsilon image label = forall pertubation . let perturbedImage = subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 image pertubation in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
 
 @property;
-robust : forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (trainingImages : Vector Image n) . forallT (trainingLabels : Vector Label n) . Vector Bool n;
-robust classifier epsilon trainingImages trainingLabels = foreachVector__Bool__n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))
+robust : forallT (n : Nat) . forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (trainingImages : forallT (n : Nat) . Vector Image n) . forallT (trainingLabels : forallT (n : Nat) . Vector Label n) . Vector Bool n;
+robust n classifier epsilon trainingImages trainingLabels = foreachVector__Bool__n n (\ i -> robustAround classifier epsilon (trainingImages n ! i) (trainingLabels n ! i))

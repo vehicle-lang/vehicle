@@ -108,7 +108,6 @@ functionaliseDecl d =
 
       return $ case s of
         PostulateDef -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
-        ParameterDef Inferable -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
         _ -> (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
     DefFunction p i anns initialType initialBody -> do
       typeResourceUsage <- findResourceUses initialType
