@@ -28,8 +28,3 @@ lamArity :: Expr var builtin -> Arity
 lamArity = \case
   Lam _ _ body -> 1 + lamArity body
   _ -> 0
-
-vlamArity :: Value builtin -> Arity
-vlamArity = \case
-  VLam _ _ body -> 1 + lamArity body
-  _ -> 0

@@ -18,16 +18,16 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity, vlamArity)
+import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity)
 import Vehicle.Compile.Descope (DescopeNamed (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError, unexpectedExprError)
 import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
-import Vehicle.Expr.Normalised (GluedExpr (..), Value (..), normalised)
+import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
 import Vehicle.Expr.Relevant
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
@@ -465,23 +465,26 @@ toJBinders = \case
     bs' <- addBinderToContext b $ toJBinders bs
     return $ b' : bs'
 
+-- | TODO maybe move to Arity module.
 functionArity :: (MonadJSON m) => StandardExpr -> m Arity
-functionArity fun = do
-  normFun <- normalise fun
-  case normFun of
-    VUniverse {} -> illTypedError currentPass (prettyVerbose normFun)
-    VPi {} -> illTypedError currentPass (prettyVerbose normFun)
-    VMeta {} -> illTypedError currentPass (prettyVerbose normFun)
-    -- Should be no free-variables left, after having appended resources as lambdas
-    -- and having normalised.
-    VFreeVar v _ -> do
-      decl <- getDecl (Proxy @StandardBuiltin) currentPass v
-      return $ arityFromVType $ normalised (typeOf decl)
-    VBoundVar v _ -> do
-      binder <- getBoundVarByLv (Proxy @StandardBuiltin) currentPass v
-      arityFromVType <$> normalise (typeOf binder)
-    VBuiltin b spine -> return $ builtinExplicitArity b - length spine
-    VLam {} -> return $ vlamArity normFun
+functionArity fun = case fun of
+  V.App {} -> unexpectedExprError currentPass (prettyVerbose fun)
+  V.Universe {} -> illTypedError currentPass (prettyVerbose fun)
+  V.Pi {} -> illTypedError currentPass (prettyVerbose fun)
+  V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
+  V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
+  V.FreeVar _p ident -> do
+    decl <- getDecl (Proxy @StandardBuiltin) currentPass ident
+    logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
+    return $ arityFromVType $ normalised (typeOf decl)
+  V.BoundVar _ ix -> do
+    binder <- getBoundVarByIx (Proxy @StandardBuiltin) currentPass ix
+    arityFromVType <$> normalise (typeOf binder)
+  V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> functionArity body)
+  V.Builtin _ b -> return $ builtinExplicitArity b
+  V.Ann _ e _ -> functionArity e
+  V.Let _ _bound binder body ->
+    addBinderToContext binder $ functionArity body
 
 resourceError :: (MonadJSON m) => DefAbstractSort -> m a
 resourceError resourceType =

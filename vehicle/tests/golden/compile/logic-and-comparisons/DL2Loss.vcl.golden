@@ -39,4 +39,4 @@ test2 g = bigOr (mapList (\ a -> bigOr (mapList (\ b -> max 0.0 (1.0 - a) + (max
 
 @property;
 test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test3 g = bigAnd__List (mapList (\ a -> bigAnd__List (mapList (\ b -> max 0.0 (0.0 - a) * (max 0.0 (b - 0.0) + max 0.0 (b - 0.0)) + equalsVector__Rat__Rat__1 (g [a, b]) [0.0]) sample[b][a])) sample[a][])
+test3 g = bigAnd__List (mapList (\ a -> bigAnd__List (mapList (\ b -> max 0.0 (0.0 - a) * (max 0.0 (b - 0.0) + max 0.0 (0.0 - b)) + equalsVector__Rat__Rat__1 (g [a, b]) [0.0]) sample[b][a])) sample[a][])

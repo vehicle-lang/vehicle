@@ -30,7 +30,7 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         (
             "test_at.vcl",
             {},
-            {"prop": 2.0},
+            {"prop": 1.0},
         ),
         (
             "test_constant.vcl",
