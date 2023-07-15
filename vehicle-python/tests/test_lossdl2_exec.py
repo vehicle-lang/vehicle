@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 from vehicle_lang.compile import Target, to_python
 
 
@@ -117,3 +118,7 @@ def test_loss_function_exec(
                 assert key in actual_declarations
     elif callable(validate_output):
         validate_output(actual_declarations)
+
+
+if __name__ == "__main__":
+    pytest.main(["-s"])

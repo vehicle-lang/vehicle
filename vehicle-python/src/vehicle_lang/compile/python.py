@@ -71,7 +71,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
-        print(py_ast_unparse(py_ast))
+        # print(py_ast_unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
@@ -270,21 +270,21 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             elif isinstance(expression.builtin, vcl.Index):
                 arguments.append(
                     py.Num(
-                        value=expression.builtin.value,
+                        n=expression.builtin.value,
                         **asdict(expression.provenance),
                     )
                 )
             elif isinstance(expression.builtin, vcl.Int):
                 arguments.append(
                     py.Num(
-                        value=expression.builtin.value,
+                        n=expression.builtin.value,
                         **asdict(expression.provenance),
                     )
                 )
             elif isinstance(expression.builtin, vcl.Nat):
                 arguments.append(
                     py.Num(
-                        value=expression.builtin.value,
+                        n=expression.builtin.value,
                         **asdict(expression.provenance),
                     )
                 )

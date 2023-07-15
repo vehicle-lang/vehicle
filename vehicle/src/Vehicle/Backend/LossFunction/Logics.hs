@@ -189,7 +189,7 @@ dl2Translation =
       compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
       compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x) +: ind y x,
       compileNeq = mkOp2 tRat ind,
-      compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (x -: y)
+      compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
     }
 
 --------------------------------------------------------------------------------
