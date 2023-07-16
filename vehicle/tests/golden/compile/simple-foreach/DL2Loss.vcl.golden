@@ -1,11 +1,25 @@
+<<<<<<< HEAD
 mapVector : (Index 2 -> Rat) -> Vector (Index 2) 2 -> Vector Rat 2;
 mapVector f _x0 = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
+=======
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
 
-foreachVector : (Index 2 -> Rat) -> Vector Rat 2;
-foreachVector f = mapVector f (indices 2)
+mapVector : (Index -> Rat) -> Vector (Index) -> Vector Rat;
+mapVector f = dfold {Index} {Vector Rat} (\ x -> \ xs -> f x :: xs) []
+>>>>>>> size-irrelevancy
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+foreachVector : forallT n . (Index -> Rat) -> Vector Rat;
+foreachVector n f = mapVector f (indices n)
 
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+>>>>>>> size-irrelevancy
 @property;
 index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Rat (2 :: nil);
-index f = foreachVector (\ i -> max 0.0 (0.0 - f [0.0, 0.0] ! i))
+index f = foreachVector 2 (\ i -> max 0.0 (0.0 - f [0.0, 0.0] ! i))

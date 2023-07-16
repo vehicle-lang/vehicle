@@ -6,8 +6,11 @@ module Vehicle.Compile.Type.Bidirectional
   )
 where
 
-import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..), asks)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -26,7 +29,7 @@ import Prelude hiding (pi)
 
 type MonadBidirectionalInternal builtin m =
   ( MonadTypeChecker builtin m,
-    MonadReader (TypingBoundCtx builtin) m
+    MonadReader (TypingBoundCtx builtin, Relevance) m
   )
 
 -- | Type checking monad with additional bound context for the bidirectional
@@ -59,19 +62,18 @@ checkExpr expectedType expr = do
           checkBinderTypesEqual p binderName (typeOf piBinder) checkedLamBinderType
 
           let checkedLamBinder = replaceBinderType (typeOf piBinder) lamBinder
+          let finalLamBinder = setBinderRelevance checkedLamBinder (relevanceOf piBinder)
 
           -- Add bound variable to context and check if the type of the expression
           -- matches the expected result type.
-          checkedBody <- addToBoundCtx checkedLamBinder $ checkExpr resultType body
-
-          return $ Lam p checkedLamBinder checkedBody
+          checkedBody <- extendBoundCtx finalLamBinder $ checkExpr resultType body
+          return $ Lam p finalLamBinder checkedBody
 
     -- In the case where we have an implicit or instance pi binder then insert a new
     -- lambda expression.
     (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
-          -- Then we are eta-expanding
-
+          -- Then eta-expand
           let p = provenanceOf piBinder
           let binderType = typeOf piBinder
 
@@ -82,7 +84,7 @@ checkExpr expectedType expr = do
 
           -- Add the pi-bound variable to the context and check if the type
           -- of the expression matches the expected result type.
-          checkedExpr <- addToBoundCtx lamBinder $ checkExpr resultType (liftDBIndices 1 e)
+          checkedExpr <- extendBoundCtx lamBinder $ checkExpr resultType (liftDBIndices 1 e)
 
           -- Prepend a new lambda to the expression with the implicit binder
           return $ Lam p lamBinder checkedExpr
@@ -147,7 +149,7 @@ inferExpr e = do
       (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
       let checkedBinder = replaceBinderType checkedBinderType binder
 
-      (checkedResultType, typeOfResultType) <- addToBoundCtx checkedBinder $ inferExpr resultType
+      (checkedResultType, typeOfResultType) <- extendBoundCtx checkedBinder $ inferExpr resultType
 
       maxResultType <- typeOfBinderType `tMax` typeOfResultType
       return (Pi p checkedBinder checkedResultType, maxResultType)
@@ -156,10 +158,15 @@ inferExpr e = do
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
       ctx <- getBoundCtx
-      logDebug MaxDetail $ prettyVerbose ctx
       binder <- lookupIxInBoundCtx currentPass i ctx
-      let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) (typeOf binder)
-      return (BoundVar p i, liftedCheckedType)
+      currentRelevance <- getCurrentRelevance
+      if currentRelevance == Relevant && relevanceOf binder == Irrelevant
+        then do
+          let varName = fromMaybe "<unknown>" $ nameOf binder
+          throwError $ RelevantUseOfIrrelevantVariable p varName
+        else do
+          let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) (typeOf binder)
+          return (BoundVar p i, liftedCheckedType)
     FreeVar p ident -> do
       originalType <- getDeclType ident
       return (FreeVar p ident, originalType)
@@ -170,15 +177,15 @@ inferExpr e = do
       let checkedBinder = replaceBinderType typeOfBoundExpr binder
 
       -- Check the type of the body, with the bound variable added to the context.
-      (checkedBody, typeOfBody) <- addToBoundCtx checkedBinder $ inferExpr body
+      (checkedBody, typeOfBody) <- extendBoundCtx checkedBinder $ inferExpr body
 
       -- Pretend the let expression is really a lambda application and use
       -- the application machinary to infer the result type and the type of the bound expression.
       (resultType, boundArgs) <-
         inferArgs
-          (Lam p checkedBinder body, [ExplicitArg p boundExpr])
+          (Lam p checkedBinder body, [RelevantExplicitArg p boundExpr])
           (Pi p checkedBinder typeOfBody)
-          [ExplicitArg p boundExpr]
+          [RelevantExplicitArg p boundExpr]
 
       -- Extract the type of the bound expression
       checkedBoundExpr <- case boundArgs of
@@ -197,7 +204,7 @@ inferExpr e = do
       let checkedBinder = replaceBinderType typeOfBinder binder
 
       -- Update the context with the bound variable
-      (checkedBody, typeOfBody) <- addToBoundCtx checkedBinder $ inferExpr body
+      (checkedBody, typeOfBody) <- extendBoundCtx checkedBinder $ inferExpr body
 
       let t' = Pi p checkedBinder typeOfBody
       return (Lam p checkedBinder checkedBody, t')
@@ -236,12 +243,13 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
       let p = provenanceOf fun
+      let visibility = visibilityOf binder
 
       -- Determine whether we have an arg that matches the binder
       (matchedUncheckedArg, remainingUncheckedArgs) <- case args of
         [] -> return (Nothing, args)
         (arg : remainingArgs)
-          | visibilityMatches binder arg -> return (Just arg, remainingArgs)
+          | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
               boundCtx <- getBoundCtx
               handleTypingError (MissingExplicitArgument boundCtx binder arg)
@@ -250,7 +258,12 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
       -- Calculate what the new checked arg should be, create a fresh meta
       -- if no arg was matched above
       checkedArg <- case matchedUncheckedArg of
-        Just arg -> traverse (checkExpr (typeOf binder)) arg
+        Just arg -> do
+          let relevance = relevanceOf binder
+          checkedArgExpr <-
+            setRelevance relevance $
+              checkExpr (typeOf binder) (argExpr arg)
+          return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
           boundCtx <- getBoundCtx
           newArg <- instantiateArgForNonExplicitBinder boundCtx p (fun, args') binder
@@ -260,7 +273,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
       let substResultType = argExpr checkedArg `substDBInto` resultType
 
       -- Recurse if necessary to check the remaining unchecked args
-      let needToRecurse = not (null remainingUncheckedArgs) || visibilityOf binder /= Explicit
+      let needToRecurse = not (null remainingUncheckedArgs) || visibility /= Explicit
       (typeAfterApplication, checkedArgs) <-
         if needToRecurse
           then inferArgs original substResultType remainingUncheckedArgs
@@ -312,7 +325,7 @@ checkExprTypesEqual ::
   Type Ix builtin ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
-  ctx <- ask
+  ctx <- getBoundCtx
   let origin = CheckingExprType expr expectedType actualType
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
@@ -324,9 +337,29 @@ checkBinderTypesEqual ::
   Type Ix builtin ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
-  ctx <- ask
+  ctx <- getBoundCtx
   let origin = CheckingBinderType binderName expectedType actualType
   createFreshUnificationConstraint p ctx origin expectedType actualType
+
+getBoundCtx :: (MonadBidirectionalInternal builtin m) => m (TypingBoundCtx builtin)
+getBoundCtx = asks fst
+
+getCurrentRelevance :: (MonadBidirectionalInternal builtin m) => m Relevance
+getCurrentRelevance = asks snd
+
+extendBoundCtx ::
+  (MonadBidirectionalInternal builtin m) =>
+  Binder Ix builtin ->
+  m c ->
+  m c
+extendBoundCtx binder = local (first (binder :))
+
+setRelevance ::
+  (MonadBidirectionalInternal builtin m) =>
+  Relevance ->
+  m c ->
+  m c
+setRelevance relevance = local (second (relevance <>))
 
 --------------------------------------------------------------------------------
 -- Debug functions

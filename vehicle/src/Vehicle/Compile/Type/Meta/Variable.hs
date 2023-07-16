@@ -60,8 +60,8 @@ makeMetaExpr ::
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [ExplicitArg p (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
-  let normBoundEnv = [ExplicitArg p (VBoundVar (Lv i) []) | i <- dependencyLevels]
+  let unnormBoundEnv = [RelevantExplicitArg p (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
+  let normBoundEnv = [RelevantExplicitArg p (VBoundVar (Lv i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued
@@ -83,16 +83,16 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
       Type Ix builtin
     entryToPi binder = do
       let n = fromMaybe "_" (nameOf binder)
-      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit Relevant (typeOf binder))
+      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit (relevanceOf binder) (typeOf binder))
 
 getMetaDependencies :: [Arg Ix builtin] -> [Ix]
 getMetaDependencies = \case
-  (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
+  (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
 getNormMetaDependencies :: [VArg builtin] -> ([Lv], Spine builtin)
 getNormMetaDependencies = \case
-  (ExplicitArg _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
+  (ExplicitArg _ _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
 
 --------------------------------------------------------------------------------

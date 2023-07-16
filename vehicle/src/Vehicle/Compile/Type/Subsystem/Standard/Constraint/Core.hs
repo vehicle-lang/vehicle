@@ -14,7 +14,7 @@ import Vehicle.Expr.Normalised (Value (..))
 
 type MonadInstance m = TCM StandardBuiltin m
 
-getTypeClass :: (MonadCompile m) => StandardNormExpr -> m (TypeClass, StandardExplicitSpine)
+getTypeClass :: (MonadCompile m) => StandardNormExpr -> m (TypeClass, StandardSpine)
 getTypeClass = \case
   (VBuiltin (CType (StandardTypeClass tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

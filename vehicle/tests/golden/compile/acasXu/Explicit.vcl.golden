@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 bigAnd : (\ A -> Vector A 5) Bool -> Bool;
 bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
@@ -15,42 +16,65 @@ foreachVector__Rat__5 f = mapVector__5__Index_5__Rat f (indices 5)
 
 forallIndex : (Index 5 -> Bool) -> Bool;
 forallIndex f = bigAnd (foreachVector__Bool__5 (\ i -> f i))
+=======
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
+
+vectorToVector : Vector Bool -> Vector Bool;
+vectorToVector xs = xs
+
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
+
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+>>>>>>> size-irrelevancy
 
 pi : Rat;
 pi = 3.141592
 
-type InputVector = Vector Rat 5
+type InputVector = Vector Rat
 
-distanceToIntruder : Index 5;
+distanceToIntruder : Index;
 distanceToIntruder = 0
 
-angleToIntruder : Index 5;
+angleToIntruder : Index;
 angleToIntruder = 1
 
-intruderHeading : Index 5;
+intruderHeading : Index;
 intruderHeading = 2
 
-speed : Index 5;
+speed : Index;
 speed = 3
 
-intruderSpeed : Index 5;
+intruderSpeed : Index;
 intruderSpeed = 4
 
-type OutputVector = Vector Rat 5
+type OutputVector = Vector Rat
 
-clearOfConflict : Index 5;
+clearOfConflict : Index;
 clearOfConflict = 0
 
-weakLeft : Index 5;
+weakLeft : Index;
 weakLeft = 1
 
+<<<<<<< HEAD
 strongLeft : Index 5;
+=======
+weakRight : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
+weakRight {_x0} {{_ }} = _ 2
+
+strongLeft : Index;
+>>>>>>> size-irrelevancy
 strongLeft = 3
 
-strongRight : Index 5;
+strongRight : Index;
 strongRight = 4
 
-type UnnormalisedInputVector = Vector Rat 5
+type UnnormalisedInputVector = Vector Rat
 
 minimumInputValues : UnnormalisedInputVector;
 minimumInputValues = [0.0, - pi, - pi, 100.0, 0.0]
@@ -59,22 +83,26 @@ maximumInputValues : UnnormalisedInputVector;
 maximumInputValues = [60261.0, pi, pi, 1200.0, 1200.0]
 
 validInput : UnnormalisedInputVector -> Bool;
-validInput x = forallIndex (\ i -> minimumInputValues ! i <= x ! i and x ! i <= maximumInputValues ! i)
+validInput x = forallIndex 5 (\ i -> minimumInputValues ! i <= x ! i and x ! i <= maximumInputValues ! i)
 
 meanScalingValues : UnnormalisedInputVector;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : UnnormalisedInputVector -> InputVector;
+<<<<<<< HEAD
 normalise x = foreachVector__Rat__5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
+=======
+normalise x = foreachVector 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
+>>>>>>> size-irrelevancy
 
 normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
 normAcasXu acasXu x = acasXu (normalise x)
 
-minimalScore : forallT (acasXu : InputVector -> OutputVector) . Index 5 -> UnnormalisedInputVector -> Bool;
-minimalScore acasXu i x = forallIndex (\ j -> i != j => normAcasXu acasXu x ! i < normAcasXu acasXu x ! j)
+minimalScore : forallT (acasXu : InputVector -> OutputVector) . Index -> UnnormalisedInputVector -> Bool;
+minimalScore acasXu i x = forallIndex 5 (\ j -> i != j => normAcasXu acasXu x ! i < normAcasXu acasXu x ! j)
 
-maximalScore : forallT (acasXu : InputVector -> OutputVector) . Index 5 -> UnnormalisedInputVector -> Bool;
-maximalScore acasXu i x = forallIndex (\ j -> i != j => normAcasXu acasXu x ! i > normAcasXu acasXu x ! j)
+maximalScore : forallT (acasXu : InputVector -> OutputVector) . Index -> UnnormalisedInputVector -> Bool;
+maximalScore acasXu i x = forallIndex 5 (\ j -> i != j => normAcasXu acasXu x ! i > normAcasXu acasXu x ! j)
 
 scaleCOCOutput : Rat -> Rat;
 scaleCOCOutput x = (x - 7.518884) - 373.94992

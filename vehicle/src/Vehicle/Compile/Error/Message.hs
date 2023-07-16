@@ -315,9 +315,9 @@ instance MeaningfulError CompileError where
               constraintOriginMessage
                 <> "."
                   <+> "In particular"
-                  <+> prettyFriendly (WithContext e1 boundCtx)
-                  <+> "!="
-                  <+> prettyFriendly (WithContext e2 boundCtx)
+                  <+> squotes (prettyFriendly (WithContext e1 boundCtx))
+                  <+> "is not equal to"
+                  <+> squotes (prettyFriendly (WithContext e2 boundCtx))
                 <> ".",
             fix = Just "check your types"
           }
@@ -670,6 +670,13 @@ instance MeaningfulError CompileError where
               "a vector literal is not a valid element of the type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
                 <> ".",
+            fix = Nothing
+          }
+    RelevantUseOfIrrelevantVariable p name ->
+      UError $
+        UserError
+          { provenance = p,
+            problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
             fix = Nothing
           }
     QuantifiedIfCondition ctx ->

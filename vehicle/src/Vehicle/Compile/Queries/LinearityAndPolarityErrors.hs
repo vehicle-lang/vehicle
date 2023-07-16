@@ -12,8 +12,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
@@ -81,7 +82,8 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
-  monomorphisedProg <- monomorphise isPropertyDecl False "-" typeClassFreeProg
+  irrelevantFreeProg <- removeIrrelevantCode typeClassFreeProg
+  monomorphisedProg <- monomorphise isPropertyDecl False "-" irrelevantFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg
@@ -89,9 +91,9 @@ typeCheckWithSubsystem prog = do
 resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
-    result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
-    logCompilerPassOutput $ prettyFriendly result
-    return result
+    flip traverseDecls prog $ \decl -> do
+      result <- traverse (traverseBuiltinsM builtinUpdateFunction) decl
+      return result
   where
     builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of

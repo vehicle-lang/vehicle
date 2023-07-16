@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 bigAnd : (\ A -> Vector A 1) Bool -> Bool;
 bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
@@ -13,15 +14,33 @@ foreachVector f = mapVector f (indices 1)
 zipWith : (Rat -> Rat -> Bool) -> Vector Rat 1 -> Vector Rat 1 -> Vector Bool 1;
 zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
 
+=======
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
+
+bigOr : (\ A -> Vector A) Bool -> Bool;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x or y) False
+
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
+
+>>>>>>> size-irrelevancy
 @noinline;
-equalsVector : Vector Rat 1 -> Vector Rat 1 -> Bool;
+equalsVector : Vector Rat -> Vector Rat -> Bool;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
-notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Bool;
+@noinline;
+notEqualsVector : Vector Rat -> Vector Rat -> Bool;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+>>>>>>> size-irrelevancy
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
 test1 f = exists a . a <= 0.0 or equalsVector (f [a + 2.0]) [0.0]

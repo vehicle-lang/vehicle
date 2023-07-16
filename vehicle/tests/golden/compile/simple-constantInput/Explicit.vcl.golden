@@ -1,5 +1,16 @@
+<<<<<<< HEAD
 type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
 
+=======
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+>>>>>>> size-irrelevancy
 @property;
 spec : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
 spec f = forall x . f [x, 0.0] ! 0 >= 0.0

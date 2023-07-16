@@ -19,6 +19,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -128,8 +129,9 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
+  relevantProg <- removeIrrelevantCode prog
   let monomorphiseIf = isPropertyDecl
-  monomorphiseProg <- monomorphise monomorphiseIf True "_" prog
+  monomorphiseProg <- monomorphise monomorphiseIf True "_" relevantProg
   functionalisedProg <- functionaliseResources monomorphiseProg
   etaExpandedProg <- etaExpandProg functionalisedProg
   result <-

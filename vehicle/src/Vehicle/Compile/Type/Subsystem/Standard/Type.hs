@@ -86,6 +86,7 @@ typeOfBuiltinFunction = \case
     FoldList -> typeOfFold tListRaw
     FoldVector -> typeOfFoldVector
   At -> typeOfAt
+  ZipWith -> typeOfZipWith
   Indices -> typeOfIndices
   b@Sample {} -> developerError $ "Should not be typing" <+> pretty b
 
@@ -141,7 +142,7 @@ typeOfTypeClassOp b = case b of
   OrderTC op -> typeOfTCComparisonOp $ hasOrd op
   FromNatTC -> forAll "A" type0 $ \t -> hasNatLits t ~~~> typeOfFromNat t
   FromRatTC -> forAll "A" type0 $ \t -> hasRatLits t ~~~> typeOfFromRat t
-  FromVecTC -> forAll "n" tNat $ \n -> forAll "f" (type0 ~> type0) $ \f -> hasVecLits n f ~~~> typeOfFromVec n f
+  FromVecTC -> forAllIrrelevantNat "n" $ \n -> forAll "f" (type0 ~> type0) $ \f -> hasVecLits n f ~~~> typeOfFromVec n f
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
   QuantifierTC q ->
@@ -195,6 +196,14 @@ typeOfAt =
     forAllIrrelevantNat "n" $ \tDim ->
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
+typeOfZipWith :: StandardDSLExpr
+typeOfZipWith =
+  forAll "A" type0 $ \t1 ->
+    forAll "B" type0 $ \t2 ->
+      forAll "C" type0 $ \t3 ->
+        forAllIrrelevantNat "n" $ \tDim ->
+          (t1 ~> t2 ~> t3) ~> tVector t1 tDim ~> tVector t2 tDim ~> tVector t3 tDim
+
 typeOfMap :: StandardDSLExpr -> StandardDSLExpr
 typeOfMap f =
   forAll "A" type0 $ \a ->
@@ -217,13 +226,13 @@ typeOfFoldVector :: StandardDSLExpr
 typeOfFoldVector =
   forAll "A" type0 $ \a ->
     forAllIrrelevantNat "n" $ \n ->
-      forAll "P" (tNat ~> type0) $ \p ->
-        forAll "l" tNat (\l -> a ~> p @@ [l] ~> p @@ [addNat l (natLit 1)])
-          ~> p
-          @@ [natLit 0]
+      forAll "B" (tNat .~> type0) $ \b ->
+        forAllIrrelevantNat "i" (\i -> a ~> b .@@ [i] ~> b .@@ [addNat i (natLit 1)])
+          ~> b
+          .@@ [natLit 0]
           ~> tVector a n
-          ~> p
-          @@ [n]
+          ~> b
+          .@@ [n]
 
 typeOfQuantifier :: StandardDSLExpr -> StandardDSLExpr
 typeOfQuantifier t = t ~> tBool

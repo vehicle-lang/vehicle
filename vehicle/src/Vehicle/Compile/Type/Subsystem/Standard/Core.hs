@@ -78,8 +78,6 @@ type StandardNormType = VType StandardBuiltin
 
 type StandardSpine = Spine StandardBuiltin
 
-type StandardExplicitSpine = ExplicitSpine StandardBuiltin
-
 type StandardEnv = Env StandardBuiltin
 
 type StandardNormDeclCtx = NormDeclCtx StandardBuiltin
@@ -116,7 +114,7 @@ type StandardConstraint = Constraint StandardBuiltin
 -----------------------------------------------------------------------------
 -- Normalised patterns
 
-pattern VBuiltinType :: BuiltinType -> StandardExplicitSpine -> StandardNormExpr
+pattern VBuiltinType :: BuiltinType -> StandardSpine -> StandardNormExpr
 pattern VBuiltinType c args = VBuiltin (CType (StandardBuiltinType c)) args
 
 pattern VBoolType :: StandardNormType
@@ -125,9 +123,9 @@ pattern VBoolType <- VBuiltinType Bool []
     VBoolType = VBuiltinType Bool []
 
 pattern VIndexType :: StandardNormType -> StandardNormType
-pattern VIndexType size <- VBuiltinType Index [size]
+pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
   where
-    VIndexType size = VBuiltinType Index [size]
+    VIndexType size = VBuiltinType Index [IrrelevantExplicitArg mempty size]
 
 pattern VNatType :: StandardNormType
 pattern VNatType <- VBuiltinType Nat []
@@ -150,45 +148,16 @@ pattern VRawListType <- VBuiltinType List []
     VRawListType = VBuiltinType List []
 
 pattern VListType :: StandardNormType -> StandardNormType
-pattern VListType tElem <- VBuiltinType List [tElem]
+pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]
 
 pattern VVectorType :: StandardNormType -> StandardNormExpr -> StandardNormType
-pattern VVectorType tElem dim <- VBuiltinType Vector [tElem, dim]
+pattern VVectorType tElem dim <- VBuiltinType Vector [RelevantExplicitArg _ tElem, IrrelevantExplicitArg _ dim]
   where
-    VVectorType tElem dim = VBuiltinType Vector [tElem, dim]
+    VVectorType tElem dim = VBuiltinType Vector [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dim]
 
-pattern VTensorType :: StandardNormType -> StandardNormType -> StandardNormType
-pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
-  where
-    VTensorType tElem dims = VFreeVar TensorIdent [ExplicitArg mempty tElem, ExplicitArg mempty dims]
-
-mkRatVectorAdd :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
-mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
-
-mkRatVectorSub :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
-mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
-
-mkVectorOp ::
-  BuiltinFunction ->
-  StdLibFunction ->
-  [StandardNormExpr] ->
-  StandardExplicitSpine ->
-  StandardNormExpr
-mkVectorOp baseOp libOp dims spine = case dims of
-  [] -> VBuiltinFunction baseOp spine
-  (d : ds) ->
-    VFreeVar
-      (identifierOf libOp)
-      ( [ ImplicitArg p vecType,
-          ImplicitArg p vecType,
-          ImplicitArg p vecType,
-          ImplicitArg p d,
-          InstanceArg p (mkVectorOp baseOp libOp ds [])
-        ]
-          <> fmap (ExplicitArg p) spine
-      )
-    where
-      p = mempty; vecType = VTensorType VRatType (mkVList ds)
+pattern VTensorType :: StandardNormType -> StandardNormExpr -> StandardNormType
+pattern VTensorType tElem dims <-
+  VFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
 
 --------------------------------------------------------------------------------
 -- Instance constraints
@@ -196,7 +165,7 @@ mkVectorOp baseOp libOp dims spine = case dims of
 data InstanceGoal = InstanceGoal
   { goalTelescope :: StandardTelescope,
     goalHead :: TypeClass,
-    goalSpine :: StandardExplicitSpine
+    goalSpine :: StandardSpine
   }
   deriving (Show)
 

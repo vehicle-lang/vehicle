@@ -22,7 +22,7 @@ where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (Normalisable (..))
@@ -101,29 +101,40 @@ evalBinder env = traverse (eval env)
 
 evalApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m (Value builtin)
 evalApp fun [] = return fun
-evalApp fun (arg : args) = do
-  showApp fun (arg : args)
-  case fun of
-    VMeta v spine -> return $ VMeta v (spine <> (arg : args))
-    VBoundVar v spine -> return $ VBoundVar v (spine <> (arg : args))
-    VFreeVar v spine -> evalFreeVarApp v (spine <> (arg : args))
+evalApp fun args@(a : as) = do
+  showApp fun args
+  result <- case fun of
+    VMeta v spine -> return $ VMeta v (spine <> args)
+    VBoundVar v spine -> return $ VBoundVar v (spine <> args)
+    VFreeVar v spine -> evalFreeVarApp v (spine <> args)
     VLam binder env body
-      | not (visibilityMatches binder arg) ->
-          compilerDeveloperError $ "Mismatch in visibilities" <+> prettyVerbose binder <+> prettyVerbose arg
+      | not (visibilityMatches binder a) -> do
+          compilerDeveloperError $
+            "Visibility mismatch during normalisation:"
+              <> line
+              <> indent
+                2
+                ( "fun:" <+> prettyVerbose fun
+                    <> line
+                    <> "args:" <+> prettyVerbose args
+                )
       | otherwise -> do
-          let newEnv = extendEnv binder (argExpr arg) env
+          let newEnv = extendEnv binder (argExpr a) env
           body' <- eval newEnv body
-          case args of
+          case as of
             [] -> return body'
-            (a : as) -> evalApp body' (a : as)
+            (b : bs) -> evalApp body' (b : bs)
     VBuiltin b spine
       | not (isTypeClassOp b) -> do
-          evalBuiltin evalApp b (spine <> mapMaybe getExplicitArg (arg : args))
+          evalBuiltin evalApp b (spine <> args)
       | otherwise -> do
           (inst, remainingArgs) <- findInstanceArg b args
           evalApp inst remainingArgs
-    VUniverse {} -> unexpectedExprError currentPass "VUniverse"
-    VPi {} -> unexpectedExprError currentPass "VPi"
+    VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
+    VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
+
+  showAppExit result
+  return result
 
 -- | This evaluates a free variable applied to an application.
 evalFreeVarApp ::
@@ -181,7 +192,7 @@ reeval env expr = do
       spine' <- reevalSpine env spine
       evalApp value spine'
     VBuiltin b spine ->
-      evalBuiltin evalApp b =<< traverse (reeval env) spine
+      evalBuiltin evalApp b =<< reevalSpine env spine
   showNormExit env result
   return result
 
@@ -226,12 +237,12 @@ forceExpr = go
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
-forceArg :: (MonadNorm builtin m) => Value builtin -> m (Value builtin, Bool, MetaSet)
-forceArg expr = do
-  (maybeResult, blockingMetas) <- forceExpr expr
-  let result = fromMaybe expr maybeResult
-  let reduced = isJust maybeResult
-  return (result, reduced, blockingMetas)
+forceArg :: (MonadNorm builtin m) => VArg builtin -> m (VArg builtin, (Bool, MetaSet))
+forceArg arg = do
+  (maybeResult, blockingMetas) <- unpairArg <$> traverse forceExpr arg
+  let result = fmap (fromMaybe (argExpr arg)) maybeResult
+  let reduced = isJust $ argExpr maybeResult
+  return (result, (reduced, blockingMetas))
 
 -----------------------------------------------------------------------------
 -- Other
@@ -241,8 +252,8 @@ currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m ()
 showEntry _env _expr = do
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
   -- incrCallDepth
   return ()
 
@@ -268,12 +279,19 @@ showNormExit _env _result = do
   return ()
 
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp _fun _spine =
-  -- logDebug MaxDetail $ "nbe-app" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+showApp _fun _spine = do
+  -- logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+  -- incrCallDepth
+  return ()
+
+showAppExit :: (MonadNorm builtin m) => Value builtin -> m ()
+showAppExit _result = do
+  -- decrCallDepth
+  -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 
 findInstanceArg :: (MonadCompile m) => (Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case
-  (InstanceArg _ inst : xs) -> return (inst, xs)
+  (InstanceArg _ _ inst : xs) -> return (inst, xs)
   (_ : xs) -> findInstanceArg op xs
   [] -> compilerDeveloperError $ "Malformed type class operation:" <+> pretty (show op)

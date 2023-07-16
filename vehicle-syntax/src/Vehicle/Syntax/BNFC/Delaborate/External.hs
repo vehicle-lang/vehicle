@@ -112,7 +112,7 @@ delabNameBinder b = case V.binderNamingForm b of
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
-    V.Explicit -> B.ExplicitNameBinder (delabSymbol name)
+    V.Explicit -> B.ExplicitNameBinder (delabModalities b) (delabSymbol name)
     V.Implicit {} -> B.ImplicitNameBinder (delabModalities b) (delabSymbol name)
     V.Instance {} -> B.InstanceNameBinder (delabModalities b) (delabSymbol name)
 
@@ -186,6 +186,7 @@ delabBuiltinFunction fun args = case fun of
   V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
   V.Fold V.FoldVector -> delabApp (B.DepFold tokDepFold) args
   V.ConsVector -> delabInfixOp2 B.ConsVector tokConsVector args
+  V.ZipWith -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
   -- Builtins not in the surface syntax.
@@ -236,7 +237,9 @@ delabConstructor fun args = case fun of
         then B.Literal $ B.NatLiteral $ delabNatLit i
         else B.Neg tokSub (B.Literal $ B.NatLiteral $ delabNatLit (-i))
   V.LRat r -> return $ B.Literal $ B.RatLiteral $ delabRatLit r
-  V.LVec _ -> B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) args <*> pure tokSeqClose
+  V.LVec _ -> do
+    let explArgs = filter V.isExplicit args
+    B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose
 
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of
@@ -286,7 +289,7 @@ delabPartialSection expectedArgs actualArgs mkOp = do
   let missingArgNumbers = [0 .. (expectedArgs - length actualArgs)]
   let missingVarNames = fmap (\v -> delabSymbol (pack "x" <> pack (show v))) missingArgNumbers
   let missingVars = fmap B.Var missingVarNames
-  let missingBinders = fmap B.ExplicitNameBinder missingVarNames
+  let missingBinders = fmap (B.ExplicitNameBinder mempty) missingVarNames
   B.Lam tokLambda missingBinders tokArrow (mkOp (actualArgs <> missingVars))
 
 delabIf :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
@@ -355,7 +358,7 @@ delabFun name typ expr = do
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabQuantifier q args = case reverse args of
-  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantFold q) binder) body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
@@ -367,7 +370,7 @@ delabQuantifier q args = case reverse args of
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabQuantifierIn q args = case reverse args of
-  V.ExplicitArg _ cont : V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ cont : V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     binder' <- delabNameBinder binder
     cont' <- delabM cont
     body' <- delabM body
@@ -381,7 +384,7 @@ delabQuantifierIn q args = case reverse args of
 
 delabForeach :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
 delabForeach args = case reverse args of
-  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     binder' <- delabNameBinder binder
     body' <- delabM body
     return $ B.Foreach tokForeach binder' tokDot body'

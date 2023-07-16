@@ -100,7 +100,7 @@ unification ctx reductionBlockingMetas = \case
   VFreeVar v1 spine1 :~: VFreeVar v2 spine2
     | v1 == v2 -> solveSpine ctx spine1 spine2
   VBuiltin b1 spine1 :~: VBuiltin b2 spine2
-    | b1 == b2 -> solveExplicitSpine ctx spine1 spine2
+    | b1 == b2 -> solveSpine ctx spine1 spine2
   VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi ctx (binder1, body1) (binder2, body2)
   VLam binder1 env1 body1 :~: VLam binder2 env2 body2 ->
@@ -152,16 +152,6 @@ solveSpine ctx args1 args2
   | otherwise = do
       constraints <- sequence $ mapMaybe (solveArg ctx) (zip args1 args2)
       return $ mconcat constraints
-
-solveExplicitSpine ::
-  (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
-  ExplicitSpine builtin ->
-  ExplicitSpine builtin ->
-  m (UnificationResult builtin)
-solveExplicitSpine ctx args1 args2
-  | length args1 /= length args2 = return HardFailure
-  | otherwise = Success <$> traverse (unify ctx) (zip args1 args2)
 
 solveLam ::
   (MonadUnify builtin m) =>
@@ -259,7 +249,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
                   then createMetaWithRestrictedDependencies ctx m sharedDependencies
                   else return $ VMeta m spine
       VUniverse {} -> return expr
-      VBuiltin b spine -> VBuiltin b <$> traverse go spine
+      VBuiltin b spine -> VBuiltin b <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VPi binder result -> VPi <$> traverse go binder <*> go result
@@ -323,7 +313,7 @@ invert ctxSize (metaID, spine) = do
     go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
-      (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
+      (ExplicitArg _ _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
         if IntMap.member (unIx jIndex) revMap

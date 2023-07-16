@@ -1,27 +1,44 @@
+<<<<<<< HEAD
 bigAnd : (\ A -> Vector A 2) Bool -> Bool;
 bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 mapVector : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
 mapVector f _x0 = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
+=======
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
 
-foreachVector : (Index 2 -> Bool) -> Vector Bool 2;
-foreachVector f = mapVector f (indices 2)
+vectorToVector : Vector Bool -> Vector Bool;
+vectorToVector xs = xs
 
-forallIndex : (Index 2 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+>>>>>>> size-irrelevancy
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
 
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+>>>>>>> size-irrelevancy
 type InputVector = Tensor Rat (2 :: nil)
 
-currentSensor : Index 2;
+currentSensor : Index;
 currentSensor = 0
 
-previousSensor : Index 2;
+previousSensor : Index;
 previousSensor = 1
 
 safeInput : InputVector -> Bool;
-safeInput x = forallIndex (\ i -> - 3.25 <= x ! i and x ! i <= 3.25)
+safeInput x = forallIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25)
 
 safeOutput : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . InputVector -> Bool;
 safeOutput controller x = - 1.25 < controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor and controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor < 1.25

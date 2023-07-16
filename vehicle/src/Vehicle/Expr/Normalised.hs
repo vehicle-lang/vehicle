@@ -18,7 +18,7 @@ data Value builtin
   | VMeta MetaID (Spine builtin)
   | VFreeVar Identifier (Spine builtin)
   | VBoundVar Lv (Spine builtin)
-  | VBuiltin builtin (ExplicitSpine builtin)
+  | VBuiltin builtin (Spine builtin)
   deriving (Eq, Show, Generic)
 
 instance (Serialize builtin) => Serialize (Value builtin)
@@ -39,10 +39,6 @@ type VType builtin = Value builtin
 
 -- | A list of arguments for an application that cannot be normalised.
 type Spine builtin = [VArg builtin]
-
--- | A spine type for builtins which enforces the invariant that they should
--- only ever depend computationally on their explicit arguments.
-type ExplicitSpine builtin = [Value builtin]
 
 type Env builtin = BoundCtx (Maybe Name, Value builtin)
 

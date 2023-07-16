@@ -7,6 +7,15 @@ bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 forallIn : (Nat -> Bool) -> List Nat -> Bool;
 forallIn f xs = bigAnd (mapList f xs)
 
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
+mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
+
+>>>>>>> size-irrelevancy
 @property;
 e1 : Bool;
 e1 = let x = True in let y = False in x and y

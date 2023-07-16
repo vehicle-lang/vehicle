@@ -127,6 +127,11 @@ class Exists(BuiltinFunction):
 
 
 @dataclass(frozen=True)
+class Forall(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
 class FoldList(BuiltinFunction):
     pass
 
@@ -137,7 +142,7 @@ class FoldVector(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class Forall(BuiltinFunction):
+class ZipWith(BuiltinFunction):
     pass
 
 

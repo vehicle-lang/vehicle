@@ -1,14 +1,28 @@
 mapList__Vector_Rat_4__Rat : (Vector Rat 4 -> Rat) -> List (Vector Rat 4) -> List Rat;
 mapList__Vector_Rat_4__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
+<<<<<<< HEAD
 mapList__Rat__Rat : (Rat -> Rat) -> List Rat -> List Rat;
 mapList__Rat__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigOr : List Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
+=======
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
+>>>>>>> size-irrelevancy
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+mapList : (Rat -> Rat) -> List Rat -> List Rat;
+mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+
+>>>>>>> size-irrelevancy
 @property;
 unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
 unusedVar f = bigOr (mapList__Rat__Rat (\ x -> bigOr (mapList__Rat__Rat (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)) sample[y][x])) sample[x][])

@@ -144,7 +144,7 @@ op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 
 elabVec :: [V.Expr V.Name V.Builtin] -> V.Expr V.Name V.Builtin
 elabVec xs = do
   let vecConstructor = V.Builtin mempty (V.Constructor $ V.LVec (length xs))
-  V.normAppList mempty vecConstructor (V.ExplicitArg mempty <$> xs)
+  V.normAppList mempty vecConstructor (V.RelevantExplicitArg mempty <$> xs)
 
 -- | Elabs the type token into a Type expression.
 -- Doesn't run in the monad as if something goes wrong with this, we've got

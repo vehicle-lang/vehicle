@@ -1,23 +1,23 @@
 @property;
 eqIndex : Bool;
-eqIndex = (0 : Index 1) == (1 : Index 2)
+eqIndex = (0 : Index) == (1 : Index)
 
 @property;
 neqIndex : Bool;
-neqIndex = (0 : Index 1) != (1 : Index 2)
+neqIndex = (0 : Index) != (1 : Index)
 
 @property;
 leqIndex : Bool;
-leqIndex = (0 : Index 1) <= (1 : Index 2)
+leqIndex = (0 : Index) <= (1 : Index)
 
 @property;
 ltIndex : Bool;
-ltIndex = (0 : Index 1) < (1 : Index 2)
+ltIndex = (0 : Index) < (1 : Index)
 
 @property;
 geqIndex : Bool;
-geqIndex = (0 : Index 1) >= (1 : Index 2)
+geqIndex = (0 : Index) >= (1 : Index)
 
 @property;
 gtIndex : Bool;
-gtIndex = (0 : Index 1) > (1 : Index 2)
+gtIndex = (0 : Index) > (1 : Index)

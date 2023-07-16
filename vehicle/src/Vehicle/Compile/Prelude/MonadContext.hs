@@ -12,7 +12,7 @@ import Vehicle.Compile.Error (MonadCompile, lookupInDeclCtx, lookupIxInBoundCtx,
 import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, eval, runNormT)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
-import Vehicle.Compile.Prelude hiding (getBoundCtx)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..), typingBoundContextToEnv)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised

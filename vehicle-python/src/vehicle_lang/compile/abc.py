@@ -28,6 +28,7 @@ _Rat = TypeVar("_Rat")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,11 @@ class Builtins(
         self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
     ) -> _T:
         return reduce(lambda x, y: function(y, x), sequence, initial)
+
+    def ZipWith(
+        self, function: Callable[[_S, _T], _U], xs: Sequence[_S], ys: Sequence[_T]
+    ) -> Sequence[_U]:
+        return [function(x, y) for (x, y) in zip(xs, ys)]
 
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]

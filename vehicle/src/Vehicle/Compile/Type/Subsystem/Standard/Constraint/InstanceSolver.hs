@@ -115,8 +115,8 @@ findCandidatesInBoundCtx goal ctx = go ctx
     go = \case
       [] -> return []
       (binder : localCtx) -> do
-        let binderType = typeOf binder
         candidates <- go localCtx
+        let binderType = typeOf binder
         case findTypeClassOfCandidate binderType of
           Right tc | tc == goalHead goal -> do
             let candidate =

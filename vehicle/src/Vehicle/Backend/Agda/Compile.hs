@@ -375,7 +375,7 @@ compileExpr expr = do
       cBody <- compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
-    Builtin _ b -> compileBuiltin b []
+    Builtin p b -> compileBuiltin p b []
     App _ fun args -> compileApp fun args
 
   logExit result
@@ -391,7 +391,7 @@ compileVar var = return $ case var of
 compileApp :: (MonadAgdaCompile m) => Expr Name StandardBuiltin -> NonEmpty (Arg Name StandardBuiltin) -> m Code
 compileApp fun args = do
   specialResult <- case fun of
-    Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
+    Builtin p b -> Just <$> compileBuiltin p b (NonEmpty.toList args)
     FreeVar _ ident -> case findStdLibFunction ident of
       Nothing -> return Nothing
       Just stdlibFn -> compileStdLibFunction stdlibFn args
@@ -413,14 +413,14 @@ compileStdLibFunction fn args = case fn of
   StdForeach -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
-    [_, _, ExplicitArg p (VecLiteral _ tElem xs)] -> Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
+    [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] -> Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
     _ -> return Nothing
   StdForallIn -> case args of
-    [_, ImplicitArg _ tCont, _, _, ExplicitArg _ lam, ExplicitArg _ cont] ->
+    [_, RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
       Just <$> compileQuantIn Forall tCont lam cont
     _ -> return Nothing
   StdExistsIn -> case args of
-    [ImplicitArg _ tCont, _, _, ExplicitArg _ lam, ExplicitArg _ cont] ->
+    [RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
       Just <$> compileQuantIn Exists tCont lam cont
     _ -> return Nothing
   _ -> return Nothing
@@ -503,12 +503,12 @@ agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
 agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
-compileBuiltin :: (MonadAgdaCompile m) => StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
-compileBuiltin (CType (StandardTypeClassOp op)) allArgs
+compileBuiltin :: (MonadAgdaCompile m) => Provenance -> StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
+compileBuiltin _p (CType (StandardTypeClassOp op)) allArgs
   | not (isTypeClassInAgda op) = do
       (fn, args) <- nfTypeClassOp mempty op allArgs
       compileApp fn args
-compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
+compileBuiltin p op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
   BoolType {} -> compileBooleanType
   NatType {} -> return $ annotateConstant [DataNat] natQualifier
   IntType {} -> return $ annotateConstant [DataInteger] intQualifier
@@ -551,10 +551,11 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   IndexLiteral _ n -> return $ compileIndexLiteral (toInteger n)
   NatLiteral _ n -> return $ compileNatLiteral (toInteger n)
   IntLiteral _ i -> return $ compileIntLiteral (toInteger i)
-  RatLiteral _ p -> return $ compileRatLiteral p
+  RatLiteral _ r -> return $ compileRatLiteral r
   VecLiteral _ _ xs -> compileVecLiteral (fmap argExpr xs)
   HasEqExpr _ _ t _ _ -> compileTypeClass "HasEq" t
   HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
+  HasAddExpr _ t _ _ -> compileTypeClass "HasAdd" t
   HasSubExpr _ t _ _ -> compileTypeClass "HasSub" t
   HasDivExpr _ t _ _ -> compileTypeClass "HasDiv" t
   HasNegExpr _ t _ -> compileTypeClass "HasNeg" t
@@ -564,7 +565,7 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
     compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
   BuiltinTypeClass _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
   _ -> do
-    let e = normAppList mempty (Builtin mempty op) allArgs
+    let e = normAppList p (Builtin p op) allArgs
     compilerDeveloperError $
       "unexpected application of builtin found during compilation to Agda:"
         <+> squotes (prettyExternal e)
@@ -902,9 +903,9 @@ pattern ITensorType p tElem tDims <-
   App
     p
     (FreeVar _ (Identifier StdLib "Tensor"))
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tDims
+    [ RelevantExplicitArg _ tElem,
+      IrrelevantExplicitArg _ tDims
       ]
 
 pattern IndexType :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern IndexType p tSize <- TypeExpr p Index [ExplicitArg _ tSize]
+pattern IndexType p tSize <- TypeExpr p Index [IrrelevantExplicitArg _ tSize]

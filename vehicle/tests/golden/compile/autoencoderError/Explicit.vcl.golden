@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 bigAnd : (\ A -> Vector A 5) Bool -> Bool;
 bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
@@ -26,12 +27,44 @@ subVector _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 
 forallIndex : (Index 5 -> Bool) -> Bool;
 forallIndex f = bigAnd (foreachVector__Bool__5 (\ i -> f i))
+=======
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+vectorToVector : Vector Bool -> Vector Bool;
+vectorToVector xs = xs
 
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
+
+@noinline;
+addVector : Vector Rat -> Vector Rat -> Vector Rat;
+addVector = zipWith (\ x -> \ y -> x + y)
+
+@noinline;
+subVector : Vector Rat -> Vector Rat -> Vector Rat;
+subVector = zipWith (\ x -> \ y -> x - y)
+
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+>>>>>>> size-irrelevancy
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+<<<<<<< HEAD
 epsilon : Tensor Rat (5 :: nil);
 epsilon = foreachVector__Rat__5 (\ i -> 0.1)
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+epsilon : Tensor Rat (5 :: nil);
+epsilon = foreachVector 5 (\ i -> 0.1)
+>>>>>>> size-irrelevancy
 
 @property;
 identity : forallT (encode : Tensor Rat (5 :: nil) -> Tensor Rat (2 :: nil)) . forallT (decode : Tensor Rat (2 :: nil) -> Tensor Rat (5 :: nil)) . Bool;
-identity encode decode = forall x . forallIndex (\ i -> subVector x epsilon ! i <= decode (encode x) ! i and decode (encode x) ! i <= addVector x epsilon ! i)
+identity encode decode = forall x . forallIndex 5 (\ i -> subVector x epsilon ! i <= decode (encode x) ! i and decode (encode x) ! i <= addVector x epsilon ! i)

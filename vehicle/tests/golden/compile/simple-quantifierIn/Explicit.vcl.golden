@@ -7,6 +7,7 @@ bigAnd__lam_A__Vector_A_2 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\
 bigAnd__List : List Bool -> Bool;
 bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
+<<<<<<< HEAD
 bigOr : (\ A -> Vector A 1) Bool -> Bool;
 bigOr _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False _x0
 
@@ -37,8 +38,32 @@ equalsVector xs ys = bigAnd__lam_A__Vector_A_2 (zipWith__Rat__Rat__Bool (\ x -> 
 
 notEqualsVector : Vector Rat 1 -> Vector Rat 1 -> Bool;
 notEqualsVector xs ys = bigOr (zipWith__Rat__Rat__Bool (\ x -> \ y -> x != y) xs ys)
+=======
+bigOr : (\ A -> Vector A) Bool -> Bool;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x or y) False
 
-dataset : List (Vector Rat 2);
+forallIn : (Vector Rat -> Bool) -> List (Vector Rat) -> Bool;
+forallIn f xs = bigAnd (mapList f xs)
+
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
+
+@noinline;
+equalsVector : Vector Rat -> Vector Rat -> Bool;
+equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+
+@noinline;
+notEqualsVector : Vector Rat -> Vector Rat -> Bool;
+notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
+
+vectorToList : Vector (Vector Rat) -> List (Vector Rat);
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
+mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
+>>>>>>> size-irrelevancy
+
+dataset : List (Vector Rat);
 dataset = [0.5, 1.0] :: nil
 
 @property;
@@ -54,5 +79,5 @@ forallForallIn : Bool;
 forallForallIn = forall x . forallIn (\ y -> equalsVector x y) dataset
 
 @property;
-forallInForall : forallT (f : Vector Rat 2 -> Vector Rat 1) . Bool;
+forallInForall : forallT (f : Vector Rat -> Vector Rat) . Bool;
 forallInForall f = forallIn (\ x -> forall y . notEqualsVector (f x) y) dataset

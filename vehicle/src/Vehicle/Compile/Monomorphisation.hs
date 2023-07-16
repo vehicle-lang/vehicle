@@ -224,7 +224,15 @@ substituteArgsThrough = \case
     let t' = expr `substDBInto` t
     let e' = expr `substDBInto` e
     substituteArgsThrough (t', e', args)
-  _ -> compilerDeveloperError "Unexpected type/body of function undergoing monomorphisation"
+  (t, e, args) ->
+    developerError $
+      "Unexpected type/body of function undergoing monomorphisation"
+        <+> line
+        <> prettyVerbose t
+        <> line
+        <> prettyVerbose e
+        <> line
+        <> prettyVerbose args
 
 collectReferences :: (MonadCollect m) => StandardExpr -> m ()
 collectReferences expr = do
@@ -321,11 +329,11 @@ removeLiteralCoercions nameJoiner (Main ds) =
       findStdLibFunction shortIdent
 
     updateBuiltin decl p1 p2 b args = case b of
-      (CFunction (FromNat dom)) -> case (dom, args) of
-        (FromNatToIndex, [_, ExplicitArg _ (NatLiteral p n), _]) -> return $ IndexLiteral p n
-        (FromNatToNat, [e, _]) -> return $ argExpr e
-        (FromNatToInt, [ExplicitArg _ (NatLiteral p n), _]) -> return $ IntLiteral p n
-        (FromNatToRat, [ExplicitArg _ (NatLiteral p n), _]) -> return $ RatLiteral p (fromIntegral n)
+      (CFunction (FromNat dom)) -> case (dom, filter isExplicit args) of
+        (FromNatToIndex, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IndexLiteral p n
+        (FromNatToNat, [e]) -> return $ argExpr e
+        (FromNatToInt, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IntLiteral p n
+        (FromNatToRat, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
         _ -> partialApplication decl (pretty b) args
       (CFunction (FromRat dom)) -> case (dom, args) of
         (FromRatToRat, [e]) -> return $ argExpr e
@@ -340,7 +348,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
           vec : _ -> return $ argExpr vec
           _ -> partialApplication decl (pretty ident) args'
         Just StdVectorToList -> case reverse args' of
-          ExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+          RelevantExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
           _ -> partialApplication decl (pretty ident) args'
         _ -> return $ normAppList p1 (FreeVar p2 ident) args'
 

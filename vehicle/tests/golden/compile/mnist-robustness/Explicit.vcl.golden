@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 bigAnd__lam_A__Vector_A_10 : (\ A -> Vector A 10) Bool -> Bool;
 bigAnd__lam_A__Vector_A_10 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
@@ -53,14 +54,45 @@ forallIndex__10 f = bigAnd__lam_A__Vector_A_10 (foreachVector__Bool__10 (\ i -> 
 
 forallIndex__28 : (Index 28 -> Bool) -> Bool;
 forallIndex__28 f = bigAnd__lam_A__Vector_A_28 (foreachVector__Bool__28 (\ i -> f i))
+=======
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+vectorToVector : Vector Bool -> Vector Bool;
+vectorToVector xs = xs
 
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
+
+@noinline;
+subVector : Vector Rat -> Vector Rat -> Vector Rat;
+subVector = zipWith (\ x -> \ y -> x - y)
+
+@noinline;
+subVector : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
+subVector = zipWith (\ x -> \ y -> subVector x y)
+
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+>>>>>>> size-irrelevancy
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+<<<<<<< HEAD
+=======
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
+
+>>>>>>> size-irrelevancy
 type Image = Tensor Rat (28 :: 28 :: nil)
 
-type Label = Index 10
+type Label = Index
 
 validImage : Image -> Bool;
+<<<<<<< HEAD
 validImage x = forallIndex__28 (\ i -> forallIndex__28 (\ j -> 0.0 <= x ! i ! j and x ! i ! j <= 1.0))
 
 advises : forallT (classifier : Image -> Vector Rat 10) . Image -> Label -> Bool;
@@ -75,3 +107,19 @@ robustAround classifier epsilon image label = forall pertubation . let perturbed
 @property;
 robust : forallT (n : Nat) . forallT (classifier : Image -> Vector Rat 10) . forallT (epsilon : Rat) . forallT (trainingImages : forallT (n : Nat) . Vector Image n) . forallT (trainingLabels : forallT (n : Nat) . Vector Label n) . Vector Bool n;
 robust n classifier epsilon trainingImages trainingLabels = foreachVector__Bool__n n (\ i -> robustAround classifier epsilon (trainingImages n ! i) (trainingLabels n ! i))
+=======
+validImage x = forallIndex 28 (\ i -> forallIndex 28 (\ j -> 0.0 <= x ! i ! j and x ! i ! j <= 1.0))
+
+advises : forallT (classifier : Image -> Vector Rat) . Image -> Label -> Bool;
+advises classifier x i = forallIndex 10 (\ j -> j != i => classifier x ! i > classifier x ! j)
+
+boundedByEpsilon : forallT (epsilon : Rat) . Image -> Bool;
+boundedByEpsilon epsilon x = forallIndex 28 (\ i -> forallIndex 28 (\ j -> - epsilon <= x ! i ! j and x ! i ! j <= epsilon))
+
+robustAround : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . Image -> Label -> Bool;
+robustAround classifier epsilon image label = forall pertubation . let perturbedImage = subVector image pertubation in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
+
+@property;
+robust : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . forallT (n : Nat) . forallT (trainingImages : Vector Image) . forallT (trainingLabels : Vector Label) . Vector Bool;
+robust classifier epsilon n trainingImages trainingLabels = foreachVector n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))
+>>>>>>> size-irrelevancy

@@ -130,8 +130,6 @@ type LinearityNormType = VType LinearityBuiltin
 
 type LinearitySpine = Spine LinearityBuiltin
 
-type LinearityExplicitSpine = ExplicitSpine LinearityBuiltin
-
 type LinearityEnv = Env LinearityBuiltin
 
 -- Constraint

@@ -57,7 +57,8 @@ getNetworkType decl networkType = case normalised networkType of
       where
         go :: Bool -> StandardNormType -> m (NetworkBaseType, TensorDimensions)
         go topLevel = \case
-          VTensorType _ dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+          VTensorType _ dims ->
+            throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
           VVectorType tElem dim -> do
             d <- getTensorDimension io dim
             (baseType, ds) <- go False tElem
@@ -70,15 +71,17 @@ getNetworkType decl networkType = case normalised networkType of
                 return (elemType, [])
 
     getTensorDimension :: InputOrOutput -> StandardNormType -> m Int
-    getTensorDimension io dim = case dim of
-      VNatLiteral n -> return n
-      VFreeVar varIdent _ -> do
-        implicitParameters <- getInferableParameterContext
-        case Map.lookup varIdent implicitParameters of
-          Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
-          Just Left {} -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
-          Just (Right (_, _, d)) -> return d
-      dims -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+    getTensorDimension io dim =
+      case dim of
+        VNatLiteral n -> return n
+        VFreeVar varIdent _ -> do
+          implicitParameters <- getInferableParameterContext
+          case Map.lookup varIdent implicitParameters of
+            Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
+            Just Left {} -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
+            Just (Right (_, _, d)) -> return d
+        dims ->
+          throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
 
     getElementType :: StandardNormType -> m NetworkBaseType
     getElementType = \case

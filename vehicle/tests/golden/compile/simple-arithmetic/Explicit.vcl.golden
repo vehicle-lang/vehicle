@@ -1,6 +1,15 @@
+<<<<<<< HEAD
+=======
+vectorToVector : Vector Rat -> Vector Rat;
+vectorToVector xs = xs
+
+precedence : Rat -> Rat -> Rat -> Rat;
+precedence x y z = x + 2.0 * y - z - y
+
+>>>>>>> size-irrelevancy
 natLitNatLitDiv : Rat;
 natLitNatLitDiv = 1.0 - 2.0
 
 @property;
-property : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+property : forallT (f : Vector Rat -> Vector Rat) . Bool;
 property f = f [natLitNatLitDiv] ! 0 >= 0.0

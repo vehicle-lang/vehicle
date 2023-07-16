@@ -26,7 +26,7 @@ import Vehicle.Libraries.StandardLibrary
 solveTypeClassConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
 solveTypeClassConstraint constraint@(WithContext (Has m expr) ctx) = do
   (tc, spine) <- getTypeClass expr
-  progress <- solve tc constraint spine
+  progress <- solve tc constraint (mapMaybe getExplicitArg spine)
   case progress of
     Left metas -> do
       let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint constraint) metas
@@ -100,7 +100,7 @@ solveIndexQuantifier q c domainBinder body = do
         App
           p
           (FreeVar p method)
-          [ ImplicitArg p indexSize
+          [ RelevantExplicitArg p indexSize
           ]
 
   return $ Right ([domainEq, bodyEq], solution)
@@ -114,15 +114,25 @@ solveSimpleQuantifier q c _domainBinder body = do
 
 solveVectorQuantifier :: HasQuantifierSolver
 solveVectorQuantifier q c domainBinder body = do
+  let p = provenanceOf c
   dim <- freshDimMeta c
   (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf domainBinder)
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType (normalised vecElem) domainBinder
-  let expr = VBuiltin (CType (StandardTypeClass (HasQuantifier q))) [VPi elemDomainBinder body]
+  let expr = VBuiltin (CType (StandardTypeClass (HasQuantifier q))) [RelevantExplicitArg mempty (VPi elemDomainBinder body)]
   (metaExpr, recTC) <- createTC c expr
 
-  return $ Right ([domainEq, recTC], metaExpr)
+  let solution =
+        BuiltinFunctionExpr
+          p
+          (Quantifier q)
+          [ RelevantImplicitArg p (unnormalised vecElem),
+            RelevantImplicitArg p (unnormalised dim),
+            RelevantInstanceArg p metaExpr
+          ]
+
+  return $ Right ([domainEq, recTC], solution)
 
 --------------------------------------------------------------------------------
 -- InDomain

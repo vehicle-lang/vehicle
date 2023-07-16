@@ -10,6 +10,7 @@ where
 import Data.Text qualified as Text
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker, freshMeta)
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
@@ -56,6 +57,7 @@ typeOfBuiltinFunction = \case
   Fold dom -> case dom of
     FoldVector -> typeOfFoldVector
     FoldList -> typeOfFoldList
+  ZipWith -> typeOfZipWith
   At -> typeOfAt
   Indices -> constant ~> constant
   b@Sample {} -> developerError $ "Should not be linearity typing" <+> pretty b
@@ -92,7 +94,7 @@ typeOfOp2 ::
   LinearityDSLExpr
 typeOfOp2 constraint =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    constraint l1 l2 l3 ~~~> l1 ~> l2 ~> l3
+    constraint l1 l2 l3 .~~~> l1 ~> l2 ~> l3
 
 typeOfIf :: LinearityDSLExpr
 typeOfIf =
@@ -100,8 +102,8 @@ typeOfIf =
     forAllLinearities $ \lArgs ->
       forAllLinearities $ \lRes ->
         maxLinearity lCond lArgs lRes
-          ~~~> maxLinearity lArg1 lArg2 lArgs
-          ~~~> lCond
+          .~~~> maxLinearity lArg1 lArg2 lArgs
+          .~~~> lCond
           ~> lArg1
           ~> lArg2
           ~> lRes
@@ -118,18 +120,23 @@ typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
 typeOfFoldList :: LinearityDSLExpr
 typeOfFoldList =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 ~~~> (l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
 
 typeOfFoldVector :: LinearityDSLExpr
 typeOfFoldVector =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 ~~~> (constant ~~> l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (constant ~~> l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+
+typeOfZipWith :: LinearityDSLExpr
+typeOfZipWith =
+  forAllLinearityTriples $ \l1 l2 l3 ->
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l1 ~> l2 ~> l3
 
 typeOfQuantifier :: Quantifier -> LinearityDSLExpr
 typeOfQuantifier q =
   forAll "f" type0 $ \tLam ->
     forAll "A" type0 $ \tRes ->
-      quantLinearity q tLam tRes ~~~> tLam ~> tRes
+      quantLinearity q tLam tRes .~~~> tLam ~> tRes
 
 typeOfVecLiteral :: Int -> LinearityDSLExpr
 typeOfVecLiteral n = go n constant
@@ -141,7 +148,7 @@ typeOfVecLiteral n = go n constant
        in forAll varName tLin $ \li ->
             forAll (varName <> "_max") tLin $ \newMax ->
               maxLinearity maxSoFar li newMax
-                ~~~> li
+                .~~~> li
                 ~> go (i - 1) newMax
 
 handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityBuiltin -> m a
@@ -173,7 +180,7 @@ convertToLinearityTypes p1 p2 b args = case b of
         [tElem] -> return $ argExpr tElem
         _ -> monomorphisationError "List"
       Vector -> case args of
-        [tElem, _] -> return $ argExpr tElem
+        [tElem] -> return $ argExpr tElem
         _ -> monomorphisationError "Vector"
     StandardTypeClass {} -> monomorphisationError "TypeClass"
     StandardTypeClassOp {} ->
@@ -182,4 +189,4 @@ convertToLinearityTypes p1 p2 b args = case b of
     monomorphisationError :: Doc () -> m a
     monomorphisationError name =
       compilerDeveloperError $
-        "Monomorphisation should have got rid of partially applied" <+> name <+> "types."
+        "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args
