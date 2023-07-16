@@ -12,6 +12,7 @@ import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
+import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
@@ -130,10 +131,11 @@ compileToJSON prog outputFile outputAsJSON = do
   let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf True "_" prog
   functionalisedProg <- functionaliseResources monomorphiseProg
+  etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON functionalisedProg
+        compileProgToJSON etaExpandedProg
       else do
-        return $ prettyFriendly functionalisedProg
+        return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result

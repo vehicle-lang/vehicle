@@ -1,8 +1,8 @@
 bigAnd : (\ A -> Vector A 1) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 mapVector : (Index 1 -> Bool) -> Vector (Index 1) 1 -> Vector Bool 1;
-mapVector f = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector f _x0 = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector : (Index 1 -> Bool) -> Vector Bool 1;
 foreachVector f = mapVector f (indices 1)

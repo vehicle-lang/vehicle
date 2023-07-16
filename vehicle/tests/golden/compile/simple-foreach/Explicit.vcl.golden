@@ -1,5 +1,5 @@
 mapVector : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
-mapVector f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector f _x0 = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector : (Index 2 -> Bool) -> Vector Bool 2;
 foreachVector f = mapVector f (indices 2)

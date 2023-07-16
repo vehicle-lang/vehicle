@@ -1,23 +1,23 @@
 mapList : (Vector Rat 2 -> Bool) -> List (Vector Rat 2) -> List Bool;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd__lam_A__Vector_A_2 : (\ A -> Vector A 2) Bool -> Bool;
-bigAnd__lam_A__Vector_A_2 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A_2 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 bigAnd__List : List Bool -> Bool;
-bigAnd__List = fold (\ x -> \ y -> x and y) True
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigOr : (\ A -> Vector A 1) Bool -> Bool;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
+bigOr _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False _x0
 
 forallIn : (Vector Rat 2 -> Bool) -> List (Vector Rat 2) -> Bool;
 forallIn f xs = bigAnd__List (mapList f xs)
 
 mapVector__2__Index_2__Bool : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
-mapVector__2__Index_2__Bool f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__2__Index_2__Bool f _x0 = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__1__Index_1__Bool : (Index 1 -> Bool) -> Vector (Index 1) 1 -> Vector Bool 1;
-mapVector__1__Index_1__Bool f = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__1__Index_1__Bool f _x0 = dfold {Index 1} {1} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector__Bool__1 : (Index 1 -> Bool) -> Vector Bool 1;
 foreachVector__Bool__1 f = mapVector__1__Index_1__Bool f (indices 1)

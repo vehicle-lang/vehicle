@@ -1,8 +1,8 @@
 mapList : (Nat -> Bool) -> List Nat -> List Bool;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd : List Bool -> Bool;
-bigAnd = fold (\ x -> \ y -> x and y) True
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 forallIn : (Nat -> Bool) -> List Nat -> Bool;
 forallIn f xs = bigAnd (mapList f xs)

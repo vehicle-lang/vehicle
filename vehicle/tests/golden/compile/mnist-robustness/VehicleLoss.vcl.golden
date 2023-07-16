@@ -1,26 +1,26 @@
 mapList : (Vector (Vector Rat 28) 28 -> Rat) -> List (Vector (Vector Rat 28) 28) -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd__List : List Rat -> Rat;
-bigAnd__List = fold (\ x -> \ y -> max x y) -100000.0
+bigAnd__List _x0 = fold (\ x -> \ y -> max x y) -100000.0 _x0
 
 bigAnd__lam_A__Vector_A_10 : (\ A -> Vector A 10) Rat -> Rat;
-bigAnd__lam_A__Vector_A_10 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
+bigAnd__lam_A__Vector_A_10 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0 _x0
 
 bigAnd__lam_A__Vector_A_28 : (\ A -> Vector A 28) Rat -> Rat;
-bigAnd__lam_A__Vector_A_28 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0
+bigAnd__lam_A__Vector_A_28 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> max x y) -100000.0 _x0
 
 mapVector__n__Index_n__Rat : forallT (n : Nat) . (Index n -> Rat) -> Vector (Index n) n -> Vector Rat n;
-mapVector__n__Index_n__Rat n f = dfold {Index n} {n} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__n__Index_n__Rat n f _x0 = dfold {Index n} {n} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__10__Index_10__Rat : (Index 10 -> Rat) -> Vector (Index 10) 10 -> Vector Rat 10;
-mapVector__10__Index_10__Rat f = dfold {Index 10} {10} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__10__Index_10__Rat f _x0 = dfold {Index 10} {10} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__28__Index_28__Rat : (Index 28 -> Rat) -> Vector (Index 28) 28 -> Vector Rat 28;
-mapVector__28__Index_28__Rat f = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__28__Index_28__Rat f _x0 = dfold {Index 28} {28} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__28__Index_28__Vector_Rat_28 : (Index 28 -> Vector Rat 28) -> Vector (Index 28) 28 -> Vector (Vector Rat 28) 28;
-mapVector__28__Index_28__Vector_Rat_28 f = dfold {Index 28} {28} {Vector (Vector Rat 28)} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__28__Index_28__Vector_Rat_28 f _x0 = dfold {Index 28} {28} {Vector (Vector Rat 28)} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector__Rat__10 : (Index 10 -> Rat) -> Vector Rat 10;
 foreachVector__Rat__10 f = mapVector__10__Index_10__Rat f (indices 10)
@@ -42,11 +42,11 @@ zipWith__Rat__Rat__Rat f xs ys = foreachVector__Rat__28 (\ i -> f (xs ! i) (ys !
 
 @noinline;
 subVector__Rat__Rat__Rat__28 : Vector Rat 28 -> Vector Rat 28 -> Vector Rat 28;
-subVector__Rat__Rat__Rat__28 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x - y)
+subVector__Rat__Rat__Rat__28 _x0 _x1 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x - y) _x0 _x1
 
 @noinline;
 subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 : Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28 -> Vector (Vector Rat 28) 28;
-subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 = zipWith__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28 (\ x -> \ y -> subVector__Rat__Rat__Rat__28 x y)
+subVector__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28__28 _x0 _x1 = zipWith__Vector_Rat_28__Vector_Rat_28__Vector_Rat_28 (\ x -> \ y -> subVector__Rat__Rat__Rat__28 x y) _x0 _x1
 
 forallIndex__10 : (Index 10 -> Rat) -> Rat;
 forallIndex__10 f = bigAnd__lam_A__Vector_A_10 (foreachVector__Rat__10 (\ i -> f i))

@@ -1,5 +1,5 @@
 mapVector : (Index 2 -> Rat) -> Vector (Index 2) 2 -> Vector Rat 2;
-mapVector f = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector f _x0 = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector : (Index 2 -> Rat) -> Vector Rat 2;
 foreachVector f = mapVector f (indices 2)

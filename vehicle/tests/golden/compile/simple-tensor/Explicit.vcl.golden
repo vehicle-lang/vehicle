@@ -1,14 +1,14 @@
 bigAnd : (\ A -> Vector A 2) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 mapVector__2__Index_2__Bool : (Index 2 -> Bool) -> Vector (Index 2) 2 -> Vector Bool 2;
-mapVector__2__Index_2__Bool f = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__2__Index_2__Bool f _x0 = dfold {Index 2} {2} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__2__Index_2__Vector_Rat_2 : (Index 2 -> Vector Rat 2) -> Vector (Index 2) 2 -> Vector (Vector Rat 2) 2;
-mapVector__2__Index_2__Vector_Rat_2 f = dfold {Index 2} {2} {Vector (Vector Rat 2)} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__2__Index_2__Vector_Rat_2 f _x0 = dfold {Index 2} {2} {Vector (Vector Rat 2)} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__2__Index_2__Rat : (Index 2 -> Rat) -> Vector (Index 2) 2 -> Vector Rat 2;
-mapVector__2__Index_2__Rat f = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__2__Index_2__Rat f _x0 = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector__Rat__2 : (Index 2 -> Rat) -> Vector Rat 2;
 foreachVector__Rat__2 f = mapVector__2__Index_2__Rat f (indices 2)
@@ -27,19 +27,19 @@ zipWith__Rat__Rat__Rat f xs ys = foreachVector__Rat__2 (\ i -> f (xs ! i) (ys ! 
 
 @noinline;
 addVector__Rat__Rat__Rat__2 : Vector Rat 2 -> Vector Rat 2 -> Vector Rat 2;
-addVector__Rat__Rat__Rat__2 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x + y)
+addVector__Rat__Rat__Rat__2 _x0 _x1 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x + y) _x0 _x1
 
 @noinline;
 addVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 : Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2;
-addVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 = zipWith__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2 (\ x -> \ y -> addVector__Rat__Rat__Rat__2 x y)
+addVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 _x0 _x1 = zipWith__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2 (\ x -> \ y -> addVector__Rat__Rat__Rat__2 x y) _x0 _x1
 
 @noinline;
 subVector__Rat__Rat__Rat__2 : Vector Rat 2 -> Vector Rat 2 -> Vector Rat 2;
-subVector__Rat__Rat__Rat__2 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x - y)
+subVector__Rat__Rat__Rat__2 _x0 _x1 = zipWith__Rat__Rat__Rat (\ x -> \ y -> x - y) _x0 _x1
 
 @noinline;
 subVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 : Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2;
-subVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 = zipWith__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2 (\ x -> \ y -> subVector__Rat__Rat__Rat__2 x y)
+subVector__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2__2 _x0 _x1 = zipWith__Vector_Rat_2__Vector_Rat_2__Vector_Rat_2 (\ x -> \ y -> subVector__Rat__Rat__Rat__2 x y) _x0 _x1
 
 forallIndex : (Index 2 -> Bool) -> Bool;
 forallIndex f = bigAnd (foreachVector__Bool__2 (\ i -> f i))

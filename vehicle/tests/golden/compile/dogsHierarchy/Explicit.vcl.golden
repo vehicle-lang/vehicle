@@ -1,26 +1,26 @@
 mapList : (Index 6 -> Bool) -> List (Index 6) -> List Bool;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd__lam_A__Vector_A_4 : (\ A -> Vector A 4) Bool -> Bool;
-bigAnd__lam_A__Vector_A_4 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A_4 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 bigAnd__lam_A__Vector_A_6 : (\ A -> Vector A 6) Bool -> Bool;
-bigAnd__lam_A__Vector_A_6 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A_6 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
 
 bigAnd__List : List Bool -> Bool;
-bigAnd__List = fold (\ x -> \ y -> x and y) True
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigOr : (\ A -> Vector A 6) Bool -> Bool;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
+bigOr _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False _x0
 
 forallIn : (Index 6 -> Bool) -> List (Index 6) -> Bool;
 forallIn f xs = bigAnd__List (mapList f xs)
 
 mapVector__4__Index_4__Bool : (Index 4 -> Bool) -> Vector (Index 4) 4 -> Vector Bool 4;
-mapVector__4__Index_4__Bool f = dfold {Index 4} {4} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__4__Index_4__Bool f _x0 = dfold {Index 4} {4} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 mapVector__6__Index_6__Bool : (Index 6 -> Bool) -> Vector (Index 6) 6 -> Vector Bool 6;
-mapVector__6__Index_6__Bool f = dfold {Index 6} {6} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector__6__Index_6__Bool f _x0 = dfold {Index 6} {6} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector__Bool__6 : (Index 6 -> Bool) -> Vector Bool 6;
 foreachVector__Bool__6 f = mapVector__6__Index_6__Bool f (indices 6)

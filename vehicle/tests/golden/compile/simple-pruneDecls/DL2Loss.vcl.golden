@@ -1,11 +1,11 @@
 mapList__Vector_Rat_1__Rat : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
-mapList__Vector_Rat_1__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList__Vector_Rat_1__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 mapList__Vector_Rat_2__Rat : (Vector Rat 2 -> Rat) -> List (Vector Rat 2) -> List Rat;
-mapList__Vector_Rat_2__Rat f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList__Vector_Rat_2__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd : List Rat -> Rat;
-bigAnd = fold (\ x -> \ y -> x + y) 0.0
+bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
 add1 : Rat -> Rat;
 add1 x = x + 1.0

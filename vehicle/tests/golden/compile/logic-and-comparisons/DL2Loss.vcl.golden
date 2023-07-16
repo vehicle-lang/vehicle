@@ -1,17 +1,17 @@
 mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
+mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
 
 bigAnd__lam_A__Vector_A_1 : (\ A -> Vector A 1) Rat -> Rat;
-bigAnd__lam_A__Vector_A_1 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0
+bigAnd__lam_A__Vector_A_1 _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0 _x0
 
 bigAnd__List : List Rat -> Rat;
-bigAnd__List = fold (\ x -> \ y -> x + y) 0.0
+bigAnd__List _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
 bigOr : List Rat -> Rat;
-bigOr = fold (\ x -> \ y -> x * y) 1.0
+bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
 
 mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
-mapVector f = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector f _x0 = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
 
 foreachVector : (Index 1 -> Rat) -> Vector Rat 1;
 foreachVector f = mapVector f (indices 1)
