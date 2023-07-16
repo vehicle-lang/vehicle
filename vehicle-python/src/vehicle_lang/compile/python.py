@@ -71,7 +71,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
-        # print(py_ast_unparse(py_ast))
+        print(py_ast_unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             py_bytecode = compile(py_ast, filename=filename, mode="exec")
@@ -91,14 +91,22 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 # NOTE: 'fractions' is imported for 'Fraction'
                 #       which is used to translate vcl.Rat
                 py.Import(
-                    names=[py.alias(name="fractions", **asdict(vcl.MISSING))],
+                    names=[
+                        py.alias(
+                            name="fractions", asname="fractions", **asdict(vcl.MISSING)
+                        )
+                    ],
                     level=0,
                     **asdict(vcl.MISSING),
                 ),
                 # NOTE: 'functools' is imported for 'partial'
                 #       which is used to translate vcl.PartialApp
                 py.Import(
-                    names=[py.alias(name="functools", **asdict(vcl.MISSING))],
+                    names=[
+                        py.alias(
+                            name="functools", asname="functools", **asdict(vcl.MISSING)
+                        )
+                    ],
                     level=0,
                     **asdict(vcl.MISSING),
                 ),

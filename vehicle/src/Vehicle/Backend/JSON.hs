@@ -10,6 +10,7 @@ where
 import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
+import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Data (Proxy (..))
 import Data.Hashable (Hashable)
@@ -20,11 +21,12 @@ import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity)
 import Vehicle.Compile.Descope (DescopeNamed (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError, unexpectedExprError)
-import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), foldLamBinders, getExplicitArg, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
+import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns (pattern UnitLiteral)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
@@ -405,16 +407,13 @@ toJDecls [] = return []
 toJDecls (decl : decls) = do
   decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
     case decl of
-      V.DefAbstract p i s t -> do
-        case s of
-          NetworkDef -> resourceError s
-          DatasetDef -> resourceError s
-          ParameterDef {} -> resourceError s
-          PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
+      V.DefAbstract p i s t -> case s of
+        NetworkDef -> resourceError s
+        DatasetDef -> resourceError s
+        ParameterDef {} -> resourceError s
+        PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
       V.DefFunction p i _anns t e -> do
-        logDebug MaxDetail $ prettyVerbose t
         t' <- toJExpr t
-        logDebug MaxDetail $ prettyVerbose e
         e' <- toJExpr e
         return $ DefFunction p (V.nameOf i) t' e'
 
@@ -432,20 +431,43 @@ toJExpr expr = case expr of
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
     fun' <- toJExpr fun
-    args' <- traverse toJExpr (mapMaybe getExplicitArg (NonEmpty.toList args))
+    let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
+    args' <- traverse toJExpr explicitArgs
     arity <- functionArity fun
-    logDebug MaxDetail $ prettyVerbose fun <+> pretty (length args') <+> pretty arity
-    return $ case args' of
-      [] -> fun'
+    case args' of
+      [] -> return fun'
       _ : _
-        | arity == length args' -> App p fun' args'
-        | otherwise -> PartialApp p arity fun' args'
+        | arity == length args' -> return $ App p fun' args'
+        | arity > length args' -> return $ PartialApp p arity fun' args'
+        | otherwise ->
+            compilerDeveloperError $
+              "Number of args is greater than arity:"
+                <> line
+                <> indent
+                  2
+                  ( "fun:" <+> prettyVerbose fun
+                      <> line
+                      <> "fun-arity:" <+> prettyVerbose arity
+                      <> line
+                      <> "args:" <+> prettyVerbose explicitArgs
+                      <> line
+                      <> "args-len:" <+> prettyVerbose (length args')
+                  )
   V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
   V.Lam p _ _ -> do
     let (foldedBinders, body) = foldLamBinders expr
     Lam p <$> toJBinders foldedBinders <*> addBindersToContext foldedBinders (toJExpr body)
   V.Let p bound binder body ->
     Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+
+foldLamBinders :: StandardExpr -> ([StandardBinder], StandardExpr)
+foldLamBinders = \case
+  V.Lam _ binder body
+    -- TODO this check is a massive hack. Should go once we get irrelevance up
+    -- and running.
+    | V.isExplicit binder -> first (binder :) (foldLamBinders body)
+    | otherwise -> foldLamBinders (UnitLiteral mempty `substDBInto` body)
+  expr -> ([], expr)
 
 toJBinder :: (MonadJSON m) => StandardBinder -> m (JBinder Ix)
 toJBinder binder = do
@@ -467,24 +489,32 @@ toJBinders = \case
 
 -- | TODO maybe move to Arity module.
 functionArity :: (MonadJSON m) => StandardExpr -> m Arity
-functionArity fun = case fun of
-  V.App {} -> unexpectedExprError currentPass (prettyVerbose fun)
-  V.Universe {} -> illTypedError currentPass (prettyVerbose fun)
-  V.Pi {} -> illTypedError currentPass (prettyVerbose fun)
-  V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
-  V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
-  V.FreeVar _p ident -> do
-    decl <- getDecl (Proxy @StandardBuiltin) currentPass ident
-    logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
-    return $ arityFromVType $ normalised (typeOf decl)
-  V.BoundVar _ ix -> do
-    binder <- getBoundVarByIx (Proxy @StandardBuiltin) currentPass ix
-    arityFromVType <$> normalise (typeOf binder)
-  V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> functionArity body)
-  V.Builtin _ b -> return $ builtinExplicitArity b
-  V.Ann _ e _ -> functionArity e
-  V.Let _ _bound binder body ->
-    addBinderToContext binder $ functionArity body
+functionArity originalFun = do
+  go originalFun
+  where
+    go :: (MonadJSON m) => StandardExpr -> m Arity
+    go fun = do
+      result <- case fun of
+        V.App _ fn args -> do
+          arity <- go fn
+          return $ arity - length (NonEmpty.filter V.isExplicit args)
+        V.Universe {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Pi {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
+        V.FreeVar _p ident -> do
+          decl <- getDecl (Proxy @StandardBuiltin) currentPass ident
+          logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
+          return $ arityFromVType $ normalised (typeOf decl)
+        V.BoundVar _ ix -> do
+          binder <- getBoundVarByIx (Proxy @StandardBuiltin) currentPass ix
+          arityFromVType <$> normalise (typeOf binder)
+        V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
+        V.Builtin _ b -> return $ builtinExplicitArity b
+        V.Ann _ e _ -> go e
+        V.Let _ _bound binder body ->
+          addBinderToContext binder $ go body
+      return result
 
 resourceError :: (MonadJSON m) => DefAbstractSort -> m a
 resourceError resourceType =

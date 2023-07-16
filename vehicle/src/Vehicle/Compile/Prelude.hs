@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Writer (MonadWriter (..), execWriter)
-import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -45,11 +44,6 @@ instance HasType (GenericDecl expr) expr where
 
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
-
-foldLamBinders :: Expr var builtin -> ([Binder var builtin], Expr var builtin)
-foldLamBinders = \case
-  Lam _ binder body -> first (binder :) (foldLamBinders body)
-  expr -> ([], expr)
 
 -------------------------------------------------------------------------------
 -- Utilities for traversing auxiliary arguments.
