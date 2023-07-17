@@ -1,3 +1,5 @@
+import itertools
+import logging
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
@@ -6,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     Generic,
+    Iterable,
     Iterator,
     Sequence,
     SupportsFloat,
@@ -69,14 +72,17 @@ class Builtins(
         ...
 
     def AtVector(self, sequence: Sequence[_T], index: int) -> _T:
+        assert isinstance(sequence, Sequence)
+        assert isinstance(index, int)
         return sequence[index]
 
     @abstractmethod
     def Bool(self, value: bool) -> _Bool:
         ...
 
-    def ConsList(self, item: _T, sequence: Sequence[_T]) -> Sequence[_T]:
-        return (item, *sequence)
+    def ConsList(self, item: _T, iterable: Iterable[_T]) -> Iterable[_T]:
+        assert isinstance(iterable, Iterable)
+        return itertools.chain((item,), iterable)
 
     def ConsVector(self, item: _T, sequence: Sequence[_T]) -> Sequence[_T]:
         return (item, *sequence)
@@ -107,13 +113,17 @@ class Builtins(
         raise UnsupportedBuiltin(vcl.Exists())
 
     def FoldList(
-        self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, iterable: Iterable[_S]
     ) -> _T:
-        return reduce(lambda x, y: function(y, x), sequence, initial)
+        assert callable(function)
+        assert isinstance(iterable, Iterable)
+        return reduce(lambda x, y: function(y, x), iterable, initial)
 
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
     ) -> _T:
+        assert callable(function)
+        assert isinstance(sequence, Sequence)
         return reduce(lambda x, y: function(y, x), sequence, initial)
 
     def Forall(
@@ -156,7 +166,7 @@ class Builtins(
         return value.__int__()
 
     def Indices(self, upto: int) -> Sequence[int]:
-        return range(0, upto)
+        return tuple(range(0, upto))
 
     @abstractmethod
     def Int(self, value: SupportsInt) -> _Int:
@@ -190,11 +200,19 @@ class Builtins(
     def LtRat(self, x: _Rat, y: _Rat) -> _Bool:
         ...
 
-    def MapList(self, function: Callable[[_S], _T], xs: Sequence[_S]) -> Sequence[_T]:
-        return tuple(map(function, xs))
+    def MapList(
+        self, function: Callable[[_S], _T], iterable: Iterable[_S]
+    ) -> Iterable[_T]:
+        assert callable(function)
+        assert isinstance(iterable, Iterable)
+        return map(function, iterable)
 
-    def MapVector(self, function: Callable[[_S], _T], xs: Sequence[_S]) -> Sequence[_T]:
-        return tuple(map(function, xs))
+    def MapVector(
+        self, function: Callable[[_S], _T], sequence: Sequence[_S]
+    ) -> Sequence[_T]:
+        assert callable(function)
+        assert isinstance(sequence, Sequence)
+        return tuple(map(function, sequence))
 
     @abstractmethod
     def MaxRat(self, x: _Rat, y: _Rat) -> _Rat:
@@ -264,7 +282,7 @@ class Builtins(
         name: str,
         # predicate: Callable[[_T], _Bool],
         context: Dict[str, Any],
-    ) -> Iterator[_T]:
+    ) -> Iterable[_T]:
         if name in self.samplers:
             return self.samplers[name](context)
         else:
@@ -285,9 +303,12 @@ class Builtins(
         return values
 
     def ZipWith(
-        self, function: Callable[[_S, _T], _U], xs: Sequence[_S], ys: Sequence[_T]
+        self,
+        function: Callable[[_S, _T], _U],
+        sequence1: Sequence[_S],
+        sequence2: Sequence[_T],
     ) -> Sequence[_U]:
-        return tuple(map(function, xs, ys))
+        return tuple(map(function, sequence1, sequence2))
 
 
 AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
