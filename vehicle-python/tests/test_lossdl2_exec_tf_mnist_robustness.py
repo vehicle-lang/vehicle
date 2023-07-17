@@ -2,9 +2,12 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
+
 from vehicle_lang.compile import Target, to_python
 
-GOLDEN_PATH = Path("vendor") / "vehicle" / "tests" / "golden" / "compile"
+GOLDEN_PATH = (
+    Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
+)
 MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "mnist-robustness.vcl"
 
 # fmt: off
