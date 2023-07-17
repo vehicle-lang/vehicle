@@ -310,7 +310,7 @@ class Builtins(
     def Vector(self, *values: _T) -> Sequence[_T]:
         return values
 
-    def ZipWith(
+    def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
         sequence1: Sequence[_S],

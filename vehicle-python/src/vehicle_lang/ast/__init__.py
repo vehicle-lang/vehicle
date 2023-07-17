@@ -404,7 +404,7 @@ class VectorType(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class ZipWith(BuiltinFunction):
+class ZipWithVector(BuiltinFunction):
     pass
 
 

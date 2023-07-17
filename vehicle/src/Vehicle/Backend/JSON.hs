@@ -125,7 +125,7 @@ data JBuiltin
   | FoldVector
   | MapList
   | MapVector
-  | ZipWith
+  | ZipWithVector
   | Indices
   | UnitType
   | BoolType
@@ -203,7 +203,7 @@ instance PrintableBuiltin JBuiltin where
     FoldVector -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldVector)
     MapList -> V.Builtin p (V.BuiltinFunction V.MapList)
     MapVector -> V.Builtin p (V.BuiltinFunction V.MapVector)
-    ZipWith -> V.Builtin p (V.BuiltinFunction V.ZipWith)
+    ZipWithVector -> V.Builtin p (V.BuiltinFunction V.ZipWithVector)
     Indices -> V.Builtin p (V.BuiltinFunction V.Indices)
     UnitType -> V.Builtin p (V.BuiltinType V.Unit)
     BoolType -> V.Builtin p (V.BuiltinType V.Bool)
@@ -304,7 +304,7 @@ instance ToJBuiltin BuiltinFunction where
     V.MapVector -> return MapVector
     V.Indices -> return Indices
     V.Sample n ctx -> return $ Sample n ctx
-    V.ZipWith -> return ZipWith
+    V.ZipWithVector -> return ZipWithVector
 
 instance ToJBuiltin BuiltinType where
   toJBuiltin b = return $ case b of

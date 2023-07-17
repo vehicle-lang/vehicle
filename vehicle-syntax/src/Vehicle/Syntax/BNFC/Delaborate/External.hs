@@ -188,7 +188,7 @@ delabBuiltinFunction fun args = case fun of
   V.MapList -> delabTypeClassOp V.MapTC args
   V.MapVector -> delabTypeClassOp V.MapTC args
   V.ConsVector -> delabInfixOp2 B.ConsVector tokConsVector args
-  V.ZipWith -> delabApp (B.ZipWith tokZipWith) args
+  V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
   -- Builtins not in the surface syntax.

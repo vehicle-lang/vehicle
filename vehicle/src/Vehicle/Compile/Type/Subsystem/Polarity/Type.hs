@@ -59,7 +59,7 @@ typeOfBuiltinFunction = \case
   Fold {} -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap
-  ZipWith -> typeOfZipWith
+  ZipWithVector -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
   b@Sample {} -> developerError $ "Should not be polarity typing" <+> pretty b

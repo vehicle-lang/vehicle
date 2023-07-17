@@ -88,7 +88,7 @@ typeOfBuiltinFunction = \case
   MapList -> typeOfMap tListRaw
   MapVector -> forAllIrrelevantNat "n" $ \n -> typeOfMap (tVectorFunctor n)
   At -> typeOfAt
-  ZipWith -> typeOfZipWith
+  ZipWithVector -> typeOfZipWith
   Indices -> typeOfIndices
   b@Sample {} -> developerError $ "Should not be typing" <+> pretty b
 

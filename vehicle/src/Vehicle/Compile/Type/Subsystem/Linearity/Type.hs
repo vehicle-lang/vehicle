@@ -57,7 +57,7 @@ typeOfBuiltinFunction = \case
   Fold {} -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap
-  ZipWith -> typeOfZipWith
+  ZipWithVector -> typeOfZipWith
   At -> typeOfAt
   Indices -> constant ~> constant
   b@Sample {} -> developerError $ "Should not be linearity typing" <+> pretty b

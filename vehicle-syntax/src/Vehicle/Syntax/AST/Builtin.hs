@@ -279,7 +279,7 @@ data BuiltinFunction
   | Fold FoldDomain
   | MapList
   | MapVector
-  | ZipWith
+  | ZipWithVector
   | Indices
   deriving (Eq, Ord, Show, Generic)
 
@@ -314,7 +314,7 @@ instance Pretty BuiltinFunction where
     Fold dom -> "fold" <> pretty dom
     MapList -> "mapList"
     MapVector -> "mapVector"
-    ZipWith -> "zipWith"
+    ZipWithVector -> "zipWith"
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
