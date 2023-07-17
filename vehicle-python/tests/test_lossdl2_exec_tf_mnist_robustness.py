@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
-
 from vehicle_lang.compile import Target, to_python
 
 GOLDEN_PATH = (
