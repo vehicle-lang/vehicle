@@ -74,7 +74,9 @@ replaceNetworkApplications declProv networkCtx userVariables boolExpr = do
       partitions <- partitionApplications boolExpr
       let numberOfPartitions = pretty (length partitions)
       logDebug MinDetail $ line <> "Found" <+> numberOfPartitions <+> "meta-network partition(s)" <> line
-      case zip [1 ..] (HashMap.toList partitions) of
+
+      let sortedPartitions = sortBy (\a b -> compareApplicationForest (fst a) (fst b)) $ HashMap.toList partitions
+      case zip [1 ..] sortedPartitions of
         [] -> throwError $ NoNetworkUsedInProperty declProv
         x : xs -> do
           substPartitions <- for (x :| xs) replaceApplications
@@ -138,6 +140,15 @@ compareApplicationTree a b = do
       (_, VBuiltin {}) -> GT
       (VFreeVar i1 spine1, VFreeVar i2 spine2) -> compare i1 i2 <> compareSpine spine1 spine2
       _ -> EQ
+
+sortApplicationForest :: NetworkApplicationForest -> [NetworkApplicationTree]
+sortApplicationForest = sortBy compareApplicationTree . HashSet.toList
+
+compareApplicationForest :: NetworkApplicationForest -> NetworkApplicationForest -> Ordering
+compareApplicationForest a b = do
+  let aApps = sortApplicationForest a
+  let bApps = sortApplicationForest b
+  liftCompare compareApplicationTree aApps bApps
 
 -- | Locate network applications and lift disjunctions as required to form
 -- consistent partitions.
@@ -275,7 +286,7 @@ lineariseNetworkApplicationForest ::
   NetworkApplicationForest ->
   m [(NetworkApplication, NetworkAppInfo)]
 lineariseNetworkApplicationForest appInfo forest = do
-  let linearised = sortBy compareApplicationTree $ HashSet.toList forest
+  let linearised = sortApplicationForest forest
   foldlM lineariseNetworkApplicationTree appInfo linearised
 
 lineariseNetworkApplicationTree ::
