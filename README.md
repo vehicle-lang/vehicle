@@ -28,7 +28,7 @@ to the network will result in errors when checking the larger proof.
 ## Documentation
 
 - [User manual](https://vehicle-lang.readthedocs.io/en/latest/)
-- [Tutorial](https://vehicle-lang.readthedocs.io/en/latest/)
+- [Tutorial](https://vehicle-lang.github.io/tutorial/)
 
 ## Examples
 
