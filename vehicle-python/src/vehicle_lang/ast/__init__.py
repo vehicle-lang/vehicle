@@ -127,17 +127,17 @@ class Exists(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class Forall(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
 class FoldList(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
 class FoldVector(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class Forall(BuiltinFunction):
     pass
 
 

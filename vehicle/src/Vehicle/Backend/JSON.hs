@@ -454,13 +454,17 @@ toJExpr expr = case expr of
                 <> line
                 <> indent
                   2
-                  ( "fun:" <+> prettyVerbose fun
+                  ( "fun:"
+                      <+> prettyVerbose fun
                       <> line
-                      <> "fun-arity:" <+> prettyVerbose arity
+                      <> "fun-arity:"
+                        <+> prettyVerbose arity
                       <> line
-                      <> "args:" <+> prettyVerbose explicitArgs
+                      <> "args:"
+                        <+> prettyVerbose explicitArgs
                       <> line
-                      <> "args-len:" <+> prettyVerbose (length args')
+                      <> "args-len:"
+                        <+> prettyVerbose (length args')
                   )
   V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
   V.Lam p _ _ -> do

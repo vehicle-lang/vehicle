@@ -114,9 +114,11 @@ evalApp fun args@(a : as) = do
               <> line
               <> indent
                 2
-                ( "fun:" <+> prettyVerbose fun
+                ( "fun:"
+                    <+> prettyVerbose fun
                     <> line
-                    <> "args:" <+> prettyVerbose args
+                    <> "args:"
+                      <+> prettyVerbose args
                 )
       | otherwise -> do
           let newEnv = extendEnv binder (argExpr a) env

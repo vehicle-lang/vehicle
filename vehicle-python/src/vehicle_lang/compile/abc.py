@@ -1,5 +1,4 @@
 import itertools
-import logging
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
