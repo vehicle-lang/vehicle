@@ -59,7 +59,7 @@ jobs:
       - name: Replace files with symlinks
         if: matrix.os.name == 'Linux'
         run: |
-          find . -type l -exec sh -c 'cp -PRf "$(realpath "$(dirname "$0")/$(readlink "$0")")" "$0"' {} \;
+          find . -type l -exec ./scripts/replace-symlink.sh {} \;
 
       - name: Build wheel
         uses: pypa/cibuildwheel@v2.14.1
