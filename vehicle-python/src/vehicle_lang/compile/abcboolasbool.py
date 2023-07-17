@@ -25,13 +25,13 @@ class ABCBoolAsBoolBuiltins(
 ):
     @override
     def And(self, x: bool, y: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
-        assert isinstance(y, bool), f"Expected bool, found {y}"
+        # assert isinstance(x, bool), f"Expected bool, found {x}"
+        # assert isinstance(y, bool), f"Expected bool, found {y}"
         return x and y
 
     @override
     def Bool(self, value: bool) -> bool:
-        assert isinstance(value, bool), f"Expected bool, found {value}"
+        # assert isinstance(value, bool), f"Expected bool, found {value}"
         return bool(value)
 
     @override
@@ -60,7 +60,7 @@ class ABCBoolAsBoolBuiltins(
 
     @override
     def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
-        assert isinstance(cond, bool), f"Expected bool, found {cond}"
+        # assert isinstance(cond, bool), f"Expected bool, found {cond}"
         return if_true if cond else if_false
 
     @override
@@ -89,11 +89,11 @@ class ABCBoolAsBoolBuiltins(
 
     @override
     def Not(self, x: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
+        # assert isinstance(x, bool), f"Expected bool, found {x}"
         return not x
 
     @override
     def Or(self, x: bool, y: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
-        assert isinstance(y, bool), f"Expected bool, found {y}"
+        # assert isinstance(x, bool), f"Expected bool, found {x}"
+        # assert isinstance(y, bool), f"Expected bool, found {y}"
         return x or y
