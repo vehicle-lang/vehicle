@@ -370,7 +370,7 @@
                             }
                           },
                           {
-                            "tag": "EliminateViaFourierMotzkin",
+                            "tag": "EliminateViaGaussian",
                             "contents": [
                               {
                                 "tag": "UserVar",
@@ -381,31 +381,27 @@
                                 }
                               },
                               {
-                                "upperBounds": [
-                                  {
-                                    "assertionRel": "LessThanOrEqualTo",
-                                    "assertionExpr": {
-                                      "dimensions": [],
-                                      "constantValue": [
-                                        0
-                                      ],
-                                      "coefficients": [
-                                        [
-                                          {
-                                            "tag": "UserVar",
-                                            "contents": {
-                                              "userVarName": "x",
-                                              "userVarDimensions": [],
-                                              "unreducedUserVarName": "x"
-                                            }
-                                          },
-                                          1
-                                        ]
-                                      ]
-                                    }
-                                  }
-                                ],
-                                "lowerBounds": []
+                                "solutionEquality": {
+                                  "dimensions": [],
+                                  "constantValue": [
+                                    0
+                                  ],
+                                  "coefficients": [
+                                    [
+                                      {
+                                        "tag": "NetworkVar",
+                                        "contents": {
+                                          "networkVarIndices": 0,
+                                          "networkVarDimensions": [],
+                                          "networkName": "f",
+                                          "inputOrOutput": "Input",
+                                          "application": 0
+                                        }
+                                      },
+                                      1
+                                    ]
+                                  ]
+                                }
                               }
                             ]
                           }
@@ -503,7 +499,7 @@
                             }
                           },
                           {
-                            "tag": "EliminateViaGaussian",
+                            "tag": "EliminateViaFourierMotzkin",
                             "contents": [
                               {
                                 "tag": "UserVar",
@@ -514,27 +510,31 @@
                                 }
                               },
                               {
-                                "solutionEquality": {
-                                  "dimensions": [],
-                                  "constantValue": [
-                                    0
-                                  ],
-                                  "coefficients": [
-                                    [
-                                      {
-                                        "tag": "NetworkVar",
-                                        "contents": {
-                                          "networkVarIndices": 0,
-                                          "networkVarDimensions": [],
-                                          "networkName": "f",
-                                          "inputOrOutput": "Input",
-                                          "application": 0
-                                        }
-                                      },
-                                      1
-                                    ]
-                                  ]
-                                }
+                                "upperBounds": [
+                                  {
+                                    "assertionRel": "LessThanOrEqualTo",
+                                    "assertionExpr": {
+                                      "dimensions": [],
+                                      "constantValue": [
+                                        0
+                                      ],
+                                      "coefficients": [
+                                        [
+                                          {
+                                            "tag": "UserVar",
+                                            "contents": {
+                                              "userVarName": "x",
+                                              "userVarDimensions": [],
+                                              "unreducedUserVarName": "x"
+                                            }
+                                          },
+                                          1
+                                        ]
+                                      ]
+                                    }
+                                  }
+                                ],
+                                "lowerBounds": []
                               }
                             ]
                           }
