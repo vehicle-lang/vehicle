@@ -36,23 +36,14 @@ from .abcboolasbool import ABCBoolAsBoolBuiltins
 class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
     @override
     def Int(self, value: SupportsInt) -> int:
-        assert isinstance(
-            value, SupportsInt
-        ), f"Expected object with __int__ method, found {value}"
         return value.__int__()
 
     @override
     def Nat(self, value: SupportsInt) -> int:
-        assert isinstance(
-            value, SupportsInt
-        ), f"Expected object with __int__ method, found {value}"
         return value.__int__()
 
     @override
     def Rat(self, value: SupportsFloat) -> float:
-        assert isinstance(
-            value, SupportsFloat
-        ), f"Expected object with __float__ method, found {value}"
         return value.__float__()
 
 

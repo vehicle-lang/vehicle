@@ -7,7 +7,6 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterable,
     Iterator,
     SupportsFloat,
     SupportsInt,
@@ -17,7 +16,7 @@ from typing import (
 from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
-from ._collections import SupportsVector
+from ._collections import SupportsList, SupportsVector
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
@@ -79,8 +78,8 @@ class Builtins(
     def Bool(self, value: bool) -> _Bool:
         ...
 
-    def ConsList(self, item: _T, iterable: Iterable[_T]) -> Iterable[_T]:
-        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
+    def ConsList(self, item: _T, iterable: SupportsList[_T]) -> SupportsList[_T]:
+        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return itertools.chain((item,), iterable)
 
     def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
@@ -112,10 +111,10 @@ class Builtins(
         raise UnsupportedBuiltin(vcl.Exists())
 
     def FoldList(
-        self, function: Callable[[_S, _T], _T], initial: _T, iterable: Iterable[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, iterable: SupportsList[_S]
     ) -> _T:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
+        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
     def FoldVector(
@@ -201,10 +200,10 @@ class Builtins(
         ...
 
     def MapList(
-        self, function: Callable[[_S], _T], iterable: Iterable[_S]
-    ) -> Iterable[_T]:
+        self, function: Callable[[_S], _T], iterable: SupportsList[_S]
+    ) -> SupportsList[_T]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
+        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return map(function, iterable)
 
     def MapVector(
@@ -282,7 +281,7 @@ class Builtins(
         name: str,
         # predicate: Callable[[_T], _Bool],
         context: Dict[str, Any],
-    ) -> Iterable[_T]:
+    ) -> SupportsList[_T]:
         if name in self.samplers:
             return tuple(self.samplers[name](context))
         else:
