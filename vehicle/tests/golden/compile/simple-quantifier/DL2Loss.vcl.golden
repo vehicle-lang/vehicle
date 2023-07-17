@@ -1,6 +1,3 @@
-mapList : (Vector Rat 1 -> Rat) -> List (Vector Rat 1) -> List Rat;
-mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
-
 bigAnd : List Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
@@ -8,26 +5,13 @@ bigOr : List Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
 
 @property;
-<<<<<<< HEAD
-expandedExpr : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-expandedExpr f = bigAnd (mapList (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][])
-
-@property;
-sequential : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-sequential f = bigAnd (mapList (\ x -> bigAnd (mapList (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x])) sample[x][])
-
-@property;
-parallel : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
-parallel f = bigAnd (mapList (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][]) + bigOr (mapList (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][])
-=======
 expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Rat;
-expandedExpr f = bigAnd (mapList (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][f])
+expandedExpr f = bigAnd (map (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][])
 
 @property;
 sequential : forallT (f : Vector Rat -> Vector Rat) . Rat;
-sequential f = bigAnd (mapList (\ x -> bigAnd (mapList (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x, f])) sample[x][f])
+sequential f = bigAnd (map (\ x -> bigAnd (map (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x])) sample[x][])
 
 @property;
 parallel : forallT (f : Vector Rat -> Vector Rat) . Rat;
-parallel f = bigAnd (mapList (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][f]) + bigOr (mapList (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][f])
->>>>>>> size-irrelevancy
+parallel f = bigAnd (map (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][]) + bigOr (map (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][])

@@ -1,37 +1,14 @@
-<<<<<<< HEAD
-bigAnd : (\ A -> Vector A 5) Bool -> Bool;
-bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
-
-mapVector__5__Index_5__Rat : (Index 5 -> Rat) -> Vector (Index 5) 5 -> Vector Rat 5;
-mapVector__5__Index_5__Rat f _x0 = dfold {Index 5} {5} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
-
-mapVector__5__Index_5__Bool : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
-mapVector__5__Index_5__Bool f _x0 = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
-
-foreachVector__Bool__5 : (Index 5 -> Bool) -> Vector Bool 5;
-foreachVector__Bool__5 f = mapVector__5__Index_5__Bool f (indices 5)
-
-foreachVector__Rat__5 : (Index 5 -> Rat) -> Vector Rat 5;
-foreachVector__Rat__5 f = mapVector__5__Index_5__Rat f (indices 5)
-
-forallIndex : (Index 5 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector__Bool__5 (\ i -> f i))
-=======
 bigAnd : (\ A -> Vector A) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
+foreachVector__Rat : forallT n . (Index -> Rat) -> Vector Rat;
+foreachVector__Rat n f = map f (indices n)
 
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
-
-foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector__Bool : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector__Bool n f = map f (indices n)
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
-forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
->>>>>>> size-irrelevancy
+forallIndex n f = bigAnd (foreachVector__Bool n (\ i -> f i))
 
 pi : Rat;
 pi = 3.141592
@@ -61,14 +38,7 @@ clearOfConflict = 0
 weakLeft : Index;
 weakLeft = 1
 
-<<<<<<< HEAD
-strongLeft : Index 5;
-=======
-weakRight : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
-weakRight {_x0} {{_ }} = _ 2
-
 strongLeft : Index;
->>>>>>> size-irrelevancy
 strongLeft = 3
 
 strongRight : Index;
@@ -89,11 +59,7 @@ meanScalingValues : UnnormalisedInputVector;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : UnnormalisedInputVector -> InputVector;
-<<<<<<< HEAD
-normalise x = foreachVector__Rat__5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
-=======
-normalise x = foreachVector 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
->>>>>>> size-irrelevancy
+normalise x = foreachVector__Rat 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
 
 normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
 normAcasXu acasXu x = acasXu (normalise x)

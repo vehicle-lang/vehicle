@@ -107,6 +107,8 @@ evalBuiltinFunction evalApp b args
       ConsVector -> return <$> evalConsVector args
       Fold dom -> evalFold dom evalApp args
       ZipWith -> evalZipWith evalApp args
+      MapList -> evalMapList evalApp args
+      MapVector -> evalMapVector evalApp args
       FromNat dom -> return <$> evalFromNat dom args
       FromRat dom -> return <$> evalFromRat dom args
       Indices -> return <$> evalIndices args
@@ -361,7 +363,6 @@ evalFoldList ::
 evalFoldList evalApp = \case
   [_f, e, VNil] ->
     Just $ return e
-  -- TODO should probably be `isRelevant`....
   [f, e, VCons [x, xs]] ->
     Just $ do
       let defaultFold = return $ VBuiltinFunction (Fold FoldList) [RelevantExplicitArg mempty f, RelevantExplicitArg mempty e, xs]
@@ -375,13 +376,12 @@ evalFoldVector ::
   EvalBuiltin types m
 evalFoldVector evalApp = \case
   [f, e, VVecLiteral xs] ->
-    Just $ foldrM f' e (zip [0 ..] xs)
+    Just $ foldrM f' e xs
     where
-      f' (l, x) r =
+      f' x r =
         evalApp
           f
-          [ IrrelevantImplicitArg mempty (VNatLiteral l),
-            x,
+          [ x,
             RelevantExplicitArg mempty r
           ]
   _ -> Nothing
@@ -400,6 +400,32 @@ evalZipWith evalApp = \case
           [ x,
             y
           ]
+  _ -> Nothing
+
+evalMapList ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
+evalMapList evalApp = \case
+  [_f, e@VNil] ->
+    Just $ return e
+  [f, VCons [x, xs]] -> Just $ do
+    fx <- evalApp f [x]
+    fxs <- case evalMapList evalApp [argExpr xs] of
+      Nothing -> return $ VBuiltinFunction MapList [RelevantExplicitArg mempty f, xs]
+      Just fxs -> fxs
+    return $ VBuiltin (CConstructor Cons) (RelevantExplicitArg mempty <$> [fx, fxs])
+  _ -> Nothing
+
+evalMapVector ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
+evalMapVector evalApp = \case
+  [f, VVecLiteral xs] ->
+    Just $ mkVLVec <$> traverse f' xs
+    where
+      f' x = evalApp f [x]
   _ -> Nothing
 
 evalIndices :: EvalSimpleBuiltin types

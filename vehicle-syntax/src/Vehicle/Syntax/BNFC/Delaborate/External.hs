@@ -184,7 +184,9 @@ delabBuiltinFunction fun args = case fun of
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
   V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.Fold V.FoldVector -> delabApp (B.DepFold tokDepFold) args
+  V.Fold V.FoldVector -> delabTypeClassOp V.FoldTC args
+  V.MapList -> delabTypeClassOp V.MapTC args
+  V.MapVector -> delabTypeClassOp V.MapTC args
   V.ConsVector -> delabInfixOp2 B.ConsVector tokConsVector args
   V.ZipWith -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args

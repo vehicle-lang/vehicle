@@ -1,52 +1,19 @@
-<<<<<<< HEAD
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
-
-bigAnd : (\ A -> Vector A 1) Rat -> Rat;
-bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x + y) 0.0 _x0
+bigAnd : (\ A -> Vector A) Rat -> Rat;
+bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
 bigOr : List Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
 
-mapVector : (Index 1 -> Rat) -> Vector (Index 1) 1 -> Vector Rat 1;
-mapVector f _x0 = dfold {Index 1} {1} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
-
-foreachVector : (Index 1 -> Rat) -> Vector Rat 1;
-foreachVector f = mapVector f (indices 1)
-
-zipWith : (Rat -> Rat -> Rat) -> Vector Rat 1 -> Vector Rat 1 -> Vector Rat 1;
-zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
-
-=======
-bigAnd : (\ A -> Vector A) Rat -> Rat;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x + y) 0.0
-
-bigOr : List Rat -> Rat;
-bigOr = fold (\ x -> \ y -> x * y) 1.0
-
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
-
->>>>>>> size-irrelevancy
 @noinline;
 equalsVector : Vector Rat -> Vector Rat -> Rat;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-<<<<<<< HEAD
-=======
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
-
->>>>>>> size-irrelevancy
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test1 f = bigOr (mapList (\ a -> max 0.0 (0.0 - a) + equalsVector (f [a + 2.0]) [0.0]) sample[a][])
+test1 f = bigOr (map (\ a -> max 0.0 (0.0 - a) + equalsVector (f [a + 2.0]) [0.0]) sample[a][])
 
 @property;
 test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test2 g = bigOr (mapList (\ a -> bigOr (mapList (\ b -> max 0.0 (1.0 - a) + (max 0.0 (a - b) + equalsVector (g [a + b, a + 2.0 * b]) [0.0])) sample[b][a])) sample[a][])
+test2 g = bigOr (map (\ a -> bigOr (map (\ b -> max 0.0 (1.0 - a) + (max 0.0 (a - b) + equalsVector (g [a + b, a + 2.0 * b]) [0.0])) sample[b][a])) sample[a][])

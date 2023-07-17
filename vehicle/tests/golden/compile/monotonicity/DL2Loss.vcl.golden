@@ -1,25 +1,8 @@
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
-
-<<<<<<< HEAD
 bigAnd : List Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-=======
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
->>>>>>> size-irrelevancy
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-<<<<<<< HEAD
-=======
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
-
->>>>>>> size-irrelevancy
 @property;
 monotonic : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-monotonic f = bigAnd (mapList (\ x1 -> bigAnd (mapList (\ x2 -> max 0.0 (max 0.0 (x1 - x2) * max 0.0 (f [x1] ! 0 - f [x2] ! 0))) sample[x2][x1])) sample[x1][])
+monotonic f = bigAnd (map (\ x1 -> bigAnd (map (\ x2 -> max 0.0 (max 0.0 (x1 - x2) * max 0.0 (f [x1] ! 0 - f [x2] ! 0))) sample[x2][x1])) sample[x1][])

@@ -1,18 +1,6 @@
-<<<<<<< HEAD
-untyped : (\ A -> Vector A 1) Rat;
+untyped : (\ A -> Vector A) Rat;
 untyped = [0.0]
 
 @property;
-p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
-p f = f untyped ! 0 >= 0.0
-=======
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
-
-empty : Vector Rat;
-empty = []
-
-@property;
 p : forallT (f : Vector Rat -> Vector Rat) . Bool;
-p f = f [0.0] ! 0 >= 0.0
->>>>>>> size-irrelevancy
+p f = f untyped ! 0 >= 0.0

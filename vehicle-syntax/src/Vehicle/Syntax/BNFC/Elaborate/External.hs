@@ -327,7 +327,6 @@ elabExpr = \case
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
   B.ZipWith tk -> builtinFunction V.ZipWith tk []
-  B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
   B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
   B.HasLeq tk -> builtinTypeClass (V.HasOrd V.Le) tk []

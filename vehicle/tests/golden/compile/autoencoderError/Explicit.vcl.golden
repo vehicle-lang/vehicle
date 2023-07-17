@@ -1,69 +1,27 @@
-<<<<<<< HEAD
-bigAnd : (\ A -> Vector A 5) Bool -> Bool;
-bigAnd _x0 = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True _x0
-
-mapVector__5__Index_5__Rat : (Index 5 -> Rat) -> Vector (Index 5) 5 -> Vector Rat 5;
-mapVector__5__Index_5__Rat f _x0 = dfold {Index 5} {5} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
-
-mapVector__5__Index_5__Bool : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
-mapVector__5__Index_5__Bool f _x0 = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) [] _x0
-
-foreachVector__Bool__5 : (Index 5 -> Bool) -> Vector Bool 5;
-foreachVector__Bool__5 f = mapVector__5__Index_5__Bool f (indices 5)
-
-foreachVector__Rat__5 : (Index 5 -> Rat) -> Vector Rat 5;
-foreachVector__Rat__5 f = mapVector__5__Index_5__Rat f (indices 5)
-
-zipWith : (Rat -> Rat -> Rat) -> Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
-zipWith f xs ys = foreachVector__Rat__5 (\ i -> f (xs ! i) (ys ! i))
-
-@noinline;
-addVector : Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
-addVector _x0 _x1 = zipWith (\ x -> \ y -> x + y) _x0 _x1
-
-@noinline;
-subVector : Vector Rat 5 -> Vector Rat 5 -> Vector Rat 5;
-subVector _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
-
-forallIndex : (Index 5 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector__Bool__5 (\ i -> f i))
-=======
 bigAnd : (\ A -> Vector A) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
+foreachVector__Rat : forallT n . (Index -> Rat) -> Vector Rat;
+foreachVector__Rat n f = map f (indices n)
 
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
-
-foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector__Bool : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector__Bool n f = map f (indices n)
 
 @noinline;
 addVector : Vector Rat -> Vector Rat -> Vector Rat;
-addVector = zipWith (\ x -> \ y -> x + y)
+addVector _x0 _x1 = zipWith (\ x -> \ y -> x + y) _x0 _x1
 
 @noinline;
 subVector : Vector Rat -> Vector Rat -> Vector Rat;
-subVector = zipWith (\ x -> \ y -> x - y)
+subVector _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
-forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
->>>>>>> size-irrelevancy
+forallIndex n f = bigAnd (foreachVector__Bool n (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-<<<<<<< HEAD
 epsilon : Tensor Rat (5 :: nil);
-epsilon = foreachVector__Rat__5 (\ i -> 0.1)
-=======
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-epsilon : Tensor Rat (5 :: nil);
-epsilon = foreachVector 5 (\ i -> 0.1)
->>>>>>> size-irrelevancy
+epsilon = foreachVector__Rat 5 (\ i -> 0.1)
 
 @property;
 identity : forallT (encode : Tensor Rat (5 :: nil) -> Tensor Rat (2 :: nil)) . forallT (decode : Tensor Rat (2 :: nil) -> Tensor Rat (5 :: nil)) . Bool;

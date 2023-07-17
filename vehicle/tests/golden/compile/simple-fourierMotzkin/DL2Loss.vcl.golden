@@ -1,40 +1,20 @@
-mapList__Vector_Rat_4__Rat : (Vector Rat 4 -> Rat) -> List (Vector Rat 4) -> List Rat;
-mapList__Vector_Rat_4__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
-
-<<<<<<< HEAD
-mapList__Rat__Rat : (Rat -> Rat) -> List Rat -> List Rat;
-mapList__Rat__Rat f _x0 = fold (\ x -> \ xs -> f x :: xs) nil _x0
-
 bigOr : List Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
-=======
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
->>>>>>> size-irrelevancy
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-<<<<<<< HEAD
-=======
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
-
->>>>>>> size-irrelevancy
 @property;
 unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-unusedVar f = bigOr (mapList__Rat__Rat (\ x -> bigOr (mapList__Rat__Rat (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)) sample[y][x])) sample[x][])
+unusedVar f = bigOr (map (\ x -> bigOr (map (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVar1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar1 f = bigOr (mapList__Rat__Rat (\ x -> bigOr (mapList__Rat__Rat (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))) sample[y][x])) sample[x][])
+underConstrainedVar1 f = bigOr (map (\ x -> bigOr (map (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVar2 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar2 f = bigOr (mapList__Rat__Rat (\ x -> bigOr (mapList__Rat__Rat (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))) sample[y][x])) sample[x][])
+underConstrainedVar2 f = bigOr (map (\ x -> bigOr (map (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVars : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVars f = bigOr (mapList__Vector_Rat_4__Rat (\ (x : Tensor Rat (4 :: nil)) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))) sample[x][])
+underConstrainedVars f = bigOr (map (\ (x : Tensor Rat (4 :: nil)) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))) sample[x][])
