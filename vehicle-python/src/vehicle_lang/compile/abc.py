@@ -72,8 +72,8 @@ class Builtins(
         ...
 
     def AtVector(self, sequence: Sequence[_T], index: int) -> _T:
-        assert isinstance(sequence, Sequence)
-        assert isinstance(index, int)
+        assert isinstance(sequence, Sequence), f"Expected Sequence, found {sequence}"
+        assert isinstance(index, int), f"Expected int, found {sequence}"
         return sequence[index]
 
     @abstractmethod
@@ -132,6 +132,8 @@ class Builtins(
         raise UnsupportedBuiltin(vcl.Forall())
 
     def GeIndex(self, x: int, y: int) -> _Bool:
+        assert isinstance(x, int)
+        assert isinstance(y, int)
         return self.Not(self.LtIndex(x, y))
 
     def GeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -144,6 +146,8 @@ class Builtins(
         return self.Not(self.LtRat(x, y))
 
     def GtIndex(self, x: int, y: int) -> _Bool:
+        assert isinstance(x, int)
+        assert isinstance(y, int)
         return self.Not(self.LeIndex(x, y))
 
     def GtInt(self, x: _Int, y: _Int) -> _Bool:
@@ -166,6 +170,7 @@ class Builtins(
         return value.__int__()
 
     def Indices(self, upto: int) -> Sequence[int]:
+        assert isinstance(upto, int)
         return tuple(range(0, upto))
 
     @abstractmethod
@@ -173,6 +178,8 @@ class Builtins(
         ...
 
     def LeIndex(self, x: int, y: int) -> _Bool:
+        assert isinstance(x, int)
+        assert isinstance(y, int)
         return self.Or(self.EqIndex(x, y), self.LtIndex(x, y))
 
     def LeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -239,6 +246,8 @@ class Builtins(
         ...
 
     def NeIndex(self, x: int, y: int) -> _Bool:
+        assert isinstance(x, int)
+        assert isinstance(y, int)
         return self.Not(self.EqIndex(x, y))
 
     def NeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -284,7 +293,7 @@ class Builtins(
         context: Dict[str, Any],
     ) -> Iterable[_T]:
         if name in self.samplers:
-            return self.samplers[name](context)
+            return tuple(self.samplers[name](context))
         else:
             raise TypeError(f"Could not find sampler for '{name}'.")
 
@@ -308,6 +317,9 @@ class Builtins(
         sequence1: Sequence[_S],
         sequence2: Sequence[_T],
     ) -> Sequence[_U]:
+        assert callable(function)
+        assert isinstance(sequence1, Sequence)
+        assert isinstance(sequence2, Sequence)
         return tuple(map(function, sequence1, sequence2))
 
 
