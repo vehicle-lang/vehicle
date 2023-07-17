@@ -1,13 +1,13 @@
-vectorToVector : Vector (Vector Bool 3) 2 -> Vector (Vector Bool 3) 2;
+vectorToVector : Vector (Vector Bool) -> Vector (Vector Bool);
 vectorToVector xs = xs
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector Nat 2 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 @property;
-p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+p : forallT (f : Vector Rat -> Vector Rat) . Bool;
 p f = (forall x . f x ! 0 > 0.0) or True
 
 @property;

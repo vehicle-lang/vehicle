@@ -30,26 +30,26 @@ normalisationTests =
         NBETest
           { name = "AppLambdaClosedBody",
             dbLevel = 0,
-            input = App p (Lam p (binding (NatType p)) (BoundVar p 0)) [ExplicitArg p $ NatLiteral p 1],
+            input = App p (Lam p (binding (NatType p)) (BoundVar p 0)) [RelevantExplicitArg p $ NatLiteral p 1],
             expected = NatLiteral p 1
           },
         NBETest
           { name = "AppLambdaOpenBody",
             dbLevel = 1,
-            input = App p (Lam p (binding (NatType p)) (BoundVar p 1)) [ExplicitArg p $ NatLiteral p 1],
+            input = App p (Lam p (binding (NatType p)) (BoundVar p 1)) [RelevantExplicitArg p $ NatLiteral p 1],
             expected = BoundVar p 0
           },
         NBETest
           { name = "AppPlus",
             dbLevel = 1,
-            input = App p (Builtin p $ CFunction $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
+            input = App p (Builtin p $ CFunction $ Add AddNat) [RelevantExplicitArg p (NatLiteral p 2), RelevantExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest
           { name = "ListMeta",
             dbLevel = 1,
-            input = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))],
-            expected = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))]
+            input = App p (Builtin p $ CType $ StandardBuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))],
+            expected = App p (Builtin p $ CType $ StandardBuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))]
           }
       ]
 

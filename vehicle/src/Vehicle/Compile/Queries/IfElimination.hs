@@ -45,12 +45,13 @@ currentPass = "if elimination"
 -- If operations
 
 liftIf :: (StandardNormExpr -> StandardNormExpr) -> StandardNormExpr -> StandardNormExpr
-liftIf f (VBuiltinFunction If [cond, e1, e2]) =
+liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
   VBuiltinFunction
     If
-    [ cond,
-      liftIf f e1,
-      liftIf f e2
+    [ t,
+      cond,
+      RelevantExplicitArg mempty (liftIf f $ argExpr e1),
+      RelevantExplicitArg mempty (liftIf f $ argExpr e2)
     ]
 liftIf f e = f e
 
@@ -68,10 +69,10 @@ recLiftIf expr = case expr of
       Nothing -> return Nothing
       Just xs -> return $ Just $ liftSpine (VFreeVar v) xs
   VBuiltin b spine -> do
-    maybeLiftedSpine <- sequence <$> traverse recLiftIf spine
+    maybeLiftedSpine <- sequence <$> (fmap sequence <$> traverse (traverse recLiftIf) spine)
     case maybeLiftedSpine of
       Nothing -> return Nothing
-      Just xs -> return $ Just $ liftExplicitSpine (VBuiltin b) xs
+      Just xs -> return $ Just $ liftSpine (VBuiltin b) xs
 
 liftArg :: (StandardNormArg -> StandardNormExpr) -> StandardNormArg -> StandardNormExpr
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
@@ -87,24 +88,17 @@ liftSpine f (x : xs) =
     then liftArg (\a -> liftSpine (\as -> f (a : as)) xs) x
     else liftSpine (\as -> f (x : as)) xs
 
-liftExplicitSpine ::
-  (StandardExplicitSpine -> StandardNormExpr) ->
-  [StandardNormExpr] ->
-  StandardNormExpr
-liftExplicitSpine f [] = f []
-liftExplicitSpine f (x : xs) = do
-  liftIf (\a -> liftExplicitSpine (\as -> f (a : as)) xs) x
-
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
 elimIf :: StandardNormExpr -> StandardNormExpr
-elimIf (VBuiltinFunction If [cond, e1, e2]) = unfoldIf cond (elimIf e1) (elimIf e2)
+elimIf (VBuiltinFunction If [_, cond, e1, e2]) = unfoldIf cond (elimIf (argExpr e1)) (elimIf (argExpr e2))
 elimIf e = e
 
-unfoldIf :: StandardNormExpr -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+unfoldIf :: StandardNormArg -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
 unfoldIf c x y =
   VBuiltinFunction
     Or
-    [ VBuiltinFunction And [c, x],
-      VBuiltinFunction And [VBuiltinFunction Not [c], y]
-    ]
+    $ RelevantExplicitArg mempty
+      <$> [ VBuiltinFunction And [c, RelevantExplicitArg mempty x],
+            VBuiltinFunction And [RelevantExplicitArg mempty (VBuiltinFunction Not [c]), RelevantExplicitArg mempty y]
+          ]

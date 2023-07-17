@@ -6,6 +6,7 @@ module Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
   )
 where
 
+import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Prelude
@@ -26,7 +27,7 @@ solveLinearityConstraint (WithContext constraint ctx) = do
   normConstraint@(Has _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
-  progress <- solve tc nConstraint spine
+  progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
   handleConstraintProgress (WithContext normConstraint ctx) progress
 
 --------------------------------------------------------------------------------
@@ -143,7 +144,7 @@ handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => LinearityNormExpr -> m (LinearityTypeClass, LinearityExplicitSpine)
+getTypeClass :: (MonadCompile m) => LinearityNormExpr -> m (LinearityTypeClass, LinearitySpine)
 getTypeClass = \case
   (VBuiltin (CType (LinearityTypeClass tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

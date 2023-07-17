@@ -1,41 +1,38 @@
-bigAnd : (\ A -> Vector A 2) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
 
-vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector : Vector Bool -> Vector Bool;
 vectorToVector xs = xs
 
-mapVector : (Index 2 -> Rat) -> Vector (Index 2) 2 -> Vector Rat 2;
-mapVector f = dfold {Index 2} {2} {Vector Rat} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 2 -> Rat) -> Vector Rat 2;
-foreachVector f = mapVector f (indices 2)
-
-zipWith : (Rat -> Rat -> Rat) -> Vector Rat 2 -> Vector Rat 2 -> Vector Rat 2;
-zipWith f xs ys = foreachVector (\ i -> f (xs ! i) (ys ! i))
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
 
 @noinline;
-addVector : Vector Rat 2 -> Vector Rat 2 -> Vector Rat 2;
+addVector : Vector Rat -> Vector Rat -> Vector Rat;
 addVector = zipWith (\ x -> \ y -> x + y)
 
 @noinline;
-addVector : Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2;
+addVector : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 addVector = zipWith (\ x -> \ y -> addVector x y)
 
 @noinline;
-subVector : Vector Rat 2 -> Vector Rat 2 -> Vector Rat 2;
+subVector : Vector Rat -> Vector Rat -> Vector Rat;
 subVector = zipWith (\ x -> \ y -> x - y)
 
 @noinline;
-subVector : Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2 -> Vector (Vector Rat 2) 2;
+subVector : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 subVector = zipWith (\ x -> \ y -> subVector x y)
 
-forallIndex : (Index 2 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector Nat 0 -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+vectorToList : Vector Nat -> List Nat;
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 zeroD : Tensor Rat nil;
 zeroD = 2.5
@@ -57,4 +54,4 @@ subtraction = subVector twoD twoD
 
 @property;
 p : forallT (f : Tensor Rat (2 :: 2 :: nil) -> Tensor Rat (2 :: 2 :: nil)) . Bool;
-p f = forallIndex (\ i -> forallIndex (\ j -> addVector (f subtraction) addition ! i ! j >= 0.0))
+p f = forallIndex 2 (\ i -> forallIndex 2 (\ j -> addVector (f subtraction) addition ! i ! j >= 0.0))

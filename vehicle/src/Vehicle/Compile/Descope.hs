@@ -159,7 +159,7 @@ descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
   VFreeVar v spine -> normAppList p (FreeVar p v) $ descopeSpine f spine
-  VBuiltin b spine -> normAppList p (Builtin p b) $ fmap (ExplicitArg p . descopeNormExpr f) spine
+  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
   VBoundVar v spine -> do
     let var = BoundVar p $ f p v
     let args = descopeSpine f spine

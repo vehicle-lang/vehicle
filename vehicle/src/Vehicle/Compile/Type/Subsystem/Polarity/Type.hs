@@ -10,6 +10,7 @@ where
 import Data.Text qualified as Text
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker, freshMeta)
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
@@ -58,6 +59,7 @@ typeOfBuiltinFunction = \case
   Fold dom -> case dom of
     FoldVector -> typeOfFoldVector
     FoldList -> typeOfFoldList
+  ZipWith -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
   b@Sample {} -> developerError $ "Should not be polarity typing" <+> pretty b
@@ -90,21 +92,21 @@ typeOfOp1 ::
   PolarityDSLExpr
 typeOfOp1 constraint =
   forAllPolarityPairs $ \p1 p2 ->
-    constraint p1 p2 ~~~> p1 ~> p2
+    constraint p1 p2 .~~~> p1 ~> p2
 
 typeOfOp2 ::
   (PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr) ->
   PolarityDSLExpr
 typeOfOp2 constraint =
   forAllPolarityTriples $ \l1 l2 l3 ->
-    constraint l1 l2 l3 ~~~> l1 ~> l2 ~> l3
+    constraint l1 l2 l3 .~~~> l1 ~> l2 ~> l3
 
 typeOfIf :: PolarityDSLExpr
 typeOfIf =
   forAllPolarityTriples $ \pCond pArg1 pArg2 ->
     forAllPolarities $ \pRes ->
       ifPolarity pCond pArg1 pArg2 pRes
-        ~~~> pCond
+        .~~~> pCond
         ~> pArg1
         ~> pArg2
         ~> pRes
@@ -118,19 +120,24 @@ typeOfCons = typeOfOp2 maxPolarity
 typeOfFoldVector :: PolarityDSLExpr
 typeOfFoldVector =
   forAllPolarityTriples $ \p1 p2 p3 ->
-    maxPolarity p1 p2 p3 ~~~> (unquantified ~~> p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
+    maxPolarity p1 p2 p3 .~~~> (unquantified ~~> p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
 
 typeOfFoldList :: PolarityDSLExpr
 typeOfFoldList =
   forAllPolarityTriples $ \p1 p2 p3 ->
-    maxPolarity p1 p2 p3 ~~~> (p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
+    maxPolarity p1 p2 p3 .~~~> (p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
+
+typeOfZipWith :: PolarityDSLExpr
+typeOfZipWith =
+  forAllPolarityTriples $ \p1 p2 p3 ->
+    maxPolarity p1 p2 p3 .~~~> (p1 ~> p2 ~> p3) ~> p1 ~> p2 ~> p3
 
 typeOfQuantifier :: Quantifier -> PolarityDSLExpr
 typeOfQuantifier q =
   forAll "f" type0 $ \tLam ->
     forAll "A" type0 $ \tRes ->
       quantifierPolarity q tLam tRes
-        ~~~> tLam
+        .~~~> tLam
         ~> tRes
 
 typeOfVecLiteral :: Int -> PolarityDSLExpr
@@ -143,7 +150,7 @@ typeOfVecLiteral n = go n unquantified
        in forAll varName tPol $ \li ->
             forAll (varName <> "_max") tPol $ \newMax ->
               maxPolarity maxSoFar li newMax
-                ~~~> li
+                .~~~> li
                 ~> go (i - 1) newMax
 
 handlePolarityTypingError :: (MonadCompile m) => TypingError PolarityBuiltin -> m a
@@ -175,7 +182,7 @@ convertToPolarityTypes p1 p2 b args = case b of
         [tElem] -> return $ argExpr tElem
         _ -> monomorphisationError "List"
       Vector -> case args of
-        [tElem, _] -> return $ argExpr tElem
+        [tElem] -> return $ argExpr tElem
         _ -> monomorphisationError "Vector"
     StandardTypeClass {} ->
       monomorphisationError "TypeClass"
@@ -185,4 +192,4 @@ convertToPolarityTypes p1 p2 b args = case b of
       monomorphisationError :: Doc () -> m a
       monomorphisationError name =
         compilerDeveloperError $
-          "Monomorphisation should have got rid of partially applied" <+> name <+> "types."
+          "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args

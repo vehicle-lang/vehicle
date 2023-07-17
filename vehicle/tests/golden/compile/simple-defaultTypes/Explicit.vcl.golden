@@ -1,17 +1,17 @@
-bigAnd : (\ A -> Vector A 5) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x and y) True
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector : Vector Bool -> Vector Bool;
 vectorToVector xs = xs
 
-mapVector : (Index 5 -> Bool) -> Vector (Index 5) 5 -> Vector Bool 5;
-mapVector f = dfold {Index 5} {5} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 5 -> Bool) -> Vector Bool 5;
-foreachVector f = mapVector f (indices 5)
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
 
-forallIndex : (Index 5 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
 test : Bool;
-test = forallIndex (\ (i : Index 5) -> i <= 1)
+test = forallIndex 5 (\ (i : Index) -> i <= 1)

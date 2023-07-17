@@ -16,11 +16,14 @@ module Vehicle.Expr.DSL
     (~~~>),
     (.~~~>),
     (@@),
+    (.@@),
     (@@@),
+    (.@@@),
     (@@@@),
     (.@@@@),
     explLam,
     implLam,
+    irrelImplNatLam,
     instLam,
     naryFunc,
     forAllExpl,
@@ -175,7 +178,7 @@ x ~> y = pi Nothing Explicit Relevant x (const y)
 infixr 4 .~>
 
 (.~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-x .~> y = pi Nothing Explicit Relevant x (const y)
+x .~> y = pi Nothing Explicit Irrelevant x (const y)
 
 -- | Implicit function type
 infixr 4 ~~>
@@ -216,10 +219,20 @@ infixl 6 @@
 (@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (@@) f args = app f (fmap (Explicit,Relevant,) args)
 
+infixl 6 .@@
+
+(.@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
+(.@@) f args = app f (fmap (Explicit,Irrelevant,) args)
+
 infixl 6 @@@
 
 (@@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 (@@@) f args = app f (fmap (Implicit True,Relevant,) args)
+
+infixl 6 .@@@
+
+(.@@@) :: DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
+(.@@@) f args = app f (fmap (Implicit True,Irrelevant,) args)
 
 infixl 6 @@@@
 
@@ -283,7 +296,7 @@ tInt = builtinType Int
 tRat = builtinType Rat
 
 tVector :: StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
-tVector tElem dim = builtinType Vector @@ [tElem, dim]
+tVector tElem dim = builtinType Vector @@ [tElem] .@@ [dim]
 
 tVectorFunctor :: StandardDSLExpr -> StandardDSLExpr
 tVectorFunctor n = explLam "A" type0 (\a -> tVector a n)
@@ -295,7 +308,7 @@ tList :: StandardDSLExpr -> StandardDSLExpr
 tList tElem = tListRaw @@ [tElem]
 
 tIndex :: StandardDSLExpr -> StandardDSLExpr
-tIndex n = builtinType Index @@ [n]
+tIndex n = builtinType Index .@@ [n]
 
 tHole :: Name -> StandardDSLExpr
 tHole name = DSL $ \p _ -> Hole p name
@@ -304,7 +317,10 @@ forAllNat :: (StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
 forAllNat = forAll "n" tNat
 
 forAllIrrelevantNat :: Name -> (StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
-forAllIrrelevantNat name = pi (Just name) (Implicit False) Relevant tNat
+forAllIrrelevantNat name = pi (Just name) (Implicit False) Irrelevant tNat
+
+irrelImplNatLam :: Name -> (StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
+irrelImplNatLam n = lam n (Implicit False) Irrelevant tNat
 
 --------------------------------------------------------------------------------
 -- TypeClass

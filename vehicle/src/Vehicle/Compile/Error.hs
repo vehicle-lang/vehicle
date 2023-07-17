@@ -75,6 +75,7 @@ data CompileError
   | FailedRatLitConstraint StandardConstraintContext StandardNormType
   | FailedConLitConstraint StandardConstraintContext StandardNormType
   | FailedInstanceConstraint StandardConstraintContext InstanceGoal [WithContext InstanceCandidate]
+  | RelevantUseOfIrrelevantVariable Provenance Name
   | QuantifiedIfCondition PolarityConstraintContext
   | NonLinearIfCondition LinearityConstraintContext
   | -- Resource typing errors

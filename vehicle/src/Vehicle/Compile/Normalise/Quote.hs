@@ -25,7 +25,7 @@ instance Quote (Value builtin) (Expr Ix builtin) where
     VMeta m spine -> quoteApp level p (Meta p m) spine
     VFreeVar v spine -> quoteApp level p (FreeVar p v) spine
     VBoundVar v spine -> quoteApp level p (BoundVar p (dbLevelToIndex level v)) spine
-    VBuiltin b spine -> quoteApp level p (Builtin p b) (ExplicitArg p <$> spine)
+    VBuiltin b spine -> quoteApp level p (Builtin p b) spine
     VPi binder body ->
       Pi p <$> quote p level binder <*> quote p (level + 1) body
     VLam binder env body -> do

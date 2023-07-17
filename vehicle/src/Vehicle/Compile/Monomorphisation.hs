@@ -49,7 +49,6 @@ monomorphise ::
 monomorphise keepEvenIfUnused prog = logCompilerPass MinDetail "monomorphisation" $ do
   (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) keepEvenIfUnused
   result <- runReaderT (insert prog2) substitutions
-  logCompilerPassOutput $ prettyFriendly result
   return result
 
 --------------------------------------------------------------------------------
@@ -171,7 +170,15 @@ substituteArgsThrough = \case
     let t' = expr `substDBInto` t
     let e' = expr `substDBInto` e
     substituteArgsThrough (t', e', args)
-  _ -> compilerDeveloperError "Unexpected type/body of function undergoing monomorphisation"
+  (t, e, args) ->
+    developerError $
+      "Unexpected type/body of function undergoing monomorphisation"
+        <+> line
+        <> prettyVerbose t
+        <> line
+        <> prettyVerbose e
+        <> line
+        <> prettyVerbose args
 
 collectReferences :: (MonadCollect builtin m) => Expr Ix builtin -> m ()
 collectReferences expr = do

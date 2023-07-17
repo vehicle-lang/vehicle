@@ -137,6 +137,11 @@ class FoldVector(Builtin):
 
 
 @dataclass(frozen=True)
+class ZipWith(Builtin):
+    pass
+
+
+@dataclass(frozen=True)
 class Forall(Builtin):
     pass
 

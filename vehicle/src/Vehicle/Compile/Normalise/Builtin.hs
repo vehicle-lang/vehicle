@@ -4,9 +4,12 @@
 
 module Vehicle.Compile.Normalise.Builtin where
 
+import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (unions)
 import Vehicle.Expr.Normalisable
@@ -14,14 +17,14 @@ import Vehicle.Expr.Normalised
 
 type EvalApp builtin m = Value builtin -> Spine builtin -> m (Value builtin)
 
-type ForceArg builtin m = Value builtin -> m (Value builtin, Bool, MetaSet)
+type ForceArg builtin m = VArg builtin -> m (VArg builtin, (Bool, MetaSet))
 
 class Normalisable builtin where
   evalBuiltin ::
-    (MonadCompile m) =>
+    (MonadCompile m, PrintableBuiltin builtin) =>
     EvalApp builtin m ->
     builtin ->
-    ExplicitSpine builtin ->
+    Spine builtin ->
     m (Value builtin)
 
   isValue ::
@@ -33,18 +36,20 @@ class Normalisable builtin where
     Bool
 
   forceBuiltin ::
-    (MonadCompile m) =>
+    (MonadCompile m, PrintableBuiltin builtin) =>
     EvalApp builtin m ->
     ForceArg builtin m ->
     builtin ->
-    ExplicitSpine builtin ->
+    Spine builtin ->
     m (Maybe (Value builtin), MetaSet)
 
 instance (Normalisable types) => Normalisable (NormalisableBuiltin types) where
   evalBuiltin evalApp b args = case b of
     CConstructor {} -> return $ VBuiltin b args
     CType {} -> return $ VBuiltin b args
-    CFunction f -> evalBuiltinFunction evalApp f args
+    CFunction f -> do
+      let result = evalBuiltinFunction evalApp f (mapMaybe getExplicitArg args)
+      fromMaybe (return $ VBuiltin b args) result
 
   isValue = \case
     CConstructor {} -> True
@@ -60,7 +65,8 @@ instance (Normalisable types) => Normalisable (NormalisableBuiltin types) where
     CConstructor {} -> return (Nothing, mempty)
     CType {} -> return (Nothing, mempty)
     CFunction {} -> do
-      (argResults, argsReduced, argBlockingMetas) <- unzip3 <$> traverse forceArg spine
+      (argResults, argData) <- unzip <$> traverse forceArg spine
+      let (argsReduced, argBlockingMetas) = unzip argData
       let anyArgsReduced = or argsReduced
       let blockingMetas = MetaSet.unions argBlockingMetas
       result <-
@@ -74,64 +80,50 @@ instance (Normalisable types) => Normalisable (NormalisableBuiltin types) where
 -- Indvidual builtins
 
 evalBuiltinFunction ::
-  (MonadCompile m) =>
-  EvalApp (NormalisableBuiltin builtin) m ->
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
   BuiltinFunction ->
-  ExplicitSpine (NormalisableBuiltin builtin) ->
-  m (Value (NormalisableBuiltin builtin))
+  [Value (NormalisableBuiltin types)] ->
+  Maybe (m (Value (NormalisableBuiltin types)))
 evalBuiltinFunction evalApp b args
-  | isDerived b = evalDerivedBuiltin evalApp b args
-  | otherwise = do
-      let result = case b of
-            Quantifier {} -> Nothing
-            Not -> return <$> evalNot args
-            And -> return <$> evalAnd args
-            Or -> return <$> evalOr args
-            Neg dom -> return <$> evalNeg dom args
-            Add dom -> return <$> evalAdd dom args
-            Sub dom -> return <$> evalSub dom args
-            Mul dom -> return <$> evalMul dom args
-            Div dom -> return <$> evalDiv dom args
-            PowRat -> return <$> evalPowRat args
-            MinRat -> return <$> evalMinRat args
-            MaxRat -> return <$> evalMaxRat args
-            Equals dom op -> return <$> evalEquals dom op args
-            Order dom op -> return <$> evalOrder dom op args
-            If -> return <$> evalIf args
-            At -> return <$> evalAt args
-            ConsVector -> return <$> evalConsVector args
-            Fold dom -> evalFold dom evalApp args
-            FromNat dom -> return <$> evalFromNat dom args
-            FromRat dom -> return <$> evalFromRat dom args
-            Indices -> return <$> evalIndices args
-            Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
-            Sample {} -> Just $ compilerDeveloperError $ "Should not be evaluating" <+> pretty b
-
-      case result of
-        Nothing -> return $ VBuiltinFunction b args
-        Just r -> r
+  | isDerived b = evalImplies args
+  | otherwise = case b of
+      Quantifier {} -> Nothing
+      Not -> return <$> evalNot args
+      And -> return <$> evalAnd args
+      Or -> return <$> evalOr args
+      Neg dom -> return <$> evalNeg dom args
+      Add dom -> return <$> evalAdd dom args
+      Sub dom -> return <$> evalSub dom args
+      Mul dom -> return <$> evalMul dom args
+      Div dom -> return <$> evalDiv dom args
+      PowRat -> return <$> evalPowRat args
+      MinRat -> return <$> evalMinRat args
+      MaxRat -> return <$> evalMaxRat args
+      Equals dom op -> return <$> evalEquals dom op args
+      Order dom op -> return <$> evalOrder dom op args
+      If -> return <$> evalIf args
+      At -> return <$> evalAt args
+      ConsVector -> return <$> evalConsVector args
+      Fold dom -> evalFold dom evalApp args
+      ZipWith -> evalZipWith evalApp args
+      FromNat dom -> return <$> evalFromNat dom args
+      FromRat dom -> return <$> evalFromRat dom args
+      Indices -> return <$> evalIndices args
+      Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
+      Sample {} -> Just $ compilerDeveloperError $ "Should not be evaluating" <+> pretty b
 
 isDerived :: BuiltinFunction -> Bool
 isDerived = \case
   Implies {} -> True
   _ -> False
 
-evalDerivedBuiltin ::
-  (MonadCompile m) =>
-  EvalApp (NormalisableBuiltin builtin) m ->
-  BuiltinFunction ->
-  ExplicitSpine (NormalisableBuiltin builtin) ->
-  m (Value (NormalisableBuiltin builtin))
-evalDerivedBuiltin evalApp b args = case b of
-  Implies -> evalImplies evalApp args
-  _ -> compilerDeveloperError $ "Invalid derived types" <+> quotePretty b
-
 type EvalBuiltin types m =
-  ExplicitSpine (NormalisableBuiltin types) ->
+  [Value (NormalisableBuiltin types)] ->
   Maybe (m (Value (NormalisableBuiltin types)))
 
 type EvalSimpleBuiltin types =
-  ExplicitSpine (NormalisableBuiltin types) ->
+  [Value (NormalisableBuiltin types)] ->
   Maybe (Value (NormalisableBuiltin types))
 
 evalNot :: EvalSimpleBuiltin types
@@ -345,40 +337,68 @@ evalAt :: EvalSimpleBuiltin types
 evalAt = \case
   [VVecLiteral xs, VIndexLiteral i] -> Just $ case xs !!? fromIntegral i of
     Nothing -> developerError $ "out of bounds error:" <+> pretty (length xs) <+> "<=" <+> pretty i
-    Just xsi -> xsi
+    Just xsi -> argExpr xsi
   _ -> Nothing
 
 evalConsVector :: EvalSimpleBuiltin types
 evalConsVector = \case
-  [x, VVecLiteral xs] -> Just $ VVecLiteral (x : xs)
+  [x, VVecLiteral xs] -> Just $ mkVLVec (x : fmap argExpr xs)
   _ -> Nothing
 
-evalFold :: (MonadCompile m) => FoldDomain -> EvalApp (NormalisableBuiltin types) m -> EvalBuiltin types m
+evalFold ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  FoldDomain ->
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
 evalFold = \case
   FoldList -> evalFoldList
   FoldVector -> evalFoldVector
 
-evalFoldList :: (MonadCompile m) => EvalApp (NormalisableBuiltin types) m -> EvalBuiltin types m
+evalFoldList ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
 evalFoldList evalApp = \case
   [_f, e, VNil] ->
     Just $ return e
-  [f, e, VCons [x, xs']] -> Just $ do
-    r <- evalBuiltinFunction evalApp (Fold FoldList) [f, e, xs']
-    evalApp f [ExplicitArg mempty x, ExplicitArg mempty r]
+  -- TODO should probably be `isRelevant`....
+  [f, e, VCons [x, xs]] ->
+    Just $ do
+      let defaultFold = return $ VBuiltinFunction (Fold FoldList) [RelevantExplicitArg mempty f, RelevantExplicitArg mempty e, xs]
+      r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
+      evalApp f [x, RelevantExplicitArg mempty r]
   _ -> Nothing
 
-evalFoldVector :: (MonadCompile m) => EvalApp (NormalisableBuiltin types) m -> EvalBuiltin types m
+evalFoldVector ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
 evalFoldVector evalApp = \case
   [f, e, VVecLiteral xs] ->
-    Just $
-      foldrM f' e (zip [0 ..] xs)
+    Just $ foldrM f' e (zip [0 ..] xs)
     where
       f' (l, x) r =
         evalApp
           f
-          [ ImplicitArg mempty (VNatLiteral l),
-            ExplicitArg mempty x,
-            ExplicitArg mempty r
+          [ IrrelevantImplicitArg mempty (VNatLiteral l),
+            x,
+            RelevantExplicitArg mempty r
+          ]
+  _ -> Nothing
+
+evalZipWith ::
+  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  EvalApp (NormalisableBuiltin types) m ->
+  EvalBuiltin types m
+evalZipWith evalApp = \case
+  [f, VVecLiteral xs, VVecLiteral ys] ->
+    Just $ mkVLVec <$> zipWithM f' xs ys
+    where
+      f' x y =
+        evalApp
+          f
+          [ x,
+            y
           ]
   _ -> Nothing
 
@@ -391,14 +411,17 @@ evalIndices = \case
 -- Derived
 
 type EvalDerived types m =
-  ExplicitSpine (NormalisableBuiltin types) ->
-  m (Value (NormalisableBuiltin types))
+  [Value (NormalisableBuiltin types)] ->
+  Maybe (m (Value (NormalisableBuiltin types)))
 
 -- TODO define in terms of language
 
-evalImplies :: (MonadCompile m) => EvalApp (NormalisableBuiltin types) m -> EvalDerived types m
-evalImplies evalApp = \case
-  [e1, e2] -> do
-    ne1 <- evalBuiltinFunction evalApp Not [e1]
-    evalBuiltinFunction evalApp Or [ne1, e2]
-  args -> return $ VBuiltinFunction Implies args
+evalImplies :: (MonadCompile m) => EvalDerived types m
+evalImplies = \case
+  [e1, e2] -> Just $ do
+    let defaultNot = VBuiltinFunction Not [RelevantExplicitArg mempty e1]
+    let ne1 = fromMaybe defaultNot (evalNot [e1])
+    let defaultOr = VBuiltinFunction Or [RelevantExplicitArg mempty ne1, RelevantExplicitArg mempty e2]
+    let maybeRes = evalOr [ne1, e2]
+    return $ fromMaybe defaultOr maybeRes
+  _ -> Nothing

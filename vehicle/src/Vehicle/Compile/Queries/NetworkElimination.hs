@@ -74,7 +74,9 @@ replaceNetworkApplications declProv networkCtx userVariables boolExpr = do
       partitions <- partitionApplications boolExpr
       let numberOfPartitions = pretty (length partitions)
       logDebug MinDetail $ line <> "Found" <+> numberOfPartitions <+> "meta-network partition(s)" <> line
-      case zip [1 ..] (HashMap.toList partitions) of
+
+      let sortedPartitions = sortBy (\a b -> compareApplicationForest (fst a) (fst b)) $ HashMap.toList partitions
+      case zip [1 ..] sortedPartitions of
         [] -> throwError $ NoNetworkUsedInProperty declProv
         x : xs -> do
           substPartitions <- for (x :| xs) replaceApplications
@@ -126,21 +128,27 @@ compareApplicationTree a b = do
   compare f g <> compareSpine x y
   where
     compareSpine :: StandardSpine -> StandardSpine -> Ordering
-    compareSpine x y = compareExplicitSpine (mapMaybe getExplicitArg x) (mapMaybe getExplicitArg y)
-
-    compareExplicitSpine :: StandardExplicitSpine -> StandardExplicitSpine -> Ordering
-    compareExplicitSpine = liftCompare compareValue
+    compareSpine x y = liftCompare compareValue (mapMaybe getExplicitArg x) (mapMaybe getExplicitArg y)
 
     compareValue :: StandardNormExpr -> StandardNormExpr -> Ordering
     compareValue x y = case (x, y) of
       (VBoundVar v1 spine1, VBoundVar v2 spine2) -> compare v1 v2 <> compareSpine spine1 spine2
       (VBoundVar {}, _) -> LT
       (_, VBoundVar {}) -> GT
-      (VBuiltin b1 spine1, VBuiltin b2 spine2) -> compare b1 b2 <> compareExplicitSpine spine1 spine2
+      (VBuiltin b1 spine1, VBuiltin b2 spine2) -> compare b1 b2 <> compareSpine spine1 spine2
       (VBuiltin {}, _) -> LT
       (_, VBuiltin {}) -> GT
       (VFreeVar i1 spine1, VFreeVar i2 spine2) -> compare i1 i2 <> compareSpine spine1 spine2
       _ -> EQ
+
+sortApplicationForest :: NetworkApplicationForest -> [NetworkApplicationTree]
+sortApplicationForest = sortBy compareApplicationTree . HashSet.toList
+
+compareApplicationForest :: NetworkApplicationForest -> NetworkApplicationForest -> Ordering
+compareApplicationForest a b = do
+  let aApps = sortApplicationForest a
+  let bApps = sortApplicationForest b
+  liftCompare compareApplicationTree aApps bApps
 
 -- | Locate network applications and lift disjunctions as required to form
 -- consistent partitions.
@@ -197,13 +205,13 @@ findApplicationsInExpr expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   VMeta {} -> normalisationError currentPass "Lam"
   VLam {} -> normalisationError currentPass "Lam"
-  VBoundVar _v spine -> findApplicationsInSpine (fmap argExpr spine)
+  VBoundVar _v spine -> findApplicationsInSpine spine
   VBuiltin _b spine -> findApplicationsInSpine spine
   -- By construction, finite quantifiers are not left in if they contain
   -- references to a neural network.
   VFiniteQuantifier {} -> return mempty
   VFreeVar ident spine -> do
-    spineForest <- findApplicationsInSpine (fmap argExpr spine)
+    spineForest <- findApplicationsInSpine spine
     NetworkReaderCtx {..} <- ask
     if nameOf ident `Map.notMember` networkContext
       then return spineForest
@@ -211,10 +219,10 @@ findApplicationsInExpr expr = case expr of
 
 findApplicationsInSpine ::
   (MonadTraverseApplications m) =>
-  StandardExplicitSpine ->
+  StandardSpine ->
   m NetworkApplicationForest
 findApplicationsInSpine spine =
-  HashSet.unions <$> traverse findApplicationsInExpr spine
+  HashSet.unions <$> traverse findApplicationsInExpr (fmap argExpr spine)
 
 --------------------------------------------------------------------------------
 -- Replace network applications.
@@ -278,7 +286,7 @@ lineariseNetworkApplicationForest ::
   NetworkApplicationForest ->
   m [(NetworkApplication, NetworkAppInfo)]
 lineariseNetworkApplicationForest appInfo forest = do
-  let linearised = sortBy compareApplicationTree $ HashSet.toList forest
+  let linearised = sortApplicationForest forest
   foldlM lineariseNetworkApplicationTree appInfo linearised
 
 lineariseNetworkApplicationTree ::
@@ -328,14 +336,13 @@ getNetworkApplicationInfo originalApp@(networkName, originalSpine) subAppInfo = 
     let networkVariables = [outputNetworkVariable, inputNetworkVariable]
 
     -- Create the input equality
-    let mkInputVarEquality = mkInputVarEqualityExpr inputDimensions
     let inputEquality =
           VectorEqualityAssertion $
             VectorEquality
               { assertionLHS = inputVar,
                 assertionRHS = arg,
                 assertionDims = inputDimensions,
-                assertionOriginalRel = mkInputVarEquality
+                assertionOriginalRel = mkInputVarEqualityExpr inputDimensions
               }
 
     -- Create the meta network entry
@@ -375,7 +382,7 @@ getNetworkContext = concatMap (\(_, (_, _, networkVars, _)) -> networkVars)
 
 getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m StandardNormExpr
 getNetworkApplicationArg (networkName, spine) = case spine of
-  [ExplicitArg _ arg] -> return arg
+  [RelevantExplicitArg _ arg] -> return arg
   _ ->
     compilerDeveloperError $
       "Network" <+> quotePretty networkName <+> "does not seem to have a single explicit argument."
@@ -390,28 +397,27 @@ getNetworkDetailsFromCtx networkCtx name = do
 
 mkInputVarEqualityExpr ::
   TensorDimensions ->
-  StandardNormExpr ->
-  StandardNormExpr ->
+  StandardNormArg ->
+  StandardNormArg ->
   StandardNormExpr
 mkInputVarEqualityExpr dimensions e1 e2 = do
   mkVectorEquality (fmap VNatLiteral dimensions) [e1, e2]
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinary here,
     -- but it seems incredibly complicated to setup...
-    mkVectorEquality :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
+    mkVectorEquality :: [StandardNormExpr] -> StandardSpine -> StandardNormExpr
     mkVectorEquality dims spine =
       let p = mempty
        in case dims of
             [] -> VBuiltinFunction (Equals EqRat Eq) spine
-            d : ds -> VFreeVar (identifierOf StdEqualsVector) (nonExplicitArgs <> fmap (ExplicitArg p) spine)
+            d : ds -> VFreeVar (identifierOf StdEqualsVector) (nonExplicitArgs <> spine)
               where
-                -- TensorType VRatType (VVecLiteral (IntType p) (fmap (ExplicitArg p) (d : ds)))
                 tensorType = VUnitLiteral
                 nonExplicitArgs =
-                  [ ImplicitArg p tensorType,
-                    ImplicitArg p tensorType,
-                    ImplicitArg p d,
-                    InstanceArg p (mkVectorEquality ds [])
+                  [ RelevantImplicitArg p tensorType,
+                    RelevantImplicitArg p tensorType,
+                    IrrelevantImplicitArg p d,
+                    RelevantInstanceArg p (mkVectorEquality ds [])
                   ]
 
 replaceApplicationsInAssertion ::
@@ -445,7 +451,7 @@ replaceApplicationsInExpr subst expr = case expr of
   VMeta {} -> normalisationError currentPass "Lam"
   VLam {} -> normalisationError currentPass "Lam"
   VBoundVar v spine -> VBoundVar v <$> replaceApplicationsInSpine subst spine
-  VBuiltin b spine -> VBuiltin b <$> traverse (replaceApplicationsInExpr subst) spine
+  VBuiltin b spine -> VBuiltin b <$> replaceApplicationsInSpine subst spine
   -- By construction, finite quantifiers are not left in if they contain
   -- references to a neural network.
   VFiniteQuantifier {} -> return expr

@@ -1,9 +1,9 @@
-vectorToVector : Vector Rat 0 -> Vector Rat 0;
+vectorToVector : Vector Rat -> Vector Rat;
 vectorToVector xs = xs
 
-empty : Vector Rat 0;
+empty : Vector Rat;
 empty = []
 
 @property;
-p : forallT (f : Vector Rat 1 -> Vector Rat 1) . Rat;
+p : forallT (f : Vector Rat -> Vector Rat) . Rat;
 p f = max 0.0 (0.0 - f [0.0] ! 0)

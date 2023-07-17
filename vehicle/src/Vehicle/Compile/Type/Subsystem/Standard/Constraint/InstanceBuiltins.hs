@@ -51,10 +51,10 @@ candidates =
           ----------------
           -- HasNatLits --
           ----------------
-          ( forAllNat $ \n ->
+          ( forAllIrrelevantNat "n" $ \n ->
               hasNatLits (tIndex n),
-            implLam "n" tNat $ \n ->
-              builtin (FromNat FromNatToIndex) @@@ [n]
+            irrelImplNatLam "n" $ \n ->
+              builtin (FromNat FromNatToIndex) .@@@ [n]
           ),
           ( hasNatLits tNat,
             builtin (FromNat FromNatToNat)
@@ -68,15 +68,15 @@ candidates =
           ----------------
           -- HasVecLits --
           ----------------
-          ( forAll "n" tNat $ \n ->
+          ( forAllIrrelevantNat "n" $ \n ->
               hasVecLits n (tVectorFunctor n),
-            implLam "n" tNat $ \n ->
-              free StdVectorToVector @@@ [n]
+            irrelImplNatLam "n" $ \n ->
+              free StdVectorToVector .@@@ [n]
           ),
-          ( forAll "n" tNat $ \n ->
+          ( forAllIrrelevantNat "n" $ \n ->
               hasVecLits n tListRaw,
-            implLam "n" tNat $ \n ->
-              free StdVectorToList @@@ [n]
+            irrelImplNatLam "n" $ \n ->
+              free StdVectorToList .@@@ [n]
           ),
           ------------
           -- HasNeg --
@@ -100,13 +100,13 @@ candidates =
             builtin (Add AddRat)
           ),
           ( forAllTypeTriples $ \t1 t2 t3 ->
-              forAllNat $ \n ->
+              forAllIrrelevantNat "n" $ \n ->
                 hasAdd t1 t2 t3
                   ~~~> hasAdd (tVector t1 n) (tVector t2 n) (tVector t3 n),
             implTypeTripleLam $ \t1 t2 t3 ->
-              implLam "n" tNat $ \n ->
+              irrelImplNatLam "n" $ \n ->
                 instLam "add" (hasAdd t1 t2 t3) $ \add ->
-                  free StdAddVector @@@ [t1, t2, t3, n] @@@@ [add]
+                  free StdAddVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [add]
           ),
           ------------
           -- HasSub --
@@ -118,13 +118,13 @@ candidates =
             builtin (Sub SubRat)
           ),
           ( forAllTypeTriples $ \t1 t2 t3 ->
-              forAllNat $ \n ->
+              forAllIrrelevantNat "n" $ \n ->
                 hasSub t1 t2 t3
                   ~~~> hasSub (tVector t1 n) (tVector t2 n) (tVector t3 n),
             implTypeTripleLam $ \t1 t2 t3 ->
-              implLam "n" tNat $ \n ->
+              irrelImplNatLam "n" $ \n ->
                 instLam "sub" (hasSub t1 t2 t3) $ \sub ->
-                  free StdSubVector @@@ [t1, t2, t3, n] @@@@ [sub]
+                  free StdSubVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [sub]
           ),
           ------------
           -- HasMul --
@@ -150,8 +150,8 @@ candidates =
           ( hasMap tListRaw,
             free StdMapList
           ),
-          ( forAllNat $ \n -> hasMap (tVectorFunctor n),
-            implLam "n" tNat $ \n -> free StdMapVector @@@ [n]
+          ( forAllIrrelevantNat "n" $ \n -> hasMap (tVectorFunctor n),
+            irrelImplNatLam "n" $ \n -> free StdMapVector .@@@ [n]
           ),
           ------------
           -- HasFold --
@@ -159,12 +159,12 @@ candidates =
           ( hasFold tListRaw,
             builtin (Fold FoldList)
           ),
-          ( forAllNat $ \n -> hasFold (tVectorFunctor n),
-            implLam "n" tNat $ \n ->
+          ( forAllIrrelevantNat "n" $ \n -> hasFold (tVectorFunctor n),
+            irrelImplNatLam "n" $ \n ->
               implLam "A" type0 $ \a ->
                 implLam "B" type0 $ \b ->
                   explLam "f" (a ~> b ~> b) $ \f ->
-                    builtin (Fold FoldVector) @@@ [n, a, b] @@ [implLam "m" tNat (const f)]
+                    builtin (Fold FoldVector) .@@@ [n] @@@ [a, b] @@ [irrelImplNatLam "m" (const f)]
           )
         ]
       <> orderCandidates Le
@@ -214,14 +214,14 @@ candidates =
         ),
         ( forAll "t1" type0 $ \t1 ->
             forAll "t2" type0 $ \t2 ->
-              forAllNat $ \n ->
+              forAllIrrelevantNat "n" $ \n ->
                 hasEq op t1 t2
                   ~~~> hasEq op (tVector t1 n) (tVector t2 n),
           implLam "t1" type0 $ \t1 ->
             implLam "t2" type0 $ \t2 ->
-              implLam "n" tNat $ \n ->
+              irrelImplNatLam "n" $ \n ->
                 instLam "eq" (hasEq op t1 t2) $ \eq ->
-                  free vectorOp @@@ [t1, t2] @@@ [n] @@@@ [eq]
+                  free vectorOp @@@ [t1, t2] .@@@ [n] @@@@ [eq]
         )
       ]
 

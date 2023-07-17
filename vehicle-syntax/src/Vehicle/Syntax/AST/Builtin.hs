@@ -277,6 +277,7 @@ data BuiltinFunction
   | At
   | ConsVector
   | Fold FoldDomain
+  | ZipWith
   | Indices
   deriving (Eq, Ord, Show, Generic)
 
@@ -309,6 +310,7 @@ instance Pretty BuiltinFunction where
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
     Fold dom -> "fold" <> pretty dom
+    ZipWith -> "zipWith"
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"

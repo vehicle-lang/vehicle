@@ -143,8 +143,6 @@ type PolarityNormType = VType PolarityBuiltin
 
 type PolaritySpine = Spine PolarityBuiltin
 
-type PolarityExplicitSpine = ExplicitSpine PolarityBuiltin
-
 type PolarityEnv = Env PolarityBuiltin
 
 pattern PolarityExpr :: Provenance -> Polarity -> Expr var PolarityBuiltin

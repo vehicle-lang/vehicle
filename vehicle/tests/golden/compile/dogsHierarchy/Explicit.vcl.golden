@@ -1,53 +1,53 @@
 bigAnd : List Bool -> Bool;
 bigAnd = fold (\ x -> \ y -> x and y) True
 
-bigOr : (\ A -> Vector A 6) Bool -> Bool;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ y -> x or y) False
+bigOr : (\ A -> Vector A) Bool -> Bool;
+bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x or y) False
 
-forallIn : (Index 6 -> Bool) -> List (Index 6) -> Bool;
+forallIn : (Index -> Bool) -> List (Index) -> Bool;
 forallIn f xs = bigAnd (mapList f xs)
 
-vectorToVector : Vector Bool 0 -> Vector Bool 0;
+vectorToVector : Vector Bool -> Vector Bool;
 vectorToVector xs = xs
 
-mapVector : (Index 6 -> Bool) -> Vector (Index 6) 6 -> Vector Bool 6;
-mapVector f = dfold {Index 6} {6} {Vector Bool} (\ {l} -> \ x -> \ xs -> f x :: xs) []
+mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
+mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
 
-foreachVector : (Index 6 -> Bool) -> Vector Bool 6;
-foreachVector f = mapVector f (indices 6)
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = mapVector f (indices n)
 
-existsIndex : (Index 6 -> Bool) -> Bool;
-existsIndex f = bigOr (foreachVector (\ i -> f i))
+existsIndex : forallT n . (Index -> Bool) -> Bool;
+existsIndex n f = bigOr (foreachVector n (\ i -> f i))
 
-forallIndex : (Index 4 -> Bool) -> Bool;
-forallIndex f = bigAnd (foreachVector (\ i -> f i))
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t d) A ds
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector (Index 6) 2 -> List (Index 6);
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold (\ {m} -> f)) (\ x -> \ xs -> x :: xs) nil
+vectorToList : Vector (Index) -> List (Index);
+vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
 mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
 
-numberOfDogs : Nat;
-numberOfDogs = 6
+numberOfDogs : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
+numberOfDogs {_x0} {{_ }} = _ 6
 
-type Dog = Index numberOfDogs
+type Dog = Index
 
-unknownDog : forallT {_x0} . {{NatInDomainConstraint 0 _x0 }} -> {{HasNatLiterals _x0 }} -> _x0;
-unknownDog {_x0} {{@0 _ }} {{_ }} = _ 0
+unknownDog : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
+unknownDog {_x0} {{_ }} = _ 0
 
-greatDane : Index 6;
+greatDane : Index;
 greatDane = 1
 
-germanShepherd : Index 6;
+germanShepherd : Index;
 germanShepherd = 2
 
-chihuahua : Index 6;
+chihuahua : Index;
 chihuahua = 4
 
-pekinese : Index 6;
+pekinese : Index;
 pekinese = 5
 
 smallDogs : List Dog;
@@ -64,17 +64,17 @@ validPixel : Rat -> Bool;
 validPixel p = 0.0 <= p and p <= 1.0
 
 validImage : Image -> Bool;
-validImage x = forallIndex (\ i -> forallIndex (\ j -> validPixel (x ! i ! j)))
+validImage x = forallIndex 4 (\ i -> forallIndex 4 (\ j -> validPixel (x ! i ! j)))
 
-isFirstChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isFirstChoice score x dog1 = let scores = score x in forallIndex (\ d -> d != dog1 => scores ! dog1 > scores ! d)
+isFirstChoice : forallT (score : Image -> Vector Score) . Image -> Dog -> Bool;
+isFirstChoice score x dog1 = let scores = score x in forallIndex 6 (\ d -> d != dog1 => scores ! dog1 > scores ! d)
 
-isSecondChoice : forallT (score : Image -> Vector Score numberOfDogs) . Image -> Dog -> Bool;
-isSecondChoice score x dog2 = let scores = score x in existsIndex (\ dog1 -> isFirstChoice score x dog1 and forallIndex (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
+isSecondChoice : forallT (score : Image -> Vector Score) . Image -> Dog -> Bool;
+isSecondChoice score x dog2 = let scores = score x in existsIndex 6 (\ dog1 -> isFirstChoice score x dog1 and forallIndex 6 (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
 
-noConfusionWith : forallT (score : Image -> Vector Score numberOfDogs) . Image -> List Dog -> List Dog -> Bool;
+noConfusionWith : forallT (score : Image -> Vector Score) . Image -> List Dog -> List Dog -> Bool;
 noConfusionWith score x dogs1 dogs2 = forallIn (\ dog1 -> forallIn (\ dog2 -> not (isFirstChoice score x dog1 and isSecondChoice score x dog2)) dogs2) dogs1
 
 @property;
-doesNotConfuseBigAndSmall : forallT (score : Image -> Vector Score numberOfDogs) . Bool;
+doesNotConfuseBigAndSmall : forallT (score : Image -> Vector Score) . Bool;
 doesNotConfuseBigAndSmall score = forall x . validImage x => noConfusionWith score x bigDogs smallDogs

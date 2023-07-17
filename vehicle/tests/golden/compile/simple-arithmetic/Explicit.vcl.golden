@@ -1,4 +1,4 @@
-vectorToVector : Vector Rat 1 -> Vector Rat 1;
+vectorToVector : Vector Rat -> Vector Rat;
 vectorToVector xs = xs
 
 precedence : Rat -> Rat -> Rat -> Rat;
@@ -8,5 +8,5 @@ natLitNatLitDiv : Rat;
 natLitNatLitDiv = 1.0 - 2.0
 
 @property;
-property : forallT (f : Vector Rat 1 -> Vector Rat 1) . Bool;
+property : forallT (f : Vector Rat -> Vector Rat) . Bool;
 property f = f [natLitNatLitDiv] ! 0 >= 0.0

@@ -58,12 +58,19 @@ getBinderName binder = case binderNamingForm binder of
   OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
 
 getExplicitArg :: GenericArg expr -> Maybe expr
-getExplicitArg (ExplicitArg _ expr) = Just expr
-getExplicitArg _ = Nothing
+getExplicitArg arg
+  | isExplicit arg = Just (argExpr arg)
+  | otherwise = Nothing
 
 getImplicitArg :: Arg var builtin -> Maybe (Expr var builtin)
-getImplicitArg (ImplicitArg _ arg) = Just arg
-getImplicitArg _ = Nothing
+getImplicitArg arg
+  | isImplicit arg = Just (argExpr arg)
+  | otherwise = Nothing
+
+getRelevantArg :: GenericArg expr -> Maybe expr
+getRelevantArg arg
+  | isRelevant arg = Just (argExpr arg)
+  | otherwise = Nothing
 
 filterOutNonExplicitArgs :: NonEmpty (Arg var builtin) -> [Expr var builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)

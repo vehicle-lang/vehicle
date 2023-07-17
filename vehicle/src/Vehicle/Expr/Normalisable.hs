@@ -29,10 +29,10 @@ instance (Hashable types) => Hashable (NormalisableBuiltin types)
 -------------------------------------------------------------------------------
 -- Patterns
 
-pattern VBuiltinFunction :: BuiltinFunction -> ExplicitSpine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
+pattern VBuiltinFunction :: BuiltinFunction -> Spine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
 pattern VBuiltinFunction f spine = VBuiltin (CFunction f) spine
 
-pattern VConstructor :: BuiltinConstructor -> ExplicitSpine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
+pattern VConstructor :: BuiltinConstructor -> Spine (NormalisableBuiltin builtin) -> Value (NormalisableBuiltin builtin)
 pattern VConstructor c args = VBuiltin (CConstructor c) args
 
 pattern VNullaryConstructor :: BuiltinConstructor -> Value (NormalisableBuiltin builtin)
@@ -58,25 +58,25 @@ pattern VIntLiteral x = VNullaryConstructor (LInt x)
 pattern VRatLiteral :: Rational -> Value (NormalisableBuiltin builtin)
 pattern VRatLiteral x = VNullaryConstructor (LRat x)
 
-pattern VVecLiteral :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
-pattern VVecLiteral xs <- VConstructor (LVec _) xs
-  where
-    VVecLiteral xs = VConstructor (LVec (length xs)) xs
+-- TODO should definitely be `isRelevant`
+pattern VVecLiteral :: [VArg (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+pattern VVecLiteral xs <- VConstructor (LVec _) (filter isExplicit -> xs)
 
 pattern VNil :: Value (NormalisableBuiltin builtin)
-pattern VNil = VNullaryConstructor Nil
+pattern VNil <- VConstructor Nil _
 
-pattern VCons :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
-pattern VCons xs = VConstructor Cons xs
+-- TODO should definitely be `isRelevant`
+pattern VCons :: [VArg (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
+pattern VCons xs <- VConstructor Cons (filter isExplicit -> xs)
 
 mkVList :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
 mkVList = foldr cons nil
   where
     nil = VConstructor Nil []
-    cons y ys = VConstructor Cons [y, ys]
+    cons y ys = VConstructor Cons (RelevantExplicitArg mempty <$> [y, ys])
 
 mkVLVec :: [Value (NormalisableBuiltin builtin)] -> Value (NormalisableBuiltin builtin)
-mkVLVec xs = VConstructor (LVec (length xs)) xs
+mkVLVec xs = VConstructor (LVec (length xs)) (RelevantImplicitArg mempty VUnitLiteral : (RelevantExplicitArg mempty <$> xs))
 
 getNatLiteral :: Value (NormalisableBuiltin builtin) -> Maybe Int
 getNatLiteral = \case

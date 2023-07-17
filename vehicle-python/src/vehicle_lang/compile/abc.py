@@ -28,6 +28,7 @@ from ._functools import (
     cons,
     curry,
     foldRight,
+    zipWith,
 )
 
 ################################################################################
@@ -41,6 +42,7 @@ _Rat = TypeVar("_Rat")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 @dataclass(frozen=True)
@@ -146,6 +148,11 @@ class Builtins(
         self,
     ) -> Function3[Function2[_S, _T, _T], _T, Sequence[_S], _T]:
         return foldRight
+
+    def ZipWith(
+        self,
+    ) -> Function3[Function2[_S, _T, _U], Sequence[_S], Sequence[_T], Sequence[_U]]:
+        return zipWith
 
     def Forall(
         self, name: str, context: Dict[str, Any]

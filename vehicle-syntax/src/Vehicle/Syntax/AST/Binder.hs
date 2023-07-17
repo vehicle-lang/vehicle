@@ -151,3 +151,6 @@ wantsToFold = foldingForm . binderDisplayForm
 
 binderNamingForm :: GenericBinder expr -> BinderNamingForm
 binderNamingForm = namingForm . binderDisplayForm
+
+setBinderRelevance :: GenericBinder expr -> Relevance -> GenericBinder expr
+setBinderRelevance (Binder p u v _r x) r = Binder p u v r x

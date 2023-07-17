@@ -19,6 +19,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
 import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -130,7 +131,8 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) prog
+  relevantProg <- removeIrrelevantCode prog
+  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) relevantProg
   literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
   let namedProg = descopeNamed literalCoercionFreeProg
   result <-

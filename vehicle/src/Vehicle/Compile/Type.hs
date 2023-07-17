@@ -21,7 +21,6 @@ import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise
-import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
@@ -54,9 +53,9 @@ typeCheckExpr imports expr1 =
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
-    expr5 <- removeIrrelevantCode expr4
+    -- expr5 <- removeIrrelevantCode expr4
     checkAllUnknownsSolved (Proxy @builtin)
-    return expr5
+    return expr4
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
@@ -178,7 +177,7 @@ restrictAbstractDefType ::
   GluedType builtin ->
   m (Type Ix builtin)
 restrictAbstractDefType resource decl@(ident, _) defType = do
-  let resourceName = pretty resource <+> squotes (pretty ident)
+  let resourceName = pretty resource <+> quotePretty ident
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
       ParameterDef sort -> restrictParameterType sort decl defType
