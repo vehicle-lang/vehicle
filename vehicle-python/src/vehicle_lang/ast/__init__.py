@@ -142,11 +142,6 @@ class FoldVector(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class ZipWith(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
 class GeIndex(BuiltinFunction):
     pass
 
@@ -263,6 +258,16 @@ class LtNat(BuiltinFunction):
 
 @dataclass(frozen=True)
 class LtRat(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MapList(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MapVector(BuiltinFunction):
     pass
 
 
@@ -395,6 +400,11 @@ class Vector(BuiltinFunction):
 
 @dataclass(frozen=True)
 class VectorType(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ZipWith(BuiltinFunction):
     pass
 
 

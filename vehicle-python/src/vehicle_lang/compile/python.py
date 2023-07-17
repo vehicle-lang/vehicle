@@ -1,7 +1,6 @@
 import ast as py
 from dataclasses import asdict, dataclass, field
 from functools import reduce
-from logging import warning
 from pathlib import Path
 from typing import (
     Any,
@@ -132,7 +131,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 yield self.translate_declaration(declaration)
             except EraseType:
                 name = declaration.get_name()
-                warning(f"ignored declaration {name}")
+                # logging.warning(f"ignored declaration {name}")
                 self.ignored_types.append(name)
 
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:

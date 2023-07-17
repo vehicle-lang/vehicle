@@ -116,11 +116,6 @@ class Builtins(
     ) -> _T:
         return reduce(lambda x, y: function(y, x), sequence, initial)
 
-    def ZipWith(
-        self, function: Callable[[_S, _T], _U], xs: Sequence[_S], ys: Sequence[_T]
-    ) -> Sequence[_U]:
-        return [function(x, y) for (x, y) in zip(xs, ys)]
-
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
     ) -> _Bool:
@@ -194,6 +189,12 @@ class Builtins(
     @abstractmethod
     def LtRat(self, x: _Rat, y: _Rat) -> _Bool:
         ...
+
+    def MapList(self, function: Callable[[_S], _T], xs: Sequence[_S]) -> Sequence[_T]:
+        return tuple(map(function, xs))
+
+    def MapVector(self, function: Callable[[_S], _T], xs: Sequence[_S]) -> Sequence[_T]:
+        return tuple(map(function, xs))
 
     @abstractmethod
     def MaxRat(self, x: _Rat, y: _Rat) -> _Rat:
@@ -282,6 +283,11 @@ class Builtins(
 
     def Vector(self, *values: _T) -> Sequence[_T]:
         return values
+
+    def ZipWith(
+        self, function: Callable[[_S, _T], _U], xs: Sequence[_S], ys: Sequence[_T]
+    ) -> Sequence[_U]:
+        return tuple(map(function, xs, ys))
 
 
 AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
