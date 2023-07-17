@@ -2,7 +2,21 @@
 
 ## Version 0.8.0
 
+* Fix various bugs in the loss function backend.
+
 * Expose `LOSS_VEHICLE` logic in the tensorflow loss function bindings.
+
+* When calling loss functions, no longer need to have individual `()` call
+  for each argument. Instead can use named arguments, e.g. for mnist spec:
+  ```python
+  lossFn(
+        n=1,
+        classifier=classifier,
+        epsilon=0.001,
+        trainingImages=(ZEROES_28X28,),
+        trainingLabels=(0,),
+  )
+  ```
 
 ## Version 0.7.0
 
