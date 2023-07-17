@@ -6,7 +6,7 @@ from vehicle_lang.compile import Target, to_python
 
 MNIST_ROBUSTNESS = (
     Path("vendor") / "examples" / "mnist-robustness" / "mnist-robustness.vcl"
-).resolve()
+)
 
 # fmt: off
 Image: TypeAlias = Tuple[
