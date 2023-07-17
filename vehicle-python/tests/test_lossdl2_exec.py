@@ -118,12 +118,3 @@ def test_loss_function_exec(
                 assert key in actual_declarations
     elif callable(validate_output):
         validate_output(actual_declarations)
-
-
-if __name__ == "__main__":
-    pytest.main(
-        [
-            "vehicle-python/tests/test_lossdl2_exec.py::test_loss_function_exec[test_tensor.vcl-samplers13-validate_output13]",
-            "-sv",
-        ]
-    )
