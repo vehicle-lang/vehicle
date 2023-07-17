@@ -59,16 +59,6 @@ omit the :code:`else` branch when writing a conditional.
    should be used sparingly, as each conditional in the final normalised
    expression approximately doubles the time taken to verify the specification.
 
-.. note::
-
-   Due to decidability and query dependency issues, the condition of an
-   :code:`if then else` statement may not contain a quantification over
-   a variable with an infinite domain. For example, the following is not allowed:
-
-   .. code-block:: agda
-
-      if (forall (x : Rat) . f x > 0) then 2 else 3
-
 Equality
 --------
 

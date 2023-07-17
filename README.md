@@ -28,8 +28,7 @@ to the network will result in errors when checking the larger proof.
 ## Documentation
 
 - [User manual](https://vehicle-lang.readthedocs.io/en/latest/)
-- [Workshop paper (FOMLAS'22) motivating the Vehicle design](https://www.macs.hw.ac.uk/~ek19/vehicle.pdf)
-- [Vehicle's Type Checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
+- [Tutorial](https://vehicle-lang.readthedocs.io/en/latest/)
 
 ## Examples
 
@@ -65,3 +64,8 @@ to discuss it with us.
 #### Interactive Theorem Prover backends
 
 - [Agda](https://agda.readthedocs.io/)
+
+## Related papers
+
+- [Workshop paper (FOMLAS'22) motivating the Vehicle design](https://www.macs.hw.ac.uk/~ek19/vehicle.pdf)
+- [Vehicle's Type Checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)

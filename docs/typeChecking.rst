@@ -11,8 +11,8 @@ This includes:
     (e.g. the same variable ``x`` isn't used as an ``Nat`` in one place and
     as a ``Tensor`` in another).
   - that there are no out-of-bounds errors when indexing into ``Vector`` and
-    ``Tensor``s
-    (e.g. If ``xs`` is a vector of size 2 then we don't use index into it
+    ``Tensor``
+    (e.g. if ``xs`` is a vector of size 2 then we don't use index into it
     at any position other than ``0`` and ``1``).
 
 Note most other Vehicle

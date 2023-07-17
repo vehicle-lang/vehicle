@@ -25,5 +25,4 @@ Contents
    training.rst
    verification.rst
    exportingToITP.rst
-   other/index.rst
    developerDocs/index.rst
