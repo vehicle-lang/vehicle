@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
+
 from vehicle_lang.compile import Target, to_python
 
-MNIST_ROBUSTNESS = (
-    Path("vendor") / "examples" / "mnist-robustness" / "mnist-robustness.vcl"
-)
+GOLDEN_PATH = Path("vendor") / "vehicle" / "tests" / "golden" / "compile"
+MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "mnist-robustness.vcl"
 
 # fmt: off
 Image: TypeAlias = Tuple[
