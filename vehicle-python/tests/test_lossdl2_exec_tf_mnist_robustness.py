@@ -7,7 +7,7 @@ from vehicle_lang.compile import Target, to_python
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
 )
-MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "mnist-robustness.vcl"
+MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "spec.vcl"
 
 # fmt: off
 Image: TypeAlias = Tuple[
