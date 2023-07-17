@@ -544,5 +544,4 @@ def to_python(
         translation = PythonTranslation(builtins=PythonBuiltins())
 
     # Translate the specification to a Python module:
-    specification_filename = specification_path.name
-    return translation.compile(program, specification_filename, context)
+    return translation.compile(program, str(specification_path), context)
