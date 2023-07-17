@@ -5,7 +5,6 @@ from functools import reduce
 from typing import (
     Any,
     Callable,
-    Collection,
     Dict,
     Generic,
     Iterable,
@@ -15,9 +14,10 @@ from typing import (
     Tuple,
 )
 
-from typing_extensions import Protocol, TypeAlias, TypeVar, override, runtime_checkable
+from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
+from ._collections import SupportsVector
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
@@ -31,14 +31,6 @@ _Rat = TypeVar("_Rat")
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
-
-_T_co = TypeVar("_T_co", covariant=True)
-
-
-@runtime_checkable
-class Vector(Collection[_T_co], Protocol[_T_co]):
-    def __getitem__(self, index: int) -> _T_co:
-        ...
 
 
 @dataclass(frozen=True)
@@ -78,8 +70,8 @@ class Builtins(
     def And(self, x: _Bool, y: _Bool) -> _Bool:
         ...
 
-    def AtVector(self, vector: Vector[_T], index: int) -> _T:
-        assert isinstance(vector, Vector), f"Expected Vector, found {vector}"
+    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
         assert isinstance(index, int), f"Expected int, found {vector}"
         return vector[index]
 
@@ -88,10 +80,10 @@ class Builtins(
         ...
 
     def ConsList(self, item: _T, iterable: Iterable[_T]) -> Iterable[_T]:
-        assert isinstance(iterable, Iterable)
+        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
         return itertools.chain((item,), iterable)
 
-    def ConsVector(self, item: _T, vector: Vector[_T]) -> Vector[_T]:
+    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
         return (item, *vector)
 
     @abstractmethod
@@ -122,15 +114,15 @@ class Builtins(
     def FoldList(
         self, function: Callable[[_S, _T], _T], initial: _T, iterable: Iterable[_S]
     ) -> _T:
-        assert callable(function)
-        assert isinstance(iterable, Iterable)
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: Vector[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
     ) -> _T:
-        assert callable(function)
-        assert isinstance(vector, Vector)
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
         return reduce(lambda x, y: function(y, x), vector, initial)
 
     def Forall(
@@ -139,8 +131,8 @@ class Builtins(
         raise UnsupportedBuiltin(vcl.Forall())
 
     def GeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.LtIndex(x, y))
 
     def GeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -153,8 +145,8 @@ class Builtins(
         return self.Not(self.LtRat(x, y))
 
     def GtIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.LeIndex(x, y))
 
     def GtInt(self, x: _Int, y: _Int) -> _Bool:
@@ -176,8 +168,8 @@ class Builtins(
     def Index(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    def Indices(self, upto: int) -> Vector[int]:
-        assert isinstance(upto, int)
+    def Indices(self, upto: int) -> SupportsVector[int]:
+        assert isinstance(upto, int), f"Expected int, found {upto}"
         return tuple(range(0, upto))
 
     @abstractmethod
@@ -185,8 +177,8 @@ class Builtins(
         ...
 
     def LeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Or(self.EqIndex(x, y), self.LtIndex(x, y))
 
     def LeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -217,13 +209,15 @@ class Builtins(
     def MapList(
         self, function: Callable[[_S], _T], iterable: Iterable[_S]
     ) -> Iterable[_T]:
-        assert callable(function)
-        assert isinstance(iterable, Iterable)
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(iterable, Iterable), f"Expected Iterable, found {iterable}"
         return map(function, iterable)
 
-    def MapVector(self, function: Callable[[_S], _T], vector: Vector[_S]) -> Vector[_T]:
-        assert callable(function)
-        assert isinstance(vector, Vector)
+    def MapVector(
+        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
+    ) -> SupportsVector[_T]:
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
         return tuple(map(function, vector))
 
     @abstractmethod
@@ -251,8 +245,8 @@ class Builtins(
         ...
 
     def NeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.EqIndex(x, y))
 
     def NeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -272,7 +266,7 @@ class Builtins(
     def NegRat(self, x: _Rat) -> _Rat:
         ...
 
-    def NilList(self) -> Vector[_T]:
+    def NilList(self) -> SupportsVector[_T]:
         return ()
 
     @abstractmethod
@@ -316,18 +310,18 @@ class Builtins(
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
-        vector1: Vector[_S],
-        vector2: Vector[_T],
-    ) -> Vector[_U]:
-        assert callable(function)
-        assert isinstance(vector1, Vector)
-        assert isinstance(vector2, Vector)
+        vector1: SupportsVector[_S],
+        vector2: SupportsVector[_T],
+    ) -> SupportsVector[_U]:
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
+        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
         return tuple(map(function, vector1, vector2))
 
     # NOTE: The definition for `Vector` must be last, otherwise mypy confuses
     #       it with the generic type `Vector`.
 
-    def Vector(self, *values: _T) -> Vector[_T]:
+    def Vector(self, *values: _T) -> SupportsVector[_T]:
         return values
 
 
