@@ -1,5 +1,0 @@
-id : Rat -> Rat;
-id x = x
-
-natId : Rat -> Rat;
-natId = id

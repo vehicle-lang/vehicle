@@ -1,6 +1,6 @@
 @network
-net : Tensor Rat [1] -> Tensor Rat [1]
+network : Tensor Rat [1] -> Tensor Rat [1]
 
 @property
-net_prop : Bool
-net_prop = net [1] ! 0 >= 0
+prop : Bool
+prop = network [1] ! 0 >= 0

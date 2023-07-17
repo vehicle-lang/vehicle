@@ -1,29 +1,20 @@
 bigOr : List Rat -> Rat;
-bigOr = fold (\ x -> \ y -> x * y) 1.0
-
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
+bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : (Rat -> Rat) -> List Rat -> List Rat;
-mapList f = fold (\ x -> \ xs -> f x :: xs) nil
-
 @property;
 unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-unusedVar f = bigOr (mapList (\ x -> bigOr (mapList (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)) sample[y][x, f])) sample[x][f])
+unusedVar f = bigOr (map (\ x -> bigOr (map (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVar1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar1 f = bigOr (mapList (\ x -> bigOr (mapList (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))) sample[y][x, f])) sample[x][f])
+underConstrainedVar1 f = bigOr (map (\ x -> bigOr (map (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVar2 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar2 f = bigOr (mapList (\ x -> bigOr (mapList (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))) sample[y][x, f])) sample[x][f])
+underConstrainedVar2 f = bigOr (map (\ x -> bigOr (map (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))) sample[y][x])) sample[x][])
 
 @property;
 underConstrainedVars : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVars f = bigOr (mapList (\ (x : Tensor Rat (4 :: nil)) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))) sample[x][f])
+underConstrainedVars f = bigOr (map (\ (x : Tensor Rat (4 :: nil)) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))) sample[x][])

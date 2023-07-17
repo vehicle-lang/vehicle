@@ -36,7 +36,7 @@ instance Pretty (TypingError builtin) where
 data TypingDeclCtxEntry builtin = TypingDeclCtxEntry
   { declAnns :: [Annotation],
     declType :: GluedType builtin,
-    declBody :: Maybe (GluedExpr builtin)
+    declBody :: Maybe (Value builtin)
   }
 
 type TypingDeclCtx builtin = DeclCtx (TypingDeclCtxEntry builtin)
@@ -46,7 +46,7 @@ mkTypingDeclCtxEntry decl =
   TypingDeclCtxEntry
     { declAnns = annotationsOf decl,
       declType = typeOf decl,
-      declBody = bodyOf decl
+      declBody = normalised <$> bodyOf decl
     }
 
 addToTypingDeclCtx :: GluedDecl builtin -> TypingDeclCtx builtin -> TypingDeclCtx builtin
@@ -55,25 +55,12 @@ addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry d
 --------------------------------------------------------------------------------
 -- Typing declaration context
 
-data NormDeclCtxEntry builtin = NormDeclCtxEntry
-  { declExpr :: Value builtin,
-    declAnns :: [Annotation],
-    declArity :: Int
-  }
+type NormDeclCtxEntry builtin = TypingDeclCtxEntry builtin
 
 type NormDeclCtx builtin = DeclCtx (NormDeclCtxEntry builtin)
 
 typingDeclCtxToNormDeclCtx :: TypingDeclCtx builtin -> NormDeclCtx builtin
-typingDeclCtxToNormDeclCtx = Map.mapMaybe $ \TypingDeclCtxEntry {..} ->
-  fmap
-    ( \body ->
-        NormDeclCtxEntry
-          { declExpr = normalised body,
-            declAnns = declAnns,
-            declArity = arity (normalised declType)
-          }
-    )
-    declBody
+typingDeclCtxToNormDeclCtx = id
 
 --------------------------------------------------------------------------------
 -- Meta variable substitution
@@ -90,7 +77,7 @@ type TypingBoundCtxEntry builtin =
   )
 
 mkTypingBoundCtxEntry :: Binder Ix builtin -> TypingBoundCtxEntry builtin
-mkTypingBoundCtxEntry binder = binder
+mkTypingBoundCtxEntry = id
 
 type TypingBoundCtx builtin = BoundCtx (TypingBoundCtxEntry builtin)
 

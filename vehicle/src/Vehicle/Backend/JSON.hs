@@ -10,18 +10,27 @@ where
 import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
+import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 (unpack)
+import Data.Data (Proxy (..))
 import Data.Hashable (Hashable)
 import Data.List (stripPrefix)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, resolutionError)
-import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, developerError, getExplicitArg, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
-import Vehicle.Compile.Print (PrintableBuiltin (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity)
+import Vehicle.Compile.Descope (DescopeNamed (..))
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
+import Vehicle.Compile.Prelude (BuiltinConstructor, BuiltinFunction, BuiltinType, DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Prelude.MonadContext
+import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Patterns (pattern UnitLiteral)
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
+import Vehicle.Expr.Relevant
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
 
@@ -29,12 +38,16 @@ import Vehicle.Syntax.AST qualified as V
 -- Public method
 
 compileProgToJSON ::
-  (MonadCompile m, ToJBuiltin builtin, PrintableBuiltin builtin) =>
-  V.Prog Name builtin ->
+  forall m a.
+  (MonadCompile m) =>
+  StandardProg ->
   m (Doc a)
 compileProgToJSON prog = do
-  jProg <- toJSON <$> toJProg prog
-  return $ pretty $ unpack $ encodePretty' prettyJSONConfig jProg
+  logCompilerPass MinDetail currentPass $ do
+    jProg <- runContextT @m @StandardBuiltin $ toJProg prog
+    let namedProg = descopeNamed jProg
+    let json = toJSON namedProg
+    return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
 
 --------------------------------------------------------------------------------
 -- Datatype
@@ -43,28 +56,13 @@ compileProgToJSON prog = do
 -- can maintain backwards compatability, even when the core
 -- Vehicle AST changes.
 
-newtype JProg
-  = Main [JDecl]
-  deriving (Generic)
+type JProg var = RelProg var JBuiltin
 
-data JDecl
-  = DefPostulate Provenance Name JExpr
-  | DefFunction Provenance Name JExpr JExpr
-  deriving (Generic)
+type JDecl var = RelDecl var JBuiltin
 
-data JExpr
-  = Universe Provenance Int
-  | App Provenance JExpr [JExpr]
-  | Pi Provenance JBinder JExpr
-  | BuiltinOp Provenance JBuiltin
-  | BoundVar Provenance Name
-  | FreeVar Provenance Name
-  | Let Provenance JExpr JBinder JExpr
-  | Lam Provenance JBinder JExpr
-  deriving (Generic)
+type JExpr var = RelExpr var JBuiltin
 
-data JBinder = Binder Provenance (Maybe Name) JExpr
-  deriving (Generic)
+type JBinder var = RelBinder var JBuiltin
 
 data JBuiltin
   = NilList
@@ -125,7 +123,9 @@ data JBuiltin
   | ConsVector
   | FoldList
   | FoldVector
-  | ZipWith
+  | MapList
+  | MapVector
+  | ZipWithVector
   | Indices
   | UnitType
   | BoolType
@@ -201,7 +201,9 @@ instance PrintableBuiltin JBuiltin where
     ConsVector -> V.Builtin p (V.BuiltinFunction V.ConsVector)
     FoldList -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldList)
     FoldVector -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldVector)
-    ZipWith -> V.Builtin p (V.BuiltinFunction V.ZipWith)
+    MapList -> V.Builtin p (V.BuiltinFunction V.MapList)
+    MapVector -> V.Builtin p (V.BuiltinFunction V.MapVector)
+    ZipWithVector -> V.Builtin p (V.BuiltinFunction V.ZipWithVector)
     Indices -> V.Builtin p (V.BuiltinFunction V.Indices)
     UnitType -> V.Builtin p (V.BuiltinType V.Unit)
     BoolType -> V.Builtin p (V.BuiltinType V.Bool)
@@ -217,91 +219,95 @@ instance PrintableBuiltin JBuiltin where
 -- Conversion to JBuiltins
 
 class ToJBuiltin builtin where
-  toJBuiltin :: builtin -> JBuiltin
+  toJBuiltin :: (MonadCompile m) => builtin -> m JBuiltin
 
 instance ToJBuiltin JBuiltin where
-  toJBuiltin = id
+  toJBuiltin = return
 
 instance ToJBuiltin BuiltinConstructor where
-  toJBuiltin = \case
-    V.Nil -> NilList
-    V.Cons -> ConsList
-    V.LUnit -> Unit
-    V.LBool b -> Bool b
-    V.LIndex i -> Index i
-    V.LNat n -> Nat n
-    V.LInt i -> Int i
+  toJBuiltin b = case b of
+    V.Nil -> return NilList
+    V.Cons -> return ConsList
+    V.LUnit -> return Unit
+    V.LBool v -> return $ Bool v
+    V.LIndex i -> return $ Index i
+    V.LNat n -> return $ Nat n
+    V.LInt i -> return $ Int i
     V.LRat r -> toJBuiltin r
-    V.LVec n -> Vector n
+    V.LVec n -> return $ Vector n
 
 instance ToJBuiltin Rational where
-  toJBuiltin r = Rat (toInt $ numerator r) (toInt $ denominator r)
+  toJBuiltin r = do
+    num <- toInt $ numerator r
+    denom <- toInt $ denominator r
+    return $ Rat num denom
     where
-      toInt :: Integer -> Int
       toInt x
-        | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
-        | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
-        | otherwise = fromInteger x
+        | x < toInteger (minBound :: Int) = compilerDeveloperError $ "Underflow converting" <+> pretty x <+> "to `Int`"
+        | x > toInteger (maxBound :: Int) = compilerDeveloperError $ "Overflow converting" <+> pretty x <+> "to `Int`"
+        | otherwise = return $ fromInteger x
 
 instance ToJBuiltin BuiltinFunction where
   toJBuiltin = \case
-    V.Not -> Not
-    V.And -> And
-    V.Or -> Or
-    V.Implies -> Implies
-    V.Quantifier V.Forall -> Forall
-    V.Quantifier V.Exists -> Exists
-    V.If -> If
-    V.FromNat {} -> developerError "`FromNat` should have been removed after type-checking."
-    V.FromRat {} -> developerError "`FromRat` should have been removed after type-checking."
-    V.Neg V.NegInt -> NegInt
-    V.Neg V.NegRat -> NegRat
-    V.Add V.AddNat -> AddNat
-    V.Add V.AddInt -> AddInt
-    V.Add V.AddRat -> AddRat
-    V.Sub V.SubInt -> SubInt
-    V.Sub V.SubRat -> SubRat
-    V.Mul V.MulNat -> MulNat
-    V.Mul V.MulInt -> MulInt
-    V.Mul V.MulRat -> MulRat
-    V.Div V.DivRat -> DivRat
-    V.PowRat -> PowRat
-    V.MinRat -> MinRat
-    V.MaxRat -> MaxRat
-    V.Equals V.EqIndex V.Eq -> EqRat
-    V.Equals V.EqNat V.Eq -> EqNat
-    V.Equals V.EqInt V.Eq -> EqInt
-    V.Equals V.EqRat V.Eq -> EqRat
-    V.Equals V.EqIndex V.Neq -> NeRat
-    V.Equals V.EqNat V.Neq -> NeNat
-    V.Equals V.EqInt V.Neq -> NeInt
-    V.Equals V.EqRat V.Neq -> NeRat
-    V.Order V.OrderIndex V.Le -> LeIndex
-    V.Order V.OrderNat V.Le -> LtNat
-    V.Order V.OrderInt V.Le -> GeInt
-    V.Order V.OrderRat V.Le -> GtRat
-    V.Order V.OrderIndex V.Lt -> LeIndex
-    V.Order V.OrderNat V.Lt -> LtNat
-    V.Order V.OrderInt V.Lt -> GeInt
-    V.Order V.OrderRat V.Lt -> GtRat
-    V.Order V.OrderIndex V.Ge -> LeIndex
-    V.Order V.OrderNat V.Ge -> LtNat
-    V.Order V.OrderInt V.Ge -> GeInt
-    V.Order V.OrderRat V.Ge -> GtRat
-    V.Order V.OrderIndex V.Gt -> LeIndex
-    V.Order V.OrderNat V.Gt -> LtNat
-    V.Order V.OrderInt V.Gt -> GeInt
-    V.Order V.OrderRat V.Gt -> GtRat
-    V.At -> AtVector
-    V.ConsVector -> ConsVector
-    V.Fold V.FoldList -> FoldList
-    V.Fold V.FoldVector -> FoldVector
-    V.ZipWith -> ZipWith
-    V.Indices -> Indices
-    V.Sample n ctx -> Sample n ctx
+    V.FromNat {} -> compilerDeveloperError "`FromNat` should have been removed after type-checking."
+    V.FromRat {} -> compilerDeveloperError "`FromRat` should have been removed after type-checking."
+    V.Not -> return Not
+    V.And -> return And
+    V.Or -> return Or
+    V.Implies -> return Implies
+    V.Quantifier V.Forall -> return Forall
+    V.Quantifier V.Exists -> return Exists
+    V.If -> return If
+    V.Neg V.NegInt -> return NegInt
+    V.Neg V.NegRat -> return NegRat
+    V.Add V.AddNat -> return AddNat
+    V.Add V.AddInt -> return AddInt
+    V.Add V.AddRat -> return AddRat
+    V.Sub V.SubInt -> return SubInt
+    V.Sub V.SubRat -> return SubRat
+    V.Mul V.MulNat -> return MulNat
+    V.Mul V.MulInt -> return MulInt
+    V.Mul V.MulRat -> return MulRat
+    V.Div V.DivRat -> return DivRat
+    V.PowRat -> return PowRat
+    V.MinRat -> return MinRat
+    V.MaxRat -> return MaxRat
+    V.Equals V.EqIndex V.Eq -> return EqRat
+    V.Equals V.EqNat V.Eq -> return EqNat
+    V.Equals V.EqInt V.Eq -> return EqInt
+    V.Equals V.EqRat V.Eq -> return EqRat
+    V.Equals V.EqIndex V.Neq -> return NeRat
+    V.Equals V.EqNat V.Neq -> return NeNat
+    V.Equals V.EqInt V.Neq -> return NeInt
+    V.Equals V.EqRat V.Neq -> return NeRat
+    V.Order V.OrderIndex V.Le -> return LeIndex
+    V.Order V.OrderNat V.Le -> return LtNat
+    V.Order V.OrderInt V.Le -> return GeInt
+    V.Order V.OrderRat V.Le -> return GtRat
+    V.Order V.OrderIndex V.Lt -> return LeIndex
+    V.Order V.OrderNat V.Lt -> return LtNat
+    V.Order V.OrderInt V.Lt -> return GeInt
+    V.Order V.OrderRat V.Lt -> return GtRat
+    V.Order V.OrderIndex V.Ge -> return LeIndex
+    V.Order V.OrderNat V.Ge -> return LtNat
+    V.Order V.OrderInt V.Ge -> return GeInt
+    V.Order V.OrderRat V.Ge -> return GtRat
+    V.Order V.OrderIndex V.Gt -> return LeIndex
+    V.Order V.OrderNat V.Gt -> return LtNat
+    V.Order V.OrderInt V.Gt -> return GeInt
+    V.Order V.OrderRat V.Gt -> return GtRat
+    V.At -> return AtVector
+    V.ConsVector -> return ConsVector
+    V.Fold V.FoldList -> return FoldList
+    V.Fold V.FoldVector -> return FoldVector
+    V.MapList -> return MapList
+    V.MapVector -> return MapVector
+    V.Indices -> return Indices
+    V.Sample n ctx -> return $ Sample n ctx
+    V.ZipWithVector -> return ZipWithVector
 
 instance ToJBuiltin BuiltinType where
-  toJBuiltin = \case
+  toJBuiltin b = return $ case b of
     V.Unit -> UnitType
     V.Bool -> BoolType
     V.Index -> IndexType
@@ -319,11 +325,10 @@ instance ToJBuiltin StandardBuiltin where
       StandardBuiltinType y -> toJBuiltin y
       StandardTypeClass {} -> typeClassesUnresolvedError
       StandardTypeClassOp {} -> typeClassesUnresolvedError
-
-typeClassesUnresolvedError :: a
-typeClassesUnresolvedError =
-  developerError
-    "Type-classes should have been resolved before calling the JSON backend"
+    where
+      typeClassesUnresolvedError =
+        compilerDeveloperError
+          "Type-classes should have been resolved before calling the JSON backend"
 
 --------------------------------------------------------------------------------
 -- Conversion of JExpr to JSON
@@ -340,16 +345,16 @@ jsonOptions =
     { tagSingleConstructors = True
     }
 
-instance ToJSON JProg where
+instance (ToJSON var) => ToJSON (JProg var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JDecl where
+instance (ToJSON var) => ToJSON (JDecl var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JExpr where
+instance (ToJSON var) => ToJSON (JExpr var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JBinder where
+instance (ToJSON var) => ToJSON (JBinder var) where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JBuiltin where
@@ -398,40 +403,86 @@ instance ToJSON V.FoldDomain where
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
-toJProg :: (MonadCompile m, ToJBuiltin builtin) => V.Prog Name builtin -> m JProg
-toJProg (V.Main ds) = Main <$> traverse toJDecl ds
+type MonadJSON m =
+  ( MonadCompile m,
+    MonadContext StandardBuiltin m
+  )
 
-toJDecl :: (MonadCompile m, ToJBuiltin builtin) => V.Decl Name builtin -> m JDecl
-toJDecl d = case d of
-  V.DefAbstract p i s t -> do
-    case s of
-      NetworkDef -> resourceError s
-      DatasetDef -> resourceError s
-      ParameterDef {} -> resourceError s
-      PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
-  V.DefFunction p i _anns t e -> DefFunction p (V.nameOf i) <$> toJExpr t <*> toJExpr e
+toJProg :: (MonadJSON m) => StandardProg -> m (JProg Ix)
+toJProg (V.Main ds) = Main <$> toJDecls ds
 
-toJExpr :: (MonadCompile m, ToJBuiltin builtin) => V.Expr Name builtin -> m JExpr
-toJExpr = \case
+toJDecls :: (MonadJSON m) => [StandardDecl] -> m [JDecl Ix]
+toJDecls [] = return []
+toJDecls (decl : decls) = do
+  decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
+    case decl of
+      V.DefAbstract p i s t -> case s of
+        NetworkDef -> resourceError s
+        DatasetDef -> resourceError s
+        ParameterDef {} -> resourceError s
+        PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
+      V.DefFunction p i _anns t e -> do
+        t' <- toJExpr t
+        e' <- toJExpr e
+        return $ DefFunction p (V.nameOf i) t' e'
+
+  decls' <- addDeclToContext decl (toJDecls decls)
+  return $ decl' : decls'
+
+toJExpr :: (MonadJSON m) => StandardExpr -> m (JExpr Ix)
+toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> return $ BuiltinOp p $ toJBuiltin b
+  V.Builtin p b -> Builtin p <$> toJBuiltin b
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
     fun' <- toJExpr fun
-    args' <- traverse toJExpr (mapMaybe getExplicitArg (NonEmpty.toList args))
-    return $ case args' of
-      [] -> fun'
-      (a : as) -> App p fun' (a : as)
-  V.Pi p binder body -> Pi p <$> toJBinder binder <*> toJExpr body
-  V.Lam p binder body -> Lam p <$> toJBinder binder <*> toJExpr body
+    let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
+    args' <- traverse toJExpr explicitArgs
+    arity <- functionArity fun
+    case args' of
+      [] -> return fun'
+      _ : _
+        | arity == length args' -> return $ App p fun' args'
+        | arity > length args' -> return $ PartialApp p arity fun' args'
+        | otherwise ->
+            compilerDeveloperError $
+              "Number of args is greater than arity:"
+                <> line
+                <> indent
+                  2
+                  ( "fun:"
+                      <+> prettyVerbose fun
+                      <> line
+                      <> "fun-arity:"
+                        <+> prettyVerbose arity
+                      <> line
+                      <> "args:"
+                        <+> prettyVerbose explicitArgs
+                      <> line
+                      <> "args-len:"
+                        <+> prettyVerbose (length args')
+                  )
+  V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+  V.Lam p _ _ -> do
+    let (foldedBinders, body) = foldLamBinders expr
+    Lam p <$> toJBinders foldedBinders <*> addBindersToContext foldedBinders (toJExpr body)
   V.Let p bound binder body ->
-    Let p <$> toJExpr bound <*> toJBinder binder <*> toJExpr body
+    Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
 
-toJBinder :: (MonadCompile m, ToJBuiltin builtin) => V.Binder Name builtin -> m JBinder
+foldLamBinders :: StandardExpr -> ([StandardBinder], StandardExpr)
+foldLamBinders = \case
+  V.Lam _ binder body
+    -- TODO this check is a massive hack. Should go once we get irrelevance up
+    -- and running.
+    | V.isExplicit binder -> first (binder :) (foldLamBinders body)
+    | otherwise -> foldLamBinders (UnitLiteral mempty `substDBInto` body)
+  expr -> ([], expr)
+
+toJBinder :: (MonadJSON m) => StandardBinder -> m (JBinder Ix)
 toJBinder binder = do
   type' <- toJExpr $ V.binderType binder
   let p = V.binderProvenance binder
@@ -441,7 +492,44 @@ toJBinder binder = do
         V.OnlyType -> Nothing
   return $ Binder p maybeName type'
 
-resourceError :: (MonadCompile m) => DefAbstractSort -> m a
+toJBinders :: (MonadJSON m) => [StandardBinder] -> m [JBinder Ix]
+toJBinders = \case
+  [] -> return []
+  (b : bs) -> do
+    b' <- toJBinder b
+    bs' <- addBinderToContext b $ toJBinders bs
+    return $ b' : bs'
+
+-- | TODO maybe move to Arity module.
+functionArity :: (MonadJSON m) => StandardExpr -> m Arity
+functionArity originalFun = do
+  go originalFun
+  where
+    go :: (MonadJSON m) => StandardExpr -> m Arity
+    go fun = do
+      result <- case fun of
+        V.App _ fn args -> do
+          arity <- go fn
+          return $ arity - length (NonEmpty.filter V.isExplicit args)
+        V.Universe {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Pi {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
+        V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
+        V.FreeVar _p ident -> do
+          decl <- getDecl (Proxy @StandardBuiltin) currentPass ident
+          logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
+          return $ arityFromVType $ normalised (typeOf decl)
+        V.BoundVar _ ix -> do
+          binder <- getBoundVarByIx (Proxy @StandardBuiltin) currentPass ix
+          arityFromVType <$> normalise (typeOf binder)
+        V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
+        V.Builtin _ b -> return $ builtinExplicitArity b
+        V.Ann _ e _ -> go e
+        V.Let _ _bound binder body ->
+          addBinderToContext binder $ go body
+      return result
+
+resourceError :: (MonadJSON m) => DefAbstractSort -> m a
 resourceError resourceType =
   compilerDeveloperError $
     "All"

@@ -46,355 +46,365 @@ MISSING: Provenance = Provenance(0, 0)
 
 
 @dataclass(frozen=True, init=False)
-class Builtin(AST):
+class BuiltinFunction(AST):
     def __init__(self) -> None:
         raise TypeError("Cannot instantiate abstract class Builtin")
 
 
 @dataclass(frozen=True)
-class AddInt(Builtin):
+class AddInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class AddNat(Builtin):
+class AddNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class AddRat(Builtin):
+class AddRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class And(Builtin):
+class And(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class AtVector(Builtin):
+class AtVector(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Bool(Builtin):
+class Bool(BuiltinFunction):
     value: bool
 
 
 @dataclass(frozen=True)
-class BoolType(Builtin):
+class BoolType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ConsList(Builtin):
+class ConsList(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ConsVector(Builtin):
+class ConsVector(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class DivRat(Builtin):
+class DivRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class EqIndex(Builtin):
+class EqIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class EqInt(Builtin):
+class EqInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class EqNat(Builtin):
+class EqNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class EqRat(Builtin):
+class EqRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Exists(Builtin):
+class Exists(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class FoldList(Builtin):
+class FoldList(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class FoldVector(Builtin):
+class FoldVector(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ZipWith(Builtin):
+class Forall(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Forall(Builtin):
+class GeIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GeIndex(Builtin):
+class GeInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GeInt(Builtin):
+class GeNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GeNat(Builtin):
+class GeRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GeRat(Builtin):
+class GtIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GtIndex(Builtin):
+class GtInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GtInt(Builtin):
+class GtNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GtNat(Builtin):
+class GtRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GtRat(Builtin):
+class If(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class If(Builtin):
+class Implies(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Implies(Builtin):
-    pass
-
-
-@dataclass(frozen=True)
-class Index(Builtin):
+class Index(BuiltinFunction):
     value: int
 
 
 @dataclass(frozen=True)
-class IndexType(Builtin):
+class IndexType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Indices(Builtin):
+class Indices(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Int(Builtin):
+class Int(BuiltinFunction):
     value: int
 
 
 @dataclass(frozen=True)
-class IntType(Builtin):
+class IntType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LeIndex(Builtin):
+class LeIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LeInt(Builtin):
+class LeInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LeNat(Builtin):
+class LeNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LeRat(Builtin):
+class LeRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ListType(Builtin):
+class ListType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtIndex(Builtin):
+class LtIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtInt(Builtin):
+class LtInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtNat(Builtin):
+class LtNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtRat(Builtin):
+class LtRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MaxRat(Builtin):
+class MapList(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MinRat(Builtin):
+class MapVector(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulInt(Builtin):
+class MaxRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulNat(Builtin):
+class MinRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulRat(Builtin):
+class MulInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Nat(Builtin):
+class MulNat(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MulRat(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class Nat(BuiltinFunction):
     value: int
 
 
 @dataclass(frozen=True)
-class NatType(Builtin):
+class NatType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NeIndex(Builtin):
+class NeIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NeInt(Builtin):
+class NeInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NeNat(Builtin):
+class NeNat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NeRat(Builtin):
+class NeRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NegInt(Builtin):
+class NegInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NegRat(Builtin):
+class NegRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NilList(Builtin):
+class NilList(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Not(Builtin):
+class Not(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Or(Builtin):
+class Or(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class PowRat(Builtin):
+class PowRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Rat(Builtin):
+class Rat(BuiltinFunction):
     numerator: int
     denominator: int
 
 
 @dataclass(frozen=True)
-class RatType(Builtin):
+class RatType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Sample(Builtin):
+class Sample(BuiltinFunction):
     name: Name
     locals: Sequence[Name]
 
 
 @dataclass(frozen=True)
-class SubInt(Builtin):
+class SubInt(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class SubRat(Builtin):
+class SubRat(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Unit(Builtin):
+class Unit(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class UnitType(Builtin):
+class UnitType(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Vector(Builtin):
+class Vector(BuiltinFunction):
     value: int
 
 
 @dataclass(frozen=True)
-class VectorType(Builtin):
+class VectorType(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ZipWithVector(BuiltinFunction):
     pass
 
 
@@ -412,8 +422,16 @@ class Expression(AST):
 @dataclass(frozen=True)
 class App(Expression):
     provenance: Provenance = field(repr=False)
-    func: Expression
-    args: Sequence[Expression]
+    function: Expression
+    arguments: Sequence[Expression]
+
+
+@dataclass(frozen=True)
+class PartialApp(Expression):
+    provenance: Provenance = field(repr=False)
+    arity: int
+    function: Expression
+    arguments: Sequence[Expression]
 
 
 @dataclass(frozen=True)
@@ -430,9 +448,9 @@ class BoundVar(Expression):
 
 
 @dataclass(frozen=True)
-class BuiltinOp(Expression):
+class Builtin(Expression):
     provenance: Provenance = field(repr=False)
-    builtin: Builtin
+    builtin: BuiltinFunction
 
 
 @dataclass(frozen=True)
@@ -444,7 +462,7 @@ class FreeVar(Expression):
 @dataclass(frozen=True)
 class Lam(Expression):
     provenance: Provenance = field(repr=False)
-    binder: Binder
+    binders: Sequence[Binder]
     body: Expression
 
 

@@ -123,8 +123,6 @@ tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
 
-tokDepFold = mkToken B.TokDepFold "dfold"
-
 tokIndices = mkToken B.TokIndices "indices"
 
 tokHasAdd = mkToken B.TokHasAdd "HasAdd"

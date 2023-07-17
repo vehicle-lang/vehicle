@@ -148,10 +148,10 @@ candidates =
           -- HasMap --
           ------------
           ( hasMap tListRaw,
-            free StdMapList
+            builtin MapList
           ),
           ( forAllIrrelevantNat "n" $ \n -> hasMap (tVectorFunctor n),
-            irrelImplNatLam "n" $ \n -> free StdMapVector .@@@ [n]
+            irrelImplNatLam "n" $ \n -> builtin MapVector .@@@ [n]
           ),
           ------------
           -- HasFold --
@@ -160,11 +160,7 @@ candidates =
             builtin (Fold FoldList)
           ),
           ( forAllIrrelevantNat "n" $ \n -> hasFold (tVectorFunctor n),
-            irrelImplNatLam "n" $ \n ->
-              implLam "A" type0 $ \a ->
-                implLam "B" type0 $ \b ->
-                  explLam "f" (a ~> b ~> b) $ \f ->
-                    builtin (Fold FoldVector) .@@@ [n] @@@ [a, b] @@ [irrelImplNatLam "m" (const f)]
+            irrelImplNatLam "n" $ \n -> builtin (Fold FoldVector) .@@@ [n]
           )
         ]
       <> orderCandidates Le

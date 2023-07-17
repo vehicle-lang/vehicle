@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterator
 from vehicle_lang.compile import Target, to_python
 
 
-def test_loss_function_tensorflow_bounded() -> None:
+def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf

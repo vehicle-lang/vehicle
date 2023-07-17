@@ -56,10 +56,10 @@ typeOfBuiltinFunction = \case
   FromRat {} -> unquantified ~> unquantified
   -- Container functions
   ConsVector -> typeOfOp2 maxPolarity
-  Fold dom -> case dom of
-    FoldVector -> typeOfFoldVector
-    FoldList -> typeOfFoldList
-  ZipWith -> typeOfZipWith
+  Fold {} -> typeOfFold
+  MapList -> typeOfMap
+  MapVector -> typeOfMap
+  ZipWithVector -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
   b@Sample {} -> developerError $ "Should not be polarity typing" <+> pretty b
@@ -117,15 +117,16 @@ typeOfNil = unquantified
 typeOfCons :: PolarityDSLExpr
 typeOfCons = typeOfOp2 maxPolarity
 
-typeOfFoldVector :: PolarityDSLExpr
-typeOfFoldVector =
-  forAllPolarityTriples $ \p1 p2 p3 ->
-    maxPolarity p1 p2 p3 .~~~> (unquantified ~~> p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
-
-typeOfFoldList :: PolarityDSLExpr
-typeOfFoldList =
+typeOfFold :: PolarityDSLExpr
+typeOfFold =
   forAllPolarityTriples $ \p1 p2 p3 ->
     maxPolarity p1 p2 p3 .~~~> (p1 ~> p2 ~> p2) ~> p2 ~> p1 ~> p3
+
+typeOfMap :: PolarityDSLExpr
+typeOfMap =
+  forAllPolarities $ \p1 ->
+    forAllPolarities $ \p2 ->
+      (p1 ~> p2) ~> p1 ~> p2
 
 typeOfZipWith :: PolarityDSLExpr
 typeOfZipWith =

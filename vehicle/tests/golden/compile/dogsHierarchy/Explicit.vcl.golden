@@ -1,42 +1,27 @@
-bigAnd : List Bool -> Bool;
-bigAnd = fold (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A : (\ A -> Vector A) Bool -> Bool;
+bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+bigAnd__List : List Bool -> Bool;
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigOr : (\ A -> Vector A) Bool -> Bool;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x or y) False
+bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
 
 forallIn : (Index -> Bool) -> List (Index) -> Bool;
-forallIn f xs = bigAnd (mapList f xs)
-
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
-
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+forallIn f xs = bigAnd__List (map f xs)
 
 foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector n f = map f (indices n)
 
 existsIndex : forallT n . (Index -> Bool) -> Bool;
 existsIndex n f = bigOr (foreachVector n (\ i -> f i))
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
-forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+forallIndex n f = bigAnd__lam_A__Vector_A (foreachVector n (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
-vectorToList : Vector (Index) -> List (Index);
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
-mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
-
-numberOfDogs : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
-numberOfDogs {_x0} {{_ }} = _ 6
-
 type Dog = Index
-
-unknownDog : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
-unknownDog {_x0} {{_ }} = _ 0
 
 greatDane : Index;
 greatDane = 1

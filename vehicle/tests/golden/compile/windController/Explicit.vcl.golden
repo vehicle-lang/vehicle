@@ -1,22 +1,13 @@
 bigAnd : (\ A -> Vector A) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
-
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
-
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector n f = map f (indices n)
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
 forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
-
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 type InputVector = Tensor Rat (2 :: nil)
 

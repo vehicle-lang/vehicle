@@ -1,7 +1,15 @@
 from typing import List
 
 from .._target import Target
-from ..ast import AST, Binder, Builtin, Declaration, Expression, Program, Provenance
+from ..ast import (
+    AST,
+    Binder,
+    BuiltinFunction,
+    Declaration,
+    Expression,
+    Program,
+    Provenance,
+)
 from .python import PythonBuiltins, PythonTranslation, to_python
 
 __all__: List[str] = [
@@ -12,7 +20,7 @@ __all__: List[str] = [
     "Program",
     "Binder",
     "Provenance",
-    "Builtin",
+    "BuiltinFunction",
     # Compilation targets
     "Target",
     # Compilation to Python

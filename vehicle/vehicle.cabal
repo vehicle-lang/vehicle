@@ -171,14 +171,17 @@ library
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
+    Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
+    Vehicle.Compile.Prelude.MonadContext
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Bidirectional
@@ -216,6 +219,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug
+    Vehicle.Expr.Relevant
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend

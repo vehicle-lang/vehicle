@@ -114,10 +114,10 @@ writeResultToFile ::
   Doc a ->
   m ()
 writeResultToFile target filepath doc = do
-  logDebug MaxDetail $ "Creating file:" <+> pretty filepath
   let text = layoutAsText $ prependfileHeader doc target
-  liftIO $ case filepath of
-    Nothing -> TIO.putStrLn text
+  case filepath of
+    Nothing -> liftIO $ TIO.putStrLn text
     Just outputFilePath -> do
-      createDirectoryIfMissing True (takeDirectory outputFilePath)
-      TIO.writeFile outputFilePath text
+      logDebug MaxDetail $ "Creating file:" <+> pretty filepath
+      liftIO $ createDirectoryIfMissing True (takeDirectory outputFilePath)
+      liftIO $ TIO.writeFile outputFilePath text

@@ -72,7 +72,7 @@ bigOp ident arg =
 
 -- | Map a list
 mapList :: PLExpr -> PLExpr -> PLExpr -> PLExpr -> PLExpr
-mapList t1 t2 f xs = free StdMapList @@@ [t1, t2] @@ [f, xs]
+mapList t1 t2 f xs = builtinFunction MapList @@@ [t1, t2] @@ [f, xs]
 
 -- | Compiles a quantifier to a sampling procedure.
 quantifierSampler :: StdLibFunction -> StandardType -> Name -> [Name] -> PLExpr
@@ -189,7 +189,7 @@ dl2Translation =
       compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
       compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x) +: ind y x,
       compileNeq = mkOp2 tRat ind,
-      compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (x -: y)
+      compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
     }
 
 --------------------------------------------------------------------------------

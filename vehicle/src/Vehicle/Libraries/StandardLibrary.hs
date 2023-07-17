@@ -53,8 +53,6 @@ data StdLibFunction
   | StdNotEqualsVector
   | StdAddVector
   | StdSubVector
-  | StdMapVector
-  | StdMapList
   | StdVectorToList
   | StdForeach
   | StdTensor
@@ -64,8 +62,6 @@ instance Show StdLibFunction where
   show = \case
     StdBigAnd -> "bigAnd"
     StdBigOr -> "bigOr"
-    StdMapList -> "mapList"
-    StdMapVector -> "mapVector"
     StdExistsIndex -> "existsIndex"
     StdForallIndex -> "forallIndex"
     StdAddVector -> "addVector"

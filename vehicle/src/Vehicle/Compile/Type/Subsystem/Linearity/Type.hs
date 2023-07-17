@@ -54,10 +54,10 @@ typeOfBuiltinFunction = \case
   FromRat {} -> constant ~> constant
   -- Container functions
   ConsVector -> typeOfOp2 maxLinearity
-  Fold dom -> case dom of
-    FoldVector -> typeOfFoldVector
-    FoldList -> typeOfFoldList
-  ZipWith -> typeOfZipWith
+  Fold {} -> typeOfFold
+  MapList -> typeOfMap
+  MapVector -> typeOfMap
+  ZipWithVector -> typeOfZipWith
   At -> typeOfAt
   Indices -> constant ~> constant
   b@Sample {} -> developerError $ "Should not be linearity typing" <+> pretty b
@@ -117,15 +117,16 @@ typeOfCons = typeOfOp2 maxLinearity
 typeOfAt :: LinearityDSLExpr
 typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
 
-typeOfFoldList :: LinearityDSLExpr
-typeOfFoldList =
+typeOfFold :: LinearityDSLExpr
+typeOfFold =
   forAllLinearityTriples $ \l1 l2 l3 ->
     maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
 
-typeOfFoldVector :: LinearityDSLExpr
-typeOfFoldVector =
-  forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 .~~~> (constant ~~> l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+typeOfMap :: LinearityDSLExpr
+typeOfMap =
+  forAllLinearities $ \l1 ->
+    forAllLinearities $ \l2 ->
+      (l1 ~> l2) ~> l1 ~> l2
 
 typeOfZipWith :: LinearityDSLExpr
 typeOfZipWith =

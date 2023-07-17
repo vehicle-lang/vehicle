@@ -5,10 +5,9 @@ import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT (..), mapWriterT)
-import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, lookupInDeclCtx)
 import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
@@ -426,22 +425,11 @@ clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
   modifyMetaCtx @builtin (const emptyTypeCheckerState)
 
-getDeclType :: (MonadTypeChecker builtin m) => Provenance -> Identifier -> m (Type Ix builtin)
-getDeclType p ident = do
+getDeclType :: (MonadTypeChecker builtin m) => Identifier -> m (Type Ix builtin)
+getDeclType ident = do
   ctx <- getDeclContext
-  case Map.lookup ident ctx of
-    Just TypingDeclCtxEntry {..} ->
-      return $ unnormalised declType
-    -- This should have been caught during scope checking
-    Nothing ->
-      compilerDeveloperError $
-        "Declaration"
-          <+> quotePretty ident
-          <+> "not found when"
-          <+> "looking up variable in context"
-          <+> pretty (Map.keys ctx)
-          <+> "at"
-          <+> pretty p
+  TypingDeclCtxEntry {..} <- lookupInDeclCtx "type-checking" ident ctx
+  return $ unnormalised declType
 
 --------------------------------------------------------------------------------
 -- Constraints

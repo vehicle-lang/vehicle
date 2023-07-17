@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Iterator
 from typing_extensions import TypeAlias, TypeVar, override
 
 from . import _numeric
-from ._functools import Function2, Operator1, Operator2, curry
 from .abc import Builtins
 
 ################################################################################
@@ -32,66 +31,83 @@ class ABCNumericBuiltins(
     metaclass=ABCMeta,
 ):
     @override
-    def AddInt(self) -> Operator2[_SupportsInt]:
-        return curry(operator.add)
+    def AddInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x + y
 
     @override
-    def AddNat(self) -> Operator2[_SupportsNat]:
-        return curry(operator.add)
+    def AddNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x + y
 
     @override
-    def AddRat(self) -> Operator2[_SupportsRat]:
-        return curry(operator.add)
+    def AddRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x + y
 
     @override
-    def DivRat(self) -> Operator2[_SupportsRat]:
-        return curry(operator.truediv)
-
-    def IntFromNat(self, value: _SupportsNat) -> _SupportsInt:
-        return self.Int(value.__int__())
-
-    @override
-    def MaxRat(self) -> Operator2[_SupportsRat]:
-        return curry(max)
+    def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x / y
 
     @override
-    def MinRat(self) -> Operator2[_SupportsRat]:
-        return curry(min)
+    def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return max(x, y)
 
     @override
-    def MulInt(self) -> Operator2[_SupportsInt]:
-        return curry(operator.mul)
+    def MinRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return min(x, y)
 
     @override
-    def MulNat(self) -> Operator2[_SupportsNat]:
-        return curry(operator.mul)
+    def MulInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x * y
 
     @override
-    def MulRat(self) -> Operator2[_SupportsRat]:
-        return curry(operator.mul)
+    def MulNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x * y
 
     @override
-    def NegInt(self) -> Operator1[_SupportsInt]:
-        return lambda x: -x
+    def MulRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x * y
 
     @override
-    def NegRat(self) -> Operator1[_SupportsRat]:
-        return lambda x: -x
+    def NegInt(self, x: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        return -x
 
     @override
-    def PowRat(self) -> Function2[_SupportsRat, _SupportsInt, _SupportsRat]:
-        return lambda x: lambda y: x ** y.__int__()
-
-    def RatFromNat(self, value: _SupportsNat) -> _SupportsRat:
-        return self.Rat(value.__int__())
-
-    def RatFromInt(self, value: _SupportsInt) -> _SupportsRat:
-        return self.Rat(value.__int__())
+    def NegRat(self, x: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        return -x
 
     @override
-    def SubInt(self) -> Operator2[_SupportsInt]:
-        return curry(operator.sub)
+    def PowRat(self, x: _SupportsRat, y: _SupportsInt) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x ** y.__int__()
 
     @override
-    def SubRat(self) -> Operator2[_SupportsRat]:
-        return curry(operator.sub)
+    def SubInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x - y
+
+    @override
+    def SubRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x - y

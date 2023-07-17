@@ -1,17 +1,14 @@
 bigAnd : (\ A -> Vector A) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
+foreachVector__Rat : forallT n . (Index -> Rat) -> Vector Rat;
+foreachVector__Rat n f = map f (indices n)
 
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
-
-foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector__Bool : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector__Bool n f = map f (indices n)
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
-forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+forallIndex n f = bigAnd (foreachVector__Bool n (\ i -> f i))
 
 pi : Rat;
 pi = 3.141592
@@ -41,9 +38,6 @@ clearOfConflict = 0
 weakLeft : Index;
 weakLeft = 1
 
-weakRight : forallT {_x0} . {{HasNatLiterals _x0 }} -> _x0;
-weakRight {_x0} {{_ }} = _ 2
-
 strongLeft : Index;
 strongLeft = 3
 
@@ -65,7 +59,7 @@ meanScalingValues : UnnormalisedInputVector;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : UnnormalisedInputVector -> InputVector;
-normalise x = foreachVector 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
+normalise x = foreachVector__Rat 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
 
 normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
 normAcasXu acasXu x = acasXu (normalise x)

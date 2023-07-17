@@ -4,6 +4,7 @@ import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Map qualified as Map
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -183,3 +184,29 @@ internalScopingError pass ident =
         <+> "declaration"
         <+> quotePretty ident
         <+> "not found in scope..."
+
+outOfBoundsError :: (MonadError CompileError m) => Doc () -> BoundCtx a -> Ix -> m b
+outOfBoundsError pass ctx i =
+  compilerDeveloperError $
+    "Internal scoping error during"
+      <+> pass
+      <> ":"
+        <+> "the bound context of length"
+        <+> quotePretty (length ctx)
+        <+> "is smaller than the found DB index"
+        <+> pretty i
+
+lookupInDeclCtx :: (MonadError CompileError m) => Doc () -> Identifier -> DeclCtx a -> m a
+lookupInDeclCtx pass ident ctx = case Map.lookup ident ctx of
+  Nothing -> internalScopingError pass ident
+  Just x -> return x
+
+lookupLvInBoundCtx :: (MonadError CompileError m) => Doc () -> Lv -> BoundCtx a -> m a
+lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
+  Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
+  Just x -> return x
+
+lookupIxInBoundCtx :: (MonadError CompileError m) => Doc () -> Ix -> BoundCtx a -> m a
+lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
+  Nothing -> outOfBoundsError pass ctx ix
+  Just x -> return x

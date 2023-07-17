@@ -34,11 +34,6 @@ type VProg builtin = GenericDecl builtin
 -- | A normalised type
 type VType builtin = Value builtin
 
-arity :: VType builtin -> Int
-arity = \case
-  VPi _ r -> 1 + arity r
-  _ -> 0
-
 -----------------------------------------------------------------------------
 -- Spines and environments
 

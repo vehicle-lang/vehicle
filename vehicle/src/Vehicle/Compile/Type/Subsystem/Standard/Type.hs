@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Type
   ( typeStandardBuiltin,
     handleStandardTypingError,
-    relevanceOfTypeClass,
     typeOfTypeClassOp,
   )
 where
@@ -12,7 +11,6 @@ import Data.Text (pack)
 import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (getTypeClass)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
@@ -86,9 +84,11 @@ typeOfBuiltinFunction = \case
   ConsVector -> typeOfConsVector
   Fold dom -> case dom of
     FoldList -> typeOfFold tListRaw
-    FoldVector -> typeOfFoldVector
+    FoldVector -> forAllIrrelevantNat "n" $ \n -> typeOfFold (tVectorFunctor n)
+  MapList -> typeOfMap tListRaw
+  MapVector -> forAllIrrelevantNat "n" $ \n -> typeOfMap (tVectorFunctor n)
   At -> typeOfAt
-  ZipWith -> typeOfZipWith
+  ZipWithVector -> typeOfZipWith
   Indices -> typeOfIndices
   b@Sample {} -> developerError $ "Should not be typing" <+> pretty b
 
@@ -224,18 +224,6 @@ typeOfConsVector =
     forAllIrrelevantNat "n" $ \n ->
       a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
-typeOfFoldVector :: StandardDSLExpr
-typeOfFoldVector =
-  forAll "A" type0 $ \a ->
-    forAllIrrelevantNat "n" $ \n ->
-      forAll "B" (tNat .~> type0) $ \b ->
-        forAllIrrelevantNat "i" (\i -> a ~> b .@@ [i] ~> b .@@ [addNat i (natLit 1)])
-          ~> b
-          .@@ [natLit 0]
-          ~> tVector a n
-          ~> b
-          .@@ [n]
-
 typeOfQuantifier :: StandardDSLExpr -> StandardDSLExpr
 typeOfQuantifier t = t ~> tBool
 
@@ -272,8 +260,3 @@ handleStandardTypingError = \case
     throwError (FailedUnificationConstraints constraints)
   UnsolvableConstraints constraints ->
     throwError $ UnsolvedConstraints constraints
-
-relevanceOfTypeClass :: (MonadCompile m) => StandardNormType -> m Relevance
-relevanceOfTypeClass t = do
-  (tc, _) <- getTypeClass t
-  return $ relevanceOf tc

@@ -1,4 +1,11 @@
 --------------------------------------------------------------------------------
+-- List
+--------------------------------------------------------------------------------
+
+vectorToList : forallT {@0 n} {A} . Vector A n -> List A
+vectorToList = fold (\x xs -> x :: xs) nil
+
+--------------------------------------------------------------------------------
 -- Foldable
 --------------------------------------------------------------------------------
 
@@ -20,9 +27,6 @@ existsIn f xs = bigOr (map f xs)
 
 vectorToVector : forallT {@0 n} {A} . Vector A n -> Vector A n
 vectorToVector xs = xs
-
-mapVector : forallT {@0 n} {A} {B} . (A -> B) -> Vector A n -> Vector B n
-mapVector {n} {A} {B} f = dfold {A} {n} {Vector B} (\{l} x xs -> f x ::v xs) []
 
 foreachVector : forallT n . (Index n -> A) -> Vector A n
 foreachVector n f = map f (indices n)
@@ -59,13 +63,3 @@ forallIndex n f = bigAnd (foreach i . f i)
 
 Tensor : Type -> List Nat -> Type
 Tensor A ds = fold (\d t -> Vector t d) A ds
-
---------------------------------------------------------------------------------
--- List
---------------------------------------------------------------------------------
-
-vectorToList : forallT {@0 n} {A} . Vector A n -> List A
-vectorToList = fold (\x xs -> x :: xs) nil
-
-mapList : (A -> B) -> List A -> List B
-mapList f = fold (\x xs -> f x :: xs) nil

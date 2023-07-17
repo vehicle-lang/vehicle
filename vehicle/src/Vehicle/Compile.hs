@@ -11,14 +11,14 @@ import Vehicle.Backend.JSON (compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
-import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
 import Vehicle.Compile.Error
+import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (removeLiteralCoercions, resolveInstanceArguments)
+import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
@@ -107,8 +107,7 @@ compileToLossFunction ::
   m ()
 compileToLossFunction (imports, typedProg) differentiableLogic outputFile outputAsJSON = do
   let mergedProg = unnormalised <$> mergeImports imports typedProg
-  functionalisedProg <- functionaliseResources mergedProg
-  resolvedProg <- resolveInstanceArguments functionalisedProg
+  resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
   compileToJSON lossProg outputFile outputAsJSON
 
@@ -120,8 +119,7 @@ compileDirect ::
   m ()
 compileDirect (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = unnormalised <$> mergeImports imports typedProg
-  functionalisedProg <- functionaliseResources mergedProg
-  resolvedProg <- resolveInstanceArguments functionalisedProg
+  resolvedProg <- resolveInstanceArguments mergedProg
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
@@ -132,13 +130,14 @@ compileToJSON ::
   m ()
 compileToJSON prog outputFile outputAsJSON = do
   relevantProg <- removeIrrelevantCode prog
-  monomorphiseProg <- monomorphise (\d -> moduleOf (identifierOf d) == User) relevantProg
-  literalCoercionFreeProg <- removeLiteralCoercions monomorphiseProg
-  let namedProg = descopeNamed literalCoercionFreeProg
+  let monomorphiseIf = isPropertyDecl
+  monomorphiseProg <- monomorphise monomorphiseIf True "_" relevantProg
+  functionalisedProg <- functionaliseResources monomorphiseProg
+  etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON namedProg
+        compileProgToJSON etaExpandedProg
       else do
-        return $ prettyFriendly namedProg
+        return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result

@@ -1,30 +1,21 @@
 bigAnd : (\ A -> Vector A) Bool -> Bool;
-bigAnd = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x and y) True
-
-vectorToVector : Vector Bool -> Vector Bool;
-vectorToVector xs = xs
-
-mapVector : (Index -> Bool) -> Vector (Index) -> Vector Bool;
-mapVector f = dfold {Index} {Vector Bool} (\ x -> \ xs -> f x :: xs) []
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = mapVector f (indices n)
+foreachVector n f = map f (indices n)
 
 @noinline;
-subVector : Vector Rat -> Vector Rat -> Vector Rat;
-subVector = zipWith (\ x -> \ y -> x - y)
+subVector__Rat__Rat__Rat : Vector Rat -> Vector Rat -> Vector Rat;
+subVector__Rat__Rat__Rat _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 
 @noinline;
-subVector : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
-subVector = zipWith (\ x -> \ y -> subVector x y)
+subVector__Vector_Rat__Vector_Rat__Vector_Rat : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
+subVector__Vector_Rat__Vector_Rat__Vector_Rat _x0 _x1 = zipWith (\ x -> \ y -> subVector__Rat__Rat__Rat x y) _x0 _x1
 
 forallIndex : forallT n . (Index -> Bool) -> Bool;
 forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
-
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
 
 type Image = Tensor Rat (28 :: 28 :: nil)
 
@@ -40,8 +31,8 @@ boundedByEpsilon : forallT (epsilon : Rat) . Image -> Bool;
 boundedByEpsilon epsilon x = forallIndex 28 (\ i -> forallIndex 28 (\ j -> - epsilon <= x ! i ! j and x ! i ! j <= epsilon))
 
 robustAround : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . Image -> Label -> Bool;
-robustAround classifier epsilon image label = forall pertubation . let perturbedImage = subVector image pertubation in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
+robustAround classifier epsilon image label = forall pertubation . let perturbedImage = subVector__Vector_Rat__Vector_Rat__Vector_Rat image pertubation in boundedByEpsilon epsilon pertubation and validImage perturbedImage => advises classifier perturbedImage label
 
 @property;
-robust : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . forallT (n : Nat) . forallT (trainingImages : Vector Image) . forallT (trainingLabels : Vector Label) . Vector Bool;
-robust classifier epsilon n trainingImages trainingLabels = foreachVector n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))
+robust : forallT (n : Nat) . forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . forallT (trainingImages : Vector Image) . forallT (trainingLabels : Vector Label) . Vector Bool;
+robust n classifier epsilon trainingImages trainingLabels = foreachVector n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))

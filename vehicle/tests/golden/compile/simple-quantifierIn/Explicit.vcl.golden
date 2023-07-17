@@ -1,28 +1,22 @@
-bigAnd : List Bool -> Bool;
-bigAnd = fold (\ x -> \ y -> x and y) True
+bigAnd__lam_A__Vector_A : (\ A -> Vector A) Bool -> Bool;
+bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+bigAnd__List : List Bool -> Bool;
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigOr : (\ A -> Vector A) Bool -> Bool;
-bigOr = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ y -> x or y) False
+bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
 
 forallIn : (Vector Rat -> Bool) -> List (Vector Rat) -> Bool;
-forallIn f xs = bigAnd (mapList f xs)
-
-vectorToVector : Vector Rat -> Vector Rat;
-vectorToVector xs = xs
+forallIn f xs = bigAnd__List (map f xs)
 
 @noinline;
 equalsVector : Vector Rat -> Vector Rat -> Bool;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+equalsVector xs ys = bigAnd__lam_A__Vector_A (zipWith (\ x -> \ y -> x == y) xs ys)
 
 @noinline;
 notEqualsVector : Vector Rat -> Vector Rat -> Bool;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
-
-vectorToList : Vector (Vector Rat) -> List (Vector Rat);
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
-mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
 
 dataset : List (Vector Rat);
 dataset = [0.5, 1.0] :: nil

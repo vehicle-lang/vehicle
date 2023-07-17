@@ -1,14 +1,8 @@
 bigAnd : List Bool -> Bool;
-bigAnd = fold (\ x -> \ y -> x and y) True
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 forallIn : (Nat -> Bool) -> List Nat -> Bool;
-forallIn f xs = bigAnd (mapList f xs)
-
-vectorToList : Vector Nat -> List Nat;
-vectorToList = (\ {A} -> \ {B} -> \ f -> dfold f) (\ x -> \ xs -> x :: xs) nil
-
-mapList : forallT {A} . forallT {B} . (A -> B) -> List A -> List B;
-mapList = \ {A} -> \ {B} -> \ f -> fold (\ x -> \ xs -> f x :: xs) nil
+forallIn f xs = bigAnd (map f xs)
 
 @property;
 e1 : Bool;
@@ -17,15 +11,6 @@ e1 = let x = True in let y = False in x and y
 @property;
 e2 : Bool;
 e2 = let y = 1 in y >= 2
-
-e3 : Nat;
-e3 = let y = 1 + 1 in y
-
-lamLet : Nat -> Nat;
-lamLet = \ (x : Nat) -> let y = x in y
-
-letLam : Nat -> Nat;
-letLam = let y = \ x -> x in y
 
 @property;
 forallLet : Bool;

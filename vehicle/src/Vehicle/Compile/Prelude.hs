@@ -5,7 +5,10 @@ module Vehicle.Compile.Prelude
 where
 
 import Control.Monad.Identity (Identity (..))
+import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Prelude as X
@@ -87,34 +90,62 @@ mapBuiltins f e = runIdentity (traverseBuiltinsM (\p1 p2 b args -> return $ f p1
 
 -- | Function for updating a free variable application
 type FreeVarUpdate m var builtin =
-  Provenance -> Provenance -> Identifier -> [Arg var builtin] -> m (Expr var builtin)
+  (Expr var builtin -> m (Expr var builtin)) ->
+  Provenance ->
+  Provenance ->
+  Identifier ->
+  [Arg var builtin] ->
+  m (Expr var builtin)
 
--- | Traverses all the auxiliary type arguments in the provided element,
+-- | Traverses all the free variables in the provided element,
 -- applying the provided update function when it finds them (or a space
 -- where they should be).
 traverseFreeVarsM ::
+  forall m var builtin.
   (Monad m) =>
+  (Binder var builtin -> m (Expr var builtin) -> m (Expr var builtin)) ->
   FreeVarUpdate m var builtin ->
   Expr var builtin ->
   m (Expr var builtin)
-traverseFreeVarsM f expr = case expr of
-  FreeVar p v -> f p p v []
-  App p1 (FreeVar p2 v) args -> do
-    args' <- traverse (traverseFreeVarsArg f) args
-    f p1 p2 v (NonEmpty.toList args')
-  Ann p e t -> Ann p <$> traverseFreeVarsM f e <*> traverseFreeVarsM f t
-  App p fun args -> App p <$> traverseFreeVarsM f fun <*> traverse (traverseFreeVarsArg f) args
-  Pi p binder res -> Pi p <$> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f res
-  Let p bound binder body -> Let p <$> traverseFreeVarsM f bound <*> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f body
-  Lam p binder body -> Lam p <$> traverseFreeVarsBinder f binder <*> traverseFreeVarsM f body
-  Universe p u -> return $ Universe p u
-  Builtin p v -> return $ Builtin p v
-  BoundVar p v -> return $ BoundVar p v
-  Hole p n -> return $ Hole p n
-  Meta p m -> return $ Meta p m
+traverseFreeVarsM underBinder processFreeVar = go
+  where
+    go :: Expr var builtin -> m (Expr var builtin)
+    go expr = case expr of
+      FreeVar p ident -> do
+        processFreeVar go p p ident mempty
+      App p1 (FreeVar p2 ident) args -> do
+        processFreeVar go p1 p2 ident (NonEmpty.toList args)
+      App p fun args -> do
+        fun' <- go fun
+        args' <- traverse (traverse go) args
+        return $ App p fun' args'
+      BoundVar {} -> return expr
+      Universe {} -> return expr
+      Meta {} -> return expr
+      Hole {} -> return expr
+      Builtin {} -> return expr
+      Ann p e t -> Ann p <$> go e <*> go t
+      Pi p binder res -> do
+        binder' <- traverse go binder
+        res' <- underBinder binder' (go res)
+        return $ Pi p binder' res'
+      Lam p binder body -> do
+        binder' <- traverse go binder
+        body' <- underBinder binder' (go body)
+        return $ Lam p binder' body'
+      Let p bound binder body -> do
+        bound' <- go bound
+        binder' <- traverse go binder
+        body' <- underBinder binder' (go body)
+        return $ Let p bound' binder' body'
 
-traverseFreeVarsArg :: (Monad m) => FreeVarUpdate m var builtin -> Arg var builtin -> m (Arg var builtin)
-traverseFreeVarsArg f = traverse (traverseFreeVarsM f)
-
-traverseFreeVarsBinder :: (Monad m) => FreeVarUpdate m var builtin -> Binder var builtin -> m (Binder var builtin)
-traverseFreeVarsBinder f = traverse (traverseFreeVarsM f)
+freeVarsIn :: Expr var builtin -> Set Identifier
+freeVarsIn =
+  execWriter
+    . traverseFreeVarsM
+      (const id)
+      ( \recGo p1 p2 i args -> do
+          args' <- traverse (traverse recGo) args
+          tell $ Set.singleton i
+          return $ normAppList p1 (FreeVar p2 i) args'
+      )

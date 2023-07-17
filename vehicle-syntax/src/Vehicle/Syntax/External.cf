@@ -64,7 +64,6 @@ position token TokAt         {"!"};
 position token TokZipWith    {"zipWith"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokDepFold    {"dfold"};
 position token TokIndices    {"indices"};
 position token TokFromNat    {"fromNat"};
 position token TokFromInt    {"fromInt"};
@@ -193,7 +192,6 @@ At.         Expr12 ::= Expr12 TokAt Expr13;
 ZipWith.    Expr15 ::= TokZipWith;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
-DepFold.    Expr15 ::= TokDepFold;
 Indices.    Expr15 ::= TokIndices;
 
 -- Primitive types.

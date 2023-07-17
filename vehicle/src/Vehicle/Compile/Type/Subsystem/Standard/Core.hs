@@ -66,6 +66,8 @@ type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltin
 -----------------------------------------------------------------------------
 -- Norm expressions
 
+type StandardNormDecl = VDecl StandardBuiltin
+
 type StandardNormExpr = Value StandardBuiltin
 
 type StandardNormBinder = VBinder StandardBuiltin

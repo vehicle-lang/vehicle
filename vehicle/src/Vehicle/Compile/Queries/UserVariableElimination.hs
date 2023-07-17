@@ -285,15 +285,9 @@ compilerVectorLinearExpr variables dimensions = go
 
     singletonVar :: Lv -> Coefficient -> m (SparseLinearExpr MixedVariable)
     singletonVar level coef = do
-      case lookupLv variables level of
-        Just var -> do
-          let constant = Vector.replicate (product dimensions) 0
-          return $ Sparse dimensions (Map.singleton var coef) constant
-        Nothing ->
-          developerError $
-            "Reduced network variable level"
-              <+> pretty level
-              <+> "out of range"
+      var <- lookupLvInBoundCtx currentPass level variables
+      let constant = Vector.replicate (product dimensions) 0
+      return $ Sparse dimensions (Map.singleton var coef) constant
 
     isAddVector :: StandardNormExpr -> Maybe (StandardNormExpr, StandardNormExpr)
     isAddVector = \case
@@ -603,13 +597,9 @@ compileReducedLinearExpr variables expr = do
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
     singletonVar :: Lv -> Coefficient -> m (SparseLinearExpr MixedVariable)
-    singletonVar level coef = case lookupLv variables level of
-      Just var -> return (Sparse [] (Map.singleton var coef) (Vector.singleton 0))
-      Nothing ->
-        developerError $
-          "Reduced network variable level"
-            <+> pretty level
-            <+> "out of range"
+    singletonVar level coef = do
+      var <- lookupLvInBoundCtx currentPass level variables
+      return (Sparse [] (Map.singleton var coef) (Vector.singleton 0))
 
 -- | Converts the provided expression to linear normal form,
 -- i.e. consisting of only additions and multiplications by constants.
