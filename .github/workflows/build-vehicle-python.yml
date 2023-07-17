@@ -56,6 +56,11 @@ jobs:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
+      - name: Replace files with symlinks
+        if: matrix.os.name == 'Linux'
+        run: |
+          find . -type l -exec sh -c 'cp -Rf "$(realpath "$(dirname "$0")/$(readlink "$0")")" "$0"' {} \;
+
       - name: Build wheel
         uses: pypa/cibuildwheel@v2.14.1
         with:
