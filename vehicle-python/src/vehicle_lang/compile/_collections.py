@@ -5,6 +5,7 @@ from typing_extensions import Protocol, TypeVar, runtime_checkable
 _T_co = TypeVar("_T_co", covariant=True)
 
 
+@runtime_checkable
 class Subscriptable(Protocol[_T_co]):
     def __getitem__(self, index: int) -> _T_co:
         ...

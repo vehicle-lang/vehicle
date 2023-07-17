@@ -131,8 +131,6 @@ class Builtins(
         raise UnsupportedBuiltin(vcl.Forall())
 
     def GeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.LtIndex(x, y))
 
     def GeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -145,8 +143,6 @@ class Builtins(
         return self.Not(self.LtRat(x, y))
 
     def GtIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.LeIndex(x, y))
 
     def GtInt(self, x: _Int, y: _Int) -> _Bool:
@@ -177,8 +173,6 @@ class Builtins(
         ...
 
     def LeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Or(self.EqIndex(x, y), self.LtIndex(x, y))
 
     def LeInt(self, x: _Int, y: _Int) -> _Bool:
@@ -245,8 +239,6 @@ class Builtins(
         ...
 
     def NeIndex(self, x: int, y: int) -> _Bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
         return self.Not(self.EqIndex(x, y))
 
     def NeInt(self, x: _Int, y: _Int) -> _Bool:
