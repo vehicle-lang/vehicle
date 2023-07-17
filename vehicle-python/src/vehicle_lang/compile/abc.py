@@ -5,17 +5,17 @@ from functools import reduce
 from typing import (
     Any,
     Callable,
+    Collection,
     Dict,
     Generic,
     Iterable,
     Iterator,
-    Sequence,
     SupportsFloat,
     SupportsInt,
     Tuple,
 )
 
-from typing_extensions import TypeAlias, TypeVar, override
+from typing_extensions import Protocol, TypeAlias, TypeVar, override, runtime_checkable
 
 from .. import ast as vcl
 
@@ -31,6 +31,14 @@ _Rat = TypeVar("_Rat")
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+@runtime_checkable
+class Vector(Collection[_T_co], Protocol[_T_co]):
+    def __getitem__(self, index: int) -> _T_co:
+        ...
 
 
 @dataclass(frozen=True)
@@ -70,10 +78,10 @@ class Builtins(
     def And(self, x: _Bool, y: _Bool) -> _Bool:
         ...
 
-    def AtVector(self, sequence: Sequence[_T], index: int) -> _T:
-        assert isinstance(sequence, Sequence), f"Expected Sequence, found {sequence}"
-        assert isinstance(index, int), f"Expected int, found {sequence}"
-        return sequence[index]
+    def AtVector(self, vector: Vector[_T], index: int) -> _T:
+        assert isinstance(vector, Vector), f"Expected Vector, found {vector}"
+        assert isinstance(index, int), f"Expected int, found {vector}"
+        return vector[index]
 
     @abstractmethod
     def Bool(self, value: bool) -> _Bool:
@@ -83,8 +91,8 @@ class Builtins(
         assert isinstance(iterable, Iterable)
         return itertools.chain((item,), iterable)
 
-    def ConsVector(self, item: _T, sequence: Sequence[_T]) -> Sequence[_T]:
-        return (item, *sequence)
+    def ConsVector(self, item: _T, vector: Vector[_T]) -> Vector[_T]:
+        return (item, *vector)
 
     @abstractmethod
     def DivRat(self, x: _Rat, y: _Rat) -> _Rat:
@@ -119,11 +127,11 @@ class Builtins(
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, sequence: Sequence[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: Vector[_S]
     ) -> _T:
         assert callable(function)
-        assert isinstance(sequence, Sequence)
-        return reduce(lambda x, y: function(y, x), sequence, initial)
+        assert isinstance(vector, Vector)
+        return reduce(lambda x, y: function(y, x), vector, initial)
 
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
@@ -168,7 +176,7 @@ class Builtins(
     def Index(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    def Indices(self, upto: int) -> Sequence[int]:
+    def Indices(self, upto: int) -> Vector[int]:
         assert isinstance(upto, int)
         return tuple(range(0, upto))
 
@@ -213,12 +221,10 @@ class Builtins(
         assert isinstance(iterable, Iterable)
         return map(function, iterable)
 
-    def MapVector(
-        self, function: Callable[[_S], _T], sequence: Sequence[_S]
-    ) -> Sequence[_T]:
+    def MapVector(self, function: Callable[[_S], _T], vector: Vector[_S]) -> Vector[_T]:
         assert callable(function)
-        assert isinstance(sequence, Sequence)
-        return tuple(map(function, sequence))
+        assert isinstance(vector, Vector)
+        return tuple(map(function, vector))
 
     @abstractmethod
     def MaxRat(self, x: _Rat, y: _Rat) -> _Rat:
@@ -266,7 +272,7 @@ class Builtins(
     def NegRat(self, x: _Rat) -> _Rat:
         ...
 
-    def NilList(self) -> Sequence[_T]:
+    def NilList(self) -> Vector[_T]:
         return ()
 
     @abstractmethod
@@ -307,19 +313,22 @@ class Builtins(
     def Unit(self) -> Tuple[()]:
         return ()
 
-    def Vector(self, *values: _T) -> Sequence[_T]:
-        return values
-
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
-        sequence1: Sequence[_S],
-        sequence2: Sequence[_T],
-    ) -> Sequence[_U]:
+        vector1: Vector[_S],
+        vector2: Vector[_T],
+    ) -> Vector[_U]:
         assert callable(function)
-        assert isinstance(sequence1, Sequence)
-        assert isinstance(sequence2, Sequence)
-        return tuple(map(function, sequence1, sequence2))
+        assert isinstance(vector1, Vector)
+        assert isinstance(vector2, Vector)
+        return tuple(map(function, vector1, vector2))
+
+    # NOTE: The definition for `Vector` must be last, otherwise mypy confuses
+    #       it with the generic type `Vector`.
+
+    def Vector(self, *values: _T) -> Vector[_T]:
+        return values
 
 
 AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
