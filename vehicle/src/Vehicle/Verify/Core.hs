@@ -6,6 +6,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Vector.Unboxed (Vector)
+import Data.Vector.Unboxed qualified as Vector (toList)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (Name)
 import Vehicle.Compile.Queries.LinearExpr (Assertion, CLSTProblem, SparseLinearExpr)
@@ -19,6 +20,14 @@ import Vehicle.Prelude
 -- | A (satisfying) assignment to a set of reduced network-level variables.
 newtype NetworkVariableAssignment
   = NetworkVariableAssignment (Vector Double)
+
+instance Pretty NetworkVariableAssignment where
+  pretty :: NetworkVariableAssignment -> Doc a
+  pretty (NetworkVariableAssignment assignment) = do
+    vsep (prettyVariable <$> zip [0 ..] (Vector.toList assignment))
+    where
+      prettyVariable :: (Int, Double) -> Doc a
+      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
@@ -200,6 +209,11 @@ data QueryResult witness
 instance (FromJSON witness) => FromJSON (QueryResult witness)
 
 instance (ToJSON witness) => ToJSON (QueryResult witness)
+
+instance (Pretty witness) => Pretty (QueryResult witness) where
+  pretty = \case
+    SAT w -> "SAT:" <+> pretty w
+    UnSAT -> "UNSAT"
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

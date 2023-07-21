@@ -1,0 +1,4 @@
+Verifying properties:
+  pulloverLowScore [...............................................] 0/2 queries  pulloverLowScore [=======================>.......................] 1/2 queries  pulloverLowScore [===============================================] 2/2 queries
+    result: [92m🗸[m - witness found
+      

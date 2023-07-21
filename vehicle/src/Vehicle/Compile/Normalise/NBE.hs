@@ -253,16 +253,16 @@ currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m ()
-showEntry _env expr = do
-  logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+showEntry _env _expr = do
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
-  incrCallDepth
+  -- incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
-showExit _env result = do
-  decrCallDepth
-  logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+showExit _env _result = do
+  -- decrCallDepth
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
@@ -281,15 +281,15 @@ showNormExit _env _result = do
   return ()
 
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp fun spine = do
-  logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
-  incrCallDepth
+showApp _fun _spine = do
+  -- logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+  -- incrCallDepth
   return ()
 
 showAppExit :: (MonadNorm builtin m) => Value builtin -> m ()
-showAppExit result = do
-  decrCallDepth
-  logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
+showAppExit _result = do
+  -- decrCallDepth
+  -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 
 findInstanceArg :: (MonadCompile m) => (Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])

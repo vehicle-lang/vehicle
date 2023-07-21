@@ -317,4 +317,4 @@ smartDisjunct :: BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a) -> Boolean
 smartDisjunct x y = case (x, y) of
   (Query (QuerySet _ (Trivial b)), _) -> if b then x else y
   (_, Query (QuerySet _ (Trivial b))) -> if b then y else x
-  (_, _) -> Conjunct x y
+  (_, _) -> Disjunct x y

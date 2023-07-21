@@ -1,5 +1,10 @@
 # Changelog for Vehicle
 
+## Version 0.9.0
+
+* Fixed bug in verify command where disjunctions in properties without top-level quantifiers
+  were being incorrectly translated.
+
 ## Version 0.8.0
 
 * Fix various bugs in the loss function backend.

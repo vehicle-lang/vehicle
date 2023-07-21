@@ -222,13 +222,13 @@ verifyProperty property = do
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct x y -> do
-        result@(negated, x') <- go x
-        if evaluateQuery negated x'
+        result@(negated, status) <- go x
+        if evaluateQuery negated status
           then return result
           else go y
       Conjunct x y -> do
-        result@(negated, x') <- go x
-        if not (evaluateQuery negated x')
+        result@(negated, status) <- go x
+        if not (evaluateQuery negated status)
           then return result
           else go y
 

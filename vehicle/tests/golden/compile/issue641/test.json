@@ -1,0 +1,8 @@
+[
+  {
+    "name": "MarabouVerify",
+    "run": "vehicle verify --specification spec.vcl --network classifier:network.onnx --dataset images:dataset.idx --verifier Marabou",
+    "needs": ["spec.vcl", "network.onnx", "dataset.idx"],
+    "external": ["Marabou"]
+  }
+]

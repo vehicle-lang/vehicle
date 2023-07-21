@@ -34,7 +34,7 @@ gaussianElimination variablesToEliminate exprs =
     let unusedExprs = coerce (fmap snd reducedRows)
 
     unless (null unusedExprs) $
-      logDebug MidDetail $
+      logDebug MaxDetail $
         line <> pretty ("Unused:" :: String) <> line <> indent 2 (prettyExprs unusedExprs)
 
     return (solvedVars, unusedExprs, usedRows)
