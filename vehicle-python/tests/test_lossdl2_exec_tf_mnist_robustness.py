@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
-from vehicle_lang.compile import Target, to_python
+
+from vehicle_lang import DifferentiableLogic, generate_loss_function
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -99,23 +100,17 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     def classifier(image: Image) -> LabelDistribution:
         return one_hot(0)
 
-    # def robust(
-    #   n: int,
-    #   classifier: Callable[[Image], Label],
-    #   epsilon: float,
-    #   trainingImages: Sequence[Image],
-    #   trainingLabels: Sequence[Label]
-    # ):
-    robust = to_python(
+    logical_loss_fn = generate_loss_function(
         MNIST_ROBUSTNESS,
-        target=Target.LOSS_DL2,
+        differentiable_logic=DifferentiableLogic.DL2,
         samplers={"pertubation": sampler_for_pertubation},
     )["robust"]
-    robust_loss = robust(
+
+    logical_loss = logical_loss_fn(
         n=1,
         classifier=classifier,
         epsilon=0.001,
         trainingImages=(ZEROES_28X28,),
         trainingLabels=(0,),
     )
-    print(robust_loss)
+    print(logical_loss)

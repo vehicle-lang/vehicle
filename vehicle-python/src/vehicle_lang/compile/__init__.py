@@ -1,6 +1,5 @@
 from typing import List
 
-from .._target import Target
 from ..ast import (
     AST,
     Binder,
@@ -10,7 +9,7 @@ from ..ast import (
     Program,
     Provenance,
 )
-from .python import PythonBuiltins, PythonTranslation, to_python
+from .python import PythonBuiltins, PythonTranslation
 
 __all__: List[str] = [
     # Abstract Syntax Tree
@@ -26,5 +25,4 @@ __all__: List[str] = [
     # Compilation to Python
     "PythonBuiltins",
     "PythonTranslation",
-    "to_python",
 ]

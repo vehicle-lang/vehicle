@@ -17,13 +17,10 @@ from typing import (
 from typing_extensions import final, overload, override
 
 from .. import ast as vcl
-from .. import session as global_session
-from .._target import Target
-from ..session import Session
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from .abc import ABCTranslation, AnyBuiltins, Sampler
+from .abc import ABCTranslation, AnyBuiltins
 from .abcboolasbool import ABCBoolAsBoolBuiltins
 
 ################################################################################
@@ -442,106 +439,3 @@ def py_partial_app(
         *arguments,
         provenance=provenance,
     )
-
-
-################################################################################
-### Compilation to Python
-################################################################################
-
-
-@overload
-def to_python(
-    specification_path: Union[str, Path],
-    *,
-    target: Target = Target.DEFAULT,
-    context: Dict[str, Any] = {},
-    session: Optional[Session] = None,
-    samplers: Dict[str, Sampler[Any]],
-    builtins: None = None,
-    translation: None = None,
-) -> Dict[str, Any]:
-    ...
-
-
-@overload
-def to_python(
-    specification_path: Union[str, Path],
-    *,
-    target: Target = Target.DEFAULT,
-    context: Dict[str, Any] = {},
-    session: Optional[Session] = None,
-    samplers: None = None,
-    builtins: AnyBuiltins,
-    translation: None = None,
-) -> Dict[str, Any]:
-    ...
-
-
-@overload
-def to_python(
-    specification_path: Union[str, Path],
-    *,
-    target: Target = Target.DEFAULT,
-    context: Dict[str, Any] = {},
-    session: Optional[Session] = None,
-    samplers: None = None,
-    builtins: None = None,
-    translation: PythonTranslation,
-) -> Dict[str, Any]:
-    ...
-
-
-@overload
-def to_python(
-    specification_path: Union[str, Path],
-    *,
-    target: Target = Target.DEFAULT,
-    context: Dict[str, Any] = {},
-    session: Optional[Session] = None,
-    samplers: None = None,
-    builtins: None = None,
-    translation: None = None,
-) -> Dict[str, Any]:
-    ...
-
-
-def to_python(
-    specification_path: Union[str, Path],
-    *,
-    target: Target = Target.DEFAULT,
-    context: Dict[str, Any] = {},
-    session: Optional[Session] = None,
-    samplers: Optional[Dict[str, Sampler[Any]]] = None,
-    builtins: Optional[AnyBuiltins] = None,
-    translation: Optional[PythonTranslation] = None,
-) -> Dict[str, Any]:
-    # Ensure that specification_path is a Path
-    if isinstance(specification_path, str):
-        specification_path = Path(specification_path)
-
-    # Load the specification file
-    if session is not None:
-        program = session.load(specification_path, target=target)
-    else:
-        program = global_session.load(specification_path, target=target)
-
-    # The user can provide one of samplers, builtins, or translation:
-    if samplers is not None:
-        assert (
-            builtins is None and translation is None
-        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
-        translation = PythonTranslation(builtins=PythonBuiltins(samplers=samplers))
-    elif builtins is not None:
-        assert (
-            samplers is None and translation is None
-        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
-        translation = PythonTranslation(builtins=builtins)
-    elif translation is not None:
-        assert (
-            samplers is None and builtins is None
-        ), "Only one of 'samplers', 'builtins', or 'translation' may be specified."
-    else:
-        translation = PythonTranslation(builtins=PythonBuiltins())
-
-    # Translate the specification to a Python module:
-    return translation.compile(program, str(specification_path), context)

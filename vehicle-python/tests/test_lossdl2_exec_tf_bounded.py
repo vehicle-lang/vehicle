@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 from typing import Any, Dict, Iterator
 
-from vehicle_lang.compile import Target, to_python
+from vehicle_lang import DifferentiableLogic, generate_loss_function
 
 
 def test_lossdl2_exec_tf_bounded() -> None:
@@ -29,12 +29,11 @@ def test_lossdl2_exec_tf_bounded() -> None:
             for _ in range(0, 10):
                 yield random.uniform(0.5, 0.5)
 
-        bounded = to_python(
-            specification_path, target=Target.LOSS_DL2, samplers={"x": sampler_for_x}
+        logical_loss_fn = generate_loss_function(
+            specification_path,
+            differentiable_logic=DifferentiableLogic.DL2,
+            samplers={"x": sampler_for_x},
         )["bounded"]
-
-        def bounded_loss() -> Any:
-            return bounded(f)
 
         # Prepare training data
         batch_size = 1
@@ -75,7 +74,7 @@ def test_lossdl2_exec_tf_bounded() -> None:
                         x_batch_train, training=True
                     )  # Outputs for this minibatch
                     ce_loss_value = ce_batch_loss(y_batch_train, outputs)
-                    bounded_value = bounded_loss()
+                    bounded_value = logical_loss_fn(f)
                     weighted_loss = (
                         ce_loss_value * ce_loss_weight + bounded_value * bounded_weight
                     )

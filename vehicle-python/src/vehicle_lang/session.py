@@ -12,7 +12,6 @@ from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicl
 from ._error import VehicleError as VehicleError
 from ._error import VehicleSessionClosed as VehicleSessionClosed
 from ._error import VehicleSessionUsed as VehicleSessionUsed
-from ._target import Target
 from ._temporary_files import temporary_files
 from .ast import Program
 
@@ -115,30 +114,6 @@ class Session(SessionContextManager):
             self.close()
         return None
 
-    def loads(self, spec: str, *, target: Target = Target.DEFAULT) -> Program:
-        with tempfile.NamedTemporaryFile(mode="w") as loss_function_spec:
-            loss_function_spec.write(spec)
-            return self.load(loss_function_spec.name, target=target)
-
-    def load(
-        self, path: Union[str, Path], *, target: Target = Target.DEFAULT
-    ) -> Program:
-        exc, out, err, log = self.check_output(
-            [
-                "compile",
-                "--target",
-                target.vehicle_cli_name,
-                "--json",
-                "--specification",
-                str(path),
-            ]
-        )
-        if exc != 0:
-            raise VehicleError(err or out or log or "unknown error")
-        if out is None:
-            raise VehicleError("no output")
-        return Program.from_json(out)
-
 
 def check_call(args: Sequence[str]) -> int:
     return Session().__enter__().check_call(args)
@@ -148,11 +123,3 @@ def check_output(
     args: Sequence[str],
 ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
     return Session().__enter__().check_output(args)
-
-
-def loads(spec: str, *, target: Target = Target.DEFAULT) -> Program:
-    return Session().__enter__().load(spec, target=target)
-
-
-def load(path: Union[str, Path], *, target: Target = Target.DEFAULT) -> Program:
-    return Session().__enter__().load(path, target=target)

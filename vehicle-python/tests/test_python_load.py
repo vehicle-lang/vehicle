@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from vehicle_lang import generate_python_function
+
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
 )
@@ -20,6 +22,4 @@ EXCLUDE_LIST = [
 )  # type: ignore[misc]
 def test_interpret_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
-    from vehicle_lang.session import Target, load
-
-    load(specification_path, target=Target.DEFAULT)
+    generate_python_function(specification_path)
