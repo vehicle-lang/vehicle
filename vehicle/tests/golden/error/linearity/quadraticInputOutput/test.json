@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s quadraticInputOutput.vcl -t MarabouQueries --network f:NO_FILE",
-  "needs": ["quadraticInputOutput.vcl"]
+  "run": "vehicle compile -s quadraticInputOutput.vcl -t MarabouQueries --network f:fake.onnx",
+  "needs": ["quadraticInputOutput.vcl", "fake.onnx"]
 }

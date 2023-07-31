@@ -286,7 +286,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     }

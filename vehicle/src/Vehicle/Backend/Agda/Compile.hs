@@ -38,7 +38,7 @@ import Vehicle.Syntax.Sugar
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { proofCacheLocation :: Maybe FilePath,
+  { verificationFolder :: Maybe FilePath,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String
   }
@@ -320,10 +320,10 @@ type MonadAgdaCompile m =
     MonadReader (AgdaOptions, BoolLevel) m
   )
 
-getProofCacheLocation :: (MonadAgdaCompile m) => m (Maybe FilePath)
-getProofCacheLocation = do
+getVerificationFolder :: (MonadAgdaCompile m) => m (Maybe FilePath)
+getVerificationFolder = do
   (options, _) <- ask
-  return $ proofCacheLocation options
+  return $ verificationFolder options
 
 getBoolLevel :: (MonadAgdaCompile m) => m BoolLevel
 getBoolLevel = do
@@ -837,12 +837,12 @@ compilePostulate name t =
 
 compileProperty :: (MonadAgdaCompile m) => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
-  proofCache <- getProofCacheLocation
+  maybeVerificationFolder <- getVerificationFolder
   return $
-    case proofCache of
+    case maybeVerificationFolder of
       Nothing ->
         "postulate" <+> propertyName <+> ":" <+> align propertyBody
-      Just loc ->
+      Just verificationFolder ->
         scopeCode "abstract" $
           propertyName
             <+> ":"
@@ -852,8 +852,8 @@ compileProperty propertyName propertyBody = do
             <+> "= checkSpecification record"
             <> line
             <> indentCode
-              ( "{ proofCache   ="
-                  <+> dquotes (pretty loc)
+              ( "{ verificationFolder   ="
+                  <+> dquotes (pretty verificationFolder)
                   <> line
                   <> "}"
               )

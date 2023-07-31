@@ -157,7 +157,6 @@ library
     Vehicle.Validate
     Vehicle.Verify
     Vehicle.Verify.Core
-    Vehicle.Verify.ProofCache
     Vehicle.Verify.QueryFormat.Marabou
     Vehicle.Verify.QueryFormat.VNNLib
     Vehicle.Verify.Specification

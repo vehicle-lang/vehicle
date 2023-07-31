@@ -4,10 +4,11 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector (toList)
 import GHC.Generics (Generic)
+import System.FilePath ((<.>))
 import Vehicle.Compile.Prelude (Name)
 import Vehicle.Compile.Queries.LinearExpr (Assertion, CLSTProblem, SparseLinearExpr)
 import Vehicle.Compile.Queries.Variable
@@ -92,6 +93,20 @@ type QueryID = Int
 
 type QueryAddress = (PropertyAddress, QueryID)
 
+calculateQueryFileName :: QueryAddress -> FilePath
+calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
+  let propertyStr
+        | null propertyIndices = ""
+        | otherwise = showTensorIndices propertyIndices
+
+  unpack propertyName
+    <> propertyStr
+    <> "-query"
+    <> show queryID <.> "txt"
+
+-- | A unique identifier for every individual property that needs to be verified.
+-- Not simply an identifier, as we need to identifier sub-properties in tensors of
+-- properties.
 data PropertyAddress = PropertyAddress
   { propertyName :: Name,
     propertyIndices :: TensorIndices

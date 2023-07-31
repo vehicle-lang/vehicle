@@ -2,7 +2,7 @@ Usage: vehicle compile (-t|--target TARGET) (-s|--specification FILE)
                        [-e|--declaration NAME] [-n|--network NAME:FILE] 
                        [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
                        [-o|--outputFile FILE] [-m|--moduleName MODULENAME] 
-                       [-c|--proofCache FILE]
+                       [-c|--cache FILE]
 
   Compile a .vcl specification file.
 
@@ -40,7 +40,8 @@ Available options:
                            Agda module with the internal name `Foo.Bar.agda`. If
                            not provided then the name will default to the name
                            of the output file.
-  -c,--proofCache FILE     The location of the proof cache that can be used to
-                           check the verification status of the specification.
-                           Should be parsed when compiling to an ITP.
+  -c,--cache FILE          The location of the verification cache that can be
+                           used to check the verification status of the
+                           specification. Should be passed when compiling to an
+                           ITP.
   -h,--help                Show this help text

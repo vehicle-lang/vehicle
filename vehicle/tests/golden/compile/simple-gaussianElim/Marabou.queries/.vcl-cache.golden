@@ -1,0 +1,51 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": -8272078922958528043
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -3403084463960967397
+      },
+      {
+        "name": "g",
+        "filePath": "fake.onnx",
+        "fileHash": -3403084463960967397
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "test1",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "test1",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "test2",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "test2",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

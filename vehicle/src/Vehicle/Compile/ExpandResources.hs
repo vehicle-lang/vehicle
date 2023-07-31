@@ -30,7 +30,7 @@ expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
   StandardGluedProg ->
-  m (NetworkContext, StandardNormDeclCtx)
+  m (NetworkContext, StandardNormDeclCtx, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     (intermediateResourcesCtx, inferableParameterCtx) <-
@@ -40,7 +40,8 @@ expandResources resources prog =
 
     resourceContext <- fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
     let (networkCtx, declCtx) = splitResourceCtx resourceContext
-    return (networkCtx, declCtx)
+    integrityInfo <- generateResourcesIntegrityInfo resources
+    return (networkCtx, declCtx, integrityInfo)
 
 splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
 splitResourceCtx ResourceContext {..} = do

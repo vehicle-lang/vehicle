@@ -37,9 +37,9 @@ for the :code:`export` command.
     Set which ITP to export the specification to.
     At the moment the only supported option is :code:`Agda`.
 
-.. option:: --proofCache, -c
+.. option:: --cache, -c
 
-    Provide Vehicle the location of the proof cache from which the
+    Provide Vehicle the location of the verification cache from which the
     exported specification should be generated. If not provided then
     all ``@property`` declarations will be converted into ``postulates``.
 
@@ -67,7 +67,7 @@ Agda
 The Agda backend generates a new Agda module with the functions in the
 specification lifted to the Agda type :code:`Set`. The proofs of the
 properties are provided by a macro called :code:`checkSpecification`.
-This calls Vehicle in :code:`check` mode on the proof cache, which
+This macro calls ``vehicle validate`` on the verification cache, which
 then checks the status of the specification. Consequently no
 expensive reverification occurs when you try to type-check the Agda
 module.

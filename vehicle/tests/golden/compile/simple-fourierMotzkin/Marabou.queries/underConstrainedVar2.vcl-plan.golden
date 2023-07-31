@@ -1,0 +1,231 @@
+{
+  "queryMetaData": {
+    "tag": "Query",
+    "contents": {
+      "queries": {
+        "tag": "NonTrivial",
+        "contents": {
+          "unDisjunctAll": [
+            [
+              [
+                {
+                  "propertyName": "underConstrainedVar2",
+                  "propertyIndices": []
+                },
+                1
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "UserVar",
+                                "contents": {
+                                  "userVarName": "y",
+                                  "userVarDimensions": [],
+                                  "unreducedUserVarName": "y"
+                                }
+                              },
+                              -0.5
+                            ],
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "f",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              0.5
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaFourierMotzkin",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "y",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "y"
+                        }
+                      },
+                      {
+                        "upperBounds": [
+                          {
+                            "assertionRel": "LessThanOrEqualTo",
+                            "assertionExpr": {
+                              "dimensions": [],
+                              "constantValue": [
+                                2
+                              ],
+                              "coefficients": [
+                                [
+                                  {
+                                    "tag": "UserVar",
+                                    "contents": {
+                                      "userVarName": "y",
+                                      "userVarDimensions": [],
+                                      "unreducedUserVarName": "y"
+                                    }
+                                  },
+                                  1
+                                ],
+                                [
+                                  {
+                                    "tag": "NetworkVar",
+                                    "contents": {
+                                      "networkVarIndices": 0,
+                                      "networkVarDimensions": [],
+                                      "networkName": "f",
+                                      "inputOrOutput": "Input",
+                                      "application": 0
+                                    }
+                                  },
+                                  -1
+                                ]
+                              ]
+                            }
+                          }
+                        ],
+                        "lowerBounds": [
+                          {
+                            "assertionRel": "LessThanOrEqualTo",
+                            "assertionExpr": {
+                              "dimensions": [],
+                              "constantValue": [
+                                1
+                              ],
+                              "coefficients": [
+                                [
+                                  {
+                                    "tag": "UserVar",
+                                    "contents": {
+                                      "userVarName": "y",
+                                      "userVarDimensions": [],
+                                      "unreducedUserVarName": "y"
+                                    }
+                                  },
+                                  -1
+                                ]
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "f",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "negated": false
+    }
+  }
+}

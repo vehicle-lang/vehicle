@@ -64,7 +64,7 @@ import Vehicle.Export qualified as ExportOptions
     target,
   )
 import Vehicle.Export qualified as Vehicle (ExportOptions)
-import Vehicle.Prelude (Pretty (pretty), layoutAsString, vehicleSpecificationFileExtension)
+import Vehicle.Prelude (Pretty (pretty), layoutAsString, specificationFileExtension)
 import Vehicle.TypeCheck qualified as TypeCheckOptions (specification)
 import Vehicle.TypeCheck qualified as Vehicle
 import Vehicle.Validate qualified as ValidateOptions (proofCache)
@@ -273,7 +273,7 @@ instance TestSpecLike Vehicle.VerifyOptions where
 
   needs :: Vehicle.VerifyOptions -> [FilePath]
   needs opts
-    | takeExtension (VerifyOptions.specification opts) == vehicleSpecificationFileExtension = do
+    | takeExtension (VerifyOptions.specification opts) == specificationFileExtension = do
         join
           [ [VerifyOptions.specification opts]
           -- TODO the verification plan also references resources and query files
