@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
-
 from vehicle_lang import DifferentiableLogic, generate_loss_function
 
 GOLDEN_PATH = (

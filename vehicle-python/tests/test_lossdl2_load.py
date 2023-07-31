@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from vehicle_lang import DifferentiableLogic, generate_loss_function
 
 GOLDEN_PATH = (

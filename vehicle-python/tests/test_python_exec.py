@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-
 from vehicle_lang import generate_python_function
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Union
 
 from typing_extensions import TypeAlias, final, overload, override
-
 from vehicle_lang._error import VehicleError
 from vehicle_lang.ast import Program
 from vehicle_lang.compile.abc import AnyBuiltins, Sampler

@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from vehicle_lang import generate_python_function
 
 GOLDEN_PATH = (
