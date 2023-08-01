@@ -16,6 +16,13 @@
 * Fixed bug in verify command where disjunctions in properties without top-level quantifiers
   were being incorrectly translated.
 
+* Exposed `verify` mode functionality in Python via the `verify` function in the `vehicle_lang`
+  module.
+
+* Loss functions no longer generated via the `to_python` function from `vehicle_lang.compile`
+  module, but instead can be created via the `load_loss_function` function from the
+  `vehicle_lang` file.
+
 ## Version 0.8.0
 
 * Fix various bugs in the loss function backend.

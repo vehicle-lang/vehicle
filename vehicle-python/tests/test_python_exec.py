@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-from vehicle_lang.compile import to_python
+import vehicle_lang.compile as vclc
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -20,93 +20,77 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(
-    "specification_filename,samplers,validate_output",
+    "specification_filename,validate_output",
     [
         (
             "test_addition.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_at.vcl",
-            {},
             {"prop": False},
         ),
         (
             "test_constant.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_division.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_indicator.vcl",
-            {},
             {"prop": False},
         ),
         (
             "test_maximum.vcl",
-            {},
             {"prop": False},
         ),
         (
             "test_minimum.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_multiplication.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_negation.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_network.vcl",
-            {},
             network_validate_output,
         ),
         # (
         #     "test_quantifier_all.vcl",
-        #     {"x": quantifier_all_sampler},
         #     {"prop": True},
         # ),
         # (
         #     "test_quantifier_any.vcl",
-        #     {"x": quantifier_any_sampler},
         #     {"prop": True},
         # ),
         (
             "test_subtraction.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_tensor.vcl",
-            {},
             {"prop": True},
         ),
         (
             "test_variable.vcl",
-            {},
             {"prop": True},
         ),
     ],
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
-    samplers: Dict[str, Any],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    output = to_python(specification_path, samplers=samplers)
+    output = vclc.compile(specification_path)
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
             if validate_output[key] is not ...:

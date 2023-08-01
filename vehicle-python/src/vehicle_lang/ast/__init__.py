@@ -1,10 +1,14 @@
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
+from pathlib import Path
+from typing import Iterable, Optional, Sequence, Union
 
 from typing_extensions import Self, TypeAlias, override
 
+from .. import session
+from ..error import VehicleError
+from ..typing import DeclarationName, Explicit, Target
 from ._decode import JsonValue, decode
 
 Name: TypeAlias = str
@@ -544,3 +548,26 @@ class Program(AST):
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+
+
+def load(
+    path: Union[str, Path],
+    *,
+    declarations: Iterable[DeclarationName] = (),
+    target: Target = Explicit.Explicit,
+) -> Program:
+    exc, out, err, log = session.check_output(
+        [
+            "compile",
+            "--target",
+            target.vehicle_option_name,
+            "--json",
+            f"--specification={path}",
+            *[f"--declaration={declaration_name}" for declaration_name in declarations],
+        ]
+    )
+    if exc != 0:
+        raise VehicleError(err or out or log or "unknown error")
+    if out is None:
+        raise VehicleError("no output")
+    return Program.from_json(out)

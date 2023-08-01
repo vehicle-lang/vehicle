@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+import vehicle_lang.ast as vcla
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -20,6 +21,4 @@ EXCLUDE_LIST = [
 )  # type: ignore[misc]
 def test_interpret_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
-    from vehicle_lang.session import Target, load
-
-    load(specification_path, target=Target.DEFAULT)
+    vcla.load(specification_path)
