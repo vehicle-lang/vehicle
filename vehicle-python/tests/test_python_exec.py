@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-
 import vehicle_lang.compile as vclc
 
 
