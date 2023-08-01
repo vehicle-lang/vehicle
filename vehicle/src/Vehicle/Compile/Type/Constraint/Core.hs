@@ -10,6 +10,7 @@ module Vehicle.Compile.Type.Constraint.Core
     anyOf,
     allOf,
     createTC,
+    mkCandidate,
   )
 where
 
@@ -24,6 +25,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, solveMeta, trackSolvedMetas)
+import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 
@@ -118,11 +120,10 @@ solveTypeClassMeta ctx meta solution = do
 
 extractHeadFromInstanceCandidate ::
   (PrintableBuiltin builtin) =>
-  (Provenance -> InstanceCandidate builtin) ->
-  (builtin, Provenance -> InstanceCandidate builtin)
-extractHeadFromInstanceCandidate candidate = do
-  let expr = candidateExpr (candidate mempty)
-  case findInstanceGoalHead expr of
+  InstanceCandidate builtin ->
+  (builtin, InstanceCandidate builtin)
+extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
+  case findInstanceGoalHead candidateExpr of
     Right b -> (b, candidate)
     Left subexpr -> do
       let candidateDoc = prettyVerbose subexpr
@@ -160,3 +161,10 @@ anyOf = flip any
 
 allOf :: [a] -> (a -> Bool) -> Bool
 allOf = flip all
+
+mkCandidate :: (DSLExpr builtin, DSLExpr builtin) -> InstanceCandidate builtin
+mkCandidate (expr, solution) = do
+  let p = mempty
+  let expr' = fromDSL p expr
+  let solution' = fromDSL p solution
+  InstanceCandidate expr' solution'

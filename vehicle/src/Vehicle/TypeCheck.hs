@@ -18,12 +18,13 @@ import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (typeCheckWithSubsystem)
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
+import Vehicle.Compile.Type.Subsystem
 import Vehicle.Compile.Type.Subsystem.Linearity.Core (LinearityBuiltin)
 import Vehicle.Compile.Type.Subsystem.Polarity.Core (PolarityBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
@@ -39,10 +40,11 @@ data TypeCheckOptions = TypeCheckOptions
 typeCheck :: LoggingSettings -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggingSettings $ do
   (_, typedProg) <- typeCheckUserProg options
+  let unnormalisedTypedProg = fmap unnormalised typedProg
   case typingSystem of
     Standard -> return ()
-    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin typedProg
-    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin typedProg
+    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin mempty unnormalisedTypedProg
+    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin mempty unnormalisedTypedProg
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
@@ -53,7 +55,7 @@ parseAndTypeCheckExpr expr = do
   let imports = [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckExpr imports scopedExpr
+  typedExpr <- typeCheckExpr imports standardBuiltinInstances scopedExpr
   return typedExpr
 
 parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
@@ -82,7 +84,7 @@ typeCheckProgram ::
 typeCheckProgram modul imports spec = do
   vehicleProg <- parseProgText modul spec
   scopedProg <- scopeCheck imports vehicleProg
-  typedProg <- typeCheckProg imports scopedProg
+  typedProg <- typeCheckProg imports standardBuiltinInstances scopedProg
   return typedProg
 
 -- | Parses and type-checks the program but does

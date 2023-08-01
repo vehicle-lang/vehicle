@@ -17,6 +17,7 @@ import Control.Monad.State
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
+import Data.Bifunctor (Bifunctor (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Monad (MonadNorm (..))
@@ -31,7 +32,9 @@ import Vehicle.Expr.DeBruijn (Ix)
 -- Implementation
 
 type TypeCheckerTInternals builtin m =
-  ReaderT (TypingDeclCtx builtin) (StateT (TypeCheckerState builtin) m)
+  ReaderT
+    (TypingDeclCtx builtin, InstanceCandidateDatabase builtin)
+    (StateT (TypeCheckerState builtin) m)
 
 clearFreshNamesInternal :: (Monad m) => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
@@ -51,9 +54,15 @@ newtype TypeCheckerT builtin m a = TypeCheckerT
   }
   deriving (Functor, Applicative, Monad)
 
-runTypeCheckerT :: (Monad m) => TypingDeclCtx builtin -> TypeCheckerState builtin -> TypeCheckerT builtin m a -> m (a, TypeCheckerState builtin)
-runTypeCheckerT declCtx metaCtx (TypeCheckerT e) =
-  runStateT (runReaderT e declCtx) metaCtx
+runTypeCheckerT ::
+  (Monad m) =>
+  TypingDeclCtx builtin ->
+  InstanceCandidateDatabase builtin ->
+  TypeCheckerState builtin ->
+  TypeCheckerT builtin m a ->
+  m (a, TypeCheckerState builtin)
+runTypeCheckerT declCtx instanceDatabase metaCtx (TypeCheckerT e) =
+  runStateT (runReaderT e (declCtx, instanceDatabase)) metaCtx
 
 mapTypeCheckerT ::
   (m (a, TypeCheckerState builtin) -> n (b, TypeCheckerState builtin)) ->
@@ -67,17 +76,18 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadNorm builtin (TypeCheckerT builtin m) where
   getEvalOptions _ = TypeCheckerT $ return defaultEvalOptions
 
-  getDeclSubstitution = TypeCheckerT $ asks typingDeclCtxToNormDeclCtx
+  getDeclSubstitution = TypeCheckerT $ asks (typingDeclCtxToNormDeclCtx . fst)
 
   getMetaSubstitution = TypeCheckerT (gets currentSubstitution)
 
 instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
-  getDeclContext = TypeCheckerT ask
-  addDeclContext d s = TypeCheckerT $ local (addToTypingDeclCtx d) (unTypeCheckerT s)
+  getDeclContext = TypeCheckerT (asks fst)
+  addDeclContext d s = TypeCheckerT $ local (first (addToTypingDeclCtx d)) (unTypeCheckerT s)
   getMetaState = TypeCheckerT get
   modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ
   clearFreshNames _ = TypeCheckerT clearFreshNamesInternal
+  getInstanceCandidates = TypeCheckerT (asks snd)
 
 --------------------------------------------------------------------------------
 -- Monad inheritance laws that TypeCheckerT satisfies

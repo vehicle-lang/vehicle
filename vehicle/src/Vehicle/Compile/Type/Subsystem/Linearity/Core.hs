@@ -108,7 +108,9 @@ data LinearityBuiltin
   | BuiltinFunction BuiltinFunction
   | Linearity Linearity
   | LinearityRelation LinearityRelation
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance Hashable LinearityBuiltin
 
 instance Pretty LinearityBuiltin where
   pretty = \case

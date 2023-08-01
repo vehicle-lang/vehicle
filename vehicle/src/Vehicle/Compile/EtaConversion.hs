@@ -6,15 +6,23 @@ where
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.DeBruijn (liftDBIndices)
-import Vehicle.Expr.Normalised (Value (..))
+import Vehicle.Compile.Print (PrintableBuiltin, prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.DeBruijn (Ix, liftDBIndices)
+import Vehicle.Expr.Normalised (VType, Value (..))
 
-etaExpandProg :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
-etaExpandProg (Main ds) = runContextT @m @StandardBuiltin (Main <$> etaExpandDecls ds)
+etaExpandProg ::
+  forall m builtin.
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
+etaExpandProg (Main ds) =
+  runContextT @m @builtin (Main <$> etaExpandDecls ds)
 
-etaExpandDecls :: (MonadContext StandardBuiltin m) => [StandardDecl] -> m [StandardDecl]
+etaExpandDecls ::
+  (MonadContext builtin m, PrintableBuiltin builtin) =>
+  [Decl Ix builtin] ->
+  m [Decl Ix builtin]
 etaExpandDecls = \case
   [] -> return []
   decl : decls -> do
@@ -28,17 +36,17 @@ etaExpandDecls = \case
     return $ newDecl : newDecls
 
 etaExpand ::
-  forall m.
-  (MonadContext StandardBuiltin m) =>
+  forall m builtin.
+  (MonadContext builtin m, PrintableBuiltin builtin) =>
   Identifier ->
-  StandardType ->
-  StandardExpr ->
-  m StandardExpr
+  Type Ix builtin ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
 etaExpand declIdent originalType originalBody = do
   normType <- normalise originalType
   go normType originalBody
   where
-    go :: StandardNormType -> StandardExpr -> m StandardExpr
+    go :: VType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
     go typ body = case (typ, body) of
       (VPi _ piBody, Lam p lamBinder lamBody) -> Lam p lamBinder <$> go piBody lamBody
       (VPi piBinder piBody, _) -> do

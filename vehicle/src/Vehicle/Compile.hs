@@ -5,8 +5,9 @@ module Vehicle.Compile
 where
 
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Hashable (Hashable)
 import Vehicle.Backend.Agda
-import Vehicle.Backend.JSON (compileProgToJSON)
+import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
@@ -17,9 +18,11 @@ import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
+import Vehicle.Compile.Type.Monad (TypableBuiltin)
+import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core
@@ -116,8 +119,8 @@ compileDirect (imports, typedProg) outputFile outputAsJSON = do
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
-  (MonadCompile m, MonadIO m) =>
-  StandardProg ->
+  (MonadCompile m, MonadIO m, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
+  Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->
   m ()

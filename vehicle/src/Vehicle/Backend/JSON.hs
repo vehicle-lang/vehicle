@@ -7,6 +7,7 @@ module Vehicle.Backend.JSON
   )
 where
 
+import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
 import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
@@ -19,13 +20,16 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Vehicle.Compile.Arity (Arity, arityFromVType, builtinExplicitArity)
+import Vehicle.Backend.LossFunction.TypeSystem qualified as L
+import Vehicle.Compile.Arity (Arity, arityFromVType, explicitArityFromType)
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
-import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Compile.Type.Monad (TypableBuiltin)
+import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (..))
+import Vehicle.Compile.Type.Subsystem.Standard.Interface qualified as V
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
 import Vehicle.Expr.Relevant
@@ -37,13 +41,13 @@ import Vehicle.Syntax.Builtin qualified as V
 -- Public method
 
 compileProgToJSON ::
-  forall m a.
-  (MonadCompile m) =>
-  V.Prog Ix V.Builtin ->
+  forall m builtin a.
+  (MonadCompile m, V.HasStandardData builtin, TypableBuiltin builtin, ToJBuiltin builtin) =>
+  V.Prog Ix builtin ->
   m (Doc a)
 compileProgToJSON prog = do
   logCompilerPass MinDetail currentPass $ do
-    jProg <- runContextT @m @V.Builtin $ toJProg prog
+    jProg <- runContextT @m @builtin $ toJProg prog
     let namedProg = descopeNamed jProg
     let json = toJSON namedProg
     return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
@@ -134,7 +138,7 @@ data JBuiltin
   | RatType
   | ListType
   | VectorType
-  | Optimise Name Bool [Name]
+  | Optimise Bool [Name]
   deriving (Show, Eq, Generic)
 
 instance Hashable JBuiltin
@@ -212,13 +216,18 @@ instance PrintableBuiltin JBuiltin where
     RatType -> V.Builtin p (V.BuiltinType V.Rat)
     ListType -> V.Builtin p (V.BuiltinType V.List)
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
-    Optimise d n ctx -> V.Builtin p (V.BuiltinFunction $ V.Optimise d n ctx)
+    Optimise minimise ctx ->
+      V.App p (V.Builtin p (V.BuiltinFunction $ V.Optimise minimise)) $
+        V.RelevantExplicitArg p <$> [ctxVar]
+      where
+        mkVar doc = V.FreeVar p $ V.Identifier V.User (layoutAsText doc)
+        ctxVar = mkVar $ if null ctx then "" else pretty ctx
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins
 
 class ToJBuiltin builtin where
-  toJBuiltin :: (MonadCompile m) => builtin -> m JBuiltin
+  toJBuiltin :: (MonadCompile m, MonadReader [Name] m) => builtin -> m JBuiltin
 
 instance ToJBuiltin JBuiltin where
   toJBuiltin = return
@@ -302,8 +311,8 @@ instance ToJBuiltin V.BuiltinFunction where
     V.MapList -> return MapList
     V.MapVector -> return MapVector
     V.Indices -> return Indices
-    V.Optimise n b ctx -> return $ Optimise n b ctx
     V.ZipWithVector -> return ZipWithVector
+    V.Optimise b -> asks (Optimise b)
 
 instance ToJBuiltin V.BuiltinType where
   toJBuiltin b = return $ case b of
@@ -324,6 +333,20 @@ instance ToJBuiltin V.Builtin where
     V.TypeClass {} -> typeClassesUnresolvedError
     V.TypeClassOp {} -> typeClassesUnresolvedError
     V.NatInDomainConstraint -> typeClassesUnresolvedError
+    where
+      typeClassesUnresolvedError =
+        compilerDeveloperError
+          "Type-classes should have been resolved before calling the JSON backend"
+
+instance ToJBuiltin L.LossBuiltin where
+  toJBuiltin = \case
+    L.BuiltinConstructor x -> toJBuiltin x
+    L.BuiltinFunction x -> toJBuiltin x
+    L.BuiltinType y -> toJBuiltin y
+    L.Loss -> return RatType
+    L.LossTC {} -> typeClassesUnresolvedError
+    L.LossTCOp {} -> typeClassesUnresolvedError
+    L.NatInDomainConstraint -> typeClassesUnresolvedError
     where
       typeClassesUnresolvedError =
         compilerDeveloperError
@@ -402,15 +425,18 @@ instance ToJSON V.FoldDomain where
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
-type MonadJSON m =
+type MonadJSON builtin m =
   ( MonadCompile m,
-    MonadContext V.Builtin m
+    MonadContext builtin m,
+    ToJBuiltin builtin,
+    PrintableBuiltin builtin,
+    TypableBuiltin builtin
   )
 
-toJProg :: (MonadJSON m) => V.Prog Ix V.Builtin -> m (JProg Ix)
+toJProg :: (MonadJSON builtin m) => V.Prog Ix builtin -> m (JProg Ix)
 toJProg (V.Main ds) = Main <$> toJDecls ds
 
-toJDecls :: (MonadJSON m) => [V.Decl Ix V.Builtin] -> m [JDecl Ix]
+toJDecls :: (MonadJSON builtin m) => [V.Decl Ix builtin] -> m [JDecl Ix]
 toJDecls [] = return []
 toJDecls (decl : decls) = do
   decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
@@ -428,13 +454,17 @@ toJDecls (decl : decls) = do
   decls' <- addDeclToContext decl (toJDecls decls)
   return $ decl' : decls'
 
-toJExpr :: (MonadJSON m) => V.Expr Ix V.Builtin -> m (JExpr Ix)
+toJExpr :: forall builtin m. (MonadJSON builtin m) => V.Expr Ix builtin -> m (JExpr Ix)
 toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  V.Builtin p b -> Builtin p <$> toJBuiltin b
+  V.Builtin p b -> do
+    boundCtx <- getBoundCtx (Proxy @builtin)
+    let boundCtxNames = fmap (fromMaybe "<missing-name>" . V.nameOf) boundCtx
+    jBuiltin <- runReaderT (toJBuiltin b) boundCtxNames
+    return $ Builtin p jBuiltin
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
   V.App p fun args -> do
@@ -472,16 +502,16 @@ toJExpr expr = case expr of
   V.Let p bound binder body ->
     Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
 
-foldLamBinders :: V.Expr Ix V.Builtin -> ([V.Binder Ix V.Builtin], V.Expr Ix V.Builtin)
+foldLamBinders :: (V.HasStandardData builtin) => V.Expr Ix builtin -> ([V.Binder Ix builtin], V.Expr Ix builtin)
 foldLamBinders = \case
   V.Lam _ binder body
     -- TODO this check is a massive hack. Should go once we get irrelevance up
     -- and running.
     | V.isExplicit binder -> first (binder :) (foldLamBinders body)
-    | otherwise -> foldLamBinders (UnitLiteral mempty `substDBInto` body)
+    | otherwise -> foldLamBinders (V.UnitLiteral mempty `substDBInto` body)
   expr -> ([], expr)
 
-toJBinder :: (MonadJSON m) => V.Binder Ix V.Builtin -> m (JBinder Ix)
+toJBinder :: (MonadJSON builtin m) => V.Binder Ix builtin -> m (JBinder Ix)
 toJBinder binder = do
   type' <- toJExpr $ V.binderType binder
   let p = V.binderProvenance binder
@@ -491,7 +521,7 @@ toJBinder binder = do
         V.OnlyType -> Nothing
   return $ Binder p maybeName type'
 
-toJBinders :: (MonadJSON m) => [V.Binder Ix V.Builtin] -> m [JBinder Ix]
+toJBinders :: (MonadJSON builtin m) => [V.Binder Ix builtin] -> m [JBinder Ix]
 toJBinders = \case
   [] -> return []
   (b : bs) -> do
@@ -500,11 +530,14 @@ toJBinders = \case
     return $ b' : bs'
 
 -- | TODO maybe move to Arity module.
-functionArity :: (MonadJSON m) => V.Expr Ix V.Builtin -> m Arity
-functionArity originalFun = do
-  go originalFun
+functionArity ::
+  forall builtin m.
+  (MonadJSON builtin m, TypableBuiltin builtin) =>
+  V.Expr Ix builtin ->
+  m Arity
+functionArity = go
   where
-    go :: (MonadJSON m) => V.Expr Ix V.Builtin -> m Arity
+    go :: (MonadJSON builtin m) => V.Expr Ix builtin -> m Arity
     go fun = do
       result <- case fun of
         V.App _ fn args -> do
@@ -515,20 +548,22 @@ functionArity originalFun = do
         V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
         V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
         V.FreeVar _p ident -> do
-          decl <- getDecl (Proxy @V.Builtin) currentPass ident
+          decl <- getDecl (Proxy @builtin) currentPass ident
           logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
           return $ arityFromVType $ normalised (typeOf decl)
         V.BoundVar _ ix -> do
-          binder <- getBoundVarByIx (Proxy @V.Builtin) currentPass ix
+          binder <- getBoundVarByIx (Proxy @builtin) currentPass ix
           arityFromVType <$> normalise (typeOf binder)
         V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
-        V.Builtin _ b -> return $ builtinExplicitArity b
+        V.Builtin _ b -> do
+          let t = typeBuiltin mempty b
+          return $ explicitArityFromType t
         V.Ann _ e _ -> go e
         V.Let _ _bound binder body ->
           addBinderToContext binder $ go body
       return result
 
-resourceError :: (MonadJSON m) => DefAbstractSort -> m a
+resourceError :: (MonadCompile m) => DefAbstractSort -> m a
 resourceError resourceType =
   compilerDeveloperError $
     "All"

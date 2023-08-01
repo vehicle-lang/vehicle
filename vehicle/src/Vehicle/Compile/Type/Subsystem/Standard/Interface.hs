@@ -108,6 +108,64 @@ irrelImplNatLam :: (HasStandardTypes builtin) => Name -> (DSLExpr builtin -> DSL
 irrelImplNatLam n = lam n (Implicit False) Irrelevant tNat
 
 --------------------------------------------------------------------------------
+-- Type exprs
+
+pattern NullaryTypeExpr :: (HasStandardTypes builtin) => Provenance -> BuiltinType -> Expr var builtin
+pattern NullaryTypeExpr p b <- Builtin p (getBuiltinType -> Just b)
+  where
+    NullaryTypeExpr p b = Builtin p (mkBuiltinType b)
+
+pattern TypeExpr ::
+  (HasStandardTypes builtin) =>
+  Provenance ->
+  BuiltinType ->
+  NonEmpty (Arg var builtin) ->
+  Expr var builtin
+pattern TypeExpr p b args <- BuiltinExpr p (getBuiltinType -> Just b) args
+  where
+    TypeExpr p b args = BuiltinExpr p (mkBuiltinType b) args
+
+pattern BoolType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
+pattern BoolType p = NullaryTypeExpr p Bool
+
+pattern NatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
+pattern NatType p = NullaryTypeExpr p Nat
+
+pattern IntType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
+pattern IntType p = NullaryTypeExpr p Int
+
+pattern RatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
+pattern RatType p = NullaryTypeExpr p Rat
+
+pattern ListType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin -> Expr var builtin
+pattern ListType p tElem <- TypeExpr p List [RelevantExplicitArg _ tElem]
+
+pattern RawListType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
+pattern RawListType p = NullaryTypeExpr p List
+
+pattern VectorType ::
+  (HasStandardTypes builtin) =>
+  Provenance ->
+  Expr var builtin ->
+  Expr var builtin ->
+  Expr var builtin
+pattern VectorType p tElem tDim <-
+  TypeExpr
+    p
+    Vector
+    [ RelevantExplicitArg _ tElem,
+      IrrelevantExplicitArg _ tDim
+      ]
+  where
+    VectorType p tElem tDim =
+      TypeExpr
+        p
+        Vector
+        [ RelevantExplicitArg p tElem,
+          IrrelevantExplicitArg p tDim
+        ]
+
+--------------------------------------------------------------------------------
 -- Type values
 
 pattern VBuiltinType :: (HasStandardTypes builtin) => BuiltinType -> Spine builtin -> VType builtin
@@ -228,7 +286,7 @@ pattern RatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LRat n))
     RatLiteral p n = Builtin p (mkBuiltinConstructor (LRat n))
 
 pattern VecLiteral ::
-  (HasStandardBuiltins builtin) =>
+  (HasStandardData builtin) =>
   Provenance ->
   Expr var builtin ->
   [Arg var builtin] ->
@@ -240,7 +298,7 @@ pattern VecLiteral p tElem xs <-
       BuiltinExpr p (mkBuiltinConstructor (LVec (length xs))) (RelevantImplicitArg p tElem :| xs)
 
 pattern NilExpr ::
-  (HasStandardBuiltins builtin) =>
+  (HasStandardData builtin) =>
   Provenance ->
   Type var builtin ->
   Expr var builtin
@@ -249,7 +307,7 @@ pattern NilExpr p tElem <- BuiltinExpr p (getBuiltinConstructor -> Just Nil) [Re
     NilExpr p tElem = BuiltinExpr p (mkBuiltinConstructor Nil) [RelevantImplicitArg p tElem]
 
 pattern ConsExpr ::
-  (HasStandardBuiltins builtin) =>
+  (HasStandardData builtin) =>
   Provenance ->
   Type var builtin ->
   [Arg var builtin] ->
@@ -271,10 +329,11 @@ pattern ConsExpr p tElem explicitArgs <-
         )
 
 mkList ::
+  (HasStandardData builtin) =>
   Provenance ->
-  Expr var Builtin ->
-  [Expr var Builtin] ->
-  Expr var Builtin
+  Expr var builtin ->
+  [Expr var builtin] ->
+  Expr var builtin
 mkList p elemType = foldr mkCons mkNil
   where
     mkNil = NilExpr p elemType
@@ -352,6 +411,15 @@ builtinFunction = builtin . mkBuiltinFunction
 
 addNat :: (HasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 addNat x y = builtinFunction (Add AddNat) @@ [x, y]
+
+ite ::
+  (HasStandardData builtin) =>
+  DSLExpr builtin ->
+  DSLExpr builtin ->
+  DSLExpr builtin ->
+  DSLExpr builtin ->
+  DSLExpr builtin
+ite t c e1 e2 = builtinFunction If @@@ [t] @@ [c, e1, e2]
 
 --------------------------------------------------------------------------------
 -- Value Function patterns

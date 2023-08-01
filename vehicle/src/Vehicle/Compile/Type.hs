@@ -35,21 +35,23 @@ import Vehicle.Expr.Normalised
 typeCheckProg ::
   (TypableBuiltin builtin, MonadCompile m) =>
   Imports builtin ->
+  InstanceCandidateDatabase builtin ->
   Prog Ix StandardBuiltin ->
   m (GluedProg builtin)
-typeCheckProg imports (Main uncheckedProg) =
+typeCheckProg imports instanceCandidates (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
-    runTypeChecker (createDeclCtx imports) $ do
+    runTypeChecker (createDeclCtx imports) instanceCandidates $ do
       Main <$> typeCheckDecls uncheckedProg
 
 typeCheckExpr ::
   forall builtin m.
   (TypableBuiltin builtin, MonadCompile m) =>
   Imports builtin ->
+  InstanceCandidateDatabase builtin ->
   Expr Ix builtin ->
   m (Expr Ix builtin)
-typeCheckExpr imports expr1 =
-  runTypeChecker (createDeclCtx imports) $ do
+typeCheckExpr imports instanceCandidates expr1 =
+  runTypeChecker (createDeclCtx imports) instanceCandidates $ do
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
@@ -246,12 +248,13 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
 runInstanceSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runInstanceSolver _ metasSolved =
+runInstanceSolver _ metasSolved = do
+  instanceCandidates <- getInstanceCandidates
   logCompilerPass MaxDetail ("instance solver run" <> line) $
     runConstraintSolver @builtin
       getActiveInstanceConstraints
       setInstanceConstraints
-      solveInstance
+      (solveInstance instanceCandidates)
       metasSolved
 
 -- | Attempts to solve as many unification constraints as possible. Takes in

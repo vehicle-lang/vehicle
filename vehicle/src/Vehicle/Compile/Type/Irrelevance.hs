@@ -7,16 +7,15 @@ where
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCode ::
-  (MonadCompile m) =>
-  Prog Ix StandardBuiltin ->
-  m (Prog Ix StandardBuiltin)
+  (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
 removeIrrelevantCode x = do
   logCompilerPass MinDetail "removal of irrelevant code" $ do
     result <- remove x
@@ -39,7 +38,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m (Expr Ix StandardBuiltin) where
+instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
   remove expr = do
     showRemoveEntry expr
     result <- case expr of

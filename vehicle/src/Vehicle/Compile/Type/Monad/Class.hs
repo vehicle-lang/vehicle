@@ -99,6 +99,7 @@ class (MonadCompile m, MonadNorm builtin m) => MonadTypeChecker builtin m where
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type Ix builtin -> m Name
   clearFreshNames :: Proxy builtin -> m ()
+  getInstanceCandidates :: m (InstanceCandidateDatabase builtin)
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (WriterT w m) where
   getDeclContext = lift getDeclContext
@@ -107,6 +108,7 @@ instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (Wri
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
+  getInstanceCandidates = lift getInstanceCandidates
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (ReaderT w m) where
   getDeclContext = lift getDeclContext
@@ -115,6 +117,7 @@ instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (Rea
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
+  getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) where
   getDeclContext = lift getDeclContext
@@ -123,6 +126,7 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) w
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
+  getInstanceCandidates = lift getInstanceCandidates
 
 --------------------------------------------------------------------------------
 -- Abstract interface for a type system.
@@ -175,7 +179,10 @@ class (PrintableBuiltin builtin, HasStandardData builtin) => TypableBuiltin buil
 
   -- | Solves a type-class constraint
   solveInstance ::
-    (MonadNorm builtin m, MonadTypeChecker builtin m) => WithContext (InstanceConstraint builtin) -> m ()
+    (MonadNorm builtin m, MonadTypeChecker builtin m) =>
+    InstanceCandidateDatabase builtin ->
+    WithContext (InstanceConstraint builtin) ->
+    m ()
 
   handleTypingError ::
     (MonadCompile m) => TypingError builtin -> m a

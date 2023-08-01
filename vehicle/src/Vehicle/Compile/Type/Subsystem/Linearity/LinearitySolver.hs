@@ -22,9 +22,10 @@ import Vehicle.Syntax.Builtin
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
+  InstanceCandidateDatabase LinearityBuiltin ->
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
-solveLinearityConstraint (WithContext constraint ctx) = do
+solveLinearityConstraint _ (WithContext constraint ctx) = do
   normConstraint@(Has _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx

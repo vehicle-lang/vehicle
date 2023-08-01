@@ -15,7 +15,6 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
@@ -39,6 +38,11 @@ solveTypeClassConstraint constraint = do
     Right (newConstraints, solution) -> do
       solveMeta m solution (boundContext ctx)
       addConstraints newConstraints
+
+getTypeClass :: (MonadCompile m) => StandardNormExpr -> m (TypeClass, StandardSpine)
+getTypeClass = \case
+  VBuiltin (TypeClass tc) args -> return (tc, args)
+  _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."
 
 type MonadTypeClass m =
   ( TCM StandardBuiltin m
@@ -72,9 +76,7 @@ solveHasQuantifier _ _ [lamType]
 solveHasQuantifier q c [VPi binder body]
   | isNMeta domain = blockOnMetas [domain]
   | isIndexType domain = solveIndexQuantifier q ctx binder body
-  | isNatType domain = solveSimpleQuantifier q ctx binder body
-  | isIntType domain = solveSimpleQuantifier q ctx binder body
-  | isRatType domain = solveSimpleQuantifier q ctx binder body
+  | isRatType domain = solveRatQuantifier q ctx binder body
   | isVectorType domain = solveVectorQuantifier q ctx binder body
   | otherwise = blockOrThrowErrors ctx [domain] tcError
   where
@@ -109,8 +111,8 @@ solveIndexQuantifier q c domainBinder body = do
 
   return $ Right ([domainEq, bodyEq], solution)
 
-solveSimpleQuantifier :: HasQuantifierSolver
-solveSimpleQuantifier q c _domainBinder body = do
+solveRatQuantifier :: HasQuantifierSolver
+solveRatQuantifier q c _domainBinder body = do
   let p = provenanceOf c
   bodyEq <- unify c body VBoolType
   let solution = NullaryBuiltinFunctionExpr p (Quantifier q)
@@ -190,14 +192,6 @@ blockOnMetas args = do
 isIndexType :: StandardNormExpr -> Bool
 isIndexType (VBuiltinType Index _) = True
 isIndexType _ = False
-
-isNatType :: StandardNormExpr -> Bool
-isNatType (VBuiltinType Nat _) = True
-isNatType _ = False
-
-isIntType :: StandardNormExpr -> Bool
-isIntType (VBuiltinType Int _) = True
-isIntType _ = False
 
 isRatType :: StandardNormExpr -> Bool
 isRatType (VBuiltinType Rat _) = True

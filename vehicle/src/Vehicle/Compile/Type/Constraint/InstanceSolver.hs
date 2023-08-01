@@ -3,8 +3,7 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
   )
 where
 
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as HashMap
+import Data.HashMap.Strict qualified as Map
 import Data.Hashable (Hashable)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
@@ -28,7 +27,7 @@ import Vehicle.Expr.Normalised
 resolveInstance ::
   forall builtin m.
   (Hashable builtin, MonadInstance builtin m) =>
-  HashMap builtin [Provenance -> InstanceCandidate builtin] ->
+  InstanceCandidateDatabase builtin ->
   WithContext (InstanceConstraint builtin) ->
   m ()
 resolveInstance allCandidates (WithContext constraint ctx) = do
@@ -36,7 +35,7 @@ resolveInstance allCandidates (WithContext constraint ctx) = do
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
   goal <- parseInstanceGoal expr
-  let candidates = fromMaybe [] $ HashMap.lookup (goalHead goal) allCandidates
+  let candidates = fromMaybe [] $ Map.lookup (goalHead goal) allCandidates
   solveInstanceGoal candidates ctx meta relevance goal
 
 --------------------------------------------------------------------------------
@@ -50,21 +49,20 @@ type MonadInstance builtin m = TCM builtin m
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  [Provenance -> InstanceCandidate builtin] ->
+  [InstanceCandidate builtin] ->
   ConstraintContext builtin ->
   MetaID ->
   Relevance ->
   InstanceGoal builtin ->
   m ()
 solveInstanceGoal rawBuiltinCandidates ctx meta relevance goal@InstanceGoal {..} = do
-  let p = provenanceOf ctx
   let boundCtx = boundContext ctx
 
   -- Extend the current context by the bound variables in the telescope of the goal.
   let newCtx = extendConstraintBoundCtx ctx goalTelescope
 
   -- The builtin candidates have access to the entire bound context
-  let builtinCandidates = fmap (\candidate -> WithContext (candidate p) boundCtx) rawBuiltinCandidates
+  let builtinCandidates = fmap (`WithContext` boundCtx) rawBuiltinCandidates
   -- Find the candidates in the bound context.
   candidatesInBoundCtx <- findCandidatesInBoundCtx goal boundCtx
   let allCandidates = builtinCandidates <> candidatesInBoundCtx

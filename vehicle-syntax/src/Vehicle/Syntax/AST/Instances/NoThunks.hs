@@ -13,8 +13,6 @@ import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
 import Vehicle.Syntax.Builtin
-import Vehicle.Syntax.Builtin.Core
-import Vehicle.Syntax.Builtin.TypeClass
 
 #ifdef nothunks
 import NoThunks.Class (NoThunks)

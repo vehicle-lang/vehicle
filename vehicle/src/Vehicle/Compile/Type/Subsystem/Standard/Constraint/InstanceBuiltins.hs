@@ -1,26 +1,23 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-  ( builtinInstances,
+  ( standardBuiltinInstances,
   )
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as HashMap
-import Vehicle.Compile.Prelude
+import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary
 
-builtinInstances :: HashMap StandardBuiltin [Provenance -> StandardInstanceCandidate]
-builtinInstances = do
+standardBuiltinInstances :: InstanceCandidateDatabase StandardBuiltin
+standardBuiltinInstances = do
   let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) candidates
-  HashMap.fromListWith (<>) tcAndCandidates
+  Map.fromListWith (<>) tcAndCandidates
 
 --------------------------------------------------------------------------------
 -- Builtin instances
@@ -31,7 +28,7 @@ builtinInstances = do
 -- Also note that annoyingly because of a lack of first class records we have
 -- to duplicate the context for both the candidate and the candidate's solution.
 
-candidates :: [Provenance -> StandardInstanceCandidate]
+candidates :: [StandardInstanceCandidate]
 candidates =
   mkCandidate
     <$> [
@@ -213,12 +210,6 @@ candidates =
                   free vectorOp @@@ [t1, t2] .@@@ [n] @@@@ [eq]
         )
       ]
-
-mkCandidate :: (StandardDSLExpr, StandardDSLExpr) -> Provenance -> StandardInstanceCandidate
-mkCandidate (expr, solution) p = do
-  let expr' = fromDSL p expr
-  let solution' = fromDSL p solution
-  InstanceCandidate expr' solution'
 
 builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction

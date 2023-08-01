@@ -3,6 +3,7 @@
 module Vehicle.Compile.Type.Core where
 
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
@@ -221,6 +222,12 @@ data InstanceGoal builtin = InstanceGoal
     goalSpine :: Spine builtin
   }
   deriving (Show)
+
+-- | Stores the list of instance candidates currently in scope.
+-- We use a HashMap rather than an ordinary Map as not all builtins may be
+-- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
+type InstanceCandidateDatabase builtin =
+  HashMap builtin [InstanceCandidate builtin]
 
 --------------------------------------------------------------------------------
 -- Constraint

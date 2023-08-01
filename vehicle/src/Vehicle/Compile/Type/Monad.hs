@@ -63,8 +63,14 @@ type TCM builtin m =
     TypableBuiltin builtin
   )
 
-runTypeChecker :: (Monad m) => TypingDeclCtx builtin -> TypeCheckerT builtin m a -> m a
-runTypeChecker declCtx e = fst <$> runTypeCheckerT declCtx emptyTypeCheckerState e
+runTypeChecker ::
+  (Monad m) =>
+  TypingDeclCtx builtin ->
+  InstanceCandidateDatabase builtin ->
+  TypeCheckerT builtin m a ->
+  m a
+runTypeChecker declCtx instanceCandidates e =
+  fst <$> runTypeCheckerT declCtx instanceCandidates emptyTypeCheckerState e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -75,8 +81,9 @@ runTypeCheckerHypothetically ::
 runTypeCheckerHypothetically e = do
   callDepth <- getCallDepth
   declCtx <- getDeclContext
+  instanceCandidates <- getInstanceCandidates
   state <- getMetaState
-  result <- runExceptT $ runTypeCheckerT declCtx state e
+  result <- runExceptT $ runTypeCheckerT declCtx instanceCandidates state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of
