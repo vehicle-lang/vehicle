@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Union
 
 from typing_extensions import TypeAlias, final, overload, override
+
 from vehicle_lang._error import VehicleError
 from vehicle_lang.ast import Program
 from vehicle_lang.compile.abc import AnyBuiltins, Sampler
@@ -181,26 +182,15 @@ def generate_loss_function(
     representing the `loss`, i.e. how false the property is.
     """
 
-    # Ensure that specification_path is a Path
-    if isinstance(specification, str):
-        specification = Path(specification)
-
-    args = ["compile"]
-    args.extend(["--specification", str(specification)])
-    args.extend(["--target", differentiable_logic.vehicle_command_line_interface_name])
-    args.extend(["--json"])
-
-    # Call the vehicle compiler file
-    exc, out, err, log = global_session.check_output(args)
-
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(err or out or log or "unknown error")
-    if out is None:
-        raise VehicleError("no output")
+    # Call Vehicle compile
+    output = compile(
+        specification=specification,
+        target=differentiable_logic.vehicle_command_line_interface_name,
+        as_json=True,
+    )
 
     # Load the AST from the generated JSON
-    program = Program.from_json(out)
+    program = Program.from_json(output)
 
     # Instantiate the translation
     if samplers is None:
@@ -231,26 +221,74 @@ def generate_python_function(specification: Union[str, Path]) -> Dict[str, Any]:
     can be accessed using dictionary lookup.
     """
 
-    # Ensure that specification_path is a Path
-    if isinstance(specification, str):
-        specification = Path(specification)
-
-    args = ["compile"]
-    args.extend(["--specification", str(specification)])
-    args.extend(["--target", "Explicit"])
-    args.extend(["--json"])
-
-    exc, out, err, log = global_session.check_output(args)
-    if exc != 0:
-        raise VehicleError(err or out or log or "unknown error")
-    if out is None:
-        raise VehicleError("no output")
+    # Call Vehicle compile
+    output = compile(specification=specification, target="Explicit", as_json=True)
 
     # Translate the program from an AST.
-    program = Program.from_json(out)
+    program = Program.from_json(output)
 
     # Translate the specification to a Python module:
     translation = PythonTranslation(builtins=PythonBuiltins())
     return translation.compile(
         program=program, filename=str(specification), declaration_context={}
     )
+
+
+def compile(
+    target: str,
+    specification: Union[str, Path],
+    output_file: Optional[Union[str, Path]] = None,
+    declarations: Optional[Set[DeclarationName]] = None,
+    networks: Optional[Dict[DeclarationName, Path]] = None,
+    datasets: Optional[Dict[DeclarationName, Path]] = None,
+    parameters: Optional[Dict[DeclarationName, Any]] = None,
+    module_name: Optional[str] = None,
+    proof_cache: Optional[str] = None,
+    as_json: bool = False,
+) -> str:
+    # Ensure that specification_path is a Path
+    if isinstance(specification, str):
+        specification = Path(specification)
+
+    # Ensure that output file is a Path
+    if isinstance(output_file, str):
+        output_file = Path(output_file)
+
+    args = ["compile"]
+    args.extend(["--target", target])
+    args.extend(["--specification", str(specification)])
+
+    if output_file is not None:
+        args.extend(["--outputFile", str(output_file)])
+
+    if declarations is not None:
+        for declaration_name in declarations:
+            args.extend(["--declaration", declaration_name])
+
+    if networks is not None:
+        for network_name, network_path in networks.items():
+            args.extend(["--network", f"{network_name}:{network_path}"])
+
+    if datasets is not None:
+        for dataset_name, dataset_path in datasets.items():
+            args.extend(["--dataset", f"{dataset_name}:{dataset_path}"])
+
+    if parameters is not None:
+        for parameter_name, parameter_value in parameters.items():
+            args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
+
+    if module_name is not None:
+        args.extend(["--moduleName", module_name])
+
+    if proof_cache is not None:
+        args.extend(["--proofCache", proof_cache])
+
+    if as_json:
+        args.append("--json")
+
+    exc, out, err, log = global_session.check_output(args)
+    if exc != 0:
+        raise VehicleError(err or out or log or "unknown error")
+    if out is None:
+        raise VehicleError("no output")
+    return out
