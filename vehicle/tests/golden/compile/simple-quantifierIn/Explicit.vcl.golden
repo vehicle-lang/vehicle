@@ -1,8 +1,8 @@
-bigAnd__List : List Bool -> Bool;
-bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
-
 bigAnd__lam_A__Vector_A : (\ A -> Vector A) Bool -> Bool;
 bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+bigAnd__List : List Bool -> Bool;
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigOr : (\ A -> Vector A) Bool -> Bool;
 bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
