@@ -1,14 +1,14 @@
-bigAnd__lam_A__Vector_A : (\ A -> Vector A) Rat -> Rat;
-bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> 1.0 - max (** (1.0 - (** (1.0 - x) 1.0 + ** (1.0 - y) 1.0)) 1.0) 0.0) 0.0 _x0
-
 bigAnd__List : List Rat -> Rat;
 bigAnd__List _x0 = fold (\ x -> \ y -> 1.0 - max (** (1.0 - (** (1.0 - x) 1.0 + ** (1.0 - y) 1.0)) 1.0) 0.0) 0.0 _x0
 
-bigOr__lam_A__Vector_A : (\ A -> Vector A) Rat -> Rat;
-bigOr__lam_A__Vector_A _x0 = fold (\ x -> \ y -> 1.0 - min (** (** x 1.0 + ** y 1.0) 1.0) 1.0) 1.0 _x0
+bigAnd__lam_A__Vector_A : (\ A -> Vector A) Rat -> Rat;
+bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> 1.0 - max (** (1.0 - (** (1.0 - x) 1.0 + ** (1.0 - y) 1.0)) 1.0) 0.0) 0.0 _x0
 
 bigOr__List : List Rat -> Rat;
 bigOr__List _x0 = fold (\ x -> \ y -> 1.0 - min (** (** x 1.0 + ** y 1.0) 1.0) 1.0) 1.0 _x0
+
+bigOr__lam_A__Vector_A : (\ A -> Vector A) Rat -> Rat;
+bigOr__lam_A__Vector_A _x0 = fold (\ x -> \ y -> 1.0 - min (** (** x 1.0 + ** y 1.0) 1.0) 1.0) 1.0 _x0
 
 @noinline;
 equalsVector : Vector Rat -> Vector Rat -> Rat;

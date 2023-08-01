@@ -1,8 +1,9 @@
 module Vehicle.Prelude.IO
-  ( vehicleSpecificationFileExtension,
-    vehicleVerificationPlanFileExtension,
+  ( specificationFileExtension,
+    specificationCacheIndexFileExtension,
+    propertyVerificationResultFileExtension,
+    propertyVerificationPlanFileExtension,
     vehicleObjectFileExtension,
-    vehicleProofCacheFileExtension,
     vehicleLibraryExtension,
     removeFileIfExists,
     fatalError,
@@ -32,17 +33,20 @@ import System.Info (os)
 baseFileExtension :: String
 baseFileExtension = ".vcl"
 
-vehicleSpecificationFileExtension :: String
-vehicleSpecificationFileExtension = baseFileExtension
+specificationFileExtension :: String
+specificationFileExtension = baseFileExtension
 
-vehicleVerificationPlanFileExtension :: String
-vehicleVerificationPlanFileExtension = baseFileExtension <> "-plan"
+specificationCacheIndexFileExtension :: String
+specificationCacheIndexFileExtension = baseFileExtension <> "-cache-index"
+
+propertyVerificationPlanFileExtension :: String
+propertyVerificationPlanFileExtension = baseFileExtension <> "-plan"
+
+propertyVerificationResultFileExtension :: String
+propertyVerificationResultFileExtension = baseFileExtension <> "-result"
 
 vehicleObjectFileExtension :: String
 vehicleObjectFileExtension = baseFileExtension <> "o"
-
-vehicleProofCacheFileExtension :: String
-vehicleProofCacheFileExtension = baseFileExtension <> "-cache"
 
 vehicleLibraryExtension :: String
 vehicleLibraryExtension = baseFileExtension <> "lib"

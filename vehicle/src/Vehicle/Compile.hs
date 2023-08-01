@@ -5,7 +5,6 @@ module Vehicle.Compile
 where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -24,8 +23,6 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification (VerificationPlan (VerificationPlan))
-import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (queryFormats)
 
 --------------------------------------------------------------------------------
@@ -40,7 +37,7 @@ data CompileOptions = CompileOptions
     parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
-    proofCache :: Maybe FilePath,
+    verificationCache :: Maybe FilePath,
     outputAsJSON :: Bool
   }
   deriving (Eq, Show)
@@ -64,7 +61,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
     LossFunction differentiableLogic ->
       compileToLossFunction result differentiableLogic outputFile outputAsJSON
     ITP Agda -> do
-      let agdaOptions = AgdaOptions proofCache outputFile moduleName
+      let agdaOptions = AgdaOptions verificationCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
     ExplicitVehicle -> do
       compileDirect result outputFile outputAsJSON
@@ -82,11 +79,7 @@ compileToQueryFormat ::
 compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = do
   let mergedProg = mergeImports imports typedProg
   let verifier = queryFormats queryFormatID
-  queryData <- compileToQueries verifier mergedProg resources
-  let (queryStructure, queryText) = (NonEmpty.unzip . fmap (NonEmpty.unzip . fmap NonEmpty.unzip)) queryData
-  integrityInfo <- generateResourcesIntegrityInfo resources
-  let verificationPlan = VerificationPlan queryStructure integrityInfo
-  outputCompilationResults queryFormatID outputFile (verificationPlan, queryText)
+  compileToQueries verifier mergedProg resources outputFile
 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>

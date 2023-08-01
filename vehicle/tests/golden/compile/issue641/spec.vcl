@@ -7,7 +7,6 @@ classifier : Image -> Vector Rat 10
 images : Vector Image 1
 
 @property
-pulloverLowScore : Bool
-pulloverLowScore =
-    let scores = classifier (images ! 0) in
+p : Bool
+p = let scores = classifier (images ! 0) in
     scores ! 7 > 0 or not(scores ! 7 > 0)

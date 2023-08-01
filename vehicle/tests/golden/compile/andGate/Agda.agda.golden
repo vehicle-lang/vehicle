@@ -34,5 +34,5 @@ CorrectOutput x1 x2 = let y = andGate (x1 ∷ᵥ (x2 ∷ᵥ []ᵥ)) (# 0) in (Tr
 abstract
   andGateCorrect : ∀ x1 → ∀ x2 → ValidInput x1 × ValidInput x2 → CorrectOutput x1 x2
   andGateCorrect = checkSpecification record
-    { proofCache   = "proofcache.vcl-cache"
+    { verificationFolder   = "Marabou.queries"
     }

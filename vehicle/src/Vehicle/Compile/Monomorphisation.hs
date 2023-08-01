@@ -19,8 +19,8 @@ import Data.HashMap.Strict qualified as Map
     member,
     singleton,
   )
-import Data.HashSet (HashSet)
-import Data.HashSet qualified as HashSet (singleton, toList)
+import Data.LinkedHashSet (LinkedHashSet)
+import Data.LinkedHashSet qualified as HashSet (singleton, toList, union)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
@@ -138,7 +138,7 @@ normTypeArgsInExpr = traverseCandidateApplications addBinderToContext $
 -- Pass 2 - collects the sites for monomorphisation
 
 -- | Applications of monomorphisable functions
-type CandidateApplications = HashMap Identifier (HashSet [StandardArg])
+type CandidateApplications = HashMap Identifier (LinkedHashSet [StandardArg])
 
 -- | Solution identifier for a candidate monomorphisation application
 type SubsitutionSolutions = HashMap (Identifier, [StandardArg]) Identifier
@@ -248,7 +248,7 @@ collectApplication ::
   m StandardExpr
 collectApplication p ident argsToMono remainingArgs = do
   logDebug MaxDetail $ "Found application:" <+> quotePretty ident <+> prettyVerbose argsToMono
-  modify (Map.insertWith (<>) ident (HashSet.singleton argsToMono))
+  modify (Map.insertWith HashSet.union ident (HashSet.singleton argsToMono))
   return $ normAppList p (FreeVar p ident) (argsToMono <> remainingArgs)
 
 --------------------------------------------------------------------------------

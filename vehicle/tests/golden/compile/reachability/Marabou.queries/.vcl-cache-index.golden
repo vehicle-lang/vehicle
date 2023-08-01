@@ -1,0 +1,33 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8568602507881518173
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": 8627826693814824968
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "reachable",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "reachable",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

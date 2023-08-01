@@ -1,0 +1,150 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8432712061251229602
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "acasXu",
+        "filePath": "fake.onnx",
+        "fileHash": -3403084463960967397
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "property1",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property1",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property2",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property2",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property3",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property3",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property4",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property4",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property5",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property5",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property6",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property6",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property7",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property7",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property8",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property8",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property9",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property9",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "property10",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "property10",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

@@ -39,12 +39,12 @@ VEHICLE_COMMAND = "vehicle"
 
 record CheckArgs : Set where
   field
-    proofCache : String
+    verificationFolder : String
 
 validateCmd : CheckArgs → CmdSpec
 validateCmd checkArgs = cmdSpec VEHICLE_COMMAND
   ( "validate"
-  ∷ ("--proofCache=" ++ proofCache)
+  ∷ ("--verificationFolder=" ++ verificationFolder)
   ∷ [] ) ""
   where open CheckArgs checkArgs
 
