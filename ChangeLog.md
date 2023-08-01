@@ -20,7 +20,7 @@
   module.
 
 * Loss functions no longer generated via the `to_python` function from `vehicle_lang.compile`
-  module, but instead can be created via the `generate_loss_function` function from the
+  module, but instead can be created via the `load_loss_function` function from the
   `vehicle_lang` file.
 
 ## Version 0.8.0
