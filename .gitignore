@@ -4,7 +4,6 @@
 
 # Sphinx & ReadTheDocs
 /docs-doctrees
-/docs/dev/apidoc/
 
 # Mac specific files
 *.DS_Store
