@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Union
 
 from typing_extensions import TypeAlias, final, overload, override
+
 from vehicle_lang._error import VehicleError
 from vehicle_lang.ast import Program
 from vehicle_lang.compile.abc import AnyBuiltins, Sampler
@@ -242,7 +243,7 @@ def compile(
     datasets: Optional[Dict[DeclarationName, Path]] = None,
     parameters: Optional[Dict[DeclarationName, Any]] = None,
     module_name: Optional[str] = None,
-    proof_cache: Optional[str] = None,
+    cache: Optional[str] = None,
     as_json: bool = False,
 ) -> str:
     # Ensure that specification_path is a Path
@@ -279,8 +280,8 @@ def compile(
     if module_name is not None:
         args.extend(["--moduleName", module_name])
 
-    if proof_cache is not None:
-        args.extend(["--proofCache", proof_cache])
+    if cache is not None:
+        args.extend(["--cache", cache])
 
     if as_json:
         args.append("--json")
