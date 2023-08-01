@@ -8,7 +8,6 @@ push = true
 
 [bumpver.file_patterns]
 "bumpver.toml" = ['current_version = "{version}"']
-"docs/requirements.txt" = ["vehicle_lang=={pep440_version}"]
 "vehicle-python/vehicle-python-binding.cabal" = [
     "^version:         {pep440_version}$",
 ]
