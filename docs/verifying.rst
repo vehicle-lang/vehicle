@@ -142,10 +142,9 @@ Firstly, every verification cache contains:
 
 - ``.vcl-cache-index`` - this file stores the critical information for the cache,
   including:
-    - the list of properties contained within the cache
-    - the file path and hash of any external resources that were used to create the
-    cache. In particular the original specification, the networks and the datasets
-    passed to the compiler.
+
+  * the list of properties contained within the cache
+  * the file path and hash of any external resources that were used to create the cache. In particular the original specification, the networks and the datasets passed to the compiler.
 
 Next, for each property named ``<property>`` in the original specification
 the cache initially contains the following files:
@@ -275,7 +274,7 @@ As you might expect, verification is a very hard problem. Therefore there are
 several limitations that users should be aware of.
 
 Linearity
-~~~~~~~~~
++++++++++
 
 Quantified variables in the specification must be used in a linear manner.
 For example, neither of the following is allowed:
@@ -302,7 +301,7 @@ its sophisticated auxiliary type-system to help you pinpoint the source of the
 non-linearity.
 
 Quantifiers
-~~~~~~~~~~~
++++++++++++
 
 While verifiers can be used to verify both universal properties (i.e. with ``forall``)
 and existential properties (i.e. with ``exists``) they cannot verify properties with
@@ -360,14 +359,14 @@ Vehicle will use its sophisticated auxiliary type-system to help you pinpoint th
 source of the alternation.
 
 Network architecture
-~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++
 
 Verifiers tend to only support certain layer types and activation functions.
 At the moment Vehicle doesn't perform any compatability checking, so please
 consult the verifier's own documentation.
 
 Performance
-~~~~~~~~~~~
++++++++++++
 
 Verification has been shown to be an NP-complete problem so in the worst-case
 all verification algorithms will take an infeasibly long time to run.

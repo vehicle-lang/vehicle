@@ -4,6 +4,7 @@ Developer documentation
 .. toctree::
    :maxdepth: 2
 
-   buildingVehicle.md
-   releasingVehicle.md
-   verifierIntegration.md
+   building.md
+   releasing.md
+   verifiers.md
+   apidoc/vehicle_lang.rst

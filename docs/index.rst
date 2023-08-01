@@ -21,8 +21,8 @@ Contents
 
    installation.md
    language/index.rst
-   typeChecking.rst
+   type-checking.rst
    training.rst
-   verification.rst
-   exportingToITP.rst
-   developerDocs/index.rst
+   verifying.rst
+   exporting.rst
+   dev/index.rst
