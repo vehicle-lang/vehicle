@@ -58,23 +58,11 @@ def load_loss_function(
     """
     Load a loss function from a property in a Vehicle specification.
 
-    Parameters
-    ----------
-    specification -- the file path to the Vehicle specification file (.vcl file).
-
-    differentiable_logic -- the differentiable logic that Vehicle should use for
-    the translation to a loss function.
-
-    samplers -- a dictionary mapping names of quantified variables in the specification
-    to methods for sampling for their value. See the `Sampler` documentation for more
-    details.
-
-    Returns
-    -------
-
-    A mapping from declaration names to python functions that accept all the dependent
-    external resources in the specification as keyword arguments and return a value
-    representing the `loss`, i.e. how false the property is.
+    :param path: The path to the Vehicle specification file.
+    :param property_name: The name of the Vehicle property to load.
+    :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
+    :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
+    :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
     translation = PythonTranslation(builtins=PythonBuiltins(samplers=samplers))
     declarations = compile(
