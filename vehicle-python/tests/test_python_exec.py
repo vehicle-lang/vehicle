@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-from vehicle_lang import generate_python_function
+
+import vehicle_lang.compile as vclc
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -90,7 +91,7 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    output = generate_python_function(specification_path)
+    output = vclc.compile(specification_path)
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
             if validate_output[key] is not ...:

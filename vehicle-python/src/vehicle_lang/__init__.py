@@ -1,22 +1,39 @@
 from typing import List
 
-from ._interface import (
-    DifferentiableLogic,
-    Verifier,
-    generate_loss_function,
-    generate_python_function,
-    verify,
-)
 from ._version import VERSION as VERSION
+from .compile import load_loss_function as load_loss_function
+from .error import BuiltinUnsupported as BuiltinUnsupported
+from .error import InternalError as InternalError
+from .error import PropertyNameNotFound as PropertyNameNotFound
+from .error import SessionClosed as SessionClosed
+from .error import SessionUsed as SessionUsed
+from .error import VehicleError as VehicleError
+from .typing import AnySamplers as AnySamplers
+from .typing import DeclarationName as DeclarationName
+from .typing import DifferentiableLogic as DifferentiableLogic
+from .typing import QuantifiedVariableName as QuantifiedVariableName
+from .typing import Sampler as Sampler
+from .typing import Verifier as Verifier
+from .verify import verify as verify
 
 __all__: List[str] = [
     "VERSION",
-    # Verify mode
-    "Verifier",
+    # Compile
+    "load_loss_function",
+    # Verify
     "verify",
-    # Loss function generation mode
+    # Error types
+    "VehicleError",
+    "SessionClosed",
+    "SessionUsed",
+    "BuiltinUnsupported",
+    "InternalError",
+    "PropertyNameNotFound",
+    # Argument types
+    "DeclarationName",
+    "QuantifiedVariableName",
+    "Sampler",
+    "AnySamplers",
     "DifferentiableLogic",
-    "generate_loss_function",
-    # Python function generation
-    "generate_python_function",
+    "Verifier",
 ]

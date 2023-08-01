@@ -2,45 +2,15 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple, cast
 
 from typing_extensions import TypeAlias
-from vehicle_lang import DifferentiableLogic, generate_loss_function
+
+import vehicle_lang as vcl
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
 )
 MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "spec.vcl"
 
-# fmt: off
-Image: TypeAlias = Tuple[
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-    Tuple[float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float],
-]
-# fmt: on
+Image: TypeAlias = Tuple[Tuple[float, ...], ...]
 
 Perturbation: TypeAlias = Image
 
@@ -99,17 +69,18 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     def classifier(image: Image) -> LabelDistribution:
         return one_hot(0)
 
-    logical_loss_fn = generate_loss_function(
+    robust_loss = vcl.load_loss_function(
         MNIST_ROBUSTNESS,
-        differentiable_logic=DifferentiableLogic.DL2,
+        property_name="robust",
+        target=vcl.DifferentiableLogic.DL2,
         samplers={"pertubation": sampler_for_pertubation},
-    )["robust"]
+    )
 
-    logical_loss = logical_loss_fn(
+    loss = robust_loss(
         n=1,
         classifier=classifier,
         epsilon=0.001,
         trainingImages=(ZEROES_28X28,),
         trainingLabels=(0,),
     )
-    print(logical_loss)
+    print(loss)

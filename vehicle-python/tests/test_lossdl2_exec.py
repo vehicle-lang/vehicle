@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-from vehicle_lang import DifferentiableLogic, generate_loss_function
+
+import vehicle_lang as vcl
+import vehicle_lang.compile as vclc
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -106,10 +108,10 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = generate_loss_function(
+    actual_declarations = vclc.compile(
         specification_path,
-        differentiable_logic=DifferentiableLogic.DL2,
-        samplers=samplers,
+        target=vcl.DifferentiableLogic.DL2,
+        translation=vclc.PythonTranslation.from_samplers(samplers),
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():

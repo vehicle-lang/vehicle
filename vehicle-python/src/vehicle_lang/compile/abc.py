@@ -2,20 +2,13 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    Iterator,
-    SupportsFloat,
-    SupportsInt,
-    Tuple,
-)
+from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tuple
 
 from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
+from ..error import BuiltinUnsupported
+from ..typing import Sampler
 from ._collections import SupportsList, SupportsVector
 
 ################################################################################
@@ -30,15 +23,6 @@ _Rat = TypeVar("_Rat")
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
-
-
-@dataclass(frozen=True)
-class UnsupportedBuiltin(Exception):
-    builtin: vcl.BuiltinFunction
-
-
-# Sampler: TypeAlias = Callable[[Callable[[_T], _Bool], Dict[str, Any]], Iterator[_T]]
-Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[_T]]
 
 
 @dataclass(frozen=True, init=False)
@@ -108,7 +92,7 @@ class Builtins(
     def Exists(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
     ) -> _Bool:
-        raise UnsupportedBuiltin(vcl.Exists())
+        raise BuiltinUnsupported(vcl.Exists.__name__)
 
     def FoldList(
         self, function: Callable[[_S, _T], _T], initial: _T, iterable: SupportsList[_S]
@@ -127,7 +111,7 @@ class Builtins(
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
     ) -> _Bool:
-        raise UnsupportedBuiltin(vcl.Forall())
+        raise BuiltinUnsupported(vcl.Forall.__name__)
 
     def GeIndex(self, x: int, y: int) -> _Bool:
         return self.Not(self.LtIndex(x, y))

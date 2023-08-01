@@ -7,16 +7,17 @@ from typing import (
     Dict,
     Iterator,
     List,
-    Optional,
     Sequence,
     SupportsFloat,
     SupportsInt,
+    Type,
     Union,
 )
 
-from typing_extensions import final, overload, override
+from typing_extensions import Self, final, override
 
 from .. import ast as vcl
+from ..typing import AnySamplers
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
@@ -60,16 +61,24 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
     ignored_types: List[str] = field(init=False, default_factory=list)
 
+    @classmethod
+    def from_builtins(cls: Type[Self], builtins: AnyBuiltins) -> Self:
+        return cls(builtins=builtins)
+
+    @classmethod
+    def from_samplers(cls: Type[Self], samplers: AnySamplers) -> Self:
+        return cls.from_builtins(builtins=PythonBuiltins(samplers=samplers))
+
     def compile(
         self,
         program: vcl.Program,
-        filename: str,
+        path: Union[str, Path],
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
             declaration_context["__vehicle__"] = self.builtins
-            py_bytecode = compile(py_ast, filename=filename, mode="exec")
+            py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
         except TypeError as e:
