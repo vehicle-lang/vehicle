@@ -60,19 +60,20 @@ import Vehicle.Compile qualified as CompileOptions
 import Vehicle.Compile qualified as Vehicle (CompileOptions)
 import Vehicle.Export qualified as ExportOptions
   ( outputFile,
-    proofCacheLocation,
     target,
+    verificationCache,
   )
 import Vehicle.Export qualified as Vehicle (ExportOptions)
-import Vehicle.Prelude (Pretty (pretty), layoutAsString, vehicleSpecificationFileExtension)
+import Vehicle.Prelude (Pretty (pretty), layoutAsString, specificationFileExtension)
 import Vehicle.TypeCheck qualified as TypeCheckOptions (specification)
 import Vehicle.TypeCheck qualified as Vehicle
-import Vehicle.Validate qualified as ValidateOptions (proofCache)
+import Vehicle.Validate qualified as ValidateOptions
+  ( verificationCache,
+  )
 import Vehicle.Validate qualified as Vehicle (ValidateOptions)
 import Vehicle.Verify qualified as Vehicle (VerifyOptions)
 import Vehicle.Verify qualified as VerifyOptions
   ( VerifyOptions (..),
-    proofCache,
     verifierID,
   )
 import Vehicle.Verify.Core (QueryFormatID (MarabouQueries))
@@ -273,7 +274,7 @@ instance TestSpecLike Vehicle.VerifyOptions where
 
   needs :: Vehicle.VerifyOptions -> [FilePath]
   needs opts
-    | takeExtension (VerifyOptions.specification opts) == vehicleSpecificationFileExtension = do
+    | takeExtension (VerifyOptions.specification opts) == specificationFileExtension = do
         join
           [ [VerifyOptions.specification opts]
           -- TODO the verification plan also references resources and query files
@@ -286,14 +287,14 @@ instance TestSpecLike Vehicle.VerifyOptions where
           ]
 
   produces :: Vehicle.VerifyOptions -> Maybe [GoldenFilePattern]
-  produces = traverse safeRead . maybeToList . VerifyOptions.proofCache
+  produces = traverse safeRead . maybeToList . VerifyOptions.verificationCache
 
 instance TestSpecLike Vehicle.ExportOptions where
   targetName :: Vehicle.ExportOptions -> String
   targetName = layoutAsString . pretty . Backend.ITP . ExportOptions.target
 
   needs :: Vehicle.ExportOptions -> [FilePath]
-  needs = (: []) . ExportOptions.proofCacheLocation
+  needs = (: []) . ExportOptions.verificationCache
 
   produces :: Vehicle.ExportOptions -> Maybe [GoldenFilePattern]
   produces = traverse safeRead . maybeToList . ExportOptions.outputFile
@@ -303,7 +304,7 @@ instance TestSpecLike Vehicle.ValidateOptions where
   targetName = const "Check"
 
   needs :: Vehicle.ValidateOptions -> [FilePath]
-  needs = (: []) . ValidateOptions.proofCache
+  needs = (: []) . ValidateOptions.verificationCache
 
   produces :: Vehicle.ValidateOptions -> Maybe [GoldenFilePattern]
   produces = const (return [])

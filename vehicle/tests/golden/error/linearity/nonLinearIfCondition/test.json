@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s nonLinearIfCondition.vcl -t MarabouQueries --network f:NO_FILE",
-  "needs": ["nonLinearIfCondition.vcl"]
+  "run": "vehicle compile -s nonLinearIfCondition.vcl -t MarabouQueries --network f:fake.onnx",
+  "needs": ["nonLinearIfCondition.vcl", "fake.onnx"]
 }

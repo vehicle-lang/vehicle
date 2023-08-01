@@ -36,5 +36,5 @@ subtraction = twoD ⊖ twoD
 abstract
   p : ∀ i → ∀ j → f subtraction ⊕ addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
   p = checkSpecification record
-    { proofCache   = "proofcache.vcl-cache"
+    { verificationFolder   = "Marabou.queries"
     }

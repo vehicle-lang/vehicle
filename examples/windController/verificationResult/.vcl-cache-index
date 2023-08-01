@@ -1,0 +1,33 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "examples/windController/windController.vcl",
+      "fileHash": -5208383746444727508
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "controller",
+        "filePath": "examples/windController/controller.onnx",
+        "fileHash": -8978054439350739444
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "safe",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "safe",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

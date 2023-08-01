@@ -1,0 +1,4591 @@
+{
+  "queryMetaData": {
+    "tag": "Query",
+    "contents": {
+      "queries": {
+        "tag": "NonTrivial",
+        "contents": {
+          "unDisjunctAll": [
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                1
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                2
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                3
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                4
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                5
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                6
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                7
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                8
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                9
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                10
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                11
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                12
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                13
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                14
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                15
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": []
+                },
+                16
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "UserVar",
+                      "contents": {
+                        "userVarName": "x",
+                        "userVarDimensions": [
+                          5
+                        ],
+                        "unreducedUserVarName": "x"
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          5
+                        ],
+                        "networkName": "acasXu",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_4",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            600
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 4,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1200
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_3",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            650
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 3,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              1100
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_2",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 2,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_1",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            0
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 1,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              6.283184
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x_0",
+                          "userVarDimensions": [],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [],
+                          "constantValue": [
+                            19791.091
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": 0,
+                                  "networkVarDimensions": [],
+                                  "networkName": "acasXu",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              60261
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "acasXu",
+                    "metaNetworkEntryFilePath": "fake.onnx"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "negated": true
+    }
+  }
+}

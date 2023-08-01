@@ -14,8 +14,6 @@ import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
 import Vehicle.Verify.Core
-import Vehicle.Verify.ProofCache (ProofCache (..), writeProofCache)
-import Vehicle.Verify.Specification (VerificationPlan (VerificationPlan), specificationPropertyNames)
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier (verifiers)
 
@@ -26,11 +24,10 @@ data VerifyOptions = VerifyOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
+    verificationCache :: Maybe FilePath,
     -- Shared options
     verifierID :: VerifierID,
-    verifierLocation :: Maybe VerifierExecutable,
-    proofCache :: Maybe FilePath,
-    assignmentsLocation :: Maybe FilePath
+    verifierLocation :: Maybe VerifierExecutable
   }
   deriving (Eq, Show)
 
@@ -38,9 +35,11 @@ verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings options@VerifyOptions {..} = do
   validQueryFolder <- isValidQueryFolder specification
   if validQueryFolder
-    then verifyQueries loggingSettings specification verifierID verifierLocation proofCache assignmentsLocation
+    then do
+      let queryFolder = specification
+      verifyQueries loggingSettings queryFolder verifierID verifierLocation
     else
-      if takeExtension specification == vehicleSpecificationFileExtension
+      if takeExtension specification == specificationFileExtension
         then compileAndVerifyQueries loggingSettings options
         else do
           fatalError (invalidTargetError specification)
@@ -50,7 +49,11 @@ compileAndVerifyQueries :: LoggingSettings -> VerifyOptions -> IO ()
 compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
   let queryFormat = VerifierQueries $ verifierQueryFormat $ verifiers verifierID
 
-  withSystemTempDirectory "specification" $ \tempDir -> do
+  let inFolder = case verificationCache of
+        Nothing -> withSystemTempDirectory "specification"
+        Just folder -> \f -> f folder
+
+  inFolder $ \tempDir -> do
     compile loggingSettings $
       CompileOptions
         { target = queryFormat,
@@ -58,34 +61,19 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
           declarationsToCompile = properties,
           outputFile = Just tempDir,
           moduleName = Nothing,
-          proofCache = Nothing,
+          verificationCache = verificationCache,
           outputAsJSON = False,
           ..
         }
 
-    verifyQueries loggingSettings tempDir verifierID verifierLocation proofCache assignmentsLocation
+    verifyQueries loggingSettings tempDir verifierID verifierLocation
 
-verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> Maybe FilePath -> Maybe FilePath -> IO ()
-verifyQueries loggingSettings queryFolder verifierID verifierLocation proofCache assignmentsLocation = do
+verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> IO ()
+verifyQueries loggingSettings queryFolder verifierID verifierLocation = do
   let verifierImpl = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
-
-  let verificationPlanFile = verificationPlanFileName queryFolder
-  VerificationPlan specificationPlan resourceIntegrity <- readVerificationPlan verificationPlanFile
-  status <-
-    runImmediateLogger loggingSettings $
-      verifySpecification queryFolder verifierImpl verifierExecutable specificationPlan assignmentsLocation
-
-  case proofCache of
-    Nothing -> return ()
-    Just proofCachePath ->
-      writeProofCache proofCachePath $
-        ProofCache
-          { proofCacheVersion = preciseVehicleVersion,
-            resourcesIntegrityInfo = resourceIntegrity,
-            originalProperties = specificationPropertyNames specificationPlan,
-            status = status
-          }
+  runImmediateLogger loggingSettings $
+    verifySpecification queryFolder verifierImpl verifierExecutable
 
 -- | Tries to locate the executable for the verifier at the provided
 -- location and falls back to the PATH variable if none provided. If not
@@ -133,9 +121,9 @@ invalidTargetError target =
     <> line
     <> indent
       2
-      ( "i) a" <+> pretty vehicleSpecificationFileExtension
+      ( "i) a" <+> pretty specificationFileExtension
           <> line
           <> "ii) a folder containing a"
-            <+> pretty vehicleVerificationPlanFileExtension
+            <+> pretty specificationCacheIndexFileExtension
             <+> "file generated via a `vehicle compile` command."
       )

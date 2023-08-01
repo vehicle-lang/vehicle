@@ -1,6 +1,5 @@
 module Vehicle.Verify.Specification.Status where
 
-import Control.Monad (forM_)
 import Data.Aeson
 import Data.List.Split (chunksOf)
 import Data.Text (Text, pack)
@@ -105,24 +104,6 @@ assignmentToExpr (dim : dims) xs = do
   let inputVarIndicesChunks = chunksOf (product dims) xs
   let elems = fmap (RelevantExplicitArg mempty . assignmentToExpr dims) inputVarIndicesChunks
   normAppList mempty vecConstructor elems
-
-traverseMultiPropertySATResults ::
-  forall m.
-  (Monad m) =>
-  (PropertyAddress -> QuerySetNegationStatus -> Maybe UserVariableAssignment -> m ()) ->
-  MultiPropertyStatus ->
-  m ()
-traverseMultiPropertySATResults f = go
-  where
-    go :: MultiPropertyStatus -> m ()
-    go = \case
-      MultiProperty ps -> do
-        forM_ ps go
-      SingleProperty address (PropertyStatus negated p) -> case p of
-        Trivial {} -> return ()
-        NonTrivial UnSAT -> return ()
-        NonTrivial (SAT assignment) -> do
-          f address negated assignment
 
 --------------------------------------------------------------------------------
 -- Verification status of the specification
