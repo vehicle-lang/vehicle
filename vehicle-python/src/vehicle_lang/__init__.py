@@ -2,12 +2,12 @@ from typing import List
 
 from ._version import VERSION as VERSION
 from .compile import load_loss_function as load_loss_function
-from .error import BuiltinUnsupported as BuiltinUnsupported
-from .error import InternalError as InternalError
-from .error import PropertyNameNotFound as PropertyNameNotFound
-from .error import SessionClosed as SessionClosed
-from .error import SessionUsed as SessionUsed
+from .error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .error import VehicleError as VehicleError
+from .error import VehicleInternalError as VehicleInternalError
+from .error import VehiclePropertyNotFound as VehiclePropertyNotFound
+from .error import VehicleSessionClosed as VehicleSessionClosed
+from .error import VehicleSessionUsed as VehicleSessionUsed
 from .typing import AnySamplers as AnySamplers
 from .typing import DeclarationName as DeclarationName
 from .typing import DifferentiableLogic as DifferentiableLogic
@@ -24,11 +24,11 @@ __all__: List[str] = [
     "verify",
     # Error types
     "VehicleError",
-    "SessionClosed",
-    "SessionUsed",
-    "BuiltinUnsupported",
-    "InternalError",
-    "PropertyNameNotFound",
+    "VehicleSessionClosed",
+    "VehicleSessionUsed",
+    "VehicleBuiltinUnsupported",
+    "VehicleInternalError",
+    "VehiclePropertyNotFound",
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",

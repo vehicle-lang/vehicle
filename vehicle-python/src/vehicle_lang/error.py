@@ -7,25 +7,25 @@ class VehicleError(Exception):
 
 
 @dataclass(frozen=True)
-class SessionClosed(VehicleError):
+class VehicleSessionClosed(VehicleError):
     pass
 
 
 @dataclass(frozen=True)
-class SessionUsed(VehicleError):
+class VehicleSessionUsed(VehicleError):
     pass
 
 
 @dataclass(frozen=True)
-class BuiltinUnsupported(VehicleError):
+class VehicleBuiltinUnsupported(VehicleError):
     builtin_name: str
 
 
 @dataclass(frozen=True)
-class InternalError(VehicleError):
+class VehicleInternalError(VehicleError):
     pass
 
 
 @dataclass(frozen=True)
-class PropertyNameNotFound(InternalError):
+class VehiclePropertyNotFound(VehicleInternalError):
     property_name: str

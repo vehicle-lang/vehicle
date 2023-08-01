@@ -11,7 +11,7 @@ from ..ast import (
     Provenance,
     load,
 )
-from ..error import PropertyNameNotFound
+from ..error import VehiclePropertyNotFound
 from ..typing import AnySamplers, DeclarationName, DifferentiableLogic, Explicit, Target
 from .abc import AnyBuiltins
 from .python import PythonBuiltins, PythonTranslation
@@ -74,4 +74,4 @@ def load_loss_function(
     if property_name in declarations:
         return declarations[property_name]
     else:
-        raise PropertyNameNotFound(property_name)
+        raise VehiclePropertyNotFound(property_name)
