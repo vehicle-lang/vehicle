@@ -89,7 +89,7 @@ validateModeTests =
     "validateMode"
     [ parserTest
         "basic"
-        "vehicle validate --verificationFolder local/outputFolder"
+        "vehicle validate --cache local/outputFolder"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
