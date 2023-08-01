@@ -38,7 +38,7 @@ import Vehicle.Syntax.Sugar
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { verificationFolder :: Maybe FilePath,
+  { verificationCache :: Maybe FilePath,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String
   }
@@ -323,7 +323,7 @@ type MonadAgdaCompile m =
 getVerificationFolder :: (MonadAgdaCompile m) => m (Maybe FilePath)
 getVerificationFolder = do
   (options, _) <- ask
-  return $ verificationFolder options
+  return $ verificationCache options
 
 getBoolLevel :: (MonadAgdaCompile m) => m BoolLevel
 getBoolLevel = do

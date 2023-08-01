@@ -180,8 +180,8 @@ writePropertyResult ::
   PropertyAddress ->
   Bool ->
   m ()
-writePropertyResult verificationFolder address result = do
-  let resultFile = propertyResultFileName verificationFolder address
+writePropertyResult verificationCache address result = do
+  let resultFile = propertyResultFileName verificationCache address
   liftIO $ writeFile resultFile (show result)
 
 readPropertyResult ::
@@ -189,8 +189,8 @@ readPropertyResult ::
   FilePath ->
   PropertyAddress ->
   m Bool
-readPropertyResult verificationFolder address = do
-  let resultFile = propertyResultFileName verificationFolder address
+readPropertyResult verificationCache address = do
+  let resultFile = propertyResultFileName verificationCache address
   value <- liftIO $ readFile resultFile
   return $ read value
 
@@ -256,13 +256,13 @@ verifyProperty ::
   FilePath ->
   PropertyAddress ->
   m ()
-verifyProperty verifier verifierExecutable verificationFolder address = do
-  let propertyPlanFile = propertyPlanFileName verificationFolder address
+verifyProperty verifier verifierExecutable verificationCache address = do
+  let propertyPlanFile = propertyPlanFileName verificationCache address
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
   progressBar <- createPropertyProgressBar address (propertySize queryMetaData)
-  let readerState = (verifier, verifierExecutable, verificationFolder, progressBar)
+  let readerState = (verifier, verifierExecutable, verificationCache, progressBar)
   result <- runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState
-  outputPropertyResult verificationFolder address result
+  outputPropertyResult verificationCache address result
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
@@ -343,9 +343,9 @@ outputPropertyResult ::
   PropertyAddress ->
   PropertyStatus ->
   m ()
-outputPropertyResult verificationFolder address result@(PropertyStatus _negated s) = do
+outputPropertyResult verificationCache address result@(PropertyStatus _negated s) = do
   liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
-  writePropertyResult verificationFolder address (isVerified result)
+  writePropertyResult verificationCache address (isVerified result)
   case s of
     NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> do
       -- Output assignments to command line
@@ -354,7 +354,7 @@ outputPropertyResult verificationFolder address result@(PropertyStatus _negated 
       liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
 
       -- Output assignments to file
-      let witnessFolder = verificationFolder </> layoutAsString (pretty address) <> "-assignments"
+      let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
       liftIO $ createDirectoryIfMissing True witnessFolder
       forM_ assignments $ \(UserVariable {..}, value) -> do
         let file = witnessFolder </> unpack userVarName

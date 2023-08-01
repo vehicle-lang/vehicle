@@ -24,7 +24,7 @@ data VerifyOptions = VerifyOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    cacheLocation :: Maybe FilePath,
+    verificationCache :: Maybe FilePath,
     -- Shared options
     verifierID :: VerifierID,
     verifierLocation :: Maybe VerifierExecutable
@@ -49,9 +49,9 @@ compileAndVerifyQueries :: LoggingSettings -> VerifyOptions -> IO ()
 compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
   let queryFormat = VerifierQueries $ verifierQueryFormat $ verifiers verifierID
 
-  let inFolder = case cacheLocation of
+  let inFolder = case verificationCache of
         Nothing -> withSystemTempDirectory "specification"
-        Just workingFolder -> \f -> f workingFolder
+        Just folder -> \f -> f folder
 
   inFolder $ \tempDir -> do
     compile loggingSettings $
@@ -61,7 +61,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
           declarationsToCompile = properties,
           outputFile = Just tempDir,
           moduleName = Nothing,
-          cacheLocation = cacheLocation,
+          verificationCache = verificationCache,
           outputAsJSON = False,
           ..
         }

@@ -10,7 +10,7 @@ import Vehicle.Verify.Specification.IO
 
 data ExportOptions = ExportOptions
   { target :: ITP,
-    cacheLocation :: FilePath,
+    verificationCache :: FilePath,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String
   }
@@ -18,7 +18,7 @@ data ExportOptions = ExportOptions
 
 export :: LoggingSettings -> ExportOptions -> IO ()
 export loggingSettings ExportOptions {..} = do
-  let cacheIndexFile = specificationCacheIndexFileName cacheLocation
+  let cacheIndexFile = specificationCacheIndexFileName verificationCache
   SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex cacheIndexFile
   let spec = filePath $ specificationSummary resourcesIntegrityInfo
   let resources = reparseResources resourcesIntegrityInfo
@@ -33,6 +33,6 @@ export loggingSettings ExportOptions {..} = do
         parameterValues = parameters resources,
         outputFile = outputFile,
         moduleName = moduleName,
-        cacheLocation = Just cacheLocation,
+        verificationCache = Just verificationCache,
         outputAsJSON = False
       }

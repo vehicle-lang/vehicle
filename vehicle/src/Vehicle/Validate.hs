@@ -15,7 +15,7 @@ import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCac
 -- Proof validation
 
 newtype ValidateOptions = ValidateOptions
-  { verificationFolder :: FilePath
+  { verificationCache :: FilePath
   }
   deriving (Eq, Show)
 
@@ -31,13 +31,13 @@ checkSpecificationStatus ::
   ValidateOptions ->
   m ValidateResult
 checkSpecificationStatus ValidateOptions {..} = do
-  SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex verificationFolder
+  SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex verificationCache
   maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
   case maybeIntegrityError of
     Just err -> return $ IntegrityError err
     Nothing -> do
       let propertyAddresses = concatMap (multiPropertyAddresses . snd) properties
-      statuses <- forM propertyAddresses $ readPropertyResult verificationFolder
+      statuses <- forM propertyAddresses $ readPropertyResult verificationCache
       if and statuses
         then return Verified
         else return Unverified

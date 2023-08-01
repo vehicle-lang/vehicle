@@ -37,7 +37,7 @@ data CompileOptions = CompileOptions
     parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
-    cacheLocation :: Maybe FilePath,
+    verificationCache :: Maybe FilePath,
     outputAsJSON :: Bool
   }
   deriving (Eq, Show)
@@ -61,7 +61,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
     LossFunction differentiableLogic ->
       compileToLossFunction result differentiableLogic outputFile outputAsJSON
     ITP Agda -> do
-      let agdaOptions = AgdaOptions cacheLocation outputFile moduleName
+      let agdaOptions = AgdaOptions verificationCache outputFile moduleName
       compileToAgda agdaOptions result outputFile
     ExplicitVehicle -> do
       compileDirect result outputFile outputAsJSON

@@ -96,7 +96,7 @@ validateModeTests =
               Just $
                 Validate $
                   ValidateOptions
-                    { verificationFolder = "local/outputFolder"
+                    { verificationCache = "local/outputFolder"
                     }
           }
     ]
@@ -125,7 +125,7 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      cacheLocation = Just "local/outputFolder"
+                      verificationCache = Just "local/outputFolder"
                     }
           },
       parserTest
@@ -147,7 +147,7 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      cacheLocation = Nothing
+                      verificationCache = Nothing
                     }
           },
       parserTest
@@ -174,7 +174,7 @@ verifyTests =
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      cacheLocation = Nothing
+                      verificationCache = Nothing
                     }
           }
     ]
