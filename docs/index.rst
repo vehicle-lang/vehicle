@@ -25,4 +25,4 @@ Contents
    training.rst
    verifying.rst
    exporting.rst
-   dev/index.rst
+   dev/index.md

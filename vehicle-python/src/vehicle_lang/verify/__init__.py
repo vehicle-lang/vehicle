@@ -43,7 +43,7 @@ def verify(
     for parameter_name, parameter_value in parameters.items():
         args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
 
-    args.extend(["--verifier", verifier.vehicle_option_name])
+    args.extend(["--verifier", verifier._vehicle_option_name])
 
     if verifier_location is not None:
         args.extend(["--verifierLocation", str(verifier_location)])

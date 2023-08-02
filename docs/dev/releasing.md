@@ -1,5 +1,5 @@
-## Releasing Vehicle
+# Releasing Vehicle
 
-:::{include} ../../CONTRIBUTING.md
+```{include} ../../CONTRIBUTING.md
   :start-after: "# Publishing a Release"
-:::
+```

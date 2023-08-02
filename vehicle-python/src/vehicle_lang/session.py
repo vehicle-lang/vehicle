@@ -8,9 +8,9 @@ from typing_extensions import Self, TypeAlias
 
 from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
 from ._temporary_files import temporary_files
-from .error import SessionClosed as SessionClosed
-from .error import SessionUsed as SessionUsed
 from .error import VehicleError as VehicleError
+from .error import VehicleSessionClosed as VehicleSessionClosed
+from .error import VehicleSessionUsed as VehicleSessionUsed
 from .typing import Target
 
 __all__: List[str] = [
@@ -71,7 +71,7 @@ class Session(SessionContextManager):
         if not self.closed:
             return _unsafe_vehicle_main(args)
         else:
-            raise SessionClosed()
+            raise VehicleSessionClosed()
 
     def check_output(
         self,
@@ -100,7 +100,7 @@ class Session(SessionContextManager):
 
     def open(self, rts_args: Optional[Sequence[str]] = None) -> None:
         if self._rts_init:
-            raise SessionUsed()
+            raise VehicleSessionUsed()
         else:
             self._rts_init = True
             _unsafe_vehicle_init(["vehicle", *(rts_args or [])])

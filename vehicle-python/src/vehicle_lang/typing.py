@@ -23,7 +23,7 @@ AnySamplers: TypeAlias = Dict[str, Sampler[Any]]
 
 class Target(Protocol):
     @property
-    def vehicle_option_name(self) -> str:
+    def _vehicle_option_name(self) -> str:
         ...
 
 
@@ -35,7 +35,7 @@ class Explicit(Enum):
     Explicit = 1
 
     @property
-    def vehicle_option_name(self) -> str:
+    def _vehicle_option_name(self) -> str:
         return "Explicit"
 
 
@@ -52,7 +52,7 @@ class DifferentiableLogic(Enum):
     Yager = 6
 
     @property
-    def vehicle_option_name(self) -> str:
+    def _vehicle_option_name(self) -> str:
         return {
             DifferentiableLogic.Vehicle: "VehicleLoss",
             DifferentiableLogic.DL2: "DL2Loss",
@@ -79,7 +79,7 @@ class Verifier(Enum):
     """
 
     @property
-    def vehicle_option_name(self) -> str:
+    def _vehicle_option_name(self) -> str:
         return {
             Verifier.Marabou: "Marabou",
         }[self]

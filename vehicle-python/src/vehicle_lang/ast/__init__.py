@@ -560,7 +560,7 @@ def load(
         [
             "compile",
             "--target",
-            target.vehicle_option_name,
+            target._vehicle_option_name,
             "--json",
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],

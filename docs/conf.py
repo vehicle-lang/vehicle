@@ -1,9 +1,14 @@
 # Configuration file for the Sphinx documentation builder.
 
-import pathlib
+import os
 import sys
 
-sys.path.insert(0, pathlib.Path(__file__).parent / "vehicle-python" / "src")
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.path.pardir, "vehicle-python", "src")
+    ),
+)
 
 # -- Project information
 
@@ -43,7 +48,7 @@ exclude_patterns = [".tox"]
 
 # -- Options for autosummary
 
-autosummary_mock_imports = ["vehicle_lang._binding"]
+autodoc_mock_imports = ["vehicle_lang._binding"]
 
 autosummary_imported_members = True
 

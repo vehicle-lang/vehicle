@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tup
 from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
-from ..error import BuiltinUnsupported
+from ..error import VehicleBuiltinUnsupported
 from ..typing import Sampler
 from ._collections import SupportsList, SupportsVector
 
@@ -92,7 +92,7 @@ class Builtins(
     def Exists(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
     ) -> _Bool:
-        raise BuiltinUnsupported(vcl.Exists.__name__)
+        raise VehicleBuiltinUnsupported(vcl.Exists.__name__)
 
     def FoldList(
         self, function: Callable[[_S, _T], _T], initial: _T, iterable: SupportsList[_S]
@@ -111,7 +111,7 @@ class Builtins(
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
     ) -> _Bool:
-        raise BuiltinUnsupported(vcl.Forall.__name__)
+        raise VehicleBuiltinUnsupported(vcl.Forall.__name__)
 
     def GeIndex(self, x: int, y: int) -> _Bool:
         return self.Not(self.LtIndex(x, y))
