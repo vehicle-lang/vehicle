@@ -1,4 +1,4 @@
-## Building Vehicle
+# Building Vehicle
 
 ```{include} ../../CONTRIBUTING.md
   :start-after: "## Building Vehicle"

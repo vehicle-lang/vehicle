@@ -22,21 +22,28 @@ version = "0.1.0"
 # -- General configuration
 
 extensions = [
+    # Support for Markdown syntax
+    # See: https://www.sphinx-doc.org/en/master/usage/markdown.html
     "myst_parser",
+    # ???
     "sphinx.ext.duration",
+    # ???
     "sphinx.ext.doctest",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
+    # ???
     "sphinx.ext.intersphinx",
+    # Support for automatically documenting Python code
+    "sphinx.ext.autodoc",
+    # Support for automatically generating API documentation for Python code
+    "sphinx.ext.autosummary",
 ]
+
+# -- Options for rewriting intersphinx
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
 intersphinx_disabled_domains = ["std"]
-
-templates_path = ["_templates"]
 
 # -- Options for rewriting external links
 
@@ -46,9 +53,13 @@ extlinks = {".": ("https://github.com/vehicle-lang/vehicle/tree/dev/%s", "./%s")
 
 exclude_patterns = [".tox"]
 
-# -- Options for autosummary
+# -- Options for autodoc and autosummary
+
+autodoc_typehints = "description"
 
 autodoc_mock_imports = ["vehicle_lang._binding"]
+
+autosummary_generate = True
 
 autosummary_imported_members = True
 

@@ -5,14 +5,15 @@ from typing_extensions import Protocol, TypeAlias, TypeVar
 
 _T = TypeVar("_T")
 
+
 DeclarationName: TypeAlias = str
 """
-A name of a top-level declaration in a Vehicle specification (.vcl) file.
+A name of a top-level declaration in a Vehicle specification file.
 """
 
 QuantifiedVariableName: TypeAlias = str
 """
-A name of a quantified variable in a Vehicle specification (.vcl) file.
+A name of a quantified variable in a Vehicle specification file.
 """
 
 # Sampler: TypeAlias = Callable[[Callable[[_T], _Bool], Dict[str, Any]], Iterator[_T]]
@@ -22,6 +23,12 @@ AnySamplers: TypeAlias = Dict[str, Sampler[Any]]
 
 
 class Target(Protocol):
+    """
+    Translation targets from Vehicle to Python.
+
+    Valid values are either `Explicit` or any member of `DifferentiableLogic`.
+    """
+
     @property
     def _vehicle_option_name(self) -> str:
         ...
@@ -65,17 +72,14 @@ class DifferentiableLogic(Enum):
 
 class Verifier(Enum):
     """
-    An enumeration of the neural network verifiers supported by Vehicle.
+    The neural network verifiers supported by Vehicle.
     """
 
     Marabou = 1
     """
-    The Marabou verifier (https://github.com/NeuralNetworkVerification/Marabou) as
-    described in:
+    The `Marabou verifier`_.
 
-    Katz, Guy, et al. "The marabou framework for verification and analysis of deep neural networks."
-    Computer Aided Verification: 31st International Conference, CAV 2019, New York City, NY, USA,
-    July 15-18, 2019, Proceedings, Part I 31. Springer International Publishing, 2019.
+    .. _Marabou verifier: https://github.com/NeuralNetworkVerification/Marabou#readme
     """
 
     @property

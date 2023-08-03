@@ -6,5 +6,5 @@
 building.md
 releasing.md
 verifiers.md
-python-api.rst
+unstable-python-api.rst
 ```
