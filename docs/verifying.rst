@@ -1,9 +1,6 @@
 Verifying a specification
 =========================
 
-.. autosummary::
-   :toctree: generated
-
 Given a suitable specification, Vehicle can be used to check whether a particular
 neural network satisfies it.
 

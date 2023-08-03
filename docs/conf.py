@@ -29,12 +29,10 @@ extensions = [
     "sphinx.ext.duration",
     # ???
     "sphinx.ext.doctest",
-    # ???
-    "sphinx.ext.intersphinx",
     # Support for automatically documenting Python code
     "sphinx.ext.autodoc",
-    # Support for automatically generating API documentation for Python code
-    "sphinx.ext.autosummary",
+    # Support for external link rewriting
+    "sphinx.ext.intersphinx",
 ]
 
 # -- Options for rewriting intersphinx
@@ -53,17 +51,13 @@ extlinks = {".": ("https://github.com/vehicle-lang/vehicle/tree/dev/%s", "./%s")
 
 exclude_patterns = [".tox"]
 
-# -- Options for autodoc and autosummary
+# -- Options for autodoc
 
-autodoc_typehints = "description"
+autodoc_typehints = "both"
+
+autodoc_typehints_description_target = "documented"
 
 autodoc_mock_imports = ["vehicle_lang._binding"]
-
-autosummary_generate = True
-
-autosummary_imported_members = True
-
-autosummary_ignore_module_all = False
 
 # -- Options for MyST --------------------------------------------------------
 
