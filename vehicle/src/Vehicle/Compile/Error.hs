@@ -58,24 +58,10 @@ data CompileError
   | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | FailedUnificationConstraints (NonEmpty (WithContext StandardUnificationConstraint))
-  | FailedEqConstraint StandardConstraintContext StandardNormType StandardNormType EqualityOp
-  | FailedOrdConstraint StandardConstraintContext StandardNormType StandardNormType OrderOp
-  | FailedBuiltinConstraintArgument StandardConstraintContext TypeClassOp StandardNormType [UnAnnDoc] Int Int
-  | FailedBuiltinConstraintResult StandardConstraintContext StandardBuiltin StandardNormType [UnAnnDoc]
-  | FailedNotConstraint StandardConstraintContext StandardNormType
-  | FailedBoolOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
   | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
-  | FailedQuantifierConstraintBody StandardConstraintContext StandardNormType Quantifier
-  | FailedArithOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
-  | FailedFoldConstraintContainer StandardConstraintContext StandardNormType
-  | FailedQuantInConstraintContainer StandardConstraintContext StandardNormType Quantifier
-  | FailedNatLitConstraint StandardConstraintContext Int StandardNormType
   | FailedNatLitConstraintTooBig StandardConstraintContext Int Int
   | FailedNatLitConstraintUnknown StandardConstraintContext StandardNormExpr StandardNormType
-  | FailedIntLitConstraint StandardConstraintContext StandardNormType
-  | FailedRatLitConstraint StandardConstraintContext StandardNormType
-  | FailedConLitConstraint StandardConstraintContext StandardNormType
-  | FailedInstanceConstraint StandardConstraintContext InstanceGoal [WithContext InstanceCandidate]
+  | FailedInstanceConstraint StandardConstraintContext StandardInstanceGoal [WithContext StandardInstanceCandidate]
   | RelevantUseOfIrrelevantVariable Provenance Name
   | QuantifiedIfCondition PolarityConstraintContext
   | NonLinearIfCondition LinearityConstraintContext

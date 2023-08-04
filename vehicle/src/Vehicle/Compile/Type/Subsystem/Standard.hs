@@ -5,16 +5,21 @@ module Vehicle.Compile.Type.Subsystem.Standard
   )
 where
 
+import Data.HashMap.Strict as HashMap
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Constraint.InstanceSolver
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (relevanceOfTypeClass)
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (getTypeClass, relevanceOfTypeClass)
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Compile.Type.Subsystem.Standard.Type
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Sugar
 
@@ -48,3 +53,13 @@ instance FoldableBuiltin StandardBuiltin where
   getQuant = \case
     QuantifierTCExpr p q binder body -> Just (p, q, binder, body)
     _ -> Nothing
+
+solveInstanceConstraint ::
+  (TCM StandardBuiltin m) =>
+  WithContext (InstanceConstraint StandardBuiltin) ->
+  m ()
+solveInstanceConstraint constraint@(WithContext (Has _ goal) _) = do
+  tc <- CType . StandardTypeClass . fst <$> getTypeClass goal
+  case HashMap.lookup tc builtinInstances of
+    Just {} -> resolveInstance builtinInstances constraint
+    Nothing -> solveTypeClassConstraint constraint

@@ -2,6 +2,9 @@ module Vehicle.Compile.Type.Constraint.Core
   ( runConstraintSolver,
     blockOn,
     malformedConstraintError,
+    extractHeadFromInstanceCandidate,
+    findInstanceGoalHead,
+    parseInstanceGoal,
     unify,
     solveTypeClassMeta,
     anyOf,
@@ -65,7 +68,7 @@ blockOn metas = do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
 
-malformedConstraintError :: (PrintableBuiltin builtin, MonadCompile m) => WithContext (TypeClassConstraint builtin) -> m a
+malformedConstraintError :: (PrintableBuiltin builtin, MonadCompile m) => WithContext (InstanceConstraint builtin) -> m a
 malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
@@ -104,13 +107,52 @@ createTC c t = do
   let dbLevel = contextDBLevel c
   newTypeClassExpr <- quote p dbLevel t
   (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext c)
-  let newConstraint = TypeClassConstraint (Has meta t)
+  let newConstraint = InstanceConstraint (Has meta t)
   return (unnormalised metaExpr, WithContext newConstraint ctx)
 
 solveTypeClassMeta :: (TCM builtin m) => ConstraintContext builtin -> MetaID -> Value builtin -> m ()
 solveTypeClassMeta ctx meta solution = do
   quotedSolution <- quote mempty (contextDBLevel ctx) solution
   solveMeta meta quotedSolution (boundContext ctx)
+
+extractHeadFromInstanceCandidate ::
+  (PrintableBuiltin builtin) =>
+  (Provenance -> InstanceCandidate builtin) ->
+  (builtin, Provenance -> InstanceCandidate builtin)
+extractHeadFromInstanceCandidate candidate = do
+  let expr = candidateExpr (candidate mempty)
+  case findInstanceGoalHead expr of
+    Right b -> (b, candidate)
+    Left subexpr -> do
+      let candidateDoc = prettyVerbose subexpr
+      let problemDoc = prettyVerbose subexpr
+      developerError $
+        "Invalid builtin instance candidate:"
+          <+> candidateDoc
+          <> line
+          <> "Problematic subexpr:"
+            <+> problemDoc
+
+findInstanceGoalHead :: Expr Ix builtin -> Either (Expr Ix builtin) builtin
+findInstanceGoalHead = \case
+  Pi _ binder body
+    | not (isExplicit binder) -> findInstanceGoalHead body
+  App _ (Builtin _ b) _ -> Right b
+  expr -> Left expr
+
+parseInstanceGoal ::
+  forall m builtin.
+  (MonadCompile m) =>
+  Value builtin ->
+  m (Maybe (InstanceGoal builtin))
+parseInstanceGoal = go []
+  where
+    go :: Telescope Ix builtin -> Value builtin -> m (Maybe (InstanceGoal builtin))
+    go telescope = \case
+      VPi binder _body
+        | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"
+      VBuiltin b spine -> return $ Just (InstanceGoal telescope b spine)
+      _ -> return Nothing
 
 anyOf :: [a] -> (a -> Bool) -> Bool
 anyOf = flip any

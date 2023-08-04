@@ -142,7 +142,7 @@ instance (HasMetas a) => HasMetas [a] where
 instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
-instance HasMetas (TypeClassConstraint builtin) where
+instance HasMetas (InstanceConstraint builtin) where
   findMetas (Has _ e) = findMetas e
 
 instance HasMetas (UnificationConstraint builtin) where
@@ -151,4 +151,4 @@ instance HasMetas (UnificationConstraint builtin) where
 instance HasMetas (Constraint builtin) where
   findMetas = \case
     UnificationConstraint c -> findMetas c
-    TypeClassConstraint c -> findMetas c
+    InstanceConstraint c -> findMetas c

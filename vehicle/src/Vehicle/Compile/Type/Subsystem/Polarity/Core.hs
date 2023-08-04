@@ -124,7 +124,7 @@ instance Pretty PolarityTypeClass where
 -- Constraint
 type PolarityConstraintProgress = ConstraintProgress PolarityBuiltin
 
-type PolarityTypeClassConstraint = TypeClassConstraint PolarityBuiltin
+type PolarityTypeClassConstraint = InstanceConstraint PolarityBuiltin
 
 type PolarityUnificationConstraint = UnificationConstraint PolarityBuiltin
 

@@ -226,12 +226,12 @@ implPolarity p pol1 pol2 =
 
 handleConstraintProgress ::
   (MonadTypeChecker PolarityBuiltin m) =>
-  WithContext (TypeClassConstraint PolarityBuiltin) ->
+  WithContext (InstanceConstraint PolarityBuiltin) ->
   ConstraintProgress PolarityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
   Stuck metas -> do
-    let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint originalConstraint) metas
+    let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)

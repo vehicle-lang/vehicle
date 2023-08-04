@@ -21,6 +21,7 @@ data TypingError builtin
   = MissingExplicitArgument (TypingBoundCtx builtin) (Binder Ix builtin) (Arg Ix builtin)
   | FunctionTypeMismatch (TypingBoundCtx builtin) (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
   | FailedUnification (NonEmpty (WithContext (UnificationConstraint builtin)))
+  | FailedInstanceSearch (ConstraintContext builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvableConstraints (NonEmpty (WithContext (Constraint builtin)))
 
 instance Pretty (TypingError builtin) where
@@ -28,6 +29,7 @@ instance Pretty (TypingError builtin) where
     MissingExplicitArgument {} -> "MissingExplicitArgument"
     FunctionTypeMismatch {} -> "FunctionTypeMismatch"
     FailedUnification {} -> "FailedUnification"
+    FailedInstanceSearch {} -> "FailedInstanceSearch"
     UnsolvableConstraints {} -> "UnsolvableConstraints"
 
 --------------------------------------------------------------------------------
@@ -165,7 +167,10 @@ blockCtxOn metas (ConstraintContext cid originProv originalConstraint creationPr
   let status = BlockingStatus (Just metas)
    in ConstraintContext cid originProv originalConstraint creationProv status ctx
 
-extendConstraintBoundCtx :: ConstraintContext builtin -> Telescope Ix builtin -> ConstraintContext builtin
+extendConstraintBoundCtx ::
+  ConstraintContext builtin ->
+  Telescope Ix builtin ->
+  ConstraintContext builtin
 extendConstraintBoundCtx ConstraintContext {..} telescope =
   ConstraintContext
     { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
@@ -187,14 +192,31 @@ type instance
     Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)
 
 --------------------------------------------------------------------------------
--- Type-class constraints
+-- Instance constraints
 
-data TypeClassConstraint builtin = Has MetaID (Value builtin)
+data InstanceConstraint builtin = Has MetaID (Value builtin)
   deriving (Show)
 
 type instance
-  WithContext (TypeClassConstraint builtin) =
-    Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin)
+  WithContext (InstanceConstraint builtin) =
+    Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
+
+data InstanceCandidate builtin = InstanceCandidate
+  { candidateExpr :: Expr Ix builtin,
+    candidateSolution :: Expr Ix builtin
+  }
+  deriving (Show)
+
+type instance
+  WithContext (InstanceCandidate builtin) =
+    Contextualised (InstanceCandidate builtin) (TypingBoundCtx builtin)
+
+data InstanceGoal builtin = InstanceGoal
+  { goalTelescope :: Telescope Ix builtin,
+    goalHead :: builtin,
+    goalSpine :: Spine builtin
+  }
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Constraint
@@ -203,23 +225,23 @@ data Constraint builtin
   = -- | Represents that the two contained expressions should be equal.
     UnificationConstraint (UnificationConstraint builtin)
   | -- | Represents that the provided type must have the required functionality
-    TypeClassConstraint (TypeClassConstraint builtin)
+    InstanceConstraint (InstanceConstraint builtin)
   deriving (Show)
 
 type instance
   WithContext (Constraint builtin) =
     Contextualised (Constraint builtin) (ConstraintContext builtin)
 
-getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext (TypeClassConstraint builtin))
+getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext (InstanceConstraint builtin))
 getTypeClassConstraint (WithContext constraint ctx) = case constraint of
-  TypeClassConstraint tc -> Just (WithContext tc ctx)
+  InstanceConstraint tc -> Just (WithContext tc ctx)
   _ -> Nothing
 
-separateConstraints :: [WithContext (Constraint builtin)] -> ([WithContext (UnificationConstraint builtin)], [WithContext (TypeClassConstraint builtin)])
+separateConstraints :: [WithContext (Constraint builtin)] -> ([WithContext (UnificationConstraint builtin)], [WithContext (InstanceConstraint builtin)])
 separateConstraints [] = ([], [])
 separateConstraints (WithContext c ctx : cs) = case c of
   UnificationConstraint uc -> first (WithContext uc ctx :) (separateConstraints cs)
-  TypeClassConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
+  InstanceConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
 
 blockConstraintOn ::
   Contextualised c (ConstraintContext builtin) ->

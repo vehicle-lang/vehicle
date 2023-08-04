@@ -1,65 +1,66 @@
-module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
-  ( solveInstanceConstraint,
+module Vehicle.Compile.Type.Constraint.InstanceSolver
+  ( resolveInstance,
   )
 where
 
-import Control.Monad.Except (MonadError (..))
+import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.Maybe (catMaybes)
+import Data.Hashable (Hashable)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
-import Vehicle.Compile.Error (CompileError (..), MonadCompile)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
 import Vehicle.Compile.Type (runUnificationSolver)
+import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver (solveTypeClassConstraint)
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.DeBruijn (Lv (..), dbLevelToIndex, substDBInto)
+import Vehicle.Expr.DeBruijn (Ix, Lv (..), dbLevelToIndex, substDBInto)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Public interface
 
-solveInstanceConstraint :: (MonadInstance m) => WithContext StandardTypeClassConstraint -> m ()
-solveInstanceConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ expr) <- substMetas constraint
+resolveInstance ::
+  forall builtin m.
+  (Hashable builtin, MonadInstance builtin m) =>
+  HashMap builtin [Provenance -> InstanceCandidate builtin] ->
+  WithContext (InstanceConstraint builtin) ->
+  m ()
+resolveInstance allCandidates c@(WithContext constraint ctx) = do
+  normConstraint@(Has meta expr) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
-  (tc, _) <- getTypeClass expr
-  let nConstraint = WithContext normConstraint ctx
-  solve tc nConstraint
+  maybeGoal <- parseInstanceGoal expr
+  case maybeGoal of
+    Nothing -> compilerDeveloperError $ "Malformed instance goal" <+> prettyFriendly c
+    Just goal -> do
+      let candidates = fromMaybe [] $ HashMap.lookup (goalHead goal) allCandidates
+      solveInstanceGoal candidates ctx meta goal
 
 --------------------------------------------------------------------------------
 -- Algorithm
 
-solve :: (MonadInstance m) => TypeClass -> WithContext StandardTypeClassConstraint -> m ()
-solve tc = case HashMap.lookup tc builtinInstances of
-  Just builtinCandidates -> solveInstanceGoal builtinCandidates
-  _ -> solveTypeClassConstraint
+type MonadInstance builtin m = TCM builtin m
 
 -- The algorithm for this is taken from
 -- https://agda.readthedocs.io/en/v2.6.2.2/language/instance-arguments.html#instance-resolution
 
 solveInstanceGoal ::
-  (MonadInstance m) =>
-  [Provenance -> InstanceCandidate] ->
-  WithContext StandardTypeClassConstraint ->
+  forall builtin m.
+  (MonadInstance builtin m) =>
+  [Provenance -> InstanceCandidate builtin] ->
+  ConstraintContext builtin ->
+  MetaID ->
+  InstanceGoal builtin ->
   m ()
-solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta expr) ctx) = do
-  (tc, spine) <- getTypeClass expr
+solveInstanceGoal rawBuiltinCandidates ctx meta goal@InstanceGoal {..} = do
   let p = provenanceOf ctx
   let boundCtx = boundContext ctx
-
-  -- Goal telescopes aren't yet implemented
-  let goalTelescope = reverse []
-  let goal = InstanceGoal goalTelescope tc spine
 
   -- Extend the current context by the bound variables in the telescope of the goal.
   let newCtx = extendConstraintBoundCtx ctx goalTelescope
@@ -93,32 +94,33 @@ solveInstanceGoal rawBuiltinCandidates (WithContext tcConstraint@(Has meta expr)
     -- If there are no valid candidates then we fail.
     [] -> do
       substCtx <- substMetas ctx
-      throwError $ FailedInstanceConstraint substCtx goal allCandidates
+      handleTypingError $ FailedInstanceSearch substCtx goal allCandidates
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
       logDebug MaxDetail "Multiple possible candidates found so deferring."
-      let constraint = WithContext (TypeClassConstraint tcConstraint) ctx
+      let constraint = WithContext (InstanceConstraint (Has meta (goalExpr goal))) ctx
       -- TODO can we be more precise with the set of blocking metas?
-      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @StandardBuiltin)
+      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @builtin)
       addConstraints [blockedConstraint]
 
 -- | Locates any more candidates that are in the bound context of the constraint
 findCandidatesInBoundCtx ::
-  (MonadCompile m) =>
-  InstanceGoal ->
-  StandardTypingBoundCtx ->
-  m [WithContext InstanceCandidate]
+  forall builtin m.
+  (MonadInstance builtin m) =>
+  InstanceGoal builtin ->
+  TypingBoundCtx builtin ->
+  m [WithContext (InstanceCandidate builtin)]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: (MonadCompile m) => StandardTypingBoundCtx -> m [WithContext InstanceCandidate]
+    go :: (MonadCompile m) => TypingBoundCtx builtin -> m [WithContext (InstanceCandidate builtin)]
     go = \case
       [] -> return []
       (binder : localCtx) -> do
         candidates <- go localCtx
         let binderType = typeOf binder
-        case findTypeClassOfCandidate binderType of
-          Right tc | tc == goalHead goal -> do
+        case findInstanceGoalHead binderType of
+          Right binderHead | binderHead == goalHead goal -> do
             let candidate =
                   InstanceCandidate
                     { candidateExpr = binderType,
@@ -131,12 +133,13 @@ findCandidatesInBoundCtx goal ctx = go ctx
 -- Returns `Nothing` if it is definitely not a valid candidate and
 -- `Just` if it might be a valid candidate.
 checkCandidate ::
-  (MonadInstance m) =>
-  StandardConstraintContext ->
+  forall builtin m.
+  (MonadInstance builtin m) =>
+  ConstraintContext builtin ->
   MetaID ->
-  InstanceGoal ->
-  WithContext InstanceCandidate ->
-  m (Maybe (WithContext InstanceCandidate, TypeCheckerState StandardBuiltin))
+  InstanceGoal builtin ->
+  WithContext (InstanceCandidate builtin) ->
+  m (Maybe (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
 checkCandidate ctx meta goal candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
@@ -156,7 +159,7 @@ checkCandidate ctx meta goal candidate = do
         -- then we wouldn't need to do this manually).
         solveMeta meta substCandidateSolution (boundContext newCtx)
 
-      runUnificationSolver (Proxy @StandardBuiltin) mempty
+      runUnificationSolver (Proxy @builtin) mempty
 
     case result of
       Left err -> do
@@ -170,10 +173,10 @@ checkCandidate ctx meta goal candidate = do
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
 instantiateCandidateTelescope ::
-  (MonadInstance m) =>
-  StandardConstraintContext ->
-  WithContext InstanceCandidate ->
-  m (StandardNormExpr, StandardExpr)
+  (MonadInstance builtin m) =>
+  ConstraintContext builtin ->
+  WithContext (InstanceCandidate builtin) ->
+  m (Value builtin, Expr Ix builtin)
 instantiateCandidateTelescope ctx (WithContext InstanceCandidate {..} candidateCtx) =
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
     let p = provenanceOf ctx
@@ -184,13 +187,12 @@ instantiateCandidateTelescope ctx (WithContext InstanceCandidate {..} candidateC
     return (normCandidateBody, candidateSol)
   where
     go ::
-      (MonadInstance m) =>
+      (MonadInstance builtin m) =>
       Provenance ->
-      StandardTypingBoundCtx ->
-      (StandardExpr, [StandardArg]) ->
-      (StandardType, StandardExpr) ->
-      m
-        (StandardType, StandardExpr)
+      TypingBoundCtx builtin ->
+      (Expr Ix builtin, [Arg Ix builtin]) ->
+      (Type Ix builtin, Expr Ix builtin) ->
+      m (Type Ix builtin, Expr Ix builtin)
     go p boundCtx origin = \case
       (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
         newArg <- argExpr <$> instantiateArgForNonExplicitBinder boundCtx p origin exprBinder
@@ -199,11 +201,15 @@ instantiateCandidateTelescope ctx (WithContext InstanceCandidate {..} candidateC
         go p boundCtx origin (exprBodyResult, solutionBodyResult)
       body -> return body
 
-prettyCandidate :: WithContext InstanceCandidate -> Doc a
+-- TODO move this to Print
+prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
   prettyExternal (WithContext (candidateExpr candidate) (boundContextOf ctx))
 
-getConstraintOrigin :: StandardConstraintContext -> (StandardExpr, [StandardArg])
+getConstraintOrigin :: ConstraintContext builtin -> (Expr Ix builtin, [Arg Ix builtin])
 getConstraintOrigin ctx = case origin ctx of
   CheckingTypeClass fun args _ -> (fun, args)
   _ -> developerError "The origin of an instance constraint should be an instance argument"
+
+goalExpr :: InstanceGoal builtin -> Value builtin
+goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine

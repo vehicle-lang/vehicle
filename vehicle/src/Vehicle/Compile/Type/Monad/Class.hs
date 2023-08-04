@@ -70,7 +70,7 @@ data TypeCheckerState builtin = TypeCheckerState
     metaInfo :: [MetaInfo builtin],
     currentSubstitution :: MetaSubstitution builtin,
     unificationConstraints :: [WithContext (UnificationConstraint builtin)],
-    typeClassConstraints :: [WithContext (TypeClassConstraint builtin)],
+    typeClassConstraints :: [WithContext (InstanceConstraint builtin)],
     freshNameState :: FreshNameState,
     solvedMetaState :: SolvedMetaState,
     nextConstraintID :: ConstraintID
@@ -177,7 +177,7 @@ class (PrintableBuiltin builtin, Normalisable builtin) => TypableBuiltin builtin
 
   -- | Solves a type-class constraint
   solveInstance ::
-    (MonadNorm builtin m, MonadTypeChecker builtin m) => WithContext (TypeClassConstraint builtin) -> m ()
+    (MonadNorm builtin m, MonadTypeChecker builtin m) => WithContext (InstanceConstraint builtin) -> m ()
 
   handleTypingError ::
     (MonadCompile m) => TypingError builtin -> m a
@@ -444,13 +444,13 @@ generateFreshConstraintID _ = do
 getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
-  ts <- fmap (mapObject TypeClassConstraint) <$> getActiveTypeClassConstraints
+  ts <- fmap (mapObject InstanceConstraint) <$> getActiveTypeClassConstraints
   return $ us <> ts
 
 getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (UnificationConstraint builtin)]
 getActiveUnificationConstraints = getsMetaCtx unificationConstraints
 
-getActiveTypeClassConstraints :: (MonadTypeChecker builtin m) => m [WithContext (TypeClassConstraint builtin)]
+getActiveTypeClassConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
 getActiveTypeClassConstraints = getsMetaCtx typeClassConstraints
 
 setConstraints :: (MonadTypeChecker builtin m) => [WithContext (Constraint builtin)] -> m ()
@@ -459,7 +459,7 @@ setConstraints constraints = do
   setUnificationConstraints us
   setTypeClassConstraints ts
 
-setTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (TypeClassConstraint builtin)] -> m ()
+setTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 setTypeClassConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
   TypeCheckerState {typeClassConstraints = newConstraints, ..}
 
@@ -481,7 +481,7 @@ addUnificationConstraints constraints = do
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
 
-addTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (TypeClassConstraint builtin)] -> m ()
+addTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addTypeClassConstraints constraints = do
   unless (null constraints) $ do
     logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
