@@ -1,61 +1,43 @@
 module Vehicle.Backend.LossFunction.Compile
-  ( LDecl,
-    DifferentiableLogic,
-    compile,
+  ( compile,
   )
 where
 
-import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.State (MonadState (..), evalStateT, modify)
-import Data.Either (isRight)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (catMaybes, isNothing)
-import Data.Set (Set)
-import Data.Set qualified as Set
+import Data.Maybe (fromMaybe)
 import Vehicle.Backend.LossFunction.Logics
-  ( DifferentialLogicImplementation (..),
-    Domain (..),
-    LDecl (..),
-    LExpr (..),
-    Quantifier (..),
-    implementationOf,
-  )
-import Vehicle.Backend.Prelude (DifferentiableLogic (..))
-import Vehicle.Compile.Descope (DescopeNamed (descopeNamed))
+import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude (BoundCtx, HasName (..), visibilityMatches)
 import Vehicle.Compile.Prelude qualified as V
-import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
+import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn (Ix, substDBInto)
 import Vehicle.Expr.Normalisable qualified as V
-import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Prelude
-import Vehicle.Resource (Resources (..))
-import Vehicle.Syntax.AST (HasName (nameOf), argExpr)
+import Vehicle.Syntax.AST (argExpr)
 
 --------------------------------------------------------------------------------
 -- Compilation
 
 -- | The translation into the LExpr (this is the exported top compile function)
 compile ::
-  (MonadIO m, MonadCompile m) =>
-  Resources ->
-  DifferentiableLogic ->
-  V.StandardGluedProg ->
-  m [LDecl]
-compile _resources logic typedProg = do
-  let unnormalisedProg = fmap unnormalised typedProg
-  progWithoutInstanceArgs <- resolveInstanceArguments unnormalisedProg
-  let descopedProg = descopeNamed progWithoutInstanceArgs
-  reformattedProg <- reformatLogicalOperators logic descopedProg
-
-  compileProg logic reformattedProg
+  (MonadCompile m) =>
+  DifferentiableLogicID ->
+  V.Prog Ix V.StandardBuiltin ->
+  m (V.Prog Ix V.StandardBuiltin)
+compile logic typedProg = do
+  let logicImplementation = implementationOf logic
+  reformattedProg <- reformatLogicalOperators logicImplementation typedProg
+  lossProg <- runReaderT (compileProg logicImplementation reformattedProg) mempty
+  return lossProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -66,247 +48,227 @@ currentPass = "compilation to loss functions"
 --------------------------------------------------------------------------------
 -- Main compilation pass
 
--- | Compile entire specification (calls compileDecl)
-compileProg ::
-  (MonadCompile m) =>
-  DifferentiableLogic ->
-  V.Prog V.Name V.StandardBuiltin ->
-  m [LDecl]
-compileProg logic (V.Main ds) =
-  logCompilerPass MinDetail "compilation to loss function" $
-    catMaybes <$> evalStateT (traverse (compileDecl logic) ds) mempty
-
--- | Compile all functions found in spec, save their names (call compileExpr on each)
-compileDecl ::
-  (MonadCompile m, MonadState (Set V.Name) m) =>
-  DifferentiableLogic ->
-  V.Decl V.Name V.StandardBuiltin ->
-  m (Maybe LDecl)
-compileDecl logic = \case
-  V.DefAbstract _ ident r _ -> do
-    when (r == V.NetworkDef) $
-      modify (Set.insert (nameOf ident))
-    return Nothing
-  V.DefFunction p ident _ _ expr ->
-    logCompilerPass MinDetail ("compilation of" <+> quotePretty ident <+> "to loss function") $ do
-      let logicImplementation = implementationOf logic
-      expr' <- runReaderT (compileExpr logicImplementation expr) (logic, (ident, p))
-      return $ Just $ DefFunction (nameOf ident) expr'
-
-type MonadCompileLoss m =
+type MonadLoss m =
   ( MonadCompile m,
-    MonadReader (DifferentiableLogic, V.DeclProvenance) m,
-    MonadState (Set V.Name) m
+    MonadReader (BoundCtx V.StandardBinder) m
   )
 
-compileArg :: (MonadCompileLoss m) => DifferentialLogicImplementation -> V.Arg V.Name V.StandardBuiltin -> m LExpr
-compileArg t arg = compileExpr t (V.argExpr arg)
+compileProg ::
+  (MonadLoss m) =>
+  DifferentialLogicImplementation ->
+  V.StandardProg ->
+  m V.StandardProg
+compileProg logic (V.Main ds) =
+  logCompilerPass MinDetail currentPass $
+    V.Main <$> traverse (compileDecl logic) ds
 
--- | Compile a property or single expression
-compileExpr :: (MonadCompileLoss m) => DifferentialLogicImplementation -> V.Expr V.Name V.StandardBuiltin -> m LExpr
-compileExpr t expr = showExit $ do
-  e' <- showEntry expr
-  case e' of
-    V.Ann _ e _ -> compileExpr t e
-    V.Let _ x binder expression ->
-      Let (V.getBinderName binder) <$> compileExpr t x <*> compileExpr t expression
-    V.Lam _ binder body -> do
-      body' <- compileExpr t body
-      return $ Lambda (V.getBinderName binder) body'
-    V.BoundVar _ v -> return $ Variable v
-    V.FreeVar _ ident -> return $ FreeVariable (nameOf ident) []
-    V.App _ fun args -> do
-      case fun of
-        V.FreeVar _ ident -> do
-          networkCtx <- get
-          let name = V.nameOf ident
-          if name `Set.member` networkCtx
-            then do
-              args' <- traverse (compileArg t) args
-              return $ NetworkApplication name args'
-            else case findStdLibFunction ident of
-              Just fn -> compileStdLibFunction fn t args
-              Nothing -> do
-                args' <- traverse (compileArg t) args
-                return $ FreeVariable name args'
-        V.Builtin _ b -> do
-          explicitArgs' <- compileExplicitArgs t args
-          compileBuiltin b t explicitArgs'
-        _ -> notYetSupported "Application of lambda functions"
-    V.Builtin _ b ->
-      compileBuiltin b t mempty
-    V.Hole {} -> resolutionError currentPass "Hole"
-    V.Meta {} -> resolutionError currentPass "Meta"
-    V.Pi {} -> unexpectedTypeInExprError currentPass "Pi"
-    V.Universe {} -> unexpectedTypeInExprError currentPass "Universe"
+compileDecl ::
+  (MonadLoss m) =>
+  DifferentialLogicImplementation ->
+  V.StandardDecl ->
+  m V.StandardDecl
+compileDecl logic decl = do
+  let declProv = (V.identifierOf decl, V.provenanceOf decl)
+  let sectionText = "compilation of" <+> quotePretty (V.identifierOf decl) <+> "to loss function"
+  logCompilerPass MinDetail sectionText $ do
+    result <- traverse (compileExpr logic declProv) decl
+    logDebug MaxDetail $ prettyFriendly result
+    return result
 
-type CompileBuiltin =
+compileExpr ::
   forall m.
-  (MonadCompileLoss m) =>
+  (MonadLoss m) =>
   DifferentialLogicImplementation ->
-  [LExpr] ->
-  m LExpr
+  V.DeclProvenance ->
+  V.StandardExpr ->
+  m V.StandardExpr
+compileExpr logic declProv = go
+  where
+    go :: V.StandardExpr -> m V.StandardExpr
+    go = \case
+      V.Hole {} -> resolutionError currentPass "Hole"
+      V.Meta {} -> resolutionError currentPass "Meta"
+      V.Ann p e t -> V.Ann p <$> go e <*> go t
+      V.Universe p l -> return $ V.Universe p l
+      V.Builtin p b -> compileBuiltin logic declProv p p b []
+      V.App p1 (V.Builtin p2 b) args -> do
+        args' <- traverse goArg (NonEmpty.toList args)
+        compileBuiltin logic declProv p1 p2 b args'
+      V.BoundVar p v -> return $ V.BoundVar p v
+      V.FreeVar p v -> return $ V.FreeVar p v
+      V.App p fun args -> do
+        fun' <- go fun
+        args' <- traverse goArg args
+        return $ V.App p fun' args'
+      V.Pi p binder body -> do
+        binder' <- goBinder binder
+        body' <- underBinder binder' (go body)
+        return $ V.Pi p binder' body'
+      V.Lam p binder body -> do
+        binder' <- goBinder binder
+        body' <- underBinder binder' (go body)
+        return $ V.Lam p binder' body'
+      V.Let p bound binder body -> do
+        bound' <- go bound
+        binder' <- goBinder binder
+        body' <- underBinder binder' (go body)
+        return $ V.Let p bound' binder' body'
 
-compileBuiltin :: V.StandardBuiltin -> CompileBuiltin
-compileBuiltin b = case b of
-  V.CConstructor c -> compileBuiltinConstructor c
-  V.CFunction f -> compileBuiltinFunction f
-  _ -> \_ _ -> unexpectedTypeInExprError currentPass ("Should not enounter" <+> pretty b)
+    goArg :: V.StandardArg -> m V.StandardArg
+    goArg arg
+      -- Need to filter instance arguments otherwise we visit quantifiers twice,
+      -- once for the type-class op and once for the instantiation.
+      | V.isInstance arg = return arg
+      | otherwise = traverse go arg
 
-compileBuiltinConstructor :: V.BuiltinConstructor -> CompileBuiltin
-compileBuiltinConstructor c t args = case c of
-  V.LUnit {} -> compilerDeveloperError "Loss Function should not encounter LUnit"
-  V.LBool b -> return $ Constant $ (if b then compileTrue else compileFalse) t
-  V.LIndex l -> return $ Constant $ fromIntegral l
-  V.LNat l -> return $ Constant $ fromIntegral l
-  V.LInt l -> return $ Constant $ fromIntegral l
-  V.LRat l -> return $ Constant $ fromRational l
-  V.LVec _ -> compileVecLiteral t args
-  V.Nil -> notYetSupportedBuiltin $ V.CConstructor c
-  V.Cons -> notYetSupportedBuiltin $ V.CConstructor c
+    goBinder :: V.StandardBinder -> m V.StandardBinder
+    goBinder = traverse go
 
-compileBuiltinFunction :: V.BuiltinFunction -> CompileBuiltin
-compileBuiltinFunction f t args = case f of
-  V.FromNat {} -> compileOp1 id t args
-  V.FromRat {} -> compileOp1 id t args
-  -- Logical operatives
-  V.And -> case compileAnd t of
-    Left binaryAnd -> compileOp2 binaryAnd t args
-    Right naryAnd -> return (naryAnd args)
-  V.Or -> case compileOr t of
-    Left binaryOr -> compileOp2 binaryOr t args
-    Right naryOr -> return (naryOr args)
-  V.At -> compileOp2 At t args
-  V.Not -> compileNotOp t args
-  V.Implies -> compileOp2 (compileImplies t) t args
-  V.Quantifier q _ -> compileQuantifier q t args
-  -- Arithmetic operations
-  V.Neg {} -> compileOp1 Negation t args
-  V.Add {} -> compileOp2 Addition t args
-  V.Sub {} -> compileOp2 Subtraction t args
-  V.Mul {} -> compileOp2 Multiplication t args
-  V.Div {} -> compileOp2 Division t args
-  -- Comparison operations
-  V.Equals _ eq -> compileEquality eq t args
-  V.Order _ ord -> compileOrder ord t args
-  -- Container operations
-  V.Indices {} -> compileOp1 Range t args
-  -- Not supported
-  V.Fold {} -> notYetSupportedBuiltin $ V.CFunction f
-  V.ConsVector {} -> notYetSupportedBuiltin $ V.CFunction f
-  V.If -> notYetSupportedBuiltin $ V.CFunction f
+    underBinder :: V.StandardBinder -> m a -> m a
+    underBinder binder = local (binder :)
 
-compileStdLibFunction ::
-  (MonadCompileLoss m) =>
-  StdLibFunction ->
+compileBuiltin ::
+  (MonadLoss m) =>
   DifferentialLogicImplementation ->
-  NonEmpty (V.Arg V.Name V.StandardBuiltin) ->
-  m LExpr
-compileStdLibFunction fn t args = case fn of
-  StdEqualsBool -> compileEquality V.Eq t =<< compileExplicitArgs t args
-  StdNotEqualsBool -> compileEquality V.Neq t =<< compileExplicitArgs t args
-  StdEqualsVector -> compileEquality V.Eq t =<< compileExplicitArgs t args
-  StdNotEqualsVector -> compileEquality V.Neq t =<< compileExplicitArgs t args
-  StdAddVector -> compileOp2 Addition t =<< compileExplicitArgs t args
-  StdSubVector -> compileOp2 Subtraction t =<< compileExplicitArgs t args
-  StdVectorToVector -> compileOp1 id t =<< compileExplicitArgs t args
-  StdMapVector -> compileOp2 Map t =<< compileExplicitArgs t args
-  StdMapList -> compileOp2 Map t =<< compileExplicitArgs t args
-  StdForeach -> case args of
-    _ :| [V.ImplicitArg _ size, V.ExplicitArg _ f] -> do
-      size' <- compileExpr t size
-      indices <- compileBuiltin (V.CFunction V.Indices) t [size']
-      f' <- compileExpr t f
-      compileOp2 Map t [f', indices]
-    _ -> unexpectedExprError currentPass "partially applied binary operation"
-  StdExistsIndex -> notYetSupportedStdLibFunction fn
-  StdForallIndex -> notYetSupportedStdLibFunction fn
-  StdExistsIn -> notYetSupportedStdLibFunction fn
-  StdForallIn -> notYetSupportedStdLibFunction fn
-  StdVectorToList -> notYetSupportedStdLibFunction fn
-  StdTensor -> notYetSupportedStdLibFunction fn
+  V.DeclProvenance ->
+  V.BuiltinUpdate m Ix V.StandardBuiltin V.StandardBuiltin
+compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args = do
+  let originalExpr = V.normAppList p1 (V.Builtin p2 op) args
+  maybeLossOp <- case op of
+    V.CConstructor x -> return $ case x of
+      V.LBool True -> Just $ Left compileTrue
+      V.LBool False -> Just $ Left compileFalse
+      _ -> Nothing
+    V.CFunction x -> case x of
+      V.Not -> case compileNot of
+        TryToEliminate ->
+          compilerDeveloperError
+            "Should have eliminated `not` already in compilation to loss functions"
+        UnaryNot notFn -> return $ Just $ Left notFn
+      V.And -> case compileAnd of
+        NaryAnd andFn -> return $ Just $ Left andFn
+        BinaryAnd andFn -> return $ Just $ Left andFn
+      V.Or -> case compileOr of
+        NaryOr orFn -> return $ Just $ Left orFn
+        BinaryOr orFn -> return $ Just $ Left orFn
+      V.Implies -> return $ Just $ Left compileImplies
+      V.Quantifier q -> compileQuantifier logic q args
+      V.If -> throwError $ UnsupportedIfOperation declProv p2
+      -- TODO really not safe to throw away the type information here, but
+      -- in the short term it might work.
+      V.Equals V.EqRat V.Eq -> return $ Just $ Left compileEq
+      V.Equals _ V.Eq -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Equals V.EqRat V.Neq -> return $ Just $ Left compileNeq
+      V.Equals _ V.Neq -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Le -> return $ Just $ Left compileLe
+      V.Order _ V.Le -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Lt -> return $ Just $ Left compileLt
+      V.Order _ V.Lt -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Ge -> return $ Just $ Left compileGe
+      V.Order _ V.Ge -> return $ Just $ Right $ castToBool logic originalExpr
+      V.Order V.OrderRat V.Gt -> return $ Just $ Left compileGt
+      V.Order _ V.Gt -> return $ Just $ Right $ castToBool logic originalExpr
+      _ -> return Nothing
+    V.CType x -> case x of
+      StandardBuiltinType y -> return $ case y of
+        V.Bool -> Just $ Left compileBool
+        _ -> Nothing
+      StandardTypeClass {} -> return Nothing
+      StandardTypeClassOp tc -> case tc of
+        V.QuantifierTC q -> compileQuantifier logic q args
+        V.EqualsTC V.Eq -> return $ Just $ Left compileEq
+        V.EqualsTC V.Neq -> return $ Just $ Left compileNeq
+        V.OrderTC V.Le -> return $ Just $ Left compileLe
+        V.OrderTC V.Lt -> return $ Just $ Left compileLt
+        V.OrderTC V.Ge -> return $ Just $ Left compileGe
+        V.OrderTC V.Gt -> return $ Just $ Left compileGt
+        _ -> return Nothing
 
-compileVecLiteral :: CompileBuiltin
-compileVecLiteral _t args = return $ TensorLiteral args
+  case maybeLossOp of
+    Nothing -> return originalExpr
+    Just (Left lossOp) -> substArgsThrough p1 op (fromDSL p2 lossOp) args
+    Just (Right lossExpr) -> return $ fromDSL p2 lossExpr
 
-compileOp1 :: (LExpr -> LExpr) -> CompileBuiltin
-compileOp1 f _t = \case
-  [e] -> return $ f e
-  _ -> unexpectedExprError currentPass "partially applied unary operation"
+-- | We perform a tiny bit of subsitution to tidy up the expression afterwards.
+substArgsThrough ::
+  forall m.
+  (MonadLoss m) =>
+  V.Provenance ->
+  V.StandardBuiltin ->
+  V.Expr Ix V.StandardBuiltin ->
+  [V.Arg Ix V.StandardBuiltin] ->
+  m (V.Expr Ix V.StandardBuiltin)
+substArgsThrough p originalFun initialFun initialArgs = go initialFun initialArgs
+  where
+    go ::
+      V.Expr Ix V.StandardBuiltin ->
+      [V.Arg Ix V.StandardBuiltin] ->
+      m (V.Expr Ix V.StandardBuiltin)
+    go fun args = case (fun, filter V.isExplicit args) of
+      (V.Lam _ binder body, a : as)
+        | visibilityMatches binder a -> go (argExpr a `substDBInto` body) as
+        | otherwise ->
+            compilerDeveloperError $
+              "Loss function substitution not well-typed"
+                <> line
+                <> indent
+                  2
+                  ( "original op:" <+> pretty originalFun
+                      <> line
+                      <> "loss op:" <+> prettyVerbose initialFun
+                      <> line
+                      <> "arguments:" <+> prettyVerbose initialArgs
+                  )
+      _ -> return $ V.normAppList p fun args
 
-compileOp2 :: (LExpr -> LExpr -> LExpr) -> CompileBuiltin
-compileOp2 f _t = \case
-  [e1, e2] -> return $ f e1 e2
-  _ -> unexpectedExprError currentPass "partially applied binary operation"
+castToBool :: DifferentialLogicImplementation -> V.Expr Ix V.StandardBuiltin -> StandardDSLExpr
+castToBool logic x = builtinFunction V.If @@ [toDSL x, compileTrue logic, compileFalse logic]
 
-compileNotOp :: CompileBuiltin
-compileNotOp t args = case compileNot t of
-  Just notFn -> compileOp1 notFn t args
-  Nothing -> unexpectedExprError currentPass "encountered 'not' that has not been lowered through expression"
-
-compileEquality :: V.EqualityOp -> CompileBuiltin
-compileEquality op t [e1, e2] = return $ case op of
-  V.Neq -> compileNeq t e1 e2
-  V.Eq -> compileEq t e1 e2
-compileEquality _ _ _ = unexpectedExprError currentPass "partially applied equality comparison"
-
-compileOrder :: V.OrderOp -> CompileBuiltin
-compileOrder ord t args = case ord of
-  V.Le -> compileOp2 (compileLe t) t args
-  V.Lt -> compileOp2 (compileLt t) t args
-  V.Ge -> compileOp2 (compileGe t) t args
-  V.Gt -> compileOp2 (compileGt t) t args
-
-compileQuantifier :: V.Quantifier -> CompileBuiltin
-compileQuantifier q _t [Lambda varName body] =
-  return $ Quantifier (compileQuant q) varName (Domain ()) body
-compileQuantifier _ _ _ = unexpectedExprError currentPass "partially applied quantifier"
-
-compileQuant :: V.Quantifier -> Quantifier
-compileQuant V.Forall = All
-compileQuant V.Exists = Any
-
-compileExplicitArgs :: (MonadCompileLoss m) => DifferentialLogicImplementation -> NonEmpty (V.Arg V.Name V.StandardBuiltin) -> m [LExpr]
-compileExplicitArgs t args = do
-  let explicitArgs = argExpr <$> NonEmpty.filter V.isExplicit args
-  traverse (compileExpr t) explicitArgs
-
-notYetSupported :: (MonadCompile m) => Doc () -> m a
-notYetSupported op =
-  unexpectedExprError currentPass $
-    op <+> "is not handled at the moment for loss function translation."
-
-notYetSupportedBuiltin :: (MonadCompile m) => V.StandardBuiltin -> m a
-notYetSupportedBuiltin op = notYetSupported (quotePretty op)
-
-notYetSupportedStdLibFunction :: (MonadCompile m) => StdLibFunction -> m a
-notYetSupportedStdLibFunction op = notYetSupported (quotePretty op)
+compileQuantifier ::
+  (MonadLoss m) =>
+  DifferentialLogicImplementation ->
+  V.Quantifier ->
+  [V.StandardArg] ->
+  m (Maybe (Either StandardDSLExpr StandardDSLExpr))
+compileQuantifier logic q args = case reverse args of
+  V.ExplicitArg _ _ (V.Lam _ binder _) : _ -> do
+    ctx <- ask
+    let typ = V.typeOf binder
+    let names = fmap (fromMaybe "<no-name>" . nameOf) ctx
+    return $ Just $ Left $ case q of
+      V.Forall -> compileForall logic typ (V.getBinderName binder) names
+      V.Exists -> compileExists logic typ (V.getBinderName binder) names
+  _ -> unexpectedExprError currentPass (pretty q <+> "@" <+> prettyVerbose args)
 
 --------------------------------------------------------------------------------
--- Lowering nots
+-- Reformating logical operators
 
 reformatLogicalOperators ::
   forall m.
   (MonadCompile m) =>
-  DifferentiableLogic ->
-  V.Prog V.Name V.StandardBuiltin ->
-  m (V.Prog V.Name V.StandardBuiltin)
+  DifferentialLogicImplementation ->
+  V.Prog Ix V.StandardBuiltin ->
+  m (V.Prog Ix V.StandardBuiltin)
 reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: V.BuiltinUpdate m () V.Name V.StandardBuiltin V.StandardBuiltin
-    builtinUpdateFunction p1 p2 b args = case b of
-      V.CFunction V.Not
-        | isNothing (compileNot (implementationOf logic)) ->
-            lowerNot p2 (argExpr $ head args)
-      V.CFunction V.And
-        | isRight (compileAnd (implementationOf logic)) ->
-            return (V.AndExpr p1 (flattenAnds (V.ExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
-      V.CFunction V.Or
-        | isRight (compileOr (implementationOf logic)) ->
-            return (V.OrExpr p1 (flattenOrs (V.ExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
-      _ -> return $ V.normAppList p1 (V.Builtin p2 b) args
+    builtinUpdateFunction :: V.BuiltinUpdate m Ix V.StandardBuiltin V.StandardBuiltin
+    builtinUpdateFunction p1 p2 b args = do
+      maybeUpdatedExpr <- case b of
+        V.CFunction V.Not -> case compileNot logic of
+          TryToEliminate -> Just <$> lowerNot p2 (argExpr $ head args)
+          UnaryNot {} -> return Nothing
+        V.CFunction V.And -> case compileAnd logic of
+          NaryAnd {} -> return $ Just (V.AndExpr p1 (flattenAnds (V.RelevantExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
+          BinaryAnd {} -> return Nothing
+        V.CFunction V.Or -> case compileOr logic of
+          NaryOr {} -> return $ Just (V.OrExpr p1 (flattenOrs (V.RelevantExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
+          BinaryOr {} -> return Nothing
+        _ -> return Nothing
 
-    lowerNot :: V.Provenance -> V.Expr V.Name V.StandardBuiltin -> m (V.Expr V.Name V.StandardBuiltin)
+      let unchangedExpr = V.normAppList p1 (V.Builtin p2 b) args
+      return $ fromMaybe unchangedExpr maybeUpdatedExpr
+
+    lowerNot :: V.Provenance -> V.Expr Ix V.StandardBuiltin -> m (V.Expr Ix V.StandardBuiltin)
     lowerNot notProv arg = case arg of
       -- Base cases
       V.BoolLiteral p b -> return $ V.BoolLiteral p (not b)
@@ -314,8 +276,8 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
       V.EqualityExpr p dom eq args -> return $ V.EqualityExpr p dom (neg eq) args
       V.NotExpr _ [e] -> return $ argExpr e
       -- Inductive cases
-      V.ForallRatExpr p binder body -> V.ExistsRatExpr p binder <$> lowerNot notProv body
-      V.ExistsRatExpr p binder body -> V.ForallRatExpr p binder <$> lowerNot notProv body
+      V.ForallExpr p binder body -> V.ExistsExpr p binder <$> lowerNot notProv body
+      V.ExistsExpr p binder body -> V.ForallExpr p binder <$> lowerNot notProv body
       V.ImpliesExpr p [e1, e2] -> do
         ne2 <- traverse (lowerNot notProv) e2
         return $ V.AndExpr p [e1, ne2]
@@ -329,30 +291,13 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
         | ident == V.identifierOf StdEqualsVector -> return $ V.App p1 (V.FreeVar p2 (V.identifierOf StdNotEqualsVector)) args
         | ident == V.identifierOf StdNotEqualsVector -> return $ V.App p1 (V.FreeVar p2 (V.identifierOf StdEqualsVector)) args
       -- Errors
-      e -> throwError $ UnsupportedNegatedOperation logic notProv e
+      _ -> throwError $ UnsupportedNegatedOperation (logicID logic) notProv
 
-    flattenAnds :: V.Arg V.Name V.StandardBuiltin -> NonEmpty (V.Arg V.Name V.StandardBuiltin)
+    flattenAnds :: V.Arg Ix V.StandardBuiltin -> NonEmpty (V.Arg Ix V.StandardBuiltin)
     flattenAnds arg = case argExpr arg of
       V.AndExpr _ [e1, e2] -> flattenAnds e1 <> flattenAnds e2
       _ -> [arg]
-
-    flattenOrs :: V.Arg V.Name V.StandardBuiltin -> NonEmpty (V.Arg V.Name V.StandardBuiltin)
+    flattenOrs :: V.Arg Ix V.StandardBuiltin -> NonEmpty (V.Arg Ix V.StandardBuiltin)
     flattenOrs arg = case argExpr arg of
       V.OrExpr _ [e1, e2] -> flattenOrs e1 <> flattenOrs e2
       _ -> [arg]
-
------------------------------------------------------------------------
--- Debugging options
-
-showEntry :: (MonadCompile m) => V.Expr V.Name V.StandardBuiltin -> m (V.Expr V.Name V.StandardBuiltin)
-showEntry e = do
-  logDebug MinDetail ("loss-entry " <> prettyFriendly e)
-  incrCallDepth
-  return e
-
-showExit :: (MonadCompile m) => m LExpr -> m LExpr
-showExit mNew = do
-  new <- mNew
-  decrCallDepth
-  logDebug MinDetail ("loss-exit " <+> pretty (show new))
-  return new

@@ -18,7 +18,6 @@ where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..), local, runReader)
-import Data.Aeson (ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
@@ -40,8 +39,6 @@ instance NFData Ix
 
 instance Hashable Ix
 
-instance ToJSON Ix
-
 instance Serialize Ix
 
 instance Pretty Ix where
@@ -59,8 +56,6 @@ newtype Lv = Lv
 instance NFData Lv
 
 instance Hashable Lv
-
-instance ToJSON Lv
 
 instance Serialize Lv
 

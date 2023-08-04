@@ -1,0 +1,17 @@
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+@property;
+unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+unusedVar f = exists x . exists (y : Rat) . f [x] ! 0 >= 0.0
+
+@property;
+underConstrainedVar1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+underConstrainedVar1 f = exists x . exists y . x >= 1.0 and y >= 2.0 and f [x + y] ! 0 >= 0.0
+
+@property;
+underConstrainedVar2 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+underConstrainedVar2 f = exists x . exists y . x >= 1.0 and 2.0 * y >= 2.0 and f [2.0 * x + y] ! 0 >= 0.0
+
+@property;
+underConstrainedVars : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+underConstrainedVars f = exists (x : Tensor Rat (4 :: nil)) . x ! 3 >= 2.0 and x ! 2 + x ! 3 >= 1.0 and x ! 1 + x ! 0 >= 2.5 and f [x ! 0 + x ! 1] ! 0 >= 2.0

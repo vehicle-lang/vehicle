@@ -10,9 +10,11 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
@@ -73,29 +75,30 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
     _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier
 
 typeCheckWithSubsystem ::
-  forall types m.
-  (TypableBuiltin types, MonadCompile m) =>
+  forall builtin m.
+  (TypableBuiltin builtin, MonadCompile m) =>
   StandardGluedProg ->
-  m (GluedProg types)
+  m (GluedProg builtin)
 typeCheckWithSubsystem prog = do
   let unnormalisedProg = fmap unnormalised prog
   typeClassFreeProg <- resolveInstanceArguments unnormalisedProg
-  monomorphisedProg <- monomorphise False typeClassFreeProg
+  irrelevantFreeProg <- removeIrrelevantCode typeClassFreeProg
+  monomorphisedProg <- monomorphise isPropertyDecl False "-" irrelevantFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
-  runTypeChecker @m @types mempty $
+  runTypeChecker @m @builtin mempty $
     typeCheckProg mempty implicitFreeProg
 
 resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
-    result <- traverse (traverseBuiltinsM builtinUpdateFunction) prog
-    logCompilerPassOutput $ prettyFriendly result
-    return result
+    flip traverseDecls prog $ \decl -> do
+      result <- traverse (traverseBuiltinsM builtinUpdateFunction) decl
+      return result
   where
-    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin StandardBuiltin
+    builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
       CType (StandardTypeClassOp {}) -> do
-        let (inst, remainingArgs) = findInstanceArg args
+        (inst, remainingArgs) <- findInstanceArg b args
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args
 

@@ -127,3 +127,8 @@ instance (Pretty a) => Pretty (IntMap a) where
 
 instance Pretty Version where
   pretty = pretty . showVersion
+
+instance (Pretty a, Pretty b) => Pretty (Either a b) where
+  pretty = \case
+    Left x -> pretty x
+    Right x -> pretty x

@@ -115,13 +115,13 @@ tokCons = mkToken B.TokCons "::"
 
 tokConsVector = mkToken B.TokConsVector "::"
 
+tokZipWith = mkToken B.TokZipWith "zipWith"
+
 tokAt = mkToken B.TokAt "!"
 
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
-
-tokDepFold = mkToken B.TokDepFold "dfold"
 
 tokIndices = mkToken B.TokIndices "indices"
 
@@ -134,6 +134,8 @@ tokHasMul = mkToken B.TokHasMul "HasMul"
 tokHasEq = mkToken B.TokHasEq "HasEq"
 
 tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
+
+tokHasLeq = mkToken B.TokHasLeq "HasLeq"
 
 tokHasMap = mkToken B.TokHasMap "HasMap"
 

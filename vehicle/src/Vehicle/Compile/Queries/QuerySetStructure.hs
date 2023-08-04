@@ -19,7 +19,7 @@ import Data.HashSet qualified as HashSet (fromList, intersection, null, singleto
 import Data.Map qualified as Map (keysSet, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (difference, null, singleton)
+import Data.Set qualified as Set (intersection, map, null, singleton)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -27,14 +27,15 @@ import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), dbLevelToIndex)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector), fromFiniteQuantifier)
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
@@ -49,11 +50,12 @@ compileQueryStructure ::
   (MonadCompile m) =>
   DeclProvenance ->
   QueryDeclCtx ->
+  NetworkContext ->
   StandardNormExpr ->
   m (Either SeriousPropertyError (BoundCtx UserVariable, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
-compileQueryStructure declProv queryDeclCtx expr =
+compileQueryStructure declProv queryDeclCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
-    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx)
+    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx, networkCtx)
     case result of
       Left (TemporaryError err) ->
         compilerDeveloperError $ "Something went wrong in query compilation:" <+> pretty err
@@ -113,15 +115,15 @@ type QueryStructureResult =
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
   StandardNormExpr ->
-  Maybe (StandardNormExpr, StandardNormExpr, TensorDimensions, StandardNormExpr -> StandardNormExpr -> StandardNormExpr)
+  Maybe (StandardNormArg, StandardNormArg, TensorDimensions, StandardNormArg -> StandardNormArg -> StandardNormExpr)
 isVectorEquals = \case
   VFreeVar ident args
     | ident == identifierOf StdEqualsVector -> case args of
-        [t1, t2, dim, sol, ExplicitArg _ e1, ExplicitArg _ e2] -> do
+        [t1, t2, dim, sol, e1, e2] -> do
           d <- getNatLiteral $ argExpr dim
           ds <- getTensorDimensions $ argExpr t1
           let dims = d : ds
-          let mkOp e1' e2' = VFreeVar ident [t1, t2, dim, sol, ExplicitArg mempty e1', ExplicitArg mempty e2']
+          let mkOp e1' e2' = VFreeVar ident [t1, t2, dim, sol, e1', e2']
           Just (e1, e2, dims, mkOp)
         _ -> Nothing
   _ -> Nothing
@@ -140,7 +142,7 @@ getTensorDimensions = \case
 
 type MonadQueryStructure m =
   ( MonadCompile m,
-    MonadReader (DeclProvenance, QueryDeclCtx) m
+    MonadReader (DeclProvenance, QueryDeclCtx, NetworkContext) m
   )
 
 -- | For efficiency reasons, we sometimes want to avoid expanding out
@@ -151,7 +153,7 @@ evalWhilePreservingFiniteQuantifiers ::
   TypeCheckedExpr ->
   m StandardNormExpr
 evalWhilePreservingFiniteQuantifiers env body = do
-  (_, queryDeclCtx) <- ask
+  (_, queryDeclCtx, _) <- ask
   let evalOptions = EvalOptions {evalFiniteQuantifiers = False}
   let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
   runNormT evalOptions declCtx mempty (eval env body)
@@ -184,24 +186,24 @@ compileBoolExpr = go False
       -- Recursive cases --
       ---------------------
       VBuiltinFunction And [e1, e2] ->
-        compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables e1 e2
+        compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
       VBuiltinFunction Or [e1, e2] ->
-        compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables e1 e2
+        compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
       VBuiltinFunction Not [e] ->
         -- As the expression is of type `Not` we can try lowering the `not` down
         -- through the expression.
-        case eliminateNot e of
+        case eliminateNot (argExpr e) of
           Nothing -> return $ Left $ TemporaryError $ CannotEliminateNot expr
           Just result -> go alreadyLiftedIfs quantifiedVariables result
-      VBuiltinFunction If [c, x, y] -> do
+      VBuiltinFunction If [_, c, x, y] -> do
         -- As the expression is of type `Bool` we can immediately unfold the `if`.
-        let unfoldedExpr = unfoldIf c x y
+        let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
         go alreadyLiftedIfs quantifiedVariables unfoldedExpr
-      VInfiniteQuantifier q dom _ binder env body -> case q of
+      VInfiniteQuantifier q _ binder env body -> case q of
         -- If we're at a `Forall` we know we must have alternating quantifiers.
         Forall -> return $ Left $ SeriousError AlternatingQuantifiers
         -- Otherwise try to compile away the quantifier.
-        Exists -> compileInfiniteQuantifier quantifiedVariables dom binder env body
+        Exists -> compileInfiniteQuantifier quantifiedVariables binder env body
       VFiniteQuantifier q args binder env body ->
         compileFiniteQuantifier quantifiedVariables q args binder env body
       ------------
@@ -212,24 +214,24 @@ compileBoolExpr = go False
     compileEquality ::
       CumulativeCtx ->
       Bool ->
-      StandardNormExpr ->
+      StandardNormArg ->
       EqualityOp ->
-      StandardNormExpr ->
+      StandardNormArg ->
       TensorDimensions ->
-      (StandardNormExpr -> StandardNormExpr -> StandardNormExpr) ->
+      (StandardNormArg -> StandardNormArg -> StandardNormExpr) ->
       m QueryStructureResult
     compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
       let ctx = cumulativeVarsToCtx quantifiedVariables
       let expr = mkRel lhs rhs
       logDebug MaxDetail $ "Identified (in)equality:" <+> prettyFriendly (WithContext expr ctx)
 
-      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables (mkRel lhs rhs)
+      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
       case maybeResult of
         Just result -> return result
         Nothing -> case eq of
           Eq -> do
             let assertion
-                  | null dims = VectorEqualityAssertion $ VectorEquality lhs rhs dims mkRel
+                  | null dims = VectorEqualityAssertion $ VectorEquality (argExpr lhs) (argExpr rhs) dims mkRel
                   | otherwise = NonVectorEqualityAssertion expr
             return $ Right ([], NonTrivial $ Query assertion, [])
           Neq ->
@@ -258,7 +260,7 @@ compileBoolExpr = go False
             Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
-              (_, queryDeclCtx) <- ask
+              (_, queryDeclCtx, _) <- ask
               let env = variableCtxToNormEnv quantifiedVariables
               let normDeclCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
               normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx mempty $ reeval env exprWithoutIf
@@ -297,30 +299,38 @@ eliminateNot arg = case arg of
   VBoolLiteral b -> Just $ VBoolLiteral (not b)
   VBuiltinFunction (Order dom ord) args -> Just $ VBuiltinFunction (Order dom (neg ord)) args
   VBuiltinFunction (Equals dom eq) args -> Just $ VBuiltinFunction (Equals dom (neg eq)) args
-  VBuiltinFunction Not [e] -> Just e
+  VBuiltinFunction Not [e] -> Just $ argExpr e
   -- Inductive cases
   VBuiltinFunction Or args -> do
-    args' <- traverse eliminateNot args
+    args' <- traverse (traverse eliminateNot) args
     return $ VBuiltinFunction And args'
   VBuiltinFunction And args -> do
-    args' <- traverse eliminateNot args
+    args' <- traverse (traverse eliminateNot) args
     return $ VBuiltinFunction Or args'
-  VBuiltinFunction If [c, e1, e2] -> do
-    e1' <- eliminateNot e1
-    e2' <- eliminateNot e2
-    return $ VBuiltinFunction If [c, e1', e2']
+  VBuiltinFunction If [t, c, e1, e2] -> do
+    e1' <- traverse eliminateNot e1
+    e2' <- traverse eliminateNot e2
+    return $ VBuiltinFunction If [t, c, e1', e2']
+  VFreeVar ident (a : b : n : t : args) -> case findStdLibFunction ident of
+    Just StdEqualsVector -> do
+      t' <- traverse eliminateNot t
+      return $ VFreeVar (identifierOf StdNotEqualsVector) (a : b : n : t' : args)
+    Just StdNotEqualsVector -> do
+      t' <- traverse eliminateNot t
+      return $ VFreeVar (identifierOf StdEqualsVector) (a : b : n : t' : args)
+    _ -> Nothing
   -- Quantifier cases
   -- We can't actually lower the `not` throw the body of the quantifier as
   -- the body is not yet unnormalised. However, it's fine to stop here as we'll
   -- simply continue to normalise it once we re-encounter it again after
   -- normalising the quantifier.
-  VInfiniteQuantifier q dom args binder env body -> do
+  VInfiniteQuantifier q args binder env body -> do
     let p = mempty
-    let negatedBody = NotExpr p [ExplicitArg p body]
-    Just $ VInfiniteQuantifier (neg q) dom args binder env negatedBody
+    let negatedBody = NotExpr p [RelevantExplicitArg p body]
+    Just $ VInfiniteQuantifier (neg q) args binder env negatedBody
   VFiniteQuantifier q args binder env body -> do
     let p = mempty
-    let negatedBody = NotExpr p [ExplicitArg p body]
+    let negatedBody = NotExpr p [RelevantExplicitArg p body]
     Just $ VFiniteQuantifier (neg q) args binder env negatedBody
   -- Errors
   _ -> Nothing
@@ -338,9 +348,8 @@ compileFiniteQuantifier ::
   TypeCheckedExpr ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
-  (_, queryDeclCtx) <- ask
+  (_, queryDeclCtx, _) <- ask
   let normCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
-  let funcCtx = queryDeclCtxToInfoDeclCtx queryDeclCtx
 
   let foldedResult = do
         let foldedExpr = VFiniteQuantifier q quantSpine binder env body
@@ -348,7 +357,8 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
         logDebug MidDetail $ "Keeping folded:" <+> pretty q <+> prettyVerbose binder
         return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
 
-  if canLeaveFiniteQuantifierUnexpanded funcCtx env body
+  canLeaveUnexpanded <- canLeaveFiniteQuantifierUnexpanded env body
+  if canLeaveUnexpanded
     then foldedResult
     else do
       normResult <- runNormT defaultEvalOptions normCtx mempty $ do
@@ -360,27 +370,25 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
 -- we can leave the finite quantifier folded as it will only contain
 -- conjunctions.
 canLeaveFiniteQuantifierUnexpanded ::
-  DeclCtx UsedFunctionsInfo ->
+  (MonadQueryStructure m) =>
   StandardEnv ->
   StandardExpr ->
-  Bool
-canLeaveFiniteQuantifierUnexpanded ctx env expr = do
-  let (usedFunctions, usedFreeVars) = getUsedFunctions ctx (getUsedFunctionsCtx ctx env) expr
+  m Bool
+canLeaveFiniteQuantifierUnexpanded env expr = do
+  (_, queryDeclCtx, networkCtx) <- ask
+  let declUsageCtx = queryDeclCtxToInfoDeclCtx queryDeclCtx
+
+  let (usedFunctions, usedFreeVars) = getUsedFunctions declUsageCtx (getUsedFunctionsCtx declUsageCtx env) expr
   let forbiddenFunctions =
         HashSet.fromList
-          [ Quantifier Exists QuantRat,
-            Quantifier Forall QuantRat,
-            Quantifier Exists QuantInt,
-            Quantifier Forall QuantInt,
-            Quantifier Exists QuantNat,
-            Quantifier Forall QuantNat,
-            Quantifier Exists QuantVec,
-            Quantifier Forall QuantVec
+          [ Quantifier Exists,
+            Quantifier Forall
           ]
 
   let doesNotHaveDisjunction = HashSet.null (HashSet.intersection usedFunctions forbiddenFunctions)
-  let doesNotHaveNetwork = Set.null (Set.difference usedFreeVars (Map.keysSet ctx))
-  doesNotHaveDisjunction && doesNotHaveNetwork
+  let networks = Set.map (Identifier User) (Map.keysSet networkCtx)
+  let doesNotHaveNetwork = Set.null (Set.intersection usedFreeVars networks)
+  return $ doesNotHaveDisjunction && doesNotHaveNetwork
 
 --------------------------------------------------------------------------------
 -- Infinite quantifier elimination
@@ -388,19 +396,18 @@ canLeaveFiniteQuantifierUnexpanded ctx env expr = do
 compileInfiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  QuantifierDomain ->
   StandardNormBinder ->
   StandardEnv ->
   TypeCheckedExpr ->
   m QueryStructureResult
-compileInfiniteQuantifier quantifiedVariables _ binder env body = do
+compileInfiniteQuantifier quantifiedVariables binder env body = do
   let variableName = getBinderName binder
   let variableDoc = "variable" <+> quotePretty variableName
   logCompilerPass MidDetail ("compilation of quantified" <+> variableDoc) $ do
     let isDuplicateName = any (\v -> userVarName v == variableName) quantifiedVariables
     if isDuplicateName
       then do
-        (declProv, _) <- ask
+        (declProv, _, _) <- ask
         throwError $ DuplicateQuantifierNames declProv variableName
       else do
         let currentLevel = Lv $ length quantifiedVariables
@@ -470,7 +477,7 @@ calculateVariableDimensions binder = go (typeOf binder)
 --------------------------------------------------------------------------------
 -- Builtin and free variable tracking
 
-type QueryDeclCtx = DeclCtx (NormDeclCtxEntry StandardBuiltinType, UsedFunctionsInfo)
+type QueryDeclCtx = DeclCtx (NormDeclCtxEntry StandardBuiltin, UsedFunctionsInfo)
 
 queryDeclCtxToNormDeclCtx :: QueryDeclCtx -> StandardNormDeclCtx
 queryDeclCtxToNormDeclCtx = fmap fst
@@ -513,11 +520,11 @@ getUsedNormFunctions declCtx boundCtx expr = case expr of
     envInfo <> bodyInfo
   VBoundVar v spine -> do
     let varInfo = getUsedVarsBoundVar boundCtx (dbLevelToIndex (Lv (length boundCtx)) v)
-    let spineInfo = getUsedFunctionsSpine declCtx boundCtx (fmap argExpr spine)
+    let spineInfo = getUsedFunctionsSpine declCtx boundCtx spine
     varInfo <> spineInfo
   VFreeVar ident spine -> do
     let identInfo = getUsedFunctionsFreeVar declCtx ident
-    let spineInfo = getUsedFunctionsSpine declCtx boundCtx (fmap argExpr spine)
+    let spineInfo = getUsedFunctionsSpine declCtx boundCtx spine
     identInfo <> spineInfo
   VBuiltin b spine -> do
     let builtinInfo = getUsedFunctionsBuiltin b
@@ -525,7 +532,7 @@ getUsedNormFunctions declCtx boundCtx expr = case expr of
     builtinInfo <> spineInfo
 
 getUsedFunctionsBuiltin ::
-  NormalisableBuiltin StandardBuiltinType ->
+  StandardBuiltin ->
   UsedFunctionsInfo
 getUsedFunctionsBuiltin = \case
   CFunction f -> (HashSet.singleton f, mempty)
@@ -536,7 +543,7 @@ getUsedFunctionsFreeVar ::
   Identifier ->
   UsedFunctionsInfo
 getUsedFunctionsFreeVar declCtx ident =
-  fromMaybe (mempty, Set.singleton ident) (Map.lookup ident declCtx)
+  (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident declCtx)
 
 getUsedVarsBoundVar ::
   BoundCtx UsedFunctionsInfo ->
@@ -548,10 +555,10 @@ getUsedVarsBoundVar boundCtx ix =
 getUsedFunctionsSpine ::
   DeclCtx UsedFunctionsInfo ->
   BoundCtx UsedFunctionsInfo ->
-  StandardExplicitSpine ->
+  StandardSpine ->
   UsedFunctionsInfo
 getUsedFunctionsSpine declCtx boundCtx =
-  foldMap (getUsedNormFunctions declCtx boundCtx)
+  foldMap (getUsedNormFunctions declCtx boundCtx . argExpr)
 
 getUsedFunctionsEnv ::
   DeclCtx UsedFunctionsInfo ->

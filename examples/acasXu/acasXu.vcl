@@ -77,10 +77,10 @@ type UnnormalisedInputVector = Vector Rat 5
 -- These correspond to the range of the inputs that the network is designed
 -- to work over.
 minimumInputValues : UnnormalisedInputVector
-minimumInputValues = [0,0,0,0,0]
+minimumInputValues = [0.0, -pi, -pi, 100.0, 0.0]
 
 maximumInputValues : UnnormalisedInputVector
-maximumInputValues = [60261.0, 2*pi, 2*pi, 1100.0, 1200.0]
+maximumInputValues = [60261.0, pi, pi, 1200.0, 1200.0]
 
 -- We can therefore define a simple predicate saying whether a given input
 -- vector is in the right range.
@@ -95,7 +95,7 @@ meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 -- returns the unnormalised version.
 normalise : UnnormalisedInputVector -> InputVector
 normalise x = foreach i .
-  (x ! i - meanScalingValues ! i) / (maximumInputValues ! i)
+  (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)
 
 -- Using this we can define a new function that first normalises the input
 -- vector and then applies the neural network.
@@ -103,10 +103,14 @@ normAcasXu : UnnormalisedInputVector -> OutputVector
 normAcasXu x = acasXu (normalise x)
 
 -- A constraint that says the network chooses output `i` when given the
--- input `x`. We must necessarily provide a finite index that is less than 5
+-- input `x`. The output with the minimal score is chosen.
+-- We must necessarily provide a finite index that is less than 5
 -- (i.e. of type Index 5). The `a ! b` operator lookups index `b` in vector `a`.
-advises : Index 5 -> UnnormalisedInputVector -> Bool
-advises i x = forall j . i != j => normAcasXu x ! i < normAcasXu x ! j
+minimalScore : Index 5 -> UnnormalisedInputVector -> Bool
+minimalScore i x = forall j . i != j => normAcasXu x ! i < normAcasXu x ! j
+
+maximalScore : Index 5 -> UnnormalisedInputVector -> Bool
+maximalScore i x = forall j . i != j => normAcasXu x ! i > normAcasXu x ! j
 
 --------------------------------------------------------------------------------
 -- Property 1
@@ -117,6 +121,9 @@ advises i x = forall j . i != j => normAcasXu x ! i < normAcasXu x ! j
 
 -- Tested on: all 45 networks.
 
+scaleCOCOutput : Rat -> Rat
+scaleCOCOutput x = (x - 7.518884) / 373.94992
+
 intruderDistantAndSlower : UnnormalisedInputVector -> Bool
 intruderDistantAndSlower x =
   x ! distanceToIntruder >= 55947.691 and
@@ -126,7 +133,7 @@ intruderDistantAndSlower x =
 @property
 property1 : Bool
 property1 = forall x . validInput x and intruderDistantAndSlower x =>
-  normAcasXu x ! clearOfConflict <= 1500
+  normAcasXu x ! clearOfConflict <= scaleCOCOutput 1500
 
 --------------------------------------------------------------------------------
 -- Property 2
@@ -138,8 +145,9 @@ property1 = forall x . validInput x and intruderDistantAndSlower x =>
 
 @property
 property2 : Bool
-property2 = forall x . validInput x and intruderDistantAndSlower x =>
-  (exists j . (normAcasXu x ! j) > (normAcasXu x ! clearOfConflict))
+property2 = forall x .
+  validInput x and intruderDistantAndSlower x =>
+  not (maximalScore clearOfConflict x)
 
 --------------------------------------------------------------------------------
 -- Property 3
@@ -162,8 +170,9 @@ movingTowards x =
 
 @property
 property3 : Bool
-property3 = forall x . validInput x and directlyAhead x and movingTowards x =>
-  not (advises clearOfConflict x)
+property3 = forall x .
+  validInput x and directlyAhead x and movingTowards x =>
+  not (minimalScore clearOfConflict x)
 
 --------------------------------------------------------------------------------
 -- Property 4
@@ -182,8 +191,9 @@ movingAway x =
 
 @property
 property4 : Bool
-property4 = forall x . validInput x and directlyAhead x and movingAway x =>
-  not (advises clearOfConflict x)
+property4 = forall x .
+  validInput x and directlyAhead x and movingAway x =>
+  not (minimalScore clearOfConflict x)
 
 --------------------------------------------------------------------------------
 -- Property 5
@@ -203,7 +213,9 @@ nearAndApproachingFromLeft x =
 
 @property
 property5 : Bool
-property5 = forall x . validInput x and nearAndApproachingFromLeft x => advises strongRight x
+property5 = forall x .
+  validInput x and nearAndApproachingFromLeft x =>
+  minimalScore strongRight x
 
 --------------------------------------------------------------------------------
 -- Property 6
@@ -222,7 +234,9 @@ intruderFarAway x =
 
 @property
 property6 : Bool
-property6 = forall x . validInput x and intruderFarAway x => advises clearOfConflict x
+property6 = forall x .
+  validInput x and intruderFarAway x =>
+  minimalScore clearOfConflict x
 
 --------------------------------------------------------------------------------
 -- Property 7
@@ -241,8 +255,9 @@ largeVerticalSeparation x =
 
 @property
 property7 : Bool
-property7 = forall x . validInput x and largeVerticalSeparation x =>
-  not (advises strongLeft x) and not (advises strongRight x)
+property7 = forall x .
+  validInput x and largeVerticalSeparation x =>
+  not (minimalScore strongLeft x) and not (minimalScore strongRight x)
 
 --------------------------------------------------------------------------------
 -- Property 8
@@ -262,8 +277,9 @@ largeVerticalSeparationAndPreviousWeakLeft x =
 
 @property
 property8 : Bool
-property8 = forall x . validInput x and largeVerticalSeparationAndPreviousWeakLeft x =>
-  (advises clearOfConflict x) or (advises weakLeft x)
+property8 = forall x .
+  validInput x and largeVerticalSeparationAndPreviousWeakLeft x =>
+  (minimalScore clearOfConflict x) or (minimalScore weakLeft x)
 
 --------------------------------------------------------------------------------
 -- Property 9
@@ -283,8 +299,9 @@ previousWeakRightAndNearbyIntruder x =
 
 @property
 property9 : Bool
-property9 = forall x . validInput x and previousWeakRightAndNearbyIntruder x =>
-  advises strongLeft x
+property9 = forall x .
+  validInput x and previousWeakRightAndNearbyIntruder x =>
+  minimalScore strongLeft x
 
 --------------------------------------------------------------------------------
 -- Property 10
@@ -303,4 +320,6 @@ intruderFarAway2 x =
 
 @property
 property10 : Bool
-property10 = forall x . validInput x and intruderFarAway2 x => advises clearOfConflict x
+property10 = forall x .
+  validInput x and intruderFarAway2 x =>
+  minimalScore clearOfConflict x

@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s alternatingImplies.vcl -t MarabouQueries --network f:NO_FILE",
-  "needs": ["alternatingImplies.vcl"]
+  "run": "vehicle compile -s alternatingImplies.vcl -t MarabouQueries --network f:fake.onnx",
+  "needs": ["alternatingImplies.vcl", "fake.onnx"]
 }

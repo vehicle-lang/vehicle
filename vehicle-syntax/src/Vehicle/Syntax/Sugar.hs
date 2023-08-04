@@ -43,7 +43,7 @@ data BinderFoldTarget var builtin
   | FunFold
 
 pattern QuantifierExpr p binder body q <-
-  App p (Builtin _ (TypeClassOp (QuantifierTC q))) (ExplicitArg _ (Lam _ binder body) :| [])
+  App p (Builtin _ (TypeClassOp (QuantifierTC q))) (RelevantExplicitArg _ (Lam _ binder body) :| [])
 
 foldBinders ::
   forall binder var builtin.

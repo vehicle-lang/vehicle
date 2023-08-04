@@ -4,9 +4,10 @@ module Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
 where
 
 import Control.Monad (filterM, foldM)
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalApp, runEmptyNormT)
+import Vehicle.Compile.Normalise.Builtin (evalAddNat)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -14,12 +15,14 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
-  (TCM StandardBuiltinType m) =>
+  (TCM StandardBuiltin m) =>
   Maybe StandardDecl ->
   m Bool
 addNewConstraintUsingDefaults maybeDecl = do
@@ -46,9 +49,9 @@ addNewConstraintUsingDefaults maybeDecl = do
 
 getDefaultCandidates ::
   forall m.
-  (TCM StandardBuiltinType m) =>
+  (TCM StandardBuiltin m) =>
   Maybe StandardDecl ->
-  m [WithContext StandardTypeClassConstraint]
+  m [WithContext StandardInstanceConstraint]
 getDefaultCandidates maybeDecl = do
   typeClassConstraints <- getActiveTypeClassConstraints
   case maybeDecl of
@@ -63,7 +66,7 @@ getDefaultCandidates maybeDecl = do
       typeMetas <- getMetasLinkedToMetasIn constraints declType
 
       logDebugM MaxDetail $ do
-        unsolvedMetasInTypeDoc <- prettyMetas (Proxy @StandardBuiltinType) typeMetas
+        unsolvedMetasInTypeDoc <- prettyMetas (Proxy @StandardBuiltin) typeMetas
         return $ "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
       flip filterM typeClassConstraints $ \tc -> do
@@ -122,8 +125,8 @@ instance Pretty CandidateStatus where
 
 generateConstraintUsingDefaults ::
   forall m.
-  (TCM StandardBuiltinType m) =>
-  [WithContext StandardTypeClassConstraint] ->
+  (TCM StandardBuiltin m) =>
+  [WithContext StandardInstanceConstraint] ->
   m (Maybe (WithContext StandardConstraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
@@ -146,7 +149,7 @@ generateConstraintUsingDefaults constraints = do
 
 findStrongestConstraint ::
   (MonadCompile m) =>
-  [WithContext StandardTypeClassConstraint] ->
+  [WithContext StandardInstanceConstraint] ->
   m CandidateStatus
 findStrongestConstraint [] = return None
 findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
@@ -195,41 +198,43 @@ getCandidatesFromConstraint ::
   forall m.
   (MonadCompile m) =>
   StandardConstraintContext ->
-  StandardTypeClassConstraint ->
+  StandardInstanceConstraint ->
   m [Candidate]
-getCandidatesFromConstraint ctx (Has _ b args) = case b of
-  StandardTypeClass tc -> do
-    let getCandidates = getCandidatesFromArgs ctx
-    case (tc, args) of
-      (HasOrd ord, [tArg1, tArg2, _tRes]) -> return $ getCandidates (HasOrd ord) VNatType [tArg1, tArg2]
-      (HasNeg, [tArg, _tRes]) -> return $ getCandidates HasNeg VIntType [tArg]
-      (HasMul, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasMul VNatType [tArg1, tArg2]
-      (HasDiv, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasDiv VRatType [tArg1, tArg2]
-      (HasNatLits, [t]) -> return $ getCandidates HasNatLits VNatType [t]
-      (HasRatLits, [t]) -> return $ getCandidates HasRatLits VRatType [t]
-      (HasVecLits, [_n, t]) -> return $ getCandidates HasVecLits VRawListType [t]
-      (HasMap, [t]) -> return $ getCandidates HasMap VRawListType [t]
-      (HasFold, [t]) -> return $ getCandidates HasFold VRawListType [t]
-      (NatInDomainConstraint, [n, t]) -> case t of
-        VIndexType size -> do
-          succN <- runEmptyNormT @StandardBuiltinType @m $ evalApp (VBuiltinFunction (Add AddNat) []) [ExplicitArg mempty n, ExplicitArg mempty (VNatLiteral 1)]
-          return $ getCandidates NatInDomainConstraint succN [size]
-        _ -> return []
+getCandidatesFromConstraint ctx (Has _ expr) = do
+  (tc, spine) <- getTypeClass expr
+  let getCandidates = getCandidatesFromArgs ctx
+  case (tc, spine) of
+    (HasOrd ord, [tArg1, tArg2, _tRes]) -> return $ getCandidates (HasOrd ord) VNatType [tArg1, tArg2]
+    (HasNeg, [tArg, _tRes]) -> return $ getCandidates HasNeg VIntType [tArg]
+    (HasMul, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasMul VNatType [tArg1, tArg2]
+    (HasDiv, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasDiv VRatType [tArg1, tArg2]
+    (HasNatLits, [t]) -> return $ getCandidates HasNatLits VNatType [t]
+    (HasRatLits, [t]) -> return $ getCandidates HasRatLits VRatType [t]
+    (HasVecLits, [_n, t]) -> return $ getCandidates HasVecLits VRawListType [t]
+    (HasMap, [t]) -> return $ getCandidates HasMap VRawListType [t]
+    (HasFold, [t]) -> return $ getCandidates HasFold VRawListType [t]
+    (NatInDomainConstraint, [n, t]) -> case argExpr t of
+      VIndexType size -> do
+        succN <- do
+          let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
+          let defaultExpr = VBuiltin (CFunction (Add AddNat)) [n, RelevantExplicitArg mempty (VNatLiteral 1)]
+          return $ fromMaybe defaultExpr maybeNormResult
+        return $ getCandidates NatInDomainConstraint succN [IrrelevantImplicitArg mempty size]
       _ -> return []
-  _ -> return []
+    _ -> return []
 
 getCandidatesFromArgs ::
   StandardConstraintContext ->
   TypeClass ->
   StandardNormExpr ->
-  [StandardNormExpr] ->
+  StandardSpine ->
   [Candidate]
-getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter isNMeta ts)
+getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
   where
     mkCandidate t =
       Candidate
         { candidateTypeClass = tc,
-          candidateMetaExpr = t,
+          candidateMetaExpr = argExpr t,
           candidateCtx = ctx,
           candidateSolution = solution
         }

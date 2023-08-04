@@ -4,13 +4,14 @@ import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, runExceptT, throwError)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Map qualified as Map
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalisable (NormalisableArg)
+import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (QueryFormatID)
 
@@ -52,29 +53,16 @@ data CompileError
       StandardType -- The expected type.
   | MissingExplicitArg
       BoundDBCtx -- The context at the time of the failure
-      (NormalisableArg StandardBuiltinType) -- The non-explicit argument
+      (Arg Ix StandardBuiltin) -- The non-explicit argument
       StandardType -- Expected type of the argument
   | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | FailedUnificationConstraints (NonEmpty (WithContext StandardUnificationConstraint))
-  | FailedEqConstraint StandardConstraintContext StandardNormType StandardNormType EqualityOp
-  | FailedOrdConstraint StandardConstraintContext StandardNormType StandardNormType OrderOp
-  | FailedBuiltinConstraintArgument StandardConstraintContext TypeClassOp StandardNormType [UnAnnDoc] Int Int
-  | FailedBuiltinConstraintResult StandardConstraintContext StandardBuiltin StandardNormType [UnAnnDoc]
-  | FailedNotConstraint StandardConstraintContext StandardNormType
-  | FailedBoolOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
   | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
-  | FailedQuantifierConstraintBody StandardConstraintContext StandardNormType Quantifier
-  | FailedArithOp2Constraint StandardConstraintContext StandardNormType StandardNormType StandardBuiltin
-  | FailedFoldConstraintContainer StandardConstraintContext StandardNormType
-  | FailedQuantInConstraintContainer StandardConstraintContext StandardNormType Quantifier
-  | FailedNatLitConstraint StandardConstraintContext Int StandardNormType
   | FailedNatLitConstraintTooBig StandardConstraintContext Int Int
   | FailedNatLitConstraintUnknown StandardConstraintContext StandardNormExpr StandardNormType
-  | FailedIntLitConstraint StandardConstraintContext StandardNormType
-  | FailedRatLitConstraint StandardConstraintContext StandardNormType
-  | FailedConLitConstraint StandardConstraintContext StandardNormType
-  | FailedInstanceConstraint StandardConstraintContext InstanceGoal [WithContext InstanceCandidate]
+  | FailedInstanceConstraint StandardConstraintContext StandardInstanceGoal [WithContext StandardInstanceCandidate]
+  | RelevantUseOfIrrelevantVariable Provenance Name
   | QuantifiedIfCondition PolarityConstraintContext
   | NonLinearIfCondition LinearityConstraintContext
   | -- Resource typing errors
@@ -114,7 +102,8 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
-  | UnsupportedNegatedOperation DifferentiableLogic Provenance (Expr Name StandardBuiltin)
+  | UnsupportedNegatedOperation DifferentiableLogicID Provenance
+  | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   deriving (Show)
 
@@ -181,3 +170,29 @@ internalScopingError pass ident =
         <+> "declaration"
         <+> quotePretty ident
         <+> "not found in scope..."
+
+outOfBoundsError :: (MonadError CompileError m) => Doc () -> BoundCtx a -> Ix -> m b
+outOfBoundsError pass ctx i =
+  compilerDeveloperError $
+    "Internal scoping error during"
+      <+> pass
+      <> ":"
+        <+> "the bound context of length"
+        <+> quotePretty (length ctx)
+        <+> "is smaller than the found DB index"
+        <+> pretty i
+
+lookupInDeclCtx :: (MonadError CompileError m) => Doc () -> Identifier -> DeclCtx a -> m a
+lookupInDeclCtx pass ident ctx = case Map.lookup ident ctx of
+  Nothing -> internalScopingError pass ident
+  Just x -> return x
+
+lookupLvInBoundCtx :: (MonadError CompileError m) => Doc () -> Lv -> BoundCtx a -> m a
+lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
+  Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
+  Just x -> return x
+
+lookupIxInBoundCtx :: (MonadError CompileError m) => Doc () -> Ix -> BoundCtx a -> m a
+lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
+  Nothing -> outOfBoundsError pass ctx ix
+  Just x -> return x

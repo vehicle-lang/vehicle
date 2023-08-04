@@ -17,8 +17,6 @@ newtype GenericProg expr
 
 instance (NFData expr) => NFData (GenericProg expr)
 
-instance (ToJSON expr) => ToJSON (GenericProg expr)
-
 instance (Serialize expr) => Serialize (GenericProg expr)
 
 traverseDecls ::

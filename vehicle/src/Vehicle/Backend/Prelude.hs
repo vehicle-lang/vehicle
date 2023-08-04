@@ -12,8 +12,9 @@ import Vehicle.Verify.Core
 -- Differentiable logics
 
 -- | Different ways of translating from the logical constraints to loss functions.
-data DifferentiableLogic
-  = DL2Loss
+data DifferentiableLogicID
+  = VehicleLoss
+  | DL2Loss
   | GodelLoss
   | LukasiewiczLoss
   | ProductLoss
@@ -21,7 +22,7 @@ data DifferentiableLogic
   | STLLoss
   deriving (Eq, Show, Read, Bounded, Enum)
 
-instance Pretty DifferentiableLogic where
+instance Pretty DifferentiableLogicID where
   pretty = pretty . show
 
 --------------------------------------------------------------------------------
@@ -56,16 +57,16 @@ instance Read TypingSystem where
 data Target
   = ITP ITP
   | VerifierQueries QueryFormatID
-  | LossFunction DifferentiableLogic
-  | JSON
+  | LossFunction DifferentiableLogicID
+  | ExplicitVehicle
   deriving (Eq)
 
 findTarget :: String -> Maybe Target
 findTarget s = do
   let itp = lookup s (fmap (\t -> (show t, ITP t)) (enumerate @ITP))
   let queries = lookup s (fmap (\t -> (show t, VerifierQueries t)) (enumerate @QueryFormatID))
-  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogic))
-  let json = if s == show JSON then Just JSON else Nothing
+  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogicID))
+  let json = if s == show ExplicitVehicle then Just ExplicitVehicle else Nothing
   catMaybes [itp, queries, dl, json] !!? 0
 
 instance Show Target where
@@ -73,14 +74,14 @@ instance Show Target where
     ITP x -> show x
     VerifierQueries x -> show x
     LossFunction x -> show x
-    JSON -> "JSON"
+    ExplicitVehicle -> "Explicit"
 
 instance Pretty Target where
   pretty = \case
     ITP x -> pretty x
     VerifierQueries x -> pretty x
     LossFunction x -> pretty x
-    JSON -> pretty $ show JSON
+    ExplicitVehicle -> pretty $ show ExplicitVehicle
 
 -- | Generate the file header given the token used to start comments in the
 --  target language
@@ -113,10 +114,10 @@ writeResultToFile ::
   Doc a ->
   m ()
 writeResultToFile target filepath doc = do
-  logDebug MaxDetail $ "Creating file:" <+> pretty filepath
   let text = layoutAsText $ prependfileHeader doc target
-  liftIO $ case filepath of
-    Nothing -> TIO.putStrLn text
+  case filepath of
+    Nothing -> liftIO $ TIO.putStrLn text
     Just outputFilePath -> do
-      createDirectoryIfMissing True (takeDirectory outputFilePath)
-      TIO.writeFile outputFilePath text
+      logDebug MaxDetail $ "Creating file:" <+> pretty filepath
+      liftIO $ createDirectoryIfMissing True (takeDirectory outputFilePath)
+      liftIO $ TIO.writeFile outputFilePath text

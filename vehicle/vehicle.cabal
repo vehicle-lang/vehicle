@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.5.1
+version:            0.9.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -121,6 +121,7 @@ library
     Vehicle.Compile.ExpandResources.Dataset
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
+    Vehicle.Compile.Monomorphisation
     Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
@@ -156,7 +157,6 @@ library
     Vehicle.Validate
     Vehicle.Verify
     Vehicle.Verify.Core
-    Vehicle.Verify.ProofCache
     Vehicle.Verify.QueryFormat.Marabou
     Vehicle.Verify.QueryFormat.VNNLib
     Vehicle.Verify.Specification
@@ -169,19 +169,23 @@ library
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
-    Vehicle.Backend.LossFunction.Interact
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
+    Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
-    Vehicle.Compile.Monomorphisation
+    Vehicle.Compile.Normalise.Builtin
+    Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Contexts
+    Vehicle.Compile.Prelude.MonadContext
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
+    Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
     Vehicle.Compile.Type.Generalise
@@ -208,13 +212,13 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug
+    Vehicle.Expr.Relevant
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend
@@ -318,18 +322,3 @@ test-suite golden-tests
     , tasty-golden-executable
 
   build-tool-depends: vehicle:vehicle
-
--- executable new-golden-test
---   import:        common-executable
---   main-is:       app/NewTest.hs
---   build-depends:
---     , base
---     , containers
---     , directory
---     , filepath
---     , optparse-applicative
---     , tagged
---     , tasty
---     , tasty-golden-executable
---     , text
---     , vehicle

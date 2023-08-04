@@ -23,7 +23,8 @@ import Data.Set qualified as Set
 import Data.Traversable (for)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, evalMul, reeval, runNormT)
+import Vehicle.Compile.Normalise.Builtin (evalMul)
+import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
@@ -38,8 +39,9 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
+import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), pattern TensorIdent)
 import Vehicle.Verify.Core
 
 -- | Takes in a set of unreduced user and network variables and a boolean expression
@@ -203,12 +205,43 @@ solutionToExpr variables (var, Sparse {..}) = do
   -- Need to negate the coefficients as we're rearranging the equation.
   let combFn (v, c) e
         | v == UserVar var = e
-        | c == 1.0 = subFn (toExprVar v) e
-        | c == -1.0 = addFn (toExprVar v) e
+        | c == 1.0 = subFn e (toExprVar v)
+        | c == -1.0 = addFn e (toExprVar v)
         | otherwise = developerError "Vector equality coefficients should currently all be magnitude 1.0"
   let constant = constantExpr dimensions (Vector.map (* (-1)) constantValue)
   let varCoeffList = Map.toList coefficients
   return (var, foldr combFn constant varCoeffList)
+  where
+    mkTensorType :: StandardNormType -> StandardNormType -> StandardNormType
+    mkTensorType tElem dims = VFreeVar TensorIdent [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dims]
+
+    mkRatVectorAdd :: [StandardNormExpr] -> [StandardNormExpr] -> StandardNormExpr
+    mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
+
+    mkRatVectorSub :: [StandardNormExpr] -> [StandardNormExpr] -> StandardNormExpr
+    mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
+
+    mkVectorOp ::
+      BuiltinFunction ->
+      StdLibFunction ->
+      [StandardNormExpr] ->
+      [StandardNormExpr] ->
+      StandardNormExpr
+    mkVectorOp baseOp libOp dims spine = case dims of
+      [] -> VBuiltinFunction baseOp (RelevantExplicitArg mempty <$> spine)
+      (d : ds) ->
+        VFreeVar
+          (identifierOf libOp)
+          ( [ RelevantImplicitArg p vecType,
+              RelevantImplicitArg p vecType,
+              RelevantImplicitArg p vecType,
+              IrrelevantImplicitArg p d,
+              RelevantInstanceArg p (mkVectorOp baseOp libOp ds [])
+            ]
+              <> fmap (RelevantExplicitArg p) spine
+          )
+        where
+          p = mempty; vecType = mkTensorType VRatType (mkVList ds)
 
 compileVectorEquality ::
   (MonadSMT m) =>
@@ -252,15 +285,9 @@ compilerVectorLinearExpr variables dimensions = go
 
     singletonVar :: Lv -> Coefficient -> m (SparseLinearExpr MixedVariable)
     singletonVar level coef = do
-      case lookupLv variables level of
-        Just var -> do
-          let constant = Vector.replicate (product dimensions) 0
-          return $ Sparse dimensions (Map.singleton var coef) constant
-        Nothing ->
-          developerError $
-            "Reduced network variable level"
-              <+> pretty level
-              <+> "out of range"
+      var <- lookupLvInBoundCtx currentPass level variables
+      let constant = Vector.replicate (product dimensions) 0
+      return $ Sparse dimensions (Map.singleton var coef) constant
 
     isAddVector :: StandardNormExpr -> Maybe (StandardNormExpr, StandardNormExpr)
     isAddVector = \case
@@ -276,7 +303,7 @@ compilerVectorLinearExpr variables dimensions = go
 
     isConstant :: StandardNormExpr -> Maybe Constant
     isConstant = \case
-      VVecLiteral xs -> mconcat <$> traverse isConstant xs
+      VVecLiteral xs -> mconcat <$> traverse (isConstant . argExpr) xs
       VRatLiteral r -> Just $ Vector.singleton (fromRational r)
       _ -> Nothing
 
@@ -306,7 +333,7 @@ reduceRemainingVariables variables userVariableSolutions assertions =
 
     -- Then reduce the assertions
     logDebug MidDetail "Substituting reduced variables through assertions..."
-    let reduceAssertion = compileReducedAssertion (mixedVariableCtx reducedVariables) reducedVarEnv
+    let reduceAssertion = compileReducedAssertion reducedVariables reducedVarEnv
     compiledAssertions <- traverse reduceAssertion assertions
 
     case eliminateTrivialAtoms compiledAssertions of
@@ -458,7 +485,7 @@ mkGaussianReconstructionStep (v, e) =
 
 compileReducedAssertion ::
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariables ->
   StandardEnv ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
@@ -476,6 +503,9 @@ compileReducedAssertion variables variableSubstEnv assertion = do
   -- Then reduce the assertions
   traverse (traverse reduceAssertion) splitAssertions
   where
+    variableCtx :: BoundCtx MixedVariable
+    variableCtx = mixedVariableCtx variables
+
     splitUpAssertions ::
       (MonadSMT m) =>
       Bool ->
@@ -484,26 +514,26 @@ compileReducedAssertion variables variableSubstEnv assertion = do
     splitUpAssertions alreadyLiftedIfs expr = case expr of
       VBoolLiteral b -> return $ Trivial b
       VBuiltinFunction And [e1, e2] -> do
-        ass1 <- splitUpAssertions alreadyLiftedIfs e1
-        ass2 <- splitUpAssertions alreadyLiftedIfs e2
+        ass1 <- splitUpAssertions alreadyLiftedIfs (argExpr e1)
+        ass2 <- splitUpAssertions alreadyLiftedIfs (argExpr e2)
         return $ andTrivial Conjunct ass1 ass2
       VBuiltinFunction Or [e1, e2] -> do
-        ass1 <- splitUpAssertions alreadyLiftedIfs e1
-        ass2 <- splitUpAssertions alreadyLiftedIfs e2
+        ass1 <- splitUpAssertions alreadyLiftedIfs (argExpr e1)
+        ass2 <- splitUpAssertions alreadyLiftedIfs (argExpr e2)
         return $ orTrivial Disjunct ass1 ass2
-      VBuiltinFunction Not [e] -> case eliminateNot e of
+      VBuiltinFunction Not [e] -> case eliminateNot (argExpr e) of
         -- This should always work at this stage.
         Nothing -> compilerDeveloperError $ "Cannot eliminate 'not' over" <+> prettyVerbose e
         Just result -> splitUpAssertions alreadyLiftedIfs result
-      VBuiltinFunction If [c, x, y] -> do
+      VBuiltinFunction If [_, c, x, y] -> do
         -- As the expression is of type `Bool` we can immediately unfold the `if`.
-        let unfoldedExpr = unfoldIf c x y
+        let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
         splitUpAssertions alreadyLiftedIfs unfoldedExpr
       VBuiltinFunction (Equals _ Eq) [e1, e2]
-        | alreadyLiftedIfs -> return $ NonTrivial $ Query (e1, Equal, e2)
+        | alreadyLiftedIfs -> return $ NonTrivial $ Query (argExpr e1, Equal, argExpr e2)
         | otherwise -> liftIfs expr
       VBuiltinFunction (Order _ op) [e1, e2]
-        | alreadyLiftedIfs -> return $ NonTrivial $ Query $ ordToRelation e1 op e2
+        | alreadyLiftedIfs -> return $ NonTrivial $ Query $ ordToRelation (argExpr e1) op (argExpr e2)
         | otherwise -> liftIfs expr
       _ ->
         unexpectedExprError "compiling reduced assertion" (prettyVerbose expr)
@@ -519,7 +549,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
         Just (Just exprWithoutIf) -> do
           (_, _, declSubst) <- ask
-          let env = variableCtxToNormEnv variables
+          let env = variableCtxToNormEnv variableCtx
           normExprWithoutIf <- runNormT defaultEvalOptions declSubst mempty (reeval env exprWithoutIf)
           splitUpAssertions True normExprWithoutIf
 
@@ -528,8 +558,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
       (StandardNormExpr, Relation, StandardNormExpr) ->
       m SolvableAssertion
     reduceAssertion (lhs, rel, rhs) = do
-      lhsLinExpr <- compileReducedLinearExpr variables lhs
-      rhsLinExpr <- compileReducedLinearExpr variables rhs
+      lhsLinExpr <- compileReducedLinearExpr variableCtx lhs
+      rhsLinExpr <- compileReducedLinearExpr variableCtx rhs
       -- And construct the reduced assertion
       return $ constructReducedAssertion (lhsLinExpr, rel, rhsLinExpr)
 
@@ -547,34 +577,30 @@ compileReducedLinearExpr variables expr = do
     go e = case e of
       VBoundVar v [] ->
         singletonVar v 1
-      VBuiltinFunction (Neg NegRat) [VBoundVar v []] ->
+      VBuiltinFunction (Neg NegRat) [RelevantExplicitArg _ (VBoundVar v [])] ->
         singletonVar v (-1)
       VRatLiteral l -> do
         return $ Sparse mempty mempty (Vector.singleton (fromRational l))
       VBuiltinFunction (Add AddRat) [e1, e2] -> do
-        l1 <- go e1
-        l2 <- go e2
+        l1 <- go (argExpr e1)
+        l2 <- go (argExpr e2)
         return $ addExprs 1 l1 1 l2
       VBuiltinFunction (Mul MulRat) [e1, e2] ->
-        case (e1, e2) of
+        case (argExpr e1, argExpr e2) of
           (VRatLiteral l, VBoundVar v []) -> singletonVar v (fromRational l)
           (VBoundVar v [], VRatLiteral l) -> singletonVar v (fromRational l)
           _ -> throwError catchableUnsupportedNonLinearConstraint
       VBuiltinFunction (Div DivRat) [e1, e2] ->
-        case (e1, e2) of
+        case (argExpr e1, argExpr e2) of
           (VBoundVar v [], VRatLiteral l) ->
             singletonVar v (fromRational (1 / l))
           _ -> throwError catchableUnsupportedNonLinearConstraint
       ex -> unexpectedExprError currentPass $ prettyVerbose ex
 
     singletonVar :: Lv -> Coefficient -> m (SparseLinearExpr MixedVariable)
-    singletonVar level coef = case lookupLv variables level of
-      Just var -> return (Sparse [] (Map.singleton var coef) (Vector.singleton 0))
-      Nothing ->
-        developerError $
-          "Reduced network variable level"
-            <+> pretty level
-            <+> "out of range"
+    singletonVar level coef = do
+      var <- lookupLvInBoundCtx currentPass level variables
+      return (Sparse [] (Map.singleton var coef) (Vector.singleton 0))
 
 -- | Converts the provided expression to linear normal form,
 -- i.e. consisting of only additions and multiplications by constants.
@@ -590,36 +616,35 @@ convertToLNF = lnf
       VLam {} -> caseError currentPass "Lam" ["QuantifierExpr"]
       VFreeVar i _ -> normalisationError currentPass ("FreeVar" <+> pretty i)
       VBuiltinFunction fun args -> do
-        args' <- traverse lnf args
+        args' <- traverse (lnf . argExpr) args
         case (fun, args') of
-          (Neg dom, [e1]) -> return $ lowerNeg dom e1
-          (Add dom, [e1, e2]) -> return $ VBuiltinFunction (Add dom) [e1, e2]
+          (Neg dom, [e1]) -> return $ argExpr $ lowerNeg dom e1
           (Sub dom, [e1, e2]) -> return $ normSub dom e1 e2
           (Mul dom, [e1, e2]) -> return $ normMul dom e1 e2
           (Div dom, [e1, e2]) -> return $ normDiv dom e1 e2
-          _ -> return $ VBuiltinFunction fun args'
+          _ -> return $ VBuiltinFunction fun (RelevantExplicitArg mempty <$> args')
       VBuiltin {} -> return expr
       VBoundVar {} -> return expr
 
     normMul :: MulDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
     normMul dom e1 e2 = case (e1, e2) of
       (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
-        let r1 = normMul dom e1 v1
-        let r2 = normMul dom e1 v2
-        VBuiltinFunction (Add addDom) [r1, r2]
+        let r1 = normMul dom e1 (argExpr v1)
+        let r2 = normMul dom e1 (argExpr v2)
+        VBuiltinFunction (Add addDom) (RelevantExplicitArg mempty <$> [r1, r2])
       (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
-        let r1 = normMul dom v1 e2
-        let r2 = normMul dom v2 e2
-        VBuiltinFunction (Add addDom) [r1, r2]
-      _ -> case evalMul dom [e1, e2] of
-        Nothing -> VBuiltinFunction (Mul dom) [e1, e2]
+        let r1 = normMul dom (argExpr v1) e2
+        let r2 = normMul dom (argExpr v2) e2
+        VBuiltinFunction (Add addDom) (RelevantExplicitArg mempty <$> [r1, r2])
+      (x1, x2) -> case evalMul dom [x1, x2] of
+        Nothing -> VBuiltinFunction (Mul dom) (RelevantExplicitArg mempty <$> [e1, e2])
         Just r -> r
 
     normSub :: SubDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
     normSub dom e1 e2 = do
       let negDom = subToNegDomain dom
       let addDom = subToAddDomain dom
-      VBuiltinFunction (Add addDom) [e1, lowerNeg negDom e2]
+      VBuiltinFunction (Add addDom) [RelevantExplicitArg mempty e1, lowerNeg negDom e2]
 
     normDiv :: DivDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
     normDiv dom e1 e2 = case (e1, e2) of
@@ -627,24 +652,26 @@ convertToLNF = lnf
         let mulDom = divToMulDomain dom
         normMul mulDom e1 (VRatLiteral (1 / l))
       _ -> do
-        VBuiltinFunction (Div dom) [e1, e2]
+        VBuiltinFunction (Div dom) (RelevantExplicitArg mempty <$> [e1, e2])
 
-    lowerNeg :: NegDomain -> StandardNormExpr -> StandardNormExpr
-    lowerNeg dom = \case
+    lowerNeg :: NegDomain -> StandardNormExpr -> StandardNormArg
+    lowerNeg dom expr = RelevantExplicitArg mempty $ case expr of
       -- Base cases
-      VBuiltinFunction (Neg _) [e] -> e
+      VBuiltinFunction (Neg _) [e] -> argExpr e
       VIntLiteral x -> VIntLiteral (-x)
       VRatLiteral x -> VRatLiteral (-x)
-      v@(VBoundVar _ []) -> do
+      VBoundVar _ [] -> do
         let mulDom = negToMulDomain dom
-        let minus1 = case dom of
+        let minus1 = RelevantExplicitArg mempty $ case dom of
               NegInt -> VIntLiteral (-1)
               NegRat -> VRatLiteral (-1)
-        VBuiltinFunction (Mul mulDom) [minus1, v]
+        VBuiltinFunction (Mul mulDom) [minus1, RelevantExplicitArg mempty expr]
 
       -- Inductive cases
-      VBuiltinFunction (Add addDom) [e1, e2] -> VBuiltinFunction (Add addDom) [lowerNeg dom e1, lowerNeg dom e2]
-      VBuiltinFunction (Mul mulDom) [e1, e2] -> VBuiltinFunction (Mul mulDom) [lowerNeg dom e1, e2]
+      VBuiltinFunction (Add addDom) [e1, e2] ->
+        VBuiltinFunction (Add addDom) [lowerNeg dom (argExpr e1), lowerNeg dom (argExpr e2)]
+      VBuiltinFunction (Mul mulDom) [e1, e2] ->
+        VBuiltinFunction (Mul mulDom) [lowerNeg dom (argExpr e1), e2]
       -- Errors
       e -> developerError ("Unable to lower 'neg' through" <+> pretty (show e))
 

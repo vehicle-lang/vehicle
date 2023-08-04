@@ -1,0 +1,129 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 8034753775663951463
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -3403084463960967397
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "p",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "p",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ],
+    [
+      "multiProperty",
+      {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "MultiProperty",
+            "contents": [
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      0,
+                      0
+                    ]
+                  },
+                  []
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      1,
+                      0
+                    ]
+                  },
+                  []
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      2,
+                      0
+                    ]
+                  },
+                  []
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "MultiProperty",
+            "contents": [
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      0,
+                      1
+                    ]
+                  },
+                  []
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      1,
+                      1
+                    ]
+                  },
+                  []
+                ]
+              },
+              {
+                "tag": "SingleProperty",
+                "contents": [
+                  {
+                    "propertyName": "multiProperty",
+                    "propertyIndices": [
+                      2,
+                      1
+                    ]
+                  },
+                  []
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  ]
+}

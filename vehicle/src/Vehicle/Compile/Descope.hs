@@ -7,26 +7,11 @@ where
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
+import Vehicle.Expr.Relevant (RelBinder, RelExpr, RelProg)
+import Vehicle.Expr.Relevant qualified as R
 
---------------------------------------------------------------------------------
--- Public interface
-{-
--- | Converts DeBruijn indices into names naively, e.g. 0 becomes "i0".
---  Useful for debugging
-runNaiveCoDBDescope ::
-  (Descope t, ExtractPositionTrees t) =>
-  t (CoDBBinding Name) CoDBVar ->
-  (t Name Name, Map Name (Maybe PositionTree))
-runNaiveCoDBDescope e1 =
-  let (e2, pts) = extractPTs e1
-    in let e3 = performDescoping descopeCoDBVarNaive (WithContext e2 mempty)
-      in (e3, pts)
-
--}
-
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Named descoping
 
 -- | Converts DB indices back to names
@@ -53,6 +38,12 @@ instance
   DescopeNamed (Contextualised (GenericBinder expr1) BoundDBCtx) (GenericBinder expr2)
   where
   descopeNamed (WithContext binder ctx) = fmap (\e -> descopeNamed (WithContext e ctx)) binder
+
+instance DescopeNamed (RelProg Ix builtin) (RelProg Name builtin) where
+  descopeNamed = R.fmapRelProg (\e -> descopeNamed (WithContext e emptyDBCtx))
+
+instance DescopeNamed (Contextualised (RelExpr Ix builtin) BoundDBCtx) (RelExpr Name builtin) where
+  descopeNamed (WithContext e ctx) = runReader (descopeRelExpr descopeDBIndexVar e) ctx
 
 --------------------------------------------------------------------------------
 -- Naive descoping
@@ -83,30 +74,39 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Value types) (Expr Name (NormalisableBuiltin types)) where
+instance DescopeNaive (Value builtin) (Expr Name builtin) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
--- Core operation
+-- Core utils
 
--- Can get rid of this newtype and just use BoundDBCtx instead?
-newtype Ctx = Ctx BoundDBCtx
+type MonadDescope m = MonadReader BoundDBCtx m
 
 runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: Binder var builtin -> Ctx -> Ctx
-addBinderToCtx binder (Ctx ctx) = Ctx (nameOf binder : ctx)
+addBinderToCtx :: (HasName binder (Maybe Name)) => binder -> BoundDBCtx -> BoundDBCtx
+addBinderToCtx binder ctx = nameOf binder : ctx
+
+addBindersToCtx :: (HasName binder (Maybe Name)) => [binder] -> BoundDBCtx -> BoundDBCtx
+addBindersToCtx binders ctx = fmap nameOf (reverse binders) <> ctx
+
+descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> Ix -> m Name
+descopeDBIndexVarNaive _ i = return $ layoutAsText (pretty i)
+
+descopeDBLevelVarNaive :: Provenance -> Lv -> Name
+descopeDBLevelVarNaive _ l = layoutAsText $ pretty l
+
+--------------------------------------------------------------------------------
+-- Expr
 
 performDescoping ::
   (Show var) =>
-  (Provenance -> var -> Reader Ctx Name) ->
+  (Provenance -> var -> Reader BoundDBCtx Name) ->
   Contextualised (Expr var builtin) BoundDBCtx ->
   Expr Name builtin
 performDescoping convertVar (WithContext e ctx) =
-  runReader (descopeExpr convertVar e) (Ctx ctx)
-
-type MonadDescope m = MonadReader Ctx m
+  runReader (descopeExpr convertVar e) ctx
 
 descopeExpr ::
   (MonadDescope m, Show var) =>
@@ -137,30 +137,81 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
     return $ Pi p binder' body'
 
 descopeBinder ::
-  (MonadReader Ctx f, Show var) =>
+  (MonadReader BoundDBCtx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Binder var builtin ->
   f (Binder Name builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
-  (MonadReader Ctx f, Show var) =>
+  (MonadReader BoundDBCtx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Arg var builtin ->
   f (Arg Name builtin)
 descopeArg f = traverse (descopeExpr f)
 
+--------------------------------------------------------------------------------
+-- RelExpr
+
+descopeRelExpr ::
+  (MonadDescope m, Show var) =>
+  (Provenance -> var -> m Name) ->
+  RelExpr var builtin ->
+  m (RelExpr Name builtin)
+descopeRelExpr f e = case e of
+  R.Universe p l -> return $ R.Universe p l
+  R.Builtin p op -> return $ R.Builtin p op
+  R.FreeVar p v -> return $ R.FreeVar p v
+  R.BoundVar p v -> R.BoundVar p <$> f p v
+  R.App p fun args -> R.App p <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
+  R.PartialApp p arity fun args -> R.PartialApp p arity <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
+  R.Let p bound binder body -> do
+    bound' <- descopeRelExpr f bound
+    binder' <- descopeRelBinder f binder
+    body' <- local (addBinderToCtx binder') (descopeRelExpr f body)
+    return $ R.Let p bound' binder' body'
+  R.Lam p binders body -> do
+    binders' <- descopeRelBinders f binders
+    body' <- local (addBindersToCtx binders') (descopeRelExpr f body)
+    return $ R.Lam p binders' body'
+  R.Pi p binder body -> do
+    binder' <- descopeRelBinder f binder
+    body' <- local (addBinderToCtx binder') (descopeRelExpr f body)
+    return $ R.Pi p binder' body'
+
+descopeRelBinder ::
+  (MonadDescope m, Show var) =>
+  (Provenance -> var -> m Name) ->
+  RelBinder var builtin ->
+  m (RelBinder Name builtin)
+descopeRelBinder f (R.Binder p r t) = R.Binder p r <$> descopeRelExpr f t
+
+descopeRelBinders ::
+  (MonadDescope m, Show var) =>
+  (Provenance -> var -> m Name) ->
+  [RelBinder var builtin] ->
+  m [RelBinder Name builtin]
+descopeRelBinders f = \case
+  [] -> return []
+  (b : bs) -> do
+    b' <- descopeRelBinder f b
+    bs' <- local (addBinderToCtx b) $ descopeRelBinders f bs
+    return $ b' : bs'
+
+--------------------------------------------------------------------------------
+-- Values
+
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `Value`s in a readable form.
 descopeNormExpr ::
   (Provenance -> Lv -> Name) ->
-  Value types ->
-  Expr Name (NormalisableBuiltin types)
+  Value builtin ->
+  Expr Name builtin
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
   VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
   VFreeVar v spine -> normAppList p (FreeVar p v) $ descopeSpine f spine
-  VBuiltin b spine -> normAppList p (Builtin p b) $ fmap (ExplicitArg p . descopeNormExpr f) spine
+  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
   VBoundVar v spine -> do
     let var = BoundVar p $ f p v
     let args = descopeSpine f spine
@@ -181,36 +232,24 @@ descopeNormExpr f e = case e of
 
 descopeSpine ::
   (Provenance -> Lv -> Name) ->
-  Spine types ->
-  [Arg Name (NormalisableBuiltin types)]
+  Spine builtin ->
+  [Arg Name builtin]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> Lv -> Name) ->
-  VBinder types ->
-  Binder Name (NormalisableBuiltin types)
+  VBinder builtin ->
+  Binder Name builtin
 descopeNormBinder f = fmap (descopeNormExpr f)
 
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do
-  Ctx ctx <- ask
+  ctx <- ask
   case lookupIx ctx i of
     Nothing -> indexOutOfBounds p i (length ctx)
-    Just Nothing -> return "_" -- usingUnnamedBoundVariable p i
+    Just Nothing -> return "_"
     Just (Just name) -> return name
 
-descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> Ix -> m Name
-descopeDBIndexVarNaive _ i = return $ layoutAsText (pretty i)
-
-descopeDBLevelVarNaive :: Provenance -> Lv -> Name
-descopeDBLevelVarNaive _ l = layoutAsText $ pretty l
-
-{-
-descopeCoDBVarNaive :: MonadDescope m => Provenance -> CoDBVar -> m Name
-descopeCoDBVarNaive _ = \case
-  CoDBFree i -> return $ nameOf i
-  CoDBBound -> return "CoDBVar"
--}
 --------------------------------------------------------------------------------
 -- Logging and errors
 

@@ -8,10 +8,20 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries --network acasXu:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt"],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/.vcl-cache-index",
+      "Marabou.queries/property*.vcl-plan"
+    ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     }
+  },
+  {
+    "name": "MarabouVerify",
+    "run": "vehicle verify -s spec.vcl --verifier Marabou --network acasXu:acasXu_1_7.onnx --property property3",
+    "needs": ["spec.vcl", "acasXu_1_7.onnx"],
+    "external": ["Marabou"]
   },
   {
     "name": "Agda",
@@ -20,9 +30,9 @@
     "produces": ["Agda.agda"]
   },
   {
-    "name": "MarabouVerify",
-    "run": "vehicle verify -s spec.vcl --verifier Marabou --network acasXu:acasXu_1_7.onnx --property property3",
-    "needs": ["spec.vcl", "acasXu_1_7.onnx"],
-    "external": ["Marabou"]
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   }
 ]

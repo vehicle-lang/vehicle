@@ -1,0 +1,5 @@
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+@property;
+increasing : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+increasing f = forall x . x <= f [x] ! 0

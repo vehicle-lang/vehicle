@@ -18,7 +18,6 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -27,9 +26,9 @@ import Vehicle.Expr.Normalisable
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
-  (TCM types m) =>
-  NormalisableDecl types ->
-  m (NormalisableDecl types)
+  (TCM builtin m) =>
+  Decl Ix builtin ->
+  m (Decl Ix builtin)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
@@ -41,11 +40,11 @@ generaliseOverUnsolvedConstraints decl =
     return generalisedDecl
 
 generaliseOverConstraint ::
-  (TCM types m) =>
-  [WithContext (Constraint types)] ->
-  (NormalisableDecl types, [WithContext (TypeClassConstraint types)]) ->
-  WithContext (TypeClassConstraint types) ->
-  m (NormalisableDecl types, [WithContext (TypeClassConstraint types)])
+  (TCM builtin m) =>
+  [WithContext (Constraint builtin)] ->
+  (Decl Ix builtin, [WithContext (InstanceConstraint builtin)]) ->
+  WithContext (InstanceConstraint builtin) ->
+  m (Decl Ix builtin, [WithContext (InstanceConstraint builtin)])
 generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
   -- Find any unsolved meta variables that are transitively linked
   -- by constraints of the same type.
@@ -65,14 +64,14 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
       return (generalisedDecl, rejected)
 
 prependConstraint ::
-  (TCM types m) =>
-  NormalisableDecl types ->
-  WithContext (TypeClassConstraint types) ->
-  m (NormalisableDecl types)
-prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
+  (TCM builtin m) =>
+  Decl Ix builtin ->
+  WithContext (InstanceConstraint builtin) ->
+  m (Decl Ix builtin)
+prependConstraint decl (WithContext (Has meta expr) ctx) = do
   let p = originalProvenance ctx
-  typeClass <- quote p 0 (tcNormExpr constraint)
-  relevancy <- typeClassRelevancy tc
+  typeClass <- quote p 0 expr
+  relevancy <- typeClassRelevancy expr
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $
@@ -85,10 +84,10 @@ prependConstraint decl (WithContext constraint@(Has meta tc _) ctx) = do
 -- each such meta, it then prepends a new quantified variable to the declaration
 -- type and then solves the meta as that new variable.
 generaliseOverUnsolvedMetaVariables ::
-  forall types m.
-  (TCM types m) =>
-  NormalisableDecl types ->
-  m (NormalisableDecl types)
+  forall builtin m.
+  (TCM builtin m) =>
+  Decl Ix builtin ->
+  m (Decl Ix builtin)
 generaliseOverUnsolvedMetaVariables decl = do
   let declType = typeOf decl
 
@@ -105,11 +104,11 @@ generaliseOverUnsolvedMetaVariables decl = do
           substMetas result
 
 quantifyOverMeta ::
-  forall types m.
-  (TCM types m) =>
-  NormalisableDecl types ->
+  forall builtin m.
+  (TCM builtin m) =>
+  Decl Ix builtin ->
   MetaID ->
-  m (NormalisableDecl types)
+  m (Decl Ix builtin)
 quantifyOverMeta decl meta = do
   metaType <- substMetas =<< getMetaType meta
   if isMeta metaType
@@ -118,7 +117,7 @@ quantifyOverMeta decl meta = do
         "Haven't thought about what to do when type of unsolved meta is also"
           <+> "an unsolved meta."
     else do
-      metaDoc <- prettyMeta (Proxy @types) meta
+      metaDoc <- prettyMeta (Proxy @builtin) meta
       logCompilerPass MidDetail ("generalisation over" <+> metaDoc) $ do
         -- Prepend the implicit binders for the new generalised variable.
         binderName <- getBinderNameOrFreshName Nothing metaType
@@ -134,15 +133,15 @@ isMeta _ = False
 -- Utilities
 
 prependBinderAndSolveMeta ::
-  forall types m.
-  (TCM types m) =>
+  forall builtin m.
+  (TCM builtin m) =>
   MetaID ->
   BinderDisplayForm ->
   Visibility ->
   Relevance ->
-  NormalisableType types ->
-  NormalisableDecl types ->
-  m (NormalisableDecl types)
+  Type Ix builtin ->
+  Decl Ix builtin ->
+  m (Decl Ix builtin)
 prependBinderAndSolveMeta meta f v r binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
@@ -167,7 +166,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
-  metaCtx <- getMetaCtx @types meta
+  metaCtx <- getMetaCtx @builtin meta
   let p = provenanceOf prependedDecl
   let solution = BoundVar p (Ix $ length metaCtx - 1)
   solveMeta meta solution metaCtx
@@ -181,15 +180,15 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   return resultDecl
 
 removeContextsOfMetasIn ::
-  forall types m.
-  (TCM types m) =>
-  NormalisableType types ->
-  NormalisableDecl types ->
-  m (NormalisableType types, NormalisableDecl types)
+  forall builtin m.
+  (TCM builtin m) =>
+  Type Ix builtin ->
+  Decl Ix builtin ->
+  m (Type Ix builtin, Decl Ix builtin)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     metasInBinder <- metasIn binderType
-    newMetas <- or <$> forM (MetaSet.toList metasInBinder) (removeMetaDependencies (Proxy @types))
+    newMetas <- or <$> forM (MetaSet.toList metasInBinder) (removeMetaDependencies (Proxy @builtin))
 
     if not newMetas
       then return (binderType, decl)
@@ -199,10 +198,10 @@ removeContextsOfMetasIn binderType decl =
         logCompilerPassOutput (prettyVerbose substDecl)
         return (substBinderType, substDecl)
 
-addNewArgumentToMetaUses :: MetaID -> NormalisableDecl types -> NormalisableDecl types
+addNewArgumentToMetaUses :: MetaID -> Decl Ix builtin -> Decl Ix builtin
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: Lv -> NormalisableExpr types -> NormalisableExpr types
+    go :: Lv -> Expr Ix builtin -> Expr Ix builtin
     go d expr = case expr of
       Meta p m
         | m == meta -> App p (Meta p m) [newVar p]
@@ -220,6 +219,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
       where
-        newVar p = ExplicitArg p (BoundVar p $ shiftDBIndex 0 d)
+        newVar p = RelevantExplicitArg p (BoundVar p $ shiftDBIndex 0 d)
         goBinder = fmap (go d)
         goArgs = fmap (fmap (go d))

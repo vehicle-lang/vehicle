@@ -1,0 +1,10 @@
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+@noinline;
+equalsVector : Vector Rat -> Vector Rat -> Bool;
+equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+
+@property;
+p : forallT (f : Vector Rat -> Vector Rat) . Bool;
+p f = equalsVector (f [0.0]) [0.0]

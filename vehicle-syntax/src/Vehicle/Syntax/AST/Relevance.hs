@@ -7,6 +7,9 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Builtin
 
+--------------------------------------------------------------------------------
+-- Data
+
 data Relevance
   = Relevant
   | Irrelevant
@@ -19,6 +22,16 @@ instance Hashable Relevance
 instance ToJSON Relevance
 
 instance Serialize Relevance
+
+instance Semigroup Relevance where
+  Relevant <> Relevant = Relevant
+  _ <> _ = Irrelevant
+
+instance Monoid Relevance where
+  mempty = Relevant
+
+--------------------------------------------------------------------------------
+-- Type class
 
 class HasRelevance a where
   relevanceOf :: a -> Relevance

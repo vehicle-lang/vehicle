@@ -13,6 +13,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------

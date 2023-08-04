@@ -1,6 +1,5 @@
 module Vehicle.Compile.ExpandResources
   ( expandResources,
-    splitResourceCtx,
   )
 where
 
@@ -22,7 +21,8 @@ import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.Normalised (pattern VNatLiteral)
+import Vehicle.Expr.Normalisable (NormalisableBuiltin (..), pattern VNatLiteral)
+import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
 
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.
@@ -30,7 +30,7 @@ expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
   StandardGluedProg ->
-  m ResourceContext
+  m (NetworkContext, StandardNormDeclCtx, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     (intermediateResourcesCtx, inferableParameterCtx) <-
@@ -38,15 +38,20 @@ expandResources resources prog =
 
     checkForUnusedResources resources intermediateResourcesCtx
 
-    fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
+    resourceContext <- fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
+    let (networkCtx, declCtx) = splitResourceCtx resourceContext
+    integrityInfo <- generateResourcesIntegrityInfo resources
+    return (networkCtx, declCtx, integrityInfo)
 
 splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
 splitResourceCtx ResourceContext {..} = do
+  -- This is a hack. The type is only every used for its arity, so this is okay.
+  let unitType = CType (StandardBuiltinType Unit)
   let mkEntry expr =
-        NormDeclCtxEntry
-          { declExpr = expr,
+        TypingDeclCtxEntry
+          { declBody = Just expr,
             declAnns = [],
-            declArity = 0
+            declType = Glued (Builtin mempty unitType) (VBuiltin unitType [])
           }
   let declCtx = fmap mkEntry parameterContext <> fmap mkEntry datasetContext
   (networkContext, declCtx)
@@ -106,7 +111,9 @@ fillInInferableParameters ResourceContext {..} inferableCtx = do
       m ParameterContext
     insertInferableParameter ctx (param, maybeValue) = case maybeValue of
       Left p -> throwError $ InferableParameterUninferrable (param, p)
-      Right (_, _, v) -> return $ Map.insert param (VNatLiteral v) ctx
+      Right (_, _, v) -> do
+        logDebug MaxDetail $ "Inferred" <+> quotePretty param <+> "as" <+> quotePretty v
+        return $ Map.insert param (VNatLiteral v) ctx
 
 warnIfUnusedResources ::
   (MonadLogger m, HasName ident Name) =>

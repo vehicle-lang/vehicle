@@ -1,5 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
-
 module Test.Tasty.Golden.Executable
   ( SomeOption (..),
     External (..),

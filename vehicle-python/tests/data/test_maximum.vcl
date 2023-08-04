@@ -1,2 +1,3 @@
-maximum : Bool
-maximum = 5 <= 1
+@property
+prop : Bool
+prop = 5 <= 1

@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Type.Subsystem.Standard.Core where
 
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics
@@ -28,24 +27,12 @@ instance Pretty StandardBuiltinType where
     StandardTypeClass t -> pretty t
     StandardTypeClassOp t -> pretty t
 
-instance PrintableBuiltin StandardBuiltinType where
-  convertBuiltin p b = Builtin p $ case b of
-    StandardBuiltinType t -> BuiltinType t
-    StandardTypeClass t -> TypeClass t
-    StandardTypeClassOp t -> TypeClassOp t
-
-  isTypeClassOp = \case
-    StandardTypeClassOp {} -> True
-    _ -> False
-
 instance Hashable StandardBuiltinType
 
 instance Serialize StandardBuiltinType
 
-instance ToJSON StandardBuiltinType
-
 convertToNormalisableBuiltins :: Expr Ix Builtin -> Expr Ix StandardBuiltin
-convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
+convertToNormalisableBuiltins = mapBuiltins $ \p1 p2 b args -> do
   let fn = Builtin p2 $ case b of
         Constructor c -> CConstructor c
         BuiltinFunction f -> CFunction f
@@ -60,47 +47,51 @@ convertToNormalisableBuiltins = traverseBuiltins $ \p1 p2 b args -> do
 
 type StandardBuiltin = NormalisableBuiltin StandardBuiltinType
 
-type StandardExpr = NormalisableExpr StandardBuiltinType
+type StandardExpr = Expr Ix StandardBuiltin
 
-type StandardBinder = NormalisableBinder StandardBuiltinType
+type StandardBinder = Binder Ix StandardBuiltin
 
-type StandardArg = NormalisableArg StandardBuiltinType
+type StandardArg = Arg Ix StandardBuiltin
 
-type StandardDecl = NormalisableDecl StandardBuiltinType
+type StandardDecl = Decl Ix StandardBuiltin
 
-type StandardProg = NormalisableProg StandardBuiltinType
+type StandardProg = Prog Ix StandardBuiltin
 
 type StandardType = StandardExpr
 
-type StandardTelescope = NormalisableTelescope StandardBuiltinType
+type StandardTelescope = Telescope Ix StandardBuiltin
 
-type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltinType
+type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltin
+
+type StandardInstanceGoal = InstanceGoal StandardBuiltin
+
+type StandardInstanceCandidate = InstanceCandidate StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Norm expressions
 
-type StandardNormExpr = Value StandardBuiltinType
+type StandardNormDecl = VDecl StandardBuiltin
 
-type StandardNormBinder = VBinder StandardBuiltinType
+type StandardNormExpr = Value StandardBuiltin
 
-type StandardNormArg = VArg StandardBuiltinType
+type StandardNormBinder = VBinder StandardBuiltin
 
-type StandardNormType = VType StandardBuiltinType
+type StandardNormArg = VArg StandardBuiltin
 
-type StandardSpine = Spine StandardBuiltinType
+type StandardNormType = VType StandardBuiltin
 
-type StandardExplicitSpine = ExplicitSpine StandardBuiltinType
+type StandardSpine = Spine StandardBuiltin
 
-type StandardEnv = Env StandardBuiltinType
+type StandardEnv = Env StandardBuiltin
 
-type StandardNormDeclCtx = NormDeclCtx StandardBuiltinType
+type StandardNormDeclCtx = NormDeclCtx StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Glued expressions
 
-type StandardGluedExpr = GluedExpr StandardBuiltinType
+type StandardGluedExpr = GluedExpr StandardBuiltin
 
-type StandardGluedType = GluedType StandardBuiltinType
+type StandardGluedType = GluedType StandardBuiltin
 
 type StandardGluedProg = GenericProg StandardGluedExpr
 
@@ -108,23 +99,26 @@ type StandardGluedDecl = GenericDecl StandardGluedExpr
 
 type ImportedModules = [StandardGluedProg]
 
+mergeImports :: ImportedModules -> StandardGluedProg -> StandardGluedProg
+mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])
+
 -----------------------------------------------------------------------------
 -- Constraints
 
-type StandardConstraintProgress = ConstraintProgress StandardBuiltinType
+type StandardConstraintProgress = ConstraintProgress StandardBuiltin
 
-type StandardTypeClassConstraint = TypeClassConstraint StandardBuiltinType
+type StandardInstanceConstraint = InstanceConstraint StandardBuiltin
 
-type StandardUnificationConstraint = UnificationConstraint StandardBuiltinType
+type StandardUnificationConstraint = UnificationConstraint StandardBuiltin
 
-type StandardConstraintContext = ConstraintContext StandardBuiltinType
+type StandardConstraintContext = ConstraintContext StandardBuiltin
 
-type StandardConstraint = Constraint StandardBuiltinType
+type StandardConstraint = Constraint StandardBuiltin
 
 -----------------------------------------------------------------------------
 -- Normalised patterns
 
-pattern VBuiltinType :: BuiltinType -> StandardExplicitSpine -> StandardNormExpr
+pattern VBuiltinType :: BuiltinType -> StandardSpine -> StandardNormExpr
 pattern VBuiltinType c args = VBuiltin (CType (StandardBuiltinType c)) args
 
 pattern VBoolType :: StandardNormType
@@ -133,9 +127,9 @@ pattern VBoolType <- VBuiltinType Bool []
     VBoolType = VBuiltinType Bool []
 
 pattern VIndexType :: StandardNormType -> StandardNormType
-pattern VIndexType size <- VBuiltinType Index [size]
+pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
   where
-    VIndexType size = VBuiltinType Index [size]
+    VIndexType size = VBuiltinType Index [IrrelevantExplicitArg mempty size]
 
 pattern VNatType :: StandardNormType
 pattern VNatType <- VBuiltinType Nat []
@@ -158,68 +152,16 @@ pattern VRawListType <- VBuiltinType List []
     VRawListType = VBuiltinType List []
 
 pattern VListType :: StandardNormType -> StandardNormType
-pattern VListType tElem <- VBuiltinType List [tElem]
+pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]
 
 pattern VVectorType :: StandardNormType -> StandardNormExpr -> StandardNormType
-pattern VVectorType tElem dim <- VBuiltinType Vector [tElem, dim]
+pattern VVectorType tElem dim <- VBuiltinType Vector [RelevantExplicitArg _ tElem, IrrelevantExplicitArg _ dim]
   where
-    VVectorType tElem dim = VBuiltinType Vector [tElem, dim]
+    VVectorType tElem dim = VBuiltinType Vector [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dim]
 
-pattern VTensorType :: StandardNormType -> StandardNormType -> StandardNormType
-pattern VTensorType tElem dims <- VFreeVar TensorIdent [ExplicitArg _ tElem, ExplicitArg _ dims]
-  where
-    VTensorType tElem dims = VFreeVar TensorIdent [ExplicitArg mempty tElem, ExplicitArg mempty dims]
-
-mkRatVectorAdd :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
-mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
-
-mkRatVectorSub :: [StandardNormExpr] -> StandardExplicitSpine -> StandardNormExpr
-mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
-
-mkVectorOp ::
-  BuiltinFunction ->
-  StdLibFunction ->
-  [StandardNormExpr] ->
-  StandardExplicitSpine ->
-  StandardNormExpr
-mkVectorOp baseOp libOp dims spine = case dims of
-  [] -> VBuiltinFunction baseOp spine
-  (d : ds) ->
-    VFreeVar
-      (identifierOf libOp)
-      ( [ ImplicitArg p vecType,
-          ImplicitArg p vecType,
-          ImplicitArg p vecType,
-          ImplicitArg p d,
-          InstanceArg p (mkVectorOp baseOp libOp ds [])
-        ]
-          <> fmap (ExplicitArg p) spine
-      )
-    where
-      p = mempty; vecType = VTensorType VRatType (mkVList ds)
-
---------------------------------------------------------------------------------
--- Instance constraints
-
-data InstanceGoal = InstanceGoal
-  { goalTelescope :: StandardTelescope,
-    goalHead :: TypeClass,
-    goalSpine :: StandardExplicitSpine
-  }
-  deriving (Show)
-
-goalExpr :: InstanceGoal -> StandardNormExpr
-goalExpr InstanceGoal {..} = VBuiltin (CType (StandardTypeClass goalHead)) goalSpine
-
-data InstanceCandidate = InstanceCandidate
-  { candidateExpr :: StandardExpr,
-    candidateSolution :: StandardExpr
-  }
-  deriving (Show)
-
-type instance
-  WithContext InstanceCandidate =
-    Contextualised InstanceCandidate StandardTypingBoundCtx
+pattern VTensorType :: StandardNormType -> StandardNormExpr -> StandardNormType
+pattern VTensorType tElem dims <-
+  VFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
 
 -----------------------------------------------------------------------------
 

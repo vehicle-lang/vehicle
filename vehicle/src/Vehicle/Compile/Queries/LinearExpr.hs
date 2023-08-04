@@ -44,7 +44,7 @@ import GHC.Generics (Generic)
 import Numeric qualified
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardNormExpr)
+import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardNormArg, StandardNormExpr)
 
 --------------------------------------------------------------------------------
 -- Relation
@@ -359,11 +359,12 @@ data VectorEquality = VectorEquality
   { assertionLHS :: StandardNormExpr,
     assertionRHS :: StandardNormExpr,
     assertionDims :: TensorDimensions,
-    assertionOriginalRel :: StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+    assertionOriginalRel :: StandardNormArg -> StandardNormArg -> StandardNormExpr
   }
 
 originalVectorEqualityExpr :: VectorEquality -> StandardNormExpr
-originalVectorEqualityExpr VectorEquality {..} = assertionOriginalRel assertionLHS assertionRHS
+originalVectorEqualityExpr VectorEquality {..} =
+  assertionOriginalRel (RelevantExplicitArg mempty assertionLHS) (RelevantExplicitArg mempty assertionRHS)
 
 assertionToVectorEquality :: UnreducedAssertion -> Maybe VectorEquality
 assertionToVectorEquality = \case

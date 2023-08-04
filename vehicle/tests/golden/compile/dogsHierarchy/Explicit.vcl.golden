@@ -1,0 +1,65 @@
+bigAnd__lam_A__Vector_A : (\ A -> Vector A) Bool -> Bool;
+bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+bigAnd__List : List Bool -> Bool;
+bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+bigOr : (\ A -> Vector A) Bool -> Bool;
+bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
+
+forallIn : (Index -> Bool) -> List (Index) -> Bool;
+forallIn f xs = bigAnd__List (map f xs)
+
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = map f (indices n)
+
+existsIndex : forallT n . (Index -> Bool) -> Bool;
+existsIndex n f = bigOr (foreachVector n (\ i -> f i))
+
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd__lam_A__Vector_A (foreachVector n (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+type Dog = Index
+
+greatDane : Index;
+greatDane = 1
+
+germanShepherd : Index;
+germanShepherd = 2
+
+chihuahua : Index;
+chihuahua = 4
+
+pekinese : Index;
+pekinese = 5
+
+smallDogs : List Dog;
+smallDogs = chihuahua :: pekinese :: nil
+
+bigDogs : List Dog;
+bigDogs = greatDane :: germanShepherd :: nil
+
+type Image = Tensor Rat (4 :: 4 :: nil)
+
+type Score = Rat
+
+validPixel : Rat -> Bool;
+validPixel p = 0.0 <= p and p <= 1.0
+
+validImage : Image -> Bool;
+validImage x = forallIndex 4 (\ i -> forallIndex 4 (\ j -> validPixel (x ! i ! j)))
+
+isFirstChoice : forallT (score : Image -> Vector Score) . Image -> Dog -> Bool;
+isFirstChoice score x dog1 = let scores = score x in forallIndex 6 (\ d -> d != dog1 => scores ! dog1 > scores ! d)
+
+isSecondChoice : forallT (score : Image -> Vector Score) . Image -> Dog -> Bool;
+isSecondChoice score x dog2 = let scores = score x in existsIndex 6 (\ dog1 -> isFirstChoice score x dog1 and forallIndex 6 (\ d -> d != dog1 and d != dog2 => scores ! dog2 > scores ! d))
+
+noConfusionWith : forallT (score : Image -> Vector Score) . Image -> List Dog -> List Dog -> Bool;
+noConfusionWith score x dogs1 dogs2 = forallIn (\ dog1 -> forallIn (\ dog2 -> not (isFirstChoice score x dog1 and isSecondChoice score x dog2)) dogs2) dogs1
+
+@property;
+doesNotConfuseBigAndSmall : forallT (score : Image -> Vector Score) . Bool;
+doesNotConfuseBigAndSmall score = forall x . validImage x => noConfusionWith score x bigDogs smallDogs

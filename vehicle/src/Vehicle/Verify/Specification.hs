@@ -6,14 +6,14 @@ module Vehicle.Verify.Specification
     QuerySet (..),
     Property,
     traverseProperty,
+    forQueryInProperty,
     propertySize,
     MultiProperty (..),
-    traverseMultiProperty,
+    multiPropertyAddresses,
     Specification (..),
-    traverseSpecification,
     specificationPropertyNames,
-    VerificationPlan (..),
-    VerificationQueries,
+    SpecificationCacheIndex (..),
+    PropertyVerificationPlan (..),
   )
 where
 
@@ -21,7 +21,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Vehicle.Expr.Boolean
 import Vehicle.Prelude
-import Vehicle.Resource
+import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
 
@@ -90,12 +90,24 @@ traverseProperty f = \case
   Disjunct x y -> Disjunct <$> traverseProperty f x <*> traverseProperty f y
   Conjunct x y -> Conjunct <$> traverseProperty f x <*> traverseProperty f y
 
+forQueryInProperty ::
+  (Monad m) =>
+  Property a ->
+  ((QueryAddress, a) -> m ()) ->
+  m ()
+forQueryInProperty p f = do
+  _ <- traverseProperty f p
+  return ()
+
 propertySize :: Property a -> Int
 propertySize p = sum (fmap querySetSize p)
 
 --------------------------------------------------------------------------------
 -- MultiProperty
 
+-- | A multi-property is something that can be annotated with `@property`
+-- annotation in the front-end, and recreates the possible nested vector
+-- structure.
 data MultiProperty property
   = -- | A single boolean property.
     SingleProperty PropertyAddress property
@@ -108,14 +120,10 @@ instance (ToJSON property) => ToJSON (MultiProperty property)
 
 instance (FromJSON property) => FromJSON (MultiProperty property)
 
-traverseMultiProperty ::
-  (Monad m) =>
-  ((QueryAddress, a) -> m b) ->
-  MultiProperty (Property a) ->
-  m (MultiProperty (Property b))
-traverseMultiProperty f = \case
-  SingleProperty indices p -> SingleProperty indices <$> traverseProperty f p
-  MultiProperty ps -> MultiProperty <$> traverse (traverseMultiProperty f) ps
+multiPropertyAddresses :: MultiProperty () -> [PropertyAddress]
+multiPropertyAddresses = \case
+  SingleProperty address _ -> [address]
+  MultiProperty ps -> concatMap multiPropertyAddresses ps
 
 --------------------------------------------------------------------------------
 -- Specification
@@ -132,25 +140,28 @@ instance (FromJSON property) => FromJSON (Specification property)
 specificationPropertyNames :: Specification a -> PropertyNames
 specificationPropertyNames (Specification properties) = fmap fst properties
 
-traverseSpecification ::
-  (Monad m) =>
-  ((QueryAddress, a) -> m b) ->
-  Specification (Property a) ->
-  m (Specification (Property b))
-traverseSpecification f (Specification properties) =
-  Specification <$> traverse (\(n, q) -> (n,) <$> traverseMultiProperty f q) properties
-
 --------------------------------------------------------------------------------
--- VerificationPlan
+-- Verification plans
 
-data VerificationPlan = VerificationPlan
-  { specificationPlan :: Specification (Property QueryMetaData),
-    resourceIntegrityInfo :: ResourcesIntegrityInfo
+-- | The object that provides the required information to perform or check the
+-- verification of an entire specification.
+data SpecificationCacheIndex = SpecificationCacheIndex
+  { resourcesIntegrityInfo :: ResourcesIntegrityInfo,
+    properties :: [(Name, MultiProperty ())]
   }
   deriving (Generic)
 
-instance ToJSON VerificationPlan
+instance ToJSON SpecificationCacheIndex
 
-instance FromJSON VerificationPlan
+instance FromJSON SpecificationCacheIndex
 
-type VerificationQueries = Specification (Property QueryText)
+-- | The object that provides the required information to perform the
+-- verification of a single property within a specification.
+newtype PropertyVerificationPlan = PropertyVerificationPlan
+  { queryMetaData :: Property QueryMetaData
+  }
+  deriving (Generic)
+
+instance ToJSON PropertyVerificationPlan
+
+instance FromJSON PropertyVerificationPlan

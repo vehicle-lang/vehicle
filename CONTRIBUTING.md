@@ -1,6 +1,6 @@
-# Table of Contents
+# Table of contents
 
-- [Getting Started](#getting-started)
+- [Getting started](#getting-started)
   - [Installing Vehicle](#installing-vehicle)
   - [Building Vehicle](#building-vehicle)
     - [Getting the source](#getting-the-source)
@@ -31,11 +31,11 @@
         - [The pygments tests](#the-pygments-tests)
       - [Installing from source](#installing-from-source-1)
       - [Installing in editable mode](#installing-in-editable-mode)
-  - [Pre-commit Hooks](#pre-commit-hooks)
-  - [Editor Support](#editor-support)
-- [Publishing a Release](#publishing-a-release)
+  - [Pre-commit hooks](#pre-commit-hooks)
+  - [Editor support](#editor-support)
+- [Publishing a release](#publishing-a-release)
 
-# Getting Started
+# Getting started
 
 ## Installing Vehicle
 
@@ -43,6 +43,12 @@ To install the latest version of Vehicle, run the following command:
 
 ```sh
 pip install vehicle-lang
+```
+
+To upgrade to a newer version of Vehicle, run the following command:
+
+```sh
+pip install vehicle-lang --upgrade
 ```
 
 ## Building Vehicle
@@ -62,8 +68,7 @@ cd vehicle
 
 #### Dependencies
 
-Building the Vehicle compiler requires the Haskell compiler, called [GHC], and the Haskell package manager, called [Cabal].
-The Vehicle compiler can be built with:
+Building the Vehicle compiler requires the Haskell compiler, called [GHC], and the Haskell package manager, called [Cabal]. The Vehicle compiler can be built with:
 
 - _at least_ the latest three major releases of GHC; and
 - the latest major release of Cabal.
@@ -74,8 +79,7 @@ We recommend that you install [our preferred version of GHC](#the-preferred-vers
 
 We recommend you install GHC and Cabal using [GHCup].
 
-1. Install GHCup following the instruction on the website:
-   <https://www.haskell.org/ghcup/>
+1. Install GHCup following the instruction on the website: <https://www.haskell.org/ghcup/>
 
 2. Instal GHC 9.4.4 and the latest version of Cabal.
 
@@ -280,7 +284,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     }
@@ -292,11 +296,10 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "produces": ["Agda.agda"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network controller:controller.onnx",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"],
-    "enabled": false
+    "produces": ["DL2Loss.json"]
   },
   {
     "name": "MarabouVerify",
@@ -307,8 +310,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
 ]
 ```
 
-Each `test.json` file contains a list of test cases.
-Each test case must have the following fields:
+Each `test.json` file contains a list of test cases. Each test case must have the following fields:
 
 - `name`: The name of the test case.
 - `run`: The command to run.
@@ -435,7 +437,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.5.1`.
+   This should print `0.9.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -449,8 +451,7 @@ The Vehicle Python bindings can be built with all [supported versions of CPython
 
 We recommend you install Python using [pyenv].
 
-1. Install [pyenv] following the instructions on the website:
-   <https://github.com/pyenv/pyenv#installation>
+1. Install [pyenv] following the instructions on the website: <https://github.com/pyenv/pyenv#installation>
 
 2. Install the latest release of each supported Python version. Currently, those are 3.7, 3.8, 3.9, 3.10, and 3.11.
 
@@ -496,8 +497,7 @@ We recommend you install Python using [pyenv].
 
    There may be some differences in the exact version. However, the printed version should match the argument passed to `pyenv shell`, _e.g._, it should start with 3.11.
 
-4. Install the latest release of [pipx] following the instructions on the website:
-   <https://pypa.github.io/pipx/#install-pipx>
+4. Install the latest release of [pipx] following the instructions on the website: <https://pypa.github.io/pipx/#install-pipx>
 
    We recommend installing pipx globally, _e.g._, using your system package manager or the package manager for your _system_ installation of Python, rather than using one of the Python versions managed by pyenv.
 
@@ -560,24 +560,21 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    pipx run tox
    ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages.
-These wheels will have file names such as `vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.9.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.9.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
 #   and Architecture
 ```
 
-On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`.
-The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later.
-The `manylinux2014` tag is an alias for `manylinux_2_17`.
+On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`. The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later. The `manylinux2014` tag is an alias for `manylinux_2_17`.
 
 If you'd prefer to only build wheels for _one_ Python version, you can use one of the following options:
 
@@ -593,9 +590,7 @@ If you'd prefer to only build wheels for _one_ Python version, you can use one o
 
 - **On Linux**
 
-  You can use the `build-wheel.sh` script in `vehicle-python/scripts`.
-  This script may ask you to install additional dependencies via `pip`.
-  Unfortunately, the Linux wheels cannot be built using _just_ Python's standard build system, as they require _delocating_, which is the process of finding non-standard shared libraries and bundling them with the wheel.
+  You can use the `build-wheel.sh` script in `vehicle-python/scripts`. This script may ask you to install additional dependencies via `pip`. Unfortunately, the Linux wheels cannot be built using _just_ Python's standard build system, as they require _delocating_, which is the process of finding non-standard shared libraries and bundling them with the wheel.
 
 **Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
 
@@ -611,9 +606,7 @@ If you'd prefer to only build wheels for _one_ Python version, you can use one o
 
 #### Testing
 
-Ensure that you can successfully build the Vehicle Python bindings.
-The tests for the Vehicle Python bindings are in [the tests subdirectory](./vehicle-python/tests/) and use [tox] for Python version and virtual environment management and [pytest] for test discovery and execution.
-The configuration for tox and pytest is in [`pyproject.toml`](./vehicle-python/pyproject.toml) under `[tool.tox]` and `[tool.pytest]`, respectively.
+Ensure that you can successfully build the Vehicle Python bindings. The tests for the Vehicle Python bindings are in [the tests subdirectory](./vehicle-python/tests/) and use [tox] for Python version and virtual environment management and [pytest] for test discovery and execution. The configuration for tox and pytest is in [`pyproject.toml`](./vehicle-python/pyproject.toml) under `[tool.tox]` and `[tool.pytest]`, respectively.
 
 There are two test suites for the Vehicle Python bindings:
 
@@ -717,7 +710,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.5.1`.
+   This should print `0.9.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -749,7 +742,7 @@ python -m pytest
 
 You'll have to reinstall the Python bindings when the metadata in `pyproject.toml` or the Haskell source changes.
 
-## Pre-commit Hooks
+## Pre-commit hooks
 
 The Vehicle repository has a variety of pre-commit hooks that check and ensure code quality, managed by [pre-commit]. The pre-commit hooks require [pre-commit], [cabal-fmt] and [ormolu].
 
@@ -757,8 +750,7 @@ We recommend that you install these hooks.
 
 1. Ensure that you have installed [GHC and Cabal](#installing-ghc-and-cabal).
 
-2. Install pre-commit following the instruction on the website:
-   <https://pre-commit.com/#install>
+2. Install pre-commit following the instruction on the website: <https://pre-commit.com/#install>
 
 3. Install cabal-fmt.
 
@@ -808,23 +800,23 @@ We recommend that you install these hooks.
 
 The hooks run every time you run `git commit`. You can skip the hooks by adding the `--no-verify` flag to your Git command.
 
-## Editor Support
+## Editor support
 
 You can use whatever development environment you prefer.
 
 We recommend using [VSCode] with the following extensions, based on what parts of Vehicle intend to work on:
 
-| Project        | Language | Extension                                                                                                                                                                                                                                                                                                                                               |
-| -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _any_          | Vehicle  | [Vehicle Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=wenkokke.vehicle-syntax-highlighting)                                                                                                                                                                                                                                 |
-| _any_          | Haskell  | [Haskell](https://marketplace.visualstudio.com/items?itemName=haskell.haskell), [Haskell Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=justusadam.language-haskell)                                                                                                                                                          |
-| _any_          | Cabal    | [cabal-fmt](https://marketplace.visualstudio.com/items?itemName=berberman.vscode-cabal-fmt)                                                                                                                                                                                                                                                             |
-| _any_          | Markdown | [MyST-Markdown](https://marketplace.visualstudio.com/items?itemName=ExecutableBookProject.myst-highlight)                                                                                                                                                                                                                                               |
-| vehicle-agda   | Agda     | [agda-mode](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode)                                                                                                                                                                                                                                                                     |
-| vehicle-python | Python   | [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance), [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter), [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort) |
-| vehicle-python | TOML     | [Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml)                                                                                                                                                                                                                                                        |
+| Project | Language | Extension |
+| --- | --- | --- |
+| _any_ | Vehicle | [Vehicle Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=wenkokke.vehicle-syntax-highlighting) |
+| _any_ | Haskell | [Haskell](https://marketplace.visualstudio.com/items?itemName=haskell.haskell), [Haskell Syntax Highlighting](https://marketplace.visualstudio.com/items?itemName=justusadam.language-haskell) |
+| _any_ | Cabal | [cabal-fmt](https://marketplace.visualstudio.com/items?itemName=berberman.vscode-cabal-fmt) |
+| _any_ | Markdown | [MyST-Markdown](https://marketplace.visualstudio.com/items?itemName=ExecutableBookProject.myst-highlight) |
+| vehicle-agda | Agda | [agda-mode](https://marketplace.visualstudio.com/items?itemName=banacorn.agda-mode) |
+| vehicle-python | Python | [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python), [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance), [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter), [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort) |
+| vehicle-python | TOML | [Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml) |
 
-# Publishing a Release
+# Publishing a release
 
 Vehicle is released via [PyPI], the Python Package Index.
 
@@ -842,8 +834,7 @@ The procedure to create a new release is:
 
 3. Ensure that all changes are _committed and pushed_.
 
-4. Ensure that the tests are passing on CI:
-   <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
+4. Ensure that the tests are passing on CI: <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
 
 5. Run all tests and fix any errors.
 
@@ -899,8 +890,7 @@ The procedure to create a new release is:
 
    This will update the version, create a Git tag, and push it to GitHub.
 
-7. Ensure that the CI successfully builds and publishes Vehicle to PyPI:
-   <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
+7. Ensure that the CI successfully builds and publishes Vehicle to PyPI: <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
 
 8. **On a macOS machine with an M1/M2 chipset**
 
@@ -912,15 +902,14 @@ The procedure to create a new release is:
    pipx run tox
    ```
 
-   This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages.
-   If you're on macOS with an M1/M2 chipset, these look like:
+   This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.5.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.5.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.9.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.9.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.9.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.9.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.9.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -941,7 +930,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.5.0>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.9.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

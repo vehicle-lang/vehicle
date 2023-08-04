@@ -3,7 +3,6 @@ module Vehicle.Compile.Normalise.Quote where
 import Vehicle.Compile.Error (MonadCompile, runCompileMonadSilently)
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -- | Converts from a normalised representation to an unnormalised representation.
@@ -20,13 +19,13 @@ unnormalise level e = runCompileMonadSilently "unquoting" (quote mempty level e)
 class Quote a b where
   quote :: (MonadCompile m) => Provenance -> Lv -> a -> m b
 
-instance Quote (Value types) (NormalisableExpr types) where
+instance Quote (Value builtin) (Expr Ix builtin) where
   quote p level = \case
     VUniverse u -> return $ Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine
     VFreeVar v spine -> quoteApp level p (FreeVar p v) spine
     VBoundVar v spine -> quoteApp level p (BoundVar p (dbLevelToIndex level v)) spine
-    VBuiltin b spine -> quoteApp level p (Builtin p b) (ExplicitArg p <$> spine)
+    VBuiltin b spine -> quoteApp level p (Builtin p b) spine
     VPi binder body ->
       Pi p <$> quote p level binder <*> quote p (level + 1) body
     VLam binder env body -> do
@@ -42,16 +41,16 @@ instance Quote (Value types) (NormalisableExpr types) where
       -- quotedBody <- quote (level + 1) normBody
       return $ Lam mempty quotedBinder quotedBody
 
-instance Quote (VBinder types) (NormalisableBinder types) where
+instance Quote (VBinder builtin) (Binder Ix builtin) where
   quote p level = traverse (quote p level)
 
-instance Quote (VArg types) (NormalisableArg types) where
+instance Quote (VArg builtin) (Arg Ix builtin) where
   quote p level = traverse (quote p level)
 
-quoteApp :: (MonadCompile m) => Lv -> Provenance -> NormalisableExpr types -> Spine types -> m (NormalisableExpr types)
+quoteApp :: (MonadCompile m) => Lv -> Provenance -> Expr Ix builtin -> Spine builtin -> m (Expr Ix builtin)
 quoteApp l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
-envSubst :: BoundCtx (NormalisableExpr types) -> Substitution (NormalisableExpr types)
+envSubst :: BoundCtx (Expr Ix builtin) -> Substitution (Expr Ix builtin)
 envSubst env i = case lookupIx env i of
   Just v -> Right v
   Nothing ->

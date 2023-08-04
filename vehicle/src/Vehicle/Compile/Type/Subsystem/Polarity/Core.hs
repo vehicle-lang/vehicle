@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type.Subsystem.Polarity.Core where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
@@ -38,8 +37,6 @@ data PolarityProvenance
   | PolFunctionProvenance Provenance PolarityProvenance FunctionPosition
   deriving (Generic)
 
-instance ToJSON PolarityProvenance
-
 instance Serialize PolarityProvenance
 
 instance Show PolarityProvenance where
@@ -71,8 +68,6 @@ data Polarity
 instance NFData Polarity
 
 instance Hashable Polarity
-
-instance ToJSON Polarity
 
 instance Serialize Polarity
 
@@ -106,8 +101,6 @@ data PolarityTypeClass
   | FunctionPolarity FunctionPosition
   deriving (Eq, Generic, Show)
 
-instance ToJSON PolarityTypeClass
-
 instance Serialize PolarityTypeClass
 
 instance NFData PolarityTypeClass
@@ -129,30 +122,30 @@ instance Pretty PolarityTypeClass where
 -- Type synonyms
 
 -- Constraint
-type PolarityConstraintProgress = ConstraintProgress PolarityType
+type PolarityConstraintProgress = ConstraintProgress PolarityBuiltin
 
-type PolarityTypeClassConstraint = TypeClassConstraint PolarityType
+type PolarityTypeClassConstraint = InstanceConstraint PolarityBuiltin
 
-type PolarityUnificationConstraint = UnificationConstraint PolarityType
+type PolarityUnificationConstraint = UnificationConstraint PolarityBuiltin
 
-type PolarityConstraintContext = ConstraintContext PolarityType
+type PolarityConstraintContext = ConstraintContext PolarityBuiltin
 
-type PolarityConstraint = Constraint PolarityType
+type PolarityConstraint = Constraint PolarityBuiltin
 
 -- Value
-type PolarityNormExpr = Value PolarityType
+type PolarityNormExpr = Value PolarityBuiltin
 
-type PolarityNormBinder = VBinder PolarityType
+type PolarityNormBinder = VBinder PolarityBuiltin
 
-type PolarityNormArg = VArg PolarityType
+type PolarityNormArg = VArg PolarityBuiltin
 
-type PolarityNormType = VType PolarityType
+type PolarityNormType = VType PolarityBuiltin
 
-type PolaritySpine = Spine PolarityType
+type PolaritySpine = Spine PolarityBuiltin
 
-type PolarityEnv = Env PolarityType
+type PolarityEnv = Env PolarityBuiltin
 
-pattern PolarityExpr :: Provenance -> Polarity -> Expr var (NormalisableBuiltin PolarityType)
+pattern PolarityExpr :: Provenance -> Polarity -> Expr var PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (CType (Polarity pol))
 
 pattern VPolarityExpr :: Polarity -> PolarityNormExpr

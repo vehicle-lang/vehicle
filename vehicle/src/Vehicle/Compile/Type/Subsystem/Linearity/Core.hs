@@ -4,7 +4,6 @@ module Vehicle.Compile.Type.Subsystem.Linearity.Core
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Text (Text)
@@ -39,8 +38,6 @@ data LinearityProvenance
   | NetworkOutputProvenance Provenance Text
   | LinFunctionProvenance Provenance LinearityProvenance FunctionPosition
   deriving (Generic)
-
-instance ToJSON LinearityProvenance
 
 instance Serialize LinearityProvenance
 
@@ -78,8 +75,6 @@ instance NFData Linearity
 
 instance Hashable Linearity
 
-instance ToJSON Linearity
-
 instance Serialize Linearity
 
 instance Pretty Linearity where
@@ -106,8 +101,6 @@ data LinearityTypeClass
   | QuantifierLinearity Quantifier
   deriving (Eq, Generic, Show)
 
-instance ToJSON LinearityTypeClass
-
 instance Serialize LinearityTypeClass
 
 instance NFData LinearityTypeClass
@@ -127,33 +120,33 @@ instance Pretty LinearityTypeClass where
 type LinearityBuiltin = NormalisableBuiltin LinearityType
 
 -- Value
-type LinearityNormExpr = Value LinearityType
+type LinearityNormExpr = Value LinearityBuiltin
 
-type LinearityNormBinder = VBinder LinearityType
+type LinearityNormBinder = VBinder LinearityBuiltin
 
-type LinearityNormArg = VArg LinearityType
+type LinearityNormArg = VArg LinearityBuiltin
 
-type LinearityNormType = VType LinearityType
+type LinearityNormType = VType LinearityBuiltin
 
-type LinearitySpine = Spine LinearityType
+type LinearitySpine = Spine LinearityBuiltin
 
-type LinearityEnv = Env LinearityType
+type LinearityEnv = Env LinearityBuiltin
 
 -- Constraint
-type LinearityConstraintProgress = ConstraintProgress LinearityType
+type LinearityConstraintProgress = ConstraintProgress LinearityBuiltin
 
-type LinearityTypeClassConstraint = TypeClassConstraint LinearityType
+type LinearityTypeClassConstraint = InstanceConstraint LinearityBuiltin
 
-type LinearityUnificationConstraint = UnificationConstraint LinearityType
+type LinearityUnificationConstraint = UnificationConstraint LinearityBuiltin
 
-type LinearityConstraintContext = ConstraintContext LinearityType
+type LinearityConstraintContext = ConstraintContext LinearityBuiltin
 
-type LinearityConstraint = Constraint LinearityType
+type LinearityConstraint = Constraint LinearityBuiltin
 
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern LinearityExpr :: Provenance -> Linearity -> Expr var (NormalisableBuiltin LinearityType)
+pattern LinearityExpr :: Provenance -> Linearity -> Expr var LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (CType (Linearity lin))
 
 pattern VLinearityExpr :: Linearity -> LinearityNormExpr

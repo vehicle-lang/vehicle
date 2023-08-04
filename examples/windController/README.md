@@ -22,11 +22,11 @@ vehicle verify \
   --specification examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
   --verifier Marabou \
-  --proofCache examples/windController/windController.vcl-cache
+  --cache examples/windController/verificationResult
 ```
 
-where the last line tells Vehicle where to write out the proof cache which can
-then be used by Agda in the next step.
+where the last line tells Vehicle where to write out the result of the verification
+which can then be used by Agda in the next step.
 
 (Optional) If you would like to see the intermediate Marabou queries generated, you can
 run the following command:
@@ -35,7 +35,7 @@ run the following command:
 vehicle compile \
   --target MarabouQueries \
   --specification examples/windController/windController.vcl \
-  --outputFile examples/windController/windController-queries \
+  --outputFile examples/windController/verificationResult \
   --network controller:examples/windController/controller.onnx
 ```
 
@@ -48,7 +48,7 @@ The (verified) specification may then be compiled to Agda by running the command
 ```bash
 vehicle export \
   --target Agda \
-  --proofCache examples/windController/windController.vcl-cache \
+  --cache examples/windController/verificationResult \
   --outputFile examples/windController/agdaProof/WindControllerSpec.agda
 ```
 

@@ -61,7 +61,6 @@ instance NoThunks DivDomain
 instance NoThunks FromNatDomain
 instance NoThunks FromRatDomain
 instance NoThunks FoldDomain
-instance NoThunks QuantifierDomain
 instance NoThunks Builtin
 
 -- Vehicle.Syntax.AST.Decl
@@ -87,7 +86,6 @@ instance NoThunks expr => NoThunks (GenericProg expr)
 -- Vehicle.Syntax.AST.Provenance
 instance NoThunks Position
 instance NoThunks Range
-instance NoThunks Origin
 instance NoThunks Provenance
 
 -- Vehicle.Syntax.AST.Relevance

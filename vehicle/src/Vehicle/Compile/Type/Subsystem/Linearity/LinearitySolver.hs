@@ -6,8 +6,9 @@ module Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
   )
 where
 
+import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
@@ -23,18 +24,18 @@ solveLinearityConstraint ::
   WithContext LinearityTypeClassConstraint ->
   m ()
 solveLinearityConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ b spine) <- substMetas constraint
-  tc <- getLinearityTypeClass b
+  normConstraint@(Has _ expr) <- substMetas constraint
+  (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
-  progress <- solve tc nConstraint spine
+  progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
   handleConstraintProgress (WithContext normConstraint ctx) progress
 
 --------------------------------------------------------------------------------
 -- Constraint solving
 
 type MonadLinearitySolver m =
-  ( MonadTypeChecker LinearityType m,
-    MonadNorm LinearityType m
+  ( MonadTypeChecker LinearityBuiltin m,
+    MonadNorm LinearityBuiltin m
   )
 
 type LinearitySolver =
@@ -131,19 +132,19 @@ mulLinearity p l1 l2 = case (l1, l2) of
 -- Other
 
 handleConstraintProgress ::
-  (MonadTypeChecker LinearityType m) =>
-  WithContext (TypeClassConstraint LinearityType) ->
-  ConstraintProgress LinearityType ->
+  (MonadTypeChecker LinearityBuiltin m) =>
+  WithContext (InstanceConstraint LinearityBuiltin) ->
+  ConstraintProgress LinearityBuiltin ->
   m ()
-handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \case
+handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
   Stuck metas -> do
-    let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint originalConstraint) metas
+    let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
     addConstraints newConstraints
 
-getLinearityTypeClass :: (MonadCompile m) => LinearityType -> m LinearityTypeClass
-getLinearityTypeClass = \case
-  LinearityTypeClass tc -> return tc
+getTypeClass :: (MonadCompile m) => LinearityNormExpr -> m (LinearityTypeClass, LinearitySpine)
+getTypeClass = \case
+  (VBuiltin (CType (LinearityTypeClass tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

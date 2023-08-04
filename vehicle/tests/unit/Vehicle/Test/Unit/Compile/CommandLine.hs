@@ -89,14 +89,14 @@ validateModeTests =
     "validateMode"
     [ parserTest
         "basic"
-        "vehicle validate --proofCache mpc.vcl-cache"
+        "vehicle validate --cache local/outputFolder"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 Validate $
                   ValidateOptions
-                    { proofCache = "mpc.vcl-cache"
+                    { verificationCache = "local/outputFolder"
                     }
           }
     ]
@@ -111,8 +111,7 @@ verifyTests =
         \--specification queries \
         \--verifier Marabou \
         \--verifierLocation bin/Marabou \
-        \--proofCache test/proofCache.vcl-cache \
-        \--assignmentsLocation assignments"
+        \--cache local/outputFolder"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -126,8 +125,7 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      proofCache = Just "test/proofCache.vcl-cache",
-                      assignmentsLocation = Just "assignments"
+                      verificationCache = Just "local/outputFolder"
                     }
           },
       parserTest
@@ -149,8 +147,7 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing,
-                      assignmentsLocation = Nothing
+                      verificationCache = Nothing
                     }
           },
       parserTest
@@ -177,8 +174,7 @@ verifyTests =
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      proofCache = Nothing,
-                      assignmentsLocation = Nothing
+                      verificationCache = Nothing
                     }
           }
     ]

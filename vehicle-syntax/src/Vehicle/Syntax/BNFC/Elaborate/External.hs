@@ -326,9 +326,10 @@ elabExpr = \case
   B.At e1 tk e2 -> builtinFunction V.At tk [e1, e2]
   B.Map tk -> builtin (V.TypeClassOp V.MapTC) tk []
   B.Fold tk -> builtin (V.TypeClassOp V.FoldTC) tk []
-  B.DepFold tk -> builtinFunction (V.Fold V.FoldVector) tk []
+  B.ZipWith tk -> builtinFunction V.ZipWithVector tk []
   B.HasEq tk -> builtinTypeClass (V.HasEq V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasEq V.Neq) tk []
+  B.HasLeq tk -> builtinTypeClass (V.HasOrd V.Le) tk []
   B.HasAdd tk -> builtinTypeClass V.HasAdd tk []
   B.HasSub tk -> builtinTypeClass V.HasSub tk []
   B.HasMul tk -> builtinTypeClass V.HasMul tk []
@@ -348,29 +349,34 @@ elabName n = do
 
 elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m (V.Binder V.Name V.Builtin)
 elabBasicBinder folded = \case
-  B.ExplicitBinder n _tk typ -> mkBinder folded V.Explicit . These n =<< elabExpr typ
-  B.ImplicitBinder n _tk typ -> mkBinder folded (V.Implicit False) . These n =<< elabExpr typ
-  B.InstanceBinder n _tk typ -> mkBinder folded (V.Instance False) . These n =<< elabExpr typ
+  B.ExplicitBinder m n _tk typ -> mkBinder folded (mkRelevance m) V.Explicit . These n =<< elabExpr typ
+  B.ImplicitBinder m n _tk typ -> mkBinder folded (mkRelevance m) (V.Implicit False) . These n =<< elabExpr typ
+  B.InstanceBinder m n _tk typ -> mkBinder folded (mkRelevance m) (V.Instance False) . These n =<< elabExpr typ
 
 elabNameBinder :: (MonadElab m) => Bool -> B.NameBinder -> m (V.Binder V.Name V.Builtin)
 elabNameBinder folded = \case
-  B.ExplicitNameBinder n -> mkBinder folded V.Explicit (This n)
-  B.ImplicitNameBinder n -> mkBinder folded (V.Implicit False) (This n)
-  B.InstanceNameBinder n -> mkBinder folded (V.Instance False) (This n)
+  B.ExplicitNameBinder m n -> mkBinder folded (mkRelevance m) V.Explicit (This n)
+  B.ImplicitNameBinder m n -> mkBinder folded (mkRelevance m) (V.Implicit False) (This n)
+  B.InstanceNameBinder m n -> mkBinder folded (mkRelevance m) (V.Instance False) (This n)
   B.BasicNameBinder b -> elabBasicBinder folded b
 
 elabTypeBinder :: (MonadElab m) => Bool -> B.TypeBinder -> m (V.Binder V.Name V.Builtin)
 elabTypeBinder folded = \case
-  B.ExplicitTypeBinder t -> mkBinder folded V.Explicit . That =<< elabExpr t
-  B.ImplicitTypeBinder t -> mkBinder folded (V.Implicit False) . That =<< elabExpr t
-  B.InstanceTypeBinder t -> mkBinder folded (V.Instance False) . That =<< elabExpr t
+  B.ExplicitTypeBinder t -> mkBinder folded V.Relevant V.Explicit . That =<< elabExpr t
+  B.ImplicitTypeBinder t -> mkBinder folded V.Relevant (V.Implicit False) . That =<< elabExpr t
+  B.InstanceTypeBinder t -> mkBinder folded V.Relevant (V.Instance False) . That =<< elabExpr t
   B.BasicTypeBinder b -> elabBasicBinder folded b
+
+mkRelevance :: [B.Modality] -> V.Relevance
+mkRelevance ms
+  | null ms = V.Relevant
+  | otherwise = V.Irrelevant
 
 mkArg :: V.Visibility -> V.Expr V.Name V.Builtin -> V.Arg V.Name V.Builtin
 mkArg v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v V.Relevant e
 
-mkBinder :: (MonadElab m) => V.BinderFoldingForm -> V.Visibility -> These B.Name (V.Expr V.Name V.Builtin) -> m (V.Binder V.Name V.Builtin)
-mkBinder folded v nameTyp = do
+mkBinder :: (MonadElab m) => V.BinderFoldingForm -> V.Relevance -> V.Visibility -> These B.Name (V.Expr V.Name V.Builtin) -> m (V.Binder V.Name V.Builtin)
+mkBinder folded r v nameTyp = do
   (exprProv, form, typ) <- case nameTyp of
     This nameTk -> do
       p <- mkProvenance nameTk
@@ -391,7 +397,7 @@ mkBinder folded v nameTyp = do
 
   let prov = V.expandByArgVisibility v exprProv
   let displayForm = V.BinderDisplayForm form folded
-  return $ V.Binder prov displayForm v V.Relevant typ
+  return $ V.Binder prov displayForm v r typ
 
 elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.Binder V.Name V.Builtin, V.Expr V.Name V.Builtin)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
@@ -587,7 +593,8 @@ elabForeach tk binder body = do
     V.normAppList
       p'
       builtin
-      [ mkArg V.Explicit (V.Lam p' binder' body')
+      [ mkArg V.Explicit (V.mkHole p "n"),
+        mkArg V.Explicit (V.Lam p' binder' body')
       ]
 
 elabLet :: (MonadElab m) => B.TokLet -> [B.LetDecl] -> B.Expr -> m (V.Expr V.Name V.Builtin)
