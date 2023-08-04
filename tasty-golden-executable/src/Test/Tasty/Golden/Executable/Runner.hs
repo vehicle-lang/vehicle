@@ -14,8 +14,6 @@ import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (for_)
--- import System.Exit qualified as ExitCode
-
 import Data.Functor ((<&>))
 import Data.List (intercalate)
 import Data.Map.Strict (Map)
@@ -214,6 +212,12 @@ diffStdout maybeLooseEq actual = do
   golden <- readGoldenStdout
   lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual
 
+-- | Update the standard output golden file.
+acceptStdout :: Lazy.Text -> TestIO ()
+acceptStdout contents
+  | Lazy.null contents = return ()
+  | otherwise = writeGoldenStdout contents
+
 -- | Read the golden file for the standard output.
 readGoldenStdout :: TestIO Lazy.Text
 readGoldenStdout = TestT $ do
@@ -225,6 +229,14 @@ readGoldenStdout = TestT $ do
       then LazyIO.readFile stdoutGoldenFile
       else return Lazy.empty
 
+-- | Write the golden file for the standard output.
+writeGoldenStdout :: Lazy.Text -> TestIO ()
+writeGoldenStdout contents = TestT $ do
+  TestEnvironment {..} <- get
+  lift $ do
+    let stdoutGoldenFile = testDirectory </> testName <.> "out.golden"
+    LazyIO.writeFile stdoutGoldenFile contents
+
 -- | Compare the standard output to the golden file.
 --
 -- NOTE: The loose equality must extend equality.
@@ -232,6 +244,12 @@ diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> TestIO ()
 diffStderr maybeLooseEq actual = do
   golden <- readGoldenStderr
   lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual
+
+-- | Update the standard error golden file.
+acceptStderr :: Lazy.Text -> TestIO ()
+acceptStderr contents
+  | Lazy.null contents = return ()
+  | otherwise = writeGoldenStderr contents
 
 -- | Read the golden file for the standard error.
 readGoldenStderr :: TestIO Lazy.Text
@@ -244,7 +262,17 @@ readGoldenStderr = TestT $ do
       then LazyIO.readFile stderrGoldenFile
       else return ""
 
--- | Find the files produced by the test.
+-- | Write the golden file for the standard error.
+writeGoldenStderr :: Lazy.Text -> TestIO ()
+writeGoldenStderr contents = TestT $ do
+  TestEnvironment {..} <- get
+  lift $ do
+    let stderrGoldenFile = testDirectory </> testName <.> "err.golden"
+    LazyIO.writeFile stderrGoldenFile contents
+
+-- | Compare the files produced by the test.
+--
+-- NOTE: The loose equality must extend equality.
 diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> TestIO ()
 diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
   TestEnvironment {testDirectory, tempDirectory} <- testEnvironment
@@ -276,6 +304,11 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
 
   -- If errors were raised, throw them.
   maybe (return ()) throw maybeError
+
+-- | Update the files produced by the test.
+acceptTestProduced :: [FilePattern] -> IgnoreFiles -> TestIO ()
+acceptTestProduced _testProduces (IgnoreFiles _testIgnores) = do
+  return ()
 
 -- | Find the actual files produced by the test command.
 findTestProducesActual :: [FilePattern] -> TestIO [FilePath]

@@ -1,5 +1,5 @@
 module Test.Tasty.Golden.Executable.TestSpec.Accept
-  ( Accept,
+  ( Accept (..),
     acceptOptionIngredient,
   )
 where

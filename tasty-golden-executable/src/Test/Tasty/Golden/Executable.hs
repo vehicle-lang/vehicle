@@ -1,5 +1,6 @@
 module Test.Tasty.Golden.Executable
   ( SomeOption (..),
+    AllowlistExternals (..),
     External (..),
     Ignore (..),
     IgnoreFiles (..),
@@ -9,6 +10,6 @@ module Test.Tasty.Golden.Executable
 where
 
 import General.Extra.Option (SomeOption (..))
-import Test.Tasty.Golden.Executable.TestSpec.External (External (..))
+import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..), External (..))
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..))
 import Test.Tasty.Golden.Executable.TestSpecs (makeTestTreeFromDirectoryRecursive, makeTestTreeFromFile)

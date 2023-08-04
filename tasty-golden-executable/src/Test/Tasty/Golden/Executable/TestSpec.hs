@@ -24,9 +24,9 @@ import Data.Tagged (Tagged (..))
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
-import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
-import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept)
-import Test.Tasty.Golden.Executable.TestSpec.External (External)
+import Test.Tasty.Golden.Executable.Runner (acceptStderr, acceptStdout, acceptTestProduced, copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
+import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept (..))
+import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals, External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles, IgnoreLines)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
@@ -52,9 +52,9 @@ data TestSpec = TestSpec
     --   Paths should be relative to the test specification file,
     --   and should not contain the .golden file extension.
     testSpecProduces :: [FilePattern],
-    -- | External tools needed by the test command.
+    -- | A list of external tools needed by the test command.
     --   Paths should be the names of executables on the PATH.
-    testSpecExternal :: [External],
+    testSpecExternals :: [External],
     -- | Timeout for the test.
     testSpecTimeout :: Timeout,
     -- | Options that configure what differences to ignore.
@@ -75,17 +75,28 @@ instance IsTest TestSpec where
       copyTestNeeds testSpecNeeds
       -- Run test command
       (stdout, stderr) <- runTestRun testSpecRun
-      -- Diff stdout
-      diffStdout maybeLooseEq stdout
-      -- Diff stderr
-      diffStderr maybeLooseEq stderr
-      -- Diff produced files
-      diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options)
+      -- Check if --accept was passed, and act accordingly:
+      if unAccept (lookupOption options)
+        then do
+          -- Update .golden file for stdout
+          acceptStdout stdout
+          -- Update .golden file for stderr
+          acceptStderr stderr
+          -- Update .golden file for stderr
+          acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
+        else do
+          -- Diff stdout
+          diffStdout maybeLooseEq stdout
+          -- Diff stderr
+          diffStderr maybeLooseEq stderr
+          -- Diff produced files
+          diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options)
 
   testOptions :: Tagged TestSpec [OptionDescription]
   testOptions =
     return
       [ Option (Proxy :: Proxy Accept),
+        Option (Proxy :: Proxy AllowlistExternals),
         Option (Proxy :: Proxy IgnoreFiles),
         Option (Proxy :: Proxy IgnoreLines)
       ]
@@ -130,7 +141,7 @@ instance ToJSON TestSpec where
           -- Include "produces" only if it is non-empty:
           boolToMaybe (testSpecProduces /= mempty) ("produces" .= testSpecProduces),
           -- Include "external" only if it is non-empty:
-          boolToMaybe (testSpecExternal /= mempty) ("external" .= testSpecNeeds),
+          boolToMaybe (testSpecExternals /= mempty) ("external" .= testSpecNeeds),
           -- Include "timeout" only if it is non-empty:
           boolToMaybe (testSpecTimeout /= mempty) ("timeout" .= testSpecTimeout),
           -- Include "ignore" only if it is non-empty:
