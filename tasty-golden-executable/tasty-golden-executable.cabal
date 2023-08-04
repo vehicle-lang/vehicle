@@ -38,6 +38,7 @@ library
     Test.Tasty.Golden.Executable.Options
     Test.Tasty.Golden.Executable.Runner
     Test.Tasty.Golden.Executable.TestSpec
+    Test.Tasty.Golden.Executable.TestSpec.Accept
     Test.Tasty.Golden.Executable.TestSpec.External
     Test.Tasty.Golden.Executable.TestSpec.FilePattern
     Test.Tasty.Golden.Executable.TestSpec.TextPattern
