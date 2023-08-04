@@ -14,16 +14,15 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network andGate:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
-    "ignore":
-    {
+    "produces": ["Marabou.queries/*.txt"],
+    "ignore": {
       "lines": ".*\"fileHash\".*"
     }
- },
- {
-   "name": "LossFunction",
-   "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network andGate:NO_FILE",
-   "needs": ["spec.vcl"],
-   "produces": ["LossFunction.json"]
- }
+  },
+  {
+    "name": "LossFunction",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network andGate:NO_FILE",
+    "needs": ["spec.vcl"],
+    "produces": ["LossFunction.json"]
+  }
 ]

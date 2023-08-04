@@ -19,16 +19,18 @@ import Data.Aeson.Types
     (.:?),
   )
 import Data.Maybe (catMaybes, fromMaybe)
+import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
 import General.Extra (boolToMaybe)
 import General.Extra.Option (SomeOption (..))
 import Test.Tasty (TestName)
 import Test.Tasty.Golden.Executable.Runner (copyTestNeeds, diffStderr, diffStdout, diffTestProduced, makeLooseEq, runTestIO, runTestRun)
+import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept)
 import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
-import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles, IgnoreLines)
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
-import Test.Tasty.Options (OptionDescription, OptionSet)
+import Test.Tasty.Options (OptionDescription (..), OptionSet, lookupOption)
 import Test.Tasty.Providers (IsTest (..), Result)
 import Test.Tasty.Runners (Progress)
 
@@ -56,25 +58,17 @@ data TestSpec = TestSpec
     -- | Timeout for the test.
     testSpecTimeout :: Timeout,
     -- | Options that configure what differences to ignore.
-    testSpecIgnore :: TestSpecIgnore
-  }
-  deriving (Eq, Show)
-
-data TestSpecIgnore = TestSpecIgnore
-  { -- | Files produced by the test command that should be ignored.
-    testSpecIgnoreFiles :: [FilePattern],
-    -- | Lines produced by the test command that should be ignored.
-    testSpecIgnoreLines :: [TextPattern]
+    testSpecIgnore :: Ignore
   }
   deriving (Eq, Show)
 
 instance IsTest TestSpec where
   run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
-  run _options TestSpec {testSpecIgnore = TestSpecIgnore {..}, ..} _progress = do
+  run options TestSpec {testSpecIgnore = Ignore {..}, ..} _progress = do
     -- Create loose equality based on the ignore options
     let maybeLooseEq
-          | null testSpecIgnoreLines = Nothing
-          | otherwise = Just $ makeLooseEq testSpecIgnoreLines
+          | ignoreLines == mempty = Nothing
+          | otherwise = Just $ makeLooseEq (ignoreLines <> lookupOption options)
     -- Create test environment
     runTestIO testSpecDirectory testSpecName $ do
       -- Copy needs to test environment
@@ -86,10 +80,15 @@ instance IsTest TestSpec where
       -- Diff stderr
       diffStderr maybeLooseEq stderr
       -- Diff produced files
-      diffTestProduced maybeLooseEq testSpecProduces testSpecIgnoreFiles
+      diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options)
 
   testOptions :: Tagged TestSpec [OptionDescription]
-  testOptions = Tagged []
+  testOptions =
+    return
+      [ Option (Proxy :: Proxy Accept),
+        Option (Proxy :: Proxy IgnoreFiles),
+        Option (Proxy :: Proxy IgnoreLines)
+      ]
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
@@ -107,7 +106,7 @@ instance Exception TestSpecDirectoryMissing
 
 instance FromJSON TestSpec where
   parseJSON :: Value -> Parser TestSpec
-  parseJSON = withObject "TestSpec" $ \o ->
+  parseJSON = withObject "TestSpec" $ \o -> do
     TestSpec (throw TestSpecDirectoryMissing)
       <$> o .: "name"
       <*> o .: "run"
@@ -136,32 +135,4 @@ instance ToJSON TestSpec where
           boolToMaybe (testSpecTimeout /= mempty) ("timeout" .= testSpecTimeout),
           -- Include "ignore" only if it is non-empty:
           boolToMaybe (testSpecIgnore /= mempty) ("ignore" .= testSpecIgnore)
-        ]
-
-instance Semigroup TestSpecIgnore where
-  (<>) :: TestSpecIgnore -> TestSpecIgnore -> TestSpecIgnore
-  ignore1 <> ignore2 =
-    TestSpecIgnore
-      { testSpecIgnoreFiles = testSpecIgnoreFiles ignore1 <> testSpecIgnoreFiles ignore2,
-        testSpecIgnoreLines = testSpecIgnoreLines ignore1 <> testSpecIgnoreLines ignore2
-      }
-
-instance Monoid TestSpecIgnore where
-  mempty :: TestSpecIgnore
-  mempty = TestSpecIgnore mempty mempty
-
-instance FromJSON TestSpecIgnore where
-  parseJSON :: Value -> Parser TestSpecIgnore
-  parseJSON = withObject "TestSpecIgnore" $ \o ->
-    TestSpecIgnore
-      <$> o .:? "files" .!= mempty
-      <*> o .:? "lines" .!= mempty
-
-instance ToJSON TestSpecIgnore where
-  toJSON :: TestSpecIgnore -> Value
-  toJSON TestSpecIgnore {..} =
-    object $
-      catMaybes
-        [ boolToMaybe (testSpecIgnoreFiles /= mempty) ("files" .= testSpecIgnoreFiles),
-          boolToMaybe (testSpecIgnoreLines /= mempty) ("lines" .= testSpecIgnoreLines)
         ]

@@ -14,10 +14,12 @@ import Data.Data (Typeable)
 import Data.Function (on)
 import Data.Sequence (Seq, (|>))
 import Data.Sequence qualified as Seq
+import Data.String (IsString (..))
 import Data.Text qualified as Text (unpack)
 import System.FilePath qualified as FilePath (addExtension)
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
+import Test.Tasty.Options (safeRead)
 
 -- | Type of file patterns.
 --
@@ -78,6 +80,12 @@ instance Show FilePattern where
 instance Read FilePattern where
   readsPrec :: Int -> ReadS FilePattern
   readsPrec _prec = either (const []) (\pat -> [(pat, "")]) . readEither
+
+instance IsString FilePattern where
+  fromString :: String -> FilePattern
+  fromString input = case safeRead input of
+    Just filePattern -> filePattern
+    Nothing -> error $ "Could not parse FilePattern '" <> input <> "'"
 
 instance FromJSON FilePattern where
   parseJSON :: Value -> Parser FilePattern

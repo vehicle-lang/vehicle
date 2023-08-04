@@ -7,14 +7,13 @@ import Test.Tasty.Options (IsOption)
 data SomeOption
   = forall v. (IsOption v) => LocalOption v
   | forall v. (IsOption v) => AdjustOption (v -> v)
-
-appendOption :: forall v. (IsOption v, Semigroup v) => v -> SomeOption
-appendOption v = AdjustOption (<> v)
+  | forall v. (IsOption v, Semigroup v) => AppendOption v
 
 -- | Apply a test option.
 someLocalOption :: SomeOption -> TestTree -> TestTree
 someLocalOption (LocalOption value) = localOption value
 someLocalOption (AdjustOption adjust) = adjustOption adjust
+someLocalOption (AppendOption value) = adjustOption (<> value)
 
 -- | Apply a list of test options.
 someLocalOptions :: [SomeOption] -> TestTree -> TestTree

@@ -2,16 +2,19 @@ module Test.Tasty.Golden.Executable.TestSpecs
   ( TestSpecs,
     readTestSpecsFile,
     writeTestSpecsFile,
+    makeTestTreeFromFile,
+    makeTestTreeFromDirectoryRecursive,
   )
 where
 
 import Control.Applicative (Alternative (..))
-import Control.Monad (unless)
+import Control.Monad (filterM, unless)
 import Control.Monad.Writer (Any (..), MonadWriter (..), Writer, runWriter)
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Encode.Pretty (Config (..), defConfig, encodePrettyToTextBuilder', keyOrder)
 import Data.Aeson.Encode.Pretty qualified as Indent (Indent (..))
 import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value)
+import Data.Functor ((<&>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -21,9 +24,12 @@ import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.Builder qualified as Builder
-import System.FilePath (takeDirectory)
-import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
-import Test.Tasty.Providers (TestName)
+import General.Extra.Option (SomeOption, someLocalOptions)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeDirectory, takeFileName, (</>))
+import Test.Tasty (testGroup)
+import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..), isEnabled)
+import Test.Tasty.Providers (TestName, TestTree, singleTest)
 import Text.Printf (printf)
 
 newtype TestSpecs = TestSpecs {unTestSpecs :: NonEmpty TestSpec}
@@ -41,6 +47,53 @@ readTestSpecsFile testSpecFile = do
         fail $
           printf "Duplicate names in %s: %s" testSpecFile (intercalate ", " duplicates)
       return $ TestSpecs (addTestSpecDirectory <$> unTestSpecs testSpecs)
+
+-- | Read a test specification and return a TestTree.
+makeTestTreeFromFile :: [SomeOption] -> FilePath -> IO [TestTree]
+makeTestTreeFromFile testOptions testSpecFile = do
+  TestSpecs testSpecs <- readTestSpecsFile testSpecFile
+  return
+    [ someLocalOptions testOptions (singleTest (testSpecName testSpec) testSpec)
+      | testSpec <- NonEmpty.toList testSpecs,
+        isEnabled testSpec
+    ]
+
+-- | Create a test tree from all test specifications in a directory, recursively.
+makeTestTreeFromDirectoryRecursive :: [SomeOption] -> TestName -> FilePath -> IO TestTree
+makeTestTreeFromDirectoryRecursive testOptions testGroupLabel testDirectory = do
+  -- List all paths in `testDirectory`
+  testDirectoryEntries <- listDirectory testDirectory
+
+  -- Construct test trees for each test.json file in the current directory:
+  testTreesFromHere <-
+    -- Filter directory entries to only test specifications
+    filterM (isTestSpecFile . (testDirectory </>)) testDirectoryEntries
+      -- Make test trees
+      >>= traverse
+        ( \testSpecFileName ->
+            makeTestTreeFromFile testOptions (testDirectory </> testSpecFileName)
+        )
+      <&> concat
+
+  -- Construct test trees for all subdirectories:
+  testTreesFromFurther <-
+    -- Filter directory entries to only test specifications:
+    filterM (doesDirectoryExist . (testDirectory </>)) testDirectoryEntries
+      -- Make test trees for each subdirectory:
+      >>= traverse
+        ( \subDirectoryName ->
+            let testSubDirectory = testDirectory </> subDirectoryName
+             in makeTestTreeFromDirectoryRecursive testOptions subDirectoryName testSubDirectory
+        )
+
+  -- Combine all test trees:
+  let result = testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
+
+  return result
+
+-- | Test whether a path refers to an existing test specification file.
+isTestSpecFile :: FilePath -> IO Bool
+isTestSpecFile path = (takeFileName path == "test.json" &&) <$> doesFileExist path
 
 -- | Find all duplicate test names in a 'TestSpecs'.
 duplicateTestNames :: TestSpecs -> [TestName]
@@ -76,10 +129,11 @@ instance Semigroup TestSpecs where
 
 instance FromJSON TestSpecs where
   parseJSON :: Value -> Parser TestSpecs
-  parseJSON v = TestSpecs <$> parse1 <|> parseN
+  parseJSON v =
+    TestSpecs <$> parse1 <|> parseN
     where
       parse1 = (:| []) <$> parseJSON v
-      parseN = parseJSON v
+      parseN = TestSpecs <$> parseJSON v
 
 instance ToJSON TestSpecs where
   toJSON :: TestSpecs -> Value

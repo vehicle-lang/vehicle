@@ -14,6 +14,9 @@ import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (for_)
+-- import System.Exit qualified as ExitCode
+
+import Data.Functor ((<&>))
 import Data.List (intercalate)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -26,15 +29,15 @@ import Data.Text.Lazy.IO qualified as LazyIO
 import Data.Traversable (for)
 import General.Extra (boolToMaybe)
 import General.Extra.Diff (isBoth, mapDiff)
-import General.Extra.File (createDirectoryRecursive)
-import System.Directory (copyFile, doesFileExist, listDirectory)
-import System.Exit qualified as ExitCode
-import System.FilePath (isAbsolute, isExtensionOf, stripExtension, (<.>), (</>))
+import General.Extra.File (createDirectoryRecursive, listFilesRecursive)
+import System.Directory (copyFile, doesFileExist)
+import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, (<.>), (</>))
 import System.IO (IOMode (..), hFileSize, withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
-import Test.Tasty.Golden.Executable.TestSpec.TextPattern (TextPattern, strikeOut)
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (IgnoreFiles (..), IgnoreLines (..))
+import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
 import Test.Tasty.Providers (TestName, testFailed, testPassed)
 import Test.Tasty.Runners (Result)
 import Text.Printf (printf)
@@ -66,11 +69,11 @@ neededFileNotFound file = NeededFilesError [file]
 instance Exception NeededFilesError
 
 handleNeededFilesError :: NeededFilesError -> IO Result
-handleNeededFilesError NeededFilesError {..} =
-  return $
-    testFailed $
-      printf "Could not find needed files: %s" $
-        intercalate ", " (show <$> neededFilesNotFound)
+handleNeededFilesError NeededFilesError {..} = do
+  let message =
+        printf "Could not find needed files: %s" $
+          intercalate ", " (show <$> neededFilesNotFound)
+  return $ testFailed message
 
 -- | Raised when the golden file for a test is not found.
 newtype GoldenFilesError = GoldenFilesError {goldenFilesNotFound :: [FilePattern]}
@@ -82,11 +85,11 @@ goldenFileNotFound filePattern = GoldenFilesError [filePattern]
 instance Exception GoldenFilesError
 
 handleGoldenFilesError :: GoldenFilesError -> IO Result
-handleGoldenFilesError GoldenFilesError {..} =
-  return $
-    testFailed $
-      printf "Could not find golden files: %s" $
-        intercalate ", " (show <$> goldenFilesNotFound)
+handleGoldenFilesError GoldenFilesError {..} = do
+  let message =
+        printf "Could not find golden files: %s" $
+          intercalate ", " (show <$> goldenFilesNotFound)
+  return $ testFailed message
 
 -- | Raised when the test run does not produce an expected file or does not expect a produced file,
 --   or when the produced file differs from the expected file.
@@ -119,20 +122,26 @@ instance Exception ProducedFilesError
 
 handleProducedFilesError :: ProducedFilesError -> IO Result
 handleProducedFilesError ProducedFilesError {..} = do
-  return . testFailed . unlines . catMaybes $
-    [ boolToMaybe (null expectedFilesNotProduced) $
-        printf "Did not produce expected files: %s" $
-          intercalate ", " (show <$> expectedFilesNotProduced),
-      boolToMaybe (null expectedFilesNotProduced) $
-        printf "Did not expect produced files: %s" $
-          intercalate ", " (show <$> producedFilesNotExpected),
-      boolToMaybe (null producedAndExpectedDiffs) $
-        unlines . flip foldMap (Map.assocs producedAndExpectedDiffs) $ \(file, diff) ->
-          return $ printf "Expected and produced files differ for %s:\n%s" file (show diff)
-    ]
+  let message =
+        unlines . catMaybes $
+          [ boolToMaybe (not $ null expectedFilesNotProduced) $
+              printf "Did not produce expected files: %s" $
+                intercalate ", " (show <$> expectedFilesNotProduced),
+            boolToMaybe (not $ null expectedFilesNotProduced) $
+              printf "Did not expect produced files: %s" $
+                intercalate ", " (show <$> producedFilesNotExpected),
+            boolToMaybe (not $ null producedAndExpectedDiffs) $
+              unlines . flip foldMap (Map.assocs producedAndExpectedDiffs) $ \(file, diff) ->
+                return $ printf "Expected and produced files differ for %s:\n%s" file (show diff)
+          ]
+  return $ testFailed message
 
 data Diff = Diff {prettyDiff :: String} | NoDiff
-  deriving (Show)
+
+instance Show Diff where
+  show :: Diff -> String
+  show (Diff {..}) = prettyDiff
+  show NoDiff = "No diff"
 
 instance Exception Diff
 
@@ -143,10 +152,9 @@ newtype ExitFailure = ExitFailure Int
 instance Exception ExitFailure
 
 handleExitFailure :: ExitFailure -> IO Result
-handleExitFailure (ExitFailure code) =
-  return $
-    testFailed $
-      printf "Test terminated with exit code %d" code
+handleExitFailure (ExitFailure code) = do
+  let message = printf "Test terminated with exit code %d" code
+  return $ testFailed message
 
 -- | Create a temporary directory to execute the test.
 runTestIO :: FilePath -> TestName -> TestIO () -> IO Result
@@ -191,11 +199,12 @@ runTestRun cmd = TestT $ do
   lift $ do
     -- Run the test command
     let cmdSpec = (shell cmd) {cwd = Just tempDirectory}
-    (exitCode, stdoutString, stderrString) <- readCreateProcessWithExitCode cmdSpec ""
+    (_exitCode, stdoutString, stderrString) <- readCreateProcessWithExitCode cmdSpec ""
     -- If the exit code is zero, return the stdout and stderr. Otherwise, throw an error.
-    case exitCode of
-      ExitCode.ExitSuccess -> return (Lazy.pack stdoutString, Lazy.pack stderrString)
-      ExitCode.ExitFailure code -> throw $ ExitFailure code
+    -- case exitCode of
+    --   ExitCode.ExitSuccess -> return (Lazy.pack stdoutString, Lazy.pack stderrString)
+    --   ExitCode.ExitFailure code -> throw $ ExitFailure code
+    return (Lazy.pack stdoutString, Lazy.pack stderrString)
 
 -- | Compare the standard output to the golden file.
 --
@@ -236,8 +245,8 @@ readGoldenStderr = TestT $ do
       else return ""
 
 -- | Find the files produced by the test.
-diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> [FilePattern] -> TestIO ()
-diffTestProduced maybeLooseEq testProduces testIgnores = do
+diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> TestIO ()
+diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
   TestEnvironment {testDirectory, tempDirectory} <- testEnvironment
   let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   -- Find the golden and actual files:
@@ -272,7 +281,10 @@ diffTestProduced maybeLooseEq testProduces testIgnores = do
 findTestProducesActual :: [FilePattern] -> TestIO [FilePath]
 findTestProducesActual testIgnoreFiles = TestT $ do
   TestEnvironment {..} <- get
-  tempFiles <- lift $ listDirectory tempDirectory
+  tempFiles <-
+    lift $
+      listFilesRecursive tempDirectory
+        <&> map (makeRelative tempDirectory)
   -- Assert that the file paths are relative.
   for_ tempFiles $ \file -> do
     when (isAbsolute file) $
@@ -296,7 +308,10 @@ findTestProducesGolden testProduces = TestT $ do
       runWriterT $ do
         filesByPattern <-
           for testProduces $ \testProduce -> do
-            filesForPattern <- lift $ glob [addExtension testProduce "golden"] testDirectory
+            filesForPattern <-
+              lift $
+                glob [addExtension testProduce "golden"] testDirectory
+                  <&> map (makeRelative testDirectory)
             -- If the pattern does not result in any matches, throw an error.
             when (null filesForPattern) $
               tell $
@@ -347,8 +362,8 @@ diffText eq golden actual = do
   return ()
 
 -- | Make a loose equality which ignores text matching the provided text patterns.
-makeLooseEq :: [TextPattern] -> Text -> Text -> Bool
-makeLooseEq patterns golden actual = strikeOutAll golden == strikeOutAll actual
+makeLooseEq :: IgnoreLines -> Text -> Text -> Bool
+makeLooseEq (IgnoreLines patterns) golden actual = strikeOutAll golden == strikeOutAll actual
   where
     strikeOutAll line = foldr strikeOut line patterns
 

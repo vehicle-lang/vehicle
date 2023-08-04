@@ -1,14 +1,16 @@
 module Test.Tasty.Golden.Executable.TestSpec.Accept
   ( Accept,
+    acceptOptionIngredient,
   )
 where
 
-import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value, typeMismatch)
-import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Data (Typeable)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Text qualified as Text
+import Data.Proxy (Proxy (..))
+import Data.Tagged (Tagged (..))
+import Options.Applicative.Types qualified as Options
+import Test.Tasty.Ingredients (Ingredient)
+import Test.Tasty.Ingredients.Basic (includingOptions)
+import Test.Tasty.Options (IsOption (..), OptionDescription (..), flagCLParser, safeReadBool)
 
 acceptOptionIngredient :: Ingredient
 acceptOptionIngredient =
@@ -17,7 +19,7 @@ acceptOptionIngredient =
     ]
 
 newtype Accept = Accept {unAccept :: Bool}
-  deriving (Eq, Ord, Show, Typeable, Semigroup, Monoid)
+  deriving (Eq, Ord, Show, Typeable)
 
 instance IsOption Accept where
   defaultValue :: Accept
