@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Test.Tasty.Golden.Executable.Runner where
 
@@ -18,8 +19,10 @@ import Data.Functor ((<&>))
 import Data.List (intercalate)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
+import Data.Tagged (Tagged (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as Lazy
@@ -33,12 +36,73 @@ import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension,
 import System.IO (IOMode (..), hFileSize, withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
+import Test.Tasty (TestName)
+import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
+import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept (..))
+import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..))
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
-import Test.Tasty.Golden.Executable.TestSpec.Ignore (IgnoreFiles (..), IgnoreLines (..))
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
-import Test.Tasty.Providers (TestName, testFailed, testPassed)
-import Test.Tasty.Runners (Result)
+import Test.Tasty.Golden.Executable.TestSpecs (readTestSpecsFile, testSpecsFileName)
+import Test.Tasty.Options (OptionDescription (..), OptionSet, lookupOption)
+import Test.Tasty.Providers (IsTest (..), Result, testFailed, testPassed)
+import Test.Tasty.Runners (Progress, Result (..))
 import Text.Printf (printf)
+
+instance IsTest TestSpec where
+  run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
+  run options testSpec@(TestSpec {testSpecIgnore = Ignore {..}, ..}) _progress
+    | not $ isEnabled testSpec = return testSkip
+    | not $ isAllowed (lookupOption options) testSpec = return testSkip
+    | otherwise = do
+        -- Create loose equality based on the ignore options
+        let maybeLooseEq
+              | ignoreLines == mempty = Nothing
+              | otherwise = Just $ makeLooseEq (ignoreLines <> lookupOption options)
+        -- Create test environment
+        runTestIO testSpecDirectory testSpecName $ do
+          -- Copy needs to test environment
+          copyTestNeeds testSpecNeeds
+          -- Run test command
+          (stdout, stderr) <- runTestRun testSpecRun
+          -- Check if --accept was passed, and act accordingly:
+          if unAccept (lookupOption options)
+            then do
+              -- Update .golden file for stdout
+              acceptStdout stdout
+              -- Update .golden file for stderr
+              acceptStderr stderr
+              -- Update .golden file for stderr
+              acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
+            else do
+              -- Diff stdout
+              diffStdout maybeLooseEq stdout
+              -- Diff stderr
+              diffStderr maybeLooseEq stderr
+              -- Diff produced files
+              diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options)
+
+  testOptions :: Tagged TestSpec [OptionDescription]
+  testOptions =
+    return
+      [ Option (Proxy :: Proxy Accept),
+        Option (Proxy :: Proxy AllowlistExternals),
+        Option (Proxy :: Proxy IgnoreFiles),
+        Option (Proxy :: Proxy IgnoreLines)
+      ]
+
+-- | 'Result' of a skipped test.
+testSkip :: Result
+testSkip = (testPassed "") {resultShortDescription = "SKIP"}
+
+-- | Whether or not the required externals are allowed.
+isAllowed :: AllowlistExternals -> TestSpec -> Bool
+isAllowed (AllowlistExternals allowlistExternals) (TestSpec {..}) =
+  Set.fromList testSpecExternals `Set.isSubsetOf` Set.fromList allowlistExternals
+
+-- | Whether or not the test is enabled.
+isEnabled :: TestSpec -> Bool
+isEnabled = fromMaybe True . testSpecEnabled
 
 data TestEnvironment = TestEnvironment
   { testName :: TestName,
@@ -307,7 +371,26 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
 
 -- | Update the files produced by the test.
 acceptTestProduced :: [FilePattern] -> IgnoreFiles -> TestIO ()
-acceptTestProduced _testProduces (IgnoreFiles _testIgnores) = do
+acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
+  TestEnvironment {..} <- testEnvironment
+  -- Read the test.json file:
+  _testSpecs <- lift $ readTestSpecsFile (testDirectory </> testSpecsFileName)
+  -- Find the golden and actual files:
+  _goldenFiles <- findTestProducesGolden testProduces
+  _actualFiles <- findTestProducesActual testIgnores
+  -- For each actualFile:
+  -- + Is the actualFile matched by any of the "produces" patterns of any of the other tests? Error!
+  -- + Is the actualFile NOT matched by any of the "produces" patterns of this test?
+  --   Add actualFile to the "produces" patterns of this test.
+  -- + Write the contents of actualFile to the testDirectory using writeFileChanged with a .golden extension.
+
+  -- For each goldenFile:
+  -- + Is the goldenFile in the set of actualFiles? Skip.
+  -- + Is the goldenFile matched by any of the "produces" patterns of any of the other tests? Error!
+  -- + Delete the goldenFile from the testDirectory.
+
+  -- For each "produces" pattern:
+  -- 1. Does the "produces" pattern NOT match any of the golden files? Remove it.
   return ()
 
 -- | Find the actual files produced by the test command.
