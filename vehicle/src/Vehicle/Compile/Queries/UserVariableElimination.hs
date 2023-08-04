@@ -205,8 +205,8 @@ solutionToExpr variables (var, Sparse {..}) = do
   -- Need to negate the coefficients as we're rearranging the equation.
   let combFn (v, c) e
         | v == UserVar var = e
-        | c == 1.0 = subFn (toExprVar v) e
-        | c == -1.0 = addFn (toExprVar v) e
+        | c == 1.0 = subFn e (toExprVar v)
+        | c == -1.0 = addFn e (toExprVar v)
         | otherwise = developerError "Vector equality coefficients should currently all be magnitude 1.0"
   let constant = constantExpr dimensions (Vector.map (* (-1)) constantValue)
   let varCoeffList = Map.toList coefficients
@@ -333,9 +333,7 @@ reduceRemainingVariables variables userVariableSolutions assertions =
 
     -- Then reduce the assertions
     logDebug MidDetail "Substituting reduced variables through assertions..."
-    logDebug MaxDetail $ prettyVerbose assertions
-    logDebug MaxDetail $ prettyVerbose assertions
-    let reduceAssertion = compileReducedAssertion (mixedVariableCtx reducedVariables) reducedVarEnv
+    let reduceAssertion = compileReducedAssertion reducedVariables reducedVarEnv
     compiledAssertions <- traverse reduceAssertion assertions
 
     case eliminateTrivialAtoms compiledAssertions of
@@ -487,7 +485,7 @@ mkGaussianReconstructionStep (v, e) =
 
 compileReducedAssertion ::
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariables ->
   StandardEnv ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
@@ -505,6 +503,9 @@ compileReducedAssertion variables variableSubstEnv assertion = do
   -- Then reduce the assertions
   traverse (traverse reduceAssertion) splitAssertions
   where
+    variableCtx :: BoundCtx MixedVariable
+    variableCtx = mixedVariableCtx variables
+
     splitUpAssertions ::
       (MonadSMT m) =>
       Bool ->
@@ -548,7 +549,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
         Just (Just exprWithoutIf) -> do
           (_, _, declSubst) <- ask
-          let env = variableCtxToNormEnv variables
+          let env = variableCtxToNormEnv variableCtx
           normExprWithoutIf <- runNormT defaultEvalOptions declSubst mempty (reeval env exprWithoutIf)
           splitUpAssertions True normExprWithoutIf
 
@@ -557,8 +558,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
       (StandardNormExpr, Relation, StandardNormExpr) ->
       m SolvableAssertion
     reduceAssertion (lhs, rel, rhs) = do
-      lhsLinExpr <- compileReducedLinearExpr variables lhs
-      rhsLinExpr <- compileReducedLinearExpr variables rhs
+      lhsLinExpr <- compileReducedLinearExpr variableCtx lhs
+      rhsLinExpr <- compileReducedLinearExpr variableCtx rhs
       -- And construct the reduced assertion
       return $ constructReducedAssertion (lhsLinExpr, rel, rhsLinExpr)
 

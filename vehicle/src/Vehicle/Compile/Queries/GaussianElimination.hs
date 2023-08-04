@@ -90,9 +90,13 @@ findPivot ::
   [(RowID, GaussianAssertion)] ->
   Maybe ((RowID, GaussianAssertion), [(RowID, GaussianAssertion)])
 findPivot _ [] = Nothing
-findPivot var ((rowID, row) : rows)
-  | lookupCoefficient row var /= 0 = Just ((rowID, row), rows)
-  | otherwise = second ((rowID, row) :) <$> findPivot var rows
+findPivot var ((rowID, row) : rows) = do
+  let coefficient = lookupCoefficient row var
+  if coefficient == 0
+    then second ((rowID, row) :) <$> findPivot var rows
+    else do
+      let normalisedRow = scaleExpr (1 / coefficient) row
+      Just ((rowID, normalisedRow), rows)
 
 --------------------------------------------------------------------------------
 -- Solutions

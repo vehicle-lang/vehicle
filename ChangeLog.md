@@ -10,18 +10,21 @@
 * After performing verification, Vehicle now writes out the witnesses and counter-examples found
   by the verifier to `.idx` format files within the verification cache.
 
-* Fixed bug where Vehicle would run out of memory when compiling a specification with many
-  individual sub-properties (e.g. robustness).
-
-* Fixed bug in verify command where disjunctions in properties without top-level quantifiers
-  were being incorrectly translated.
-
 * Exposed `verify` mode functionality in Python via the `verify` function in the `vehicle_lang`
-  module.
+  module (however, counter-examples are not yet provided.)
 
 * Loss functions no longer generated via the `to_python` function from `vehicle_lang.compile`
   module, but instead can be created via the `load_loss_function` function from the
   `vehicle_lang` file.
+
+* Fixed bug where Vehicle would run out of memory when compiling a specification with many
+  individual sub-properties (e.g. robustness).
+
+* Fixed bug in `verify` mode where disjunctions in properties without top-level quantifiers
+  were being incorrectly translated.
+
+* Fixed bug in `verify` mode where incorrect equations were generated if quantified variables
+  had non-unit coefficients when expressed in terms of network inputs.
 
 ## Version 0.8.0
 
