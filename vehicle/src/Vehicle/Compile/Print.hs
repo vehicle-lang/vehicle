@@ -156,10 +156,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
   StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
   StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
   StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
-  StrategyFor tags (Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
+  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
   StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   -- Simplification
@@ -538,7 +538,7 @@ instance
 
 instance
   (PrettyUsing rest (Value builtin)) =>
-  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin))
+  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Has m expr) ctx) = do
     let expr' = prettyUsing @rest (expr :: Value builtin)
@@ -555,7 +555,7 @@ instance
 
 instance
   (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
-  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin))
+  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Has m expr) ctx) = do
     let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
@@ -563,13 +563,13 @@ instance
 
 instance
   ( PrettyUsing rest (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)),
-    PrettyUsing rest (Contextualised (TypeClassConstraint builtin) (ConstraintContext builtin))
+    PrettyUsing rest (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   ) =>
   PrettyUsing rest (Contextualised (Constraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext c ctx) = case c of
     UnificationConstraint uc -> prettyUsing @rest (WithContext uc ctx)
-    TypeClassConstraint tc -> prettyUsing @rest (WithContext tc ctx)
+    InstanceConstraint tc -> prettyUsing @rest (WithContext tc ctx)
 
 --------------------------------------------------------------------------------
 -- Instances for opaque types

@@ -51,7 +51,7 @@ getDefaultCandidates ::
   forall m.
   (TCM StandardBuiltin m) =>
   Maybe StandardDecl ->
-  m [WithContext StandardTypeClassConstraint]
+  m [WithContext StandardInstanceConstraint]
 getDefaultCandidates maybeDecl = do
   typeClassConstraints <- getActiveTypeClassConstraints
   case maybeDecl of
@@ -126,7 +126,7 @@ instance Pretty CandidateStatus where
 generateConstraintUsingDefaults ::
   forall m.
   (TCM StandardBuiltin m) =>
-  [WithContext StandardTypeClassConstraint] ->
+  [WithContext StandardInstanceConstraint] ->
   m (Maybe (WithContext StandardConstraint))
 generateConstraintUsingDefaults constraints = do
   strongestConstraint <- findStrongestConstraint constraints
@@ -149,7 +149,7 @@ generateConstraintUsingDefaults constraints = do
 
 findStrongestConstraint ::
   (MonadCompile m) =>
-  [WithContext StandardTypeClassConstraint] ->
+  [WithContext StandardInstanceConstraint] ->
   m CandidateStatus
 findStrongestConstraint [] = return None
 findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
@@ -198,7 +198,7 @@ getCandidatesFromConstraint ::
   forall m.
   (MonadCompile m) =>
   StandardConstraintContext ->
-  StandardTypeClassConstraint ->
+  StandardInstanceConstraint ->
   m [Candidate]
 getCandidatesFromConstraint ctx (Has _ expr) = do
   (tc, spine) <- getTypeClass expr

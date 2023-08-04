@@ -258,5 +258,7 @@ handleStandardTypingError = \case
     throwError $ FunTypeMismatch p (boundContextOf boundCtx) currentFun nonPiType expectedType
   FailedUnification constraints ->
     throwError (FailedUnificationConstraints constraints)
+  FailedInstanceSearch ctx goal candidates ->
+    throwError (FailedInstanceConstraint ctx goal candidates)
   UnsolvableConstraints constraints ->
     throwError $ UnsolvedConstraints constraints

@@ -435,7 +435,7 @@ instance MeaningfulError CompileError where
           let inferedOpType = instantiateTelescope opType argsToSubst
           prettyFriendly (WithContext inferedOpType dbCtx)
 
-        candidateType :: WithContext InstanceCandidate -> Doc a
+        candidateType :: WithContext StandardInstanceCandidate -> Doc a
         candidateType (WithContext candidate typingCtx) =
           go (boundContextOf typingCtx) (candidateExpr candidate)
           where
@@ -454,64 +454,6 @@ instance MeaningfulError CompileError where
             let body' = arg `substDBInto` body
             instantiateTelescope body' args
           _ -> developerError "Malformed type-class operation type"
-    FailedEqConstraint ctx t1 t2 eq ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot use"
-                <+> quotePretty eq
-                <+> "to compare arguments of type"
-                <+> squotes (prettyFriendly $ WithContext t1 (boundContextOf ctx))
-                <+> "and"
-                <+> squotes (prettyFriendly $ WithContext t2 (boundContextOf ctx))
-                <> ".",
-            fix = Nothing
-          }
-    FailedOrdConstraint ctx t1 t2 ord ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot use"
-                <+> squotes (pretty ord)
-                <+> "to compare arguments of type"
-                <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
-                <+> "and"
-                <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
-                <> ".",
-            fix = Nothing
-          }
-      where
-        boundCtx = boundContextOf ctx
-    FailedNotConstraint ctx t ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot apply"
-                <+> quotePretty Not
-                <+> "to something of type"
-                <+> squotes (prettyFriendly $ WithContext t (boundContextOf ctx))
-                <> ".",
-            fix = Nothing
-          }
-    FailedBoolOp2Constraint ctx t1 t2 op ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot apply"
-                <+> quotePretty op
-                <+> "to arguments of type"
-                <+> squotes (prettyFriendly $ WithContext t1 boundCtx)
-                <+> "and"
-                <+> squotes (prettyFriendly $ WithContext t2 boundCtx)
-                <> ".",
-            fix = Nothing
-          }
-      where
-        boundCtx = boundContextOf ctx
     FailedQuantifierConstraintDomain ctx typeOfDomain _q ->
       UError $
         UserError
@@ -519,101 +461,6 @@ instance MeaningfulError CompileError where
             problem =
               "cannot quantify over arguments of type"
                 <+> squotes (prettyFriendly $ WithContext typeOfDomain (boundContextOf ctx))
-                <> ".",
-            fix = Nothing
-          }
-    FailedQuantifierConstraintBody ctx typeOfBody _q ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the body of the quantifier cannot be of type"
-                <+> squotes (prettyFriendly $ WithContext typeOfBody (boundContextOf ctx))
-                <> ".",
-            fix = Nothing
-          }
-    FailedBuiltinConstraintArgument ctx builtin t allowedTypes argNo argTotal ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "expecting"
-                <+> prettyOrdinal "argument" argNo (Just argTotal)
-                <+> "of"
-                <+> squotes (pretty builtin)
-                <+> "to be"
-                <+> prettyAllowedTypes allowedTypes
-                <+> "but found something of type"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedBuiltinConstraintResult ctx builtin actualType allowedTypes ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the return type of"
-                <+> squotes (pretty builtin)
-                <+> "should be"
-                <+> prettyAllowedTypes allowedTypes
-                <+> "but the program is expecting something of type"
-                <+> squotes (prettyFriendly (WithContext actualType (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedArithOp2Constraint ctx t1 t2 op2 ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot apply"
-                <+> squotes (pretty op2)
-                <+> "to"
-                <+> "arguments of type"
-                <+> squotes (prettyFriendly (WithContext t1 boundCtx))
-                <+> "and"
-                <+> squotes (prettyFriendly (WithContext t2 boundCtx))
-                <> ".",
-            fix = Nothing
-          }
-      where
-        boundCtx = boundContextOf ctx
-    FailedFoldConstraintContainer ctx tCont ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the second argument to"
-                <+> squotes (pretty FoldTC)
-                <+> "must be a container type but found something of type"
-                <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedQuantInConstraintContainer ctx tCont q ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the argument <c> in '"
-                <> pretty q
-                <> " <v> in <c> . ...`"
-                  <+> "must be a container type but found something of type"
-                  <+> squotes (prettyFriendly (WithContext tCont (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedNatLitConstraint ctx v t ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the value"
-                <+> squotes (pretty v)
-                <+> "is not a valid"
-                <+> "instance of type"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
                 <> ".",
             fix = Nothing
           }
@@ -638,36 +485,6 @@ instance MeaningfulError CompileError where
               "unable to determine if"
                 <+> squotes (prettyFriendly (WithContext v (boundContextOf ctx)))
                 <+> "is a valid index of size"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedIntLitConstraint ctx t ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "an integer literal is not a valid element of the type"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedRatLitConstraint ctx t ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "a rational literal is not a valid element of the type"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    FailedConLitConstraint ctx t ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "a vector literal is not a valid element of the type"
                 <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
                 <> ".",
             fix = Nothing
@@ -1491,12 +1308,6 @@ prettyAuxiliaryFunctionProvenance :: FunctionPosition -> Doc a
 prettyAuxiliaryFunctionProvenance = \case
   FunctionInput n _ -> "which is used as an input to the function" <+> quotePretty n
   FunctionOutput n -> "which is returned as an output of the function" <+> quotePretty n
-
-prettyAllowedTypes :: [UnAnnDoc] -> UnAnnDoc
-prettyAllowedTypes allowedTypes =
-  if length allowedTypes == 1
-    then squotes (head allowedTypes)
-    else "one of" <+> prettyFlatList allowedTypes
 
 prettyAllowedBuiltins :: [Doc b] -> Doc b
 prettyAllowedBuiltins = commaSep

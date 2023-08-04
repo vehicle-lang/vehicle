@@ -133,12 +133,12 @@ mulLinearity p l1 l2 = case (l1, l2) of
 
 handleConstraintProgress ::
   (MonadTypeChecker LinearityBuiltin m) =>
-  WithContext (TypeClassConstraint LinearityBuiltin) ->
+  WithContext (InstanceConstraint LinearityBuiltin) ->
   ConstraintProgress LinearityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
   Stuck metas -> do
-    let blockedConstraint = blockConstraintOn (mapObject TypeClassConstraint originalConstraint) metas
+    let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
     solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)

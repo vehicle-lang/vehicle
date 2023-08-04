@@ -185,6 +185,7 @@ library
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
+    Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
     Vehicle.Compile.Type.Generalise
@@ -211,7 +212,6 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceSolver
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core

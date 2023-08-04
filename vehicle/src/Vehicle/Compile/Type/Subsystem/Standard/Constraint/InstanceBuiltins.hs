@@ -3,7 +3,6 @@
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
   ( builtinInstances,
-    findTypeClassOfCandidate,
   )
 where
 
@@ -11,23 +10,16 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Constraint.Core
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL hiding (builtin)
-import Vehicle.Expr.Normalisable
 import Vehicle.Libraries.StandardLibrary
 
-builtinInstances :: HashMap TypeClass [Provenance -> InstanceCandidate]
+builtinInstances :: HashMap StandardBuiltin [Provenance -> StandardInstanceCandidate]
 builtinInstances = do
-  let tcAndCandidates = fmap (second (: []) . processCandidate) candidates
+  let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) candidates
   HashMap.fromListWith (<>) tcAndCandidates
-
-findTypeClassOfCandidate :: StandardExpr -> Either StandardExpr TypeClass
-findTypeClassOfCandidate = \case
-  Pi _ binder body
-    | not (isExplicit binder) -> findTypeClassOfCandidate body
-  App _ (Builtin _ (CType (StandardTypeClass tc))) _ -> Right tc
-  expr -> Left expr
 
 --------------------------------------------------------------------------------
 -- Builtin instances
@@ -38,7 +30,7 @@ findTypeClassOfCandidate = \case
 -- Also note that annoyingly because of a lack of first class records we have
 -- to duplicate the context for both the candidate and the candidate's solution.
 
-candidates :: [Provenance -> InstanceCandidate]
+candidates :: [Provenance -> StandardInstanceCandidate]
 candidates =
   mkCandidate
     <$> [
@@ -221,26 +213,11 @@ candidates =
         )
       ]
 
-mkCandidate :: (StandardDSLExpr, StandardDSLExpr) -> Provenance -> InstanceCandidate
+mkCandidate :: (StandardDSLExpr, StandardDSLExpr) -> Provenance -> StandardInstanceCandidate
 mkCandidate (expr, solution) p = do
   let expr' = fromDSL p expr
   let solution' = fromDSL p solution
   InstanceCandidate expr' solution'
-
-processCandidate :: (Provenance -> InstanceCandidate) -> (TypeClass, Provenance -> InstanceCandidate)
-processCandidate candidate = do
-  let expr = candidateExpr (candidate mempty)
-  case findTypeClassOfCandidate expr of
-    Right tc -> (tc, candidate)
-    Left subexpr -> do
-      let candidateDoc = prettyVerbose subexpr
-      let problemDoc = prettyVerbose subexpr
-      developerError $
-        "Invalid builtin instance candidate:"
-          <+> candidateDoc
-          <> line
-          <> "Problematic subexpr:"
-            <+> problemDoc
 
 builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction

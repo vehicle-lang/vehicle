@@ -135,7 +135,7 @@ type LinearityEnv = Env LinearityBuiltin
 -- Constraint
 type LinearityConstraintProgress = ConstraintProgress LinearityBuiltin
 
-type LinearityTypeClassConstraint = TypeClassConstraint LinearityBuiltin
+type LinearityTypeClassConstraint = InstanceConstraint LinearityBuiltin
 
 type LinearityUnificationConstraint = UnificationConstraint LinearityBuiltin
 

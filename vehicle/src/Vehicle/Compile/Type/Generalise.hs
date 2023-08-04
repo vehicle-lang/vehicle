@@ -42,9 +42,9 @@ generaliseOverUnsolvedConstraints decl =
 generaliseOverConstraint ::
   (TCM builtin m) =>
   [WithContext (Constraint builtin)] ->
-  (Decl Ix builtin, [WithContext (TypeClassConstraint builtin)]) ->
-  WithContext (TypeClassConstraint builtin) ->
-  m (Decl Ix builtin, [WithContext (TypeClassConstraint builtin)])
+  (Decl Ix builtin, [WithContext (InstanceConstraint builtin)]) ->
+  WithContext (InstanceConstraint builtin) ->
+  m (Decl Ix builtin, [WithContext (InstanceConstraint builtin)])
 generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
   -- Find any unsolved meta variables that are transitively linked
   -- by constraints of the same type.
@@ -66,7 +66,7 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
 prependConstraint ::
   (TCM builtin m) =>
   Decl Ix builtin ->
-  WithContext (TypeClassConstraint builtin) ->
+  WithContext (InstanceConstraint builtin) ->
   m (Decl Ix builtin)
 prependConstraint decl (WithContext (Has meta expr) ctx) = do
   let p = originalProvenance ctx

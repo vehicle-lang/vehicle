@@ -63,6 +63,10 @@ type StandardTelescope = Telescope Ix StandardBuiltin
 
 type StandardTypingBoundCtx = TypingBoundCtx StandardBuiltin
 
+type StandardInstanceGoal = InstanceGoal StandardBuiltin
+
+type StandardInstanceCandidate = InstanceCandidate StandardBuiltin
+
 -----------------------------------------------------------------------------
 -- Norm expressions
 
@@ -103,7 +107,7 @@ mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> 
 
 type StandardConstraintProgress = ConstraintProgress StandardBuiltin
 
-type StandardTypeClassConstraint = TypeClassConstraint StandardBuiltin
+type StandardInstanceConstraint = InstanceConstraint StandardBuiltin
 
 type StandardUnificationConstraint = UnificationConstraint StandardBuiltin
 
@@ -158,29 +162,6 @@ pattern VVectorType tElem dim <- VBuiltinType Vector [RelevantExplicitArg _ tEle
 pattern VTensorType :: StandardNormType -> StandardNormExpr -> StandardNormType
 pattern VTensorType tElem dims <-
   VFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
-
---------------------------------------------------------------------------------
--- Instance constraints
-
-data InstanceGoal = InstanceGoal
-  { goalTelescope :: StandardTelescope,
-    goalHead :: TypeClass,
-    goalSpine :: StandardSpine
-  }
-  deriving (Show)
-
-goalExpr :: InstanceGoal -> StandardNormExpr
-goalExpr InstanceGoal {..} = VBuiltin (CType (StandardTypeClass goalHead)) goalSpine
-
-data InstanceCandidate = InstanceCandidate
-  { candidateExpr :: StandardExpr,
-    candidateSolution :: StandardExpr
-  }
-  deriving (Show)
-
-type instance
-  WithContext InstanceCandidate =
-    Contextualised InstanceCandidate StandardTypingBoundCtx
 
 -----------------------------------------------------------------------------
 

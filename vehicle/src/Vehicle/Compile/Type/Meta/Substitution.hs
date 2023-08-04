@@ -123,13 +123,13 @@ instance (MetaSubstitutable m expr) => MetaSubstitutable m (GenericProg expr) wh
 instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraint builtin) where
   subst (Unify e1 e2) = Unify <$> subst e1 <*> subst e2
 
-instance (MonadNorm builtin m) => MetaSubstitutable m (TypeClassConstraint builtin) where
+instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraint builtin) where
   subst (Has m e) = Has m <$> subst e
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Constraint builtin) where
   subst = \case
     UnificationConstraint c -> UnificationConstraint <$> subst c
-    TypeClassConstraint c -> TypeClassConstraint <$> subst c
+    InstanceConstraint c -> InstanceConstraint <$> subst c
 
 instance (MetaSubstitutable m constraint) => MetaSubstitutable m (Contextualised constraint (ConstraintContext builtin)) where
   subst (WithContext constraint context) = do
