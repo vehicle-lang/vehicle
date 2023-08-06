@@ -11,7 +11,6 @@ module Vehicle.Compile.Normalise.NBE
     extendEnv,
     extendEnvOverBinder,
     lookupFreeVar,
-    forceHead,
     reeval,
     NormT,
     runNormT,
@@ -22,17 +21,15 @@ where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isNothing)
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (Normalisable (..))
+import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
@@ -158,7 +155,7 @@ evalFreeVarApp ident spine = do
         else return $ VFreeVar ident spine
     _ -> return $ VFreeVar ident spine
 
-isFullyReduced :: (Normalisable builtin) => Value builtin -> Bool
+isFullyReduced :: (HasStandardData builtin) => Value builtin -> Bool
 isFullyReduced = \case
   VUniverse {} -> True
   VLam {} -> True
@@ -166,7 +163,7 @@ isFullyReduced = \case
   VMeta {} -> False
   VFreeVar {} -> False
   VBoundVar {} -> False
-  VBuiltin b _ -> isValue b
+  VBuiltin b _ -> isNothing $ getBuiltinFunction b
 
 -----------------------------------------------------------------------------
 -- Reevaluation
@@ -200,51 +197,6 @@ reeval env expr = do
 
 reevalSpine :: (MonadNorm builtin m) => Env builtin -> Spine builtin -> m (Spine builtin)
 reevalSpine env = traverse (traverse (reeval env))
-
------------------------------------------------------------------------------
--- Meta-variable forcing
-
--- | Recursively forces the evaluation of any meta-variables at the head
--- of the expresson.
-forceHead :: (MonadNorm builtin m) => ConstraintContext builtin -> Value builtin -> m (Value builtin, MetaSet)
-forceHead ctx expr = do
-  (maybeForcedExpr, blockingMetas) <- forceExpr expr
-  forcedExpr <- case maybeForcedExpr of
-    Nothing -> return expr
-    Just forcedExpr -> do
-      let dbCtx = boundContextOf ctx
-      logDebug MaxDetail $ "forced" <+> prettyFriendly (WithContext expr dbCtx) <+> "to" <+> prettyFriendly (WithContext forcedExpr dbCtx)
-      return forcedExpr
-  return (forcedExpr, blockingMetas)
-
--- | Recursively forces the evaluation of any meta-variables that are blocking
--- evaluation.
-forceExpr :: forall builtin m. (MonadNorm builtin m) => Value builtin -> m (Maybe (Value builtin), MetaSet)
-forceExpr = go
-  where
-    go :: Value builtin -> m (Maybe (Value builtin), MetaSet)
-    go = \case
-      VMeta m spine -> goMeta m spine
-      VBuiltin b spine -> forceBuiltin evalApp forceArg b spine
-      _ -> return (Nothing, mempty)
-
-    goMeta :: MetaID -> Spine builtin -> m (Maybe (Value builtin), MetaSet)
-    goMeta m spine = do
-      metaSubst <- getMetaSubstitution
-      case MetaMap.lookup m metaSubst of
-        Just solution -> do
-          normMetaExpr <- evalApp (normalised solution) spine
-          (maybeForcedExpr, blockingMetas) <- go normMetaExpr
-          let forcedExpr = maybe (Just normMetaExpr) Just maybeForcedExpr
-          return (forcedExpr, blockingMetas)
-        Nothing -> return (Nothing, MetaSet.singleton m)
-
-forceArg :: (MonadNorm builtin m) => VArg builtin -> m (VArg builtin, (Bool, MetaSet))
-forceArg arg = do
-  (maybeResult, blockingMetas) <- unpairArg <$> traverse forceExpr arg
-  let result = fmap (fromMaybe (argExpr arg)) maybeResult
-  let reduced = isJust $ argExpr maybeResult
-  return (result, (reduced, blockingMetas))
 
 -----------------------------------------------------------------------------
 -- Other

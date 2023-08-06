@@ -147,7 +147,6 @@ library
     Vehicle.Expr.DeBruijn
     Vehicle.Expr.DSL
     Vehicle.Expr.Hashing
-    Vehicle.Expr.Normalisable
     Vehicle.Expr.Normalised
     Vehicle.Libraries
     Vehicle.Libraries.StandardLibrary
@@ -185,9 +184,11 @@ library
     Vehicle.Compile.Queries
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
+    Vehicle.Compile.Type.Constraint.IndexSolver
     Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
+    Vehicle.Compile.Type.Force
     Vehicle.Compile.Type.Generalise
     Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
@@ -215,6 +216,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
+    Vehicle.Compile.Type.Subsystem.Standard.Interface
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug

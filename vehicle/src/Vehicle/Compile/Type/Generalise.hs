@@ -31,12 +31,12 @@ generaliseOverUnsolvedConstraints ::
   m (Decl Ix builtin)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
-    unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveTypeClassConstraints
+    unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveInstanceConstraints
     unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
 
     (generalisedDecl, rejectedTypeClassConstraints) <-
       foldM (generaliseOverConstraint unsolvedConstraints) (decl, []) unsolvedTypeClassConstraints
-    setTypeClassConstraints rejectedTypeClassConstraints
+    setInstanceConstraints rejectedTypeClassConstraints
     return generalisedDecl
 
 generaliseOverConstraint ::
@@ -68,14 +68,13 @@ prependConstraint ::
   Decl Ix builtin ->
   WithContext (InstanceConstraint builtin) ->
   m (Decl Ix builtin)
-prependConstraint decl (WithContext (Has meta expr) ctx) = do
+prependConstraint decl (WithContext (Has meta relevance expr) ctx) = do
   let p = originalProvenance ctx
   typeClass <- quote p 0 expr
-  relevancy <- typeClassRelevancy expr
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $
-    prependBinderAndSolveMeta meta (BinderDisplayForm OnlyType True) (Instance True) relevancy substTypeClass decl
+    prependBinderAndSolveMeta meta (BinderDisplayForm OnlyType True) (Instance True) relevance substTypeClass decl
 
 --------------------------------------------------------------------------------
 -- Unsolved meta generalisation

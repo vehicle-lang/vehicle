@@ -12,15 +12,16 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
-import Vehicle.Expr.Normalisable
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Builtin
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
-  WithContext PolarityTypeClassConstraint ->
+  WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ expr) <- substMetas constraint
+  normConstraint@(Has _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
   progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
@@ -34,18 +35,18 @@ type MonadPolaritySolver m = TCM PolarityBuiltin m
 type PolaritySolver =
   forall m.
   (MonadPolaritySolver m) =>
-  WithContext PolarityTypeClassConstraint ->
-  [PolarityNormType] ->
-  m PolarityConstraintProgress
+  WithContext (InstanceConstraint PolarityBuiltin) ->
+  [VType PolarityBuiltin] ->
+  m (ConstraintProgress PolarityBuiltin)
 
-solve :: PolarityTypeClass -> PolaritySolver
+solve :: PolarityRelation -> PolaritySolver
 solve = \case
   NegPolarity -> solveNegPolarity
   QuantifierPolarity q -> solveQuantifierPolarity q
-  AddPolarity q -> solveAddPolarity q
+  AddPolarity q -> solveAddPolarityOp q
   EqPolarity eq -> solveEqPolarity eq
   ImpliesPolarity -> solveImplPolarity
-  MaxPolarity -> solveMaxPolarity
+  MaxPolarity -> solveMaxPolarityOp
   FunctionPolarity position -> solveFunctionPolarity position
   IfPolarity -> solveIfCondPolarity
 
@@ -66,29 +67,29 @@ solveQuantifierPolarity q c [lam, res] = case lam of
   (VPi binder resPol) -> do
     let ctx = contextOf c
     binderEq <- unify ctx (typeOf binder) (VPolarityExpr Unquantified)
-    let tc = PolarityTypeClass $ AddPolarity q
-    (_, addConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [resPol, res]))
+    let tc = PolarityRelation $ AddPolarity q
+    (_, addConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [resPol, res]))
     return $ Progress [binderEq, addConstraint]
   _ -> malformedConstraintError c
 solveQuantifierPolarity _ c _ = malformedConstraintError c
 
-solveAddPolarity :: Quantifier -> PolaritySolver
-solveAddPolarity q c [arg, res] = case arg of
+solveAddPolarityOp :: Quantifier -> PolaritySolver
+solveAddPolarityOp q c [arg, res] = case arg of
   (getNMeta -> Just m) -> blockOn [m]
   VPolarityExpr inputPol -> do
     let ctx = contextOf c
     let p = originalProvenance ctx
-    let resPol = VPolarityExpr $ addPolarity p q inputPol
+    let resPol = VPolarityExpr $ addPolarityOp p q inputPol
     domEq <- unify ctx res resPol
     return $ Progress [domEq]
   _ -> malformedConstraintError c
-solveAddPolarity _ c _ = malformedConstraintError c
+solveAddPolarityOp _ c _ = malformedConstraintError c
 
-solveMaxPolarity :: PolaritySolver
-solveMaxPolarity c [arg1, arg2, res] = case (arg1, arg2) of
+solveMaxPolarityOp :: PolaritySolver
+solveMaxPolarityOp c [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> do
     let ctx = contextOf c
-    let pol3 = VPolarityExpr $ maxPolarity pol1 pol2
+    let pol3 = VPolarityExpr $ maxPolarityOp pol1 pol2
     resEq <- unify ctx res pol3
     return $ Progress [resEq]
   (_, VPolarityExpr Unquantified) -> do
@@ -100,13 +101,13 @@ solveMaxPolarity c [arg1, arg2, res] = case (arg1, arg2) of
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
   _ -> malformedConstraintError c
-solveMaxPolarity c _ = malformedConstraintError c
+solveMaxPolarityOp c _ = malformedConstraintError c
 
 solveEqPolarity :: EqualityOp -> PolaritySolver
 solveEqPolarity eq c [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> do
     let ctx = contextOf c
-    let pol3 = VPolarityExpr $ eqPolarity eq (provenanceOf ctx) pol1 pol2
+    let pol3 = VPolarityExpr $ eqPolarityOp eq (provenanceOf ctx) pol1 pol2
     resEq <- unify ctx res pol3
     return $ Progress [resEq]
   (getNMeta -> Just m1, _) -> blockOn [m1]
@@ -138,9 +139,9 @@ solveFunctionPolarity functionPosition c [arg, res] = case (arg, res) of
     return $ Progress [resEq]
   (VPi binder1 body1, VPi binder2 body2) -> do
     let ctx = contextOf c
-    let tc = PolarityTypeClass $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
-    (_, bodyConstraint) <- createTC ctx (VBuiltin (CType tc) (RelevantExplicitArg mempty <$> [body1, body2]))
+    let tc = PolarityRelation $ FunctionPolarity functionPosition
+    (_, binderConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
+    (_, bodyConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
   _ -> malformedConstraintError c
 solveFunctionPolarity _ c _ = malformedConstraintError c
@@ -149,7 +150,7 @@ solveIfCondPolarity :: PolaritySolver
 solveIfCondPolarity c [pCond, pArg1, pArg2, pRes] = case pCond of
   (getNMeta -> Just m1) -> blockOn [m1]
   VPolarityExpr pol -> case pol of
-    Unquantified -> solveMaxPolarity c [pArg1, pArg2, pRes]
+    Unquantified -> solveMaxPolarityOp c [pArg1, pArg2, pRes]
     _ -> throwError $ QuantifiedIfCondition (contextOf c)
   _ -> malformedConstraintError c
 solveIfCondPolarity c _ = malformedConstraintError c
@@ -157,11 +158,11 @@ solveIfCondPolarity c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- Operations over polarities
 
-negPolarity ::
+negPolarityOp ::
   (PolarityProvenance -> PolarityProvenance) ->
   Polarity ->
   Polarity
-negPolarity modProv pol =
+negPolarityOp modProv pol =
   case pol of
     Unquantified -> Unquantified
     Quantified q pp -> Quantified (neg q) (modProv pp)
@@ -175,17 +176,17 @@ negatePolarity ::
   Provenance ->
   Polarity ->
   Polarity
-negatePolarity p = negPolarity (NegateProvenance p)
+negatePolarity p = negPolarityOp (NegateProvenance p)
 
-addPolarity :: Provenance -> Quantifier -> Polarity -> Polarity
-addPolarity p q pol = case pol of
+addPolarityOp :: Provenance -> Quantifier -> Polarity -> Polarity
+addPolarityOp p q pol = case pol of
   Unquantified -> Quantified q (QuantifierProvenance p)
   Quantified q' pp -> if q == q' then pol else MixedSequential q p pp
   MixedParallel pp1 pp2 -> MixedSequential q p (if q == Forall then pp2 else pp1)
   MixedSequential {} -> pol
 
-maxPolarity :: Polarity -> Polarity -> Polarity
-maxPolarity pol1 pol2 = case (pol1, pol2) of
+maxPolarityOp :: Polarity -> Polarity -> Polarity
+maxPolarityOp pol1 pol2 = case (pol1, pol2) of
   (Unquantified, _) -> pol2
   (_, Unquantified) -> pol1
   (Quantified q1 pp1, Quantified q2 pp2)
@@ -198,18 +199,18 @@ maxPolarity pol1 pol2 = case (pol1, pol2) of
   (MixedSequential {}, _) -> pol1
   (_, MixedSequential {}) -> pol2
 
-eqPolarity ::
+eqPolarityOp ::
   EqualityOp ->
   Provenance ->
   Polarity ->
   Polarity ->
   Polarity
-eqPolarity eq p pol1 pol2 =
-  let negPol = negPolarity (\pp -> EqProvenance p pp eq)
+eqPolarityOp eq p pol1 pol2 =
+  let negPol = negPolarityOp (\pp -> EqProvenance p pp eq)
    in -- `a == b` = (a and b) or (not a and not b)
-      maxPolarity
-        (maxPolarity pol1 pol2)
-        (maxPolarity (negPol pol1) (negPol pol2))
+      maxPolarityOp
+        (maxPolarityOp pol1 pol2)
+        (maxPolarityOp (negPol pol1) (negPol pol2))
 
 implPolarity ::
   Provenance ->
@@ -217,9 +218,9 @@ implPolarity ::
   Polarity ->
   Polarity
 implPolarity p pol1 pol2 =
-  let negPol = negPolarity (LHSImpliesProvenance p)
+  let negPol = negPolarityOp (LHSImpliesProvenance p)
    in -- `a => b` = not a or b
-      maxPolarity (negPol pol1) pol2
+      maxPolarityOp (negPol pol1) pol2
 
 --------------------------------------------------------------------------------
 -- Other
@@ -229,15 +230,15 @@ handleConstraintProgress ::
   WithContext (InstanceConstraint PolarityBuiltin) ->
   ConstraintProgress PolarityBuiltin ->
   m ()
-handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
+handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \case
   Stuck metas -> do
     let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
-    solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
+    solveMeta m (UnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => PolarityNormExpr -> m (PolarityTypeClass, PolaritySpine)
+getTypeClass :: (MonadCompile m) => Value PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
 getTypeClass = \case
-  (VBuiltin (CType (PolarityTypeClass tc)) args) -> return (tc, args)
+  (VBuiltin (PolarityRelation tc) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

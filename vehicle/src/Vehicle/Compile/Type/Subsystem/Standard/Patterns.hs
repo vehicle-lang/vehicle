@@ -2,7 +2,6 @@ module Vehicle.Compile.Type.Subsystem.Standard.Patterns where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalisable
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
@@ -10,14 +9,14 @@ import Vehicle.Syntax.AST
 --------------------------------------------------------------------------------
 
 pattern NullaryTypeExpr :: Provenance -> BuiltinType -> Expr var StandardBuiltin
-pattern NullaryTypeExpr p b = Builtin p (CType (StandardBuiltinType b))
+pattern NullaryTypeExpr p b = Builtin p (BuiltinType b)
 
 pattern TypeExpr ::
   Provenance ->
   BuiltinType ->
   NonEmpty (Arg var StandardBuiltin) ->
   Expr var StandardBuiltin
-pattern TypeExpr p b args = BuiltinExpr p (CType (StandardBuiltinType b)) args
+pattern TypeExpr p b args = BuiltinExpr p (BuiltinType b) args
 
 pattern BoolType :: Provenance -> Expr var StandardBuiltin
 pattern BoolType p = NullaryTypeExpr p Bool
@@ -67,9 +66,7 @@ pattern BuiltinTypeClass ::
   TypeClass ->
   NonEmpty (Arg var StandardBuiltin) ->
   Expr var StandardBuiltin
-pattern BuiltinTypeClass p tc args <- BuiltinExpr p (CType (StandardTypeClass tc)) args
-  where
-    BuiltinTypeClass p tc args = BuiltinExpr p (CType (StandardTypeClass tc)) args
+pattern BuiltinTypeClass p tc args = BuiltinExpr p (TypeClass tc) args
 
 pattern HasVecLitsExpr ::
   Provenance ->
@@ -237,9 +234,7 @@ pattern BuiltinTypeClassOp ::
   TypeClassOp ->
   NonEmpty (Arg var StandardBuiltin) ->
   Expr var StandardBuiltin
-pattern BuiltinTypeClassOp p tc args <- BuiltinExpr p (CType (StandardTypeClassOp tc)) args
-  where
-    BuiltinTypeClassOp p tc args = BuiltinExpr p (CType (StandardTypeClassOp tc)) args
+pattern BuiltinTypeClassOp p tc args = BuiltinExpr p (TypeClassOp tc) args
 
 -- | Matches on `forall` and `exists`, but not `foreach`
 pattern QuantifierTCExpr ::
@@ -351,90 +346,7 @@ pattern OrderTCExpr p op t1 t2 solution explicitArgs <-
 -- Constructors
 --------------------------------------------------------------------------------
 
-pattern NullaryConstructorExpr :: Provenance -> BuiltinConstructor -> Expr var StandardBuiltin
-pattern NullaryConstructorExpr p b = Builtin p (CConstructor b)
-
-pattern ConstructorExpr ::
-  Provenance ->
-  BuiltinConstructor ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
-pattern ConstructorExpr p b args = BuiltinExpr p (CConstructor b) args
-
-pattern UnitLiteral :: Provenance -> Expr var StandardBuiltin
-pattern UnitLiteral p = NullaryConstructorExpr p LUnit
-
-pattern BoolLiteral :: Provenance -> Bool -> Expr var StandardBuiltin
-pattern BoolLiteral p n = NullaryConstructorExpr p (LBool n)
-
-pattern IndexLiteral :: Provenance -> Int -> Expr var StandardBuiltin
-pattern IndexLiteral p x = NullaryConstructorExpr p (LIndex x)
-
-pattern NatLiteral :: Provenance -> Int -> Expr var StandardBuiltin
-pattern NatLiteral p n = NullaryConstructorExpr p (LNat n)
-
-pattern IntLiteral :: Provenance -> Int -> Expr var StandardBuiltin
-pattern IntLiteral p n = NullaryConstructorExpr p (LInt n)
-
-pattern RatLiteral :: Provenance -> Rational -> Expr var StandardBuiltin
-pattern RatLiteral p n = NullaryConstructorExpr p (LRat n)
-
-pattern VecLiteral ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern VecLiteral p tElem xs <-
-  ConstructorExpr p (LVec _) (RelevantImplicitArg _ tElem :| xs)
-  where
-    VecLiteral p tElem xs =
-      ConstructorExpr p (LVec (length xs)) (RelevantImplicitArg p tElem :| xs)
-
-pattern TrueExpr :: Provenance -> Expr var StandardBuiltin
-pattern TrueExpr p = BoolLiteral p True
-
-pattern FalseExpr :: Provenance -> Expr var StandardBuiltin
-pattern FalseExpr p = BoolLiteral p False
-
-pattern NilExpr :: Provenance -> Type var StandardBuiltin -> Expr var StandardBuiltin
-pattern NilExpr p tElem <- ConstructorExpr p Nil [RelevantImplicitArg _ tElem]
-  where
-    NilExpr p tElem = ConstructorExpr p Nil [RelevantImplicitArg p tElem]
-
-pattern ConsExpr ::
-  Provenance ->
-  Type var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern ConsExpr p tElem explicitArgs <-
-  ConstructorExpr
-    p
-    Cons
-    ( RelevantImplicitArg _ tElem
-        :| explicitArgs
-      )
-  where
-    ConsExpr p tElem explicitArgs =
-      ConstructorExpr
-        p
-        Cons
-        ( RelevantImplicitArg p tElem
-            :| explicitArgs
-        )
-
-pattern AppConsExpr ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern AppConsExpr p tElem x xs <-
-  ConsExpr
-    p
-    tElem
-    [ RelevantExplicitArg _ x,
-      RelevantExplicitArg _ xs
-      ]
+-- See `Interface`
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -445,14 +357,14 @@ pattern NullaryBuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
   Expr var StandardBuiltin
-pattern NullaryBuiltinFunctionExpr p b = Builtin p (CFunction b)
+pattern NullaryBuiltinFunctionExpr p b = Builtin p (BuiltinFunction b)
 
 pattern BuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
   NonEmpty (Arg var StandardBuiltin) ->
   Expr var StandardBuiltin
-pattern BuiltinFunctionExpr p b args = BuiltinExpr p (CFunction b) args
+pattern BuiltinFunctionExpr p b args = BuiltinExpr p (BuiltinFunction b) args
 
 pattern QuantifierExpr ::
   Provenance ->
@@ -665,22 +577,3 @@ pattern FoldVectorExpr p tElem size tRes explicitArgs <-
         : RelevantImplicitArg _ tRes
         : explicitArgs
       )
-
------------------------------------------------------------------------------
--- Constructors
-
-mkList ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  [Expr var StandardBuiltin] ->
-  Expr var StandardBuiltin
-mkList p elemType = foldr cons nil
-  where
-    nil = NilExpr p elemType
-    cons x xs =
-      ConsExpr
-        p
-        elemType
-        [ RelevantExplicitArg p x,
-          RelevantExplicitArg p xs
-        ]

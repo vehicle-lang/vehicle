@@ -2,28 +2,15 @@ module Vehicle.Compile.Type.Subsystem.Polarity.Core where
 
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Compile.Type.Core
-import Vehicle.Expr.Normalisable
+import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData (..))
+import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.AST
-
---------------------------------------------------------------------------------
--- Polarity types
-
-data PolarityType
-  = Polarity Polarity
-  | PolarityTypeClass PolarityTypeClass
-  deriving (Show, Eq)
-
-instance Pretty PolarityType where
-  pretty = \case
-    PolarityTypeClass tc -> pretty tc
-    Polarity l -> pretty l
-
-type PolarityBuiltin = NormalisableBuiltin PolarityType
+import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -88,9 +75,9 @@ mapPolarityProvenance f = \case
   MixedSequential q p pp -> MixedSequential q p pp
 
 --------------------------------------------------------------------------------
--- Polarity constraint
+-- Polarity relationship
 
-data PolarityTypeClass
+data PolarityRelation
   = NegPolarity
   | QuantifierPolarity Quantifier
   | AddPolarity Quantifier
@@ -101,13 +88,13 @@ data PolarityTypeClass
   | FunctionPolarity FunctionPosition
   deriving (Eq, Generic, Show)
 
-instance Serialize PolarityTypeClass
+instance Serialize PolarityRelation
 
-instance NFData PolarityTypeClass
+instance NFData PolarityRelation
 
-instance Hashable PolarityTypeClass
+instance Hashable PolarityRelation
 
-instance Pretty PolarityTypeClass where
+instance Pretty PolarityRelation where
   pretty = \case
     NegPolarity -> "NegPolarity"
     AddPolarity q -> "AddPolarity" <+> pretty q
@@ -118,37 +105,89 @@ instance Pretty PolarityTypeClass where
     IfPolarity -> "IfPolarity"
     FunctionPolarity p -> "FunctionPolarity" <> pretty p
 
+--------------------------------------------------------------------------------
+-- Builtin type
+
+data PolarityBuiltin
+  = BuiltinConstructor BuiltinConstructor
+  | BuiltinFunction BuiltinFunction
+  | Polarity Polarity
+  | PolarityRelation PolarityRelation
+  deriving (Show, Eq)
+
+instance Pretty PolarityBuiltin where
+  pretty = \case
+    BuiltinConstructor c -> pretty c
+    BuiltinFunction f -> pretty f
+    Polarity l -> pretty l
+    PolarityRelation c -> pretty c
+
+instance HasStandardData PolarityBuiltin where
+  mkBuiltinFunction = BuiltinFunction
+  getBuiltinFunction = \case
+    BuiltinFunction c -> Just c
+    _ -> Nothing
+
+  mkBuiltinConstructor = BuiltinConstructor
+  getBuiltinConstructor = \case
+    BuiltinConstructor c -> Just c
+    _ -> Nothing
+
+  isTypeClassOp = const False
+
 -----------------------------------------------------------------------------
 -- Type synonyms
 
--- Constraint
-type PolarityConstraintProgress = ConstraintProgress PolarityBuiltin
-
-type PolarityTypeClassConstraint = InstanceConstraint PolarityBuiltin
-
-type PolarityUnificationConstraint = UnificationConstraint PolarityBuiltin
-
-type PolarityConstraintContext = ConstraintContext PolarityBuiltin
-
-type PolarityConstraint = Constraint PolarityBuiltin
-
--- Value
-type PolarityNormExpr = Value PolarityBuiltin
-
-type PolarityNormBinder = VBinder PolarityBuiltin
-
-type PolarityNormArg = VArg PolarityBuiltin
-
-type PolarityNormType = VType PolarityBuiltin
-
-type PolaritySpine = Spine PolarityBuiltin
-
-type PolarityEnv = Env PolarityBuiltin
-
 pattern PolarityExpr :: Provenance -> Polarity -> Expr var PolarityBuiltin
-pattern PolarityExpr p pol = Builtin p (CType (Polarity pol))
+pattern PolarityExpr p pol = Builtin p (Polarity pol)
 
-pattern VPolarityExpr :: Polarity -> PolarityNormExpr
-pattern VPolarityExpr l <- VBuiltin (CType (Polarity l)) []
-  where
-    VPolarityExpr l = VBuiltin (CType (Polarity l)) []
+pattern VPolarityExpr :: Polarity -> Value PolarityBuiltin
+pattern VPolarityExpr l = VBuiltin (Polarity l) []
+
+--------------------------------------------------------------------------------
+-- DSL
+
+type PolarityDSLExpr = DSLExpr PolarityBuiltin
+
+forAllPolarities :: (PolarityDSLExpr -> PolarityDSLExpr) -> PolarityDSLExpr
+forAllPolarities f = forAll "p" tPol $ \p -> f p
+
+forAllPolarityPairs :: (PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr) -> PolarityDSLExpr
+forAllPolarityPairs f =
+  forAll "p1" tPol $ \p1 ->
+    forAll "p2" tPol $ \p2 ->
+      f p1 p2
+
+forAllPolarityTriples :: (PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr) -> PolarityDSLExpr
+forAllPolarityTriples f =
+  forAll "p1" tPol $ \p1 ->
+    forAll "p2" tPol $ \p2 ->
+      forAll "p3" tPol $ \p3 ->
+        f p1 p2 p3
+
+unquantified :: PolarityDSLExpr
+unquantified = builtin (Polarity Unquantified)
+
+polarityTypeClass :: PolarityRelation -> NonEmpty PolarityDSLExpr -> PolarityDSLExpr
+polarityTypeClass tc args = builtin (PolarityRelation tc) @@ args
+
+quantifierPolarity :: Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+quantifierPolarity q l1 l2 = polarityTypeClass (QuantifierPolarity q) [l1, l2]
+
+maxPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]
+
+ifPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+ifPolarity l1 l2 l3 l4 = polarityTypeClass IfPolarity [l1, l2, l3, l4]
+
+eqPolarity :: EqualityOp -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+eqPolarity eq p1 p2 p3 = polarityTypeClass (EqPolarity eq) [p1, p2, p3]
+
+impliesPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+impliesPolarity l1 l2 l3 = polarityTypeClass ImpliesPolarity [l1, l2, l3]
+
+negPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+negPolarity l1 l2 = polarityTypeClass NegPolarity [l1, l2]
+
+tPol :: PolarityDSLExpr
+tPol = type0

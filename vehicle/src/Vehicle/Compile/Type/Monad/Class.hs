@@ -8,7 +8,6 @@ import Control.Monad.Writer (WriterT (..), mapWriterT)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, lookupInDeclCtx)
-import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -25,6 +24,7 @@ import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 
@@ -128,7 +128,7 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) w
 -- Abstract interface for a type system.
 
 -- | A class that provides an abstract interface for a set of builtins.
-class (PrintableBuiltin builtin, Normalisable builtin) => TypableBuiltin builtin where
+class (PrintableBuiltin builtin, HasStandardData builtin) => TypableBuiltin builtin where
   convertFromStandardTypes ::
     (MonadTypeChecker builtin m) =>
     BuiltinUpdate m Ix StandardBuiltin builtin
@@ -164,8 +164,6 @@ class (PrintableBuiltin builtin, Normalisable builtin) => TypableBuiltin builtin
     DeclProvenance ->
     GluedType builtin ->
     m ()
-
-  typeClassRelevancy :: (MonadCompile m) => Value builtin -> m Relevance
 
   addAuxiliaryInputOutputConstraints ::
     (MonadTypeChecker builtin m) => Decl Ix builtin -> m (Decl Ix builtin)
@@ -444,23 +442,23 @@ generateFreshConstraintID _ = do
 getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
-  ts <- fmap (mapObject InstanceConstraint) <$> getActiveTypeClassConstraints
+  ts <- fmap (mapObject InstanceConstraint) <$> getActiveInstanceConstraints
   return $ us <> ts
 
 getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (UnificationConstraint builtin)]
 getActiveUnificationConstraints = getsMetaCtx unificationConstraints
 
-getActiveTypeClassConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
-getActiveTypeClassConstraints = getsMetaCtx typeClassConstraints
+getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
+getActiveInstanceConstraints = getsMetaCtx typeClassConstraints
 
 setConstraints :: (MonadTypeChecker builtin m) => [WithContext (Constraint builtin)] -> m ()
 setConstraints constraints = do
   let (us, ts) = separateConstraints constraints
   setUnificationConstraints us
-  setTypeClassConstraints ts
+  setInstanceConstraints ts
 
-setTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
-setTypeClassConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
+setInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+setInstanceConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
   TypeCheckerState {typeClassConstraints = newConstraints, ..}
 
 setUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
@@ -471,7 +469,7 @@ addConstraints :: (MonadTypeChecker builtin m) => [WithContext (Constraint built
 addConstraints constraints = do
   let (us, ts) = separateConstraints constraints
   addUnificationConstraints us
-  addTypeClassConstraints ts
+  addInstanceConstraints ts
 
 addUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
 addUnificationConstraints constraints = do
@@ -481,8 +479,8 @@ addUnificationConstraints constraints = do
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
 
-addTypeClassConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
-addTypeClassConstraints constraints = do
+addInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+addInstanceConstraints constraints = do
   unless (null constraints) $ do
     logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
 

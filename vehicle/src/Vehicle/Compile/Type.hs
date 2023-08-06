@@ -249,8 +249,8 @@ runInstanceSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaS
 runInstanceSolver _ metasSolved =
   logCompilerPass MaxDetail ("instance solver run" <> line) $
     runConstraintSolver @builtin
-      getActiveTypeClassConstraints
-      setTypeClassConstraints
+      getActiveInstanceConstraints
+      setInstanceConstraints
       solveInstance
       metasSolved
 

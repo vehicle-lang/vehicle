@@ -28,8 +28,8 @@ import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Syntax.Sugar
@@ -504,7 +504,7 @@ agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
 compileBuiltin :: (MonadAgdaCompile m) => Provenance -> StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
-compileBuiltin _p (CType (StandardTypeClassOp op)) allArgs
+compileBuiltin _p (TypeClassOp op) allArgs
   | not (isTypeClassInAgda op) = do
       (fn, args) <- nfTypeClassOp mempty op allArgs
       compileApp fn args
@@ -563,7 +563,7 @@ compileBuiltin p op allArgs = case normAppList mempty (Builtin mempty op) allArg
   HasRatLitsExpr _ t -> compileTypeClass "HasRatLits" t
   HasVecLitsExpr {} ->
     compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
-  BuiltinTypeClass _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
+  BuiltinExpr _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
   _ -> do
     let e = normAppList p (Builtin p op) allArgs
     compilerDeveloperError $

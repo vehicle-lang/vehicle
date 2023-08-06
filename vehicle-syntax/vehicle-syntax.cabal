@@ -95,6 +95,7 @@ library
   hs-source-dirs:     autogen src
   exposed-modules:
     Vehicle.Syntax.AST
+    Vehicle.Syntax.Builtin
     Vehicle.Syntax.Parse
     Vehicle.Syntax.Prelude
     Vehicle.Syntax.Print
@@ -103,9 +104,6 @@ library
   other-modules:
     Vehicle.Syntax.AST.Arg
     Vehicle.Syntax.AST.Binder
-    Vehicle.Syntax.AST.Builtin
-    Vehicle.Syntax.AST.Builtin.Core
-    Vehicle.Syntax.AST.Builtin.TypeClass
     Vehicle.Syntax.AST.Decl
     Vehicle.Syntax.AST.Expr
     Vehicle.Syntax.AST.Instances.NoThunks
@@ -120,6 +118,8 @@ library
     Vehicle.Syntax.BNFC.Elaborate.External
     Vehicle.Syntax.BNFC.Elaborate.Internal
     Vehicle.Syntax.BNFC.Utils
+    Vehicle.Syntax.Builtin.Core
+    Vehicle.Syntax.Builtin.TypeClass
     Vehicle.Syntax.Debug
     Vehicle.Syntax.External.Abs
     Vehicle.Syntax.External.ErrM

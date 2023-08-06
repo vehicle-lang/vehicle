@@ -20,8 +20,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..), pattern VNatLiteral)
 import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
 
 -- | Calculates the context for external resources, reading them from disk and
@@ -46,7 +46,7 @@ expandResources resources prog =
 splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
 splitResourceCtx ResourceContext {..} = do
   -- This is a hack. The type is only every used for its arity, so this is okay.
-  let unitType = CType (StandardBuiltinType Unit)
+  let unitType = BuiltinType Unit
   let mkEntry expr =
         TypingDeclCtxEntry
           { declBody = Just expr,

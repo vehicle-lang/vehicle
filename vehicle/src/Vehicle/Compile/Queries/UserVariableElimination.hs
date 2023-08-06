@@ -36,10 +36,10 @@ import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.QuerySetStructure (eliminateNot)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), pattern TensorIdent)
 import Vehicle.Verify.Core

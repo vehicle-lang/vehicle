@@ -11,6 +11,7 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr
 import Vehicle.Compile.Queries.Variable
+import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------

@@ -7,18 +7,18 @@ import Control.Monad (filterM, foldM)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (evalAddNat)
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.Normalised (Value (..), isNMeta)
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
@@ -53,7 +53,7 @@ getDefaultCandidates ::
   Maybe StandardDecl ->
   m [WithContext StandardInstanceConstraint]
 getDefaultCandidates maybeDecl = do
-  typeClassConstraints <- getActiveTypeClassConstraints
+  typeClassConstraints <- getActiveInstanceConstraints
   case maybeDecl of
     Nothing -> return typeClassConstraints
     Just decl -> do
@@ -102,7 +102,7 @@ sameFamily LinearityFamily {} LinearityFamily {} = True
 sameFamily _ _ = False
 
 data Candidate = Candidate
-  { candidateTypeClass :: TypeClass,
+  { candidateTypeClass :: StandardBuiltin,
     candidateMetaExpr :: StandardNormExpr,
     candidateCtx :: StandardConstraintContext,
     candidateSolution :: StandardNormExpr
@@ -176,23 +176,24 @@ strongest y@(Valid c1) c2 = do
           then Valid c2
           else y
 
-familyOf :: (MonadCompile m) => TypeClass -> m DefaultFamily
+familyOf :: (MonadCompile m) => StandardBuiltin -> m DefaultFamily
 familyOf = \case
-  HasQuantifier {} -> return BooleanFamily
-  HasEq {} -> return $ NumericFamily NatT False 0
-  HasOrd {} -> return $ NumericFamily NatT False 0
-  HasAdd -> return $ NumericFamily NatT True 0
-  HasSub -> return $ NumericFamily IntT True 0
-  HasMul -> return $ NumericFamily NatT True 0
-  HasDiv -> return $ NumericFamily RatT True 0
-  HasNeg -> return $ NumericFamily IntT True 0
-  HasNatLits -> return $ NumericFamily NatT False 0
-  HasRatLits -> return $ NumericFamily RatT False 0
-  HasVecLits {} -> return $ ContainerFamily True
-  HasMap -> return $ ContainerFamily False
-  HasFold -> return $ ContainerFamily False
-  HasQuantifierIn {} -> return $ ContainerFamily False
+  TypeClass HasQuantifier {} -> return BooleanFamily
+  TypeClass HasEq {} -> return $ NumericFamily NatT False 0
+  TypeClass HasOrd {} -> return $ NumericFamily NatT False 0
+  TypeClass HasAdd -> return $ NumericFamily NatT True 0
+  TypeClass HasSub -> return $ NumericFamily IntT True 0
+  TypeClass HasMul -> return $ NumericFamily NatT True 0
+  TypeClass HasDiv -> return $ NumericFamily RatT True 0
+  TypeClass HasNeg -> return $ NumericFamily IntT True 0
+  TypeClass HasNatLits -> return $ NumericFamily NatT False 0
+  TypeClass HasRatLits -> return $ NumericFamily RatT False 0
+  TypeClass HasVecLits {} -> return $ ContainerFamily True
+  TypeClass HasMap -> return $ ContainerFamily False
+  TypeClass HasFold -> return $ ContainerFamily False
+  TypeClass HasQuantifierIn {} -> return $ ContainerFamily False
   NatInDomainConstraint -> return $ NumericFamily NatT False 0
+  _ -> compilerDeveloperError "Malformed instance constraint"
 
 getCandidatesFromConstraint ::
   forall m.
@@ -200,32 +201,36 @@ getCandidatesFromConstraint ::
   StandardConstraintContext ->
   StandardInstanceConstraint ->
   m [Candidate]
-getCandidatesFromConstraint ctx (Has _ expr) = do
-  (tc, spine) <- getTypeClass expr
+getCandidatesFromConstraint ctx (Has _ _ expr) = do
+  InstanceGoal {..} <- parseInstanceGoal expr
   let getCandidates = getCandidatesFromArgs ctx
-  case (tc, spine) of
-    (HasOrd ord, [tArg1, tArg2, _tRes]) -> return $ getCandidates (HasOrd ord) VNatType [tArg1, tArg2]
-    (HasNeg, [tArg, _tRes]) -> return $ getCandidates HasNeg VIntType [tArg]
-    (HasMul, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasMul VNatType [tArg1, tArg2]
-    (HasDiv, [tArg1, tArg2, _tRes]) -> return $ getCandidates HasDiv VRatType [tArg1, tArg2]
-    (HasNatLits, [t]) -> return $ getCandidates HasNatLits VNatType [t]
-    (HasRatLits, [t]) -> return $ getCandidates HasRatLits VRatType [t]
-    (HasVecLits, [_n, t]) -> return $ getCandidates HasVecLits VRawListType [t]
-    (HasMap, [t]) -> return $ getCandidates HasMap VRawListType [t]
-    (HasFold, [t]) -> return $ getCandidates HasFold VRawListType [t]
-    (NatInDomainConstraint, [n, t]) -> case argExpr t of
-      VIndexType size -> do
-        succN <- do
-          let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
-          let defaultExpr = VBuiltin (CFunction (Add AddNat)) [n, RelevantExplicitArg mempty (VNatLiteral 1)]
-          return $ fromMaybe defaultExpr maybeNormResult
-        return $ getCandidates NatInDomainConstraint succN [IrrelevantImplicitArg mempty size]
-      _ -> return []
-    _ -> return []
+  let defaults = case (goalHead, goalSpine) of
+        (TypeClass HasOrd {}, [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
+        (TypeClass HasNeg, [tArg, _tRes]) -> Just (VIntType, [tArg])
+        (TypeClass HasMul, [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
+        (TypeClass HasDiv, [tArg1, tArg2, _tRes]) -> Just (VRatType, [tArg1, tArg2])
+        (TypeClass HasNatLits, [t]) -> Just (VNatType, [t])
+        (TypeClass HasRatLits, [t]) -> Just (VRatType, [t])
+        (TypeClass HasVecLits, [_n, t]) -> Just (VRawListType, [t])
+        (TypeClass HasMap, [t]) -> Just (VRawListType, [t])
+        (TypeClass HasFold, [t]) -> Just (VRawListType, [t])
+        (NatInDomainConstraint, [n, t]) -> case argExpr t of
+          VIndexType size -> do
+            succN <- do
+              let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
+              let defaultExpr = VBuiltin (BuiltinFunction (Add AddNat)) [n, RelevantExplicitArg mempty (VNatLiteral 1)]
+              return $ fromMaybe defaultExpr maybeNormResult
+            Just (succN, [IrrelevantImplicitArg mempty size])
+          _ -> Nothing
+        _ -> Nothing
+
+  case defaults of
+    Nothing -> return []
+    Just (defaultValue, defaultArgs) -> return $ getCandidates goalHead defaultValue defaultArgs
 
 getCandidatesFromArgs ::
   StandardConstraintContext ->
-  TypeClass ->
+  StandardBuiltin ->
   StandardNormExpr ->
   StandardSpine ->
   [Candidate]

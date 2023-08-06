@@ -44,7 +44,7 @@ import GHC.Generics (Generic)
 import Numeric qualified
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.Variable
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardNormArg, StandardNormExpr)
+import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 --------------------------------------------------------------------------------
 -- Relation

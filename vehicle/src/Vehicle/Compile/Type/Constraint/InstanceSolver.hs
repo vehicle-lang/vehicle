@@ -9,7 +9,7 @@ import Data.Hashable (Hashable)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
@@ -31,16 +31,13 @@ resolveInstance ::
   HashMap builtin [Provenance -> InstanceCandidate builtin] ->
   WithContext (InstanceConstraint builtin) ->
   m ()
-resolveInstance allCandidates c@(WithContext constraint ctx) = do
-  normConstraint@(Has meta expr) <- substMetas constraint
+resolveInstance allCandidates (WithContext constraint ctx) = do
+  normConstraint@(Has meta relevance expr) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
-  maybeGoal <- parseInstanceGoal expr
-  case maybeGoal of
-    Nothing -> compilerDeveloperError $ "Malformed instance goal" <+> prettyFriendly c
-    Just goal -> do
-      let candidates = fromMaybe [] $ HashMap.lookup (goalHead goal) allCandidates
-      solveInstanceGoal candidates ctx meta goal
+  goal <- parseInstanceGoal expr
+  let candidates = fromMaybe [] $ HashMap.lookup (goalHead goal) allCandidates
+  solveInstanceGoal candidates ctx meta relevance goal
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -56,9 +53,10 @@ solveInstanceGoal ::
   [Provenance -> InstanceCandidate builtin] ->
   ConstraintContext builtin ->
   MetaID ->
+  Relevance ->
   InstanceGoal builtin ->
   m ()
-solveInstanceGoal rawBuiltinCandidates ctx meta goal@InstanceGoal {..} = do
+solveInstanceGoal rawBuiltinCandidates ctx meta relevance goal@InstanceGoal {..} = do
   let p = provenanceOf ctx
   let boundCtx = boundContext ctx
 
@@ -99,7 +97,7 @@ solveInstanceGoal rawBuiltinCandidates ctx meta goal@InstanceGoal {..} = do
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
       logDebug MaxDetail "Multiple possible candidates found so deferring."
-      let constraint = WithContext (InstanceConstraint (Has meta (goalExpr goal))) ctx
+      let constraint = WithContext (InstanceConstraint (Has meta relevance (goalExpr goal))) ctx
       -- TODO can we be more precise with the set of blocking metas?
       blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @builtin)
       addConstraints [blockedConstraint]

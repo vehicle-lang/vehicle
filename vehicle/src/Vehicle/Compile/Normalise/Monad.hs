@@ -12,10 +12,10 @@ import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer (WriterT)
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 
 -----------------------------------------------------------------------------
 -- Normalisation monad
@@ -30,7 +30,7 @@ defaultEvalOptions =
     { evalFiniteQuantifiers = True
     }
 
-class (MonadCompile m, PrintableBuiltin builtin, Normalisable builtin) => MonadNorm builtin m where
+class (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) => MonadNorm builtin m where
   getEvalOptions :: Proxy builtin -> m EvalOptions
   getDeclSubstitution :: m (NormDeclCtx builtin)
   getMetaSubstitution :: m (MetaSubstitution builtin)
@@ -76,7 +76,7 @@ instance (MonadError e m) => MonadError e (NormT builtin m) where
   throwError = lift . throwError
   catchError m f = NormT (catchError (unnormT m) (unnormT . f))
 
-instance (MonadCompile m, PrintableBuiltin builtin, Normalisable builtin) => MonadNorm builtin (NormT builtin m) where
+instance (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) => MonadNorm builtin (NormT builtin m) where
   getEvalOptions _ = NormT $ asks (\(opts, _, _) -> opts)
   getDeclSubstitution = NormT $ asks (\(_, declCtx, _) -> declCtx)
   getMetaSubstitution = NormT $ asks (\(_, _, metaCtx) -> metaCtx)

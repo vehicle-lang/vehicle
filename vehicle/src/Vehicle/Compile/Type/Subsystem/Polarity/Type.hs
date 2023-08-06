@@ -1,34 +1,24 @@
 module Vehicle.Compile.Type.Subsystem.Polarity.Type
   ( typePolarityBuiltin,
-    handlePolarityTypingError,
-    relevanceOfTypeClass,
-    freshPolarityMeta,
-    convertToPolarityTypes,
   )
 where
 
 import Data.Text qualified as Text
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker, freshMeta)
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised
+import Vehicle.Prelude
+import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
 typePolarityBuiltin :: Provenance -> PolarityBuiltin -> Type Ix PolarityBuiltin
 typePolarityBuiltin p b = fromDSL p $ case b of
-  CConstructor c -> typeOfConstructor c
-  CFunction f -> typeOfBuiltinFunction f
-  CType t -> case t of
-    Polarity {} -> tPol
-    PolarityTypeClass tc -> typeOfPolarityTypeClass tc
+  BuiltinConstructor c -> typeOfConstructor c
+  BuiltinFunction f -> typeOfBuiltinFunction f
+  Polarity {} -> tPol
+  PolarityRelation r -> typeOfPolarityRelation r
 
 typeOfBuiltinFunction :: BuiltinFunction -> PolarityDSLExpr
 typeOfBuiltinFunction = \case
@@ -76,8 +66,8 @@ typeOfConstructor = \case
   LRat {} -> unquantified
   LVec n -> typeOfVecLiteral n
 
-typeOfPolarityTypeClass :: PolarityTypeClass -> PolarityDSLExpr
-typeOfPolarityTypeClass = \case
+typeOfPolarityRelation :: PolarityRelation -> PolarityDSLExpr
+typeOfPolarityRelation = \case
   NegPolarity -> tPol ~> tPol ~> type0
   ImpliesPolarity -> tPol ~> tPol ~> tPol ~> type0
   EqPolarity {} -> tPol ~> tPol ~> tPol ~> type0
@@ -153,44 +143,3 @@ typeOfVecLiteral n = go n unquantified
               maxPolarity maxSoFar li newMax
                 .~~~> li
                 ~> go (i - 1) newMax
-
-handlePolarityTypingError :: (MonadCompile m) => TypingError PolarityBuiltin -> m a
-handlePolarityTypingError b =
-  compilerDeveloperError $ "Polarity type system should not be throwing error:" <+> pretty b
-
-relevanceOfTypeClass :: (MonadCompile m) => PolarityType -> m Relevance
-relevanceOfTypeClass _b = return Relevant
-
-freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (GluedExpr PolarityBuiltin)
-freshPolarityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
-
-convertToPolarityTypes ::
-  forall m.
-  (MonadTypeChecker PolarityBuiltin m) =>
-  BuiltinUpdate m Ix StandardBuiltin PolarityBuiltin
-convertToPolarityTypes p1 p2 b args = case b of
-  CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args
-  CFunction f -> return $ normAppList p1 (Builtin p2 (CFunction f)) args
-  CType t -> case t of
-    StandardBuiltinType s -> case s of
-      Unit -> return $ PolarityExpr p2 Unquantified
-      Bool -> unnormalised <$> freshPolarityMeta p2
-      Index -> return $ PolarityExpr p2 Unquantified
-      Nat -> return $ PolarityExpr p2 Unquantified
-      Int -> return $ PolarityExpr p2 Unquantified
-      Rat -> unnormalised <$> freshPolarityMeta p2
-      List -> case args of
-        [tElem] -> return $ argExpr tElem
-        _ -> monomorphisationError "List"
-      Vector -> case args of
-        [tElem] -> return $ argExpr tElem
-        _ -> monomorphisationError "Vector"
-    StandardTypeClass {} ->
-      monomorphisationError "TypeClass"
-    StandardTypeClassOp {} ->
-      compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
-    where
-      monomorphisationError :: Doc () -> m a
-      monomorphisationError name =
-        compilerDeveloperError $
-          "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args

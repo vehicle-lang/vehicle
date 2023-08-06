@@ -16,6 +16,7 @@ import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
 import Vehicle.Syntax.BNFC.Utils
+import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.Internal.Abs as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 import Vehicle.Syntax.Parse.Token (IsToken, Token (..), tkSymbol, toToken)
@@ -143,7 +144,7 @@ op3 mk t1 t2 t3 = mk (provenanceOf t1 <> provenanceOf t2 <> provenanceOf t3) t1 
 
 elabVec :: [V.Expr V.Name V.Builtin] -> V.Expr V.Name V.Builtin
 elabVec xs = do
-  let vecConstructor = V.Builtin mempty (V.Constructor $ V.LVec (length xs))
+  let vecConstructor = V.Builtin mempty (V.BuiltinConstructor $ V.LVec (length xs))
   V.normAppList mempty vecConstructor (V.RelevantExplicitArg mempty <$> xs)
 
 -- | Elabs the type token into a Type expression.

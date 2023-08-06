@@ -1,4 +1,4 @@
-module Vehicle.Syntax.AST.Builtin.TypeClass where
+module Vehicle.Syntax.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON)
@@ -6,7 +6,7 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Builtin.Core
+import Vehicle.Syntax.Builtin.Core
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -25,12 +25,9 @@ data TypeClass
   | HasMap
   | HasQuantifierIn Quantifier
   | -- Literal type-classes
-
     HasNatLits
   | HasRatLits
   | HasVecLits
-  | -- Utility constraints
-    NatInDomainConstraint
   deriving (Eq, Ord, Generic, Show)
 
 instance NFData TypeClass
@@ -54,7 +51,6 @@ instance Pretty TypeClass where
     HasNatLits -> "HasNatLiterals"
     HasRatLits -> "HasRatLiterals"
     HasVecLits -> "HasVecLiterals"
-    NatInDomainConstraint {} -> "NatInDomainConstraint"
 
 -- Builtin operations for type-classes
 data TypeClassOp
@@ -110,4 +106,3 @@ opOfTypeClass = \case
   HasNatLits -> FromNatTC
   HasRatLits -> FromRatTC
   HasVecLits -> FromVecTC
-  NatInDomainConstraint -> error "`NatInDomainConstraint` has no corresponding type class."

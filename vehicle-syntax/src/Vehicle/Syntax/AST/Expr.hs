@@ -38,12 +38,12 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
-import Vehicle.Syntax.AST.Builtin (Builtin)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Prelude
 
 --------------------------------------------------------------------------------

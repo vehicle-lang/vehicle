@@ -10,10 +10,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Expr.DeBruijn (Ix)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 
@@ -100,7 +99,7 @@ prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
 assignmentToExpr :: TensorDimensions -> [Double] -> Expr Ix StandardBuiltin
 assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
 assignmentToExpr (dim : dims) xs = do
-  let vecConstructor = Builtin mempty (CConstructor $ LVec dim)
+  let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)
   let inputVarIndicesChunks = chunksOf (product dims) xs
   let elems = fmap (RelevantExplicitArg mempty . assignmentToExpr dims) inputVarIndicesChunks
   normAppList mempty vecConstructor elems

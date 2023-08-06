@@ -26,16 +26,15 @@ import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (Normalisable)
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Libraries.StandardLibrary
 
 --------------------------------------------------------------------------------
@@ -94,7 +93,7 @@ traverseCandidateApplications underBinder processApp =
 
 type MonadTypeNormalise builtin m =
   ( MonadContext builtin m,
-    Normalisable builtin
+    NormalisableBuiltin builtin
   )
 
 normTypeArgsPass :: CompilerPass
@@ -329,13 +328,13 @@ removeLiteralCoercions nameJoiner (Main ds) =
       findStdLibFunction shortIdent
 
     updateBuiltin decl p1 p2 b args = case b of
-      (CFunction (FromNat dom)) -> case (dom, filter isExplicit args) of
+      (BuiltinFunction (FromNat dom)) -> case (dom, filter isExplicit args) of
         (FromNatToIndex, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IndexLiteral p n
         (FromNatToNat, [e]) -> return $ argExpr e
         (FromNatToInt, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IntLiteral p n
         (FromNatToRat, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
         _ -> partialApplication decl (pretty b) args
-      (CFunction (FromRat dom)) -> case (dom, args) of
+      (BuiltinFunction (FromRat dom)) -> case (dom, args) of
         (FromRatToRat, [e]) -> return $ argExpr e
         _ -> partialApplication decl (pretty b) args
       _ -> return $ normAppList p1 (Builtin p2 b) args

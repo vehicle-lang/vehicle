@@ -11,6 +11,7 @@ import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 -- | This module exports the datatype representations of the builtin symbols.
-module Vehicle.Syntax.AST.Builtin
-  ( module Vehicle.Syntax.AST.Builtin,
+module Vehicle.Syntax.Builtin
+  ( module Vehicle.Syntax.Builtin,
     module X,
   )
 where
@@ -17,9 +17,9 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
-import Vehicle.Syntax.AST.Builtin.Core as X
-import Vehicle.Syntax.AST.Builtin.TypeClass as X
 import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.Builtin.Core as X
+import Vehicle.Syntax.Builtin.TypeClass as X
 
 --------------------------------------------------------------------------------
 -- Types
@@ -322,12 +322,13 @@ instance Pretty BuiltinFunction where
 
 -- | Builtins in the Vehicle language
 data Builtin
-  = Constructor BuiltinConstructor
+  = BuiltinConstructor BuiltinConstructor
   | BuiltinFunction BuiltinFunction
   | BuiltinType BuiltinType
   | TypeClass TypeClass
   | TypeClassOp TypeClassOp
-  deriving (Eq, Show, Generic)
+  | NatInDomainConstraint
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData Builtin
 
@@ -339,11 +340,12 @@ instance Serialize Builtin
 -- somehow.
 instance Pretty Builtin where
   pretty = \case
-    Constructor c -> pretty c
-    TypeClass tc -> pretty tc
-    TypeClassOp o -> pretty o
     BuiltinFunction f -> pretty f
     BuiltinType t -> pretty t
+    BuiltinConstructor c -> pretty c
+    TypeClass tc -> pretty tc
+    TypeClassOp o -> pretty o
+    NatInDomainConstraint {} -> "NatInDomainConstraint"
 
 builtinSymbols :: [(Text, Builtin)]
 builtinSymbols = mempty
