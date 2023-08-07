@@ -162,9 +162,6 @@ isConstant (Sparse _ coeff constant)
   | Map.null coeff = Just constant
   | otherwise = Nothing
 
-toSparse :: SparseLinearExpr variable -> SparseLinearExpr variable
-toSparse = id
-
 evaluateExpr ::
   forall variable.
   (Variable variable) =>
@@ -172,7 +169,7 @@ evaluateExpr ::
   VariableAssignment variable ->
   Either variable Constant
 evaluateExpr expr assignment = do
-  let Sparse _ coefficients constant = toSparse expr
+  let Sparse _ coefficients constant = expr
   foldM op constant (Map.toList coefficients)
   where
     op :: Constant -> (variable, Coefficient) -> Either variable Constant
@@ -298,7 +295,7 @@ convertToSparseFormat ::
   Assertion NetworkVariable ->
   (NonEmpty (Coefficient, Name), Either () OrderOp, Double)
 convertToSparseFormat nameMap (Assertion rel linearExpr) = do
-  let Sparse _ coeffs vectConstant = toSparse linearExpr
+  let Sparse _ coeffs vectConstant = linearExpr
   let varCoeff = sortVarCoeffs coeffs
   let missingErr v = developerError $ "Unknown variable" <+> pretty v <+> "when converting to sparse format"
   let coeffName = fmap (\(v, c) -> (c, Map.findWithDefault (missingErr v) v nameMap)) varCoeff
