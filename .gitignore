@@ -12,6 +12,10 @@
 .vscode/
 
 # Example folders
+examples/**/.vcl-cache-index
+examples/**/*.vclplan
+examples/**/*.vclresult
+examples/**/*-query*.txt
 examples/windController/agdaProof/WindControllerSpec.agda
 
 # Wheels

@@ -12,15 +12,17 @@ module Vehicle.Verify.Specification.IO
 where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy qualified as BIO
 import Data.IDX (encodeIDXFile)
 import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Monoid (Sum (..))
 import Data.Text (intercalate, pack, unpack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
@@ -225,7 +227,8 @@ type MonadVerify m =
 
 type MonadVerifyProperty m =
   ( MonadVerify m,
-    MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m
+    MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
+    MonadWriter (Sum Int) m
   )
 
 -- | Uses the verifier to verify the specification. Failure of one property does
@@ -257,11 +260,21 @@ verifyProperty ::
   PropertyAddress ->
   m ()
 verifyProperty verifier verifierExecutable verificationCache address = do
+  -- Read the verification plan for the property
   let propertyPlanFile = propertyPlanFileName verificationCache address
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
-  progressBar <- createPropertyProgressBar address (propertySize queryMetaData)
+
+  -- Perform the verification
+  let numberOfQueries = propertySize queryMetaData
+  progressBar <- createPropertyProgressBar address numberOfQueries
   let readerState = (verifier, verifierExecutable, verificationCache, progressBar)
-  result <- runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState
+  (result, Sum numberOfQueriesExecuted) <- runWriterT (runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState)
+
+  -- Tidy up and output results
+  when (numberOfQueriesExecuted < numberOfQueries) $ do
+    -- The progress bar is only closed when all queries are run so in this
+    -- case we have to close it manually.
+    closePropertyProgressBar progressBar
   outputPropertyResult verificationCache address result
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
@@ -323,6 +336,7 @@ verifyQuery ::
   (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableAssignment)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
+  tell (Sum 1)
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
   errorOrResult <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
@@ -379,6 +393,9 @@ createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
           }
   let initialProgress = Progress 0 numberOfQueries ()
   liftIO $ hNewProgressBar stdout style 10 initialProgress
+
+closePropertyProgressBar :: (MonadIO m) => PropertyProgressBar -> m ()
+closePropertyProgressBar _progressBar = liftIO $ putStrLn ""
 
 {-
 completeProgress :: MonadIO m => PropertyProgressBar -> m ()
