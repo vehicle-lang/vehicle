@@ -99,15 +99,16 @@ unifyWithPiType ctx expr = do
 createTC ::
   (TCM builtin m) =>
   ConstraintContext builtin ->
+  Relevance ->
   Value builtin ->
   m (Expr Ix builtin, WithContext (Constraint builtin))
-createTC c t = do
+createTC c r t = do
   let p = provenanceOf c
   ctx <- copyContext c
   let dbLevel = contextDBLevel c
   newTypeClassExpr <- quote p dbLevel t
   (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext c)
-  let newConstraint = InstanceConstraint (Has meta t)
+  let newConstraint = InstanceConstraint (Has meta r t)
   return (unnormalised metaExpr, WithContext newConstraint ctx)
 
 solveTypeClassMeta :: (TCM builtin m) => ConstraintContext builtin -> MetaID -> Value builtin -> m ()
@@ -142,17 +143,17 @@ findInstanceGoalHead = \case
 
 parseInstanceGoal ::
   forall m builtin.
-  (MonadCompile m) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   Value builtin ->
-  m (Maybe (InstanceGoal builtin))
-parseInstanceGoal = go []
+  m (InstanceGoal builtin)
+parseInstanceGoal e = go [] e
   where
-    go :: Telescope Ix builtin -> Value builtin -> m (Maybe (InstanceGoal builtin))
+    go :: Telescope Ix builtin -> Value builtin -> m (InstanceGoal builtin)
     go telescope = \case
       VPi binder _body
         | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"
-      VBuiltin b spine -> return $ Just (InstanceGoal telescope b spine)
-      _ -> return Nothing
+      VBuiltin b spine -> return $ InstanceGoal telescope b spine
+      _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyVerbose e
 
 anyOf :: [a] -> (a -> Bool) -> Bool
 anyOf = flip any

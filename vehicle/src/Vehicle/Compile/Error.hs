@@ -8,6 +8,7 @@ import Data.Map qualified as Map
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -63,8 +64,8 @@ data CompileError
   | FailedNatLitConstraintUnknown StandardConstraintContext StandardNormExpr StandardNormType
   | FailedInstanceConstraint StandardConstraintContext StandardInstanceGoal [WithContext StandardInstanceCandidate]
   | RelevantUseOfIrrelevantVariable Provenance Name
-  | QuantifiedIfCondition PolarityConstraintContext
-  | NonLinearIfCondition LinearityConstraintContext
+  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
+  | NonLinearIfCondition (ConstraintContext LinearityBuiltin)
   | -- Resource typing errors
     ResourceNotProvided DeclProvenance ExternalResource
   | ResourceIOError DeclProvenance ExternalResource IOException

@@ -1,32 +1,22 @@
 module Vehicle.Compile.Type.Subsystem.Linearity.Type
   ( typeLinearityBuiltin,
-    handleLinearityTypingError,
-    relevanceOfTypeClass,
-    freshLinearityMeta,
-    convertToLinearityTypes,
   )
 where
 
 import Data.Text qualified as Text
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker, freshMeta)
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
-import Vehicle.Expr.Normalised
-import Prelude hiding (pi)
+import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
 -- | Return the type of the provided builtin.
 typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> Type Ix LinearityBuiltin
 typeLinearityBuiltin p b = fromDSL p $ case b of
-  CConstructor c -> typeOfConstructor c
-  CFunction f -> typeOfBuiltinFunction f
-  CType t -> typeOfLinearityType t
+  BuiltinConstructor c -> typeOfConstructor c
+  BuiltinFunction f -> typeOfBuiltinFunction f
+  Linearity {} -> tLin
+  LinearityRelation r -> typeOfLinearityRelation r
 
 typeOfBuiltinFunction :: BuiltinFunction -> LinearityDSLExpr
 typeOfBuiltinFunction = \case
@@ -74,13 +64,8 @@ typeOfConstructor = \case
   LRat {} -> constant
   LVec n -> typeOfVecLiteral n
 
-typeOfLinearityType :: LinearityType -> LinearityDSLExpr
-typeOfLinearityType = \case
-  Linearity {} -> tLin
-  LinearityTypeClass tc -> typeOfLinearityTypeClass tc
-
-typeOfLinearityTypeClass :: LinearityTypeClass -> LinearityDSLExpr
-typeOfLinearityTypeClass = \case
+typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
+typeOfLinearityRelation = \case
   MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
   MulLinearity -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity {} -> tLin ~> tLin ~> type0
@@ -151,43 +136,3 @@ typeOfVecLiteral n = go n constant
               maxLinearity maxSoFar li newMax
                 .~~~> li
                 ~> go (i - 1) newMax
-
-handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityBuiltin -> m a
-handleLinearityTypingError b =
-  compilerDeveloperError $ "Linearity type system should not be throwing error:" <+> pretty b
-
-relevanceOfTypeClass :: (MonadCompile m) => LinearityType -> m Relevance
-relevanceOfTypeClass _b = return Relevant
-
-freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
-freshLinearityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
-
-convertToLinearityTypes ::
-  forall m.
-  (MonadTypeChecker LinearityBuiltin m) =>
-  BuiltinUpdate m Ix StandardBuiltin LinearityBuiltin
-convertToLinearityTypes p1 p2 b args = case b of
-  CFunction f -> return $ normAppList p1 (Builtin p2 (CFunction f)) args
-  CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args
-  CType t -> case t of
-    StandardBuiltinType s -> case s of
-      Unit -> return $ Builtin p2 $ CType $ Linearity Constant
-      Bool -> unnormalised <$> freshLinearityMeta p2
-      Index -> unnormalised <$> freshLinearityMeta p2
-      Nat -> unnormalised <$> freshLinearityMeta p2
-      Int -> unnormalised <$> freshLinearityMeta p2
-      Rat -> unnormalised <$> freshLinearityMeta p2
-      List -> case args of
-        [tElem] -> return $ argExpr tElem
-        _ -> monomorphisationError "List"
-      Vector -> case args of
-        [tElem] -> return $ argExpr tElem
-        _ -> monomorphisationError "Vector"
-    StandardTypeClass {} -> monomorphisationError "TypeClass"
-    StandardTypeClassOp {} ->
-      compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
-  where
-    monomorphisationError :: Doc () -> m a
-    monomorphisationError name =
-      compilerDeveloperError $
-        "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args

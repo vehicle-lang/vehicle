@@ -46,8 +46,8 @@ import GHC.Generics (Generic)
 import Prettyprinter (brackets, list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn (Lv (..))
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (fromFiniteQuantifier, toFiniteQuantifier)
 
@@ -342,10 +342,10 @@ pattern VInfiniteQuantifier ::
   TypeCheckedExpr ->
   StandardNormExpr
 pattern VInfiniteQuantifier q args binder env body <-
-  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder env body) : args)
+  VBuiltin (BuiltinFunction (Quantifier q)) (reverse -> RelevantExplicitArg _ (VLam binder env body) : args)
   where
     VInfiniteQuantifier q args binder env body =
-      VBuiltinFunction (Quantifier q) (reverse (RelevantExplicitArg mempty (VLam binder env body) : args))
+      VBuiltin (BuiltinFunction (Quantifier q)) (reverse (RelevantExplicitArg mempty (VLam binder env body) : args))
 
 pattern VFiniteQuantifier :: Quantifier -> StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
 pattern VFiniteQuantifier q spine binder env body <-

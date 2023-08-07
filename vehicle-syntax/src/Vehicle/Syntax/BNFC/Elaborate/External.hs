@@ -34,6 +34,7 @@ import Vehicle.Syntax.BNFC.Utils
     tokType,
     pattern InferableOption,
   )
+import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 import Vehicle.Syntax.Parse.Token
@@ -404,21 +405,21 @@ elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
 
 elabLiteral :: (MonadElab m) => B.Lit -> m (V.Expr V.Name V.Builtin)
 elabLiteral = \case
-  B.UnitLiteral -> return $ V.Builtin mempty $ V.Constructor V.LUnit
+  B.UnitLiteral -> return $ V.Builtin mempty $ V.BuiltinConstructor V.LUnit
   B.BoolLiteral t -> do
     p <- mkProvenance t
     let b = read (unpack $ tkSymbol t)
-    return $ V.Builtin p $ V.Constructor $ V.LBool b
+    return $ V.Builtin p $ V.BuiltinConstructor $ V.LBool b
   B.NatLiteral t -> do
     p <- mkProvenance t
     let n = readNat (tkSymbol t)
     let fromNat = V.Builtin p (V.TypeClassOp V.FromNatTC)
-    return $ app fromNat [V.Builtin p $ V.Constructor $ V.LNat n]
+    return $ app fromNat [V.Builtin p $ V.BuiltinConstructor $ V.LNat n]
   B.RatLiteral t -> do
     p <- mkProvenance t
     let r = readRat (tkSymbol t)
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
-    return $ app fromRat [V.Builtin p $ V.Constructor $ V.LRat r]
+    return $ app fromRat [V.Builtin p $ V.BuiltinConstructor $ V.LRat r]
 
 parseTypeLevel :: B.TokType -> Int
 parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
@@ -455,7 +456,7 @@ builtin b t args = do
   app (V.Builtin tProv b) <$> traverse elabExpr args
 
 constructor :: (MonadElab m, IsToken token) => V.BuiltinConstructor -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
-constructor b = builtin (V.Constructor b)
+constructor b = builtin (V.BuiltinConstructor b)
 
 builtinType :: (MonadElab m, IsToken token) => V.BuiltinType -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
 builtinType b = builtin (V.BuiltinType b)
@@ -477,7 +478,7 @@ elabVecLiteral tk xs = do
   let n = length xs
   p <- mkProvenance tk
   xs' <- traverse elabExpr xs
-  let lit = app (V.Builtin p $ V.Constructor $ V.LVec n) xs'
+  let lit = app (V.Builtin p $ V.BuiltinConstructor $ V.LVec n) xs'
   return $ app (V.Builtin p (V.TypeClassOp V.FromVecTC)) [lit]
 
 elabApp :: (MonadElab m) => B.Expr -> B.Arg -> m (V.Expr V.Name V.Builtin)

@@ -19,6 +19,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
@@ -39,7 +40,10 @@ import Vehicle.Expr.Normalised
 
 type MonadUnify builtin m = TCM builtin m
 
-solveUnificationConstraint :: forall builtin m. (MonadUnify builtin m) => WithContext (UnificationConstraint builtin) -> m ()
+solveUnificationConstraint ::
+  (MonadUnify builtin m) =>
+  WithContext (UnificationConstraint builtin) ->
+  m ()
 solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
   (ne1', e1BlockingMetas) <- forceHead ctx e1
   (ne2', e2BlockingMetas) <- forceHead ctx e2

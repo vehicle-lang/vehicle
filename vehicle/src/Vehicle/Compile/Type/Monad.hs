@@ -27,8 +27,8 @@ module Vehicle.Compile.Type.Monad
     createFreshTypeClassConstraint,
     getActiveConstraints,
     getActiveUnificationConstraints,
-    getActiveTypeClassConstraints,
-    setTypeClassConstraints,
+    getActiveInstanceConstraints,
+    setInstanceConstraints,
     setUnificationConstraints,
     addConstraints,
     addUnificationConstraints,
@@ -117,9 +117,10 @@ createFreshTypeClassConstraint ::
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
   (Expr Ix builtin, [Arg Ix builtin]) ->
+  Relevance ->
   Type Ix builtin ->
   m (GluedExpr builtin)
-createFreshTypeClassConstraint boundCtx (fun, funArgs) tcExpr = do
+createFreshTypeClassConstraint boundCtx (fun, funArgs) relevance tcExpr = do
   let env = typingBoundContextToEnv boundCtx
 
   let p = provenanceOf fun
@@ -130,9 +131,9 @@ createFreshTypeClassConstraint boundCtx (fun, funArgs) tcExpr = do
   cid <- generateFreshConstraintID (Proxy @builtin)
   let context = ConstraintContext cid originProvenance origin p unknownBlockingStatus boundCtx
   nTCExpr <- whnf env tcExpr
-  let constraint = WithContext (Has meta nTCExpr) context
+  let constraint = WithContext (Has meta relevance nTCExpr) context
 
-  addTypeClassConstraints [constraint]
+  addInstanceConstraints [constraint]
 
   return metaExpr
 
@@ -148,7 +149,7 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
   checkedExpr <- case visibilityOf binder of
     Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
     Implicit {} -> freshMetaExpr p binderType boundCtx
-    Instance {} -> createFreshTypeClassConstraint boundCtx origin binderType
+    Instance {} -> createFreshTypeClassConstraint boundCtx origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 debugError :: forall builtin m. (TCM builtin m) => Proxy builtin -> Int -> m ()

@@ -9,10 +9,10 @@ import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltin, StandardBuiltinType (..), StandardExpr, StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn (Lv)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)
 
@@ -42,14 +42,14 @@ normalisationTests =
         NBETest
           { name = "AppPlus",
             dbLevel = 1,
-            input = App p (Builtin p $ CFunction $ Add AddNat) [RelevantExplicitArg p (NatLiteral p 2), RelevantExplicitArg p (NatLiteral p 1)],
+            input = App p (Builtin p $ BuiltinFunction $ Add AddNat) [RelevantExplicitArg p (NatLiteral p 2), RelevantExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest
           { name = "ListMeta",
             dbLevel = 1,
-            input = App p (Builtin p $ CType $ StandardBuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))],
-            expected = App p (Builtin p $ CType $ StandardBuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))]
+            input = App p (Builtin p $ BuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))],
+            expected = App p (Builtin p $ BuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))]
           }
       ]
 

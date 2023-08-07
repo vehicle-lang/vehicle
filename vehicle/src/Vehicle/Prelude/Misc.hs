@@ -18,6 +18,7 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 data VehicleLang = External | Internal
   deriving (Show)

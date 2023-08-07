@@ -6,7 +6,7 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (Normalisable (..))
+import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -124,7 +124,7 @@ instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraint bui
   subst (Unify e1 e2) = Unify <$> subst e1 <*> subst e2
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraint builtin) where
-  subst (Has m e) = Has m <$> subst e
+  subst (Has m r e) = Has m r <$> subst e
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Constraint builtin) where
   subst = \case

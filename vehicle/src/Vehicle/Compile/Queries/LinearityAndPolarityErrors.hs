@@ -20,7 +20,6 @@ import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedProg)
 import Vehicle.Verify.Core (QueryFormatID)
 
@@ -97,7 +96,7 @@ resolveInstanceArguments prog =
   where
     builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
     builtinUpdateFunction p1 p2 b args = case b of
-      CType (StandardTypeClassOp {}) -> do
+      TypeClassOp {} -> do
         (inst, remainingArgs) <- findInstanceArg b args
         return $ normAppList p1 inst remainingArgs
       _ -> return $ normAppList p1 (Builtin p2 b) args

@@ -9,11 +9,12 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.Map qualified as Map
 import Vehicle.Compile.Error (MonadCompile, lookupInDeclCtx, lookupIxInBoundCtx, lookupLvInBoundCtx)
-import Vehicle.Compile.Normalise.Builtin (Normalisable)
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, eval, runNormT)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..), typingBoundContextToEnv)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -26,7 +27,7 @@ type FullBoundCtx builtin = BoundCtx (Binder Ix builtin)
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (Normalisable builtin, MonadCompile m) => MonadContext builtin m where
+class (HasStandardData builtin, MonadCompile m) => MonadContext builtin m where
   addDeclToContext :: Decl Ix builtin -> m a -> m a
   addBinderToContext :: Binder Ix builtin -> m a -> m a
   getDeclCtx :: Proxy builtin -> m (FullDeclCtx builtin)
@@ -71,7 +72,7 @@ getBoundVarByLv _ compilerPass lv =
 
 normalise ::
   forall builtin m.
-  (MonadContext builtin m) =>
+  (MonadContext builtin m, PrintableBuiltin builtin) =>
   Expr Ix builtin ->
   m (Value builtin)
 normalise e = do
@@ -147,7 +148,7 @@ instance (MonadError e m) => MonadError e (ContextT builtin m) where
   throwError = lift . throwError
   catchError m f = ContextT (catchError (uncontextT m) (uncontextT . f))
 
-instance (Normalisable builtin, MonadCompile m) => MonadContext builtin (ContextT builtin m) where
+instance (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadContext builtin (ContextT builtin m) where
   addDeclToContext decl cont = do
     gluedDecl <- traverse (\e -> Glued e <$> normalise e) decl
     ContextT $ do

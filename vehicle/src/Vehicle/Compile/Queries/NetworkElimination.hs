@@ -32,10 +32,10 @@ import Vehicle.Compile.Queries.QuerySetStructure (UnreducedAssertion (..))
 import Vehicle.Compile.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), UserVariable (..), mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean (BooleanExpr (..), DisjunctAll (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 import Vehicle.Verify.Core

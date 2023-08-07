@@ -11,80 +11,37 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (unions)
-import Vehicle.Expr.Normalisable
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Builtin
 
 type EvalApp builtin m = Value builtin -> Spine builtin -> m (Value builtin)
 
 type ForceArg builtin m = VArg builtin -> m (VArg builtin, (Bool, MetaSet))
 
-class (PrintableBuiltin builtin) => Normalisable builtin where
-  evalBuiltin ::
-    (MonadCompile m, PrintableBuiltin builtin) =>
-    EvalApp builtin m ->
-    builtin ->
-    Spine builtin ->
-    m (Value builtin)
-
-  isValue ::
-    builtin ->
-    Bool
-
-  isTypeClassOp ::
-    builtin ->
-    Bool
-
-  forceBuiltin ::
-    (MonadCompile m, PrintableBuiltin builtin) =>
-    EvalApp builtin m ->
-    ForceArg builtin m ->
-    builtin ->
-    Spine builtin ->
-    m (Maybe (Value builtin), MetaSet)
-
-instance (Normalisable types) => Normalisable (NormalisableBuiltin types) where
-  evalBuiltin evalApp b args = case b of
-    CConstructor {} -> return $ VBuiltin b args
-    CType {} -> return $ VBuiltin b args
-    CFunction f -> do
-      let result = evalBuiltinFunction evalApp f (mapMaybe getExplicitArg args)
-      fromMaybe (return $ VBuiltin b args) result
-
-  isValue = \case
-    CConstructor {} -> True
-    CType {} -> True
-    CFunction {} -> False
-
-  isTypeClassOp b = case b of
-    CConstructor {} -> False
-    CFunction {} -> False
-    CType t -> isTypeClassOp t
-
-  forceBuiltin evalApp forceArg b spine = case b of
-    CConstructor {} -> return (Nothing, mempty)
-    CType {} -> return (Nothing, mempty)
-    CFunction {} -> do
-      (argResults, argData) <- unzip <$> traverse forceArg spine
-      let (argsReduced, argBlockingMetas) = unzip argData
-      let anyArgsReduced = or argsReduced
-      let blockingMetas = MetaSet.unions argBlockingMetas
-      result <-
-        if not anyArgsReduced
-          then return Nothing
-          else do
-            Just <$> evalBuiltin evalApp b argResults
-      return (result, blockingMetas)
+type NormalisableBuiltin builtin = HasStandardData builtin
 
 -----------------------------------------------------------------------------
 -- Indvidual builtins
 
+evalBuiltin ::
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  EvalApp builtin m ->
+  builtin ->
+  Spine builtin ->
+  m (Value builtin)
+evalBuiltin evalApp b args = case getBuiltinFunction b of
+  Just f -> do
+    let result = evalBuiltinFunction evalApp f (mapMaybe getExplicitArg args)
+    fromMaybe (return $ VBuiltin b args) result
+  Nothing -> return $ VBuiltin b args
+
 evalBuiltinFunction ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  EvalApp builtin m ->
   BuiltinFunction ->
-  [Value (NormalisableBuiltin types)] ->
-  Maybe (m (Value (NormalisableBuiltin types)))
+  [Value builtin] ->
+  Maybe (m (Value builtin))
 evalBuiltinFunction evalApp b args
   | isDerived b = evalImplies args
   | otherwise = case b of
@@ -112,7 +69,7 @@ evalBuiltinFunction evalApp b args
       FromNat dom -> return <$> evalFromNat dom args
       FromRat dom -> return <$> evalFromRat dom args
       Indices -> return <$> evalIndices args
-      Implies -> Just $ compilerDeveloperError $ "Found derived types" <+> pretty b
+      Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
       Sample {} -> Just $ compilerDeveloperError $ "Should not be evaluating" <+> pretty b
 
 isDerived :: BuiltinFunction -> Bool
@@ -120,260 +77,261 @@ isDerived = \case
   Implies {} -> True
   _ -> False
 
-type EvalBuiltin types m =
-  [Value (NormalisableBuiltin types)] ->
-  Maybe (m (Value (NormalisableBuiltin types)))
+type EvalBuiltin builtin m =
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  [Value builtin] ->
+  Maybe (m (Value builtin))
 
-type EvalSimpleBuiltin types =
-  [Value (NormalisableBuiltin types)] ->
-  Maybe (Value (NormalisableBuiltin types))
+type EvalSimpleBuiltin builtin =
+  (HasStandardData builtin) =>
+  [Value builtin] ->
+  Maybe (Value builtin)
 
-evalNot :: EvalSimpleBuiltin types
+evalNot :: EvalSimpleBuiltin builtin
 evalNot e = case e of
   [VBoolLiteral x] -> Just $ VBoolLiteral (not x)
   _ -> Nothing
 
-evalAnd :: EvalSimpleBuiltin types
+evalAnd :: EvalSimpleBuiltin builtin
 evalAnd = \case
   [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
   _ -> Nothing
 
-evalOr :: EvalSimpleBuiltin types
+evalOr :: EvalSimpleBuiltin builtin
 evalOr = \case
   [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x || y)
   _ -> Nothing
 
-evalNeg :: NegDomain -> EvalSimpleBuiltin types
+evalNeg :: NegDomain -> EvalSimpleBuiltin builtin
 evalNeg = \case
   NegInt -> evalNegInt
   NegRat -> evalNegRat
 
-evalNegInt :: EvalSimpleBuiltin types
+evalNegInt :: EvalSimpleBuiltin builtin
 evalNegInt = \case
   [VIntLiteral x] -> Just $ VIntLiteral (-x)
   _ -> Nothing
 
-evalNegRat :: EvalSimpleBuiltin types
+evalNegRat :: EvalSimpleBuiltin builtin
 evalNegRat = \case
   [VRatLiteral x] -> Just $ VRatLiteral (-x)
   _ -> Nothing
 
-evalAdd :: AddDomain -> EvalSimpleBuiltin types
+evalAdd :: AddDomain -> EvalSimpleBuiltin builtin
 evalAdd = \case
   AddNat -> evalAddNat
   AddInt -> evalAddInt
   AddRat -> evalAddRat
 
-evalAddNat :: EvalSimpleBuiltin types
+evalAddNat :: EvalSimpleBuiltin builtin
 evalAddNat = \case
   [VNatLiteral x, VNatLiteral y] -> Just $ VNatLiteral (x + y)
   _ -> Nothing
 
-evalAddInt :: EvalSimpleBuiltin types
+evalAddInt :: EvalSimpleBuiltin builtin
 evalAddInt = \case
   [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x + y)
   _ -> Nothing
 
-evalAddRat :: EvalSimpleBuiltin types
+evalAddRat :: EvalSimpleBuiltin builtin
 evalAddRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x + y)
   _ -> Nothing
 
-evalSub :: SubDomain -> EvalSimpleBuiltin types
+evalSub :: SubDomain -> EvalSimpleBuiltin builtin
 evalSub = \case
   SubInt -> evalSubInt
   SubRat -> evalSubRat
 
-evalSubInt :: EvalSimpleBuiltin types
+evalSubInt :: EvalSimpleBuiltin builtin
 evalSubInt = \case
   [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x - y)
   _ -> Nothing
 
-evalSubRat :: EvalSimpleBuiltin types
+evalSubRat :: EvalSimpleBuiltin builtin
 evalSubRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x - y)
   _ -> Nothing
 
-evalMul :: MulDomain -> EvalSimpleBuiltin types
+evalMul :: MulDomain -> EvalSimpleBuiltin builtin
 evalMul = \case
   MulNat -> evalMulNat
   MulInt -> evalMulInt
   MulRat -> evalMulRat
 
-evalMulNat :: EvalSimpleBuiltin types
+evalMulNat :: EvalSimpleBuiltin builtin
 evalMulNat = \case
   [VNatLiteral x, VNatLiteral y] -> Just $ VNatLiteral (x * y)
   _ -> Nothing
 
-evalMulInt :: EvalSimpleBuiltin types
+evalMulInt :: EvalSimpleBuiltin builtin
 evalMulInt = \case
   [VIntLiteral x, VIntLiteral y] -> Just $ VIntLiteral (x * y)
   _ -> Nothing
 
-evalMulRat :: EvalSimpleBuiltin types
+evalMulRat :: EvalSimpleBuiltin builtin
 evalMulRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x * y)
   _ -> Nothing
 
-evalDiv :: DivDomain -> EvalSimpleBuiltin types
+evalDiv :: DivDomain -> EvalSimpleBuiltin builtin
 evalDiv = \case
   DivRat -> evalDivRat
 
-evalDivRat :: EvalSimpleBuiltin types
+evalDivRat :: EvalSimpleBuiltin builtin
 evalDivRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (x / y)
   _ -> Nothing
 
-evalPowRat :: EvalSimpleBuiltin types
+evalPowRat :: EvalSimpleBuiltin builtin
 evalPowRat = \case
   [VRatLiteral x, VIntLiteral y] -> Just $ VRatLiteral (x ^^ y)
   _ -> Nothing
 
-evalMinRat :: EvalSimpleBuiltin types
+evalMinRat :: EvalSimpleBuiltin builtin
 evalMinRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (min x y)
   _ -> Nothing
 
-evalMaxRat :: EvalSimpleBuiltin types
+evalMaxRat :: EvalSimpleBuiltin builtin
 evalMaxRat = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VRatLiteral (max x y)
   _ -> Nothing
 
-evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin types
+evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin builtin
 evalOrder = \case
   OrderIndex -> evalOrderIndex
   OrderNat -> evalOrderNat
   OrderInt -> evalOrderInt
   OrderRat -> evalOrderRat
 
-evalOrderIndex :: OrderOp -> EvalSimpleBuiltin types
+evalOrderIndex :: OrderOp -> EvalSimpleBuiltin builtin
 evalOrderIndex op = \case
   [VIndexLiteral x, VIndexLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderNat :: OrderOp -> EvalSimpleBuiltin types
+evalOrderNat :: OrderOp -> EvalSimpleBuiltin builtin
 evalOrderNat op = \case
   [VNatLiteral x, VNatLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderInt :: OrderOp -> EvalSimpleBuiltin types
+evalOrderInt :: OrderOp -> EvalSimpleBuiltin builtin
 evalOrderInt op = \case
   [VIntLiteral x, VIntLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalOrderRat :: OrderOp -> EvalSimpleBuiltin types
+evalOrderRat :: OrderOp -> EvalSimpleBuiltin builtin
 evalOrderRat op = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VBoolLiteral (orderOp op x y)
   _ -> Nothing
 
-evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin types
+evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin builtin
 evalEquals = \case
   EqIndex -> evalEqualityIndex
   EqNat -> evalEqualityNat
   EqInt -> evalEqualityInt
   EqRat -> evalEqualityRat
 
-evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin types
+evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin builtin
 evalEqualityIndex op = \case
   [VIndexLiteral x, VIndexLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityNat :: EqualityOp -> EvalSimpleBuiltin types
+evalEqualityNat :: EqualityOp -> EvalSimpleBuiltin builtin
 evalEqualityNat op = \case
   [VNatLiteral x, VNatLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityInt :: EqualityOp -> EvalSimpleBuiltin types
+evalEqualityInt :: EqualityOp -> EvalSimpleBuiltin builtin
 evalEqualityInt op = \case
   [VIntLiteral x, VIntLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin types
+evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin builtin
 evalEqualityRat op = \case
   [VRatLiteral x, VRatLiteral y] -> Just $ VBoolLiteral (equalityOp op x y)
   _ -> Nothing
 
-evalFromNat :: FromNatDomain -> EvalSimpleBuiltin types
+evalFromNat :: FromNatDomain -> EvalSimpleBuiltin builtin
 evalFromNat = \case
   FromNatToIndex -> evalFromNatToIndex
   FromNatToNat -> evalFromNatToNat
   FromNatToInt -> evalFromNatToInt
   FromNatToRat -> evalFromNatToRat
 
-evalFromNatToIndex :: EvalSimpleBuiltin types
+evalFromNatToIndex :: EvalSimpleBuiltin builtin
 evalFromNatToIndex = \case
   [VNatLiteral x] -> Just $ VIndexLiteral x
   _ -> Nothing
 
-evalFromNatToNat :: EvalSimpleBuiltin types
+evalFromNatToNat :: EvalSimpleBuiltin builtin
 evalFromNatToNat = \case
   [x] -> Just x
   _ -> Nothing
 
-evalFromNatToInt :: EvalSimpleBuiltin types
+evalFromNatToInt :: EvalSimpleBuiltin builtin
 evalFromNatToInt = \case
   [VNatLiteral x] -> Just $ VIntLiteral x
   _ -> Nothing
 
-evalFromNatToRat :: EvalSimpleBuiltin types
+evalFromNatToRat :: EvalSimpleBuiltin builtin
 evalFromNatToRat = \case
   [VNatLiteral x] -> Just $ VRatLiteral (fromIntegral x)
   _ -> Nothing
 
-evalFromRat :: FromRatDomain -> EvalSimpleBuiltin types
+evalFromRat :: FromRatDomain -> EvalSimpleBuiltin builtin
 evalFromRat = \case
   FromRatToRat -> evalFromRatToRat
 
-evalFromRatToRat :: EvalSimpleBuiltin types
+evalFromRatToRat :: EvalSimpleBuiltin builtin
 evalFromRatToRat = \case
   [x] -> Just x
   _ -> Nothing
 
-evalIf :: EvalSimpleBuiltin types
+evalIf :: EvalSimpleBuiltin builtin
 evalIf = \case
   [VBoolLiteral True, e1, _e2] -> Just e1
   [VBoolLiteral False, _e1, e2] -> Just e2
   _ -> Nothing
 
-evalAt :: EvalSimpleBuiltin types
+evalAt :: EvalSimpleBuiltin builtin
 evalAt = \case
   [VVecLiteral xs, VIndexLiteral i] -> Just $ case xs !!? fromIntegral i of
     Nothing -> developerError $ "out of bounds error:" <+> pretty (length xs) <+> "<=" <+> pretty i
     Just xsi -> argExpr xsi
   _ -> Nothing
 
-evalConsVector :: EvalSimpleBuiltin types
+evalConsVector :: EvalSimpleBuiltin builtin
 evalConsVector = \case
   [x, VVecLiteral xs] -> Just $ mkVLVec (x : fmap argExpr xs)
   _ -> Nothing
 
 evalFold ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   FoldDomain ->
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalFold = \case
   FoldList -> evalFoldList
   FoldVector -> evalFoldVector
 
 evalFoldList ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalFoldList evalApp = \case
   [_f, e, VNil] ->
     Just $ return e
   [f, e, VCons [x, xs]] ->
     Just $ do
-      let defaultFold = return $ VBuiltinFunction (Fold FoldList) [RelevantExplicitArg mempty f, RelevantExplicitArg mempty e, xs]
+      let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [RelevantExplicitArg mempty f, RelevantExplicitArg mempty e, xs]
       r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
       evalApp f [x, RelevantExplicitArg mempty r]
   _ -> Nothing
 
 evalFoldVector ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalFoldVector evalApp = \case
   [f, e, VVecLiteral xs] ->
     Just $ foldrM f' e xs
@@ -387,9 +345,9 @@ evalFoldVector evalApp = \case
   _ -> Nothing
 
 evalZipWith ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalZipWith evalApp = \case
   [f, VVecLiteral xs, VVecLiteral ys] ->
     Just $ mkVLVec <$> zipWithM f' xs ys
@@ -403,24 +361,24 @@ evalZipWith evalApp = \case
   _ -> Nothing
 
 evalMapList ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalMapList evalApp = \case
   [_f, e@VNil] ->
     Just $ return e
   [f, VCons [x, xs]] -> Just $ do
     fx <- evalApp f [x]
     fxs <- case evalMapList evalApp [argExpr xs] of
-      Nothing -> return $ VBuiltinFunction MapList [RelevantExplicitArg mempty f, xs]
+      Nothing -> return $ VBuiltin (mkBuiltinFunction MapList) [RelevantExplicitArg mempty f, xs]
       Just fxs -> fxs
-    return $ VBuiltin (CConstructor Cons) (RelevantExplicitArg mempty <$> [fx, fxs])
+    return $ VBuiltin (mkBuiltinConstructor Cons) (RelevantExplicitArg mempty <$> [fx, fxs])
   _ -> Nothing
 
 evalMapVector ::
-  (MonadCompile m, PrintableBuiltin (NormalisableBuiltin types)) =>
-  EvalApp (NormalisableBuiltin types) m ->
-  EvalBuiltin types m
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  EvalApp builtin m ->
+  EvalBuiltin builtin m
 evalMapVector evalApp = \case
   [f, VVecLiteral xs] ->
     Just $ mkVLVec <$> traverse f' xs
@@ -428,7 +386,7 @@ evalMapVector evalApp = \case
       f' x = evalApp f [x]
   _ -> Nothing
 
-evalIndices :: EvalSimpleBuiltin types
+evalIndices :: EvalSimpleBuiltin builtin
 evalIndices = \case
   [VNatLiteral n] -> Just $ mkVLVec (fmap VIndexLiteral [0 .. n - 1])
   _ -> Nothing
@@ -436,18 +394,20 @@ evalIndices = \case
 -----------------------------------------------------------------------------
 -- Derived
 
-type EvalDerived types m =
-  [Value (NormalisableBuiltin types)] ->
-  Maybe (m (Value (NormalisableBuiltin types)))
+type EvalDerived builtin m =
+  ( MonadCompile m,
+    HasStandardData builtin
+  ) =>
+  [Value builtin] ->
+  Maybe (m (Value builtin))
 
--- TODO define in terms of language
-
-evalImplies :: (MonadCompile m) => EvalDerived types m
+-- TODO define in terms of language. The problem is the polarity checking...
+evalImplies :: EvalDerived builtin m
 evalImplies = \case
   [e1, e2] -> Just $ do
-    let defaultNot = VBuiltinFunction Not [RelevantExplicitArg mempty e1]
+    let defaultNot = VBuiltin (mkBuiltinFunction Not) [RelevantExplicitArg mempty e1]
     let ne1 = fromMaybe defaultNot (evalNot [e1])
-    let defaultOr = VBuiltinFunction Or [RelevantExplicitArg mempty ne1, RelevantExplicitArg mempty e2]
+    let defaultOr = VBuiltin (mkBuiltinFunction Or) [RelevantExplicitArg mempty ne1, RelevantExplicitArg mempty e2]
     let maybeRes = evalOr [ne1, e2]
     return $ fromMaybe defaultOr maybeRes
   _ -> Nothing

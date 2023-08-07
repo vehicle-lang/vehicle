@@ -1,5 +1,5 @@
 -- | This module exports the datatype representations of the core builtin symbols.
-module Vehicle.Syntax.AST.Builtin.Core
+module Vehicle.Syntax.Builtin.Core
   ( Quantifier (..),
     EqualityOp (..),
     equalityOp,

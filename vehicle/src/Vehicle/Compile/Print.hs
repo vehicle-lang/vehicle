@@ -34,7 +34,6 @@ import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Print
 
@@ -280,20 +279,8 @@ class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
     builtin ->
     Expr var Builtin
 
-instance (PrintableBuiltin types) => PrintableBuiltin (NormalisableBuiltin types) where
-  convertBuiltin p b = case b of
-    CConstructor t -> Builtin p (Constructor t)
-    CFunction t -> Builtin p (BuiltinFunction t)
-    CType t -> convertBuiltin p t
-
 instance PrintableBuiltin Builtin where
   convertBuiltin = Builtin
-
-instance PrintableBuiltin StandardBuiltinType where
-  convertBuiltin p b = Builtin p $ case b of
-    StandardBuiltinType t -> BuiltinType t
-    StandardTypeClass t -> TypeClass t
-    StandardTypeClassOp t -> TypeClassOp t
 
 --------------------------------------------------------------------------------
 -- Converting builtins
@@ -540,7 +527,7 @@ instance
   (PrettyUsing rest (Value builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Has m expr) ctx) = do
+  prettyUsing (WithContext (Has m _ expr) ctx) = do
     let expr' = prettyUsing @rest (expr :: Value builtin)
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
@@ -557,7 +544,7 @@ instance
   (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Has m expr) ctx) = do
+  prettyUsing (WithContext (Has m _ expr) ctx) = do
     let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
