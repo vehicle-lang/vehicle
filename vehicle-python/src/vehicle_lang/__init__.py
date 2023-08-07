@@ -8,11 +8,12 @@ from .error import VehicleInternalError as VehicleInternalError
 from .error import VehiclePropertyNotFound as VehiclePropertyNotFound
 from .error import VehicleSessionClosed as VehicleSessionClosed
 from .error import VehicleSessionUsed as VehicleSessionUsed
-from .typing import AnySamplers as AnySamplers
+from .typing import AnyOptimiser as AnyOptimiser
+from .typing import AnyOptimisers as AnyOptimisers
 from .typing import DeclarationName as DeclarationName
 from .typing import DifferentiableLogic as DifferentiableLogic
+from .typing import Optimiser as Optimiser
 from .typing import QuantifiedVariableName as QuantifiedVariableName
-from .typing import Sampler as Sampler
 from .typing import Verifier as Verifier
 from .verify import verify as verify
 
@@ -32,8 +33,9 @@ __all__: List[str] = [
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",
-    "Sampler",
-    "AnySamplers",
+    "Optimiser",
+    "AnyOptimiser",
+    "AnyOptimisers",
     "DifferentiableLogic",
     "Verifier",
 ]

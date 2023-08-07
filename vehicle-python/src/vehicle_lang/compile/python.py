@@ -17,7 +17,7 @@ from typing import (
 from typing_extensions import Self, final, override
 
 from .. import ast as vcl
-from ..typing import AnySamplers
+from ..typing import AnyOptimisers, Optimiser
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
@@ -66,8 +66,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return cls(builtins=builtins)
 
     @classmethod
-    def from_samplers(cls: Type[Self], samplers: AnySamplers) -> Self:
-        return cls.from_builtins(builtins=PythonBuiltins(samplers=samplers))
+    def from_optimisers(cls: Type[Self], optimisers: AnyOptimisers) -> Self:
+        return cls.from_builtins(builtins=PythonBuiltins(optimisers=optimisers))
 
     def compile(
         self,
@@ -320,6 +320,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     )
                 )
             elif isinstance(expression.builtin, vcl.Optimise):
+                # NOTE: Optimise returns a partial application, because
+                #       joiner and predicate are passed as arguments.
                 arguments.append(
                     py.Str(
                         s=expression.builtin.name,
@@ -327,8 +329,24 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     )
                 )
                 arguments.append(
-                    py.Constant(
+                    py.NameConstant(
                         value=expression.builtin.minimise,
+                        **asdict(expression.provenance),
+                    )
+                )
+                arguments.append(
+                    py.Dict(
+                        keys=[
+                            py.Str(
+                                s=name,
+                                **asdict(expression.provenance),
+                            )
+                            for name in expression.builtin.context
+                        ],
+                        values=[
+                            py_name(name, provenance=expression.provenance)
+                            for name in expression.builtin.context
+                        ],
                         **asdict(expression.provenance),
                     )
                 )

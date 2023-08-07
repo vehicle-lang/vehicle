@@ -1,6 +1,6 @@
 import random
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import Any, Callable, Dict
 
 import vehicle_lang as vcl
 
@@ -25,14 +25,19 @@ def test_lossdl2_exec_tf_bounded() -> None:
         specification_filename = "test_bounded.vcl"
         specification_path = Path(__file__).parent / "data" / specification_filename
 
-        def sampler_for_x(_context: Dict[str, Any]) -> Iterator[float]:
-            for _ in range(0, 10):
-                yield random.uniform(0.0, 1.0)
+        def optimiser_for_x(
+            _minimise: bool,
+            _context: Dict[str, Any],
+            _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
+            _predicate: Callable[[Any], tf.Tensor],
+        ) -> tf.Tensor:
+            return tf.random.uniform(shape=(1,))
 
         bounded_loss = vcl.load_loss_function(
             specification_path,
             property_name="bounded",
             target=vcl.DifferentiableLogic.DL2,
+            optimisers={"x": optimiser_for_x},
         )
 
         # Prepare training data
@@ -113,4 +118,4 @@ def test_lossdl2_exec_tf_bounded() -> None:
     except ModuleNotFoundError:
         from logging import warning
 
-        warning("test_loss_function_tensorflow requires tensorflow")
+        warning("test_lossdl2_exec_tf_bounded requires tensorflow")

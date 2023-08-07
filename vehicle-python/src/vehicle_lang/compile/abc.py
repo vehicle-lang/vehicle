@@ -8,7 +8,7 @@ from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
 from ..error import VehicleBuiltinUnsupported
-from ..typing import Sampler
+from ..typing import Optimiser
 from ._collections import SupportsList, SupportsVector
 
 ################################################################################
@@ -35,7 +35,7 @@ class Builtins(
     ],
     metaclass=ABCMeta,
 ):
-    samplers: Dict[str, Sampler[Any]] = field(default_factory=dict)
+    optimisers: Dict[str, Optimiser[Any, _Rat]] = field(default_factory=dict)
 
     @abstractmethod
     def AddInt(self, x: _Int, y: _Int) -> _Int:
@@ -264,13 +264,18 @@ class Builtins(
         self,
         name: str,
         minimise: bool,
-        # predicate: Callable[[_T], _Bool],
-        body: Dict[str, Any],
-    ) -> SupportsList[_T]:
-        if name in self.samplers:
-            return tuple(self.samplers[name](minimise, body))
+        context: Dict[str, Any],
+    ) -> Callable[[Callable[[_Rat, _Rat], _Rat], Callable[[Any], _Rat]], _Rat]:
+        if name in self.optimisers:
+
+            def __Optimise(
+                joiner: Callable[[_Rat, _Rat], _Rat], predicate: Callable[[Any], _Rat]
+            ) -> _Rat:
+                return self.optimisers[name](minimise, context, joiner, predicate)
+
+            return __Optimise
         else:
-            raise TypeError(f"Could not find sampler for '{name}'.")
+            raise TypeError(f"Could not find optimiser for '{name}'.")
 
     @abstractmethod
     def SubInt(self, x: _Int, y: _Int) -> _Int:

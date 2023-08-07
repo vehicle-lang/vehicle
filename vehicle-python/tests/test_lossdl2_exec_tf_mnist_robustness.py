@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Any, Dict, Iterator, Tuple, cast
+from typing import Any, Callable, Dict, Tuple, cast
+
+from typing_extensions import TypeAlias
 
 import vehicle_lang as vcl
-from typing_extensions import TypeAlias
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -62,24 +63,37 @@ ZEROES_28X28: Image = (
 
 
 def test_lossdl2_exec_tf_mnist_robustness() -> None:
-    def sampler_for_pertubation(context: Dict[str, Any]) -> Iterator[Perturbation]:
-        yield ZEROES_28X28
+    try:
+        import tensorflow as tf
 
-    def classifier(image: Image) -> LabelDistribution:
-        return one_hot(0)
+        def optimiser_for_pertubation(
+            _minimise: bool,
+            _context: Dict[str, Any],
+            _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
+            _predicate: Callable[[Any], tf.Tensor],
+        ) -> tf.Tensor:
+            return tf.random.uniform(shape=(1,))
 
-    robust_loss = vcl.load_loss_function(
-        MNIST_ROBUSTNESS,
-        property_name="robust",
-        target=vcl.DifferentiableLogic.DL2,
-        samplers={"pertubation": sampler_for_pertubation},
-    )
+        def classifier(image: Image) -> LabelDistribution:
+            return one_hot(0)
 
-    loss = robust_loss(
-        n=1,
-        classifier=classifier,
-        epsilon=0.001,
-        trainingImages=(ZEROES_28X28,),
-        trainingLabels=(0,),
-    )
-    print(loss)
+        robust_loss = vcl.load_loss_function(
+            MNIST_ROBUSTNESS,
+            property_name="robust",
+            target=vcl.DifferentiableLogic.DL2,
+            optimisers={"pertubation": optimiser_for_pertubation},
+        )
+
+        loss = robust_loss(
+            n=1,
+            classifier=classifier,
+            epsilon=0.001,
+            trainingImages=(ZEROES_28X28,),
+            trainingLabels=(0,),
+        )
+        print(loss)
+
+    except ModuleNotFoundError:
+        from logging import warning
+
+        warning("test_lossdl2_exec_tf_mnist_robustness requires tensorflow")
