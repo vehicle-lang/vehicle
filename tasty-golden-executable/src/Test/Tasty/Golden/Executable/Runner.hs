@@ -14,9 +14,9 @@ import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
-import Data.Foldable (for_)
+import Data.Foldable (Foldable (..), for_)
 import Data.Functor ((<&>))
-import Data.List (intercalate)
+import Data.List qualified as List (intercalate, partition)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
@@ -43,7 +43,7 @@ import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..))
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
-import Test.Tasty.Golden.Executable.TestSpecs (readTestSpecsFile, testSpecsFileName)
+import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName)
 import Test.Tasty.Options (OptionDescription (..), OptionSet, lookupOption)
 import Test.Tasty.Providers (IsTest (..), Result, testFailed, testPassed)
 import Test.Tasty.Runners (Progress, Result (..))
@@ -134,7 +134,7 @@ handleNeededFilesError :: NeededFilesError -> IO Result
 handleNeededFilesError NeededFilesError {..} = do
   let message =
         printf "Could not find needed files: %s" $
-          intercalate ", " (show <$> neededFilesNotFound)
+          List.intercalate ", " (show <$> neededFilesNotFound)
   return $ testFailed message
 
 -- | Raised when the golden file for a test is not found.
@@ -150,7 +150,7 @@ handleGoldenFilesError :: GoldenFilesError -> IO Result
 handleGoldenFilesError GoldenFilesError {..} = do
   let message =
         printf "Could not find golden files: %s" $
-          intercalate ", " (show <$> goldenFilesNotFound)
+          List.intercalate ", " (show <$> goldenFilesNotFound)
   return $ testFailed message
 
 -- | Raised when the test run does not produce an expected file or does not expect a produced file,
@@ -188,10 +188,10 @@ handleProducedFilesError ProducedFilesError {..} = do
         unlines . catMaybes $
           [ boolToMaybe (not $ null expectedFilesNotProduced) $
               printf "Did not produce expected files: %s" $
-                intercalate ", " (show <$> expectedFilesNotProduced),
+                List.intercalate ", " (show <$> expectedFilesNotProduced),
             boolToMaybe (not $ null expectedFilesNotProduced) $
               printf "Did not expect produced files: %s" $
-                intercalate ", " (show <$> producedFilesNotExpected),
+                List.intercalate ", " (show <$> producedFilesNotExpected),
             boolToMaybe (not $ null producedAndExpectedDiffs) $
               unlines . flip foldMap (Map.assocs producedAndExpectedDiffs) $ \(file, diff) ->
                 return $ printf "Expected and produced files differ for %s:\n%s" file (show diff)
@@ -374,7 +374,8 @@ acceptTestProduced :: [FilePattern] -> IgnoreFiles -> TestIO ()
 acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   TestEnvironment {..} <- testEnvironment
   -- Read the test.json file:
-  _testSpecs <- lift $ readTestSpecsFile (testDirectory </> testSpecsFileName)
+  TestSpecs testSpecs <- lift $ readTestSpecsFile (testDirectory </> testSpecsFileName)
+  let (_thisTestSpec, _otherTestSpecs) = List.partition ((== testName) . testSpecName) (toList testSpecs)
   -- Find the golden and actual files:
   _goldenFiles <- findTestProducesGolden testProduces
   _actualFiles <- findTestProducesActual testIgnores
