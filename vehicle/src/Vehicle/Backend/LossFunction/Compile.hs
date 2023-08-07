@@ -152,7 +152,7 @@ compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args
         NaryOr orFn -> return $ Just $ Left orFn
         BinaryOr orFn -> return $ Just $ Left orFn
       V.Implies -> return $ Just $ Left compileImplies
-      V.Quantifier q -> compileQuantifier logic q args
+      V.Quantifier q -> Just . Right <$> compileQuantifier logic q args
       V.If -> throwError $ UnsupportedIfOperation declProv p2
       -- TODO really not safe to throw away the type information here, but
       -- in the short term it might work.
@@ -169,12 +169,12 @@ compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args
       V.Order V.OrderRat V.Gt -> return $ Just $ Left compileGt
       V.Order _ V.Gt -> return $ Just $ Right $ castToBool logic originalExpr
       _ -> return Nothing
-    V.BuiltinType x -> return $ case x of
+    V.BuiltinType y -> return $ case y of
       V.Bool -> Just $ Left compileBool
       _ -> Nothing
     V.TypeClass {} -> return Nothing
     V.TypeClassOp tc -> case tc of
-      V.QuantifierTC q -> compileQuantifier logic q args
+      V.QuantifierTC q -> Just . Right <$> compileQuantifier logic q args
       V.EqualsTC V.Eq -> return $ Just $ Left compileEq
       V.EqualsTC V.Neq -> return $ Just $ Left compileNeq
       V.OrderTC V.Le -> return $ Just $ Left compileLe
@@ -229,15 +229,15 @@ compileQuantifier ::
   DifferentialLogicImplementation ->
   V.Quantifier ->
   [V.StandardArg] ->
-  m (Maybe (Either V.StandardDSLExpr V.StandardDSLExpr))
+  m V.StandardDSLExpr
 compileQuantifier logic q args = case reverse args of
-  V.ExplicitArg _ _ (V.Lam _ binder _) : _ -> do
+  V.ExplicitArg _ _ predicate@(V.Lam _ binder _) : _ -> do
     ctx <- ask
-    let typ = V.typeOf binder
     let names = fmap (fromMaybe "<no-name>" . nameOf) ctx
-    return $ Just $ Left $ case q of
-      V.Forall -> compileForall logic typ (V.getBinderName binder) names
-      V.Exists -> compileExists logic typ (V.getBinderName binder) names
+    let lpred = toDSL predicate
+    return $ case q of
+      V.Forall -> compileForall logic lpred (V.getBinderName binder) names
+      V.Exists -> compileExists logic lpred (V.getBinderName binder) names
   _ -> unexpectedExprError currentPass (pretty q <+> "@" <+> prettyVerbose args)
 
 --------------------------------------------------------------------------------

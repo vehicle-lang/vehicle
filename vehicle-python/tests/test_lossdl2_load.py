@@ -22,3 +22,7 @@ def test_interpret_load(dl2loss_specification_path: Path) -> None:
         specification_path,
         target=vcl.DifferentiableLogic.DL2,
     )
+
+
+if __name__ == "__main__":
+    pytest.main(["vehicle-python/tests/test_lossdl2_load.py"])

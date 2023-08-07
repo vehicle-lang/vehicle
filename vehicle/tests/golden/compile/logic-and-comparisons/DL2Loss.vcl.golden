@@ -1,30 +1,24 @@
-bigAnd__List : List Rat -> Rat;
-bigAnd__List _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
-bigAnd__lam_A__Vector_A : (\ A -> Vector A) Rat -> Rat;
-bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
-bigOr : List Rat -> Rat;
-bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
+bigAnd : (\ A -> Vector A) Rat -> Rat;
+bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
 @noinline;
 equalsVector__Rat__Rat : Vector Rat -> Vector Rat -> Rat;
-equalsVector__Rat__Rat xs ys = bigAnd__lam_A__Vector_A (zipWith (\ x -> \ y -> x != y) xs ys)
+equalsVector__Rat__Rat xs ys = bigAnd (zipWith (\ x -> \ y -> x != y) xs ys)
 
 @noinline;
 equalsVector__Rat__Rat : Vector Rat -> Vector Rat -> Rat;
-equalsVector__Rat__Rat xs ys = bigAnd__lam_A__Vector_A (zipWith (\ x -> \ y -> x == y) xs ys)
+equalsVector__Rat__Rat xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
 test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test1 f = bigOr (map (\ a -> max 0.0 (a - 0.0) * equalsVector__Rat__Rat (f [a + 2.0]) [0.0]) sample[a][])
+test1 f = Optimise[a][min] (*) (\ a -> max 0.0 (a - 0.0) * equalsVector__Rat__Rat (f [a + 2.0]) [0.0])
 
 @property;
 test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test2 g = bigOr (map (\ a -> bigOr (map (\ b -> max 0.0 (1.0 - a) + (max 0.0 (b - a) + equalsVector__Rat__Rat (g [a + b, a + 2.0 * b]) [0.0])) sample[b][a])) sample[a][])
+test2 g = Optimise[a][min] (*) (\ a -> Optimise[b][min][a] (*) (\ b -> max 0.0 (1.0 - a) + (max 0.0 (b - a) + equalsVector__Rat__Rat (g [a + b, a + 2.0 * b]) [0.0])))
 
 @property;
 test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-test3 g = bigAnd__List (map (\ a -> bigAnd__List (map (\ b -> max 0.0 (0.0 - a) * (max 0.0 (b - 0.0) + max 0.0 (0.0 - b)) + equalsVector__Rat__Rat (g [a, b]) [0.0]) sample[b][a])) sample[a][])
+test3 g = Optimise[a][min] (+) (\ a -> Optimise[b][min][a] (+) (\ b -> max 0.0 (0.0 - a) * (max 0.0 (b - 0.0) + max 0.0 (0.0 - b)) + equalsVector__Rat__Rat (g [a, b]) [0.0]))

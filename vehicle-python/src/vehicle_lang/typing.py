@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Iterator
 from typing_extensions import Protocol, TypeAlias, TypeVar
 
 _T = TypeVar("_T")
+_R = TypeVar("_R")
 
 
 DeclarationName: TypeAlias = str
@@ -16,10 +17,22 @@ QuantifiedVariableName: TypeAlias = str
 A name of a quantified variable in a Vehicle specification file.
 """
 
-# Sampler: TypeAlias = Callable[[Callable[[_T], _Bool], Dict[str, Any]], Iterator[_T]]
-Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[_T]]
+Optimiser: TypeAlias = Callable[
+    [bool, Dict[str, _T], Callable[[_R, _R], _R], Callable[[_T], _R]], _R
+]
+"""
+TODO: add description
+"""
 
-AnySamplers: TypeAlias = Dict[str, Sampler[Any]]
+AnyOptimiser: TypeAlias = Optimiser[Any, Any]
+"""
+An optimiser that promises to work for any type.
+"""
+
+AnyOptimisers: TypeAlias = Dict[str, AnyOptimiser]
+"""
+A mapping from quantified variable names to optimisers.
+"""
 
 
 class Target(Protocol):

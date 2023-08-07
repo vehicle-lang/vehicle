@@ -52,7 +52,7 @@ typeOfBuiltinFunction = \case
   ZipWithVector -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
-  b@Sample {} -> developerError $ "Should not be polarity typing" <+> pretty b
+  b@Optimise {} -> developerError $ "Should not be polarity typing" <+> pretty b
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

@@ -199,7 +199,7 @@ delabBuiltinFunction fun args = case fun of
   V.MinRat {} -> rawDelab
   V.MaxRat {} -> rawDelab
   V.PowRat -> rawDelab
-  V.Sample {} -> rawDelab
+  V.Optimise {} -> rawDelab
   where
     rawDelab = delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 
@@ -285,7 +285,9 @@ delabOp3 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
 delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabInfixOp2 op tk args@[arg1, arg2]
   | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
-delabInfixOp2 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
+delabInfixOp2 op tk args
+  | null args = delabApp (cheatDelab $ "(" <> tkSymbol tk <> ")") []
+  | otherwise = delabApp (cheatDelab $ tkSymbol tk) args
 
 delabPartialSection :: Int -> [B.Expr] -> ([B.Expr] -> B.Expr) -> B.Expr
 delabPartialSection expectedArgs actualArgs mkOp = do

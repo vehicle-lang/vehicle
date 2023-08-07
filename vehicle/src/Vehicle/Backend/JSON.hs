@@ -134,7 +134,7 @@ data JBuiltin
   | RatType
   | ListType
   | VectorType
-  | Sample Name [Name]
+  | Optimise Name Bool [Name]
   deriving (Show, Eq, Generic)
 
 instance Hashable JBuiltin
@@ -212,7 +212,7 @@ instance PrintableBuiltin JBuiltin where
     RatType -> V.Builtin p (V.BuiltinType V.Rat)
     ListType -> V.Builtin p (V.BuiltinType V.List)
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
-    Sample n _ctx -> V.FreeVar p $ V.Identifier V.StdLib ("Sample[" <> n <> "]")
+    Optimise d n ctx -> V.Builtin p (V.BuiltinFunction $ V.Optimise d n ctx)
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins
@@ -302,7 +302,7 @@ instance ToJBuiltin V.BuiltinFunction where
     V.MapList -> return MapList
     V.MapVector -> return MapVector
     V.Indices -> return Indices
-    V.Sample n ctx -> return $ Sample n ctx
+    V.Optimise n b ctx -> return $ Optimise n b ctx
     V.ZipWithVector -> return ZipWithVector
 
 instance ToJBuiltin V.BuiltinType where
