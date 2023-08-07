@@ -116,7 +116,9 @@ pattern VBuiltinType c args <- VBuiltin (getBuiltinType -> Just c) args
     VBuiltinType c args = VBuiltin (mkBuiltinType c) args
 
 pattern VBoolType :: (HasStandardTypes builtin) => VType builtin
-pattern VBoolType = VBuiltinType Bool []
+pattern VBoolType <- VBuiltinType Bool []
+  where
+    VBoolType = VBuiltinType Bool []
 
 pattern VIndexType :: (HasStandardTypes builtin) => VType builtin -> VType builtin
 pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
@@ -124,16 +126,24 @@ pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
     VIndexType size = VBuiltinType Index [IrrelevantExplicitArg mempty size]
 
 pattern VNatType :: (HasStandardTypes builtin) => VType builtin
-pattern VNatType = VBuiltinType Nat []
+pattern VNatType <- VBuiltinType Nat []
+  where
+    VNatType = VBuiltinType Nat []
 
 pattern VIntType :: (HasStandardTypes builtin) => VType builtin
-pattern VIntType = VBuiltinType Int []
+pattern VIntType <- VBuiltinType Int []
+  where
+    VIntType = VBuiltinType Int []
 
 pattern VRatType :: (HasStandardTypes builtin) => VType builtin
-pattern VRatType = VBuiltinType Rat []
+pattern VRatType <- VBuiltinType Rat []
+  where
+    VRatType = VBuiltinType Rat []
 
 pattern VRawListType :: (HasStandardTypes builtin) => VType builtin
-pattern VRawListType = VBuiltinType List []
+pattern VRawListType <- VBuiltinType List []
+  where
+    VRawListType = VBuiltinType List []
 
 pattern VListType :: (HasStandardTypes builtin) => VType builtin -> VType builtin
 pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]

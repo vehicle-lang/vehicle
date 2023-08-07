@@ -19,8 +19,6 @@ import Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
 import Vehicle.Compile.Type.Subsystem.Polarity.Type
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
-import Vehicle.Prelude
-import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 
