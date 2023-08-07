@@ -21,6 +21,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Libraries
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 standardLibraryContentBS :: ByteString
 standardLibraryContentBS = $(makeRelativeToProject "lib/std.vcl" >>= embedFile)

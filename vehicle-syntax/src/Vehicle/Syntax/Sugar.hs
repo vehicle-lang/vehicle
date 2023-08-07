@@ -14,6 +14,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 -- This module deals with all the unfolding and folding of syntactic
 -- sugar in the external language. The unfolding is designed so that it should

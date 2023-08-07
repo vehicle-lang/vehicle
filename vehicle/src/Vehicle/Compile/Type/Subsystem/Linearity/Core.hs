@@ -1,31 +1,17 @@
-module Vehicle.Compile.Type.Subsystem.Linearity.Core
-  ( module Vehicle.Compile.Type.Subsystem.Linearity.Core,
-  )
-where
+module Vehicle.Compile.Type.Subsystem.Linearity.Core where
 
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))
+import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Vehicle.Compile.Type.Core
-import Vehicle.Expr.Normalisable
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.AST
-
---------------------------------------------------------------------------------
--- Linearity type
-
-data LinearityType
-  = LinearityTypeClass LinearityTypeClass
-  | Linearity Linearity
-  deriving (Show, Eq)
-
-instance Pretty LinearityType where
-  pretty = \case
-    LinearityTypeClass tc -> pretty tc
-    Linearity l -> pretty l
+import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 
 --------------------------------------------------------------------------------
 -- LinearityProvenance
@@ -94,20 +80,20 @@ mapLinearityProvenance f = \case
 --------------------------------------------------------------------------------
 -- Linearity constraints
 
-data LinearityTypeClass
+data LinearityRelation
   = MaxLinearity
   | MulLinearity
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
   deriving (Eq, Generic, Show)
 
-instance Serialize LinearityTypeClass
+instance Serialize LinearityRelation
 
-instance NFData LinearityTypeClass
+instance NFData LinearityRelation
 
-instance Hashable LinearityTypeClass
+instance Hashable LinearityRelation
 
-instance Pretty LinearityTypeClass where
+instance Pretty LinearityRelation where
   pretty = \case
     MaxLinearity -> "MaxLinearity"
     MulLinearity -> "MulLinearity"
@@ -115,41 +101,79 @@ instance Pretty LinearityTypeClass where
     FunctionLinearity p -> "FunctionLinearity" <> pretty p
 
 -----------------------------------------------------------------------------
--- Type synonyms
+-- Full builtin
 
-type LinearityBuiltin = NormalisableBuiltin LinearityType
+data LinearityBuiltin
+  = BuiltinConstructor BuiltinConstructor
+  | BuiltinFunction BuiltinFunction
+  | Linearity Linearity
+  | LinearityRelation LinearityRelation
+  deriving (Show, Eq)
 
--- Value
-type LinearityNormExpr = Value LinearityBuiltin
+instance Pretty LinearityBuiltin where
+  pretty = \case
+    BuiltinConstructor c -> pretty c
+    BuiltinFunction f -> pretty f
+    Linearity l -> pretty l
+    LinearityRelation tc -> pretty tc
 
-type LinearityNormBinder = VBinder LinearityBuiltin
+instance HasStandardData LinearityBuiltin where
+  mkBuiltinFunction = BuiltinFunction
+  getBuiltinFunction = \case
+    BuiltinFunction c -> Just c
+    _ -> Nothing
 
-type LinearityNormArg = VArg LinearityBuiltin
+  mkBuiltinConstructor = BuiltinConstructor
+  getBuiltinConstructor = \case
+    BuiltinConstructor c -> Just c
+    _ -> Nothing
 
-type LinearityNormType = VType LinearityBuiltin
-
-type LinearitySpine = Spine LinearityBuiltin
-
-type LinearityEnv = Env LinearityBuiltin
-
--- Constraint
-type LinearityConstraintProgress = ConstraintProgress LinearityBuiltin
-
-type LinearityTypeClassConstraint = InstanceConstraint LinearityBuiltin
-
-type LinearityUnificationConstraint = UnificationConstraint LinearityBuiltin
-
-type LinearityConstraintContext = ConstraintContext LinearityBuiltin
-
-type LinearityConstraint = Constraint LinearityBuiltin
+  isTypeClassOp = const False
 
 -----------------------------------------------------------------------------
 -- Patterns
 
 pattern LinearityExpr :: Provenance -> Linearity -> Expr var LinearityBuiltin
-pattern LinearityExpr p lin = Builtin p (CType (Linearity lin))
+pattern LinearityExpr p lin = Builtin p (Linearity lin)
 
-pattern VLinearityExpr :: Linearity -> LinearityNormExpr
-pattern VLinearityExpr l <- VBuiltin (CType (Linearity l)) []
+pattern VLinearityExpr :: Linearity -> Value LinearityBuiltin
+pattern VLinearityExpr l <- VBuiltin (Linearity l) []
   where
-    VLinearityExpr l = VBuiltin (CType $ Linearity l) []
+    VLinearityExpr l = VBuiltin (Linearity l) []
+
+--------------------------------------------------------------------------------
+-- DSL
+
+type LinearityDSLExpr = DSLExpr LinearityBuiltin
+
+forAllLinearities :: (LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
+forAllLinearities f = forAll "l" tLin $ \l -> f l
+
+forAllLinearityTriples :: (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
+forAllLinearityTriples f =
+  forAll "l1" tLin $ \l1 ->
+    forAll "l2" tLin $ \l2 ->
+      forAll "l3" tLin $ \l3 -> f l1 l2 l3
+
+constant :: LinearityDSLExpr
+constant = builtin (Linearity Constant)
+
+linearityRelation :: LinearityRelation -> NonEmpty LinearityDSLExpr -> LinearityDSLExpr
+linearityRelation tc args = builtin (LinearityRelation tc) @@ args
+
+maxLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+maxLinearity l1 l2 l3 = linearityRelation MaxLinearity [l1, l2, l3]
+
+mulLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+mulLinearity l1 l2 l3 = linearityRelation MulLinearity [l1, l2, l3]
+
+quantLinearity :: Quantifier -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+quantLinearity q l1 l2 = linearityRelation (QuantifierLinearity q) [l1, l2]
+
+linear :: LinearityDSLExpr
+linear = DSL $ \p _ -> Builtin p (Linearity (Linear $ prov p ""))
+  where
+    prov = QuantifiedVariableProvenance
+
+tLin :: LinearityDSLExpr
+tLin = type0

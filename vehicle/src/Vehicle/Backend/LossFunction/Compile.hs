@@ -14,12 +14,12 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude (BoundCtx, HasName (..), visibilityMatches)
 import Vehicle.Compile.Prelude qualified as V
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardBuiltinType (..))
 import Vehicle.Compile.Type.Subsystem.Standard qualified as V
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Compile.Type.Subsystem.Standard.Interface qualified as V
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns qualified as V
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn (Ix, substDBInto)
-import Vehicle.Expr.Normalisable qualified as V
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (argExpr)
@@ -135,11 +135,11 @@ compileBuiltin ::
 compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args = do
   let originalExpr = V.normAppList p1 (V.Builtin p2 op) args
   maybeLossOp <- case op of
-    V.CConstructor x -> return $ case x of
+    V.BuiltinConstructor x -> return $ case x of
       V.LBool True -> Just $ Left compileTrue
       V.LBool False -> Just $ Left compileFalse
       _ -> Nothing
-    V.CFunction x -> case x of
+    V.BuiltinFunction x -> case x of
       V.Not -> case compileNot of
         TryToEliminate ->
           compilerDeveloperError
@@ -169,20 +169,20 @@ compileBuiltin logic@DifferentialLogicImplementation {..} declProv p1 p2 op args
       V.Order V.OrderRat V.Gt -> return $ Just $ Left compileGt
       V.Order _ V.Gt -> return $ Just $ Right $ castToBool logic originalExpr
       _ -> return Nothing
-    V.CType x -> case x of
-      StandardBuiltinType y -> return $ case y of
-        V.Bool -> Just $ Left compileBool
-        _ -> Nothing
-      StandardTypeClass {} -> return Nothing
-      StandardTypeClassOp tc -> case tc of
-        V.QuantifierTC q -> compileQuantifier logic q args
-        V.EqualsTC V.Eq -> return $ Just $ Left compileEq
-        V.EqualsTC V.Neq -> return $ Just $ Left compileNeq
-        V.OrderTC V.Le -> return $ Just $ Left compileLe
-        V.OrderTC V.Lt -> return $ Just $ Left compileLt
-        V.OrderTC V.Ge -> return $ Just $ Left compileGe
-        V.OrderTC V.Gt -> return $ Just $ Left compileGt
-        _ -> return Nothing
+    V.BuiltinType x -> return $ case x of
+      V.Bool -> Just $ Left compileBool
+      _ -> Nothing
+    V.TypeClass {} -> return Nothing
+    V.TypeClassOp tc -> case tc of
+      V.QuantifierTC q -> compileQuantifier logic q args
+      V.EqualsTC V.Eq -> return $ Just $ Left compileEq
+      V.EqualsTC V.Neq -> return $ Just $ Left compileNeq
+      V.OrderTC V.Le -> return $ Just $ Left compileLe
+      V.OrderTC V.Lt -> return $ Just $ Left compileLt
+      V.OrderTC V.Ge -> return $ Just $ Left compileGe
+      V.OrderTC V.Gt -> return $ Just $ Left compileGt
+      _ -> return Nothing
+    V.NatInDomainConstraint -> return Nothing
 
   case maybeLossOp of
     Nothing -> return originalExpr
@@ -221,7 +221,7 @@ substArgsThrough p originalFun initialFun initialArgs = go initialFun initialArg
                   )
       _ -> return $ V.normAppList p fun args
 
-castToBool :: DifferentialLogicImplementation -> V.Expr Ix V.StandardBuiltin -> StandardDSLExpr
+castToBool :: DifferentialLogicImplementation -> V.Expr Ix V.StandardBuiltin -> V.StandardDSLExpr
 castToBool logic x = builtinFunction V.If @@ [toDSL x, compileTrue logic, compileFalse logic]
 
 compileQuantifier ::
@@ -229,7 +229,7 @@ compileQuantifier ::
   DifferentialLogicImplementation ->
   V.Quantifier ->
   [V.StandardArg] ->
-  m (Maybe (Either StandardDSLExpr StandardDSLExpr))
+  m (Maybe (Either V.StandardDSLExpr V.StandardDSLExpr))
 compileQuantifier logic q args = case reverse args of
   V.ExplicitArg _ _ (V.Lam _ binder _) : _ -> do
     ctx <- ask
@@ -254,13 +254,13 @@ reformatLogicalOperators logic = traverse (V.traverseBuiltinsM builtinUpdateFunc
     builtinUpdateFunction :: V.BuiltinUpdate m Ix V.StandardBuiltin V.StandardBuiltin
     builtinUpdateFunction p1 p2 b args = do
       maybeUpdatedExpr <- case b of
-        V.CFunction V.Not -> case compileNot logic of
+        V.BuiltinFunction V.Not -> case compileNot logic of
           TryToEliminate -> Just <$> lowerNot p2 (argExpr $ head args)
           UnaryNot {} -> return Nothing
-        V.CFunction V.And -> case compileAnd logic of
+        V.BuiltinFunction V.And -> case compileAnd logic of
           NaryAnd {} -> return $ Just (V.AndExpr p1 (flattenAnds (V.RelevantExplicitArg p1 (V.AndExpr p1 (NonEmpty.fromList args)))))
           BinaryAnd {} -> return Nothing
-        V.CFunction V.Or -> case compileOr logic of
+        V.BuiltinFunction V.Or -> case compileOr logic of
           NaryOr {} -> return $ Just (V.OrExpr p1 (flattenOrs (V.RelevantExplicitArg p1 (V.OrExpr p1 (NonEmpty.fromList args)))))
           BinaryOr {} -> return Nothing
         _ -> return Nothing

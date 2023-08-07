@@ -5,7 +5,6 @@ where
 
 import Vehicle.Syntax.AST.Arg as X
 import Vehicle.Syntax.AST.Binder as X
-import Vehicle.Syntax.AST.Builtin as X
 import Vehicle.Syntax.AST.Decl as X
 import Vehicle.Syntax.AST.Expr as X
 import Vehicle.Syntax.AST.Instances.NoThunks ()

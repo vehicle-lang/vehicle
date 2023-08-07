@@ -3,9 +3,7 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core where
 
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised (Value (..))
 
 --------------------------------------------------------------------------------
@@ -13,10 +11,5 @@ import Vehicle.Expr.Normalised (Value (..))
 
 getTypeClass :: (MonadCompile m) => StandardNormExpr -> m (TypeClass, StandardSpine)
 getTypeClass = \case
-  (VBuiltin (CType (StandardTypeClass tc)) args) -> return (tc, args)
+  VBuiltin (TypeClass tc) args -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."
-
-relevanceOfTypeClass :: (MonadCompile m) => StandardNormType -> m Relevance
-relevanceOfTypeClass t = do
-  (tc, _) <- getTypeClass t
-  return $ relevanceOf tc

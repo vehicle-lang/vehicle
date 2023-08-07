@@ -19,11 +19,11 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfTypeClassOp)
 import Vehicle.Expr.DSL (fromDSL)
 import Vehicle.Expr.DeBruijn (substDBInto)
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
@@ -422,7 +422,7 @@ instance MeaningfulError CompileError where
           }
       where
         (tcOp, tcOpArgs, tc, tcArgs) = case origin ctx of
-          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ (CType (StandardTypeClass tc')) tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
+          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ (TypeClass tc') tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
           _ -> developerError "Type class constraints should only have `CheckingTypeClass` origins"
 
         originExpr :: Doc a
@@ -1339,7 +1339,7 @@ prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
     | otherwise -> pretty b
     where
       isDesugared :: StandardBuiltin -> Bool
-      isDesugared (CType (StandardTypeClassOp op)) = case op of
+      isDesugared (TypeClassOp op) = case op of
         FromNatTC {} -> True
         FromRatTC {} -> True
         FromVecTC {} -> True

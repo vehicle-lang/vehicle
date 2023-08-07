@@ -64,14 +64,14 @@ mapTypeCheckerT f m = TypeCheckerT (mapReaderT (mapStateT f) (unTypeCheckerT m))
 --------------------------------------------------------------------------------
 -- Instances that TypeCheckerT satisfies
 
-instance (PrintableBuiltin builtin, Normalisable builtin, MonadCompile m) => MonadNorm builtin (TypeCheckerT builtin m) where
+instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadNorm builtin (TypeCheckerT builtin m) where
   getEvalOptions _ = TypeCheckerT $ return defaultEvalOptions
 
   getDeclSubstitution = TypeCheckerT $ asks typingDeclCtxToNormDeclCtx
 
   getMetaSubstitution = TypeCheckerT (gets currentSubstitution)
 
-instance (PrintableBuiltin builtin, Normalisable builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
+instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getDeclContext = TypeCheckerT ask
   addDeclContext d s = TypeCheckerT $ local (addToTypingDeclCtx d) (unTypeCheckerT s)
   getMetaState = TypeCheckerT get

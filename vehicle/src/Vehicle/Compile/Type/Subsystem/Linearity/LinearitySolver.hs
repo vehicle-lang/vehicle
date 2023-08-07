@@ -16,15 +16,16 @@ import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta)
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
-import Vehicle.Expr.Normalisable
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Builtin
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
-  WithContext LinearityTypeClassConstraint ->
+  WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ expr) <- substMetas constraint
+  normConstraint@(Has _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
   progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
@@ -41,11 +42,11 @@ type MonadLinearitySolver m =
 type LinearitySolver =
   forall m.
   (MonadLinearitySolver m) =>
-  WithContext LinearityTypeClassConstraint ->
-  [LinearityNormType] ->
-  m LinearityConstraintProgress
+  WithContext (InstanceConstraint LinearityBuiltin) ->
+  [VType LinearityBuiltin] ->
+  m (ConstraintProgress LinearityBuiltin)
 
-solve :: LinearityTypeClass -> LinearitySolver
+solve :: LinearityRelation -> LinearitySolver
 solve = \case
   MaxLinearity -> solveMaxLinearity
   MulLinearity -> solveMulLinearity
@@ -67,7 +68,7 @@ solveMaxLinearity :: LinearitySolver
 solveMaxLinearity c [lin1, lin2, res] =
   case (lin1, lin2) of
     (VLinearityExpr l1, VLinearityExpr l2) -> do
-      let linRes = VLinearityExpr $ maxLinearity l1 l2
+      let linRes = VLinearityExpr $ maxLinearityOp l1 l2
       resEq <- unify (contextOf c) res linRes
       return $ Progress [resEq]
     (_, VLinearityExpr Constant) -> do
@@ -87,7 +88,7 @@ solveMulLinearity c [lin1, lin2, res] =
     (VLinearityExpr l1, VLinearityExpr l2) -> do
       let ctx = contextOf c
       let p = originalProvenance ctx
-      let linRes = VLinearityExpr $ mulLinearity p l1 l2
+      let linRes = VLinearityExpr $ mulLinearityOp p l1 l2
       resEq <- unify ctx res linRes
       return $ Progress [resEq]
     (_, VLinearityExpr Constant) -> do
@@ -117,11 +118,11 @@ solveFunctionLinearity _ c _ = malformedConstraintError c
 --------------------------------------------------------------------------------
 -- Operations over linearities
 
-maxLinearity :: Linearity -> Linearity -> Linearity
-maxLinearity l1 l2 = if l1 >= l2 then l1 else l2
+maxLinearityOp :: Linearity -> Linearity -> Linearity
+maxLinearityOp l1 l2 = if l1 >= l2 then l1 else l2
 
-mulLinearity :: Provenance -> Linearity -> Linearity -> Linearity
-mulLinearity p l1 l2 = case (l1, l2) of
+mulLinearityOp :: Provenance -> Linearity -> Linearity -> Linearity
+mulLinearityOp p l1 l2 = case (l1, l2) of
   (Constant, _) -> l2
   (_, Constant) -> l1
   (Linear p1, Linear p2) -> NonLinear p p1 p2
@@ -136,15 +137,15 @@ handleConstraintProgress ::
   WithContext (InstanceConstraint LinearityBuiltin) ->
   ConstraintProgress LinearityBuiltin ->
   m ()
-handleConstraintProgress originalConstraint@(WithContext (Has m _) ctx) = \case
+handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \case
   Stuck metas -> do
     let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
-    solveMeta m (Builtin (provenanceOf ctx) (CConstructor LUnit)) (boundContext ctx)
+    solveMeta m (UnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => LinearityNormExpr -> m (LinearityTypeClass, LinearitySpine)
+getTypeClass :: (MonadCompile m) => Value LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
 getTypeClass = \case
-  (VBuiltin (CType (LinearityTypeClass tc)) args) -> return (tc, args)
+  (VBuiltin (LinearityRelation tc) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

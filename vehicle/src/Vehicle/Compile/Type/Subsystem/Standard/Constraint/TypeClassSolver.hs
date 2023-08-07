@@ -6,19 +6,19 @@ where
 import Control.Monad.Except (throwError)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (forceHead)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary
 
@@ -27,7 +27,7 @@ import Vehicle.Libraries.StandardLibrary
 
 solveTypeClassConstraint :: (MonadTypeClass m) => WithContext StandardInstanceConstraint -> m ()
 solveTypeClassConstraint constraint = do
-  normConstraint@(WithContext (Has m expr) ctx) <- substMetas constraint
+  normConstraint@(WithContext (Has m _ expr) ctx) <- substMetas constraint
   logDebug MaxDetail $ "Forced type-class:" <+> prettyFriendly normConstraint
 
   (tc, spine) <- getTypeClass expr
@@ -59,7 +59,6 @@ type TypeClassSolver =
 solve :: TypeClass -> TypeClassSolver
 solve tc = case tc of
   HasQuantifier q -> solveHasQuantifier q
-  NatInDomainConstraint -> solveInDomain
   _ -> \_ _ ->
     compilerDeveloperError $
       "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
@@ -125,8 +124,8 @@ solveVectorQuantifier q c domainBinder body = do
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType (normalised vecElem) domainBinder
-  let expr = VBuiltin (CType (StandardTypeClass (HasQuantifier q))) [RelevantExplicitArg mempty (VPi elemDomainBinder body)]
-  (metaExpr, recTC) <- createTC c expr
+  let expr = VBuiltin (TypeClass (HasQuantifier q)) [RelevantExplicitArg mempty (VPi elemDomainBinder body)]
+  (metaExpr, recTC) <- createTC c Relevant expr
 
   let solution =
         BuiltinFunctionExpr
@@ -138,30 +137,6 @@ solveVectorQuantifier q c domainBinder body = do
           ]
 
   return $ Right ([domainEq, recTC], solution)
-
---------------------------------------------------------------------------------
--- InDomain
-
-solveInDomain :: TypeClassSolver
-solveInDomain c [value, typ] = case typ of
-  (getNMeta -> Just {}) -> blockOnMetas [typ]
-  VNatType {} -> return $ Right ([], UnitLiteral p)
-  VIntType {} -> return $ Right ([], UnitLiteral p)
-  VRatType {} -> return $ Right ([], UnitLiteral p)
-  VIndexType size -> case size of
-    (getNMeta -> Just {}) -> blockOnMetas [size]
-    VNatLiteral m -> case value of
-      (getNMeta -> Just {}) -> blockOnMetas [value]
-      VNatLiteral n
-        | m > n -> return $ irrelevant []
-        | otherwise -> throwError $ FailedNatLitConstraintTooBig ctx n m
-      _ -> malformedConstraintError c
-    _ -> throwError $ FailedNatLitConstraintUnknown ctx value size
-  _ -> malformedConstraintError c
-  where
-    ctx = contextOf c
-    p = provenanceOf ctx
-solveInDomain c _ = malformedConstraintError c
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -193,9 +168,6 @@ freshDimMeta :: (MonadTypeClass m) => StandardConstraintContext -> m StandardGlu
 freshDimMeta c = do
   let p = provenanceOf c
   freshMetaExpr p (NatType p) (boundContext c)
-
-irrelevant :: [WithContext StandardConstraint] -> TypeClassProgress
-irrelevant newConstraints = Right (newConstraints, UnitLiteral mempty)
 
 blockOrThrowErrors ::
   (MonadTypeClass m) =>

@@ -53,7 +53,7 @@ parseAndTypeCheckExpr expr = do
   let imports = [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckExpr imports (convertToNormalisableBuiltins scopedExpr)
+  typedExpr <- typeCheckExpr imports scopedExpr
   return typedExpr
 
 parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
@@ -82,7 +82,7 @@ typeCheckProgram ::
 typeCheckProgram modul imports spec = do
   vehicleProg <- parseProgText modul spec
   scopedProg <- scopeCheck imports vehicleProg
-  typedProg <- typeCheckProg imports (fmap convertToNormalisableBuiltins scopedProg)
+  typedProg <- typeCheckProg imports scopedProg
   return typedProg
 
 -- | Parses and type-checks the program but does

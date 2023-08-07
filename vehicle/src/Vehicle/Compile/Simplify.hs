@@ -7,6 +7,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
+import Vehicle.Syntax.Builtin
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
 -- and therefore the resulting code is not guaranteed to be well-typed.
@@ -47,11 +48,11 @@ instance Simplify (Expr Name Builtin) where
 
   shortenVec = mapBuiltins $ \p1 p2 b args ->
     case b of
-      Constructor (LVec n)
+      BuiltinConstructor (LVec n)
         | length args > 5 ->
             normAppList
               p1
-              (Builtin p2 (Constructor (LVec n)))
+              (Builtin p2 (BuiltinConstructor (LVec n)))
               [ head args,
                 RelevantExplicitArg p2 (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
                 last args

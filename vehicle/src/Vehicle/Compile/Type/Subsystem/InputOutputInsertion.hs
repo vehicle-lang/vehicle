@@ -10,6 +10,7 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshTypeClassConstraint, freshMetaExpr)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
+import Vehicle.Syntax.Builtin
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -78,6 +79,6 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
           FunctionOutput {} -> [existingExpr, newExpr]
   let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs
 
-  _ <- createFreshTypeClassConstraint mempty (existingExpr, mempty) tcExpr
+  _ <- createFreshTypeClassConstraint mempty (existingExpr, mempty) Irrelevant tcExpr
 
   return newExpr

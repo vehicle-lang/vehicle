@@ -30,10 +30,10 @@ import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), dbLevelToIndex)
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
@@ -535,7 +535,7 @@ getUsedFunctionsBuiltin ::
   StandardBuiltin ->
   UsedFunctionsInfo
 getUsedFunctionsBuiltin = \case
-  CFunction f -> (HashSet.singleton f, mempty)
+  BuiltinFunction f -> (HashSet.singleton f, mempty)
   _ -> mempty
 
 getUsedFunctionsFreeVar ::

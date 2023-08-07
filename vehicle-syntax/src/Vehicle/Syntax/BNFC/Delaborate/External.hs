@@ -15,6 +15,7 @@ import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.BNFC.Utils
+import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Parse.Error
@@ -162,11 +163,12 @@ delabUniverse = \case
 
 delabBuiltin :: (MonadDelab m) => V.Builtin -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltin fun args = case fun of
-  V.Constructor c -> delabConstructor c args
   V.TypeClassOp tc -> delabTypeClassOp tc args
   V.TypeClass t -> delabTypeClass t args
   V.BuiltinFunction f -> delabBuiltinFunction f args
   V.BuiltinType t -> delabBuiltinType t args
+  V.BuiltinConstructor c -> delabConstructor c args
+  V.NatInDomainConstraint -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of

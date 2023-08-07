@@ -23,6 +23,8 @@ data TypingError builtin
   | FailedUnification (NonEmpty (WithContext (UnificationConstraint builtin)))
   | FailedInstanceSearch (ConstraintContext builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvableConstraints (NonEmpty (WithContext (Constraint builtin)))
+  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
 
 instance Pretty (TypingError builtin) where
   pretty = \case
@@ -31,6 +33,8 @@ instance Pretty (TypingError builtin) where
     FailedUnification {} -> "FailedUnification"
     FailedInstanceSearch {} -> "FailedInstanceSearch"
     UnsolvableConstraints {} -> "UnsolvableConstraints"
+    FailedIndexConstraintTooBig {} -> "FailedIndexConstraintTooBig"
+    FailedIndexConstraintUnknown {} -> "FailedIndexConstraintUnknown"
 
 --------------------------------------------------------------------------------
 -- Typing declaration context
@@ -194,7 +198,7 @@ type instance
 --------------------------------------------------------------------------------
 -- Instance constraints
 
-data InstanceConstraint builtin = Has MetaID (Value builtin)
+data InstanceConstraint builtin = Has MetaID Relevance (Value builtin)
   deriving (Show)
 
 type instance

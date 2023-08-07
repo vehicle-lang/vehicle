@@ -9,10 +9,12 @@ where
 
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardDSLExpr, StandardType)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DSL
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- Patterns for building logics

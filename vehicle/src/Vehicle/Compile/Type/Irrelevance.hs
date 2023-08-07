@@ -9,7 +9,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns (pattern UnitLiteral)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.

@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.10.0
+
+* Fixed bug in display of progress bar when verification counter-example found.
+
 ## Version 0.9.0
 
 * Removed the notion of a distinct notion of a "proof cache".
