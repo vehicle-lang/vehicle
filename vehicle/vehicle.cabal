@@ -141,6 +141,7 @@ library
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
     Vehicle.Compile.Type.Subsystem.Standard
+    Vehicle.Compile.Type.Subsystem.Standard.Interface
     Vehicle.Compile.Type.Subsystem.Standard.Patterns
     Vehicle.Export
     Vehicle.Expr.Boolean
@@ -216,7 +217,6 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
-    Vehicle.Compile.Type.Subsystem.Standard.Interface
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug
