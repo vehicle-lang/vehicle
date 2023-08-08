@@ -103,6 +103,12 @@ common common-test
   import:      common-language
   ghc-options: -threaded -with-rtsopts=-N
 
+  -- The tests should not be buildable with +release-build. The golden tests
+  -- often include the version number, so running --accept with +release-build
+  -- breaks all tests. Setting buildable to false prevents this.
+  if flag(release-build)
+    buildable: False
+
 library
   import:          common-library
   hs-source-dirs:  src
