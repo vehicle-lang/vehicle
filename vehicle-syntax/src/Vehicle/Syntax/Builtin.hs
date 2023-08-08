@@ -270,7 +270,8 @@ data BuiltinFunction
   | PowRat
   | MinRat
   | MaxRat
-  | Sample Name [Name]
+  | -- True = minimisation, False = maximisation
+    Optimise Name Bool [Name]
   | -- Comparison expressions
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
@@ -318,7 +319,10 @@ instance Pretty BuiltinFunction where
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
-    Sample n ctx -> "sample[" <> pretty n <> "]" <> pretty ctx
+    Optimise n b ctx -> "Optimise[" <> pretty n <> "]" <> "[" <> direction <> "]" <> ctxDoc
+      where
+        ctxDoc = if null ctx then "" else pretty ctx
+        direction = if b then "min" else "max"
 
 -- | Builtins in the Vehicle language
 data Builtin

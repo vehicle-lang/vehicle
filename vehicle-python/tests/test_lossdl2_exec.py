@@ -1,3 +1,4 @@
+from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
@@ -12,16 +13,26 @@ def network_validate_output(output: Dict[str, Any]) -> None:
     assert output["prop"](network) == 0.0
 
 
-def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
-    yield from [-10.0, -1.0, 1.0, 10.0]
+def quantifier_all_optimiser(
+    _minimise: bool,
+    _context: Dict[str, Any],
+    joiner: Callable[[float, float], float],
+    predicate: Callable[[Any], float],
+) -> float:
+    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
-def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
-    yield from [-10.0, -1.0, 1.0, 10.0]
+def quantifier_any_optimiser(
+    _minimise: bool,
+    _context: Dict[str, Any],
+    joiner: Callable[[float, float], float],
+    predicate: Callable[[Any], float],
+) -> float:
+    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
 @pytest.mark.parametrize(
-    "specification_filename,samplers,validate_output",
+    "specification_filename,optimisers,validate_output",
     [
         (
             "test_addition.vcl",
@@ -75,12 +86,12 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         ),
         (
             "test_quantifier_all.vcl",
-            {"x": quantifier_all_sampler},
+            {"x": quantifier_all_optimiser},
             {"prop": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
-            {"x": quantifier_any_sampler},
+            {"x": quantifier_any_optimiser},
             {"prop": 0.0},
         ),
         (
@@ -102,7 +113,7 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
-    samplers: Dict[str, Any],
+    optimisers: Dict[str, Any],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
     print(f"Exec {specification_filename}")
@@ -110,7 +121,7 @@ def test_loss_function_exec(
     actual_declarations = vclc.compile(
         specification_path,
         target=vcl.DifferentiableLogic.DL2,
-        translation=vclc.PythonTranslation.from_samplers(samplers),
+        translation=vclc.PythonTranslation.from_optimisers(optimisers),
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():

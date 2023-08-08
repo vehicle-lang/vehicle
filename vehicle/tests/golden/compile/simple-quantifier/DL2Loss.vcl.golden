@@ -1,17 +1,11 @@
-bigAnd : List Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
-bigOr : List Rat -> Rat;
-bigOr _x0 = fold (\ x -> \ y -> x * y) 1.0 _x0
-
 @property;
 expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Rat;
-expandedExpr f = bigAnd (map (\ x -> max 0.0 (f x ! 0 - x ! 0)) sample[x][])
+expandedExpr f = Optimise[x][min] (+) (\ x -> max 0.0 (f x ! 0 - x ! 0))
 
 @property;
 sequential : forallT (f : Vector Rat -> Vector Rat) . Rat;
-sequential f = bigAnd (map (\ x -> bigAnd (map (\ y -> max 0.0 (f y ! 0 - f x ! 0)) sample[y][x])) sample[x][])
+sequential f = Optimise[x][min] (+) (\ x -> Optimise[y][min][x] (+) (\ y -> max 0.0 (f y ! 0 - f x ! 0)))
 
 @property;
 parallel : forallT (f : Vector Rat -> Vector Rat) . Rat;
-parallel f = bigAnd (map (\ x -> max 0.0 (0.0 - f x ! 0)) sample[x][]) + bigOr (map (\ x -> max 0.0 (5.0 - f x ! 0)) sample[x][])
+parallel f = Optimise[x][min] (+) (\ x -> max 0.0 (0.0 - f x ! 0)) + Optimise[x][min] (*) (\ x -> max 0.0 (5.0 - f x ! 0))

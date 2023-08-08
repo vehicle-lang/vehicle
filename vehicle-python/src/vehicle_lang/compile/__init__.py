@@ -12,7 +12,13 @@ from ..ast import (
     load,
 )
 from ..error import VehiclePropertyNotFound
-from ..typing import AnySamplers, DeclarationName, DifferentiableLogic, Explicit, Target
+from ..typing import (
+    AnyOptimisers,
+    DeclarationName,
+    DifferentiableLogic,
+    Explicit,
+    Target,
+)
 from .abc import AnyBuiltins
 from .python import PythonBuiltins, PythonTranslation
 
@@ -42,7 +48,7 @@ def compile(
     translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:
     if translation is None:
-        translation = PythonTranslation(builtins=PythonBuiltins(samplers={}))
+        translation = PythonTranslation(builtins=PythonBuiltins(optimisers={}))
     return translation.compile(
         load(path, declarations=declarations, target=target), path=path
     )
@@ -53,7 +59,7 @@ def load_loss_function(
     property_name: DeclarationName,
     *,
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    samplers: AnySamplers = {},
+    optimisers: AnyOptimisers = {},
 ) -> Any:
     """
     Load a loss function from a property in a Vehicle specification.
@@ -64,7 +70,7 @@ def load_loss_function(
     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
-    translation = PythonTranslation(builtins=PythonBuiltins(samplers=samplers))
+    translation = PythonTranslation(builtins=PythonBuiltins(optimisers=optimisers))
     declarations = compile(
         path,
         declarations=(property_name,),

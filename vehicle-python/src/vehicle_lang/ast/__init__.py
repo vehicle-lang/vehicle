@@ -351,6 +351,13 @@ class Not(BuiltinFunction):
 
 
 @dataclass(frozen=True)
+class Optimise(BuiltinFunction):
+    name: Name
+    minimise: bool
+    context: Sequence[Name]
+
+
+@dataclass(frozen=True)
 class Or(BuiltinFunction):
     pass
 
@@ -369,12 +376,6 @@ class Rat(BuiltinFunction):
 @dataclass(frozen=True)
 class RatType(BuiltinFunction):
     pass
-
-
-@dataclass(frozen=True)
-class Sample(BuiltinFunction):
-    name: Name
-    locals: Sequence[Name]
 
 
 @dataclass(frozen=True)
