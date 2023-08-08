@@ -1,8 +1,7 @@
-import random
 from pathlib import Path
 from typing import Any, Callable, Dict
 
-import vehicle_lang as vcl
+import vehicle_lang.tensorflow as vcl2tf
 
 
 def test_lossdl2_exec_tf_bounded() -> None:
@@ -34,10 +33,10 @@ def test_lossdl2_exec_tf_bounded() -> None:
             return tf.random.uniform(shape=(1,))
 
         bounded_loss = tf.function(
-            vcl.load_loss_function(
+            vcl2tf.load_loss_function(
                 specification_path,
                 property_name="bounded",
-                target=vcl.DifferentiableLogic.DL2,
+                target=vcl2tf.DifferentiableLogic.DL2,
                 optimisers={"x": optimiser_for_x},
             )
         )

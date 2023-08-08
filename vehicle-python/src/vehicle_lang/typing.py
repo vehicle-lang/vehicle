@@ -18,7 +18,13 @@ A name of a quantified variable in a Vehicle specification file.
 """
 
 Optimiser: TypeAlias = Callable[
-    [bool, Dict[str, _T], Callable[[_R, _R], _R], Callable[[_T], _R]], _R
+    [
+        bool,
+        Dict[QuantifiedVariableName, _T],
+        Callable[[_R, _R], _R],
+        Callable[[_T], _R],
+    ],
+    _R,
 ]
 """
 TODO: add description

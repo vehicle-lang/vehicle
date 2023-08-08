@@ -1,27 +1,57 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator
+from pathlib import Path
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    SupportsFloat,
+    SupportsInt,
+    Union,
+    cast,
+)
 
 import tensorflow as tf
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
+from .. import ast as vcl
+from ..typing import (
+    AnyOptimisers,
+    DeclarationName,
+    DifferentiableLogic,
+    Explicit,
+    Target,
+)
 from .abc import Builtins
+from .abcboolasbool import ABCBoolAsBoolBuiltins
+from .error import VehiclePropertyNotFound
+from .python import PythonTranslation
+
+__all__: List[str] = [
+    # Abstract Syntax Tree
+    "AST",
+    "Binder",
+    "BuiltinFunction",
+    "Declaration",
+    "Expression",
+    "Program",
+    "Provenance",
+    # Translation to Python
+    "PythonBuiltins",
+    "PythonTranslation",
+    # High-level functions
+    "compile",
+    "load_loss_function",
+]
 
 ################################################################################
-### Interpretations of Vehicle builtins in Python
+### Interpretations of Vehicle builtins in Tensorflow
 ################################################################################
-
-Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
 
 
 @dataclass(frozen=True)
-class TensorflowBuiltins(
-    Builtins[
-        tf.Tensor,
-        tf.Tensor,
-        tf.Tensor,
-        tf.Tensor,
-    ]
-):
+class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtypeNat: tf.DType = tf.uint64
     dtypeInt: tf.DType = tf.int64
     dtypeRat: tf.DType = tf.float64
@@ -41,6 +71,13 @@ class TensorflowBuiltins(
     @override
     def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.divide(x, y)
+
+    @override
+    def Int(self, value: SupportsInt) -> tf.Tensor:
+        if tf.is_tensor(value):
+            return cast(tf.Tensor, value)
+        else:
+            return tf.convert_to_tensor(value, dtype=self.dtypeInt)
 
     @override
     def MaxRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -63,6 +100,13 @@ class TensorflowBuiltins(
         return tf.multiply(x, y)
 
     @override
+    def Nat(self, value: SupportsInt) -> tf.Tensor:
+        if tf.is_tensor(value):
+            return cast(tf.Tensor, value)
+        else:
+            return tf.convert_to_tensor(value, dtype=self.dtypeNat)
+
+    @override
     def NegInt(self, x: tf.Tensor) -> tf.Tensor:
         return tf.negative(x)
 
@@ -75,9 +119,66 @@ class TensorflowBuiltins(
         return tf.pow(x, y)
 
     @override
+    def Rat(self, value: SupportsFloat) -> tf.Tensor:
+        if tf.is_tensor(value):
+            return cast(tf.Tensor, value)
+        else:
+            return tf.convert_to_tensor(value, dtype=self.dtypeRat)
+
+    @override
     def SubInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.subtract(x, y)
 
     @override
     def SubRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.subtract(x, y)
+
+
+@dataclass(frozen=True)
+class TensorflowTranslation(PythonTranslation):
+    pass
+
+
+def load(
+    path: Union[str, Path],
+    *,
+    declarations: Iterable[DeclarationName] = (),
+    target: Target = Explicit.Explicit,
+    translation: Optional[TensorflowTranslation] = None,
+) -> Dict[str, Any]:
+    if translation is None:
+        translation = TensorflowTranslation(builtins=TensorflowBuiltins(optimisers={}))
+    return translation.compile(
+        vcl.load(path, declarations=declarations, target=target), path=path
+    )
+
+
+def load_loss_function(
+    path: Union[str, Path],
+    property_name: DeclarationName,
+    *,
+    target: DifferentiableLogic = DifferentiableLogic.Vehicle,
+    optimisers: AnyOptimisers = {},
+) -> Any:
+    """
+    Load a loss function from a property in a Vehicle specification.
+
+    :param path: The path to the Vehicle specification file.
+    :param property_name: The name of the Vehicle property to load.
+    :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
+    :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
+    :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
+    """
+    translation = TensorflowTranslation(
+        builtins=TensorflowBuiltins(optimisers=optimisers)
+    )
+    declarations = load(
+        path,
+        declarations=(property_name,),
+        target=target,
+        translation=translation,
+    )
+    if property_name in declarations:
+        return declarations[property_name]
+    else:
+        raise VehiclePropertyNotFound(property_name)
