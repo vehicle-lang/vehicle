@@ -18,7 +18,8 @@ import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (Foldable (..), for_)
 import Data.Functor ((<&>))
 import Data.List qualified as List (findIndices, splitAt, uncons)
-import Data.List.NonEmpty qualified as NonEmpty
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty (nonEmpty, singleton)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
@@ -381,9 +382,10 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   -- Write the new test specification:
   when acceptTestSpecChanged $ do
     let acceptTestSpecs =
-          TestSpecs $
-            NonEmpty.prependList otherTestSpecsBefore $
-              NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
+          TestSpecs
+            $ prependList
+              otherTestSpecsBefore
+            $ appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
     lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
   -- Remove the outdated .golden files:
   for_ goldenFilesToRemove $ \goldenFile ->
@@ -492,3 +494,11 @@ makeLooseEq (IgnoreLines patterns) golden actual = strikeOutAll golden == strike
 -- | Make a loose equality which short-circuits using equality.
 shortCircuitWithEq :: (Eq a) => Maybe (a -> a -> Bool) -> a -> a -> Bool
 shortCircuitWithEq maybeEq x y = x == y || maybe False (\eq -> x `eq` y) maybeEq
+
+-- | NOTE: This function is included in 'base' (since 4.16).
+prependList :: [a] -> NonEmpty a -> NonEmpty a
+prependList xs ys = maybe ys (<> ys) (NonEmpty.nonEmpty xs)
+
+-- | NOTE: This function is included in 'base' (since 4.16).
+appendList :: NonEmpty a -> [a] -> NonEmpty a
+appendList xs ys = maybe xs (xs <>) (NonEmpty.nonEmpty ys)
