@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 import vehicle_lang.ast as vcl2ast
 
 GOLDEN_PATH = (
