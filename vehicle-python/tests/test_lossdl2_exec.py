@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.compile as vclc
 
@@ -47,7 +48,7 @@ def quantifier_any_optimiser(
         (
             "test_constant.vcl",
             {},
-            {"prop": 0.0},
+            {"prop": True},
         ),
         (
             "test_division.vcl",
@@ -57,17 +58,17 @@ def quantifier_any_optimiser(
         (
             "test_indicator.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": False},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": False},
         ),
         (
             "test_minimum.vcl",
             {},
-            {"prop": 0.0},
+            {"prop": True},
         ),
         (
             "test_multiplication.vcl",
@@ -77,7 +78,7 @@ def quantifier_any_optimiser(
         (
             "test_negation.vcl",
             {},
-            {"prop": 0.0},
+            {"prop": True},
         ),
         (
             "test_network.vcl",
@@ -107,7 +108,7 @@ def quantifier_any_optimiser(
         (
             "test_variable.vcl",
             {},
-            {"prop": 0.0},
+            {"prop": True},
         ),
     ],
 )  # type: ignore[misc]

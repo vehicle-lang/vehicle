@@ -7,9 +7,9 @@ from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tup
 from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
-from ..error import VehicleBuiltinUnsupported
 from ..typing import Optimiser
 from ._collections import SupportsList, SupportsVector
+from .error import VehicleBuiltinUnsupported
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
@@ -248,6 +248,19 @@ class Builtins(
     def Not(self, x: _Bool) -> _Bool:
         ...
 
+    def Optimise(
+        self,
+        name: str,
+        minimise: bool,
+        context: Dict[str, Any],
+        joiner: Callable[[Any, Any], Any],
+        predicate: Callable[[Any], Any],
+    ) -> Any:
+        if name in self.optimisers:
+            return self.optimisers[name](minimise, context, joiner, predicate)
+        else:
+            raise TypeError(f"Could not find optimiser for '{name}'.")
+
     @abstractmethod
     def Or(self, x: _Bool, y: _Bool) -> _Bool:
         ...
@@ -259,23 +272,6 @@ class Builtins(
     @abstractmethod
     def Rat(self, value: SupportsFloat) -> _Rat:
         ...
-
-    def Optimise(
-        self,
-        name: str,
-        minimise: bool,
-        context: Dict[str, Any],
-    ) -> Callable[[Callable[[_Rat, _Rat], _Rat], Callable[[Any], _Rat]], _Rat]:
-        if name in self.optimisers:
-
-            def __Optimise(
-                joiner: Callable[[_Rat, _Rat], _Rat], predicate: Callable[[Any], _Rat]
-            ) -> _Rat:
-                return self.optimisers[name](minimise, context, joiner, predicate)
-
-            return __Optimise
-        else:
-            raise TypeError(f"Could not find optimiser for '{name}'.")
 
     @abstractmethod
     def SubInt(self, x: _Int, y: _Int) -> _Int:

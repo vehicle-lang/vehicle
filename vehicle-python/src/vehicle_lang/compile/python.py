@@ -23,6 +23,7 @@ from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
 from .abc import ABCTranslation, AnyBuiltins
 from .abcboolasbool import ABCBoolAsBoolBuiltins
+from .error import VehicleOptimiseTypeError
 
 ################################################################################
 ### Implementation of Vehicle builtins in Python
@@ -220,6 +221,58 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
+        # NOTE: We handle Optimise as a special case, as we must extract the
+        #       name of the bound variable from the lambda binding.
+        if isinstance(expression.function, vcl.Builtin) and isinstance(
+            expression.function.builtin, vcl.Optimise
+        ):
+            if len(expression.arguments) != 2:
+                raise VehicleOptimiseTypeError(expression)
+            joiner, predicate = expression.arguments
+            if not isinstance(predicate, vcl.Lam):
+                raise VehicleOptimiseTypeError(expression)
+            if len(predicate.binders) != 1:
+                raise VehicleOptimiseTypeError(expression)
+            # NOTE: We extract the name of the bound variable from the lambda,
+            #       which should be the _second_ argument.
+            name = predicate.binders[0].name
+            return py_app(
+                py_builtin(
+                    builtin=expression.function.builtin.__class__.__name__,
+                    provenance=expression.provenance,
+                ),
+                # name:
+                py.Str(
+                    s=name,
+                    **asdict(expression.provenance),
+                ),
+                # minimise:
+                py.NameConstant(
+                    value=expression.function.builtin.minimise,
+                    **asdict(expression.provenance),
+                ),
+                # context:
+                py.Dict(
+                    keys=[
+                        py.Str(
+                            s=name,
+                            **asdict(expression.provenance),
+                        )
+                        for name in expression.function.builtin.context
+                    ],
+                    values=[
+                        py_name(name, provenance=expression.provenance)
+                        for name in expression.function.builtin.context
+                    ],
+                    **asdict(expression.provenance),
+                ),
+                # joiner:
+                self.translate_expression(joiner),
+                # predicate:
+                self.translate_expression(predicate),
+                # provenance:
+                provenance=expression.provenance,
+            )
         return py_app(
             self.translate_expression(expression.function),
             *map(self.translate_expression, expression.arguments),
@@ -247,6 +300,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             ),
         ):
             raise EraseType
+        # OPTIMISE
+        #   All Optimise() nodes should be fully applied, and hence be captured
+        #   by the translation for applications.
+        elif isinstance(expression.builtin, vcl.Optimise):
+            raise VehicleOptimiseTypeError(expression)
         # CONSTANTS
         #   When we encounter a constant, we translate it to an application
         #   of the builtin function to the constant value, e.g., we translate
@@ -266,7 +324,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 vcl.Nat,
                 vcl.NilList,
                 vcl.Rat,
-                vcl.Optimise,
             ),
         ) or (
             isinstance(expression.builtin, vcl.Vector) and expression.builtin.value == 0
@@ -317,37 +374,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                             **asdict(expression.provenance),
                         ),
                         provenance=expression.provenance,
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Optimise):
-                # NOTE: Optimise returns a partial application, because
-                #       joiner and predicate are passed as arguments.
-                arguments.append(
-                    py.Str(
-                        s=expression.builtin.name,
-                        **asdict(expression.provenance),
-                    )
-                )
-                arguments.append(
-                    py.NameConstant(
-                        value=expression.builtin.minimise,
-                        **asdict(expression.provenance),
-                    )
-                )
-                arguments.append(
-                    py.Dict(
-                        keys=[
-                            py.Str(
-                                s=name,
-                                **asdict(expression.provenance),
-                            )
-                            for name in expression.builtin.context
-                        ],
-                        values=[
-                            py_name(name, provenance=expression.provenance)
-                            for name in expression.builtin.context
-                        ],
-                        **asdict(expression.provenance),
                     )
                 )
             return py_app(

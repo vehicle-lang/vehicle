@@ -11,7 +11,6 @@ from ..ast import (
     Provenance,
     load,
 )
-from ..error import VehiclePropertyNotFound
 from ..typing import (
     AnyOptimisers,
     DeclarationName,
@@ -20,6 +19,7 @@ from ..typing import (
     Target,
 )
 from .abc import AnyBuiltins
+from .error import VehiclePropertyNotFound
 from .python import PythonBuiltins, PythonTranslation
 
 __all__: List[str] = [
