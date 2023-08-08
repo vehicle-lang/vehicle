@@ -1,5 +1,5 @@
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
-spec : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-spec f = Optimise[x][min] (+) (\ x -> max 0.0 (0.0 - f [x, 0.0] ! 0))
+spec : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+spec f = Optimise[min] (+) (\ x -> max 0.0 (0.0 - f [x, 0.0] ! 0))

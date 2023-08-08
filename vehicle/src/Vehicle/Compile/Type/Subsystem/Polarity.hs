@@ -5,10 +5,9 @@ module Vehicle.Compile.Type.Subsystem.Polarity
   )
 where
 
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
@@ -33,7 +32,6 @@ instance TypableBuiltin PolarityBuiltin where
   restrictDatasetType = assertUnquantifiedPolarity
   restrictParameterType = const assertUnquantifiedPolarity
   restrictPropertyType _ _ = return ()
-  handleTypingError = handlePolarityTypingError
   solveInstance = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
   generateDefaultConstraint = const $ return False
@@ -46,10 +44,6 @@ convertFromPolarityTypes p = \case
   BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
   BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
   b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
-
-handlePolarityTypingError :: (MonadCompile m) => TypingError PolarityBuiltin -> m a
-handlePolarityTypingError b =
-  compilerDeveloperError $ "Polarity type system should not be throwing error:" <+> pretty b
 
 freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (GluedExpr PolarityBuiltin)
 freshPolarityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty

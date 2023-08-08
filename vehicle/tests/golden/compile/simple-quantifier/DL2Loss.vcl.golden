@@ -1,11 +1,11 @@
 @property;
-expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Rat;
-expandedExpr f = Optimise[x][min] (+) (\ x -> max 0.0 (f x ! 0 - x ! 0))
+expandedExpr : forallT (f : Vector Rat -> Vector Rat) . Loss;
+expandedExpr f = Optimise[min] (+) (\ x -> max 0.0 (f x ! 0 - x ! 0))
 
 @property;
-sequential : forallT (f : Vector Rat -> Vector Rat) . Rat;
-sequential f = Optimise[x][min] (+) (\ x -> Optimise[y][min][x] (+) (\ y -> max 0.0 (f y ! 0 - f x ! 0)))
+sequential : forallT (f : Vector Rat -> Vector Rat) . Loss;
+sequential f = Optimise[min] (+) (\ x -> Optimise[min] (+) (\ y -> max 0.0 (f y ! 0 - f x ! 0)))
 
 @property;
-parallel : forallT (f : Vector Rat -> Vector Rat) . Rat;
-parallel f = Optimise[x][min] (+) (\ x -> max 0.0 (0.0 - f x ! 0)) + Optimise[x][min] (*) (\ x -> max 0.0 (5.0 - f x ! 0))
+parallel : forallT (f : Vector Rat -> Vector Rat) . Loss;
+parallel f = Optimise[min] (+) (\ x -> max 0.0 (0.0 - f x ! 0)) + Optimise[min] (*) (\ x -> max 0.0 (5.0 - f x ! 0))

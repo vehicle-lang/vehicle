@@ -1,8 +1,8 @@
-foreachVector : forallT n . (Index -> Rat) -> Vector Rat;
+foreachVector : forallT n . (Index -> Loss) -> Vector Loss;
 foreachVector n f = map f (indices n)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
-index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Rat (2 :: nil);
+index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Loss (2 :: nil);
 index f = foreachVector 2 (\ i -> max 0.0 (0.0 - f [0.0, 0.0] ! i))

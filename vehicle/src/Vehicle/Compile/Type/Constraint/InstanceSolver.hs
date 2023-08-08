@@ -3,12 +3,13 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
   )
 where
 
+import Control.Monad.Error.Class (MonadError (..))
 import Data.HashMap.Strict qualified as Map
 import Data.Hashable (Hashable)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
@@ -90,7 +91,7 @@ solveInstanceGoal rawBuiltinCandidates ctx meta relevance goal@InstanceGoal {..}
     -- If there are no valid candidates then we fail.
     [] -> do
       substCtx <- substMetas ctx
-      handleTypingError $ FailedInstanceSearch substCtx goal allCandidates
+      throwError $ TypingError $ FailedInstanceConstraint substCtx goal allCandidates
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do

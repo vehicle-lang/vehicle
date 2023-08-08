@@ -11,7 +11,7 @@ import Vehicle.Backend.LossFunction.TypeSystem.BuiltinInstances (lossBuiltinInst
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
+import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments, typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
@@ -38,8 +38,11 @@ compile logic typedProg =
     reformattedProg <- preprocessLogicalOperators logicImplementation typedProg
 
     let instanceCandidates = lossBuiltinInstances logicImplementation
-    lossProg <- typeCheckWithSubsystem instanceCandidates reformattedProg
-    return $ fmap unnormalised lossProg
+    lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates reformattedProg
+
+    lossProg <- resolveInstanceArguments (fmap unnormalised lossProgWithInstances)
+
+    return lossProg
 
 --------------------------------------------------------------------------------
 -- Utilities

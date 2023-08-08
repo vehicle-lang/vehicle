@@ -88,7 +88,9 @@ instance HasStandardData LossBuiltin where
     BuiltinConstructor c -> Just c
     _ -> Nothing
 
-  isTypeClassOp = const False
+  isTypeClassOp = \case
+    LossTCOp {} -> True
+    _ -> False
 
 instance PrintableBuiltin LossBuiltin where
   convertBuiltin p = \case
@@ -155,3 +157,25 @@ hasQuant q t1 t2 = lossTypeClass (HasQuant q) [t1, t2]
 
 tLoss :: LossDSLExpr
 tLoss = builtin Loss
+
+--    x
+--    |
+--    |
+-------------------------------------------
+------ Type checking ----------------------
+--    |
+--    |
+--    |
+--    |  -------------------------------
+--    |  ----------- Instance search ---
+--    |  --   x
+--    |  --   |
+--    |  --   |
+--    |  --   |                            Linearity/Polarity      Loss
+--    |  --   |
+--    |  --   UnificationError             ----> ERROR            Bubble up
+--    |  --------------------------------
+--    |
+--    |
+-- UnificationError                        ----> ERROR            ERROR
+-----------------------------------------

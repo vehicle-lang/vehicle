@@ -30,7 +30,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface

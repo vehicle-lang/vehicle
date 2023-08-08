@@ -32,6 +32,7 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface (PrintableBuiltin (..))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -268,20 +269,6 @@ instance (PrettyUsing rest (Arg Name Builtin)) => PrettyUsing ('ConvertBuiltins 
 instance (PrettyUsing rest (Binder Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Binder Name Builtin) where
   prettyUsing = prettyUsing @rest
 -}
---------------------------------------------------------------------------------
--- Printing builtins
-
-class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
-  -- | Convert expressions with the builtin back to expressions with the standard
-  -- builtin type. Used for printing.
-  convertBuiltin ::
-    Provenance ->
-    builtin ->
-    Expr var Builtin
-
-instance PrintableBuiltin Builtin where
-  convertBuiltin = Builtin
-
 --------------------------------------------------------------------------------
 -- Converting builtins
 

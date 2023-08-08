@@ -19,21 +19,22 @@ type Imports builtin = [GluedProg builtin]
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
-  = MissingExplicitArgument (TypingBoundCtx builtin) (Binder Ix builtin) (Arg Ix builtin)
-  | FunctionTypeMismatch (TypingBoundCtx builtin) (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
-  | FailedUnification (NonEmpty (WithContext (UnificationConstraint builtin)))
-  | FailedInstanceSearch (ConstraintContext builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
-  | UnsolvableConstraints (NonEmpty (WithContext (Constraint builtin)))
+  = MissingExplicitArgument BoundDBCtx (Binder Ix builtin) (Arg Ix builtin)
+  | FunctionTypeMismatch BoundDBCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
+  | FailedInstanceConstraint (ConstraintContext builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
+  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
+  deriving (Show)
 
 instance Pretty (TypingError builtin) where
   pretty = \case
     MissingExplicitArgument {} -> "MissingExplicitArgument"
     FunctionTypeMismatch {} -> "FunctionTypeMismatch"
-    FailedUnification {} -> "FailedUnification"
-    FailedInstanceSearch {} -> "FailedInstanceSearch"
-    UnsolvableConstraints {} -> "UnsolvableConstraints"
+    FailedUnificationConstraints {} -> "FailedUnification"
+    FailedInstanceConstraint {} -> "FailedInstanceSearch"
+    UnsolvedConstraints {} -> "UnsolvableConstraints"
     FailedIndexConstraintTooBig {} -> "FailedIndexConstraintTooBig"
     FailedIndexConstraintUnknown {} -> "FailedIndexConstraintUnknown"
 

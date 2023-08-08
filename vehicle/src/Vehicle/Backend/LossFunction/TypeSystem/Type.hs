@@ -33,7 +33,7 @@ typeOfLossTypeClassOp = \case
   ImpliesTC -> typeOfOp2 hasImplies
   RatOrderTC ord -> typeOfOp2 (hasRatOrder ord)
   RatEqTC eq -> typeOfOp2 (hasRatEq eq)
-  QuantTC q -> forAllTypePairs $ \t1 t2 -> hasQuant q t1 t2 .~~~> (t1 ~> t2) ~> t2
+  QuantTC q -> forAllTypePairs $ \t1 t2 -> hasQuant q (t1 ~> t2) t2 .~~~> (t1 ~> t2) ~> t2
 
 typeOfLossTypeClass :: LossTypeClass -> LossDSLExpr
 typeOfLossTypeClass = \case

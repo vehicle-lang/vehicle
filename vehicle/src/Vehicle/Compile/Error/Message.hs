@@ -8,6 +8,7 @@ where
 
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Prettyprinter (list)
 import System.FilePath
@@ -20,13 +21,12 @@ import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfTypeClassOp)
-import Vehicle.Expr.DSL (fromDSL)
-import Vehicle.Expr.DeBruijn (substDBInto)
+import Vehicle.Expr.DSL (DSLExpr, fromDSL, pi, tHole)
+import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
+import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -286,7 +286,7 @@ instance MeaningfulError CompileError where
     -- Typing --
     ------------
 
-    FunTypeMismatch p ctx fun candidate expected ->
+    TypingError @builtin (FunctionTypeMismatch ctx fun _originalArgs nonPiType args) ->
       UError $
         UserError
           { provenance = p,
@@ -295,11 +295,22 @@ instance MeaningfulError CompileError where
                 -- <+> squotes (prettyFriendly $ WithContext fun ctx)
                 <+> squotes (prettyVerbose fun)
                 <+> "to have something of type"
-                <+> squotes (prettyFriendly $ WithContext expected ctx)
+                <+> squotes (prettyFriendly $ WithContext expectedType ctx)
                 <+> "but inferred type"
-                <+> squotes (prettyFriendly $ WithContext candidate ctx),
+                <+> squotes (prettyFriendly $ WithContext nonPiType ctx),
             fix = Nothing
           }
+      where
+        p = provenanceOf fun
+
+        mkRes :: [Endo (DSLExpr builtin)]
+        mkRes =
+          [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+            | (i, arg) <- zip [0 :: Int ..] args
+          ]
+
+        expectedType :: Expr Ix builtin
+        expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
     UnresolvedHole p name ->
       UError $
         UserError
@@ -307,7 +318,7 @@ instance MeaningfulError CompileError where
             problem = "the type of" <+> squotes (pretty name) <+> "could not be resolved",
             fix = Nothing
           }
-    FailedUnificationConstraints cs ->
+    TypingError (FailedUnificationConstraints cs) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -345,7 +356,7 @@ instance MeaningfulError CompileError where
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
           CheckingAuxiliary ->
             developerError "Auxiliary constraints should not be unsolved."
-    UnsolvedConstraints cs ->
+    TypingError (UnsolvedConstraints cs) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -385,7 +396,7 @@ instance MeaningfulError CompileError where
           }
       where
         (_, p) = NonEmpty.head ms
-    MissingExplicitArg ctx arg argType ->
+    TypingError (MissingExplicitArgument ctx argBinder arg) ->
       UError $
         UserError
           { provenance = provenanceOf arg,
@@ -401,8 +412,8 @@ instance MeaningfulError CompileError where
             fix = Just $ "try inserting an argument of type" <+> argTypeDoc
           }
       where
-        argTypeDoc = prettyFriendly $ WithContext argType ctx
-    FailedInstanceConstraint ctx _goal candidates ->
+        argTypeDoc = prettyFriendly $ WithContext (typeOf argBinder) ctx
+    TypingError @builtin (FailedInstanceConstraint ctx _goal _candidates) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -417,43 +428,46 @@ instance MeaningfulError CompileError where
                 <> line
                 <> "but the list of valid types for it is:"
                 <> line
-                <> indent 2 (vsep (fmap candidateType candidates)),
+                <> "FIXME", -- indent 2 (vsep (fmap candidateType candidates)),
             fix = Nothing
           }
       where
-        (tcOp, tcOpArgs, tc, tcArgs) = case origin ctx of
-          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ (TypeClass tc') tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
+        (tcOp, tcOpArgs, _tc, tcArgs) = case origin ctx of
+          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ tc' tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
           _ -> developerError "Type class constraints should only have `CheckingTypeClass` origins"
 
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        inferredOpType :: BoundDBCtx -> [StandardArg] -> Doc a
-        inferredOpType dbCtx args = do
-          let opType = fromDSL mempty $ typeOfTypeClassOp (opOfTypeClass tc)
-          let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
-          let inferedOpType = instantiateTelescope opType argsToSubst
-          prettyFriendly (WithContext inferedOpType dbCtx)
+        inferredOpType :: BoundDBCtx -> [Arg Ix builtin] -> Doc a
+        inferredOpType _dbCtx _args = "FIXME"
+    {-
+     do
+      let opType = fromDSL mempty $ typeOfTypeClassOp (opOfTypeClass tc)
+      let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
+      let inferedOpType = instantiateTelescope opType argsToSubst
+      prettyFriendly (WithContext inferedOpType dbCtx)
 
-        candidateType :: WithContext StandardInstanceCandidate -> Doc a
-        candidateType (WithContext candidate typingCtx) =
-          go (boundContextOf typingCtx) (candidateExpr candidate)
-          where
-            go :: BoundDBCtx -> StandardExpr -> Doc a
-            go dbCtx = \case
-              BuiltinTypeClass _ _tc args ->
-                inferredOpType dbCtx (NonEmpty.toList args)
-              Pi _ binder result ->
-                go (nameOf binder : dbCtx) result
-              _ -> "UNSUPPORTED PRINTING"
+    candidateType :: WithContext (InstanceCandidate builtin) -> Doc a
+    candidateType (WithContext candidate typingCtx) =
+      go (boundContextOf typingCtx) (candidateExpr candidate)
+      where
+        go :: BoundDBCtx -> Expr Ix builtin -> Doc a
+        go dbCtx = \case
+          BuiltinTypeClass _ _tc args ->
+            inferredOpType dbCtx (NonEmpty.toList args)
+          Pi _ binder result ->
+            go (nameOf binder : dbCtx) result
+          _ -> "UNSUPPORTED PRINTING"
 
-        instantiateTelescope :: StandardExpr -> [StandardExpr] -> StandardExpr
-        instantiateTelescope expr arguments = case (expr, arguments) of
-          (_, []) -> expr
-          (Pi _ _binder body, arg : args) -> do
-            let body' = arg `substDBInto` body
-            instantiateTelescope body' args
-          _ -> developerError "Malformed type-class operation type"
+    instantiateTelescope :: Expr Ix builtin -> [Expr Ix builtin] -> Expr Ix builtin
+    instantiateTelescope expr arguments = case (expr, arguments) of
+      (_, []) -> expr
+      (Pi _ _binder body, arg : args) -> do
+        let body' = arg `substDBInto` body
+        instantiateTelescope body' args
+      _ -> developerError "Malformed type-class operation type"
+    -}
     FailedQuantifierConstraintDomain ctx typeOfDomain _q ->
       UError $
         UserError
@@ -464,7 +478,7 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Nothing
           }
-    FailedNatLitConstraintTooBig ctx v n ->
+    TypingError (FailedIndexConstraintTooBig ctx v n) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -477,7 +491,7 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Nothing
           }
-    FailedNatLitConstraintUnknown ctx v t ->
+    TypingError (FailedIndexConstraintUnknown ctx v t) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -1331,8 +1345,15 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [StandardArg] -> Doc a
-prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
+prettyTypeClassConstraintOriginExpr ::
+  (PrintableBuiltin builtin) =>
+  ConstraintContext builtin ->
+  Expr Ix builtin ->
+  [Arg Ix builtin] ->
+  Doc a
+prettyTypeClassConstraintOriginExpr ctx fun _args =
+  {-
+  case fun of
   Builtin _ b
     -- Need to check whether the function was introduced as part of desugaring
     | isDesugared b -> prettyFriendly $ WithContext (argExpr $ last args) (boundContextOf ctx)
@@ -1345,11 +1366,15 @@ prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
         FromVecTC {} -> True
         _ -> False
       isDesugared _ = False
-  _ -> prettyFriendly $ WithContext fun (boundContextOf ctx)
+  -}
+  prettyFriendly $ WithContext fun (boundContextOf ctx)
 
-prettyUnificationConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> Doc a
+prettyUnificationConstraintOriginExpr ::
+  (PrintableBuiltin builtin) =>
+  ConstraintContext builtin ->
+  Expr Ix builtin ->
+  Doc a
 prettyUnificationConstraintOriginExpr ctx = \case
-  Builtin _ b -> pretty b
   expr -> prettyFriendly $ WithContext expr (boundContextOf ctx)
 
 prettyIdentName :: Identifier -> Doc a

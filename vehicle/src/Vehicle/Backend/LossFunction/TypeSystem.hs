@@ -28,7 +28,6 @@ instance TypableBuiltin LossBuiltin where
   restrictDatasetType = checkDatasetType
   restrictParameterType = checkParameterType
   restrictPropertyType _ _ = return ()
-  handleTypingError = handleLossTypingError
   solveInstance = solveInstanceConstraint
   addAuxiliaryInputOutputConstraints = return
   generateDefaultConstraint = const $ return False
@@ -77,7 +76,3 @@ convertToLossTypes p1 p2 b args = case b of
 
 freshLossMeta :: (MonadTypeChecker LossBuiltin m) => Provenance -> m (GluedExpr LossBuiltin)
 freshLossMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
-
-handleLossTypingError :: (MonadCompile m) => TypingError LossBuiltin -> m a
-handleLossTypingError b =
-  compilerDeveloperError $ "Loss type system should not be throwing error:" <+> pretty b

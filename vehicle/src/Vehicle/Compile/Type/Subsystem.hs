@@ -4,6 +4,7 @@ module Vehicle.Compile.Type.Subsystem
   )
 where
 
+import Control.Monad.Except (MonadError (..), runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
@@ -15,6 +16,7 @@ import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedProg)
 
@@ -29,21 +31,32 @@ typeCheckWithSubsystem instanceCandidates prog = do
   irrelevantFreeProg <- removeIrrelevantCodeFromProg typeClassFreeProg
   monomorphisedProg <- monomorphise isPropertyDecl False "-" irrelevantFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
-  typeCheckProg mempty instanceCandidates implicitFreeProg
 
-resolveInstanceArguments :: forall m. (MonadCompile m) => StandardProg -> m StandardProg
+  resultOrError <- runExceptT $ typeCheckProg mempty instanceCandidates implicitFreeProg
+  case resultOrError of
+    Right value -> return value
+    Left (TypingError err) ->
+      compilerDeveloperError $
+        "Subsystem should not be throwing error:" <+> pretty err
+    Left otherError -> throwError otherError
+
+resolveInstanceArguments ::
+  forall m builtin.
+  (MonadCompile m, HasStandardData builtin, Show builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
     flip traverseDecls prog $ \decl -> do
       result <- traverse (traverseBuiltinsM builtinUpdateFunction) decl
       return result
   where
-    builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
-    builtinUpdateFunction p1 p2 b args = case b of
-      TypeClassOp {} -> do
-        (inst, remainingArgs) <- findInstanceArg b args
-        return $ normAppList p1 inst remainingArgs
-      _ -> return $ normAppList p1 (Builtin p2 b) args
+    builtinUpdateFunction :: BuiltinUpdate m Ix builtin builtin
+    builtinUpdateFunction p1 p2 b args
+      | isTypeClassOp b = do
+          (inst, remainingArgs) <- findInstanceArg b args
+          return $ substArgs p1 inst remainingArgs
+      | otherwise = return $ normAppList p1 (Builtin p2 b) args
 
 removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
 removeImplicitAndInstanceArgs prog =

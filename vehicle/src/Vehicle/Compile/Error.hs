@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
@@ -12,6 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (QueryFormatID)
@@ -46,23 +49,9 @@ data CompileError
   | DeclarationBoundShadowing Provenance Name
   | -- Errors thrown while type checking
     UnresolvedHole Provenance Name
-  | FunTypeMismatch
-      Provenance -- The location of the mismatch.
-      BoundDBCtx -- The context at the time of the failure
-      StandardExpr -- The function being typed
-      StandardType -- The possible inferred types.
-      StandardType -- The expected type.
-  | MissingExplicitArg
-      BoundDBCtx -- The context at the time of the failure
-      (Arg Ix StandardBuiltin) -- The non-explicit argument
-      StandardType -- Expected type of the argument
-  | UnsolvedConstraints (NonEmpty (WithContext StandardConstraint))
+  | forall builtin. (PrintableBuiltin builtin, Show builtin) => TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
-  | FailedUnificationConstraints (NonEmpty (WithContext StandardUnificationConstraint))
   | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
-  | FailedNatLitConstraintTooBig StandardConstraintContext Int Int
-  | FailedNatLitConstraintUnknown StandardConstraintContext StandardNormExpr StandardNormType
-  | FailedInstanceConstraint StandardConstraintContext StandardInstanceGoal [WithContext StandardInstanceCandidate]
   | RelevantUseOfIrrelevantVariable Provenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
   | NonLinearIfCondition (ConstraintContext LinearityBuiltin)
@@ -106,7 +95,8 @@ data CompileError
   | UnsupportedNegatedOperation DifferentiableLogicID Provenance
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
-  deriving (Show)
+
+deriving instance Show CompileError
 
 --------------------------------------------------------------------------------
 -- Some useful developer errors

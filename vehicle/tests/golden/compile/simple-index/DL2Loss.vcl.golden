@@ -1,23 +1,23 @@
 @property;
-eqIndex : Rat;
-eqIndex = if (0 : Index) == (1 : Index) then 0.0 else 1.0
+eqIndex : Bool;
+eqIndex = (0 : Index) == (1 : Index)
 
 @property;
-neqIndex : Rat;
-neqIndex = if (0 : Index) != (1 : Index) then 0.0 else 1.0
+neqIndex : Bool;
+neqIndex = (0 : Index) != (1 : Index)
 
 @property;
-leqIndex : Rat;
-leqIndex = if (0 : Index) <= (1 : Index) then 0.0 else 1.0
+leqIndex : Bool;
+leqIndex = (0 : Index) <= (1 : Index)
 
 @property;
-ltIndex : Rat;
-ltIndex = if (0 : Index) < (1 : Index) then 0.0 else 1.0
+ltIndex : Bool;
+ltIndex = (0 : Index) < (1 : Index)
 
 @property;
-geqIndex : Rat;
-geqIndex = if (0 : Index) >= (1 : Index) then 0.0 else 1.0
+geqIndex : Bool;
+geqIndex = (0 : Index) >= (1 : Index)
 
 @property;
-gtIndex : Rat;
-gtIndex = if (0 : Index) > (1 : Index) then 0.0 else 1.0
+gtIndex : Bool;
+gtIndex = (0 : Index) > (1 : Index)

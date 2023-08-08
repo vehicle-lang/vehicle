@@ -38,6 +38,17 @@ class HasStandardTypes builtin where
 
   mkNatInDomainConstraint :: builtin
 
+class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
+  -- | Convert expressions with the builtin back to expressions with the standard
+  -- builtin type. Used for printing.
+  convertBuiltin ::
+    Provenance ->
+    builtin ->
+    Expr var Builtin
+
+instance PrintableBuiltin Builtin where
+  convertBuiltin = Builtin
+
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.
 type HasStandardBuiltins builtin =

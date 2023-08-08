@@ -1,17 +1,17 @@
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
-unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-unusedVar f = Optimise[x][min] (*) (\ x -> Optimise[y][min][x] (*) (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)))
+unusedVar : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+unusedVar f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0)))
 
 @property;
-underConstrainedVar1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar1 f = Optimise[x][min] (*) (\ x -> Optimise[y][min][x] (*) (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))))
+underConstrainedVar1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+underConstrainedVar1 f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))))
 
 @property;
-underConstrainedVar2 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVar2 f = Optimise[x][min] (*) (\ x -> Optimise[y][min][x] (*) (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))))
+underConstrainedVar2 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+underConstrainedVar2 f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))))
 
 @property;
-underConstrainedVars : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-underConstrainedVars f = Optimise[x][min] (*) (\ (x : Tensor Rat (4 :: nil)) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0))))
+underConstrainedVars : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+underConstrainedVars f = Optimise[min] (*) (\ (x : Vector Rat) -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0))))

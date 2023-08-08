@@ -76,13 +76,8 @@ substApp ::
 substApp p (fun@(Meta _ m), mArgs) = do
   metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
-    Just value -> subst =<< substArgs (unnormalised value) mArgs
     Nothing -> normAppList p fun <$> subst mArgs
-  where
-    substArgs :: Expr Ix builtin -> [Arg Ix builtin] -> m (Expr Ix builtin)
-    substArgs (Lam _ _ body) (arg : args) = do
-      substArgs (argExpr arg `substDBInto` body) args
-    substArgs e args = return $ normAppList p e args
+    Just value -> subst $ substArgs p (unnormalised value) mArgs
 substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Value builtin) where

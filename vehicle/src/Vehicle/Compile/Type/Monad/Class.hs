@@ -11,7 +11,7 @@ import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, lookupInDecl
 import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
@@ -183,9 +183,6 @@ class (PrintableBuiltin builtin, HasStandardData builtin) => TypableBuiltin buil
     InstanceCandidateDatabase builtin ->
     WithContext (InstanceConstraint builtin) ->
     m ()
-
-  handleTypingError ::
-    (MonadCompile m) => TypingError builtin -> m a
 
 --------------------------------------------------------------------------------
 -- Operations

@@ -100,11 +100,13 @@ mkCandidates DifferentialLogicImplementation {..} =
     quantifierCandidates =
       [ ( forAll "t" type0 $ \t ->
             hasQuant Forall (t ~> tLoss) tLoss,
-          compileForall
+          explLam "t" type0 $ \_t ->
+            compileForall
         ),
         ( forAll "t" type0 $ \t ->
             hasQuant Exists (t ~> tLoss) tLoss,
-          compileExists
+          explLam "t" type0 $ \_t ->
+            compileExists
         )
       ]
 

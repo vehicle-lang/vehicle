@@ -5,6 +5,7 @@ module Vehicle.Compile.Type.Constraint.UnificationSolver
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
@@ -64,7 +65,7 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
           let normConstraint = WithContext nu ctx
           let blockedConstraint = blockConstraintOn normConstraint blockingMetas
           addUnificationConstraints [blockedConstraint]
-    _ -> handleTypingError (FailedUnification [WithContext nu ctx])
+    _ -> throwError $ TypingError $ FailedUnificationConstraints [WithContext nu ctx]
 
 data UnificationResult builtin
   = Success [WithContext (UnificationConstraint builtin)]

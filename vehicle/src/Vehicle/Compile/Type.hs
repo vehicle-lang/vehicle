@@ -289,7 +289,7 @@ checkAllConstraintsSolved _ = do
   constraints <- getActiveConstraints @builtin
   case constraints of
     [] -> return ()
-    (c : cs) -> handleTypingError $ UnsolvableConstraints (c :| cs)
+    (c : cs) -> throwError $ TypingError $ UnsolvedConstraints (c :| cs)
 
 checkAllMetasSolved :: (TCM builtin m) => Proxy builtin -> m ()
 checkAllMetasSolved proxy = do

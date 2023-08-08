@@ -6,7 +6,7 @@ where
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext
-import Vehicle.Compile.Print (PrintableBuiltin, prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn (Ix, liftDBIndices)
 import Vehicle.Expr.Normalised (VType, Value (..))

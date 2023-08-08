@@ -251,8 +251,8 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getBoundCtx
-              handleTypingError (MissingExplicitArgument boundCtx binder arg)
+              boundCtx <- boundContextOf <$> getBoundCtx
+              throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
       -- Calculate what the new checked arg should be, create a fresh meta
@@ -294,8 +294,8 @@ inferArgs (fun, originalArgs) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs (fun, originalArgs) newType args
     _ -> do
-      ctx <- getBoundCtx
-      handleTypingError (FunctionTypeMismatch ctx fun originalArgs nonPiType args)
+      ctx <- boundContextOf <$> getBoundCtx
+      throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
 -- Utility functions
