@@ -5,47 +5,49 @@
 
 module Test.Tasty.Golden.Executable.Runner where
 
-import Control.Exception (Exception, throw)
+import Control.Exception (assert, throw)
 import Control.Monad (unless, when)
 import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT)
+import Control.Monad.State.Class (modify)
+import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT, execStateT)
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (Foldable (..), for_)
 import Data.Functor ((<&>))
-import Data.List qualified as List (intercalate, partition)
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.List qualified as List (findIndices, splitAt, uncons)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
+import Data.String (IsString (..))
 import Data.Tagged (Tagged (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.IO qualified as TextIO
 import Data.Text.Lazy qualified as Lazy
 import Data.Text.Lazy.IO qualified as LazyIO
 import Data.Traversable (for)
-import General.Extra (boolToMaybe)
 import General.Extra.Diff (isBoth, mapDiff)
-import General.Extra.File (createDirectoryRecursive, listFilesRecursive)
-import System.Directory (copyFile, doesFileExist)
+import General.Extra.File (createDirectoryRecursive, listFilesRecursive, writeFileChanged)
+import System.Directory (copyFile, doesFileExist, removeFile)
 import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, (<.>), (</>))
 import System.IO (IOMode (..), hFileSize, withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName)
+import Test.Tasty.Golden.Executable.Error
 import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
 import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept (..))
 import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..))
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
-import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName)
+import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName, writeTestSpecsFile)
 import Test.Tasty.Options (OptionDescription (..), OptionSet, lookupOption)
-import Test.Tasty.Providers (IsTest (..), Result, testFailed, testPassed)
+import Test.Tasty.Providers (IsTest (..), Result, testPassed)
 import Test.Tasty.Runners (Progress, Result (..))
 import Text.Printf (printf)
 
@@ -121,108 +123,11 @@ type TestIO a = TestT IO a
 testEnvironment :: (Monad m) => TestT m TestEnvironment
 testEnvironment = TestT get
 
--- | Raised when the needed file for a test is not found.
-newtype NeededFilesError = NeededFilesError {neededFilesNotFound :: [FilePath]}
-  deriving (Show, Semigroup)
-
-neededFileNotFound :: FilePath -> NeededFilesError
-neededFileNotFound file = NeededFilesError [file]
-
-instance Exception NeededFilesError
-
-handleNeededFilesError :: NeededFilesError -> IO Result
-handleNeededFilesError NeededFilesError {..} = do
-  let message =
-        printf "Could not find needed files: %s" $
-          List.intercalate ", " (show <$> neededFilesNotFound)
-  return $ testFailed message
-
--- | Raised when the golden file for a test is not found.
-newtype GoldenFilesError = GoldenFilesError {goldenFilesNotFound :: [FilePattern]}
-  deriving (Show, Semigroup)
-
-goldenFileNotFound :: FilePattern -> GoldenFilesError
-goldenFileNotFound filePattern = GoldenFilesError [filePattern]
-
-instance Exception GoldenFilesError
-
-handleGoldenFilesError :: GoldenFilesError -> IO Result
-handleGoldenFilesError GoldenFilesError {..} = do
-  let message =
-        printf "Could not find golden files: %s" $
-          List.intercalate ", " (show <$> goldenFilesNotFound)
-  return $ testFailed message
-
--- | Raised when the test run does not produce an expected file or does not expect a produced file,
---   or when the produced file differs from the expected file.
-data ProducedFilesError = ProducedFilesError
-  { expectedFilesNotProduced :: [FilePath],
-    producedFilesNotExpected :: [FilePath],
-    producedAndExpectedDiffs :: Map FilePath Diff
-  }
-  deriving (Show)
-
-instance Semigroup ProducedFilesError where
-  (<>) :: ProducedFilesError -> ProducedFilesError -> ProducedFilesError
-  e1 <> e2 =
-    ProducedFilesError
-      { expectedFilesNotProduced = expectedFilesNotProduced e1 <> expectedFilesNotProduced e2,
-        producedFilesNotExpected = producedFilesNotExpected e1 <> producedFilesNotExpected e2,
-        producedAndExpectedDiffs = producedAndExpectedDiffs e1 <> producedAndExpectedDiffs e2
-      }
-
-expectedFileNotProduced :: FilePath -> ProducedFilesError
-expectedFileNotProduced file = ProducedFilesError [file] [] Map.empty
-
-producedFileNotExpected :: FilePath -> ProducedFilesError
-producedFileNotExpected file = ProducedFilesError [] [file] Map.empty
-
-producedAndExpectedDiffer :: FilePath -> Diff -> ProducedFilesError
-producedAndExpectedDiffer file diff = ProducedFilesError [] [] (Map.singleton file diff)
-
-instance Exception ProducedFilesError
-
-handleProducedFilesError :: ProducedFilesError -> IO Result
-handleProducedFilesError ProducedFilesError {..} = do
-  let message =
-        unlines . catMaybes $
-          [ boolToMaybe (not $ null expectedFilesNotProduced) $
-              printf "Did not produce expected files: %s" $
-                List.intercalate ", " (show <$> expectedFilesNotProduced),
-            boolToMaybe (not $ null expectedFilesNotProduced) $
-              printf "Did not expect produced files: %s" $
-                List.intercalate ", " (show <$> producedFilesNotExpected),
-            boolToMaybe (not $ null producedAndExpectedDiffs) $
-              unlines . flip foldMap (Map.assocs producedAndExpectedDiffs) $ \(file, diff) ->
-                return $ printf "Expected and produced files differ for %s:\n%s" file (show diff)
-          ]
-  return $ testFailed message
-
-data Diff = Diff {prettyDiff :: String} | NoDiff
-
-instance Show Diff where
-  show :: Diff -> String
-  show (Diff {..}) = prettyDiff
-  show NoDiff = "No diff"
-
-instance Exception Diff
-
--- | Raised when the test run exits with a non-zero exit code.
-newtype ExitFailure = ExitFailure Int
-  deriving (Show)
-
-instance Exception ExitFailure
-
-handleExitFailure :: ExitFailure -> IO Result
-handleExitFailure (ExitFailure code) = do
-  let message = printf "Test terminated with exit code %d" code
-  return $ testFailed message
-
 -- | Create a temporary directory to execute the test.
 runTestIO :: FilePath -> TestName -> TestIO () -> IO Result
 runTestIO testDirectory testName (TestT testIO) = do
   handle handleNeededFilesError $
-    handle handleGoldenFilesError $
+    handle handleGoldenFilesNotFoundError $
       handle handleProducedFilesError $
         handle handleExitFailure $
           withSystemTempDirectory testName $ \tempDirectory -> do
@@ -369,29 +274,129 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
   -- If errors were raised, throw them.
   maybe (return ()) throw maybeError
 
+-- | Assert a golden file is not captured by another test's produces patterns.
+assertFileNotCapturedByOtherTest ::
+  (Monad m) => TestName -> FilePath -> TestSpec -> WriterT (Maybe AmbiguousGoldenFilesError) m ()
+assertFileNotCapturedByOtherTest thisTestName thisTestGoldenFile otherTestSpec = do
+  for_ (testSpecProduces otherTestSpec) $ \otherTestProducesPattern ->
+    when (otherTestProducesPattern `match` thisTestGoldenFile) $ do
+      tell . Just . goldenFileIsAmbiguous $
+        AmbiguousGoldenFile
+          { thisTestName = thisTestName,
+            thisTestGoldenFile = thisTestGoldenFile,
+            otherTestName = testSpecName otherTestSpec,
+            otherTestProducesPattern = otherTestProducesPattern
+          }
+
+data AcceptState = AcceptState
+  { acceptTestSpec :: TestSpec,
+    acceptTestSpecChanged :: Bool,
+    goldenFilesToRemove :: [FilePath],
+    actualFilesToCopy :: [FilePath]
+  }
+
+initialAcceptState :: TestSpec -> AcceptState
+initialAcceptState acceptTestSpec =
+  AcceptState
+    { acceptTestSpecChanged = False,
+      goldenFilesToRemove = [],
+      actualFilesToCopy = [],
+      ..
+    }
+
+-- | Update the test produces patterns to capture a new golden file.
+acceptTestProducesPattern :: (Monad m) => FilePath -> StateT AcceptState m ()
+acceptTestProducesPattern actualFile = do
+  acceptState@AcceptState {..} <- get
+  unless (any (`match` actualFile) (testSpecProduces acceptTestSpec)) $ do
+    put $
+      acceptState
+        { acceptTestSpec = acceptTestSpec {testSpecProduces = fromString actualFile : testSpecProduces acceptTestSpec},
+          acceptTestSpecChanged = True
+        }
+
 -- | Update the files produced by the test.
 acceptTestProduced :: [FilePattern] -> IgnoreFiles -> TestIO ()
 acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   TestEnvironment {..} <- testEnvironment
   -- Read the test.json file:
   TestSpecs testSpecs <- lift $ readTestSpecsFile (testDirectory </> testSpecsFileName)
-  let (_thisTestSpec, _otherTestSpecs) = List.partition ((== testName) . testSpecName) (toList testSpecs)
+  let testSpecsList = toList testSpecs
+  let thisTestIndices = List.findIndices ((== testName) . testSpecName) testSpecsList
+  -- There should be EXACTLY ONE test named testSpecName:
+  thisTestIndex <- assert (length thisTestIndices == 1) (return $ head thisTestIndices)
+  let (otherTestSpecsBefore, thisTestSpecAndOtherTestSpecsAfter) = List.splitAt thisTestIndex testSpecsList
+  let (thisTestSpec, otherTestSpecsAfter) =
+        fromMaybe (error $ printf "Could not find test named '%s'" testName) $
+          List.uncons thisTestSpecAndOtherTestSpecsAfter
+  let otherTestSpecs = otherTestSpecsBefore <> otherTestSpecsAfter
   -- Find the golden and actual files:
-  _goldenFiles <- findTestProducesGolden testProduces
-  _actualFiles <- findTestProducesActual testIgnores
-  -- For each actualFile:
-  -- + Is the actualFile matched by any of the "produces" patterns of any of the other tests? Error!
-  -- + Is the actualFile NOT matched by any of the "produces" patterns of this test?
-  --   Add actualFile to the "produces" patterns of this test.
-  -- + Write the contents of actualFile to the testDirectory using writeFileChanged with a .golden extension.
-
-  -- For each goldenFile:
-  -- + Is the goldenFile in the set of actualFiles? Skip.
-  -- + Is the goldenFile matched by any of the "produces" patterns of any of the other tests? Error!
-  -- + Delete the goldenFile from the testDirectory.
-
-  -- For each "produces" pattern:
-  -- 1. Does the "produces" pattern NOT match any of the golden files? Remove it.
+  actualFiles <- findTestProducesActual testIgnores
+  goldenFiles <- findTestProducesGolden testProduces
+  -- Run a state monad with an accept state, to make iterative updates to the test
+  -- specification and schedule copy and delete operations:
+  AcceptState {..} <- flip execStateT (initialAcceptState thisTestSpec) $ do
+    -- Collect errors in a writer monad:
+    maybeError <- execWriterT $
+      do
+        -- For each actualFile:
+        for_ actualFiles $ \actualFile -> do
+          -- If the actualFile is matched by any of the "produces" patterns
+          -- of any of the other tests, we throw an error:
+          for_ otherTestSpecs $ \otherTestSpec ->
+            assertFileNotCapturedByOtherTest testName actualFile otherTestSpec
+          -- If the actualFile is NOT matched by any of the "produces" patterns
+          -- of this test, we add it to the "produces" patterns of this test:
+          lift $ acceptTestProducesPattern actualFile
+          -- Copy the actualFile:
+          lift $ modify $ \acceptState ->
+            acceptState {actualFilesToCopy = actualFile : actualFilesToCopy acceptState}
+        -- For each goldenFile:
+        for_ goldenFiles $ \goldenFile -> do
+          -- Assert that the goldenFile ends with .golden:
+          case stripExtension ".golden" goldenFile of
+            Just goldenFileBase ->
+              -- If the goldenFile is matched by any of the "produces" patterns
+              -- of any of the other tests, we throw an error:
+              for_ otherTestSpecs $ \otherTestSpec ->
+                assertFileNotCapturedByOtherTest testName goldenFileBase otherTestSpec
+            Nothing ->
+              fail $
+                printf "found golden file without .golden extension: %s" goldenFile
+          -- If the goldenFile is NOT in the set of actualFiles, remove it:
+          lift $ modify $ \acceptState ->
+            acceptState {goldenFilesToRemove = goldenFile : goldenFilesToRemove acceptState}
+        -- For each "produces" pattern:
+        -- If the "produces" pattern does NOT match any of the new golden files, remove it:
+        oldTestSpecProduces <- testSpecProduces . acceptTestSpec <$> get
+        let newTestSpecProduces =
+              [ testSpecProducesPattern
+                | testSpecProducesPattern <- oldTestSpecProduces,
+                  any (testSpecProducesPattern `match`) actualFiles
+              ]
+        modify $ \acceptState@AcceptState {..} ->
+          acceptState {acceptTestSpec = acceptTestSpec {testSpecProduces = newTestSpecProduces}}
+    maybe (return ()) throw maybeError
+  -- If no errors occurred:
+  -- Write the new test specification:
+  when acceptTestSpecChanged $ do
+    let acceptTestSpecs =
+          TestSpecs $
+            NonEmpty.prependList otherTestSpecsBefore $
+              NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
+    lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
+  -- Remove the outdated .golden files:
+  for_ goldenFilesToRemove $ \goldenFile ->
+    lift $ removeFile (testDirectory </> goldenFile)
+  -- Copy the new .golden files:
+  for_ actualFilesToCopy $ \actualFile -> lift $ do
+    let goldenFile = actualFile <.> ".golden"
+    goldenFileExists <- doesFileExist (testDirectory </> goldenFile)
+    if goldenFileExists
+      then do
+        actualFileContents <- TextIO.readFile (tempDirectory </> actualFile)
+        writeFileChanged (testDirectory </> goldenFile) actualFileContents
+      else do copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
   return ()
 
 -- | Find the actual files produced by the test command.

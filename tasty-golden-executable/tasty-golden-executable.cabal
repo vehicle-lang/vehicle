@@ -35,6 +35,7 @@ library
     General.Extra.Diff
     General.Extra.File
     General.Extra.Option
+    Test.Tasty.Golden.Executable.Error
     Test.Tasty.Golden.Executable.Runner
     Test.Tasty.Golden.Executable.TestSpec
     Test.Tasty.Golden.Executable.TestSpec.Accept
