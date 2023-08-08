@@ -6,6 +6,7 @@ where
 
 import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Subsystem.Standard.Type qualified as Standard
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
@@ -13,14 +14,16 @@ import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
 typeLossBuiltin :: Provenance -> LossBuiltin -> Type Ix LossBuiltin
-typeLossBuiltin p b = fromDSL p $ case b of
-  BuiltinConstructor c -> Standard.typeOfBuiltinConstructor c
-  BuiltinFunction f -> Standard.typeOfBuiltinFunction f
-  BuiltinType t -> Standard.typeOfBuiltinType t
-  NatInDomainConstraint -> Standard.typeOfNatInDomainConstraint
-  Loss -> type0
-  LossTC tc -> typeOfLossTypeClass tc
-  LossTCOp op -> typeOfLossTypeClassOp op
+typeLossBuiltin p b = case b of
+  BuiltinConstructor c -> fromStandard $ Standard.typeOfBuiltinConstructor c
+  BuiltinFunction f -> fromStandard $ Standard.typeOfBuiltinFunction f
+  BuiltinType t -> fromStandard $ Standard.typeOfBuiltinType t
+  NatInDomainConstraint -> fromStandard Standard.typeOfNatInDomainConstraint
+  Loss -> fromDSL p type0
+  LossTC tc -> fromDSL p $ typeOfLossTypeClass tc
+  LossTCOp op -> fromDSL p $ typeOfLossTypeClassOp op
+  where
+    fromStandard = removeIrrelevantCode . fromDSL p
 
 typeOfLossTypeClassOp :: LossTypeClassOp -> LossDSLExpr
 typeOfLossTypeClassOp = \case

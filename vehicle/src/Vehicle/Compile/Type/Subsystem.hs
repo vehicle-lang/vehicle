@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
-import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
@@ -26,7 +26,7 @@ typeCheckWithSubsystem ::
   m (GluedProg builtin)
 typeCheckWithSubsystem instanceCandidates prog = do
   typeClassFreeProg <- resolveInstanceArguments prog
-  irrelevantFreeProg <- removeIrrelevantCode typeClassFreeProg
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg typeClassFreeProg
   monomorphisedProg <- monomorphise isPropertyDecl False "-" irrelevantFreeProg
   implicitFreeProg <- removeImplicitAndInstanceArgs monomorphisedProg
   typeCheckProg mempty instanceCandidates implicitFreeProg

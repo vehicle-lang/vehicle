@@ -18,7 +18,7 @@ import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
-import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad (TypableBuiltin)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -125,7 +125,7 @@ compileToJSON ::
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  relevantProg <- removeIrrelevantCode prog
+  relevantProg <- removeIrrelevantCodeFromProg prog
   let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf True "_" relevantProg
   functionalisedProg <- functionaliseResources monomorphiseProg

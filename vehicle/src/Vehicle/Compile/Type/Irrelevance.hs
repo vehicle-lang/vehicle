@@ -1,9 +1,11 @@
 module Vehicle.Compile.Type.Irrelevance
   ( RemoveIrrelevantCode,
+    removeIrrelevantCodeFromProg,
     removeIrrelevantCode,
   )
 where
 
+import Control.Monad.Identity
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
@@ -12,21 +14,24 @@ import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.
-removeIrrelevantCode ::
+removeIrrelevantCodeFromProg ::
   (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
   Prog Ix builtin ->
   m (Prog Ix builtin)
-removeIrrelevantCode x = do
+removeIrrelevantCodeFromProg x = do
   logCompilerPass MinDetail "removal of irrelevant code" $ do
     result <- remove x
     logDebug MaxDetail $ prettyFriendly result
     return result
 
+removeIrrelevantCode :: (RemoveIrrelevantCode Identity a) => a -> a
+removeIrrelevantCode x = runIdentity $ remove x
+
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
 
 type MonadRemove m =
-  ( MonadCompile m
+  ( Monad m
   )
 
 class RemoveIrrelevantCode m a where
@@ -40,7 +45,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl ex
 
 instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
   remove expr = do
-    showRemoveEntry expr
+    -- showRemoveEntry expr
     result <- case expr of
       App p fun args -> do
         normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
@@ -61,7 +66,7 @@ instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) w
       Meta {} -> return expr
       Builtin {} -> return expr
 
-    showRemoveExit result
+    -- showRemoveExit result
     return result
 
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
@@ -76,6 +81,7 @@ removeArgs ::
   m [GenericArg expr]
 removeArgs = traverse remove . filter isRelevant
 
+{-
 --------------------------------------------------------------------------------
 -- Debug functions
 
@@ -88,3 +94,4 @@ showRemoveExit :: (MonadRemove m) => Expr Ix builtin -> m ()
 showRemoveExit _e = do
   -- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)
   decrCallDepth
+-}
