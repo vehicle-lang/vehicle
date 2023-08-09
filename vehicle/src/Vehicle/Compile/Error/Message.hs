@@ -286,7 +286,7 @@ instance MeaningfulError CompileError where
     -- Typing --
     ------------
 
-    TypingError @builtin (FunctionTypeMismatch ctx fun _originalArgs nonPiType args) ->
+    TypingError (FunctionTypeMismatch ctx fun _originalArgs nonPiType args :: TypingError builtin) ->
       UError $
         UserError
           { provenance = p,
@@ -417,7 +417,7 @@ instance MeaningfulError CompileError where
           }
       where
         argTypeDoc = prettyFriendly $ WithContext (typeOf argBinder) ctx
-    TypingError @builtin (FailedInstanceConstraint ctx origin _goal candidates) ->
+    TypingError (FailedInstanceConstraint ctx origin _goal candidates :: TypingError builtin) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
