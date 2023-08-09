@@ -9,7 +9,6 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised

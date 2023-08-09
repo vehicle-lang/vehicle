@@ -27,18 +27,22 @@ import Vehicle.Libraries.StandardLibrary
 
 solveTypeClassConstraint :: (MonadTypeClass m) => WithContext StandardInstanceConstraint -> m ()
 solveTypeClassConstraint constraint = do
-  normConstraint@(WithContext (Has m _ expr) ctx) <- substMetas constraint
+  normConstraint@(WithContext (Resolve origin m _ expr) ctx) <- substMetas constraint
   logDebug MaxDetail $ "Forced type-class:" <+> prettyFriendly normConstraint
 
   (tc, spine) <- getTypeClass expr
-  progress <- solve tc normConstraint (mapMaybe getExplicitArg spine)
-  case progress of
-    Left metas -> do
-      let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas
-      addConstraints [blockedConstraint]
-    Right (newConstraints, solution) -> do
-      solveMeta m solution (boundContext ctx)
-      addConstraints newConstraints
+  let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
+  case maybeProgress of
+    Nothing -> malformedConstraintError normConstraint
+    Just mkProgress -> do
+      progress' <- mkProgress
+      case progress' of
+        Left metas -> do
+          let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas
+          addConstraints [blockedConstraint]
+        Right (newConstraints, solution) -> do
+          solveMeta m solution (boundContext ctx)
+          addConstraints newConstraints
 
 type MonadTypeClass m =
   ( TCM StandardBuiltin m
@@ -52,16 +56,17 @@ type TypeClassProgress = Either MetaSet ([WithContext StandardConstraint], Stand
 type TypeClassSolver =
   forall m.
   (MonadTypeClass m) =>
-  WithContext StandardInstanceConstraint ->
+  InstanceConstraintInfo StandardBuiltin ->
   [StandardNormType] ->
-  m TypeClassProgress
+  Maybe (m TypeClassProgress)
 
 solve :: TypeClass -> TypeClassSolver
-solve tc = case tc of
-  HasQuantifier q -> solveHasQuantifier q
-  _ -> \_ _ ->
-    compilerDeveloperError $
-      "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
+solve tc info args = case tc of
+  HasQuantifier q -> solveHasQuantifier q info args
+  _ ->
+    Just $
+      compilerDeveloperError $
+        "Expected the class" <+> quotePretty tc <+> "to be solved via instance search"
 
 --------------------------------------------------------------------------------
 -- HasQuantifier
@@ -69,25 +74,24 @@ solve tc = case tc of
 solveHasQuantifier :: Quantifier -> TypeClassSolver
 solveHasQuantifier _ _ [lamType]
   | isNMeta lamType = blockOnMetas [lamType]
-solveHasQuantifier q c [VPi binder body]
+solveHasQuantifier q info@(ctx, _) [VPi binder body]
   | isNMeta domain = blockOnMetas [domain]
-  | isIndexType domain = solveIndexQuantifier q ctx binder body
-  | isNatType domain = solveSimpleQuantifier q ctx binder body
-  | isIntType domain = solveSimpleQuantifier q ctx binder body
-  | isRatType domain = solveSimpleQuantifier q ctx binder body
-  | isVectorType domain = solveVectorQuantifier q ctx binder body
-  | otherwise = blockOrThrowErrors ctx [domain] tcError
+  | isIndexType domain = Just $ solveIndexQuantifier q info binder body
+  | isNatType domain = Just $ solveSimpleQuantifier q info binder body
+  | isIntType domain = Just $ solveSimpleQuantifier q info binder body
+  | isRatType domain = Just $ solveSimpleQuantifier q info binder body
+  | isVectorType domain = Just $ solveVectorQuantifier q info binder body
+  | otherwise = Just $ blockOrThrowErrors ctx [domain] tcError
   where
-    ctx = contextOf c
     domain = typeOf binder
-    tcError = [FailedQuantifierConstraintDomain ctx domain q]
-solveHasQuantifier _ c _ = malformedConstraintError c
+    tcError = [FailedQuantifierConstraintDomain info domain q]
+solveHasQuantifier _ _ _ = Nothing
 
 type HasQuantifierSolver =
   forall m.
   (MonadTypeClass m) =>
   Quantifier ->
-  StandardConstraintContext ->
+  InstanceConstraintInfo StandardBuiltin ->
   StandardNormBinder ->
   StandardNormType ->
   m TypeClassProgress
@@ -97,7 +101,7 @@ solveIndexQuantifier q c domainBinder body = do
   let p = provenanceOf c
 
   (domainEq, indexSize) <- unifyWithIndexType c (typeOf domainBinder)
-  bodyEq <- unify c body VBoolType
+  bodyEq <- createInstanceUnification c body VBoolType
 
   let method = identifierOf $ if q == Forall then StdForallIndex else StdExistsIndex
   let solution =
@@ -110,22 +114,22 @@ solveIndexQuantifier q c domainBinder body = do
   return $ Right ([domainEq, bodyEq], solution)
 
 solveSimpleQuantifier :: HasQuantifierSolver
-solveSimpleQuantifier q c _domainBinder body = do
-  let p = provenanceOf c
-  bodyEq <- unify c body VBoolType
+solveSimpleQuantifier q info@(ctx, _) _domainBinder body = do
+  let p = provenanceOf ctx
+  bodyEq <- createInstanceUnification info body VBoolType
   let solution = NullaryBuiltinFunctionExpr p (Quantifier q)
   return $ Right ([bodyEq], solution)
 
 solveVectorQuantifier :: HasQuantifierSolver
-solveVectorQuantifier q c domainBinder body = do
-  let p = provenanceOf c
-  dim <- freshDimMeta c
-  (domainEq, vecElem) <- unifyWithVectorType c dim (typeOf domainBinder)
+solveVectorQuantifier q info@(ctx, _) domainBinder body = do
+  let p = provenanceOf ctx
+  dim <- freshDimMeta ctx
+  (domainEq, vecElem) <- unifyWithVectorType info dim (typeOf domainBinder)
 
   -- Recursively check that you can quantify over it.
   let elemDomainBinder = replaceBinderType (normalised vecElem) domainBinder
   let expr = VBuiltin (TypeClass (HasQuantifier q)) [RelevantExplicitArg mempty (VPi elemDomainBinder body)]
-  (metaExpr, recTC) <- createTC c Relevant expr
+  (metaExpr, recTC) <- createSubInstance info Relevant expr
 
   let solution =
         BuiltinFunctionExpr
@@ -143,25 +147,25 @@ solveVectorQuantifier q c domainBinder body = do
 
 unifyWithIndexType ::
   (MonadTypeClass m) =>
-  StandardConstraintContext ->
+  InstanceConstraintInfo StandardBuiltin ->
   StandardNormType ->
   m (WithContext StandardConstraint, StandardExpr)
-unifyWithIndexType c t = do
-  let p = provenanceOf c
-  indexSize <- freshMetaExpr p (NatType p) (boundContext c)
-  eq <- unify c t (VIndexType (normalised indexSize))
+unifyWithIndexType info@(ctx, _) t = do
+  let p = provenanceOf ctx
+  indexSize <- freshMetaExpr p (NatType p) (boundContext ctx)
+  eq <- createInstanceUnification info t (VIndexType (normalised indexSize))
   return (eq, unnormalised indexSize)
 
 unifyWithVectorType ::
   (MonadTypeClass m) =>
-  StandardConstraintContext ->
+  InstanceConstraintInfo StandardBuiltin ->
   StandardGluedExpr ->
   StandardNormType ->
   m (WithContext StandardConstraint, StandardGluedType)
-unifyWithVectorType c dim t = do
-  let p = provenanceOf c
-  elemType <- freshMetaExpr p (TypeUniverse p 0) (boundContext c)
-  eq <- unify c t (VVectorType (normalised elemType) (normalised dim))
+unifyWithVectorType info@(ctx, _) dim t = do
+  let p = provenanceOf ctx
+  elemType <- freshMetaExpr p (TypeUniverse p 0) (boundContext ctx)
+  eq <- createInstanceUnification info t (VVectorType (normalised elemType) (normalised dim))
   return (eq, elemType)
 
 freshDimMeta :: (MonadTypeClass m) => StandardConstraintContext -> m StandardGluedExpr
@@ -182,8 +186,8 @@ blockOrThrowErrors ctx args err = do
     then throwError (head err)
     else return $ Left blockingMetas
 
-blockOnMetas :: (MonadCompile m) => [StandardNormExpr] -> m TypeClassProgress
-blockOnMetas args = do
+blockOnMetas :: (MonadCompile m) => [StandardNormExpr] -> Maybe (m TypeClassProgress)
+blockOnMetas args = Just $ do
   let metas = mapMaybe getNMeta args
   return $ Left $ MetaSet.fromList metas
 

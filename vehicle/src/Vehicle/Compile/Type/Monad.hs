@@ -116,22 +116,29 @@ createFreshTypeClassConstraint ::
   forall builtin m.
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
-  (Expr Ix builtin, [Arg Ix builtin]) ->
+  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Relevance ->
   Type Ix builtin ->
   m (GluedExpr builtin)
-createFreshTypeClassConstraint boundCtx (fun, funArgs) relevance tcExpr = do
+createFreshTypeClassConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
+  let origin =
+        InstanceConstraintOrigin
+          { checkedInstanceOp = fun,
+            checkedInstanceOpArgs = funArgs,
+            checkedInstanceOpType = funType,
+            checkedInstanceType = tcExpr
+          }
+
   let env = typingBoundContextToEnv boundCtx
 
   let p = provenanceOf fun
   (meta, metaExpr) <- freshMetaIdAndExpr p tcExpr boundCtx
 
-  let origin = CheckingTypeClass fun funArgs tcExpr
   let originProvenance = provenanceOf tcExpr
   cid <- generateFreshConstraintID (Proxy @builtin)
-  let context = ConstraintContext cid originProvenance origin p unknownBlockingStatus boundCtx
+  let context = ConstraintContext cid originProvenance p unknownBlockingStatus boundCtx
   nTCExpr <- whnf env tcExpr
-  let constraint = WithContext (Has meta relevance nTCExpr) context
+  let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 
   addInstanceConstraints [constraint]
 
@@ -141,7 +148,7 @@ instantiateArgForNonExplicitBinder ::
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
   Provenance ->
-  (Expr Ix builtin, [Arg Ix builtin]) ->
+  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Binder Ix builtin ->
   m (GluedArg builtin)
 instantiateArgForNonExplicitBinder boundCtx p origin binder = do

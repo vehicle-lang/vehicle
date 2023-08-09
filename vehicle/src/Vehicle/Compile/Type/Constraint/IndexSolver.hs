@@ -1,5 +1,6 @@
 module Vehicle.Compile.Type.Constraint.IndexSolver where
 
+import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -19,7 +20,7 @@ solveIndexConstraint ::
   WithContext (InstanceConstraint builtin) ->
   m ()
 solveIndexConstraint constraint = do
-  normConstraint@(WithContext (Has meta _ expr) ctx) <- substMetas constraint
+  normConstraint@(WithContext (Resolve _ meta _ expr) ctx) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
 
   case expr of
@@ -57,9 +58,9 @@ solveInDomain c [value, typ] = case typ of
       (getNMeta -> Just {}) -> return $ blockOnMetas [value]
       VNatLiteral n
         | m > n -> return Nothing
-        | otherwise -> handleTypingError $ FailedIndexConstraintTooBig ctx n m
+        | otherwise -> throwError $ TypingError $ FailedIndexConstraintTooBig ctx n m
       _ -> malformedConstraintError c
-    _ -> handleTypingError $ FailedIndexConstraintUnknown ctx value size
+    _ -> throwError $ TypingError $ FailedIndexConstraintUnknown ctx value size
   _ -> malformedConstraintError c
   where
     ctx = contextOf c

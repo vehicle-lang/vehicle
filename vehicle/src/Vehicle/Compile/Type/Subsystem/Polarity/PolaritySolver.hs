@@ -21,11 +21,13 @@ solvePolarityConstraint ::
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint (WithContext constraint ctx) = do
-  normConstraint@(Has _ _ expr) <- substMetas constraint
+  normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
+  let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
   let nConstraint = WithContext normConstraint ctx
-  progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
-  handleConstraintProgress (WithContext normConstraint ctx) progress
+  case maybeProgress of
+    Nothing -> malformedConstraintError nConstraint
+    Just progress -> handleConstraintProgress nConstraint =<< progress
 
 --------------------------------------------------------------------------------
 -- Constraint solving
@@ -35,9 +37,9 @@ type MonadPolaritySolver m = TCM PolarityBuiltin m
 type PolaritySolver =
   forall m.
   (MonadPolaritySolver m) =>
-  WithContext (InstanceConstraint PolarityBuiltin) ->
+  InstanceConstraintInfo PolarityBuiltin ->
   [VType PolarityBuiltin] ->
-  m (ConstraintProgress PolarityBuiltin)
+  Maybe (m (ConstraintProgress PolarityBuiltin))
 
 solve :: PolarityRelation -> PolaritySolver
 solve = \case
@@ -51,109 +53,101 @@ solve = \case
   IfPolarity -> solveIfCondPolarity
 
 solveNegPolarity :: PolaritySolver
-solveNegPolarity c [arg1, res] = case arg1 of
+solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
   (getNMeta -> Just m) -> blockOn [m]
-  VPolarityExpr pol -> do
-    let ctx = contextOf c
+  VPolarityExpr pol -> Just $ do
     let resPol = VPolarityExpr $ negatePolarity (provenanceOf ctx) pol
-    resEq <- unify ctx res resPol
+    resEq <- createInstanceUnification info res resPol
     return $ Progress [resEq]
-  _ -> malformedConstraintError c
-solveNegPolarity c _ = malformedConstraintError c
+  _ -> Nothing
+solveNegPolarity _ _ = Nothing
 
 solveQuantifierPolarity :: Quantifier -> PolaritySolver
-solveQuantifierPolarity q c [lam, res] = case lam of
+solveQuantifierPolarity q info [lam, res] = case lam of
   (getNMeta -> Just m) -> blockOn [m]
-  (VPi binder resPol) -> do
-    let ctx = contextOf c
-    binderEq <- unify ctx (typeOf binder) (VPolarityExpr Unquantified)
+  (VPi binder resPol) -> Just $ do
+    binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity q
-    (_, addConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [resPol, res]))
+    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [resPol, res]))
     return $ Progress [binderEq, addConstraint]
-  _ -> malformedConstraintError c
-solveQuantifierPolarity _ c _ = malformedConstraintError c
+  _ -> Nothing
+solveQuantifierPolarity _ _c _ = Nothing
 
 solveAddPolarityOp :: Quantifier -> PolaritySolver
-solveAddPolarityOp q c [arg, res] = case arg of
+solveAddPolarityOp q info@(ctx, _) [arg, res] = case arg of
   (getNMeta -> Just m) -> blockOn [m]
-  VPolarityExpr inputPol -> do
-    let ctx = contextOf c
+  VPolarityExpr inputPol -> Just $ do
     let p = originalProvenance ctx
     let resPol = VPolarityExpr $ addPolarityOp p q inputPol
-    domEq <- unify ctx res resPol
+    domEq <- createInstanceUnification info res resPol
     return $ Progress [domEq]
-  _ -> malformedConstraintError c
-solveAddPolarityOp _ c _ = malformedConstraintError c
+  _ -> Nothing
+solveAddPolarityOp _ _ _ = Nothing
 
 solveMaxPolarityOp :: PolaritySolver
-solveMaxPolarityOp c [arg1, arg2, res] = case (arg1, arg2) of
-  (VPolarityExpr pol1, VPolarityExpr pol2) -> do
-    let ctx = contextOf c
+solveMaxPolarityOp info [arg1, arg2, res] = case (arg1, arg2) of
+  (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ maxPolarityOp pol1 pol2
-    resEq <- unify ctx res pol3
+    resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
-  (_, VPolarityExpr Unquantified) -> do
-    resEq <- unify (contextOf c) arg1 res
+  (_, VPolarityExpr Unquantified) -> Just $ do
+    resEq <- createInstanceUnification info arg1 res
     return $ Progress [resEq]
-  (VPolarityExpr Unquantified, _) -> do
-    resEq <- unify (contextOf c) arg2 res
+  (VPolarityExpr Unquantified, _) -> Just $ do
+    resEq <- createInstanceUnification info arg2 res
     return $ Progress [resEq]
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
-  _ -> malformedConstraintError c
-solveMaxPolarityOp c _ = malformedConstraintError c
+  _ -> Nothing
+solveMaxPolarityOp _ _ = Nothing
 
 solveEqPolarity :: EqualityOp -> PolaritySolver
-solveEqPolarity eq c [arg1, arg2, res] = case (arg1, arg2) of
-  (VPolarityExpr pol1, VPolarityExpr pol2) -> do
-    let ctx = contextOf c
+solveEqPolarity eq info@(ctx, _) [arg1, arg2, res] = case (arg1, arg2) of
+  (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ eqPolarityOp eq (provenanceOf ctx) pol1 pol2
-    resEq <- unify ctx res pol3
+    resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
-  _ -> malformedConstraintError c
-solveEqPolarity _ c _ = malformedConstraintError c
+  _ -> Nothing
+solveEqPolarity _ _ _ = Nothing
 
 solveImplPolarity :: PolaritySolver
-solveImplPolarity c [arg1, arg2, res] = case (arg1, arg2) of
-  (VPolarityExpr pol1, VPolarityExpr pol2) -> do
-    let ctx = contextOf c
+solveImplPolarity info@(ctx, _) [arg1, arg2, res] = case (arg1, arg2) of
+  (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ implPolarity (provenanceOf ctx) pol1 pol2
-    resEq <- unify ctx res pol3
+    resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
-  _ -> malformedConstraintError c
-solveImplPolarity c _ = malformedConstraintError c
+  _ -> Nothing
+solveImplPolarity _ _ = Nothing
 
 solveFunctionPolarity :: FunctionPosition -> PolaritySolver
-solveFunctionPolarity functionPosition c [arg, res] = case (arg, res) of
+solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res) of
   (getNMeta -> Just m1, _) -> blockOn [m1]
-  (VPolarityExpr pol, _) -> do
-    let ctx = contextOf c
+  (VPolarityExpr pol, _) -> Just $ do
     let p = provenanceOf ctx
     let addFuncProv pp = PolFunctionProvenance p pp functionPosition
     let pol3 = VPolarityExpr $ mapPolarityProvenance addFuncProv pol
-    resEq <- unify ctx res pol3
+    resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
-  (VPi binder1 body1, VPi binder2 body2) -> do
-    let ctx = contextOf c
+  (VPi binder1 body1, VPi binder2 body2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
-    (_, bodyConstraint) <- createTC ctx Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [body1, body2]))
+    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
+    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
-  _ -> malformedConstraintError c
-solveFunctionPolarity _ c _ = malformedConstraintError c
+  _ -> Nothing
+solveFunctionPolarity _ _ _ = Nothing
 
 solveIfCondPolarity :: PolaritySolver
-solveIfCondPolarity c [pCond, pArg1, pArg2, pRes] = case pCond of
+solveIfCondPolarity info@(ctx, _) [pCond, pArg1, pArg2, pRes] = case pCond of
   (getNMeta -> Just m1) -> blockOn [m1]
   VPolarityExpr pol -> case pol of
-    Unquantified -> solveMaxPolarityOp c [pArg1, pArg2, pRes]
-    _ -> throwError $ QuantifiedIfCondition (contextOf c)
-  _ -> malformedConstraintError c
-solveIfCondPolarity c _ = malformedConstraintError c
+    Unquantified -> solveMaxPolarityOp info [pArg1, pArg2, pRes]
+    _ -> Just $ throwError $ QuantifiedIfCondition ctx
+  _ -> Nothing
+solveIfCondPolarity _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Operations over polarities
@@ -230,7 +224,7 @@ handleConstraintProgress ::
   WithContext (InstanceConstraint PolarityBuiltin) ->
   ConstraintProgress PolarityBuiltin ->
   m ()
-handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \case
+handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
   Stuck metas -> do
     let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]

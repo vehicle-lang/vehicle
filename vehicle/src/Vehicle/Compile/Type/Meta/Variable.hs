@@ -143,10 +143,10 @@ instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
 instance HasMetas (InstanceConstraint builtin) where
-  findMetas (Has _ _ e) = findMetas e
+  findMetas (Resolve _ _ _ e) = findMetas e
 
 instance HasMetas (UnificationConstraint builtin) where
-  findMetas (Unify e1 e2) = do findMetas e1; findMetas e2
+  findMetas (Unify _ e1 e2) = do findMetas e1; findMetas e2
 
 instance HasMetas (Constraint builtin) where
   findMetas = \case

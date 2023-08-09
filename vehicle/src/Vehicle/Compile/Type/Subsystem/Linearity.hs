@@ -5,10 +5,9 @@ module Vehicle.Compile.Type.Subsystem.Linearity
   )
 where
 
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
@@ -23,6 +22,7 @@ import Vehicle.Syntax.Builtin qualified as S
 
 instance PrintableBuiltin LinearityBuiltin where
   convertBuiltin = convertFromLinearityTypes
+  isCoercion = const False
 
 convertFromLinearityTypes :: Provenance -> LinearityBuiltin -> Expr var S.Builtin
 convertFromLinearityTypes p = \case
@@ -38,14 +38,9 @@ instance TypableBuiltin LinearityBuiltin where
   restrictDatasetType = assertConstantLinearity
   restrictParameterType = const assertConstantLinearity
   restrictPropertyType _ _ = return ()
-  handleTypingError = handleLinearityTypingError
   solveInstance = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
   generateDefaultConstraint = const $ return False
-
-handleLinearityTypingError :: (MonadCompile m) => TypingError LinearityBuiltin -> m a
-handleLinearityTypingError b =
-  compilerDeveloperError $ "Linearity type system should not be throwing error:" <+> pretty b
 
 freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
 freshLinearityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
