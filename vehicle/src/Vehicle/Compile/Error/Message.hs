@@ -8,6 +8,7 @@ where
 
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Prettyprinter (list)
 import System.FilePath
@@ -20,13 +21,12 @@ import Vehicle.Compile.Type.Subsystem.Linearity
 import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfTypeClassOp)
-import Vehicle.Expr.DSL (fromDSL)
-import Vehicle.Expr.DeBruijn (substDBInto)
+import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn (Ix, substDBInto)
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
+import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -286,7 +286,7 @@ instance MeaningfulError CompileError where
     -- Typing --
     ------------
 
-    FunTypeMismatch p ctx fun candidate expected ->
+    TypingError @builtin (FunctionTypeMismatch ctx fun _originalArgs nonPiType args) ->
       UError $
         UserError
           { provenance = p,
@@ -295,11 +295,22 @@ instance MeaningfulError CompileError where
                 -- <+> squotes (prettyFriendly $ WithContext fun ctx)
                 <+> squotes (prettyVerbose fun)
                 <+> "to have something of type"
-                <+> squotes (prettyFriendly $ WithContext expected ctx)
+                <+> squotes (prettyFriendly $ WithContext expectedType ctx)
                 <+> "but inferred type"
-                <+> squotes (prettyFriendly $ WithContext candidate ctx),
+                <+> squotes (prettyFriendly $ WithContext nonPiType ctx),
             fix = Nothing
           }
+      where
+        p = provenanceOf fun
+
+        mkRes :: [Endo (DSLExpr builtin)]
+        mkRes =
+          [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+            | (i, arg) <- zip [0 :: Int ..] args
+          ]
+
+        expectedType :: Expr Ix builtin
+        expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
     UnresolvedHole p name ->
       UError $
         UserError
@@ -307,7 +318,7 @@ instance MeaningfulError CompileError where
             problem = "the type of" <+> squotes (pretty name) <+> "could not be resolved",
             fix = Nothing
           }
-    FailedUnificationConstraints cs ->
+    TypingError (FailedUnificationConstraints cs) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -322,30 +333,30 @@ instance MeaningfulError CompileError where
             fix = Just "check your types"
           }
       where
-        WithContext (Unify e1 e2) ctx = NonEmpty.head cs
+        WithContext (Unify origin e1 e2) ctx = NonEmpty.head cs
         boundCtx = boundContextOf ctx
 
-        constraintOriginMessage = case origin ctx of
-          CheckingExprType expr expectedType actualType ->
+        constraintOriginMessage = case origin of
+          CheckingExprType CheckingExpr {..} ->
             "expected"
-              <+> squotes (prettyUnificationConstraintOriginExpr ctx expr)
+              <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
               <+> "to be of type"
-              <+> squotes (prettyFriendly (WithContext expectedType boundCtx))
+              <+> squotes (prettyFriendly (WithContext checkedExprExpectedType boundCtx))
               <+> "but was found to be of type"
-              <+> squotes (prettyFriendly (WithContext actualType boundCtx))
-          CheckingBinderType varName expectedType actualType ->
+              <+> squotes (prettyFriendly (WithContext checkedExprActualType boundCtx))
+          CheckingBinderType CheckingBinder {..} ->
             "expected the variable"
-              <+> quotePretty varName
+              <+> quotePretty checkedBinderName
               <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext expectedType boundCtx)
+              <+> squotes (prettyFriendly $ WithContext checkedBinderExpectedType boundCtx)
               <+> "but was found to be of type"
-              <+> squotes (prettyFriendly $ WithContext actualType boundCtx)
-          CheckingTypeClass fun args _ ->
+              <+> squotes (prettyFriendly $ WithContext checkedBinderActualType boundCtx)
+          CheckingInstanceType InstanceConstraintOrigin {..} ->
             "unable to find a consistent type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
+              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
           CheckingAuxiliary ->
             developerError "Auxiliary constraints should not be unsolved."
-    UnsolvedConstraints cs ->
+    TypingError (UnsolvedConstraints cs) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -355,27 +366,31 @@ instance MeaningfulError CompileError where
             fix = Just "try adding more type annotations"
           }
       where
-        WithContext _constraint ctx = NonEmpty.head cs
+        WithContext constraint ctx = NonEmpty.head cs
         nameCtx = boundContextOf ctx
 
-        constraintOriginMessage = case origin ctx of
-          CheckingExprType expr expectedType _actualType ->
-            "expected"
-              <+> squotes (prettyUnificationConstraintOriginExpr ctx expr)
-              <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
-              <+> "but was unable to prove it."
-          CheckingBinderType varName expectedType _actualType ->
-            "expected the variable"
-              <+> squotes (pretty varName)
-              <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext expectedType nameCtx)
-              <+> "but was unable to prove it."
-          CheckingTypeClass fun args _ ->
+        constraintOriginMessage = case constraint of
+          UnificationConstraint (Unify origin _ _) -> case origin of
+            CheckingExprType CheckingExpr {..} ->
+              "expected"
+                <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
+                <+> "to be of type"
+                <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType nameCtx)
+                <+> "but was unable to prove it."
+            CheckingBinderType CheckingBinder {..} ->
+              "expected the variable"
+                <+> squotes (pretty checkedBinderName)
+                <+> "to be of type"
+                <+> squotes (prettyFriendly $ WithContext checkedBinderActualType nameCtx)
+                <+> "but was unable to prove it."
+            CheckingInstanceType InstanceConstraintOrigin {..} ->
+              "insufficient information to find a valid type for the overloaded expression"
+                <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+            CheckingAuxiliary ->
+              developerError "Auxiliary constraints should not be unsolved."
+          InstanceConstraint (Resolve InstanceConstraintOrigin {..} _ _ _) ->
             "insufficient information to find a valid type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx fun args)
-          CheckingAuxiliary ->
-            developerError "Auxiliary constraints should not be unsolved."
+              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
     UnsolvedMetas ms ->
       UError $
         UserError
@@ -385,7 +400,7 @@ instance MeaningfulError CompileError where
           }
       where
         (_, p) = NonEmpty.head ms
-    MissingExplicitArg ctx arg argType ->
+    TypingError (MissingExplicitArgument ctx argBinder arg) ->
       UError $
         UserError
           { provenance = provenanceOf arg,
@@ -401,8 +416,8 @@ instance MeaningfulError CompileError where
             fix = Just $ "try inserting an argument of type" <+> argTypeDoc
           }
       where
-        argTypeDoc = prettyFriendly $ WithContext argType ctx
-    FailedInstanceConstraint ctx _goal candidates ->
+        argTypeDoc = prettyFriendly $ WithContext (typeOf argBinder) ctx
+    TypingError @builtin (FailedInstanceConstraint ctx origin _goal candidates) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -413,48 +428,48 @@ instance MeaningfulError CompileError where
                 <> line
                 <> "Type checking has deduced that it is of type:"
                 <> line
-                <> indent 2 (inferredOpType (boundContextOf ctx) (NonEmpty.toList tcArgs))
+                <> indent 2 deducedType
                 <> line
                 <> "but the list of valid types for it is:"
                 <> line
-                <> indent 2 (vsep (fmap candidateType candidates)),
+                <> indent 2 (vsep (fmap calculateCandidateType candidates)),
             fix = Nothing
           }
       where
-        (tcOp, tcOpArgs, tc, tcArgs) = case origin ctx of
-          CheckingTypeClass tcOp' tcOpArgs' (BuiltinExpr _ (TypeClass tc') tcArgs') -> (tcOp', tcOpArgs', tc', tcArgs')
-          _ -> developerError "Type class constraints should only have `CheckingTypeClass` origins"
+        InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
+        deducedType = calculateOpType (boundContextOf ctx) $ case tc of
+          App _ _ as -> NonEmpty.toList as
+          _ -> []
 
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        inferredOpType :: BoundDBCtx -> [StandardArg] -> Doc a
-        inferredOpType dbCtx args = do
-          let opType = fromDSL mempty $ typeOfTypeClassOp (opOfTypeClass tc)
+        calculateOpType :: BoundDBCtx -> [Arg Ix builtin] -> Doc a
+        calculateOpType dbCtx args = do
           let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
-          let inferedOpType = instantiateTelescope opType argsToSubst
+          let inferedOpType = instantiateTelescope tcOpType argsToSubst
           prettyFriendly (WithContext inferedOpType dbCtx)
 
-        candidateType :: WithContext StandardInstanceCandidate -> Doc a
-        candidateType (WithContext candidate typingCtx) =
+        calculateCandidateType :: WithContext (InstanceCandidate builtin) -> Doc a
+        calculateCandidateType (WithContext candidate typingCtx) =
           go (boundContextOf typingCtx) (candidateExpr candidate)
           where
-            go :: BoundDBCtx -> StandardExpr -> Doc a
+            go :: BoundDBCtx -> Expr Ix builtin -> Doc a
             go dbCtx = \case
-              BuiltinTypeClass _ _tc args ->
-                inferredOpType dbCtx (NonEmpty.toList args)
+              App _ (Builtin _ _tc) args ->
+                calculateOpType dbCtx (NonEmpty.toList args)
               Pi _ binder result ->
                 go (nameOf binder : dbCtx) result
               _ -> "UNSUPPORTED PRINTING"
 
-        instantiateTelescope :: StandardExpr -> [StandardExpr] -> StandardExpr
+        instantiateTelescope :: Expr Ix builtin -> [Expr Ix builtin] -> Expr Ix builtin
         instantiateTelescope expr arguments = case (expr, arguments) of
           (_, []) -> expr
           (Pi _ _binder body, arg : args) -> do
             let body' = arg `substDBInto` body
             instantiateTelescope body' args
           _ -> developerError "Malformed type-class operation type"
-    FailedQuantifierConstraintDomain ctx typeOfDomain _q ->
+    FailedQuantifierConstraintDomain (ctx, _) typeOfDomain _q ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -464,7 +479,7 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Nothing
           }
-    FailedNatLitConstraintTooBig ctx v n ->
+    TypingError (FailedIndexConstraintTooBig ctx v n) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -477,7 +492,7 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Nothing
           }
-    FailedNatLitConstraintUnknown ctx v t ->
+    TypingError (FailedIndexConstraintUnknown ctx v t) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -501,15 +516,6 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf ctx,
             problem = "cannot currently use quantifiers in `if` conditions.",
-            fix = Just $ implementationLimitation Nothing
-          }
-    NonLinearIfCondition ctx ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot currently use expressions that are non-linear"
-                <+> "in quantified variables in `if` conditions.",
             fix = Just $ implementationLimitation Nothing
           }
     ---------------
@@ -1331,26 +1337,27 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> [StandardArg] -> Doc a
-prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
-  Builtin _ b
-    -- Need to check whether the function was introduced as part of desugaring
-    | isDesugared b -> prettyFriendly $ WithContext (argExpr $ last args) (boundContextOf ctx)
-    | otherwise -> pretty b
-    where
-      isDesugared :: StandardBuiltin -> Bool
-      isDesugared (TypeClassOp op) = case op of
-        FromNatTC {} -> True
-        FromRatTC {} -> True
-        FromVecTC {} -> True
-        _ -> False
-      isDesugared _ = False
-  _ -> prettyFriendly $ WithContext fun (boundContextOf ctx)
+prettyTypeClassConstraintOriginExpr ::
+  (PrintableBuiltin builtin) =>
+  ConstraintContext builtin ->
+  Expr Ix builtin ->
+  [Arg Ix builtin] ->
+  Doc a
+prettyTypeClassConstraintOriginExpr ctx fun args = do
+  let expr = case fun of
+        -- We don't want to print out the actual coercion functions as the user is
+        -- oblivious to them. Instead we want to print out what they are applied to.
+        Builtin _ b | isCoercion b -> argExpr $ last args
+        _ -> fun
+  prettyFriendly $ WithContext expr (boundContextOf ctx)
 
-prettyUnificationConstraintOriginExpr :: StandardConstraintContext -> TypeCheckedExpr -> Doc a
-prettyUnificationConstraintOriginExpr ctx = \case
-  Builtin _ b -> pretty b
-  expr -> prettyFriendly $ WithContext expr (boundContextOf ctx)
+prettyUnificationConstraintOriginExpr ::
+  (PrintableBuiltin builtin) =>
+  ConstraintContext builtin ->
+  Expr Ix builtin ->
+  Doc a
+prettyUnificationConstraintOriginExpr ctx expr =
+  prettyFriendly $ WithContext expr (boundContextOf ctx)
 
 prettyIdentName :: Identifier -> Doc a
 prettyIdentName ident = quotePretty (nameOf ident :: Name)

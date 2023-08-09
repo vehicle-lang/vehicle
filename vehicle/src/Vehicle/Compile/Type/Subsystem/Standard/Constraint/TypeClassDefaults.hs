@@ -10,7 +10,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
+import Vehicle.Compile.Type.Constraint.Core (createInstanceUnification, parseInstanceGoal)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
@@ -104,7 +104,7 @@ sameFamily _ _ = False
 data Candidate = Candidate
   { candidateTypeClass :: StandardBuiltin,
     candidateMetaExpr :: StandardNormExpr,
-    candidateCtx :: StandardConstraintContext,
+    candidateInfo :: InstanceConstraintInfo StandardBuiltin,
     candidateSolution :: StandardNormExpr
   }
 
@@ -143,8 +143,7 @@ generateConstraintUsingDefaults constraints = do
           <+> prettyVerbose candidateSolution
           <+> "         "
           <> parens ("from" <+> pretty candidateTypeClass)
-      let unificationConstraint = UnificationConstraint (Unify candidateMetaExpr candidateSolution)
-      newConstraint <- WithContext unificationConstraint <$> copyContext candidateCtx
+      newConstraint <- createInstanceUnification candidateInfo candidateMetaExpr candidateSolution
       return $ Just newConstraint
 
 findStrongestConstraint ::
@@ -201,9 +200,9 @@ getCandidatesFromConstraint ::
   StandardConstraintContext ->
   StandardInstanceConstraint ->
   m [Candidate]
-getCandidatesFromConstraint ctx (Has _ _ expr) = do
+getCandidatesFromConstraint ctx (Resolve origin _ _ expr) = do
   InstanceGoal {..} <- parseInstanceGoal expr
-  let getCandidates = getCandidatesFromArgs ctx
+  let getCandidates = getCandidatesFromArgs (ctx, origin)
   let defaults = case (goalHead, goalSpine) of
         (TypeClass HasOrd {}, [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
         (TypeClass HasNeg, [tArg, _tRes]) -> Just (VIntType, [tArg])
@@ -229,17 +228,17 @@ getCandidatesFromConstraint ctx (Has _ _ expr) = do
     Just (defaultValue, defaultArgs) -> return $ getCandidates goalHead defaultValue defaultArgs
 
 getCandidatesFromArgs ::
-  StandardConstraintContext ->
+  InstanceConstraintInfo StandardBuiltin ->
   StandardBuiltin ->
   StandardNormExpr ->
   StandardSpine ->
   [Candidate]
-getCandidatesFromArgs ctx tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
+getCandidatesFromArgs info tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
   where
     mkCandidate t =
       Candidate
         { candidateTypeClass = tc,
           candidateMetaExpr = argExpr t,
-          candidateCtx = ctx,
+          candidateInfo = info,
           candidateSolution = solution
         }

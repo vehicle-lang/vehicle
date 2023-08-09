@@ -24,7 +24,7 @@ import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
-import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
@@ -213,6 +213,8 @@ instance PrintableBuiltin JBuiltin where
     ListType -> V.Builtin p (V.BuiltinType V.List)
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
     Optimise d n ctx -> V.Builtin p (V.BuiltinFunction $ V.Optimise d n ctx)
+
+  isCoercion = const False
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins

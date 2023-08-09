@@ -32,6 +32,7 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -268,19 +269,6 @@ instance (PrettyUsing rest (Arg Name Builtin)) => PrettyUsing ('ConvertBuiltins 
 instance (PrettyUsing rest (Binder Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Binder Name Builtin) where
   prettyUsing = prettyUsing @rest
 -}
---------------------------------------------------------------------------------
--- Printing builtins
-
-class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
-  -- | Convert expressions with the builtin back to expressions with the standard
-  -- builtin type. Used for printing.
-  convertBuiltin ::
-    Provenance ->
-    builtin ->
-    Expr var Builtin
-
-instance PrintableBuiltin Builtin where
-  convertBuiltin = Builtin
 
 --------------------------------------------------------------------------------
 -- Converting builtins
@@ -518,7 +506,7 @@ instance
   (PrettyUsing rest (Value builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Unify e1 e2) ctx) = do
+  prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
     let e1' = prettyUsing @rest (e1 :: Value builtin)
     let e2' = prettyUsing @rest (e2 :: Value builtin)
     prettyConstraintContext (prettyUnify e1' e2') ctx
@@ -527,7 +515,7 @@ instance
   (PrettyUsing rest (Value builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Has m _ expr) ctx) = do
+  prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
     let expr' = prettyUsing @rest (expr :: Value builtin)
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
@@ -535,7 +523,7 @@ instance
   (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Unify e1 e2) ctx) = do
+  prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
     let e1' = prettyUsing @rest (WithContext e1 (boundContextOf ctx))
     let e2' = prettyUsing @rest (WithContext e2 (boundContextOf ctx))
     prettyConstraintContext (prettyUnify e1' e2') ctx
@@ -544,7 +532,7 @@ instance
   (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
-  prettyUsing (WithContext (Has m _ expr) ctx) = do
+  prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
     let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
