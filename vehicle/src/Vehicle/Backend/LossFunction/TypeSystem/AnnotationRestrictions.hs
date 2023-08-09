@@ -2,6 +2,7 @@ module Vehicle.Backend.LossFunction.TypeSystem.AnnotationRestrictions
   ( checkParameterType,
     checkNetworkType,
     checkDatasetType,
+    checkPropertyType,
   )
 where
 
@@ -42,3 +43,13 @@ checkParameterType _sort (_, p) parameterType = do
   when (isNMeta $ normalised parameterType) $ do
     createFreshUnificationConstraint p mempty CheckingAuxiliary (BoolType p) unnormType
   return unnormType
+
+checkPropertyType ::
+  (MonadTypeChecker LossBuiltin m) =>
+  DeclProvenance ->
+  GluedType LossBuiltin ->
+  m ()
+checkPropertyType (_, p) parameterType = do
+  -- Properties should always have the loss type.
+  let unnormType = unnormalised parameterType
+  createFreshUnificationConstraint p mempty CheckingAuxiliary (Builtin p Loss) unnormType

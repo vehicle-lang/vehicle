@@ -2,4 +2,4 @@ type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
 bounded : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
-bounded f = Optimise[min] (+) (\ x -> max 0.0 ((max 0.0 (0.0 - x) + (if 0.0 == x then 1.0 else 0.0) + (max 0.0 (x - 1.0) + (if x == 1.0 then 1.0 else 0.0))) * (max 0.0 (0.0 - f [x] ! 0) + (if 0.0 == f [x] ! 0 then 1.0 else 0.0) + (max 0.0 (f [x] ! 0 - 1.0) + (if f [x] ! 0 == 1.0 then 1.0 else 0.0)))))
+bounded f = Optimise[min] (+) (\ x -> max 0.0 ((max 0.0 (0.0 - x) + max 0.0 (x - 1.0)) * (max 0.0 (0.0 - f [x] ! 0) + max 0.0 (f [x] ! 0 - 1.0))))

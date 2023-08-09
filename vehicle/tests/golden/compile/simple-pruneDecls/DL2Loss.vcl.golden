@@ -3,8 +3,8 @@ add1 x = x + 1.0
 
 @property;
 p1 : forallT (f : Vector Rat -> Vector Rat) . Loss;
-p1 f = Optimise[min] (+) (\ x -> max 0.0 (add1 0.0 - f x ! 0))
+p1 f = Optimise[min] (+) (\ x -> max 0.0 (add1 0.0 - f x ! 0) + (if add1 0.0 == f x ! 0 then 1.0 else 0.0))
 
 @property;
 p2 : forallT (g : Vector Rat -> Vector Rat) . Loss;
-p2 g = Optimise[min] (+) (\ x -> max 0.0 (0.0 - g x ! 0))
+p2 g = Optimise[min] (+) (\ x -> max 0.0 (0.0 - g x ! 0) + (if 0.0 == g x ! 0 then 1.0 else 0.0))

@@ -2,4 +2,4 @@ type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
 monotonic : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
-monotonic f = Optimise[min] (+) (\ x1 -> Optimise[min] (+) (\ x2 -> max 0.0 (max 0.0 (x1 - x2) * max 0.0 (f [x1] ! 0 - f [x2] ! 0))))
+monotonic f = Optimise[min] (+) (\ x1 -> Optimise[min] (+) (\ x2 -> max 0.0 ((max 0.0 (x1 - x2) + (if x1 == x2 then 1.0 else 0.0)) * (max 0.0 (f [x1] ! 0 - f [x2] ! 0) + (if f [x1] ! 0 == f [x2] ! 0 then 1.0 else 0.0)))))
