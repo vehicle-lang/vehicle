@@ -7,6 +7,7 @@ where
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
+import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
@@ -35,9 +36,9 @@ typeCheckWithSubsystem instanceCandidates prog = do
   resultOrError <- runExceptT $ typeCheckProg mempty instanceCandidates implicitFreeProg
   case resultOrError of
     Right value -> return value
-    Left (TypingError err) ->
+    Left err@TypingError {} ->
       compilerDeveloperError $
-        "Subsystem should not be throwing error:" <+> pretty err
+        "Subsystem should not be throwing error:" <+> pretty (details err)
     Left otherError -> throwError otherError
 
 resolveInstanceArguments ::

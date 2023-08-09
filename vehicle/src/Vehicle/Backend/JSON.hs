@@ -26,9 +26,9 @@ import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
-import Vehicle.Compile.Print (PrintableBuiltin (..), prettyVerbose)
-import Vehicle.Compile.Type.Monad (TypableBuiltin)
-import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (..))
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData, PrintableBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface qualified as V
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
@@ -42,7 +42,7 @@ import Vehicle.Syntax.Builtin qualified as V
 
 compileProgToJSON ::
   forall m builtin a.
-  (MonadCompile m, V.HasStandardData builtin, TypableBuiltin builtin, ToJBuiltin builtin) =>
+  (MonadCompile m, HasStandardData builtin, TypableBuiltin builtin, ToJBuiltin builtin) =>
   V.Prog Ix builtin ->
   m (Doc a)
 compileProgToJSON prog = do
@@ -222,6 +222,8 @@ instance PrintableBuiltin JBuiltin where
       where
         mkVar doc = V.FreeVar p $ V.Identifier V.User (layoutAsText doc)
         ctxVar = mkVar $ if null ctx then "" else pretty ctx
+
+  isCoercion = const False
 
 --------------------------------------------------------------------------------
 -- Conversion to JBuiltins

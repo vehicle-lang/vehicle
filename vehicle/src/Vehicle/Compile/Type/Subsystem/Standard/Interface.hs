@@ -9,6 +9,32 @@ import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
+-- Printing builtins
+
+class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
+  -- | Convert expressions with the builtin back to expressions with the standard
+  -- builtin type. Used for printing.
+  convertBuiltin ::
+    Provenance ->
+    builtin ->
+    Expr var Builtin
+
+  isCoercion ::
+    builtin ->
+    Bool
+
+instance PrintableBuiltin Builtin where
+  convertBuiltin = Builtin
+
+  isCoercion = \case
+    BuiltinFunction FromNat {} -> True
+    BuiltinFunction FromRat {} -> True
+    TypeClassOp FromNatTC {} -> True
+    TypeClassOp FromRatTC {} -> True
+    TypeClassOp FromVecTC {} -> True
+    _ -> False
+
+--------------------------------------------------------------------------------
 -- Interface to standard builtins
 
 -- At various points in the compiler, we have different sets of builtins (e.g.
@@ -37,17 +63,6 @@ class HasStandardTypes builtin where
   getBuiltinType :: builtin -> Maybe BuiltinType
 
   mkNatInDomainConstraint :: builtin
-
-class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
-  -- | Convert expressions with the builtin back to expressions with the standard
-  -- builtin type. Used for printing.
-  convertBuiltin ::
-    Provenance ->
-    builtin ->
-    Expr var Builtin
-
-instance PrintableBuiltin Builtin where
-  convertBuiltin = Builtin
 
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.

@@ -23,6 +23,7 @@ import Vehicle.Syntax.Builtin qualified as S
 
 instance PrintableBuiltin PolarityBuiltin where
   convertBuiltin = convertFromPolarityTypes
+  isCoercion = const False
 
 instance TypableBuiltin PolarityBuiltin where
   convertFromStandardTypes = convertToPolarityTypes

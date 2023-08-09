@@ -37,7 +37,7 @@ solveInstanceConstraint ::
   InstanceCandidateDatabase LossBuiltin ->
   WithContext (InstanceConstraint LossBuiltin) ->
   m ()
-solveInstanceConstraint database constraint@(WithContext (Has _ _ goal) _) = do
+solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _) = do
   case goal of
     VBuiltin NatInDomainConstraint _ -> solveIndexConstraint constraint
     _ -> resolveInstance database constraint

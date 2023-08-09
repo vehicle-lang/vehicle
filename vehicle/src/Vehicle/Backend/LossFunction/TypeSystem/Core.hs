@@ -99,6 +99,8 @@ instance PrintableBuiltin LossBuiltin where
     BuiltinType f -> Builtin p (S.BuiltinType f)
     b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
 
+  isCoercion = const False
+
 -----------------------------------------------------------------------------
 -- Type synonyms
 

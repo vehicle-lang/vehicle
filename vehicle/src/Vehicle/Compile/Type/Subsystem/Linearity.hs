@@ -22,6 +22,7 @@ import Vehicle.Syntax.Builtin qualified as S
 
 instance PrintableBuiltin LinearityBuiltin where
   convertBuiltin = convertFromLinearityTypes
+  isCoercion = const False
 
 convertFromLinearityTypes :: Provenance -> LinearityBuiltin -> Expr var S.Builtin
 convertFromLinearityTypes p = \case

@@ -7,6 +7,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem.Standard.Interface (PrintableBuiltin (isCoercion))
 import Vehicle.Syntax.Builtin
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
@@ -80,9 +81,5 @@ wasInserted arg = case visibilityOf arg of
 
 isLiteralCast :: Expr var Builtin -> Bool
 isLiteralCast = \case
-  Builtin _ (BuiltinFunction FromNat {}) -> True
-  Builtin _ (BuiltinFunction FromRat {}) -> True
-  Builtin _ (TypeClassOp FromNatTC {}) -> True
-  Builtin _ (TypeClassOp FromRatTC {}) -> True
-  Builtin _ (TypeClassOp FromVecTC {}) -> True
+  Builtin _ b -> isCoercion b
   _ -> False

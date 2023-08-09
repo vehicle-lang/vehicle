@@ -5,7 +5,7 @@ module Vehicle.Compile.Type.Subsystem.Standard
   )
 where
 
-import Data.HashMap.Strict qualified as Map
+import Data.HashMap.Strict as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core (malformedConstraintError)
 import Vehicle.Compile.Type.Constraint.IndexSolver
@@ -41,7 +41,7 @@ solveInstanceConstraint ::
   InstanceCandidateDatabase StandardBuiltin ->
   WithContext (InstanceConstraint StandardBuiltin) ->
   m ()
-solveInstanceConstraint database constraint@(WithContext (Has _ _ goal) _) = do
+solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _) = do
   case goal of
     VBuiltin NatInDomainConstraint _ -> solveIndexConstraint constraint
     VBuiltin tc _ -> case Map.lookup tc database of

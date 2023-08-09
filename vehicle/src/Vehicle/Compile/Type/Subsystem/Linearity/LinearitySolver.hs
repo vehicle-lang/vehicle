@@ -26,11 +26,13 @@ solveLinearityConstraint ::
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint _ (WithContext constraint ctx) = do
-  normConstraint@(Has _ _ expr) <- substMetas constraint
+  normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let nConstraint = WithContext normConstraint ctx
-  progress <- solve tc nConstraint (mapMaybe getExplicitArg spine)
-  handleConstraintProgress (WithContext normConstraint ctx) progress
+  let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
+  case maybeProgress of
+    Nothing -> malformedConstraintError nConstraint
+    Just progress -> handleConstraintProgress nConstraint =<< progress
 
 --------------------------------------------------------------------------------
 -- Constraint solving
@@ -43,9 +45,9 @@ type MonadLinearitySolver m =
 type LinearitySolver =
   forall m.
   (MonadLinearitySolver m) =>
-  WithContext (InstanceConstraint LinearityBuiltin) ->
+  InstanceConstraintInfo LinearityBuiltin ->
   [VType LinearityBuiltin] ->
-  m (ConstraintProgress LinearityBuiltin)
+  Maybe (m (ConstraintProgress LinearityBuiltin))
 
 solve :: LinearityRelation -> LinearitySolver
 solve = \case
@@ -56,65 +58,62 @@ solve = \case
 
 solveQuantifierLinearity :: Quantifier -> LinearitySolver
 solveQuantifierLinearity _ _ [getNMeta -> Just m, _] = blockOn [m]
-solveQuantifierLinearity _ c [VPi binder body, res] = do
-  let ctx = contextOf c
+solveQuantifierLinearity _ info [VPi binder body, res] = Just $ do
   let varName = getBinderName binder
   let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
-  domEq <- unify ctx (typeOf binder) domainLin
-  resEq <- unify ctx res body
+  domEq <- createInstanceUnification info (typeOf binder) domainLin
+  resEq <- createInstanceUnification info res body
   return $ Progress [domEq, resEq]
-solveQuantifierLinearity _ c _ = malformedConstraintError c
+solveQuantifierLinearity _ _ _ = Nothing
 
 solveMaxLinearity :: LinearitySolver
-solveMaxLinearity c [lin1, lin2, res] =
+solveMaxLinearity info [lin1, lin2, res] =
   case (lin1, lin2) of
-    (VLinearityExpr l1, VLinearityExpr l2) -> do
+    (VLinearityExpr l1, VLinearityExpr l2) -> Just $ do
       let linRes = VLinearityExpr $ maxLinearityOp l1 l2
-      resEq <- unify (contextOf c) res linRes
+      resEq <- createInstanceUnification info res linRes
       return $ Progress [resEq]
-    (_, VLinearityExpr Constant) -> do
-      resEq <- unify (contextOf c) lin1 res
+    (_, VLinearityExpr Constant) -> Just $ do
+      resEq <- createInstanceUnification info lin1 res
       return $ Progress [resEq]
-    (VLinearityExpr Constant, _) -> do
-      resEq <- unify (contextOf c) lin2 res
+    (VLinearityExpr Constant, _) -> Just $ do
+      resEq <- createInstanceUnification info lin2 res
       return $ Progress [resEq]
     (getNMeta -> Just m1, _) -> blockOn [m1]
     (_, getNMeta -> Just m2) -> blockOn [m2]
-    _ -> malformedConstraintError c
-solveMaxLinearity c _ = malformedConstraintError c
+    _ -> Nothing
+solveMaxLinearity _ _ = Nothing
 
 solveMulLinearity :: LinearitySolver
-solveMulLinearity c [lin1, lin2, res] =
+solveMulLinearity info@(ctx, _) [lin1, lin2, res] =
   case (lin1, lin2) of
-    (VLinearityExpr l1, VLinearityExpr l2) -> do
-      let ctx = contextOf c
+    (VLinearityExpr l1, VLinearityExpr l2) -> Just $ do
       let p = originalProvenance ctx
       let linRes = VLinearityExpr $ mulLinearityOp p l1 l2
-      resEq <- unify ctx res linRes
+      resEq <- createInstanceUnification info res linRes
       return $ Progress [resEq]
-    (_, VLinearityExpr Constant) -> do
-      resEq <- unify (contextOf c) lin1 res
+    (_, VLinearityExpr Constant) -> Just $ do
+      resEq <- createInstanceUnification info lin1 res
       return $ Progress [resEq]
-    (VLinearityExpr Constant, _) -> do
-      resEq <- unify (contextOf c) lin2 res
+    (VLinearityExpr Constant, _) -> Just $ do
+      resEq <- createInstanceUnification info lin2 res
       return $ Progress [resEq]
     (getNMeta -> Just m1, _) -> blockOn [m1]
     (_, getNMeta -> Just m2) -> blockOn [m2]
-    _ -> malformedConstraintError c
-solveMulLinearity c _ = malformedConstraintError c
+    _ -> Nothing
+solveMulLinearity _ _ = Nothing
 
 solveFunctionLinearity :: FunctionPosition -> LinearitySolver
-solveFunctionLinearity functionPosition c [arg, res] = case arg of
+solveFunctionLinearity functionPosition info@(ctx, _) [arg, res] = case arg of
   (getNMeta -> Just m1) -> blockOn [m1]
-  VLinearityExpr lin -> do
-    let ctx = contextOf c
+  VLinearityExpr lin -> Just $ do
     let p = provenanceOf ctx
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
     let resLin = VLinearityExpr $ mapLinearityProvenance addFuncProv lin
-    resEq <- unify ctx res resLin
+    resEq <- createInstanceUnification info res resLin
     return $ Progress [resEq]
-  _ -> malformedConstraintError c
-solveFunctionLinearity _ c _ = malformedConstraintError c
+  _ -> Nothing
+solveFunctionLinearity _ _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Operations over linearities
@@ -138,7 +137,7 @@ handleConstraintProgress ::
   WithContext (InstanceConstraint LinearityBuiltin) ->
   ConstraintProgress LinearityBuiltin ->
   m ()
-handleConstraintProgress originalConstraint@(WithContext (Has m _ _) ctx) = \case
+handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
   Stuck metas -> do
     let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]

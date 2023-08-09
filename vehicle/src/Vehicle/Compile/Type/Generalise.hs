@@ -68,7 +68,7 @@ prependConstraint ::
   Decl Ix builtin ->
   WithContext (InstanceConstraint builtin) ->
   m (Decl Ix builtin)
-prependConstraint decl (WithContext (Has meta relevance expr) ctx) = do
+prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) = do
   let p = originalProvenance ctx
   typeClass <- quote p 0 expr
 

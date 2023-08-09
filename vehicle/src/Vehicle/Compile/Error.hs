@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData, PrintableBuiltin)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.Core (QueryFormatID)
@@ -49,12 +49,12 @@ data CompileError
   | DeclarationBoundShadowing Provenance Name
   | -- Errors thrown while type checking
     UnresolvedHole Provenance Name
-  | forall builtin. (PrintableBuiltin builtin, Show builtin) => TypingError (TypingError builtin)
+  | forall builtin.
+    (PrintableBuiltin builtin, Show builtin, HasStandardData builtin) =>
+    TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
-  | FailedQuantifierConstraintDomain StandardConstraintContext StandardNormType Quantifier
+  | FailedQuantifierConstraintDomain (InstanceConstraintInfo StandardBuiltin) StandardNormType Quantifier
   | RelevantUseOfIrrelevantVariable Provenance Name
-  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
-  | NonLinearIfCondition (ConstraintContext LinearityBuiltin)
   | -- Resource typing errors
     ResourceNotProvided DeclProvenance ExternalResource
   | ResourceIOError DeclProvenance ExternalResource IOException
@@ -95,6 +95,7 @@ data CompileError
   | UnsupportedNegatedOperation DifferentiableLogicID Provenance
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
+  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
 
 deriving instance Show CompileError
 

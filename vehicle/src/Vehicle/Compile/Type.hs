@@ -196,7 +196,13 @@ assertDeclTypeIsType _ TypeUniverse {} = return ()
 assertDeclTypeIsType ident actualType = do
   let p = provenanceOf actualType
   let expectedType = TypeUniverse p 0
-  let origin = CheckingExprType (FreeVar p ident) expectedType actualType
+  let origin =
+        CheckingExprType $
+          CheckingExpr
+            { checkedExpr = FreeVar p ident,
+              checkedExprExpectedType = expectedType,
+              checkedExprActualType = actualType
+            }
   createFreshUnificationConstraint p mempty origin expectedType actualType
   return ()
 

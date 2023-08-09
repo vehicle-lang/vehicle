@@ -20,7 +20,7 @@ solveIndexConstraint ::
   WithContext (InstanceConstraint builtin) ->
   m ()
 solveIndexConstraint constraint = do
-  normConstraint@(WithContext (Has meta _ expr) ctx) <- substMetas constraint
+  normConstraint@(WithContext (Resolve _ meta _ expr) ctx) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
 
   case expr of

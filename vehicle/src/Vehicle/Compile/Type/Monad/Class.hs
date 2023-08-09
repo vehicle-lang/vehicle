@@ -498,7 +498,7 @@ createFreshUnificationConstraint ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
   TypingBoundCtx builtin ->
-  ConstraintOrigin builtin ->
+  UnificationConstraintOrigin builtin ->
   Type Ix builtin ->
   Type Ix builtin ->
   m ()
@@ -507,17 +507,17 @@ createFreshUnificationConstraint p ctx origin expectedType actualType = do
   normExpectedType <- whnf env expectedType
   normActualType <- whnf env actualType
   cid <- generateFreshConstraintID (Proxy @builtin)
-  let context = ConstraintContext cid p origin p unknownBlockingStatus ctx
-  let unification = Unify normExpectedType normActualType
+  let context = ConstraintContext cid p p unknownBlockingStatus ctx
+  let unification = Unify origin normExpectedType normActualType
   let constraint = WithContext unification context
 
   addUnificationConstraints [constraint]
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: forall builtin m. (MonadTypeChecker builtin m) => ConstraintContext builtin -> m (ConstraintContext builtin)
-copyContext (ConstraintContext _cid originProv originalConstraint creationProv _blockingStatus ctx) = do
+copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx) = do
   freshID <- generateFreshConstraintID (Proxy @builtin)
-  return $ ConstraintContext freshID originProv originalConstraint creationProv unknownBlockingStatus ctx
+  return $ ConstraintContext freshID originProv creationProv unknownBlockingStatus ctx
 
 --------------------------------------------------------------------------------
 -- Constraints

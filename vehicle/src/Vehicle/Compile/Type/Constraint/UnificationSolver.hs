@@ -19,6 +19,7 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Type.Constraint.Core (unify)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta
@@ -45,7 +46,7 @@ solveUnificationConstraint ::
   (MonadUnify builtin m) =>
   WithContext (UnificationConstraint builtin) ->
   m ()
-solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
+solveUnificationConstraint (WithContext (Unify origin' e1 e2) ctx) = do
   (ne1', e1BlockingMetas) <- forceHead ctx e1
   (ne2', e2BlockingMetas) <- forceHead ctx e2
 
@@ -54,9 +55,9 @@ solveUnificationConstraint (WithContext (Unify e1 e2) ctx) = do
   -- meta-variables may be larger than the current scope of the constraint.
   -- These dependencies only disappear on substitution. Need to work out how to
   -- avoid doing this.
-  nu@(Unify ne1 ne2) <- substMetas (Unify ne1' ne2')
+  nu@(Unify origin ne1 ne2) <- substMetas (Unify origin' ne1' ne2')
 
-  result <- unification ctx (e1BlockingMetas <> e2BlockingMetas) (ne1, ne2)
+  result <- unification (ctx, origin) (e1BlockingMetas <> e2BlockingMetas) (ne1, ne2)
   case result of
     Success newConstraints -> do
       addUnificationConstraints newConstraints
@@ -90,31 +91,31 @@ pattern x :~: y = (x, y)
 
 unification ::
   (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   MetaSet ->
   (Value builtin, Value builtin) ->
   m (UnificationResult builtin)
-unification ctx reductionBlockingMetas = \case
+unification info@(ctx, _) reductionBlockingMetas = \case
   -----------------------
   -- Rigid-rigid cases --
   -----------------------
   VUniverse l1 :~: VUniverse l2
     | l1 == l2 -> solveTrivially
   VBoundVar v1 spine1 :~: VBoundVar v2 spine2
-    | v1 == v2 -> solveSpine ctx spine1 spine2
+    | v1 == v2 -> solveSpine info spine1 spine2
   VFreeVar v1 spine1 :~: VFreeVar v2 spine2
-    | v1 == v2 -> solveSpine ctx spine1 spine2
+    | v1 == v2 -> solveSpine info spine1 spine2
   VBuiltin b1 spine1 :~: VBuiltin b2 spine2
-    | b1 == b2 -> solveSpine ctx spine1 spine2
+    | b1 == b2 -> solveSpine info spine1 spine2
   VPi binder1 body1 :~: VPi binder2 body2
-    | visibilityMatches binder1 binder2 -> solvePi ctx (binder1, body1) (binder2, body2)
+    | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
   VLam binder1 env1 body1 :~: VLam binder2 env2 body2 ->
     solveLam (binder1, env1, body1) (binder2, env2, body2)
   ---------------------
   -- Flex-flex cases --
   ---------------------
   VMeta meta1 spine1 :~: VMeta meta2 spine2
-    | meta1 == meta2 -> solveSpine ctx spine1 spine2
+    | meta1 == meta2 -> solveSpine info spine1 spine2
     -- The longer spine normally means its in a deeper scope. This minor
     -- optimisation tries to solve the deeper meta first.
     | length spine1 < length spine2 -> solveFlexFlex ctx (meta2, spine2) (meta1, spine1)
@@ -136,26 +137,26 @@ solveTrivially = do
 
 solveArg ::
   (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   (VArg builtin, VArg builtin) ->
   Maybe (m (UnificationResult builtin))
-solveArg ctx (arg1, arg2)
+solveArg info (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just $ return HardFailure
   | isInstance arg1 = Nothing
   | otherwise = Just $ do
-      argEq <- unify ctx (argExpr arg1, argExpr arg2)
+      argEq <- unify info (argExpr arg1, argExpr arg2)
       return $ Success [argEq]
 
 solveSpine ::
   (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   Spine builtin ->
   Spine builtin ->
   m (UnificationResult builtin)
-solveSpine ctx args1 args2
+solveSpine info args1 args2
   | length args1 /= length args2 = return HardFailure
   | otherwise = do
-      constraints <- sequence $ mapMaybe (solveArg ctx) (zip args1 args2)
+      constraints <- sequence $ mapMaybe (solveArg info) (zip args1 args2)
       return $ mconcat constraints
 
 solveLam ::
@@ -167,16 +168,16 @@ solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not
 
 solvePi ::
   (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   (VBinder builtin, Value builtin) ->
   (VBinder builtin, Value builtin) ->
   m (UnificationResult builtin)
-solvePi ctx (binder1, body1) (binder2, body2) = do
+solvePi info (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
   -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
   -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-  binderConstraint <- unify ctx (typeOf binder1, typeOf binder2)
-  bodyConstraint <- unify ctx (body1, body2)
+  binderConstraint <- unify info (typeOf binder1, typeOf binder2)
+  bodyConstraint <- unify info (body1, body2)
   return $ Success [binderConstraint, bodyConstraint]
 
 solveFlexFlex :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, Spine builtin) -> (MetaID, Spine builtin) -> m (UnificationResult builtin)
@@ -292,13 +293,6 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
     solveMeta meta substMetaExpr (boundContext ctx)
 
     return $ normalised newMetaExpr
-
-unify ::
-  (MonadUnify builtin m) =>
-  ConstraintContext builtin ->
-  (Value builtin, Value builtin) ->
-  m (WithContext (UnificationConstraint builtin))
-unify ctx (e1, e2) = WithContext (Unify e1 e2) <$> copyContext ctx
 
 --------------------------------------------------------------------------------
 -- Argument patterns
