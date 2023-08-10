@@ -28,7 +28,7 @@ data LossTypeClass
   | HasRatOrder OrderOp
   | HasRatEq EqualityOp
   | HasQuant Quantifier
-  | ValidPropertyType
+  | ValidPropertyBaseType
   deriving (Show, Eq, Ord, Generic)
 
 instance Hashable LossTypeClass
@@ -40,8 +40,7 @@ instance Pretty LossTypeClass where
 -- Loss type class operations
 
 data LossTypeClassOp
-  = BoolTypeTC
-  | LBoolTC Bool
+  = LBoolTC Bool
   | NotTC
   | AndTC
   | OrTC
@@ -167,5 +166,5 @@ hasRatEq eq t1 t2 t3 = lossTypeClass (HasRatEq eq) [t1, t2, t3]
 hasQuant :: Quantifier -> LossDSLExpr -> LossDSLExpr -> LossDSLExpr
 hasQuant q t1 t2 = lossTypeClass (HasQuant q) [t1, t2]
 
-validPropertyType :: LossDSLExpr -> LossDSLExpr
-validPropertyType t = lossTypeClass ValidPropertyType [t]
+validPropertyBaseType :: LossDSLExpr -> LossDSLExpr
+validPropertyBaseType t = lossTypeClass ValidPropertyBaseType [t]

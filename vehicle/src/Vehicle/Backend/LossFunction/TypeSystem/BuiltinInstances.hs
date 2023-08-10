@@ -54,10 +54,10 @@ mkCandidates DifferentialLogicImplementation {..} =
     boolTypeCandidates :: [(LossDSLExpr, LossDSLExpr)]
     boolTypeCandidates =
       [ ( isBoolType tBool,
-          tBool
+          tUnit
         ),
         ( isBoolType tLoss,
-          tLoss
+          tUnit
         )
       ]
 
@@ -141,15 +141,8 @@ mkCandidates DifferentialLogicImplementation {..} =
 
     propertyTypeCandidates :: [(LossDSLExpr, LossDSLExpr)]
     propertyTypeCandidates =
-      [ ( validPropertyType tLoss,
+      [ ( validPropertyBaseType tLoss,
           unitLit
-        ),
-        ( forAllTypes $ \t ->
-            validPropertyType (builtinType Vector @@ [t])
-              ~~~> validPropertyType t,
-          explLam "t" type0 $ \t ->
-            instLam "_" (validPropertyType (builtinType Vector @@ [t])) $
-              const unitLit
         )
       ]
 

@@ -9,6 +9,7 @@ import Control.Monad (when)
 import Vehicle.Backend.LossFunction.TypeSystem.Core as Core
 import Vehicle.Backend.LossFunction.TypeSystem.Type
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint.IndexSolver
@@ -18,7 +19,8 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn (Ix)
-import Vehicle.Expr.Normalised (GluedExpr (..), GluedType, Value (..), isNMeta)
+import Vehicle.Expr.Normalised (GluedExpr (..), GluedType, VType, Value (..), isNMeta)
+import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 instance TypableBuiltin LossBuiltin where
   convertFromStandardTypes = convertToLossTypes
@@ -52,8 +54,10 @@ convertToLossTypes p1 p2 b args = case b of
       -- We need to add a meta variable to the application as
       -- the instance insertion mechanism doesn't kick in unless the
       -- type-class operation has at least one arg.
-      tArg <- unnormalised <$> freshMetaExpr p1 (TypeUniverse p1 0) mempty
-      return $ mkTypeClassOp BoolTypeTC (RelevantImplicitArg p1 tArg : args)
+      meta <- unnormalised <$> freshMetaExpr p1 (TypeUniverse p1 0) mempty
+      let constraintTC = BuiltinExpr p1 (LossTC IsBoolType) [RelevantExplicitArg p1 meta]
+      _ <- createFreshInstanceConstraint mempty (BoolType p1, mempty, TypeUniverse p1 0) Irrelevant constraintTC
+      return meta
     _ -> return $ normAppList p1 (Builtin p2 (BuiltinType t)) args
   S.BuiltinFunction f -> case f of
     S.Order S.OrderRat op -> return $ mkTypeClassOp (RatOrderTC op) args
@@ -111,14 +115,24 @@ checkParameterType _sort (_, p) parameterType = do
   return unnormType
 
 checkPropertyType ::
+  forall m.
   (MonadTypeChecker LossBuiltin m) =>
   DeclProvenance ->
   GluedType LossBuiltin ->
   m ()
-checkPropertyType (ident, p) parameterType = do
-  -- Properties should always have the loss type.
-  let unnormType = unnormalised parameterType
-  let constraintType = App p (Builtin p (LossTC ValidPropertyType)) [RelevantExplicitArg p unnormType]
-  let origin = (FreeVar p ident, mempty, constraintType)
-  _ <- createFreshInstanceConstraint mempty origin Irrelevant constraintType
-  return () -- p mempty CheckingAuxiliary (Builtin p Loss) unnormType
+checkPropertyType (ident, p) parameterType = go (normalised parameterType)
+  where
+    -- We need to recurse into the element type here, as we're converting all `Bool`s
+    -- from the standard typing system to meta-variables. Therefore if we simply constrain
+    -- the overall type, the instance solver can't reject unifying that meta-variable
+    -- with a `Vector` type.
+    go :: VType LossBuiltin -> m ()
+    go = \case
+      VBuiltinType Vector [tElem] -> go (argExpr tElem)
+      typ -> do
+        -- The basic element of properties should always have the loss type.
+        let unnormType = unnormalise 0 typ
+        let constraintType = App p (Builtin p (LossTC ValidPropertyBaseType)) [RelevantExplicitArg p unnormType]
+        let origin = (FreeVar p ident, mempty, constraintType)
+        _ <- createFreshInstanceConstraint mempty origin Irrelevant constraintType
+        return ()

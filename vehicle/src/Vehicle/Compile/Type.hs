@@ -169,9 +169,7 @@ checkDeclType :: (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix 
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
-    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-    assertDeclTypeIsType ident typeOfType
-    return checkedType
+    runReaderT (checkExpr (TypeUniverse mempty 0) declType) mempty
 
 restrictAbstractDefType ::
   (TCM builtin m) =>
@@ -187,25 +185,6 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       DatasetDef -> restrictDatasetType decl defType
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
-
-assertDeclTypeIsType :: (TCM builtin m) => Identifier -> Type Ix builtin -> m ()
--- This is a bit of a hack to get around having to have a solver for universe
--- levels. As type definitions will always have an annotated Type 0 inserted
--- by delaboration, we can match on it here. Anything else will be unified
--- with type 0.
-assertDeclTypeIsType _ TypeUniverse {} = return ()
-assertDeclTypeIsType ident actualType = do
-  let p = provenanceOf actualType
-  let expectedType = TypeUniverse p 0
-  let origin =
-        CheckingExprType $
-          CheckingExpr
-            { checkedExpr = FreeVar p ident,
-              checkedExprExpectedType = expectedType,
-              checkedExprActualType = actualType
-            }
-  createFreshUnificationConstraint p mempty origin expectedType actualType
-  return ()
 
 -------------------------------------------------------------------------------
 -- Constraint solving

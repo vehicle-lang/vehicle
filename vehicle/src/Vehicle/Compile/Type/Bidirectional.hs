@@ -146,13 +146,14 @@ inferExpr e = do
       checkedExpr <- checkExpr checkedExprType expr
       return (Ann p checkedExpr checkedExprType, checkedExprType)
     Pi p binder resultType -> do
-      (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
+      checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
       let checkedBinder = replaceBinderType checkedBinderType binder
 
-      (checkedResultType, typeOfResultType) <- extendBoundCtx checkedBinder $ inferExpr resultType
+      checkedResultType <-
+        extendBoundCtx checkedBinder $
+          checkExpr (TypeUniverse p 0) resultType
 
-      maxResultType <- typeOfBinderType `tMax` typeOfResultType
-      return (Pi p checkedBinder checkedResultType, maxResultType)
+      return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
     App p fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
@@ -299,23 +300,6 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
 
 -------------------------------------------------------------------------------
 -- Utility functions
-
-universeLevel :: (MonadBidirectional builtin m) => Expr Ix builtin -> m Int
-universeLevel = \case
-  TypeUniverse _ l -> return l
-  -- These next cases are probably going to bite us, apologies.
-  Meta {} -> return 0
-  App _ Meta {} _ -> return 0
-  Pi _ _ r -> universeLevel r
-  t ->
-    compilerDeveloperError $
-      "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
-
-tMax :: (MonadBidirectional builtin m) => Expr Ix builtin -> Expr Ix builtin -> m (Expr Ix builtin)
-tMax t1 t2 = do
-  l1 <- universeLevel t1
-  l2 <- universeLevel t2
-  return $ if l1 > l2 then t1 else t2
 
 checkExprTypesEqual ::
   (MonadBidirectionalInternal builtin m) =>
