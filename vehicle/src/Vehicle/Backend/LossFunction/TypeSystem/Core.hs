@@ -19,7 +19,8 @@ import Vehicle.Syntax.Builtin.BasicOperations
 -- Loss type classes
 
 data LossTypeClass
-  = HasBoolLiteral Bool
+  = IsBoolType
+  | HasBoolLiteral Bool
   | HasNot
   | HasAnd
   | HasOr
@@ -27,6 +28,7 @@ data LossTypeClass
   | HasRatOrder OrderOp
   | HasRatEq EqualityOp
   | HasQuant Quantifier
+  | ValidPropertyType
   deriving (Show, Eq, Ord, Generic)
 
 instance Hashable LossTypeClass
@@ -38,7 +40,8 @@ instance Pretty LossTypeClass where
 -- Loss type class operations
 
 data LossTypeClassOp
-  = LBoolTC Bool
+  = BoolTypeTC
+  | LBoolTC Bool
   | NotTC
   | AndTC
   | OrTC
@@ -61,7 +64,6 @@ data LossBuiltin
   | BuiltinFunction BuiltinFunction
   | BuiltinType BuiltinType
   | NatInDomainConstraint
-  | Loss
   | LossTC LossTypeClass
   | LossTCOp LossTypeClassOp
   deriving (Show, Eq, Ord, Generic)
@@ -138,6 +140,9 @@ type LossDSLExpr = DSLExpr LossBuiltin
 lossTypeClass :: LossTypeClass -> NonEmpty LossDSLExpr -> LossDSLExpr
 lossTypeClass tc args = builtin (LossTC tc) @@ args
 
+isBoolType :: LossDSLExpr -> LossDSLExpr
+isBoolType t = lossTypeClass IsBoolType [t]
+
 hasBoolLiteral :: Bool -> LossDSLExpr -> LossDSLExpr
 hasBoolLiteral b t = lossTypeClass (HasBoolLiteral b) [t]
 
@@ -162,5 +167,5 @@ hasRatEq eq t1 t2 t3 = lossTypeClass (HasRatEq eq) [t1, t2, t3]
 hasQuant :: Quantifier -> LossDSLExpr -> LossDSLExpr -> LossDSLExpr
 hasQuant q t1 t2 = lossTypeClass (HasQuant q) [t1, t2]
 
-tLoss :: LossDSLExpr
-tLoss = builtin Loss
+validPropertyType :: LossDSLExpr -> LossDSLExpr
+validPropertyType t = lossTypeClass ValidPropertyType [t]

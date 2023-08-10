@@ -38,7 +38,7 @@ typeCheckWithSubsystem instanceCandidates prog = do
     Right value -> return value
     Left err@TypingError {} ->
       compilerDeveloperError $
-        "Subsystem should not be throwing error:" <> line <> pretty (details err)
+        "Subsystem should not be throwing error:" <> line <> indent 2 (pretty (details err))
     Left otherError -> throwError otherError
 
 resolveInstanceArguments ::

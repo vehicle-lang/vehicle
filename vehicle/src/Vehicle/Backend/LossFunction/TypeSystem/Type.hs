@@ -19,7 +19,6 @@ typeLossBuiltin p b = case b of
   BuiltinFunction f -> fromStandard $ Standard.typeOfBuiltinFunction f
   BuiltinType t -> fromStandard $ Standard.typeOfBuiltinType t
   NatInDomainConstraint -> fromStandard Standard.typeOfNatInDomainConstraint
-  Loss -> fromDSL p type0
   LossTC tc -> fromDSL p $ typeOfLossTypeClass tc
   LossTCOp op -> fromDSL p $ typeOfLossTypeClassOp op
   where
@@ -27,6 +26,7 @@ typeLossBuiltin p b = case b of
 
 typeOfLossTypeClassOp :: LossTypeClassOp -> LossDSLExpr
 typeOfLossTypeClassOp = \case
+  BoolTypeTC -> forAllTypes $ \t -> isBoolType t ~~~> type0
   LBoolTC b -> typeOfOp0 (hasBoolLiteral b)
   NotTC -> typeOfOp1 hasNot
   AndTC -> typeOfOp2 hasAnd
@@ -38,6 +38,7 @@ typeOfLossTypeClassOp = \case
 
 typeOfLossTypeClass :: LossTypeClass -> LossDSLExpr
 typeOfLossTypeClass = \case
+  IsBoolType -> type0 ~> type0
   HasBoolLiteral {} -> type0 ~> type0
   HasNot -> type0 ~> type0 ~> type0
   HasAnd -> type0 ~> type0 ~> type0 ~> type0
@@ -46,6 +47,7 @@ typeOfLossTypeClass = \case
   HasRatOrder {} -> type0 ~> type0 ~> type0 ~> type0
   HasRatEq {} -> type0 ~> type0 ~> type0 ~> type0
   HasQuant {} -> type0 ~> type0 ~> type0
+  ValidPropertyType -> type0 ~> type0
 
 typeOfOp0 ::
   (LossDSLExpr -> LossDSLExpr) ->

@@ -24,7 +24,7 @@ module Vehicle.Compile.Type.Monad
     -- Constraints
     copyContext,
     createFreshUnificationConstraint,
-    createFreshTypeClassConstraint,
+    createFreshInstanceConstraint,
     getActiveConstraints,
     getActiveUnificationConstraints,
     getActiveInstanceConstraints,
@@ -119,7 +119,7 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 
 -- | Adds an entirely new type-class constraint (as opposed to one
 -- derived from another constraint).
-createFreshTypeClassConstraint ::
+createFreshInstanceConstraint ::
   forall builtin m.
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
@@ -127,7 +127,7 @@ createFreshTypeClassConstraint ::
   Relevance ->
   Type Ix builtin ->
   m (GluedExpr builtin)
-createFreshTypeClassConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
+createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
   let origin =
         InstanceConstraintOrigin
           { checkedInstanceOp = fun,
@@ -163,7 +163,7 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
   checkedExpr <- case visibilityOf binder of
     Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
     Implicit {} -> freshMetaExpr p binderType boundCtx
-    Instance {} -> createFreshTypeClassConstraint boundCtx origin (relevanceOf binder) binderType
+    Instance {} -> createFreshInstanceConstraint boundCtx origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 debugError :: forall builtin m. (TCM builtin m) => Proxy builtin -> Int -> m ()

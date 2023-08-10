@@ -28,17 +28,6 @@ data TypingError builtin
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   deriving (Show)
 
-{-
-instance Pretty (TypingError builtin) where
-  pretty = \case
-    MissingExplicitArgument {} -> "MissingExplicitArgument"
-    FunctionTypeMismatch {} -> "FunctionTypeMismatch"
-    FailedUnificationConstraints {} -> "FailedUnification"
-    FailedInstanceConstraint {} -> "FailedInstanceSearch"
-    UnsolvedConstraints {} -> "UnsolvableConstraints"
-    FailedIndexConstraintTooBig {} -> "FailedIndexConstraintTooBig"
-    FailedIndexConstraintUnknown {} -> "FailedIndexConstraintUnknown"
--}
 --------------------------------------------------------------------------------
 -- Typing declaration context
 
@@ -174,9 +163,6 @@ contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
--- Unification constraints
-
---------------------------------------------------------------------------------
 -- Instance constraints
 
 data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
@@ -228,7 +214,7 @@ type InstanceCandidateDatabase builtin =
   HashMap builtin [InstanceCandidate builtin]
 
 --------------------------------------------------------------------------------
--- Constraint origins
+-- Unification constraints
 
 data CheckingExprType builtin = CheckingExpr
   { checkedExpr :: Expr Ix builtin,

@@ -345,7 +345,6 @@ instance ToJBuiltin L.LossBuiltin where
     L.BuiltinConstructor x -> toJBuiltin x
     L.BuiltinFunction x -> toJBuiltin x
     L.BuiltinType y -> toJBuiltin y
-    L.Loss -> return RatType
     L.LossTC {} -> typeClassesUnresolvedError
     L.LossTCOp {} -> typeClassesUnresolvedError
     L.NatInDomainConstraint -> typeClassesUnresolvedError

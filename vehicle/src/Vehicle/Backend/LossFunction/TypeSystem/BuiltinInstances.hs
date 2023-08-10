@@ -33,7 +33,8 @@ lossBuiltinInstances logic = do
 mkCandidates :: DifferentialLogicImplementation -> [InstanceCandidate LossBuiltin]
 mkCandidates DifferentialLogicImplementation {..} =
   mkCandidate
-    <$> boolLitCandidates
+    <$> boolTypeCandidates
+      <> boolLitCandidates
       <> ratOpCandidates (hasRatEq Eq) compileEq
       <> ratOpCandidates (hasRatEq Neq) compileNeq
       <> ratOpCandidates (hasRatOrder Le) compileLe
@@ -48,7 +49,18 @@ mkCandidates DifferentialLogicImplementation {..} =
              UnaryNot notFn -> boolOp1Candidates hasNot Not notFn
          )
       <> quantifierCandidates
+      <> propertyTypeCandidates
   where
+    boolTypeCandidates :: [(LossDSLExpr, LossDSLExpr)]
+    boolTypeCandidates =
+      [ ( isBoolType tBool,
+          tBool
+        ),
+        ( isBoolType tLoss,
+          tLoss
+        )
+      ]
+
     boolLitCandidates :: [(LossDSLExpr, LossDSLExpr)]
     boolLitCandidates =
       [ ( hasBoolLiteral True tBool,
@@ -127,5 +139,22 @@ mkCandidates DifferentialLogicImplementation {..} =
         )
       ]
 
+    propertyTypeCandidates :: [(LossDSLExpr, LossDSLExpr)]
+    propertyTypeCandidates =
+      [ ( validPropertyType tLoss,
+          unitLit
+        ),
+        ( forAllTypes $ \t ->
+            validPropertyType (builtinType Vector @@ [t])
+              ~~~> validPropertyType t,
+          explLam "t" type0 $ \t ->
+            instLam "_" (validPropertyType (builtinType Vector @@ [t])) $
+              const unitLit
+        )
+      ]
+
     boolToLoss :: LossDSLExpr -> LossDSLExpr
     boolToLoss e = ite tLoss e compileTrue compileFalse
+
+    tLoss :: LossDSLExpr
+    tLoss = compileBool

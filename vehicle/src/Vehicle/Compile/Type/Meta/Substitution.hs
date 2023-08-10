@@ -119,7 +119,19 @@ instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraint bui
   subst (Unify origin e1 e2) = Unify <$> subst origin <*> subst e1 <*> subst e2
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraint builtin) where
-  subst (Resolve origin m r e) = Resolve origin m r <$> subst e
+  subst (Resolve origin m r e) = do
+    Resolve origin <$> subst m <*> pure r <*> subst e
+
+instance MetaSubstitutable m MetaID where
+  subst m = do
+    metaSubst <- getMetaSubstitution
+    -- This is a massive hack, and only works because we only have instance resolution
+    -- for types in the loss typing subsystem which doesn't use dependently types.
+    case MetaMap.lookup m metaSubst of
+      Nothing -> return m
+      Just other -> case normalised other of
+        VMeta m2 [] -> subst m2
+        _ -> compilerDeveloperError "Non singleton meta solution for InstanceConstraint"
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Constraint builtin) where
   subst = \case
