@@ -252,24 +252,6 @@ instance PrettyUsing ('PrintAs 'External) (Binder Name Builtin) where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
--- Converting the basic builtins
-{-
-instance (PrettyUsing rest (Prog Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Prog Name Builtin) where
-  prettyUsing = prettyUsing @rest
-
-instance (PrettyUsing rest (Decl Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Decl Name Builtin) where
-  prettyUsing = prettyUsing @rest
-
-instance (PrettyUsing rest (Expr Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Expr Name Builtin) where
-  prettyUsing = prettyUsing @rest
-
-instance (PrettyUsing rest (Arg Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Arg Name Builtin) where
-  prettyUsing = prettyUsing @rest
-
-instance (PrettyUsing rest (Binder Name Builtin)) => PrettyUsing ('ConvertBuiltins rest) (Binder Name Builtin) where
-  prettyUsing = prettyUsing @rest
--}
---------------------------------------------------------------------------------
 -- Converting builtins
 
 instance
