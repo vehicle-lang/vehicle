@@ -59,7 +59,9 @@ convertToLossTypes p1 p2 b args = case b of
     S.Not -> return $ mkTypeClassOp NotTC
     S.Quantifier q -> return $ mkTypeClassOp (QuantTC q)
     _ -> return $ normAppList p1 (Builtin p2 (BuiltinFunction f)) args
-  S.BuiltinConstructor c -> return $ normAppList p1 (Builtin p2 (BuiltinConstructor c)) args
+  S.BuiltinConstructor c -> case c of
+    S.LBool v -> return $ mkTypeClassOp (LBoolTC v)
+    _ -> return $ normAppList p1 (Builtin p2 (BuiltinConstructor c)) args
   S.TypeClass {} ->
     monomorphisationError "TypeClass"
   S.TypeClassOp {} ->

@@ -153,9 +153,16 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
         unificationConstraint <-
           createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
 
+        -- Replace the provenance of the final solution with the provenance of where the
+        -- constraint was generated. This is needed to get the information to propagate
+        -- properly for the polarity and linearity types, otherwise the provenance ends
+        -- up empty as the candidates are constructed independently.
+        let finalCandidateSolution = replaceProvenance (provenanceOf constraintCtx) substCandidateSolution
+
         -- Add the solution of the type-class as well (if we had first class records
         -- then we wouldn't need to do this manually).
-        solveMeta meta substCandidateSolution extendedGoalCtx
+        solveMeta meta finalCandidateSolution extendedGoalCtx
+
         addConstraints (unificationConstraint : recInstanceConstraints)
 
       runUnificationSolver (Proxy @builtin) mempty
@@ -219,3 +226,22 @@ prettyCandidate (WithContext candidate ctx) =
 
 goalExpr :: InstanceGoal builtin -> Value builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
+
+replaceProvenance :: Provenance -> Expr Ix builtin -> Expr Ix builtin
+replaceProvenance p = go
+  where
+    go :: Expr Ix builtin -> Expr Ix builtin
+    go = \case
+      Meta _p m -> Meta p m
+      App _ fun args -> App p (go fun) (fmap (fmap go) args)
+      Universe _ u -> Universe p u
+      Hole _ h -> Hole p h
+      Builtin _ b -> Builtin p b
+      FreeVar _ v -> FreeVar p v
+      BoundVar _ v -> BoundVar p v
+      Ann _ term typ -> Ann p (go term) (go typ)
+      -- NOTE: no need to lift the substitutions here as we're passing under the binders
+      -- because by construction every meta-variable solution is a closed term.
+      Pi _ binder res -> Pi p (fmap go binder) (go res)
+      Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
+      Lam _ binder e -> Lam p (fmap go binder) (go e)

@@ -27,6 +27,7 @@ typeLossBuiltin p b = case b of
 
 typeOfLossTypeClassOp :: LossTypeClassOp -> LossDSLExpr
 typeOfLossTypeClassOp = \case
+  LBoolTC b -> typeOfOp0 (hasBoolLiteral b)
   NotTC -> typeOfOp1 hasNot
   AndTC -> typeOfOp2 hasAnd
   OrTC -> typeOfOp2 hasOr
@@ -37,6 +38,7 @@ typeOfLossTypeClassOp = \case
 
 typeOfLossTypeClass :: LossTypeClass -> LossDSLExpr
 typeOfLossTypeClass = \case
+  HasBoolLiteral {} -> type0 ~> type0
   HasNot -> type0 ~> type0 ~> type0
   HasAnd -> type0 ~> type0 ~> type0 ~> type0
   HasOr -> type0 ~> type0 ~> type0 ~> type0
@@ -45,16 +47,23 @@ typeOfLossTypeClass = \case
   HasRatEq {} -> type0 ~> type0 ~> type0 ~> type0
   HasQuant {} -> type0 ~> type0 ~> type0
 
+typeOfOp0 ::
+  (LossDSLExpr -> LossDSLExpr) ->
+  LossDSLExpr
+typeOfOp0 constraint =
+  forAllTypes $ \t ->
+    constraint t ~~~> t
+
 typeOfOp1 ::
   (LossDSLExpr -> LossDSLExpr -> LossDSLExpr) ->
   LossDSLExpr
 typeOfOp1 constraint =
   forAllTypePairs $ \t1 t2 ->
-    constraint t1 t2 .~~~> t1 ~> t2
+    constraint t1 t2 ~~~> t1 ~> t2
 
 typeOfOp2 ::
   (LossDSLExpr -> LossDSLExpr -> LossDSLExpr -> LossDSLExpr) ->
   LossDSLExpr
 typeOfOp2 constraint =
   forAllTypeTriples $ \t1 t2 t3 ->
-    constraint t1 t2 t3 .~~~> t1 ~> t2 ~> t3
+    constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3

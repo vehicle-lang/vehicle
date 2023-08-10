@@ -25,6 +25,7 @@ module Vehicle.Expr.DSL
     forAllExpl,
     forAll,
     forAllInstance,
+    forAllTypes,
     forAllTypePairs,
     forAllTypeTriples,
     implTypeTripleLam,
@@ -199,6 +200,11 @@ universe u = DSL $ \p _ -> Universe p u
 
 type0 :: DSLExpr builtin
 type0 = universe $ UniverseLevel 0
+
+forAllTypes :: (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllTypes f =
+  forAll "t" type0 $ \t ->
+    f t
 
 forAllTypePairs :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllTypePairs f =

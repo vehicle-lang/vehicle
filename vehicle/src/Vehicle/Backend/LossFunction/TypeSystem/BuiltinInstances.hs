@@ -33,7 +33,8 @@ lossBuiltinInstances logic = do
 mkCandidates :: DifferentialLogicImplementation -> [InstanceCandidate LossBuiltin]
 mkCandidates DifferentialLogicImplementation {..} =
   mkCandidate
-    <$> ratOpCandidates (hasRatEq Eq) compileEq
+    <$> boolLitCandidates
+      <> ratOpCandidates (hasRatEq Eq) compileEq
       <> ratOpCandidates (hasRatEq Neq) compileNeq
       <> ratOpCandidates (hasRatOrder Le) compileLe
       <> ratOpCandidates (hasRatOrder Lt) compileLt
@@ -48,6 +49,22 @@ mkCandidates DifferentialLogicImplementation {..} =
          )
       <> quantifierCandidates
   where
+    boolLitCandidates :: [(LossDSLExpr, LossDSLExpr)]
+    boolLitCandidates =
+      [ ( hasBoolLiteral True tBool,
+          boolLit True
+        ),
+        ( hasBoolLiteral False tBool,
+          boolLit False
+        ),
+        ( hasBoolLiteral True tLoss,
+          compileTrue
+        ),
+        ( hasBoolLiteral False tLoss,
+          compileFalse
+        )
+      ]
+
     boolOp2Candidates ::
       (LossDSLExpr -> LossDSLExpr -> LossDSLExpr -> LossDSLExpr) ->
       BuiltinFunction ->
@@ -98,12 +115,12 @@ mkCandidates DifferentialLogicImplementation {..} =
 
     quantifierCandidates :: [(LossDSLExpr, LossDSLExpr)]
     quantifierCandidates =
-      [ ( forAll "t" type0 $ \t ->
+      [ ( forAllTypes $ \t ->
             hasQuant Forall (t ~> tLoss) tLoss,
           explLam "t" type0 $ \_t ->
             compileForall
         ),
-        ( forAll "t" type0 $ \t ->
+        ( forAllTypes $ \t ->
             hasQuant Exists (t ~> tLoss) tLoss,
           explLam "t" type0 $ \_t ->
             compileExists

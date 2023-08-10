@@ -1,12 +1,12 @@
-bigAnd : (\ A -> Vector A) Rat -> Rat;
+bigAnd : (\ A -> Vector A) Loss -> Loss;
 bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
 @noinline;
-equalsVector : Vector Rat -> Vector Rat -> Rat;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
+equalsVector : Vector Rat -> Vector Rat -> Loss;
+equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> max 0.0 (x - y) + max 0.0 (y - x)) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
-reachable : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
-reachable f = Optimise[x][min] (*) (\ x -> equalsVector (f x) [0.0])
+reachable : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+reachable f = Optimise[min] (*) (\ x -> equalsVector (f x) [0.0])

@@ -256,6 +256,9 @@ cons tElem x xs = builtinConstructor Cons @@@ [tElem] @@ [x, xs]
 natLit :: (HasStandardData builtin) => Int -> DSLExpr builtin
 natLit n = builtinConstructor (LNat n)
 
+boolLit :: (HasStandardData builtin) => Bool -> DSLExpr builtin
+boolLit n = builtinConstructor (LBool n)
+
 ratLit :: (HasStandardData builtin) => Rational -> DSLExpr builtin
 ratLit r = builtinConstructor (LRat r)
 

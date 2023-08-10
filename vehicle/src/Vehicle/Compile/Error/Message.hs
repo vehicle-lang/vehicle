@@ -474,11 +474,17 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = provenanceOf ctx,
             problem =
-              "cannot quantify over arguments of type"
-                <+> squotes (prettyFriendly $ WithContext typeOfDomain (boundContextOf ctx))
-                <> ".",
+              "cannot quantify over arguments whose type contains"
+                <+> squotes typeDoc
+                <+> "(e.g."
+                <+> squotes typeDoc
+                <> "," <+> squotes vectorTypeDoc <+> "etc.).",
             fix = Nothing
           }
+      where
+        toDoc t = prettyFriendly $ WithContext t (boundContextOf ctx)
+        typeDoc = toDoc typeOfDomain
+        vectorTypeDoc = toDoc $ VVectorType typeOfDomain (VFreeVar (Identifier User "n") [])
     TypingError (FailedIndexConstraintTooBig ctx v n) ->
       UError $
         UserError

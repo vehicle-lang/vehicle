@@ -19,7 +19,8 @@ import Vehicle.Syntax.Builtin.BasicOperations
 -- Loss type classes
 
 data LossTypeClass
-  = HasNot
+  = HasBoolLiteral Bool
+  | HasNot
   | HasAnd
   | HasOr
   | HasImplies
@@ -37,7 +38,8 @@ instance Pretty LossTypeClass where
 -- Loss type class operations
 
 data LossTypeClassOp
-  = NotTC
+  = LBoolTC Bool
+  | NotTC
   | AndTC
   | OrTC
   | ImpliesTC
@@ -136,6 +138,9 @@ type LossDSLExpr = DSLExpr LossBuiltin
 lossTypeClass :: LossTypeClass -> NonEmpty LossDSLExpr -> LossDSLExpr
 lossTypeClass tc args = builtin (LossTC tc) @@ args
 
+hasBoolLiteral :: Bool -> LossDSLExpr -> LossDSLExpr
+hasBoolLiteral b t = lossTypeClass (HasBoolLiteral b) [t]
+
 hasNot :: LossDSLExpr -> LossDSLExpr -> LossDSLExpr
 hasNot t1 t2 = lossTypeClass HasNot [t1, t2]
 
@@ -159,25 +164,3 @@ hasQuant q t1 t2 = lossTypeClass (HasQuant q) [t1, t2]
 
 tLoss :: LossDSLExpr
 tLoss = builtin Loss
-
---    x
---    |
---    |
--------------------------------------------
------- Type checking ----------------------
---    |
---    |
---    |
---    |  -------------------------------
---    |  ----------- Instance search ---
---    |  --   x
---    |  --   |
---    |  --   |
---    |  --   |                            Linearity/Polarity      Loss
---    |  --   |
---    |  --   UnificationError             ----> ERROR            Bubble up
---    |  --------------------------------
---    |
---    |
--- UnificationError                        ----> ERROR            ERROR
------------------------------------------
