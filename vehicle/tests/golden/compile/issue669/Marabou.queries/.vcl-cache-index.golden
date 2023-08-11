@@ -1,0 +1,27 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": -8648241620990125824
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "p",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "p",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

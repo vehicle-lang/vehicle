@@ -1,0 +1,12 @@
+{
+  "queryMetaData": {
+    "tag": "Query",
+    "contents": {
+      "queries": {
+        "tag": "Trivial",
+        "contents": false
+      },
+      "negated": true
+    }
+  }
+}

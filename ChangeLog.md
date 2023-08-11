@@ -4,6 +4,9 @@
 
 * Fixed bug in display of progress bar when verification counter-example found.
 
+* Fixed bug where `forall ... in` and `exists ... in` didn't evaluate properly during verification
+  (introduced in v0.9.0).
+
 ## Version 0.9.0
 
 * Removed the notion of a distinct notion of a "proof cache".
