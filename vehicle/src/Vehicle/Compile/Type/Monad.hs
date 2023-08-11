@@ -38,11 +38,9 @@ module Vehicle.Compile.Type.Monad
     getDeclType,
     instantiateArgForNonExplicitBinder,
     glueNBE,
-    debugError,
   )
 where
 
-import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Proxy (Proxy (..))
@@ -165,8 +163,3 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
     Implicit {} -> freshMetaExpr p binderType boundCtx
     Instance {} -> createFreshInstanceConstraint boundCtx origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
-
-debugError :: forall builtin m. (TCM builtin m) => Proxy builtin -> Int -> m ()
-debugError _ limit = do
-  idd <- generateFreshConstraintID (Proxy @builtin)
-  when (idd > limit) $ compilerDeveloperError "Hi"

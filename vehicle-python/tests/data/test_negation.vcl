@@ -1,4 +1,4 @@
-negation : Int
+negation : Rat
 negation = -5
 
 @property

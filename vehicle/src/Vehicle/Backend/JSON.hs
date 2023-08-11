@@ -291,20 +291,20 @@ instance ToJBuiltin V.BuiltinFunction where
     V.Equals V.EqInt V.Neq -> return NeInt
     V.Equals V.EqRat V.Neq -> return NeRat
     V.Order V.OrderIndex V.Le -> return LeIndex
-    V.Order V.OrderNat V.Le -> return LtNat
-    V.Order V.OrderInt V.Le -> return GeInt
-    V.Order V.OrderRat V.Le -> return GtRat
-    V.Order V.OrderIndex V.Lt -> return LeIndex
+    V.Order V.OrderNat V.Le -> return LeNat
+    V.Order V.OrderInt V.Le -> return LeInt
+    V.Order V.OrderRat V.Le -> return LeRat
+    V.Order V.OrderIndex V.Lt -> return LtIndex
     V.Order V.OrderNat V.Lt -> return LtNat
-    V.Order V.OrderInt V.Lt -> return GeInt
-    V.Order V.OrderRat V.Lt -> return GtRat
-    V.Order V.OrderIndex V.Ge -> return LeIndex
-    V.Order V.OrderNat V.Ge -> return LtNat
+    V.Order V.OrderInt V.Lt -> return LtInt
+    V.Order V.OrderRat V.Lt -> return LtRat
+    V.Order V.OrderIndex V.Ge -> return GeIndex
+    V.Order V.OrderNat V.Ge -> return GeNat
     V.Order V.OrderInt V.Ge -> return GeInt
-    V.Order V.OrderRat V.Ge -> return GtRat
-    V.Order V.OrderIndex V.Gt -> return LeIndex
-    V.Order V.OrderNat V.Gt -> return LtNat
-    V.Order V.OrderInt V.Gt -> return GeInt
+    V.Order V.OrderRat V.Ge -> return GeRat
+    V.Order V.OrderIndex V.Gt -> return GtIndex
+    V.Order V.OrderNat V.Gt -> return GtNat
+    V.Order V.OrderInt V.Gt -> return GtInt
     V.Order V.OrderRat V.Gt -> return GtRat
     V.At -> return AtVector
     V.ConsVector -> return ConsVector

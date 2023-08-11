@@ -52,10 +52,7 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
   -- Only prepend the constraint if all variables in the constraint
   -- are so linked.
   substTC <- substMetas tc
-  logDebug MaxDetail $ "Hi1" <+> prettyVerbose (instanceGoal tc)
-  logDebug MaxDetail $ "Hi1" <+> prettyVerbose (instanceGoal substTC)
   constraintMetas <- metasIn substTC
-  logDebug MaxDetail "Hi2"
   let prependable = constraintMetas `MetaSet.isSubsetOf` linkedMetas
 
   if not prependable

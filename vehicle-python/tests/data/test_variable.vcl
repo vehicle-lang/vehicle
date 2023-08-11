@@ -1,7 +1,7 @@
-nat : Nat
+nat : Rat
 nat = 2
 
-var : Nat
+var : Rat
 var = nat
 
 @property

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 import vehicle_lang.compile.python as vcl2py
 
 
@@ -99,3 +100,6 @@ def test_loss_function_exec(
                 assert key in output
     elif callable(validate_output):
         validate_output(output)
+
+
+test_loss_function_exec("test_maximum.vcl", {"prop": False})
