@@ -368,7 +368,7 @@ evalMapList evalApp = \case
     Just $ return e
   [f, VCons [x, xs]] -> Just $ do
     fx <- evalApp f [x]
-    fxs <- case evalMapList evalApp [argExpr xs] of
+    fxs <- case evalMapList evalApp [f, argExpr xs] of
       Nothing -> return $ VBuiltin (mkBuiltinFunction MapList) [RelevantExplicitArg mempty f, xs]
       Just fxs -> fxs
     return $ VBuiltin (mkBuiltinConstructor Cons) (RelevantExplicitArg mempty <$> [fx, fxs])
