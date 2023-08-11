@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import Any, Callable, Dict
 
-import vehicle_lang.tensorflow as vcl2tf
-
 
 def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
+
+        import vehicle_lang.tensorflow as vcl2tf
 
         # Prepare a simple network
         model = tf.keras.Sequential(
