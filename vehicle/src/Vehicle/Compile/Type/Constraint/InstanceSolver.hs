@@ -4,8 +4,7 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
 where
 
 import Control.Monad.Except (MonadError (..))
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as HashMap
+import Data.HashMap.Strict qualified as Map
 import Data.Hashable (Hashable)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
@@ -29,7 +28,7 @@ import Vehicle.Expr.Normalised
 resolveInstance ::
   forall builtin m.
   (Hashable builtin, MonadInstance builtin m) =>
-  HashMap builtin [Provenance -> InstanceCandidate builtin] ->
+  InstanceCandidateDatabase builtin ->
   WithContext (InstanceConstraint builtin) ->
   m ()
 resolveInstance allCandidates (WithContext constraint ctx) = do
@@ -37,7 +36,7 @@ resolveInstance allCandidates (WithContext constraint ctx) = do
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
   goal <- parseInstanceGoal expr
-  let candidates = fromMaybe [] $ HashMap.lookup (goalHead goal) allCandidates
+  let candidates = fromMaybe [] $ Map.lookup (goalHead goal) allCandidates
   solveInstanceGoal candidates ctx origin meta relevance goal
 
 --------------------------------------------------------------------------------
@@ -51,7 +50,7 @@ type MonadInstance builtin m = TCM builtin m
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  [Provenance -> InstanceCandidate builtin] ->
+  [InstanceCandidate builtin] ->
   ConstraintContext builtin ->
   InstanceConstraintOrigin builtin ->
   MetaID ->
@@ -59,11 +58,10 @@ solveInstanceGoal ::
   InstanceGoal builtin ->
   m ()
 solveInstanceGoal rawBuiltinCandidates ctx origin meta relevance goal = do
-  let p = provenanceOf ctx
   let boundCtx = boundContext ctx
 
   -- The builtin candidates have access to the entire bound context
-  let builtinCandidates = fmap (\candidate -> WithContext (candidate p) boundCtx) rawBuiltinCandidates
+  let builtinCandidates = fmap (`WithContext` boundCtx) rawBuiltinCandidates
   -- Find the candidates in the bound context.
   candidatesInBoundCtx <- findCandidatesInBoundCtx goal boundCtx
   let allCandidates = builtinCandidates <> candidatesInBoundCtx
@@ -155,9 +153,16 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
         unificationConstraint <-
           createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
 
+        -- Replace the provenance of the final solution with the provenance of where the
+        -- constraint was generated. This is needed to get the information to propagate
+        -- properly for the polarity and linearity types, otherwise the provenance ends
+        -- up empty as the candidates are constructed independently.
+        let finalCandidateSolution = replaceProvenance (provenanceOf constraintCtx) substCandidateSolution
+
         -- Add the solution of the type-class as well (if we had first class records
         -- then we wouldn't need to do this manually).
-        solveMeta meta substCandidateSolution extendedGoalCtx
+        solveMeta meta finalCandidateSolution extendedGoalCtx
+
         addConstraints (unificationConstraint : recInstanceConstraints)
 
       runUnificationSolver (Proxy @builtin) mempty
@@ -221,3 +226,22 @@ prettyCandidate (WithContext candidate ctx) =
 
 goalExpr :: InstanceGoal builtin -> Value builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
+
+replaceProvenance :: Provenance -> Expr Ix builtin -> Expr Ix builtin
+replaceProvenance p = go
+  where
+    go :: Expr Ix builtin -> Expr Ix builtin
+    go = \case
+      Meta _p m -> Meta p m
+      App _ fun args -> App p (go fun) (fmap (fmap go) args)
+      Universe _ u -> Universe p u
+      Hole _ h -> Hole p h
+      Builtin _ b -> Builtin p b
+      FreeVar _ v -> FreeVar p v
+      BoundVar _ v -> BoundVar p v
+      Ann _ term typ -> Ann p (go term) (go typ)
+      -- NOTE: no need to lift the substitutions here as we're passing under the binders
+      -- because by construction every meta-variable solution is a closed term.
+      Pi _ binder res -> Pi p (fmap go binder) (go res)
+      Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
+      Lam _ binder e -> Lam p (fmap go binder) (go e)

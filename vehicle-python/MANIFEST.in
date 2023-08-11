@@ -8,7 +8,6 @@ global-include *.vcl
 include cabal.project
 include cabal.project.config
 include cabal.project.freeze
-graft vendor/examples
 graft vendor/vehicle
 graft vendor/vehicle-syntax
 

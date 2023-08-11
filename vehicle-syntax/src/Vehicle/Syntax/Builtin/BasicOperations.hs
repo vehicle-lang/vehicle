@@ -1,14 +1,12 @@
 -- | This module exports the datatype representations of the core builtin symbols.
-module Vehicle.Syntax.Builtin.Core
+module Vehicle.Syntax.Builtin.BasicOperations
   ( Quantifier (..),
     EqualityOp (..),
     equalityOp,
     equalityOpName,
-    EqualityDomain (..),
     OrderOp (..),
     orderOp,
     orderOpName,
-    OrderDomain (..),
     isStrict,
     flipStrictness,
     flipOrder,
@@ -34,7 +32,7 @@ import Prettyprinter (Doc, Pretty (..))
 data FunctionPosition
   = FunctionInput Text Int
   | FunctionOutput Text
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData FunctionPosition
 
@@ -74,26 +72,6 @@ equalityOpName = \case
 equalityOp :: (Eq a) => EqualityOp -> (a -> a -> Bool)
 equalityOp Eq = (==)
 equalityOp Neq = (/=)
-
-data EqualityDomain
-  = EqIndex
-  | EqNat
-  | EqInt
-  | EqRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData EqualityDomain
-
-instance Hashable EqualityDomain
-
-instance Serialize EqualityDomain
-
-instance Pretty EqualityDomain where
-  pretty = \case
-    EqIndex -> "Index"
-    EqNat -> "Nat"
-    EqInt -> "Int"
-    EqRat -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Orders
@@ -150,26 +128,6 @@ flipOrder = \case
 
 chainable :: OrderOp -> OrderOp -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
-
-data OrderDomain
-  = OrderIndex
-  | OrderNat
-  | OrderInt
-  | OrderRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData OrderDomain
-
-instance Hashable OrderDomain
-
-instance Serialize OrderDomain
-
-instance Pretty OrderDomain where
-  pretty = \case
-    OrderNat -> "Nat"
-    OrderIndex -> "Index"
-    OrderInt -> "Int"
-    OrderRat -> "Rat"
 
 --------------------------------------------------------------------------------
 -- Quantifiers

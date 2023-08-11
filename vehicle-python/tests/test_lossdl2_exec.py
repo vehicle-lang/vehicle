@@ -1,10 +1,10 @@
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, Union
+from typing import Any, Callable, Dict, Union
 
 import pytest
 import vehicle_lang as vcl
-import vehicle_lang.compile as vclc
+import vehicle_lang.compile.python as vcl2py
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -62,7 +62,7 @@ def quantifier_any_optimiser(
         (
             "test_maximum.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": 3.5},
         ),
         (
             "test_minimum.vcl",
@@ -102,7 +102,7 @@ def quantifier_any_optimiser(
         (
             "test_tensor.vcl",
             {},
-            {"prop": 4.0},
+            {"prop": 0.0},
         ),
         (
             "test_variable.vcl",
@@ -118,10 +118,10 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = vclc.compile(
+    actual_declarations = vcl2py.load(
         specification_path,
         target=vcl.DifferentiableLogic.DL2,
-        translation=vclc.PythonTranslation.from_optimisers(optimisers),
+        translation=vcl2py.PythonTranslation.from_optimisers(optimisers),
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():

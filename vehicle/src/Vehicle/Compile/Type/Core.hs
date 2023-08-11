@@ -3,6 +3,7 @@
 module Vehicle.Compile.Type.Core where
 
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
@@ -27,17 +28,6 @@ data TypingError builtin
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   deriving (Show)
 
-{-
-instance Pretty (TypingError builtin) where
-  pretty = \case
-    MissingExplicitArgument {} -> "MissingExplicitArgument"
-    FunctionTypeMismatch {} -> "FunctionTypeMismatch"
-    FailedUnification {} -> "FailedUnification"
-    FailedInstanceSearch {} -> "FailedInstanceSearch"
-    UnsolvableConstraints {} -> "UnsolvableConstraints"
-    FailedIndexConstraintTooBig {} -> "FailedIndexConstraintTooBig"
-    FailedIndexConstraintUnknown {} -> "FailedIndexConstraintUnknown"
--}
 --------------------------------------------------------------------------------
 -- Typing declaration context
 
@@ -173,9 +163,6 @@ contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
--- Unification constraints
-
---------------------------------------------------------------------------------
 -- Instance constraints
 
 data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
@@ -220,8 +207,14 @@ type InstanceConstraintInfo builtin =
     InstanceConstraintOrigin builtin
   )
 
+-- | Stores the list of instance candidates currently in scope.
+-- We use a HashMap rather than an ordinary Map as not all builtins may be
+-- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
+type InstanceCandidateDatabase builtin =
+  HashMap builtin [InstanceCandidate builtin]
+
 --------------------------------------------------------------------------------
--- Constraint origins
+-- Unification constraints
 
 data CheckingExprType builtin = CheckingExpr
   { checkedExpr :: Expr Ix builtin,

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
-import vehicle_lang.compile as vclc
+import vehicle_lang.compile.python as vcl2py
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -90,7 +90,7 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    output = vclc.compile(specification_path)
+    output = vcl2py.load(specification_path)
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
             if validate_output[key] is not ...:
@@ -99,3 +99,6 @@ def test_loss_function_exec(
                 assert key in output
     elif callable(validate_output):
         validate_output(output)
+
+
+test_loss_function_exec("test_maximum.vcl", {"prop": False})

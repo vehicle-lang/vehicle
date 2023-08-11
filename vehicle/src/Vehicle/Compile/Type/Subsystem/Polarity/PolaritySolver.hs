@@ -18,9 +18,10 @@ import Vehicle.Syntax.Builtin
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
+  InstanceCandidateDatabase PolarityBuiltin ->
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
-solvePolarityConstraint (WithContext constraint ctx) = do
+solvePolarityConstraint _ (WithContext constraint ctx) = do
   normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
   (tc, spine) <- getTypeClass expr
   let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
@@ -115,7 +116,7 @@ solveEqPolarity _ _ _ = Nothing
 solveImplPolarity :: PolaritySolver
 solveImplPolarity info@(ctx, _) [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
-    let pol3 = VPolarityExpr $ implPolarity (provenanceOf ctx) pol1 pol2
+    let pol3 = VPolarityExpr $ implPolarityOp (provenanceOf ctx) pol1 pol2
     resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
   (getNMeta -> Just m1, _) -> blockOn [m1]
@@ -206,12 +207,12 @@ eqPolarityOp eq p pol1 pol2 =
         (maxPolarityOp pol1 pol2)
         (maxPolarityOp (negPol pol1) (negPol pol2))
 
-implPolarity ::
+implPolarityOp ::
   Provenance ->
   Polarity ->
   Polarity ->
   Polarity
-implPolarity p pol1 pol2 =
+implPolarityOp p pol1 pol2 =
   let negPol = negPolarityOp (LHSImpliesProvenance p)
    in -- `a => b` = not a or b
       maxPolarityOp (negPol pol1) pol2

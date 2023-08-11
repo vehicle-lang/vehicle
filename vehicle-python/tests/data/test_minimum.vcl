@@ -1,3 +1,3 @@
 @property
 prop : Bool
-prop = 1 <= 3
+prop = 0.5 <= 3

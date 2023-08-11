@@ -244,7 +244,7 @@ showAppExit _result = do
   -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 
-findInstanceArg :: (MonadCompile m) => (Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
+findInstanceArg :: (MonadCompile m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case
   (InstanceArg _ _ inst : xs) -> return (inst, xs)
   (_ : xs) -> findInstanceArg op xs

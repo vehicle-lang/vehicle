@@ -3,4 +3,4 @@ untyped = [0.0]
 
 @property;
 p : forallT (f : Vector Rat -> Vector Rat) . Rat;
-p f = max 0.0 (0.0 - f untyped ! 0)
+p f = max 0.0 (0.0 - f untyped ! 0) + (if 0.0 == f untyped ! 0 then 1.0 else 0.0)

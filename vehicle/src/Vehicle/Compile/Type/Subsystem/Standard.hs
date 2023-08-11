@@ -5,16 +5,16 @@ module Vehicle.Compile.Type.Subsystem.Standard
   )
 where
 
-import Data.HashMap.Strict as HashMap
+import Data.HashMap.Strict as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core (malformedConstraintError)
 import Vehicle.Compile.Type.Constraint.IndexSolver
+import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
+import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults ()
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core
 import Vehicle.Compile.Type.Subsystem.Standard.Type
@@ -39,12 +39,13 @@ instance TypableBuiltin StandardBuiltin where
 
 solveInstanceConstraint ::
   (TCM StandardBuiltin m) =>
+  InstanceCandidateDatabase StandardBuiltin ->
   WithContext (InstanceConstraint StandardBuiltin) ->
   m ()
-solveInstanceConstraint constraint@(WithContext (Resolve _ _ _ goal) _) = do
+solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _) = do
   case goal of
     VBuiltin NatInDomainConstraint _ -> solveIndexConstraint constraint
-    VBuiltin tc _ -> case HashMap.lookup tc builtinInstances of
-      Just {} -> resolveInstance builtinInstances constraint
+    VBuiltin tc _ -> case Map.lookup tc database of
+      Just {} -> resolveInstance database constraint
       Nothing -> solveTypeClassConstraint constraint
     _ -> malformedConstraintError constraint

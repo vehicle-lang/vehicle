@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, ClassVar, List, Optional, Sequence, Tuple, Typ
 
 from typing_extensions import Self, TypeAlias
 
-from ._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
-from ._temporary_files import temporary_files
-from .error import VehicleError as VehicleError
+from .._binding import _unsafe_vehicle_free, _unsafe_vehicle_init, _unsafe_vehicle_main
+from .._temporary_files import temporary_files
+from ..error import VehicleError as VehicleError
+from ..typing import Target
 from .error import VehicleSessionClosed as VehicleSessionClosed
 from .error import VehicleSessionUsed as VehicleSessionUsed
-from .typing import Target
 
 __all__: List[str] = [
     "Target",

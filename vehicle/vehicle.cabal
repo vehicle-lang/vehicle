@@ -176,6 +176,11 @@ library
     Vehicle.Backend.JSON
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Backend.LossFunction.TypeSystem
+    Vehicle.Backend.LossFunction.TypeSystem.Core
+    Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins
+    Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults
+    Vehicle.Backend.LossFunction.TypeSystem.Type
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
@@ -192,6 +197,7 @@ library
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.IndexSolver
+    Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
     Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
@@ -206,6 +212,7 @@ library
     Vehicle.Compile.Type.Monad
     Vehicle.Compile.Type.Monad.Class
     Vehicle.Compile.Type.Monad.Instance
+    Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.Subsystem.InputOutputInsertion
     Vehicle.Compile.Type.Subsystem.Linearity
     Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions
@@ -218,9 +225,8 @@ library
     Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
     Vehicle.Compile.Type.Subsystem.Polarity.Type
     Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassDefaults
+    Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver
     Vehicle.Compile.Type.Subsystem.Standard.Core
     Vehicle.Compile.Type.Subsystem.Standard.Type

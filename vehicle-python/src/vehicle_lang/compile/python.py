@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import (
     Any,
     Dict,
+    Iterable,
     Iterator,
     List,
+    Optional,
     Sequence,
     SupportsFloat,
     SupportsInt,
@@ -17,12 +19,45 @@ from typing import (
 from typing_extensions import Self, final, override
 
 from .. import ast as vcl
-from ..typing import AnyOptimisers, Optimiser
+from ..ast import (
+    AST,
+    Binder,
+    BuiltinFunction,
+    Declaration,
+    Expression,
+    Program,
+    Provenance,
+)
+from ..typing import (
+    AnyOptimisers,
+    DeclarationName,
+    DifferentiableLogic,
+    Explicit,
+    Target,
+)
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
 from .abc import ABCTranslation, AnyBuiltins
 from .abcboolasbool import ABCBoolAsBoolBuiltins
+from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
+
+__all__: List[str] = [
+    # Abstract Syntax Tree
+    "AST",
+    "Binder",
+    "BuiltinFunction",
+    "Declaration",
+    "Expression",
+    "Program",
+    "Provenance",
+    # Translation to Python
+    "PythonBuiltins",
+    "PythonTranslation",
+    # High-level functions
+    "compile",
+    "load_loss_function",
+]
 
 ################################################################################
 ### Implementation of Vehicle builtins in Python
@@ -220,6 +255,58 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
+        # NOTE: We handle Optimise as a special case, as we must extract the
+        #       name of the bound variable from the lambda binding.
+        if isinstance(expression.function, vcl.Builtin) and isinstance(
+            expression.function.builtin, vcl.Optimise
+        ):
+            if len(expression.arguments) != 2:
+                raise VehicleOptimiseTypeError(expression)
+            joiner, predicate = expression.arguments
+            if not isinstance(predicate, vcl.Lam):
+                raise VehicleOptimiseTypeError(expression)
+            if len(predicate.binders) != 1:
+                raise VehicleOptimiseTypeError(expression)
+            # NOTE: We extract the name of the bound variable from the lambda,
+            #       which should be the _second_ argument.
+            name = predicate.binders[0].name
+            return py_app(
+                py_builtin(
+                    builtin=expression.function.builtin.__class__.__name__,
+                    provenance=expression.provenance,
+                ),
+                # name:
+                py.Str(
+                    s=name,
+                    **asdict(expression.provenance),
+                ),
+                # minimise:
+                py.NameConstant(
+                    value=expression.function.builtin.minimise,
+                    **asdict(expression.provenance),
+                ),
+                # context:
+                py.Dict(
+                    keys=[
+                        py.Str(
+                            s=name,
+                            **asdict(expression.provenance),
+                        )
+                        for name in expression.function.builtin.context
+                    ],
+                    values=[
+                        py_name(name, provenance=expression.provenance)
+                        for name in expression.function.builtin.context
+                    ],
+                    **asdict(expression.provenance),
+                ),
+                # joiner:
+                self.translate_expression(joiner),
+                # predicate:
+                self.translate_expression(predicate),
+                # provenance:
+                provenance=expression.provenance,
+            )
         return py_app(
             self.translate_expression(expression.function),
             *map(self.translate_expression, expression.arguments),
@@ -247,6 +334,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             ),
         ):
             raise EraseType
+        # OPTIMISE
+        #   All Optimise() nodes should be fully applied, and hence be captured
+        #   by the translation for applications.
+        elif isinstance(expression.builtin, vcl.Optimise):
+            raise VehicleOptimiseTypeError(expression)
         # CONSTANTS
         #   When we encounter a constant, we translate it to an application
         #   of the builtin function to the constant value, e.g., we translate
@@ -266,7 +358,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 vcl.Nat,
                 vcl.NilList,
                 vcl.Rat,
-                vcl.Optimise,
             ),
         ) or (
             isinstance(expression.builtin, vcl.Vector) and expression.builtin.value == 0
@@ -317,37 +408,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                             **asdict(expression.provenance),
                         ),
                         provenance=expression.provenance,
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Optimise):
-                # NOTE: Optimise returns a partial application, because
-                #       joiner and predicate are passed as arguments.
-                arguments.append(
-                    py.Str(
-                        s=expression.builtin.name,
-                        **asdict(expression.provenance),
-                    )
-                )
-                arguments.append(
-                    py.NameConstant(
-                        value=expression.builtin.minimise,
-                        **asdict(expression.provenance),
-                    )
-                )
-                arguments.append(
-                    py.Dict(
-                        keys=[
-                            py.Str(
-                                s=name,
-                                **asdict(expression.provenance),
-                            )
-                            for name in expression.builtin.context
-                        ],
-                        values=[
-                            py_name(name, provenance=expression.provenance)
-                            for name in expression.builtin.context
-                        ],
-                        **asdict(expression.provenance),
                     )
                 )
             return py_app(
@@ -456,3 +516,46 @@ def py_partial_app(
         *arguments,
         provenance=provenance,
     )
+
+
+def load(
+    path: Union[str, Path],
+    *,
+    declarations: Iterable[DeclarationName] = (),
+    target: Target = Explicit.Explicit,
+    translation: Optional[PythonTranslation] = None,
+) -> Dict[str, Any]:
+    if translation is None:
+        translation = PythonTranslation(builtins=PythonBuiltins(optimisers={}))
+    return translation.compile(
+        vcl.load(path, declarations=declarations, target=target), path=path
+    )
+
+
+def load_loss_function(
+    path: Union[str, Path],
+    property_name: DeclarationName,
+    *,
+    target: DifferentiableLogic = DifferentiableLogic.Vehicle,
+    optimisers: AnyOptimisers = {},
+) -> Any:
+    """
+    Load a loss function from a property in a Vehicle specification.
+
+    :param path: The path to the Vehicle specification file.
+    :param property_name: The name of the Vehicle property to load.
+    :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
+    :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
+    :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
+    """
+    translation = PythonTranslation(builtins=PythonBuiltins(optimisers=optimisers))
+    declarations = load(
+        path,
+        declarations=(property_name,),
+        target=target,
+        translation=translation,
+    )
+    if property_name in declarations:
+        return declarations[property_name]
+    else:
+        raise VehiclePropertyNotFound(property_name)

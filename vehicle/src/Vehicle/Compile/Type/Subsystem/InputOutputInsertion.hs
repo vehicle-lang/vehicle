@@ -7,7 +7,7 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Monad (TCM, createFreshTypeClassConstraint, freshMetaExpr)
+import Vehicle.Compile.Type.Monad (TCM, createFreshInstanceConstraint, freshMetaExpr)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -80,6 +80,6 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
           FunctionOutput {} -> [existingExpr, newExpr]
   let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs
 
-  _ <- createFreshTypeClassConstraint mempty (existingExpr, mempty, UnitLiteral p) Irrelevant tcExpr
+  _ <- createFreshInstanceConstraint mempty (existingExpr, mempty, UnitLiteral p) Irrelevant tcExpr
 
   return newExpr

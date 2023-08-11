@@ -76,13 +76,8 @@ substApp ::
 substApp p (fun@(Meta _ m), mArgs) = do
   metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
-    Just value -> subst =<< substArgs (unnormalised value) mArgs
     Nothing -> normAppList p fun <$> subst mArgs
-  where
-    substArgs :: Expr Ix builtin -> [Arg Ix builtin] -> m (Expr Ix builtin)
-    substArgs (Lam _ _ body) (arg : args) = do
-      substArgs (argExpr arg `substDBInto` body) args
-    substArgs e args = return $ normAppList p e args
+    Just value -> subst $ substArgs p (unnormalised value) mArgs
 substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Value builtin) where
@@ -124,7 +119,19 @@ instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraint bui
   subst (Unify origin e1 e2) = Unify <$> subst origin <*> subst e1 <*> subst e2
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraint builtin) where
-  subst (Resolve origin m r e) = Resolve origin m r <$> subst e
+  subst (Resolve origin m r e) = do
+    metaSubst <- getMetaSubstitution @builtin
+    Resolve origin <$> substMetaID metaSubst m <*> pure r <*> subst e
+
+-- This is a massive hack, and only works because we only have instance resolution
+-- for types in the loss typing subsystem which doesn't use dependently types.
+substMetaID :: (MonadCompile m) => MetaSubstitution builtin -> MetaID -> m MetaID
+substMetaID metaSubst m =
+  case MetaMap.lookup m metaSubst of
+    Nothing -> return m
+    Just other -> case normalised other of
+      VMeta m2 [] -> substMetaID metaSubst m2
+      _ -> return m
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Constraint builtin) where
   subst = \case

@@ -352,7 +352,6 @@ class Not(BuiltinFunction):
 
 @dataclass(frozen=True)
 class Optimise(BuiltinFunction):
-    name: Name
     minimise: bool
     context: Sequence[Name]
 
@@ -568,7 +567,8 @@ def load(
         ]
     )
     if exc != 0:
-        raise VehicleError(err or out or log or "unknown error")
+        msg: str = err or out or log or "unknown error"
+        raise VehicleError(msg)
     if out is None:
         raise VehicleError("no output")
     return Program.from_json(out)

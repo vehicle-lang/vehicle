@@ -1,18 +1,15 @@
 module Vehicle.Backend.LossFunction.Logics
   ( DifferentialLogicImplementation (..),
-    AndTranslation (..),
-    OrTranslation (..),
     NotTranslation (..),
     implementationOf,
   )
 where
 
+import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardDSLExpr)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DSL
-import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
@@ -20,7 +17,7 @@ import Vehicle.Syntax.Builtin
 --------------------------------------------------------------------------------
 
 -- | A partial expression which requires provenance to construct.
-type PLExpr = StandardDSLExpr
+type PLExpr = LossDSLExpr
 
 mkOp1 :: PLExpr -> (PLExpr -> PLExpr) -> PLExpr
 mkOp1 t f = explLam "x" t (\x -> f x)
@@ -67,29 +64,21 @@ lmin :: PLExpr -> PLExpr -> PLExpr
 lmin x y = builtinFunction MinRat @@ [x, y]
 
 -- | Compiles a quantifier to a sampling procedure.
-quantifierSampler :: Bool -> PLExpr -> PLExpr -> Name -> [Name] -> PLExpr
-quantifierSampler maximise bop body varName ctx =
-  builtinFunction (Optimise varName maximise ctx) @@ [bop, body]
+quantifierSampler :: Bool -> PLExpr -> PLExpr
+quantifierSampler maximise bop =
+  builtinFunction (Optimise maximise) @@ [bop]
 
 -- | Compiles a `Forall` to a sampling procedure
-forallSampler :: Bool -> PLExpr -> PLExpr -> Name -> [Name] -> PLExpr
+forallSampler :: Bool -> PLExpr -> PLExpr
 forallSampler = quantifierSampler
 
 -- | Compiles an `Exists` to a sampling procedure
-existsSampler :: Bool -> PLExpr -> PLExpr -> Name -> [Name] -> PLExpr
+existsSampler :: Bool -> PLExpr -> PLExpr
 existsSampler = quantifierSampler
 
 --------------------------------------------------------------------------------
 -- Logics
 --------------------------------------------------------------------------------
-
-data AndTranslation
-  = BinaryAnd PLExpr -- LExpr -> LExpr -> LExpr
-  | NaryAnd PLExpr -- ([LExpr] -> LExpr)
-
-data OrTranslation
-  = BinaryOr PLExpr -- LExpr -> LExpr -> LExpr
-  | NaryOr PLExpr -- ([LExpr] -> LExpr)
 
 data NotTranslation
   = TryToEliminate
@@ -104,12 +93,12 @@ data DifferentialLogicImplementation = DifferentialLogicImplementation
     compileBool :: PLExpr,
     compileTrue :: PLExpr,
     compileFalse :: PLExpr,
-    compileAnd :: AndTranslation,
-    compileOr :: OrTranslation,
+    compileAnd :: PLExpr,
+    compileOr :: PLExpr,
     compileNot :: NotTranslation,
     compileImplies :: PLExpr,
-    compileForall :: PLExpr -> Name -> [Name] -> PLExpr,
-    compileExists :: PLExpr -> Name -> [Name] -> PLExpr,
+    compileForall :: PLExpr,
+    compileExists :: PLExpr,
     compileLe :: PLExpr,
     compileLt :: PLExpr,
     compileGe :: PLExpr,
@@ -142,8 +131,8 @@ vehicleTranslation =
       compileBool = tRat,
       compileTrue = ratLit (-100000),
       compileFalse = ratLit 100000,
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr orOp,
+      compileAnd = andOp,
+      compileOr = orOp,
       compileNot = UnaryNot $ builtinFunction (Neg NegRat),
       compileImplies = mkOp2 tRat $ \x y -> lmax (neg x) y,
       compileForall = forallSampler True andOp,
@@ -171,16 +160,16 @@ dl2Translation =
       compileBool = tRat,
       compileTrue = ratLit 0,
       compileFalse = ratLit 1, -- TODO this should be infinity???
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr orOp,
+      compileAnd = andOp,
+      compileOr = orOp,
       compileNot = TryToEliminate,
       compileImplies = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x *: y),
       compileForall = forallSampler True andOp,
       compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: ind x y,
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x) +: ind y x,
+      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: ind x y,
+      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x) +: ind y x,
+      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
       compileNeq = mkOp2 tRat ind,
       compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
     }
@@ -200,8 +189,8 @@ godelTranslation =
       compileBool = tRat,
       compileTrue = ratLit 0,
       compileFalse = ratLit 1,
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr orOp,
+      compileAnd = andOp,
+      compileOr = orOp,
       compileNot = UnaryNot (mkOp1 tRat $ \x -> ratLit 1 -: x),
       compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 1 -: x) y,
       compileForall = forallSampler True andOp,
@@ -229,8 +218,8 @@ lukasiewiczTranslation =
       compileBool = tRat,
       compileTrue = ratLit 0,
       compileFalse = ratLit 1,
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr orOp,
+      compileAnd = andOp,
+      compileOr = orOp,
       compileNot = UnaryNot (mkOp1 tRat $ \arg -> ratLit 1 -: arg),
       compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmin (ratLit 1) ((ratLit 1 -: x) +: y),
       compileForall = forallSampler True andOp,
@@ -258,13 +247,13 @@ productTranslation =
       compileBool = tRat,
       compileTrue = ratLit 0,
       compileFalse = ratLit 1,
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr andOp,
+      compileAnd = andOp,
+      compileOr = andOp,
       compileNot = UnaryNot (mkOp1 tRat $ \x -> ratLit 1 -: x),
       compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: ((ratLit 1 -: x) +: (x *: y)),
       compileForall = forallSampler True andOp,
       compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> ratLit 0 `lmax` (x -: y),
+      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
       compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
       compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
       compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
@@ -291,8 +280,8 @@ parameterisedYagerTranslation p =
       compileBool = tRat,
       compileTrue = ratLit 0,
       compileFalse = ratLit 1,
-      compileAnd = BinaryAnd andOp,
-      compileOr = BinaryOr orOp,
+      compileAnd = andOp,
+      compileOr = orOp,
       compileNot = UnaryNot (mkOp1 tRat (ratLit 1 -:)),
       compileImplies = mkOp2 tRat $ \x y ->
         ratLit 1

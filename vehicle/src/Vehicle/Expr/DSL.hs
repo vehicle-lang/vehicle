@@ -25,6 +25,8 @@ module Vehicle.Expr.DSL
     forAllExpl,
     forAll,
     forAllInstance,
+    forAllTypes,
+    forAllTypePairs,
     forAllTypeTriples,
     implTypeTripleLam,
     builtin,
@@ -199,18 +201,26 @@ universe u = DSL $ \p _ -> Universe p u
 type0 :: DSLExpr builtin
 type0 = universe $ UniverseLevel 0
 
+forAllTypes :: (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllTypes f =
+  forAll "t" type0 $ \t ->
+    f t
+
+forAllTypePairs :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllTypePairs f =
+  forAll "t1" type0 $ \t1 ->
+    forAll "t2" type0 $ \t2 ->
+      f t1 t2
+
 forAllTypeTriples :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllTypeTriples f =
   forAll "t1" type0 $ \t1 ->
     forAll "t2" type0 $ \t2 ->
-      forAll "t3" type0 $ \t3 -> f t1 t2 t3
+      forAll "t3" type0 $ \t3 ->
+        f t1 t2 t3
 
 builtin :: builtin -> DSLExpr builtin
 builtin b = DSL $ \p _ -> Builtin p b
-
---------------------------------------------------------------------------------
--- Standard builtin
---------------------------------------------------------------------------------
 
 tHole :: Name -> DSLExpr builtin
 tHole name = DSL $ \p _ -> Hole p name

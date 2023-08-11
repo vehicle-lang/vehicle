@@ -113,7 +113,9 @@ data PolarityBuiltin
   | BuiltinFunction BuiltinFunction
   | Polarity Polarity
   | PolarityRelation PolarityRelation
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance Hashable PolarityBuiltin
 
 instance Pretty PolarityBuiltin where
   pretty = \case
@@ -146,7 +148,7 @@ pattern VPolarityExpr l <- VBuiltin (Polarity l) []
   where
     VPolarityExpr l = VBuiltin (Polarity l) []
 
---------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 -- DSL
 
 type PolarityDSLExpr = DSLExpr PolarityBuiltin

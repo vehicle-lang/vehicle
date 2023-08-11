@@ -35,21 +35,23 @@ import Vehicle.Expr.Normalised
 typeCheckProg ::
   (TypableBuiltin builtin, MonadCompile m) =>
   Imports builtin ->
+  InstanceCandidateDatabase builtin ->
   Prog Ix StandardBuiltin ->
   m (GluedProg builtin)
-typeCheckProg imports (Main uncheckedProg) =
+typeCheckProg imports instanceCandidates (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
-    runTypeChecker (createDeclCtx imports) $ do
+    runTypeChecker (createDeclCtx imports) instanceCandidates $ do
       Main <$> typeCheckDecls uncheckedProg
 
 typeCheckExpr ::
   forall builtin m.
   (TypableBuiltin builtin, MonadCompile m) =>
   Imports builtin ->
+  InstanceCandidateDatabase builtin ->
   Expr Ix builtin ->
   m (Expr Ix builtin)
-typeCheckExpr imports expr1 =
-  runTypeChecker (createDeclCtx imports) $ do
+typeCheckExpr imports instanceCandidates expr1 =
+  runTypeChecker (createDeclCtx imports) instanceCandidates $ do
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
@@ -148,7 +150,9 @@ typeCheckFunction p ident anns typ body = do
     then do
       gluedDecl <- traverse (glueNBE mempty) substDecl
       restrictPropertyType (ident, p) (typeOf gluedDecl)
-      return gluedDecl
+      solveConstraints (Just substDecl)
+      substGluedDecl <- substMetas gluedDecl
+      return substGluedDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-
@@ -166,9 +170,7 @@ checkDeclType :: (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix 
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
-    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-    assertDeclTypeIsType ident typeOfType
-    return checkedType
+    runReaderT (checkExpr (TypeUniverse mempty 0) declType) mempty
 
 restrictAbstractDefType ::
   (TCM builtin m) =>
@@ -184,25 +186,6 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       DatasetDef -> restrictDatasetType decl defType
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
-
-assertDeclTypeIsType :: (TCM builtin m) => Identifier -> Type Ix builtin -> m ()
--- This is a bit of a hack to get around having to have a solver for universe
--- levels. As type definitions will always have an annotated Type 0 inserted
--- by delaboration, we can match on it here. Anything else will be unified
--- with type 0.
-assertDeclTypeIsType _ TypeUniverse {} = return ()
-assertDeclTypeIsType ident actualType = do
-  let p = provenanceOf actualType
-  let expectedType = TypeUniverse p 0
-  let origin =
-        CheckingExprType $
-          CheckingExpr
-            { checkedExpr = FreeVar p ident,
-              checkedExprExpectedType = expectedType,
-              checkedExprActualType = actualType
-            }
-  createFreshUnificationConstraint p mempty origin expectedType actualType
-  return ()
 
 -------------------------------------------------------------------------------
 -- Constraint solving
@@ -252,12 +235,13 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
 runInstanceSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runInstanceSolver _ metasSolved =
+runInstanceSolver _ metasSolved = do
+  instanceCandidates <- getInstanceCandidates
   logCompilerPass MaxDetail ("instance solver run" <> line) $
     runConstraintSolver @builtin
       getActiveInstanceConstraints
       setInstanceConstraints
-      solveInstance
+      (solveInstance instanceCandidates)
       metasSolved
 
 -- | Attempts to solve as many unification constraints as possible. Takes in

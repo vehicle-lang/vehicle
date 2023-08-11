@@ -548,13 +548,13 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    cd path/to/vehicle
    ```
 
-1. Navigate to the `vehicle-python` subdirectory.
+2. Navigate to the `vehicle-python` subdirectory.
 
    ```sh
    cd vehicle-python
    ```
 
-1. Build the Vehicle Python bindings:
+3. Build the Vehicle Python bindings:
 
    ```sh
    pipx run tox
