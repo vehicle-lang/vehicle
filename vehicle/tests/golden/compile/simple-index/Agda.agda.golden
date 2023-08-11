@@ -7,20 +7,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Fin as Fin using (Fin; #_)
-open import Function.Base
-open import Relation.Binary.PropositionalEquality
 
 module Agda where
 
-postulate eqIndex : (Fin 1 ∋ # 0) ≡ (Fin 2 ∋ # 1)
-
-postulate neqIndex : (Fin 1 ∋ # 0) ≢ (Fin 2 ∋ # 1)
-
-postulate leqIndex : (Fin 1 ∋ # 0) Fin.≤ (Fin 2 ∋ # 1)
-
-postulate ltIndex : (Fin 1 ∋ # 0) Fin.< (Fin 2 ∋ # 1)
-
-postulate geqIndex : (Fin 1 ∋ # 0) Fin.≥ (Fin 2 ∋ # 1)
-
-postulate gtIndex : (Fin 1 ∋ # 0) Fin.> (Fin 2 ∋ # 1)

@@ -151,7 +151,8 @@ typeCheckFunction p ident anns typ body = do
       gluedDecl <- traverse (glueNBE mempty) substDecl
       restrictPropertyType (ident, p) (typeOf gluedDecl)
       solveConstraints (Just substDecl)
-      return gluedDecl
+      substGluedDecl <- substMetas gluedDecl
+      return substGluedDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-

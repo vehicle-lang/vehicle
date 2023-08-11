@@ -14,7 +14,6 @@ import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults ()
 import Vehicle.Compile.Type.Subsystem.Standard.Constraint.TypeClassSolver (solveTypeClassConstraint)
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core

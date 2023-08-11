@@ -22,7 +22,7 @@
   },
   {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --logging MaxDetail",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.vcl"]
   },

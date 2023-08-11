@@ -1,8 +1,13 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Monomorphisation (monomorphise) where
+module Vehicle.Compile.Monomorphisation
+  ( monomorphise,
+    hoistInferableParameters,
+    removeLiteralCoercions,
+  )
+where
 
-import Control.Monad (forM_, (<=<))
+import Control.Monad (forM_)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Control.Monad.State
   ( MonadState (..),
@@ -27,9 +32,7 @@ import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -53,22 +56,13 @@ monomorphise ::
   forall m builtin.
   (MonadCompile m, Hashable builtin, PrintableBuiltin builtin, HasStandardData builtin) =>
   (Decl Ix builtin -> Bool) ->
-  Bool ->
   Text ->
   Prog Ix builtin ->
   m (Prog Ix builtin)
-monomorphise keepEvenIfUnused simplifyTypesAndRemoveCoercions nameJoiner prog =
+monomorphise keepEvenIfUnused nameJoiner prog =
   logCompilerPass MinDetail "monomorphisation" $ do
-    progWithNormalisedTypes <-
-      if simplifyTypesAndRemoveCoercions
-        then runContextT @m @builtin $ normTypeArgsInProg prog
-        else return prog
-    (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg progWithNormalisedTypes)) mempty) (keepEvenIfUnused, nameJoiner)
-    prog3 <- runReaderT (insert prog2) substitutions
-    result <-
-      if simplifyTypesAndRemoveCoercions
-        then hoistInferableParameters =<< removeLiteralCoercions nameJoiner prog3
-        else return prog3
+    (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) (keepEvenIfUnused, nameJoiner)
+    result <- runReaderT (insert prog2) substitutions
     logCompilerPassOutput $ prettyFriendly result
     return result
 
@@ -88,52 +82,6 @@ traverseCandidateApplications underBinder processApp =
       let (argsToMono, remainingArgs) = break isExplicit args
       remainingArgs' <- traverse (traverse recGo) remainingArgs
       processApp p1 ident argsToMono remainingArgs'
-
---------------------------------------------------------------------------------
--- Pass 1 - normalise types in the program
-
-type MonadTypeNormalise builtin m =
-  ( MonadContext builtin m,
-    NormalisableBuiltin builtin,
-    PrintableBuiltin builtin
-  )
-
-normTypeArgsPass :: CompilerPass
-normTypeArgsPass = "normalisation of type arguments"
-
-normTypeArgsInProg ::
-  (MonadTypeNormalise builtin m) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
-normTypeArgsInProg (Main decls) =
-  logCompilerPass MaxDetail normTypeArgsPass $ do
-    Main <$> normTypeArgsInDecls decls
-
-normTypeArgsInDecls ::
-  (MonadTypeNormalise builtin m) =>
-  [Decl Ix builtin] ->
-  m [Decl Ix builtin]
-normTypeArgsInDecls [] = return []
-normTypeArgsInDecls (decl : decls) = do
-  let passDoc = normTypeArgsPass <+> "for" <+> quotePretty (identifierOf decl)
-  decl' <- logCompilerPass MaxDetail passDoc $ case decl of
-    DefAbstract p s e t -> DefAbstract p s e <$> normTypeArgsInExpr t
-    DefFunction p i anns t e -> DefFunction p i anns <$> normTypeArgsInExpr t <*> normTypeArgsInExpr e
-
-  decls' <- addDeclToContext decl' (normTypeArgsInDecls decls)
-  return $ decl' : decls'
-
-normTypeArgsInExpr ::
-  (MonadTypeNormalise builtin m) =>
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
-normTypeArgsInExpr = traverseCandidateApplications addBinderToContext $
-  \p f argsToMono otherArgs -> do
-    let normAndQuote arg
-          | isInstance arg = return arg
-          | otherwise = traverse (unnormalise <=< normalise) arg
-    normArgsToMono <- traverse normAndQuote argsToMono
-    return $ normAppList p (FreeVar p f) (normArgsToMono <> otherArgs)
 
 --------------------------------------------------------------------------------
 -- Pass 2 - collects the sites for monomorphisation

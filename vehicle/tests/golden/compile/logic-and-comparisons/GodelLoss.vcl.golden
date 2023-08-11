@@ -1,27 +1,27 @@
-bigAnd : (\ A -> Vector A) Loss -> Loss;
+bigAnd : (\ A -> Vector A) Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> (\ x -> \ y -> 1.0 - min x y) x y) 0.0 _x0
 
-bigOr : (\ A -> Vector A) Loss -> Loss;
+bigOr : (\ A -> Vector A) Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> (\ x -> \ y -> 1.0 - max x y) x y) 1.0 _x0
 
 @noinline;
-equalsVector : Vector Rat -> Vector Rat -> Loss;
+equalsVector : Vector Rat -> Vector Rat -> Rat;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> 1.0 - (if x == y then 1.0 else 0.0)) xs ys)
 
 @noinline;
-notEqualsVector : Vector Rat -> Vector Rat -> Loss;
+notEqualsVector : Vector Rat -> Vector Rat -> Rat;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> if x == y then 1.0 else 0.0) xs ys)
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
-test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+test1 : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
 test1 f = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> 1.0 - max (max 0.0 (a - 0.0)) (equalsVector (f [a + 2.0]) [0.0]))
 
 @property;
-test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+test2 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
 test2 g = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ b -> 1.0 - min (max 0.0 (1.0 - a)) (1.0 - min (1.0 - max 0.0 (a - b)) (equalsVector (g [a + b, a + 2.0 * b]) [0.0]))))
 
 @property;
-test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Loss;
+test3 : forallT (g : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Rat;
 test3 g = Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ b -> 1.0 - (1.0 - max (1.0 - min (max 0.0 (a - 0.0)) (if b == 0.0 then 1.0 else 0.0)) (notEqualsVector (g [a, b]) [0.0]))))

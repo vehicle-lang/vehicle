@@ -1,7 +1,7 @@
-bigAnd : (\ A -> Vector A) Loss -> Loss;
+bigAnd : (\ A -> Vector A) Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> max x y) -100000.0 _x0
 
-foreachVector : forallT n . (Index -> Loss) -> Vector Loss;
+foreachVector : forallT n . (Index -> Rat) -> Vector Rat;
 foreachVector n f = map f (indices n)
 
 @noinline;
@@ -12,7 +12,7 @@ subVector--Rat--Rat--Rat _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 subVector--Vector-Rat--Vector-Rat--Vector-Rat : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 subVector--Vector-Rat--Vector-Rat--Vector-Rat _x0 _x1 = zipWith (\ x -> \ y -> subVector--Rat--Rat--Rat x y) _x0 _x1
 
-forallIndex : forallT n . (Index -> Loss) -> Loss;
+forallIndex : forallT n . (Index -> Rat) -> Rat;
 forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
 
 type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
@@ -21,18 +21,18 @@ type Image = Tensor Rat (28 :: 28 :: nil)
 
 type Label = Index
 
-validImage : Image -> Loss;
+validImage : Image -> Rat;
 validImage x = forallIndex 28 (\ i -> forallIndex 28 (\ j -> max (0.0 - x ! i ! j) (x ! i ! j - 1.0)))
 
-advises : forallT (classifier : Image -> Vector Rat) . Image -> Label -> Loss;
+advises : forallT (classifier : Image -> Vector Rat) . Image -> Label -> Rat;
 advises classifier x i = forallIndex 10 (\ j -> (\ x -> \ y -> max (- x) y) (if j != i then -100000.0 else 100000.0) (classifier x ! j - classifier x ! i))
 
-boundedByEpsilon : forallT (epsilon : Rat) . Image -> Loss;
+boundedByEpsilon : forallT (epsilon : Rat) . Image -> Rat;
 boundedByEpsilon epsilon x = forallIndex 28 (\ i -> forallIndex 28 (\ j -> max (- epsilon - x ! i ! j) (x ! i ! j - epsilon)))
 
-robustAround : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . Image -> Label -> Loss;
+robustAround : forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . Image -> Label -> Rat;
 robustAround classifier epsilon image label = Optimise[min] max (\ pertubation -> let perturbedImage = subVector--Vector-Rat--Vector-Rat--Vector-Rat image pertubation in max (- max (boundedByEpsilon epsilon pertubation) (validImage perturbedImage)) (advises classifier perturbedImage label))
 
 @property;
-robust : forallT (n : Nat) . forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . forallT (trainingImages : Vector Image) . forallT (trainingLabels : Vector Label) . Vector Loss;
+robust : forallT (n : Nat) . forallT (classifier : Image -> Vector Rat) . forallT (epsilon : Rat) . forallT (trainingImages : Vector Image) . forallT (trainingLabels : Vector Label) . Vector Rat;
 robust n classifier epsilon trainingImages trainingLabels = foreachVector n (\ i -> robustAround classifier epsilon (trainingImages ! i) (trainingLabels ! i))

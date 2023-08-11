@@ -1,4 +1,4 @@
-module Vehicle.Backend.LossFunction.TypeSystem.BuiltinInstances
+module Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins
   ( lossBuiltinInstances,
   )
 where

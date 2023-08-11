@@ -7,12 +7,14 @@ where
 
 import Control.Monad (when)
 import Vehicle.Backend.LossFunction.TypeSystem.Core as Core
+import Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults ()
 import Vehicle.Backend.LossFunction.TypeSystem.Type
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint.IndexSolver
+import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewConstraintUsingDefaults)
 import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -32,7 +34,7 @@ instance TypableBuiltin LossBuiltin where
   restrictPropertyType = checkPropertyType
   solveInstance = solveInstanceConstraint
   addAuxiliaryInputOutputConstraints = return
-  generateDefaultConstraint = const $ return False
+  generateDefaultConstraint = addNewConstraintUsingDefaults
 
 solveInstanceConstraint ::
   (TCM LossBuiltin m) =>

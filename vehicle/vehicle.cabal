@@ -177,8 +177,9 @@ library
     Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
     Vehicle.Backend.LossFunction.TypeSystem
-    Vehicle.Backend.LossFunction.TypeSystem.BuiltinInstances
     Vehicle.Backend.LossFunction.TypeSystem.Core
+    Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins
+    Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults
     Vehicle.Backend.LossFunction.TypeSystem.Type
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames

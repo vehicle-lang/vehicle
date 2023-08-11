@@ -14,7 +14,7 @@ import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Queries
@@ -119,6 +119,7 @@ compileDirect (imports, typedProg) outputFile outputAsJSON = do
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
+  forall builtin m.
   (MonadCompile m, MonadIO m, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
   Maybe FilePath ->
@@ -127,8 +128,10 @@ compileToJSON ::
 compileToJSON prog outputFile outputAsJSON = do
   relevantProg <- removeIrrelevantCodeFromProg prog
   let monomorphiseIf = isPropertyDecl
-  monomorphiseProg <- monomorphise monomorphiseIf True "_" relevantProg
-  functionalisedProg <- functionaliseResources monomorphiseProg
+  monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
+  literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
+  hoistedProg <- hoistInferableParameters literalFreeProg
+  functionalisedProg <- functionaliseResources hoistedProg
   etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
     if outputAsJSON
