@@ -38,8 +38,7 @@ from ..typing import (
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from .abc import ABCTranslation, AnyBuiltins
-from .abcboolasbool import ABCBoolAsBoolBuiltins
+from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
 from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
 
 __all__: List[str] = [
@@ -66,7 +65,7 @@ __all__: List[str] = [
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
+class PythonBuiltins(ABCBuiltins[int, int, float]):
     @override
     def Int(self, value: SupportsInt) -> int:
         return value.__int__()

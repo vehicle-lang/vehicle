@@ -23,8 +23,7 @@ from ..typing import (
     Explicit,
     Target,
 )
-from .abc import Builtins
-from .abcboolasbool import ABCBoolAsBoolBuiltins
+from .abc import ABCBuiltins
 from .error import VehiclePropertyNotFound
 from .python import PythonTranslation
 
@@ -51,7 +50,7 @@ __all__: List[str] = [
 
 
 @dataclass(frozen=True)
-class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
+class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtypeNat: tf.DType = tf.uint64
     dtypeInt: tf.DType = tf.int64
     dtypeRat: tf.DType = tf.float64
