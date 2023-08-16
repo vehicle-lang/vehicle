@@ -177,7 +177,6 @@ class TensorflowBuiltins(
     @override
     def OptimiseDefault(
         self,
-        name: str,
         variable: tf.Variable,
         domain: AbstractVariableDomain[tf.Tensor],
         minimise: bool,
@@ -187,9 +186,6 @@ class TensorflowBuiltins(
     ) -> Any:
         del context
         pgd_losses = [pgd(variable, domain, predicate, minimise) for _ in range(10)]
-        # TODO this is a bug as the first loss gets counted twice in a non-selective
-        # differentiable logic. We should be passing an n-ary operator here for
-        # efficiency anyway.
         worst_loss = reduce(joiner, pgd_losses)
         return worst_loss
 

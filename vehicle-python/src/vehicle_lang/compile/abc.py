@@ -291,17 +291,11 @@ class Builtins(
         variable = self.quantified_variables[name]
 
         if name in self.quantified_variable_optimisers:
-            return self.quantified_variable_optimisers[name](
-                variable,
-                domain,
-                minimise,
-                context,
-                joiner,
-                predicate,
-            )
+            optimiser = self.quantified_variable_optimisers[name]
+        else:
+            optimiser = self.OptimiseDefault
 
-        return self.OptimiseDefault(
-            name,
+        return optimiser(
             variable,
             domain,
             minimise,
@@ -312,7 +306,6 @@ class Builtins(
 
     def OptimiseDefault(
         self,
-        name: str,
         variable: _Variable,
         domain: AbstractVariableDomain[_VariableValue],
         minimise: bool,
@@ -320,7 +313,9 @@ class Builtins(
         joiner: Callable[[Any, Any], Any],
         predicate: Callable[[Any], Any],
     ) -> Any:
-        raise TypeError(f"Could not find optimiser for quantified variable '{name}'.")
+        raise TypeError(
+            f"Could not find optimiser for quantified variable '{variable}'."
+        )
 
     @abstractmethod
     def Or(self, x: _Bool, y: _Bool) -> _Bool:

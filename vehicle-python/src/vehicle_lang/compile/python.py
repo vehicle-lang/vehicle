@@ -91,7 +91,7 @@ class VariableDomain(AbstractVariableDomain[np.ndarray]):
     _lower_bounds: np.ndarray
     _upper_bounds: np.ndarray
 
-    def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray) -> None:
+    def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray):
         self._lower_bounds = lower_bounds
         self._upper_bounds = upper_bounds
 
@@ -120,7 +120,7 @@ class PythonBuiltins(
         int,
         int,
         float,
-        None,
+        str,
         np.ndarray,
     ]
 ):
@@ -137,9 +137,10 @@ class PythonBuiltins(
         return value.__float__()
 
     @override
-    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> None:
-        # Don't need to create any special variable object.
-        return None
+    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> str:
+        # Don't need to create any special variable object so just return
+        # the variable name.
+        return name
 
 
 ################################################################################

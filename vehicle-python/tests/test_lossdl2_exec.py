@@ -15,7 +15,7 @@ def network_validate_output(output: Dict[str, Any]) -> None:
 
 
 def quantifier_all_optimiser(
-    variable: None,
+    variable: str,
     _domain: vcl.VariableDomain,
     _minimise: bool,
     _context: Dict[str, Any],
@@ -26,7 +26,7 @@ def quantifier_all_optimiser(
 
 
 def quantifier_any_optimiser(
-    variable: None,
+    variable: str,
     _domain: vcl.VariableDomain,
     _minimise: bool,
     _context: Dict[str, Any],

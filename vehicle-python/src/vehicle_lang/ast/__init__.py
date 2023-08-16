@@ -564,8 +564,6 @@ def load(
             "--json",
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],
-            "--logging",
-            "MaxDetail",
         ]
     )
     if exc != 0:
