@@ -56,10 +56,9 @@ class ABCBuiltins(
         assert isinstance(y, bool), f"Expected bool, found {y}"
         return x and y
 
+    @abstractmethod
     def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        assert isinstance(index, int), f"Expected int, found {vector}"
-        return vector[index]
+        ...
 
     def Bool(self, value: bool) -> bool:
         assert isinstance(value, bool), f"Expected bool, found {value}"
@@ -69,8 +68,9 @@ class ABCBuiltins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return itertools.chain((item,), iterable)
 
+    @abstractmethod
     def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
-        return (item, *vector)
+        ...
 
     def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
         assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
@@ -109,12 +109,11 @@ class ABCBuiltins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
+    @abstractmethod
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
     ) -> _T:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return reduce(lambda x, y: function(y, x), vector, initial)
+        ...
 
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
@@ -173,7 +172,7 @@ class ABCBuiltins(
 
     def Indices(self, upto: int) -> SupportsVector[int]:
         assert isinstance(upto, int), f"Expected int, found {upto}"
-        return tuple(range(0, upto))
+        return self.Vector(*range(0, upto))
 
     @abstractmethod
     def Int(self, value: SupportsInt) -> _SupportsInt:
@@ -226,12 +225,11 @@ class ABCBuiltins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return map(function, iterable)
 
+    @abstractmethod
     def MapVector(
         self, function: Callable[[_S], _T], vector: SupportsVector[_S]
     ) -> SupportsVector[_T]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return tuple(map(function, vector))
+        ...
 
     def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
         assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
@@ -329,19 +327,18 @@ class ABCBuiltins(
     def Unit(self) -> Tuple[()]:
         return ()
 
+    @abstractmethod
     def Vector(self, *values: _T) -> SupportsVector[_T]:
-        return values
+        ...
 
+    @abstractmethod
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
         vector1: SupportsVector[_S],
         vector2: SupportsVector[_T],
     ) -> SupportsVector[_U]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
-        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
-        return tuple(map(function, vector1, vector2))
+        ...
 
 
 AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]
