@@ -14,7 +14,6 @@ from typing import (
 )
 
 from typing_extensions import TypeAlias, TypeVar, override
-
 from vehicle_lang.error import VehicleInternalError
 
 from .. import ast as vcl

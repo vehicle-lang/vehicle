@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterator
 
 from typing_extensions import TypeAlias, TypeVar, override
-
 from vehicle_lang.typing import AbstractVariableDomain
 
 from . import _numeric

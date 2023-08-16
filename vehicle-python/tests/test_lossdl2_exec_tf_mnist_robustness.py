@@ -2,9 +2,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Tuple, cast
 
 import pytest
-from typing_extensions import TypeAlias
-
 import vehicle_lang.tensorflow as vcl
+from typing_extensions import TypeAlias
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"

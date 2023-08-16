@@ -2,7 +2,6 @@ from abc import ABCMeta
 from dataclasses import dataclass
 
 from typing_extensions import TypeVar, override
-
 from vehicle_lang.typing import AbstractVariableDomain
 
 from . import _numeric
