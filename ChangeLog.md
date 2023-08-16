@@ -2,6 +2,16 @@
 
 ## Version 0.10.0
 
+* Added an explicit Tensorflow-optimised backend under the new module `vehicle_lang.tensorflow`.
+  Users generating loss functions for use with Tensorflow code should import this module instead
+  of `vehicle_lang`. The interface remains the same.
+
+* Added a PGD (projected gradient descent) attack as the default optimisation method for
+  the Tensorflow loss function backend.
+  Therefore when calling `load_loss_function`, you are no longer required to pass an
+  `Optimiser` for each quantified variable (although it is still possible to do so if you
+  wish to replace PGD with something else).
+
 * Fixed bug in display of progress bar when verification counter-example found.
 
 * Fixed bug where `forall ... in` and `exists ... in` didn't evaluate properly during verification
