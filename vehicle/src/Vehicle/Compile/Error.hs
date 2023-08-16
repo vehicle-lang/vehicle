@@ -53,7 +53,6 @@ data CompileError
     (PrintableBuiltin builtin, Show builtin, HasStandardData builtin) =>
     TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
-  | FailedQuantifierConstraintDomain (InstanceConstraintInfo StandardBuiltin) StandardNormType Quantifier
   | RelevantUseOfIrrelevantVariable Provenance Name
   | -- Resource typing errors
     ResourceNotProvided DeclProvenance ExternalResource
