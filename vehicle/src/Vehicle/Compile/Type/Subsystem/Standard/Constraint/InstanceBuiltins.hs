@@ -159,6 +159,8 @@ candidates =
       <> orderCandidates Gt
       <> eqCandidates Eq StdEqualsVector
       <> eqCandidates Neq StdNotEqualsVector
+      <> quantifierCandidates Forall StdForallIndex
+      <> quantifierCandidates Exists StdExistsIndex
   where
     orderCandidates :: OrderOp -> [(StandardDSLExpr, StandardDSLExpr)]
     orderCandidates op =
@@ -208,6 +210,30 @@ candidates =
               irrelImplNatLam "n" $ \n ->
                 instLam "eq" (hasEq op t1 t2) $ \eq ->
                   free vectorOp @@@ [t1, t2] .@@@ [n] @@@@ [eq]
+        )
+      ]
+
+    quantifierCandidates ::
+      Quantifier ->
+      StdLibFunction ->
+      [(StandardDSLExpr, StandardDSLExpr)]
+    quantifierCandidates q indexOp =
+      [ ( hasQuantifier q tRat,
+          builtin (Quantifier q)
+        ),
+        ( forAllNat $ \n ->
+            hasQuantifier q (tIndex n),
+          implLam "n" tNat $ \n ->
+            free indexOp @@ [n]
+        ),
+        ( forAllTypes $ \t ->
+            forAllNat $ \n ->
+              hasQuantifier q t
+                ~~~> hasQuantifier q (tVector t n),
+          implLam "t1" type0 $ \t ->
+            irrelImplNatLam "n" $ \n ->
+              instLam "quant" (hasQuantifier q t) $ \quant ->
+                builtin (Quantifier q) @@@ [t, n] @@@@ [quant]
         )
       ]
 
