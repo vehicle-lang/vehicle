@@ -52,8 +52,8 @@ class ABCBuiltins(
         return x + y
 
     def And(self, x: bool, y: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
-        # assert isinstance(y, bool), f"Expected bool, found {y}"
+        assert isinstance(x, bool), f"Expected bool, found {x}"
+        assert isinstance(y, bool), f"Expected bool, found {y}"
         return x and y
 
     def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
@@ -62,7 +62,7 @@ class ABCBuiltins(
         return vector[index]
 
     def Bool(self, value: bool) -> bool:
-        # assert isinstance(value, bool), f"Expected bool, found {value}"
+        assert isinstance(value, bool), f"Expected bool, found {value}"
         return bool(value)
 
     def ConsList(self, item: _T, iterable: SupportsList[_T]) -> SupportsList[_T]:
@@ -162,7 +162,7 @@ class ABCBuiltins(
         return x > y
 
     def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
-        # assert isinstance(cond, bool), f"Expected bool, found {cond}"
+        assert isinstance(cond, bool), f"Expected bool, found {cond}"
         return if_true if cond else if_false
 
     def Implies(self, x: bool, y: bool) -> bool:
@@ -282,11 +282,11 @@ class ABCBuiltins(
         assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
         return -x
 
-    def NilList(self) -> SupportsVector[_T]:
+    def NilList(self) -> SupportsList[_T]:
         return ()
 
     def Not(self, x: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
+        assert isinstance(x, bool), f"Expected bool, found {x}"
         return not x
 
     def Optimise(
@@ -303,8 +303,8 @@ class ABCBuiltins(
             raise TypeError(f"Could not find optimiser for '{name}'.")
 
     def Or(self, x: bool, y: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
-        # assert isinstance(y, bool), f"Expected bool, found {y}"
+        assert isinstance(x, bool), f"Expected bool, found {x}"
+        assert isinstance(y, bool), f"Expected bool, found {y}"
         return x or y
 
     def PowRat(self, x: _SupportsRat, y: _SupportsInt) -> _SupportsRat:
