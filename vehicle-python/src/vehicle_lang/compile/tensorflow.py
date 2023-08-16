@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterable,
     List,
@@ -13,7 +14,7 @@ from typing import (
 )
 
 import tensorflow as tf
-from typing_extensions import override
+from typing_extensions import TypeVar, override
 
 from .. import ast as vcl
 from ..typing import (
@@ -23,9 +24,9 @@ from ..typing import (
     Explicit,
     Target,
 )
-from .abc import Builtins
-from .abcboolasbool import ABCBoolAsBoolBuiltins
-from .error import VehiclePropertyNotFound
+from ._collections import SupportsVector
+from .abc import ABCBuiltins
+from .error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .python import PythonTranslation
 
 __all__: List[str] = [
@@ -50,8 +51,13 @@ __all__: List[str] = [
 ################################################################################
 
 
+_S = TypeVar("_S")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
+
+
 @dataclass(frozen=True)
-class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
+class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtypeNat: tf.DType = tf.uint64
     dtypeInt: tf.DType = tf.int64
     dtypeRat: tf.DType = tf.float64
@@ -69,8 +75,22 @@ class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor])
         return tf.add(x, y)
 
     @override
+    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
+        raise VehicleBuiltinUnsupported(vcl.AtVector.__name__)
+
+    @override
+    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+        raise VehicleBuiltinUnsupported(vcl.ConsVector.__name__)
+
+    @override
     def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.divide(x, y)
+
+    @override
+    def FoldVector(
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+    ) -> _T:
+        raise VehicleBuiltinUnsupported(vcl.FoldVector.__name__)
 
     @override
     def Int(self, value: SupportsInt) -> tf.Tensor:
@@ -78,6 +98,12 @@ class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor])
             return cast(tf.Tensor, value)
         else:
             return tf.convert_to_tensor(value, dtype=self.dtypeInt)
+
+    @override
+    def MapVector(
+        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
+    ) -> SupportsVector[_T]:
+        raise VehicleBuiltinUnsupported(vcl.MapVector.__name__)
 
     @override
     def MaxRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -132,6 +158,19 @@ class TensorflowBuiltins(ABCBoolAsBoolBuiltins[tf.Tensor, tf.Tensor, tf.Tensor])
     @override
     def SubRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.subtract(x, y)
+
+    @override
+    def Vector(self, *values: _T) -> SupportsVector[_T]:
+        raise VehicleBuiltinUnsupported(vcl.Vector.__name__)
+
+    @override
+    def ZipWithVector(
+        self,
+        function: Callable[[_S, _T], _U],
+        vector1: SupportsVector[_S],
+        vector2: SupportsVector[_T],
+    ) -> SupportsVector[_U]:
+        raise VehicleBuiltinUnsupported(vcl.ZipWithVector.__name__)
 
 
 @dataclass(frozen=True)
