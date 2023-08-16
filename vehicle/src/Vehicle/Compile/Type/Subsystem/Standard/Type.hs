@@ -129,8 +129,6 @@ typeOfBuiltinFunction = \case
   At -> typeOfAt
   ZipWithVector -> typeOfZipWith
   Indices -> typeOfIndices
-  -- TODO this needs to be extracted to loss builtins when merged
-  Optimise {} -> forAll "t" type0 $ \t -> (tRat ~> tRat ~> tRat) ~> (t ~> tRat) ~> tRat
 
 typeOfBuiltinType :: (HasStandardBuiltins builtin) => BuiltinType -> DSLExpr builtin
 typeOfBuiltinType = \case

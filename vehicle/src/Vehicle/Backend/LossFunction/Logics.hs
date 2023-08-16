@@ -66,7 +66,7 @@ lmin x y = builtinFunction MinRat @@ [x, y]
 -- | Compiles a quantifier to a sampling procedure.
 quantifierSampler :: Bool -> PLExpr -> PLExpr
 quantifierSampler maximise bop =
-  builtinFunction (Optimise maximise) @@ [bop]
+  builtin (Optimise maximise) @@ [bop]
 
 -- | Compiles a `Forall` to a sampling procedure
 forallSampler :: Bool -> PLExpr -> PLExpr

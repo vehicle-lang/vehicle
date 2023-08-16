@@ -3,6 +3,7 @@ from typing import List
 from ._version import VERSION as VERSION
 from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
+from .compile.python import VariableDomain as VariableDomain
 from .compile.python import load_loss_function as load_loss_function
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
@@ -21,6 +22,7 @@ __all__: List[str] = [
     "VERSION",
     # Compile
     "load_loss_function",
+    "VariableDomain",
     # Verify
     "verify",
     # Error types

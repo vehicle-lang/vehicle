@@ -4,6 +4,7 @@ from functools import reduce
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -16,6 +17,7 @@ from typing import (
     Union,
 )
 
+import numpy as np
 from typing_extensions import Self, final, override
 
 from .. import ast as vcl
@@ -29,10 +31,16 @@ from ..ast import (
     Provenance,
 )
 from ..typing import (
+    AbstractVariableDomain,
+    AnyDomain,
+    AnyDomains,
     AnyOptimisers,
+    Context,
     DeclarationName,
     DifferentiableLogic,
+    DomainFunction,
     Explicit,
+    QuantifiedVariableName,
     Target,
 )
 from ._ast_compat import arguments as py_arguments
@@ -59,6 +67,47 @@ __all__: List[str] = [
     "load_loss_function",
 ]
 
+
+################################################################################
+## Variable domain
+################################################################################
+
+
+class VariableDomain(AbstractVariableDomain[np.ndarray]):
+    @staticmethod
+    def from_bounds(lower_bound: Any, upper_bound: Any) -> "VariableDomain":
+        np_lower_bounds = np.array(lower_bound)
+        np_upper_bounds = np.array(upper_bound)
+
+        lower_shape = np_lower_bounds.shape
+        upper_shape = np_upper_bounds.shape
+        if lower_shape != upper_shape:
+            raise ValueError(
+                f"Variable domain lower and upper bounds must be the same dimensions but found {lower_shape} vs {upper_shape}"
+            )
+
+        return VariableDomain(np_lower_bounds, np_upper_bounds)
+
+    _lower_bounds: np.ndarray
+    _upper_bounds: np.ndarray
+
+    def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray) -> None:
+        self._lower_bounds = lower_bounds
+        self._upper_bounds = upper_bounds
+
+    @override
+    def dimensions(self) -> Any:
+        return self._lower_bounds.shape
+
+    @override
+    def random_value(self) -> np.ndarray:
+        return (self._lower_bounds + self._upper_bounds) / 2.0
+
+    @override
+    def clip(self, point: np.ndarray) -> np.ndarray:
+        return np.clip(point, self._lower_bounds, self._upper_bounds)
+
+
 ################################################################################
 ### Implementation of Vehicle builtins in Python
 ################################################################################
@@ -66,7 +115,15 @@ __all__: List[str] = [
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
+class PythonBuiltins(
+    ABCBoolAsBoolBuiltins[
+        int,
+        int,
+        float,
+        None,
+        np.ndarray,
+    ]
+):
     @override
     def Int(self, value: SupportsInt) -> int:
         return value.__int__()
@@ -78,6 +135,11 @@ class PythonBuiltins(ABCBoolAsBoolBuiltins[int, int, float]):
     @override
     def Rat(self, value: SupportsFloat) -> float:
         return value.__float__()
+
+    @override
+    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> None:
+        # Don't need to create any special variable object.
+        return None
 
 
 ################################################################################
@@ -101,18 +163,26 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return cls(builtins=builtins)
 
     @classmethod
-    def from_optimisers(cls: Type[Self], optimisers: AnyOptimisers) -> Self:
-        return cls.from_builtins(builtins=PythonBuiltins(optimisers=optimisers))
+    def from_optimisers(
+        cls: Type[Self],
+        quantified_variable_domains: AnyDomains,
+        quantified_variable_optimisers: AnyOptimisers,
+    ) -> Self:
+        return cls.from_builtins(
+            builtins=PythonBuiltins(
+                quantified_variable_domains=quantified_variable_domains,
+                quantified_variable_optimisers=quantified_variable_optimisers,
+            )
+        )
 
     def compile(
         self,
         program: vcl.Program,
         path: Union[str, Path],
-        declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
-            declaration_context["__vehicle__"] = self.builtins
+            declaration_context = {"__vehicle__": self.builtins}
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
@@ -270,6 +340,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             # NOTE: We extract the name of the bound variable from the lambda,
             #       which should be the _second_ argument.
             name = predicate.binders[0].name
+
             return py_app(
                 py_builtin(
                     builtin=expression.function.builtin.__class__.__name__,
@@ -526,7 +597,11 @@ def load(
     translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:
     if translation is None:
-        translation = PythonTranslation(builtins=PythonBuiltins(optimisers={}))
+        translation = PythonTranslation(
+            builtins=PythonBuiltins(
+                quantified_variable_optimisers={}, quantified_variable_domains={}
+            )
+        )
     return translation.compile(
         vcl.load(path, declarations=declarations, target=target), path=path
     )
@@ -535,20 +610,30 @@ def load(
 def load_loss_function(
     path: Union[str, Path],
     property_name: DeclarationName,
+    quantified_variable_domains: Dict[
+        QuantifiedVariableName,
+        Callable[[Context[Any]], AbstractVariableDomain[np.ndarray]],
+    ],
     *,
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    optimisers: AnyOptimisers = {},
+    quantified_variable_optimisers: AnyOptimisers = {},
 ) -> Any:
     """
     Load a loss function from a property in a Vehicle specification.
 
     :param path: The path to the Vehicle specification file.
     :param property_name: The name of the Vehicle property to load.
+    :param quantified_variable_domains: A mapping from Vehicle functions to the domains of quantified variables.
     :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
-    translation = PythonTranslation(builtins=PythonBuiltins(optimisers=optimisers))
+    translation = PythonTranslation(
+        builtins=PythonBuiltins(
+            quantified_variable_domains=quantified_variable_domains,
+            quantified_variable_optimisers=quantified_variable_optimisers,
+        )
+    )
     declarations = load(
         path,
         declarations=(property_name,),

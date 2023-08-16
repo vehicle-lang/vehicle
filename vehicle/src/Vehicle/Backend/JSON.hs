@@ -217,7 +217,7 @@ instance PrintableBuiltin JBuiltin where
     ListType -> V.Builtin p (V.BuiltinType V.List)
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
     Optimise minimise ctx ->
-      V.App p (V.Builtin p (V.BuiltinFunction $ V.Optimise minimise)) $
+      V.App p (mkVar (pretty $ L.Optimise minimise)) $
         V.RelevantExplicitArg p <$> [ctxVar]
       where
         mkVar doc = V.FreeVar p $ V.Identifier V.User (layoutAsText doc)
@@ -314,7 +314,6 @@ instance ToJBuiltin V.BuiltinFunction where
     V.MapVector -> return MapVector
     V.Indices -> return Indices
     V.ZipWithVector -> return ZipWithVector
-    V.Optimise b -> asks (Optimise b)
 
 instance ToJBuiltin V.BuiltinType where
   toJBuiltin b = return $ case b of
@@ -345,6 +344,7 @@ instance ToJBuiltin L.LossBuiltin where
     L.BuiltinConstructor x -> toJBuiltin x
     L.BuiltinFunction x -> toJBuiltin x
     L.BuiltinType y -> toJBuiltin y
+    L.Optimise b -> asks (Optimise b)
     L.LossTC {} -> typeClassesUnresolvedError
     L.LossTCOp {} -> typeClassesUnresolvedError
     L.NatInDomainConstraint -> typeClassesUnresolvedError

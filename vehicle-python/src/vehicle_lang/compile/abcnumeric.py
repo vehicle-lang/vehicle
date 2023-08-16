@@ -5,6 +5,8 @@ from typing import Any, Callable, Dict, Iterator
 
 from typing_extensions import TypeAlias, TypeVar, override
 
+from vehicle_lang.typing import AbstractVariableDomain
+
 from . import _numeric
 from .abc import Builtins
 
@@ -16,6 +18,8 @@ _Bool = TypeVar("_Bool")
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
 _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
 _SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
+_Variable = TypeVar("_Variable")
+_VariableValue = TypeVar("_VariableValue")
 
 Sampler: TypeAlias = Callable[[Dict[str, Any]], Iterator[Any]]
 
@@ -27,6 +31,8 @@ class ABCNumericBuiltins(
         _SupportsNat,
         _SupportsInt,
         _SupportsRat,
+        _Variable,
+        _VariableValue,
     ],
     metaclass=ABCMeta,
 ):

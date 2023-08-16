@@ -7,7 +7,6 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
-import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Prelude hiding (pi)
@@ -52,7 +51,6 @@ typeOfBuiltinFunction = \case
   ZipWithVector -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
-  b@Optimise {} -> developerError $ "Should not be polarity typing" <+> pretty b
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

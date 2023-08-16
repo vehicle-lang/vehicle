@@ -50,7 +50,6 @@ typeOfBuiltinFunction = \case
   ZipWithVector -> typeOfZipWith
   At -> typeOfAt
   Indices -> constant ~> constant
-  b@Optimise {} -> developerError $ "Should not be linearity typing" <+> pretty b
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

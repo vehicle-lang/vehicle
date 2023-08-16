@@ -7,6 +7,7 @@ where
 import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Type qualified as Standard
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
@@ -21,6 +22,11 @@ typeLossBuiltin p b = case b of
   NatInDomainConstraint -> fromStandard Standard.typeOfNatInDomainConstraint
   LossTC tc -> fromDSL p $ typeOfLossTypeClass tc
   LossTCOp op -> fromDSL p $ typeOfLossTypeClassOp op
+  -- We should only ever be typing `Optimise` for its arity information. If
+  -- this changes then we're going to need to tighten things up here, as it's
+  -- type should be taken from the `DifferentiableLogic` rather than assuming
+  -- it's of type `Rat`
+  Optimise {} -> fromDSL p $ forAll "t" type0 $ \t -> (tRat ~> tRat ~> tRat) ~> (t ~> tRat) ~> tRat
   where
     fromStandard = removeIrrelevantCode . fromDSL p
 

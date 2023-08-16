@@ -1,8 +1,10 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, Tuple, cast
 
-import vehicle_lang as vcl
+import pytest
 from typing_extensions import TypeAlias
+
+import vehicle_lang.tensorflow as vcl
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -65,13 +67,12 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
 
-        def optimiser_for_pertubation(
-            _minimise: bool,
-            _context: Dict[str, Any],
-            _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
-            _predicate: Callable[[Any], tf.Tensor],
-        ) -> tf.Tensor:
-            return tf.random.uniform(shape=(1,))
+        def domain_for_pertubation(_context: Dict[str, Any]) -> vcl.VariableDomain:
+            eps = _context["epsilon"]
+            return vcl.VariableDomain.from_bounds(
+                lower_bound=tf.fill(dims=[28, 28], value=-eps),
+                upper_bound=tf.fill(dims=[28, 28], value=eps),
+            )
 
         def classifier(image: Image) -> LabelDistribution:
             return one_hot(0)
@@ -80,7 +81,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
             MNIST_ROBUSTNESS,
             property_name="robust",
             target=vcl.DifferentiableLogic.DL2,
-            optimisers={"pertubation": optimiser_for_pertubation},
+            quantified_variable_domains={"pertubation": domain_for_pertubation},
         )
 
         loss = robust_loss(
@@ -96,3 +97,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
         from logging import warning
 
         warning("test_lossdl2_exec_tf_mnist_robustness requires tensorflow")
+
+
+if __name__ == "__main__":
+    pytest.main(["vehicle-python/tests/test_lossdl2_exec_tf_mnist_robustness.py"])

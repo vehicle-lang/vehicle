@@ -1,12 +1,15 @@
 from pathlib import Path
 from typing import Any, Callable, Dict
 
+import pytest
+
 
 def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
-        import vehicle_lang.tensorflow as vcl2tf
+
+        import vehicle_lang.tensorflow as vcl
 
         # Prepare a simple network
         model = tf.keras.Sequential(
@@ -23,20 +26,17 @@ def test_lossdl2_exec_tf_bounded() -> None:
         specification_filename = "test_bounded.vcl"
         specification_path = Path(__file__).parent / "data" / specification_filename
 
-        def optimiser_for_x(
-            _minimise: bool,
+        def domain_for_x(
             _context: Dict[str, Any],
-            _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
-            _predicate: Callable[[Any], tf.Tensor],
-        ) -> tf.Tensor:
-            return tf.random.uniform(shape=(1,))
+        ) -> vcl.VariableDomain:
+            return vcl.VariableDomain.from_bounds(lower_bound=0, upper_bound=1)
 
         bounded_loss = tf.function(
-            vcl2tf.load_loss_function(
+            vcl.load_loss_function(
                 specification_path,
                 property_name="bounded",
-                target=vcl2tf.DifferentiableLogic.DL2,
-                optimisers={"x": optimiser_for_x},
+                quantified_variable_domains={"x": domain_for_x},
+                target=vcl.DifferentiableLogic.DL2,
             )
         )
 
@@ -119,3 +119,7 @@ def test_lossdl2_exec_tf_bounded() -> None:
         from logging import warning
 
         warning("test_lossdl2_exec_tf_bounded requires tensorflow")
+
+
+if __name__ == "__main__":
+    pytest.main(["vehicle-python/tests/test_lossdl2_exec_tf_bounded.py"])

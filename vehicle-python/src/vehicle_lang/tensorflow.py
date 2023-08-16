@@ -2,6 +2,7 @@ from typing import List
 
 from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
+from .compile.tensorflow import VariableDomain as VariableDomain
 from .compile.tensorflow import load_loss_function as load_loss_function
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
@@ -17,6 +18,7 @@ from .typing import QuantifiedVariableName as QuantifiedVariableName
 __all__: List[str] = [
     # Compile
     "load_loss_function",
+    "VariableDomain",
     # Error types
     "VehicleError",
     "VehicleSessionClosed",

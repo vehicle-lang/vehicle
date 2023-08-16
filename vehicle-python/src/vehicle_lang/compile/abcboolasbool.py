@@ -3,12 +3,16 @@ from dataclasses import dataclass
 
 from typing_extensions import TypeVar, override
 
+from vehicle_lang.typing import AbstractVariableDomain
+
 from . import _numeric
 from .abcnumeric import ABCNumericBuiltins
 
 _SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
 _SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
 _SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
+_Variable = TypeVar("_Variable")
+_VariableValue = TypeVar("_VariableValue")
 
 _T = TypeVar("_T")
 
@@ -20,6 +24,8 @@ class ABCBoolAsBoolBuiltins(
         _SupportsNat,
         _SupportsInt,
         _SupportsRat,
+        _Variable,
+        _VariableValue,
     ],
     metaclass=ABCMeta,
 ):

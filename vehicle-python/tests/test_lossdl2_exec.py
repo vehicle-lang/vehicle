@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Union
 
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.compile.python as vcl2py
 
@@ -14,6 +15,8 @@ def network_validate_output(output: Dict[str, Any]) -> None:
 
 
 def quantifier_all_optimiser(
+    variable: None,
+    _domain: vcl.VariableDomain,
     _minimise: bool,
     _context: Dict[str, Any],
     joiner: Callable[[float, float], float],
@@ -23,6 +26,8 @@ def quantifier_all_optimiser(
 
 
 def quantifier_any_optimiser(
+    variable: None,
+    _domain: vcl.VariableDomain,
     _minimise: bool,
     _context: Dict[str, Any],
     joiner: Callable[[float, float], float],
@@ -32,80 +37,95 @@ def quantifier_any_optimiser(
 
 
 @pytest.mark.parametrize(
-    "specification_filename,optimisers,validate_output",
+    "specification_filename,domains,optimisers,validate_output",
     [
         (
             "test_addition.vcl",
+            {},
             {},
             {"prop": 0.0},
         ),
         (
             "test_at.vcl",
             {},
+            {},
             {"prop": 1.0},
         ),
         (
             "test_constant.vcl",
+            {},
             {},
             {"prop": 0.0},
         ),
         (
             "test_division.vcl",
             {},
+            {},
             {"prop": 0.0},
         ),
         (
             "test_indicator.vcl",
+            {},
             {},
             {"prop": 1.0},
         ),
         (
             "test_maximum.vcl",
             {},
+            {},
             {"prop": 3.5},
         ),
         (
             "test_minimum.vcl",
+            {},
             {},
             {"prop": 0.0},
         ),
         (
             "test_multiplication.vcl",
             {},
+            {},
             {"prop": 0.0},
         ),
         (
             "test_negation.vcl",
+            {},
             {},
             {"prop": 0.0},
         ),
         (
             "test_network.vcl",
             {},
+            {},
             network_validate_output,
         ),
         (
             "test_quantifier_all.vcl",
+            {"x": lambda _ctx: vcl.VariableDomain.from_bounds(0, 1)},
             {"x": quantifier_all_optimiser},
             {"prop": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
+            {"x": lambda _ctx: vcl.VariableDomain.from_bounds(0, 1)},
             {"x": quantifier_any_optimiser},
             {"prop": 0.0},
         ),
         (
             "test_subtraction.vcl",
             {},
+            {},
             {"prop": 0.0},
         ),
         (
             "test_tensor.vcl",
             {},
+            {},
             {"prop": 0.0},
         ),
         (
             "test_variable.vcl",
+            {},
             {},
             {"prop": 0.0},
         ),
@@ -113,6 +133,7 @@ def quantifier_any_optimiser(
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
+    domains: Dict[str, Any],
     optimisers: Dict[str, Any],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
@@ -121,7 +142,7 @@ def test_loss_function_exec(
     actual_declarations = vcl2py.load(
         specification_path,
         target=vcl.DifferentiableLogic.DL2,
-        translation=vcl2py.PythonTranslation.from_optimisers(optimisers),
+        translation=vcl2py.PythonTranslation.from_optimisers(domains, optimisers),
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
@@ -131,3 +152,7 @@ def test_loss_function_exec(
                 assert key in actual_declarations
     elif callable(validate_output):
         validate_output(actual_declarations)
+
+
+if __name__ == "__main__":
+    pytest.main(["vehicle-python/tests/test_lossdl2_exec.py"])

@@ -2,12 +2,23 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Sequence,
+    SupportsFloat,
+    SupportsInt,
+    Tuple,
+)
 
 from typing_extensions import TypeAlias, TypeVar, override
 
+from vehicle_lang.error import VehicleInternalError
+
 from .. import ast as vcl
-from ..typing import Optimiser
+from ..typing import AbstractVariableDomain, Context, Optimiser, QuantifiedVariableName
 from ._collections import SupportsList, SupportsVector
 from .error import VehicleBuiltinUnsupported
 
@@ -19,6 +30,8 @@ _Bool = TypeVar("_Bool")
 _Nat = TypeVar("_Nat")
 _Int = TypeVar("_Int")
 _Rat = TypeVar("_Rat")
+_Variable = TypeVar("_Variable")
+_VariableValue = TypeVar("_VariableValue")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -32,10 +45,19 @@ class Builtins(
         _Nat,
         _Int,
         _Rat,
+        _Variable,
+        _VariableValue,
     ],
     metaclass=ABCMeta,
 ):
-    optimisers: Dict[str, Optimiser[Any, _Rat]] = field(default_factory=dict)
+    quantified_variable_optimisers: Dict[
+        QuantifiedVariableName, Optimiser[_Variable, _VariableValue, Any, _Rat]
+    ] = field(default_factory=dict)
+    quantified_variable_domains: Dict[
+        QuantifiedVariableName,
+        Callable[[Context[Any]], AbstractVariableDomain[_VariableValue]],
+    ] = field(default_factory=dict)
+    quantified_variables: Dict[str, _Variable] = field(default_factory=dict)
 
     @abstractmethod
     def AddInt(self, x: _Int, y: _Int) -> _Int:
@@ -256,10 +278,49 @@ class Builtins(
         joiner: Callable[[Any, Any], Any],
         predicate: Callable[[Any], Any],
     ) -> Any:
-        if name in self.optimisers:
-            return self.optimisers[name](minimise, context, joiner, predicate)
-        else:
-            raise TypeError(f"Could not find optimiser for '{name}'.")
+        if name not in self.quantified_variable_domains:
+            raise TypeError(
+                f"No lower and upper bounds provided for quantified variable '{name}'."
+            )
+        domain = self.quantified_variable_domains[name](context)
+
+        if name not in self.quantified_variables:
+            self.quantified_variables[name] = self.create_quantified_variable(
+                name, domain.dimensions()
+            )
+        variable = self.quantified_variables[name]
+
+        if name in self.quantified_variable_optimisers:
+            return self.quantified_variable_optimisers[name](
+                variable,
+                domain,
+                minimise,
+                context,
+                joiner,
+                predicate,
+            )
+
+        return self.OptimiseDefault(
+            name,
+            variable,
+            domain,
+            minimise,
+            context,
+            joiner,
+            predicate,
+        )
+
+    def OptimiseDefault(
+        self,
+        name: str,
+        variable: _Variable,
+        domain: AbstractVariableDomain[_VariableValue],
+        minimise: bool,
+        context: Dict[str, Any],
+        joiner: Callable[[Any, Any], Any],
+        predicate: Callable[[Any], Any],
+    ) -> Any:
+        raise TypeError(f"Could not find optimiser for quantified variable '{name}'.")
 
     @abstractmethod
     def Or(self, x: _Bool, y: _Bool) -> _Bool:
@@ -301,8 +362,12 @@ class Builtins(
     def Vector(self, *values: _T) -> SupportsVector[_T]:
         return values
 
+    @abstractmethod
+    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> _Variable:
+        ...
 
-AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any]
+
+AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
