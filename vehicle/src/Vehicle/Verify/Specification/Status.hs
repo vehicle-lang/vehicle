@@ -6,9 +6,9 @@ import Data.Text (Text, pack)
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean (MaybeTrivial (..))

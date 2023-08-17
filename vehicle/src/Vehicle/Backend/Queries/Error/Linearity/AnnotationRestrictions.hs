@@ -1,15 +1,15 @@
-module Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions
+module Vehicle.Backend.Queries.Error.Linearity.AnnotationRestrictions
   ( assertConstantLinearity,
     checkNetworkType,
   )
 where
 
+import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 

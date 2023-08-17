@@ -1,17 +1,17 @@
-module Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
+module Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
   ( solvePolarityConstraint,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
+import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin

@@ -2,7 +2,7 @@
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 {-# HLINT ignore "Eta reduce" #-}
-module Vehicle.Compile.Queries.Variable
+module Vehicle.Backend.Queries.Variable
   ( Variable (..),
     variableCtxToNormEnv,
     UserVariable (..),

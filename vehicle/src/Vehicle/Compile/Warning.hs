@@ -2,7 +2,7 @@ module Vehicle.Compile.Warning where
 
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Compile.Queries.Variable
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Prelude
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST

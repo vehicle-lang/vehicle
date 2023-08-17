@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries.LinearExpr
+module Vehicle.Backend.Queries.LinearExpr
   ( Relation (..),
     Assertion (..),
     UnreducedAssertion (..),
@@ -39,8 +39,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 
 --------------------------------------------------------------------------------

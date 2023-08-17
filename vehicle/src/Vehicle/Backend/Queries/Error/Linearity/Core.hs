@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Subsystem.Linearity.Core where
+module Vehicle.Backend.Queries.Error.Linearity.Core where
 
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))

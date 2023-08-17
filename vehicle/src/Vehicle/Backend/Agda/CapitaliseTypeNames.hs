@@ -1,4 +1,4 @@
-module Vehicle.Compile.CapitaliseTypeNames
+module Vehicle.Backend.Agda.CapitaliseTypeNames
   ( capitaliseTypeNames,
   )
 where
@@ -54,7 +54,7 @@ instance CapitaliseTypes TypeCheckedExpr where
     Meta p m -> return $ Meta p m
     Builtin p op -> return $ Builtin p op
     Ann p e t -> Ann p <$> cap e <*> cap t
-    App p fun args -> App p <$> cap fun <*> traverse cap args -- traverse cap args
+    App p fun args -> App p <$> cap fun <*> traverse cap args
     Pi p binder result -> Pi p <$> cap binder <*> cap result
     Let p bound binder body -> Let p <$> cap bound <*> cap binder <*> cap body
     Lam p binder body -> Lam p <$> cap binder <*> cap body

@@ -1,10 +1,10 @@
-module Vehicle.Compile.Type.Subsystem.Polarity.Type
+module Vehicle.Backend.Queries.Error.Polarity.Type
   ( typePolarityBuiltin,
   )
 where
 
 import Data.Text qualified as Text
-import Vehicle.Compile.Type.Subsystem.Polarity.Core
+import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
 import Vehicle.Prelude

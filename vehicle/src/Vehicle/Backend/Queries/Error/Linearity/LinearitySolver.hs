@@ -1,12 +1,13 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use max" #-}
-module Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
+module Vehicle.Backend.Queries.Error.Linearity.LinearitySolver
   ( solveLinearityConstraint,
   )
 where
 
 import Data.Maybe (mapMaybe)
+import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Prelude
@@ -15,7 +16,6 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta)
-import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin

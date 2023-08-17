@@ -6,7 +6,7 @@ import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 import Vehicle.Prelude
-import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Differentiable logics

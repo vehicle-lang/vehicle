@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries.GaussianElimination
+module Vehicle.Backend.Queries.GaussianElimination
   ( GaussianVariableSolution,
     gaussianElimination,
     reconstructGaussianVariableValue,
@@ -12,10 +12,10 @@ import Data.Coerce (coerce)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Maybe (fromMaybe)
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Verify.Core
 
 -- | Performs Gaussian elimination. Returns a list of solved variables, the remaining

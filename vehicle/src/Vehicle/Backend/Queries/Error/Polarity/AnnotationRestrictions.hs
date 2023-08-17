@@ -1,15 +1,15 @@
-module Vehicle.Compile.Type.Subsystem.Polarity.AnnotationRestrictions
+module Vehicle.Backend.Queries.Error.Polarity.AnnotationRestrictions
   ( assertUnquantifiedPolarity,
     checkNetworkType,
   )
 where
 
+import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 

@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Subsystem.Polarity.Core where
+module Vehicle.Backend.Queries.Error.Polarity.Core where
 
 import Control.DeepSeq (NFData (..))
 import Data.Hashable (Hashable (..))

@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Queries.UserVariableElimination
+module Vehicle.Backend.Queries.UserVariableElimination
   ( eliminateUserVariables,
     catchableUnsupportedNonLinearConstraint,
   )
@@ -22,19 +22,19 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Traversable (for)
 import Data.Vector qualified as Vector
+import Vehicle.Backend.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
+import Vehicle.Backend.Queries.GaussianElimination
+  ( gaussianElimination,
+  )
+import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.QuerySetStructure (eliminateNot)
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalMul)
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Queries.FourierMotzkinElimination (fourierMotzkinElimination)
-import Vehicle.Compile.Queries.GaussianElimination
-  ( gaussianElimination,
-  )
-import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.QuerySetStructure (eliminateNot)
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))

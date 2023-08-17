@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries.FourierMotzkinElimination
+module Vehicle.Backend.Queries.FourierMotzkinElimination
   ( FourierMotzkinVariableSolution,
     fourierMotzkinElimination,
     reconstructFourierMotzkinVariableValue,
@@ -9,10 +9,10 @@ import Control.Monad (foldM)
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
 import Data.Vector qualified as Vector
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Verify.Core
 
 -- | TODO If performance proves unnacceptably poor look into

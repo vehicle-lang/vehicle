@@ -1,12 +1,12 @@
-module Vehicle.Compile.Queries.VariableReconstruction where
+module Vehicle.Backend.Queries.VariableReconstruction where
 
 import Data.Foldable (foldlM)
 import Data.Map qualified as Map
 import Data.Vector qualified as Vector
+import Vehicle.Backend.Queries.FourierMotzkinElimination
+import Vehicle.Backend.Queries.GaussianElimination
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.FourierMotzkinElimination
-import Vehicle.Compile.Queries.GaussianElimination
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------

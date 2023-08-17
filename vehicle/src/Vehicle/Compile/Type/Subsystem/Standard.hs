@@ -13,8 +13,8 @@ import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core
+import Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults ()
 import Vehicle.Compile.Type.Subsystem.Standard.Type
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
