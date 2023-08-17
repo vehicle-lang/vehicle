@@ -1,6 +1,9 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Test.Tasty.Golden.Executable.Runner where
@@ -12,6 +15,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State.Class (modify)
 import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT, execStateT)
 import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans.State.Strict qualified as Strict (liftListen, liftPass)
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriterT)
 import Data.Algorithm.Diff (getGroupedDiffBy)
 import Data.Algorithm.DiffOutput (ppDiff)
@@ -42,7 +46,7 @@ import Test.Tasty.Golden.Executable.Error
 import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
 import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept (..))
 import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..))
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, glob, match)
+import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, asLiteral, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
 import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName, writeTestSpecsFile)
@@ -117,11 +121,24 @@ data TestEnvironment = TestEnvironment
 newtype TestT m a = TestT {unTest :: StateT TestEnvironment m a}
   deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
 
+instance (MonadWriter w m) => MonadWriter w (TestT m) where
+  writer :: (MonadWriter w m) => (a, w) -> TestT m a
+  writer = lift . writer
+  tell :: (MonadWriter w m) => w -> TestT m ()
+  tell = lift . tell
+  listen :: (MonadWriter w m) => TestT m a -> TestT m (a, w)
+  listen (TestT m) = TestT (Strict.liftListen listen m)
+  pass :: (MonadWriter w m) => TestT m (a, w -> w) -> TestT m a
+  pass (TestT m) = TestT (Strict.liftPass pass m)
+
 -- | Alias for @'TestT' 'IO' a@.
 type TestIO a = TestT IO a
 
-testEnvironment :: (Monad m) => TestT m TestEnvironment
-testEnvironment = TestT get
+getTestEnvironment :: (Monad m) => TestT m TestEnvironment
+getTestEnvironment = TestT get
+
+putTestEnvironment :: (Monad m) => TestEnvironment -> TestT m ()
+putTestEnvironment testEnvironment = TestT (put testEnvironment)
 
 -- | Create a temporary directory to execute the test.
 runTestIO :: FilePath -> TestName -> TestIO () -> IO Result
@@ -137,10 +154,10 @@ runTestIO testDirectory testName (TestT testIO) = do
 
 -- | Copy the needed files over to the temporary directory.
 copyTestNeeds :: [FilePath] -> TestIO ()
-copyTestNeeds neededFiles = TestT $ do
-  TestEnvironment {..} <- get
+copyTestNeeds neededFiles = do
+  TestEnvironment {..} <- getTestEnvironment
   -- Register the 'neededFiles' with the environment.
-  put TestEnvironment {testNeeds = neededFiles <> testNeeds, ..}
+  putTestEnvironment TestEnvironment {testNeeds = neededFiles <> testNeeds, ..}
   lift $ do
     maybeError <- execWriterT $ do
       for_ neededFiles $ \neededFile -> do
@@ -244,7 +261,7 @@ writeGoldenStderr contents = TestT $ do
 -- NOTE: The loose equality must extend equality.
 diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> TestIO ()
 diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) = do
-  TestEnvironment {testDirectory, tempDirectory} <- testEnvironment
+  TestEnvironment {testDirectory, tempDirectory} <- getTestEnvironment
   let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   -- Find the golden and actual files:
   goldenFiles <- findTestProducesGolden testProduces
@@ -318,7 +335,7 @@ acceptTestProducesPattern actualFile = do
 -- | Update the files produced by the test.
 acceptTestProduced :: [FilePattern] -> IgnoreFiles -> TestIO ()
 acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
-  TestEnvironment {..} <- testEnvironment
+  TestEnvironment {..} <- getTestEnvironment
   -- Read the test.json file:
   TestSpecs testSpecs <- lift $ readTestSpecsFile (testDirectory </> testSpecsFileName)
   let testSpecsList = toList testSpecs
@@ -332,7 +349,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   let otherTestSpecs = otherTestSpecsBefore <> otherTestSpecsAfter
   -- Find the golden and actual files:
   actualFiles <- findTestProducesActual testIgnores
-  goldenFiles <- findTestProducesGolden testProduces
+  (goldenFiles, _maybeGoldenFilesNotFoundError) <- runWriterT $ findTestProducesGolden_ testProduces
   -- Run a state monad with an accept state, to make iterative updates to the test
   -- specification and schedule copy and delete operations:
   AcceptState {..} <- flip execStateT (initialAcceptState thisTestSpec) $ do
@@ -387,23 +404,27 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
             $ NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
     lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
   -- Remove the outdated .golden files:
-  for_ goldenFilesToRemove $ \goldenFile ->
-    lift $ removeFile (testDirectory </> goldenFile)
+  lift $
+    for_ goldenFilesToRemove $ \goldenFile -> do
+      goldenFileExists <- doesFileExist goldenFile
+      when goldenFileExists $
+        removeFile (testDirectory </> goldenFile)
   -- Copy the new .golden files:
-  for_ actualFilesToCopy $ \actualFile -> lift $ do
-    let goldenFile = actualFile <.> ".golden"
-    goldenFileExists <- doesFileExist (testDirectory </> goldenFile)
-    if goldenFileExists
-      then do
-        actualFileContents <- TextIO.readFile (tempDirectory </> actualFile)
-        writeFileChanged (testDirectory </> goldenFile) actualFileContents
-      else do copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
+  lift $
+    for_ actualFilesToCopy $ \actualFile -> do
+      let goldenFile = actualFile <.> ".golden"
+      goldenFileExists <- doesFileExist (testDirectory </> goldenFile)
+      if goldenFileExists
+        then do
+          actualFileContents <- TextIO.readFile (tempDirectory </> actualFile)
+          writeFileChanged (testDirectory </> goldenFile) actualFileContents
+        else do copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
   return ()
 
 -- | Find the actual files produced by the test command.
 findTestProducesActual :: [FilePattern] -> TestIO [FilePath]
-findTestProducesActual testIgnoreFiles = TestT $ do
-  TestEnvironment {..} <- get
+findTestProducesActual testIgnoreFiles = do
+  TestEnvironment {..} <- getTestEnvironment
   tempFiles <-
     lift $
       listFilesRecursive tempDirectory
@@ -424,31 +445,39 @@ findTestProducesActual testIgnoreFiles = TestT $ do
 
 -- | Find the golden files for the files produced by the test command.
 findTestProducesGolden :: [FilePattern] -> TestIO [FilePath]
-findTestProducesGolden testProduces = TestT $ do
-  TestEnvironment {..} <- get
-  lift $ do
-    (filesByPattern, maybeError) <-
-      runWriterT $ do
-        filesByPattern <-
-          for testProduces $ \testProduce -> do
-            filesForPattern <-
+findTestProducesGolden testProduces = do
+  (filesByPattern, maybeError) <- runWriterT $ findTestProducesGolden_ testProduces
+  -- If any errors occurred, throw them.
+  maybe (return filesByPattern) throw maybeError
+
+-- | Variant of 'findTestProducesGolden' that gathers the errors in a 'WriterT' monad.
+findTestProducesGolden_ :: [FilePattern] -> WriterT (Maybe GoldenFilesNotFoundError) (TestT IO) [FilePath]
+findTestProducesGolden_ testProduces = do
+  TestEnvironment {..} <- lift getTestEnvironment
+  filesByPattern <-
+    for testProduces $ \testProduce ->
+      case asLiteral testProduce of
+        -- If the pattern is a literal path, return that path.
+        Just fileForPattern -> return [fileForPattern <.> ".golden"]
+        -- Otherwise, file the golden files associated with the pattern.
+        Nothing -> do
+          filesForPattern <-
+            lift $
               lift $
-                glob [addExtension testProduce "golden"] testDirectory
+                glob [addExtension testProduce ".golden"] testDirectory
                   <&> map (makeRelative testDirectory)
-            -- If the pattern does not result in any matches, throw an error.
-            when (null filesForPattern) $
-              tell $
-                Just $
-                  goldenFileNotFound testProduce
-            -- Assert that the file paths are relative.
-            for_ filesForPattern $ \file ->
-              when (isAbsolute file) $
-                fail $
-                  printf "glob: found absolute path %s" file
-            return filesForPattern
-        return $ concat filesByPattern
-    -- If errors were raised, throw them.
-    maybe (return filesByPattern) throw maybeError
+          -- If the pattern does not result in any matches, don't throw any error.
+          when (null filesForPattern) $
+            tell $
+              Just $
+                goldenFileNotFound testProduce
+          -- Assert that the file paths are relative.
+          for_ filesForPattern $ \file ->
+            when (isAbsolute file) $
+              fail $
+                printf "glob: found absolute path %s" file
+          return filesForPattern
+  return $ concat filesByPattern
 
 fileSizeCutOff :: Integer
 fileSizeCutOff = 1000

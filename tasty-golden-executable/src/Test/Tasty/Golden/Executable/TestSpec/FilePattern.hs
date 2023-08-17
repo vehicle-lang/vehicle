@@ -3,6 +3,7 @@ module Test.Tasty.Golden.Executable.TestSpec.FilePattern
     glob,
     match,
     addExtension,
+    asLiteral,
   )
 where
 
@@ -45,6 +46,13 @@ addExtension :: FilePattern -> FilePath -> FilePattern
 addExtension (FilePattern patternString exts _) ext =
   FilePattern patternString (exts |> ext) $
     Glob.compileWith globCompOptions (FilePath.addExtension patternString ext)
+
+-- | Return the literal 'FilePath', if the 'FilePattern' is a literal path,
+--   i.e., it has no wildcards, character ranges, etc.
+asLiteral :: FilePattern -> Maybe FilePath
+asLiteral (FilePattern patternString _ pattern)
+  | Glob.isLiteral pattern = Just patternString
+  | otherwise = Nothing
 
 -- | Parse a file pattern.
 readEither :: String -> Either String FilePattern
