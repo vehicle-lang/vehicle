@@ -10,6 +10,7 @@ import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
+import Vehicle.Backend.Queries
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.EtaConversion (etaExpandProg)
@@ -17,7 +18,6 @@ import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Queries
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad (TypableBuiltin)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
@@ -25,8 +25,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
-import Vehicle.Verify.Core
-import Vehicle.Verify.Verifier (queryFormats)
+import Vehicle.Verify.QueryFormat
 
 --------------------------------------------------------------------------------
 -- Interface

@@ -13,6 +13,8 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
+import Vehicle.Backend.Queries.Error.Linearity.Core (LinearityBuiltin)
+import Vehicle.Backend.Queries.Error.Polarity.Core (PolarityBuiltin)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
@@ -21,10 +23,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
 import Vehicle.Compile.Type.Subsystem
-import Vehicle.Compile.Type.Subsystem.Linearity.Core (LinearityBuiltin)
-import Vehicle.Compile.Type.Subsystem.Polarity.Core (PolarityBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
+import Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)

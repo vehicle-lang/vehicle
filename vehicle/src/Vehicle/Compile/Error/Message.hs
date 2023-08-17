@@ -12,13 +12,13 @@ import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Prettyprinter (list)
 import System.FilePath
+import Vehicle.Backend.Queries.Error.Linearity
+import Vehicle.Backend.Queries.Error.Polarity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Linearity
-import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DSL

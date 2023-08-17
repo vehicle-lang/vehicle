@@ -16,7 +16,7 @@ import Prettyprinter (sep)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Monad (MonadNorm (..))
 import Vehicle.Compile.Normalise.NBE
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.Core (unify)
@@ -110,7 +110,7 @@ unification info@(ctx, _) reductionBlockingMetas = \case
   VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
   VLam binder1 env1 body1 :~: VLam binder2 env2 body2 ->
-    solveLam (binder1, env1, body1) (binder2, env2, body2)
+    solveLam info (binder1, env1, body1) (binder2, env2, body2)
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -161,10 +161,30 @@ solveSpine info args1 args2
 
 solveLam ::
   (MonadUnify builtin m) =>
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   (VBinder builtin, Env builtin, Expr Ix builtin) ->
   (VBinder builtin, Env builtin, Expr Ix builtin) ->
   m (UnificationResult builtin)
-solveLam _l1 _l2 = compilerDeveloperError "unification of type-level lambdas not yet supported"
+solveLam info@(ctx, origin) (binder1, env1, body1) (binder2, env2, body2) = do
+  -- Unify binder constraints
+  binderConstraint <- unify info (typeOf binder1, typeOf binder2)
+
+  -- Evaluate the normalised bodies of the lambdas
+  let lv = contextDBLevel ctx
+  let var = VBoundVar lv []
+  nbody1 <- eval (extendEnv binder1 var env1) body1
+  nbody2 <- eval (extendEnv binder2 var env2) body2
+
+  -- Update the context.
+  -- NOTE: that we have to unnormalise here indicates something is wrong.
+  let unnormBinder = fmap (unnormalise lv) binder1
+  let updatedInfo = (updateConstraintBoundCtx ctx (unnormBinder :), origin)
+
+  -- Unify the two bodies
+  bodyConstraint <- unify updatedInfo (nbody1, nbody2)
+
+  -- Return the result
+  return $ Success [binderConstraint, bodyConstraint]
 
 solvePi ::
   (MonadUnify builtin m) =>

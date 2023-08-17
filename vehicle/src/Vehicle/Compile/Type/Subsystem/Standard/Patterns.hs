@@ -390,21 +390,6 @@ pattern FromRatExpr ::
   Expr var StandardBuiltin
 pattern FromRatExpr p dom args <- BuiltinFunctionExpr p (FromRat dom) args
 
-{-
-pattern FromVecExpr ::
-  Provenance ->
-  FromVecDomain ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern FromVecExpr p dom explicitArgs <-
-  FreeVar
-    p
-    (FromVec dom)
-    ( ImplicitArg _ _
-        :| ImplicitArg _ _
-        : explicitArgs
-      )
--}
 --------------------------------------------------------------------------------
 -- Boolean operations
 
@@ -502,25 +487,5 @@ pattern AtExpr p tElem tDim explicitArgs <-
     At
     ( RelevantImplicitArg _ tElem
         :| IrrelevantImplicitArg _ tDim
-        : explicitArgs
-      )
-
---------------------------------------------------------------------------------
--- Vector
-
-pattern FoldVectorExpr ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern FoldVectorExpr p tElem size tRes explicitArgs <-
-  BuiltinFunctionExpr
-    p
-    (Fold FoldVector)
-    ( RelevantImplicitArg _ tElem
-        :| IrrelevantImplicitArg _ size
-        : RelevantImplicitArg _ tRes
         : explicitArgs
       )

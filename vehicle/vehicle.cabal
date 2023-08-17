@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.9.0
+version:            0.10.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -117,6 +117,16 @@ library
     Vehicle.Backend.Agda
     Vehicle.Backend.LossFunction
     Vehicle.Backend.Prelude
+    Vehicle.Backend.Queries.Error
+    Vehicle.Backend.Queries.FourierMotzkinElimination
+    Vehicle.Backend.Queries.GaussianElimination
+    Vehicle.Backend.Queries.IfElimination
+    Vehicle.Backend.Queries.LinearExpr
+    Vehicle.Backend.Queries.NetworkElimination
+    Vehicle.Backend.Queries.QuerySetStructure
+    Vehicle.Backend.Queries.UserVariableElimination
+    Vehicle.Backend.Queries.Variable
+    Vehicle.Backend.Queries.VariableReconstruction
     Vehicle.CommandLine
     Vehicle.Compile
     Vehicle.Compile.Descope
@@ -132,16 +142,6 @@ library
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
-    Vehicle.Compile.Queries.FourierMotzkinElimination
-    Vehicle.Compile.Queries.GaussianElimination
-    Vehicle.Compile.Queries.IfElimination
-    Vehicle.Compile.Queries.LinearExpr
-    Vehicle.Compile.Queries.LinearityAndPolarityErrors
-    Vehicle.Compile.Queries.NetworkElimination
-    Vehicle.Compile.Queries.QuerySetStructure
-    Vehicle.Compile.Queries.UserVariableElimination
-    Vehicle.Compile.Queries.Variable
-    Vehicle.Compile.Queries.VariableReconstruction
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
@@ -162,15 +162,12 @@ library
     Vehicle.TypeCheck
     Vehicle.Validate
     Vehicle.Verify
-    Vehicle.Verify.Core
-    Vehicle.Verify.QueryFormat.Marabou
-    Vehicle.Verify.QueryFormat.VNNLib
-    Vehicle.Verify.Specification
-    Vehicle.Verify.Specification.IO
-    Vehicle.Verify.Specification.Status
+    Vehicle.Verify.QueryFormat
+    Vehicle.Verify.Verifier
 
   other-modules:
     Paths_vehicle
+    Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.JSON
@@ -181,8 +178,18 @@ library
     Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins
     Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults
     Vehicle.Backend.LossFunction.TypeSystem.Type
+    Vehicle.Backend.Queries
+    Vehicle.Backend.Queries.Error.Linearity
+    Vehicle.Backend.Queries.Error.Linearity.AnnotationRestrictions
+    Vehicle.Backend.Queries.Error.Linearity.Core
+    Vehicle.Backend.Queries.Error.Linearity.LinearitySolver
+    Vehicle.Backend.Queries.Error.Linearity.Type
+    Vehicle.Backend.Queries.Error.Polarity
+    Vehicle.Backend.Queries.Error.Polarity.AnnotationRestrictions
+    Vehicle.Backend.Queries.Error.Polarity.Core
+    Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
+    Vehicle.Backend.Queries.Error.Polarity.Type
     Vehicle.Compile.Arity
-    Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
@@ -193,7 +200,6 @@ library
     Vehicle.Compile.Prelude.Contexts
     Vehicle.Compile.Prelude.MonadContext
     Vehicle.Compile.Prelude.Utils
-    Vehicle.Compile.Queries
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.IndexSolver
@@ -214,20 +220,10 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-    Vehicle.Compile.Type.Subsystem.Linearity
-    Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions
-    Vehicle.Compile.Type.Subsystem.Linearity.Core
-    Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
-    Vehicle.Compile.Type.Subsystem.Linearity.Type
-    Vehicle.Compile.Type.Subsystem.Polarity
-    Vehicle.Compile.Type.Subsystem.Polarity.AnnotationRestrictions
-    Vehicle.Compile.Type.Subsystem.Polarity.Core
-    Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
-    Vehicle.Compile.Type.Subsystem.Polarity.Type
     Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
-    Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Core
+    Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
+    Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Type
     Vehicle.Compile.Warning
     Vehicle.Debug
@@ -241,7 +237,14 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
-    Vehicle.Verify.Verifier
+    Vehicle.Verify.Core
+    Vehicle.Verify.QueryFormat.Core
+    Vehicle.Verify.QueryFormat.Marabou
+    Vehicle.Verify.QueryFormat.VNNLib
+    Vehicle.Verify.Specification
+    Vehicle.Verify.Specification.IO
+    Vehicle.Verify.Specification.Status
+    Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
 
   autogen-modules: Paths_vehicle

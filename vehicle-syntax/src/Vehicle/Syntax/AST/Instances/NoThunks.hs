@@ -25,12 +25,12 @@ instance NoThunks OrderOp
 instance NoThunks OrderDomain
 instance NoThunks Quantifier
 
--- Now Vehicle.Compile.Type.Subsystem.Linearity.Core
+-- Now Vehicle.Backend.Queries.Error.Linearity.Core
 -- instance NoThunks LinearityProvenance
 -- instance NoThunks Linearity
 -- instance NoThunks LinearityTypeClass
 
--- Now Vehicle.Compile.Type.Subsystem.Polarity.Core
+-- Now Vehicle.Backend.Queries.Error.Polarity.Core
 -- instance NoThunks PolarityProvenance
 -- instance NoThunks Polarity
 -- instance NoThunks PolarityTypeClass

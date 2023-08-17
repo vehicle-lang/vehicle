@@ -24,10 +24,10 @@ import Data.IntMap qualified as IntMap (assocs)
 import Data.Text (Text)
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
+import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))

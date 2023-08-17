@@ -8,11 +8,12 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Marabou query format
@@ -63,7 +64,7 @@ compileAssertion varNames assertion = do
 
   let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
   let compiledRel = compileRel rel'
-  let compiledRHS = prettyCoefficient constant'
+  let compiledRHS = prettyRationalAsFloat constant'
 
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
@@ -77,8 +78,8 @@ compileRel = \case
   Right Lt -> "<="
   Right Gt -> ">="
 
-compileVar :: Bool -> (Double, Name) -> Doc a
+compileVar :: Bool -> (Rational, Name) -> Doc a
 compileVar False (1, var) = pretty var
 compileVar True (1, var) = "+" <> pretty var
 compileVar _ (-1, var) = "-" <> pretty var
-compileVar _ (coefficient, var) = prettyCoefficient coefficient <> pretty var
+compileVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> pretty var

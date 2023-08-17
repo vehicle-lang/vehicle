@@ -91,7 +91,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            -2
+                            {
+                              "numerator": -2,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -105,7 +108,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }

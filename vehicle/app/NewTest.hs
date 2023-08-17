@@ -76,7 +76,7 @@ import Vehicle.Verify qualified as VerifyOptions
   ( VerifyOptions (..),
     verifierID,
   )
-import Vehicle.Verify.Core (QueryFormatID (MarabouQueries))
+import Vehicle.Verify.QueryFormat (QueryFormatID (MarabouQueries))
 
 main :: IO ()
 main = getArgs >>= newTestSpec

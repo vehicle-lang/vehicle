@@ -25,7 +25,7 @@ import Vehicle.Prelude
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifyOptions (..))
-import Vehicle.Verify.Core (VerifierID (..))
+import Vehicle.Verify.Verifier (VerifierID (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests =

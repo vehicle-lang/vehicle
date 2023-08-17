@@ -26,6 +26,7 @@ import Data.Monoid (Sum (..))
 import Data.Text (intercalate, pack, unpack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
+import Data.Vector qualified as BoxedVector
 import Data.Vector.Unboxed qualified as Vector (fromList)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitFailure)
@@ -33,13 +34,15 @@ import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr, stdout)
 import System.ProgressBar
 import Vehicle.Backend.Prelude (writeResultToFile)
+import Vehicle.Backend.Queries.Variable (UserVariable (..))
+import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.Variable (UserVariable (..))
-import Vehicle.Compile.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Expr.Boolean
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------
 -- Specification
@@ -373,7 +376,9 @@ outputPropertyResult verificationCache address result@(PropertyStatus _negated s
       forM_ assignments $ \(UserVariable {..}, value) -> do
         let file = witnessFolder </> unpack userVarName
         let dims = Vector.fromList userVarDimensions
-        let idxData = IDXDoubles IDXDouble dims value
+        -- TODO got to be a better way to do this conversion...
+        let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)
+        let idxData = IDXDoubles IDXDouble dims unboxedVector
         liftIO $ encodeIDXFile idxData file
     _ -> return ()
 

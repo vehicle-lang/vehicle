@@ -9,15 +9,15 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
+import Vehicle.Backend.Queries.Error.Linearity.Core
+import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Linearity.Core
-import Vehicle.Compile.Type.Subsystem.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData, PrintableBuiltin)
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Parse (ParseError)
-import Vehicle.Verify.Core (QueryFormatID)
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Compilation monad

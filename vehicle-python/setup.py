@@ -87,12 +87,25 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         )
 
     def cabal_build_ext(self, ext: setuptools.Extension) -> None:
+        # build native extension and pygments lexer with cabal
         self.mkpath(self.build_temp)
         self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
+        # copy native extension
         lib_filename = self.get_cabal_foreign_library_filename(ext)
         ext_fullpath = self.get_ext_fullpath(ext.name)
         self.mkpath(os.path.dirname(ext_fullpath))
         self.copy_file(os.path.join(self.build_temp, lib_filename), ext_fullpath)
+        # copy pygments lexer
+        mod_fullpath = os.path.join(
+            "vehicle_lang",
+            "pygments",
+            "_external",
+        )
+        self.mkpath(os.path.join(self.build_lib, mod_fullpath))
+        self.copy_file(
+            os.path.join(self.build_temp, "src", mod_fullpath, "__init__.py"),
+            os.path.join(self.build_lib, mod_fullpath, "__init__.py"),
+        )
 
     def get_cabal_foreign_library_filename(self, ext: setuptools.Extension) -> str:
         if sys.platform not in ["darwin", "linux", "win32", "cygwin"]:
