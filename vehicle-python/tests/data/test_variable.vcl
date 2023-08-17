@@ -1,5 +1,9 @@
-value : Nat
-value = 2
+nat : Rat
+nat = 2
 
-variable : Nat
-variable = value
+var : Rat
+var = nat
+
+@property
+prop : Bool
+prop = var == 2

@@ -8,16 +8,22 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/bounded.vcl-plan"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     }
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network f:NO_FILE",
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"]
+    "produces": ["Explicit.vcl"]
+  },
+  {
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2Loss.vcl"]
   }
 ]

@@ -61,13 +61,14 @@ position token TokSeqOpen    {"["};
 position token TokSeqClose   {"]"};
 position token TokConsVector {"::v"};
 position token TokAt         {"!"};
+position token TokZipWith    {"zipWith"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokDepFold    {"dfold"};
 position token TokIndices    {"indices"};
 position token TokFromNat    {"fromNat"};
 position token TokFromInt    {"fromInt"};
 
+position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
 position token TokHasAdd    {"HasAdd"};
@@ -83,16 +84,21 @@ position token DeclAnnOptionValue ((letter | digit)+);
 
 separator Name "";
 
+-- * Modalities
+
+Irrelevant. Modality ::= "@0";
+
+separator Modality "";
 
 -- * Binders
 
-ExplicitBinder. BasicBinder ::= "("  Name TokElemOf Expr1 ")";
-ImplicitBinder. BasicBinder ::= "{"  Name TokElemOf Expr1 "}";
-InstanceBinder. BasicBinder ::= "{{" Name TokElemOf Expr1 "}}";
+ExplicitBinder. BasicBinder ::= "("  [Modality] Name TokElemOf Expr1 ")";
+ImplicitBinder. BasicBinder ::= "{"  [Modality] Name TokElemOf Expr1 "}";
+InstanceBinder. BasicBinder ::= "{{" [Modality] Name TokElemOf Expr1 "}}";
 
-ExplicitNameBinder. NameBinder ::= Name;
-ImplicitNameBinder. NameBinder ::= "{" Name "}";
-InstanceNameBinder. NameBinder ::= "{{" Name "}}";
+ExplicitNameBinder. NameBinder ::= [Modality] Name;
+ImplicitNameBinder. NameBinder ::= "{" [Modality] Name "}";
+InstanceNameBinder. NameBinder ::= "{{" [Modality] Name "}}";
 BasicNameBinder.    NameBinder ::= BasicBinder;
 
 separator NameBinder "";
@@ -183,9 +189,9 @@ Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 ConsVector. Expr4  ::= Expr5 TokConsVector Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
+ZipWith.    Expr15 ::= TokZipWith;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
-DepFold.    Expr15 ::= TokDepFold;
 Indices.    Expr15 ::= TokIndices;
 
 -- Primitive types.
@@ -201,6 +207,7 @@ Index.   Expr14 ::= TokIndex;
 -- Type classes.
 HasEq.    Expr15 ::= TokHasEq;
 HasNotEq. Expr15 ::= TokHasNotEq;
+HasLeq.   Expr15 ::= TokHasLeq;
 HasAdd.   Expr15 ::= TokHasAdd;
 HasSub.   Expr15 ::= TokHasSub;
 HasMul.   Expr15 ::= TokHasMul;

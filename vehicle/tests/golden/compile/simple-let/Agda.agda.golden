@@ -2,7 +2,7 @@
 -- and should not be modified manually!
 -- Metadata:
 --  - Agda version: 2.6.2
---  - Vehicle version: 0.5.0+dev
+--  - Vehicle version: 0.10.0+dev
 
 {-# OPTIONS --allow-exec #-}
 
@@ -23,9 +23,9 @@ postulate e1 : let x = ⊤ in let y = ⊥ in x × y
 
 postulate e2 : let y = 1 in y ℕ.≥ 2
 
-postulate forallLet : ∀ (x : ℕ) → let y = x in y ≡ 1
+postulate forallLet : ∀ (x : ℚ) → let y = x in y ≡ ℤ.+ 1 ℚ./ 1
 
-postulate letForall : let y = 1 in ∀ (x : ℕ) → y ≡ x
+postulate letForall : let y = ℤ.+ 1 ℚ./ 1 in ∀ (x : ℚ) → y ≡ x
 
 postulate forallInLet : List.All (λ x → let y = x in y ≡ 1) (1 ∷ [])
 

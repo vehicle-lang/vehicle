@@ -5,7 +5,6 @@ name: Build vehicle-python
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 defaults:
   run:
@@ -58,7 +57,7 @@ jobs:
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
       - name: Build wheel
-        uses: pypa/cibuildwheel@v2.13.1
+        uses: pypa/cibuildwheel@v2.15.0
         with:
           package-dir: "./vehicle-python"
           output-dir: "./vehicle-python/wheelhouse"

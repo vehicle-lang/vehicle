@@ -31,7 +31,6 @@ module Vehicle.Syntax.AST.Expr
 where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Serialize (Serialize)
@@ -39,12 +38,12 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
-import Vehicle.Syntax.AST.Builtin (Builtin)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Prelude
 
 --------------------------------------------------------------------------------
@@ -56,8 +55,6 @@ newtype UniverseLevel = UniverseLevel Int
 instance NFData UniverseLevel
 
 instance Hashable UniverseLevel
-
-instance ToJSON UniverseLevel
 
 instance Serialize UniverseLevel
 
@@ -157,8 +154,6 @@ pattern App p f xs <- UnsafeApp p f xs
 -- Instances
 
 instance (NFData var, NFData builtin) => NFData (Expr var builtin)
-
-instance (ToJSON var, ToJSON builtin) => ToJSON (Expr var builtin)
 
 instance (Serialize var, Serialize builtin) => Serialize (Expr var builtin)
 

@@ -1,0 +1,9 @@
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+@property;
+p : forallT (f : Vector Rat -> Vector Rat) . Rat;
+p f = Optimise[min] (+) (\ x -> max 0.0 (0.0 - f x ! 0)) * (if True then 0.0 else 1.0)
+
+@property;
+multiProperty : Tensor Rat (2 :: 3 :: nil);
+multiProperty = [[0.0, 0.0, 0.0], [1.0, 0.0, 1.0]]

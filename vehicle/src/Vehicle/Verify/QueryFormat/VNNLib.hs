@@ -4,10 +4,12 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
+import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Marabou query format
@@ -52,7 +54,7 @@ compileAssertion varNames assertion = do
 
   let compiledRel = compileRel rel
   let compiledLHS = foldl compileVar "" (NonEmpty.tail coeffVars)
-  let compiledRHS = prettyCoefficient constant
+  let compiledRHS = prettyRationalAsFloat constant
   return $ parens "assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS)
 
 compileRel :: Either () OrderOp -> Doc a
@@ -67,5 +69,5 @@ compileVar :: Doc a -> (Coefficient, Name) -> Doc a
 compileVar r (coef, var)
   | coef == 1 = "+" <+> parens r <+> pretty var
   | coef == -1 = "-" <+> parens r <+> pretty var
-  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyCoefficient (-coef) <+> pretty var)
-  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyCoefficient coef <+> pretty var)
+  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
+  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> pretty var)

@@ -2,7 +2,6 @@ name: Build vehicle
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 defaults:
   run:
@@ -127,8 +126,8 @@ jobs:
       - name: Test Vehicle
         run: |
           cabal test                                                \
-            vehicle:test:vehicle-unit-tests                         \
-            vehicle:test:vehicle-compiler-tests                     \
+            vehicle:test:unit-tests                                 \
+            vehicle:test:golden-tests                               \
             --test-show-details=always                              \
             --test-option=--color=always                            \
             --test-option=--num-threads=1                           \

@@ -46,7 +46,7 @@ getLibraryInfoFile libraryFolder = libraryFolder </> vehicleLibraryExtension
 
 getLibraryContentFile :: FilePath -> LibraryName -> FilePath
 getLibraryContentFile libraryFolder fileName =
-  libraryFolder </> fileName <.> vehicleSpecificationFileExtension
+  libraryFolder </> fileName <.> specificationFileExtension
 
 installLibrary :: (MonadIO m, MonadLogger m) => Library -> m ()
 installLibrary Library {..} = do
@@ -62,7 +62,7 @@ installLibrary Library {..} = do
   liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
 
   -- Write the contents of the library out
-  let libraryContentFile = libraryFolder </> name <.> vehicleSpecificationFileExtension
+  let libraryContentFile = libraryFolder </> name <.> specificationFileExtension
   liftIO $ TIO.writeFile libraryContentFile libraryContent
 
 -- | Finds the file path to the library content. At the moment

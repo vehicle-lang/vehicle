@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
+import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.Internal.Abs qualified as B
 import Vehicle.Syntax.Parse.Error
 import Vehicle.Syntax.Parse.Token

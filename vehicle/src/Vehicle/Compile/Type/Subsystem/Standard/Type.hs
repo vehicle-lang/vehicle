@@ -1,45 +1,78 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Type
   ( typeStandardBuiltin,
-    handleStandardTypingError,
-    relevanceOfTypeClass,
     typeOfTypeClassOp,
+    typeOfBuiltinConstructor,
+    typeOfBuiltinFunction,
+    typeOfBuiltinType,
+    typeOfNatInDomainConstraint,
   )
 where
 
-import Control.Monad.Except (MonadError (..))
-import Data.Monoid (Endo (..), appEndo)
-import Data.Text (pack)
-import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Constraint.Core (getTypeClass)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DSL
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
 typeStandardBuiltin :: Provenance -> StandardBuiltin -> StandardType
 typeStandardBuiltin p b = fromDSL p $ case b of
-  CConstructor c -> typeOfConstructor c
-  CFunction f -> typeOfBuiltinFunction f
-  CType t -> case t of
-    StandardTypeClassOp tcOp -> typeOfTypeClassOp tcOp
-    StandardTypeClass tc -> typeOfTypeClass tc
-    StandardBuiltinType s -> typeOfBuiltinType s
+  BuiltinConstructor c -> typeOfBuiltinConstructor c
+  BuiltinFunction f -> typeOfBuiltinFunction f
+  TypeClassOp tcOp -> typeOfTypeClassOp tcOp
+  TypeClass tc -> typeOfTypeClass tc
+  BuiltinType s -> typeOfBuiltinType s
+  NatInDomainConstraint {} -> typeOfNatInDomainConstraint
 
-typeOfBuiltinFunction :: BuiltinFunction -> StandardDSLExpr
+--------------------------------------------------------------------------------
+-- Type classes
+
+typeOfTypeClass :: TypeClass -> StandardDSLExpr
+typeOfTypeClass tc = case tc of
+  HasEq {} -> type0 ~> type0 ~> type0
+  HasOrd {} -> type0 ~> type0 ~> type0
+  HasQuantifier {} -> type0 ~> type0 ~> type0
+  HasAdd -> type0 ~> type0 ~> type0 ~> type0
+  HasSub -> type0 ~> type0 ~> type0 ~> type0
+  HasMul -> type0 ~> type0 ~> type0 ~> type0
+  HasDiv -> type0 ~> type0 ~> type0 ~> type0
+  HasNeg -> type0 ~> type0 ~> type0
+  HasMap -> (type0 ~> type0) ~> type0
+  HasFold -> (type0 ~> type0) ~> type0
+  HasQuantifierIn {} -> type0 ~> type0 ~> type0
+  HasNatLits {} -> type0 ~> type0
+  HasRatLits -> type0 ~> type0
+  HasVecLits {} -> tNat ~> type0 ~> type0
+
+typeOfTypeClassOp :: TypeClassOp -> StandardDSLExpr
+typeOfTypeClassOp b = case b of
+  NegTC -> typeOfTCOp1 hasNeg
+  AddTC -> typeOfTCOp2 hasAdd
+  SubTC -> typeOfTCOp2 hasSub
+  MulTC -> typeOfTCOp2 hasMul
+  DivTC -> typeOfTCOp2 hasDiv
+  EqualsTC op -> typeOfTCComparisonOp $ hasEq op
+  OrderTC op -> typeOfTCComparisonOp $ hasOrd op
+  FromNatTC -> forAll "A" type0 $ \t -> hasNatLits t ~~~> typeOfFromNat t
+  FromRatTC -> forAll "A" type0 $ \t -> hasRatLits t ~~~> typeOfFromRat t
+  FromVecTC -> forAllIrrelevantNat "n" $ \n -> forAll "f" (type0 ~> type0) $ \f -> hasVecLits n f ~~~> typeOfFromVec n f
+  MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
+  FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
+  QuantifierTC q ->
+    forAll "A" (type0 ~> type0) $ \t ->
+      hasQuantifier q t ~~~> typeOfQuantifier t
+
+--------------------------------------------------------------------------------
+-- Generic
+
+typeOfBuiltinFunction :: (HasStandardBuiltins builtin) => BuiltinFunction -> DSLExpr builtin
 typeOfBuiltinFunction = \case
   -- Boolean operations
   Not -> tBool ~> tBool
   Implies -> tBool ~> tBool ~> tBool
   And -> tBool ~> tBool ~> tBool
   Or -> tBool ~> tBool ~> tBool
-  Quantifier _ dom -> case dom of
-    QuantNat -> typeOfQuantifier (tNat ~> tBool)
-    QuantInt -> typeOfQuantifier (tInt ~> tBool)
-    QuantRat -> typeOfQuantifier (tRat ~> tBool)
-    QuantVec -> developerError "Unsure about type of quantified vectors"
+  Quantifier _ -> forAllExpl "A" type0 $ \a -> typeOfQuantifier a
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of
@@ -58,26 +91,29 @@ typeOfBuiltinFunction = \case
     MulRat -> tRat ~> tRat ~> tRat
   Div dom -> case dom of
     DivRat -> tRat ~> tRat ~> tRat
+  PowRat -> tRat ~> tInt ~> tRat
+  MinRat -> tRat ~> tRat ~> tRat
+  MaxRat -> tRat ~> tRat ~> tRat
   -- Comparisons
   Equals dom _op -> case dom of
     EqIndex {} ->
-      forAll "n1" tNat $ \n1 ->
-        forAll "n2" tNat $ \n2 ->
+      forAllIrrelevantNat "n1" $ \n1 ->
+        forAllIrrelevantNat "n2" $ \n2 ->
           typeOfComparisonOp (tIndex n1) (tIndex n2)
     EqNat {} -> typeOfComparisonOp tNat tNat
     EqInt {} -> typeOfComparisonOp tInt tInt
     EqRat {} -> typeOfComparisonOp tRat tRat
   Order dom _op -> case dom of
     OrderIndex {} ->
-      forAll "n1" tNat $ \n1 ->
-        forAll "n2" tNat $ \n2 ->
+      forAllIrrelevantNat "n1" $ \n1 ->
+        forAllIrrelevantNat "n2" $ \n2 ->
           tIndex n1 ~> tIndex n2 ~> tBool
     OrderNat {} -> tNat ~> tNat ~> tBool
     OrderInt {} -> tInt ~> tInt ~> tBool
     OrderRat {} -> tInt ~> tInt ~> tBool
   -- Conversion functions
   FromNat dom -> case dom of
-    FromNatToIndex -> forAllNat $ \s -> typeOfFromNat (tIndex s)
+    FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
     FromNatToNat -> typeOfFromNat tNat
     FromNatToInt -> typeOfFromNat tInt
     FromNatToRat -> typeOfFromNat tRat
@@ -87,11 +123,16 @@ typeOfBuiltinFunction = \case
   ConsVector -> typeOfConsVector
   Fold dom -> case dom of
     FoldList -> typeOfFold tListRaw
-    FoldVector -> typeOfFoldVector
+    FoldVector -> forAllIrrelevantNat "n" $ \n -> typeOfFold (tVectorFunctor n)
+  MapList -> typeOfMap tListRaw
+  MapVector -> forAllIrrelevantNat "n" $ \n -> typeOfMap (tVectorFunctor n)
   At -> typeOfAt
+  ZipWithVector -> typeOfZipWith
   Indices -> typeOfIndices
+  -- TODO this needs to be extracted to loss builtins when merged
+  Optimise {} -> forAll "t" type0 $ \t -> (tRat ~> tRat ~> tRat) ~> (t ~> tRat) ~> tRat
 
-typeOfBuiltinType :: BuiltinType -> StandardDSLExpr
+typeOfBuiltinType :: (HasStandardBuiltins builtin) => BuiltinType -> DSLExpr builtin
 typeOfBuiltinType = \case
   Unit -> type0
   Nat -> type0
@@ -99,172 +140,112 @@ typeOfBuiltinType = \case
   Rat -> type0
   Bool -> type0
   List -> type0 ~> type0
-  Vector -> type0 ~> tNat ~> type0
-  Index -> tNat ~> type0
+  Vector -> type0 ~> tNat .~> type0
+  Index -> tNat .~> type0
 
-typeOfConstructor :: BuiltinConstructor -> StandardDSLExpr
-typeOfConstructor = \case
+typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
+typeOfBuiltinConstructor = \case
   Nil -> typeOfNil
   Cons -> typeOfCons
   LUnit -> tUnit
   LBool _ -> tBool
-  LIndex x -> forAllNat $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
+  LIndex x -> forAllIrrelevantNat "n" $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
   LNat {} -> tNat
   LInt {} -> tInt
   LRat {} -> tRat
   LVec n -> typeOfVectorLiteral n
 
-typeOfTypeClass :: TypeClass -> StandardDSLExpr
-typeOfTypeClass tc = case tc of
-  HasEq {} -> type0 ~> type0 ~> type0
-  HasOrd {} -> type0 ~> type0 ~> type0
-  HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasAdd -> type0 ~> type0 ~> type0 ~> type0
-  HasSub -> type0 ~> type0 ~> type0 ~> type0
-  HasMul -> type0 ~> type0 ~> type0 ~> type0
-  HasDiv -> type0 ~> type0 ~> type0 ~> type0
-  HasNeg -> type0 ~> type0 ~> type0
-  HasMap -> (type0 ~> type0) ~> type0
-  HasFold -> (type0 ~> type0) ~> type0
-  HasQuantifierIn {} -> type0 ~> type0 ~> type0
-  HasNatLits {} -> type0 ~> type0
-  HasRatLits -> type0 ~> type0
-  HasVecLits {} -> tNat ~> type0 ~> type0
-  NatInDomainConstraint {} -> forAll "A" type0 $ \t -> tNat ~> t ~> type0
-
-typeOfTypeClassOp :: TypeClassOp -> StandardDSLExpr
-typeOfTypeClassOp b = case b of
-  NegTC -> typeOfTCOp1 hasNeg
-  AddTC -> typeOfTCOp2 hasAdd
-  SubTC -> typeOfTCOp2 hasSub
-  MulTC -> typeOfTCOp2 hasMul
-  DivTC -> typeOfTCOp2 hasDiv
-  EqualsTC op -> typeOfTCComparisonOp $ hasEq op
-  OrderTC op -> typeOfTCComparisonOp $ hasOrd op
-  FromNatTC -> forAll "A" type0 $ \t -> hasNatLits t ~~~> typeOfFromNat t
-  FromRatTC -> forAll "A" type0 $ \t -> hasRatLits t ~~~> typeOfFromRat t
-  FromVecTC -> forAll "n" tNat $ \n -> forAll "f" (type0 ~> type0) $ \f -> hasVecLits n f ~~~> typeOfFromVec n f
-  MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
-  FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
-  QuantifierTC q ->
-    forAll "A" (type0 ~> type0) $ \t ->
-      hasQuantifier q t ~~~> typeOfQuantifier t
-
-typeOfIf :: StandardDSLExpr
+typeOfIf :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfIf =
   forAll "A" type0 $ \t ->
     tBool ~> t ~> t ~> t
 
-typeOfTCOp1 :: (StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
+typeOfTCOp1 :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCOp1 constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       constraint t1 t2 ~~~> t1 ~> t2
 
-typeOfTCOp2 :: (StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
+typeOfTCOp2 :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCOp2 constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       forAll "C" type0 $ \t3 ->
         constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3
 
-typeOfTCComparisonOp :: (StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr) -> StandardDSLExpr
+typeOfTCComparisonOp :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCComparisonOp constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       constraint t1 t2 ~~~> typeOfComparisonOp t1 t2
 
-typeOfComparisonOp :: StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
+typeOfComparisonOp :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfComparisonOp t1 t2 = t1 ~> t2 ~> tBool
 
-typeOfIndices :: StandardDSLExpr
+typeOfIndices :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfIndices =
   pi (Just "n") Explicit Relevant tNat $ \n -> tVector (tIndex n) n
 
-typeOfNil :: StandardDSLExpr
+typeOfNil :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfNil =
   forAll "A" type0 $ \tElem ->
     tList tElem
 
-typeOfCons :: StandardDSLExpr
+typeOfCons :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfCons =
   forAll "A" type0 $ \tElem ->
     tElem ~> tList tElem ~> tList tElem
 
-typeOfAt :: StandardDSLExpr
+typeOfAt :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfAt =
   forAll "A" type0 $ \tElem ->
-    forAll "n" tNat $ \tDim ->
+    forAllIrrelevantNat "n" $ \tDim ->
       tVector tElem tDim ~> tIndex tDim ~> tElem
 
-typeOfMap :: StandardDSLExpr -> StandardDSLExpr
+typeOfZipWith :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfZipWith =
+  forAll "A" type0 $ \t1 ->
+    forAll "B" type0 $ \t2 ->
+      forAll "C" type0 $ \t3 ->
+        forAllIrrelevantNat "n" $ \tDim ->
+          (t1 ~> t2 ~> t3) ~> tVector t1 tDim ~> tVector t2 tDim ~> tVector t3 tDim
+
+typeOfMap :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfMap f =
   forAll "A" type0 $ \a ->
     forAll "B" type0 $ \b ->
       (a ~> b) ~> f @@ [a] ~> f @@ [b]
 
-typeOfFold :: StandardDSLExpr -> StandardDSLExpr
+typeOfFold :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfFold f =
   forAll "A" type0 $ \a ->
     forAll "B" type0 $ \b ->
       (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
 
-typeOfConsVector :: StandardDSLExpr
+typeOfConsVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfConsVector =
   forAll "A" type0 $ \a ->
-    forAll "n" tNat $ \n ->
+    forAllIrrelevantNat "n" $ \n ->
       a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
-typeOfFoldVector :: StandardDSLExpr
-typeOfFoldVector =
-  forAll "A" type0 $ \a ->
-    forAll "n" tNat $ \n ->
-      forAll "P" (tNat ~> type0) $ \p ->
-        forAll "l" tNat (\l -> a ~> p @@ [l] ~> p @@ [addNat l (natLit 1)])
-          ~> p
-          @@ [natLit 0]
-          ~> tVector a n
-          ~> p
-          @@ [n]
+typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
+typeOfQuantifier t = (t ~> tBool) ~> tBool
 
-typeOfQuantifier :: StandardDSLExpr -> StandardDSLExpr
-typeOfQuantifier t = t ~> tBool
-
-typeOfFromNat :: StandardDSLExpr -> StandardDSLExpr
+typeOfFromNat :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfFromNat t = forAllExpl "n" tNat $ \n -> natInDomainConstraint n t .~~~> t
 
-typeOfFromRat :: StandardDSLExpr -> StandardDSLExpr
+typeOfFromRat :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfFromRat t = tRat ~> t
 
-typeOfFromVec :: StandardDSLExpr -> StandardDSLExpr -> StandardDSLExpr
+typeOfFromVec :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfFromVec n f =
   forAll "A" type0 $ \t ->
     tVector t n ~> f @@ [t]
 
-typeOfVectorLiteral :: Int -> StandardDSLExpr
+typeOfVectorLiteral :: (HasStandardBuiltins builtin) => Int -> DSLExpr builtin
 typeOfVectorLiteral n = do
   forAll "A" type0 $ \tElem ->
     naryFunc n tElem (tVector tElem (natLit n))
 
-handleStandardTypingError :: (MonadCompile m) => TypingError StandardBuiltinType -> m a
-handleStandardTypingError = \case
-  MissingExplicitArgument boundCtx expectedBinder actualArg ->
-    throwError $ MissingExplicitArg (boundContextOf boundCtx) actualArg (typeOf expectedBinder)
-  FunctionTypeMismatch boundCtx fun originalArgs nonPiType args -> do
-    let p = provenanceOf fun
-    let mkRes =
-          [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-            | (i, arg) <- zip [0 :: Int ..] args
-          ]
-    let expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
-    let currentFun = normAppList p fun (take (length args) originalArgs)
-    throwError $ FunTypeMismatch p (boundContextOf boundCtx) currentFun nonPiType expectedType
-  FailedUnification constraints ->
-    throwError (FailedUnificationConstraints constraints)
-  UnsolvableConstraints constraints ->
-    throwError $ UnsolvedConstraints constraints
-
-relevanceOfTypeClass :: (MonadCompile m) => StandardBuiltinType -> m Relevance
-relevanceOfTypeClass b = do
-  tc <- getTypeClass b
-  return $ relevanceOf tc
+typeOfNatInDomainConstraint :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfNatInDomainConstraint = forAll "A" type0 $ \t -> tNat ~> t ~> type0

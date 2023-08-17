@@ -1,5 +1,6 @@
-ten : Tensor Rat [3]
-ten = [2, 3, 5]
+tensor : Tensor Rat [3]
+tensor = [2, 3, 5]
 
-at : Rat
-at = ten ! 1
+@property
+prop : Bool
+prop = tensor ! 1 == 2

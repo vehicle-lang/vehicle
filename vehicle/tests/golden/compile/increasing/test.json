@@ -8,11 +8,17 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/increasing.vcl-plan"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     }
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   },
   {
     "name": "Agda",

@@ -1,0 +1,305 @@
+{
+  "queryMetaData": {
+    "tag": "Query",
+    "contents": {
+      "queries": {
+        "tag": "NonTrivial",
+        "contents": {
+          "unDisjunctAll": [
+            [
+              [
+                {
+                  "propertyName": "safe",
+                  "propertyIndices": []
+                },
+                1
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x",
+                          "userVarDimensions": [
+                            2
+                          ],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [
+                            2
+                          ],
+                          "constantValue": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": null,
+                                  "networkVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "controller",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "controller",
+                    "metaNetworkEntryFilePath": "controller.onnx"
+                  }
+                ]
+              }
+            ],
+            [
+              [
+                {
+                  "propertyName": "safe",
+                  "propertyIndices": []
+                },
+                2
+              ],
+              {
+                "variableReconstruction": [
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Introduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x",
+                          "userVarDimensions": [
+                            2
+                          ],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [
+                            2
+                          ],
+                          "constantValue": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": null,
+                                  "networkVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "controller",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    }
+                  },
+                  {
+                    "tag": "Reduce",
+                    "contents": {
+                      "tag": "NetworkVar",
+                      "contents": {
+                        "networkVarIndices": null,
+                        "networkVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    }
+                  }
+                ],
+                "metaNetwork": [
+                  {
+                    "metaNetworkEntryType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "metaNetworkEntryName": "controller",
+                    "metaNetworkEntryFilePath": "controller.onnx"
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "negated": true
+    }
+  }
+}

@@ -1,7 +1,6 @@
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -30,8 +29,6 @@ data GenericDecl expr
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericDecl expr)
-
-instance (ToJSON expr) => ToJSON (GenericDecl expr)
 
 instance (Serialize expr) => Serialize (GenericDecl expr)
 
@@ -94,8 +91,6 @@ data ParameterSort
 
 instance NFData ParameterSort
 
-instance ToJSON ParameterSort
-
 instance Serialize ParameterSort
 
 instance Pretty ParameterSort where
@@ -112,8 +107,6 @@ data DefAbstractSort
 
 instance NFData DefAbstractSort
 
-instance ToJSON DefAbstractSort
-
 instance Serialize DefAbstractSort
 
 instance Pretty DefAbstractSort where
@@ -124,6 +117,13 @@ instance Pretty DefAbstractSort where
       ParameterDef paramTyp -> "parameter"
       PostulateDef -> "property"
 
+isExternalResourceSort :: DefAbstractSort -> Bool
+isExternalResourceSort = \case
+  NetworkDef -> True
+  DatasetDef -> True
+  ParameterDef {} -> True
+  PostulateDef -> False
+
 --------------------------------------------------------------------------------
 -- Annotations options
 
@@ -133,8 +133,6 @@ data Annotation
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
-
-instance ToJSON Annotation
 
 instance Serialize Annotation
 

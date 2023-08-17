@@ -8,22 +8,28 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/*.vcl-plan"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     }
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c proofcache.vcl-cache --network f:NO_FILE",
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c Marabou.queries --network f:NO_FILE",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
   {
-    "name": "LossFunction",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction.json --network f:NO_FILE",
+    "name": "DL2Loss",
+    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["LossFunction.json"]
+    "produces": ["DL2Loss.vcl"]
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   }
 ]

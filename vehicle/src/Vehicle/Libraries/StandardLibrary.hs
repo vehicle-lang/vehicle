@@ -21,6 +21,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Libraries
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 standardLibraryContentBS :: ByteString
 standardLibraryContentBS = $(makeRelativeToProject "lib/std.vcl" >>= embedFile)
@@ -40,7 +41,9 @@ pattern TensorIdent :: Identifier
 pattern TensorIdent = Identifier StdLib "Tensor"
 
 data StdLibFunction
-  = StdExistsIndex
+  = StdBigAnd
+  | StdBigOr
+  | StdExistsIndex
   | StdForallIndex
   | StdExistsIn
   | StdForallIn
@@ -51,8 +54,6 @@ data StdLibFunction
   | StdNotEqualsVector
   | StdAddVector
   | StdSubVector
-  | StdMapVector
-  | StdMapList
   | StdVectorToList
   | StdForeach
   | StdTensor
@@ -60,8 +61,8 @@ data StdLibFunction
 
 instance Show StdLibFunction where
   show = \case
-    StdMapList -> "mapList"
-    StdMapVector -> "mapVector"
+    StdBigAnd -> "bigAnd"
+    StdBigOr -> "bigOr"
     StdExistsIndex -> "existsIndex"
     StdForallIndex -> "forallIndex"
     StdAddVector -> "addVector"

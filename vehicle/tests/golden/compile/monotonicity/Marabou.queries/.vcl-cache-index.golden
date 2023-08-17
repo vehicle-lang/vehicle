@@ -1,0 +1,33 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": -8427903094340702656
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "f",
+        "filePath": "fake.onnx",
+        "fileHash": -3403084463960967397
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "monotonic",
+      {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "propertyName": "monotonic",
+            "propertyIndices": []
+          },
+          []
+        ]
+      }
+    ]
+  ]
+}

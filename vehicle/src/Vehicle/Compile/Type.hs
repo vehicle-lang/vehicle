@@ -13,7 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map (fromList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (getMetaSubstitution)
+import Vehicle.Compile.Normalise.Monad (getMetaSubstitution)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
@@ -21,48 +21,48 @@ import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise
-import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
 typeCheckProg ::
-  (TypableBuiltin types, MonadCompile m) =>
-  Imports types ->
-  NormalisableProg StandardBuiltinType ->
-  m (GluedProg types)
-typeCheckProg imports (Main uncheckedProg) =
+  (TypableBuiltin builtin, MonadCompile m) =>
+  Imports builtin ->
+  InstanceCandidateDatabase builtin ->
+  Prog Ix StandardBuiltin ->
+  m (GluedProg builtin)
+typeCheckProg imports instanceCandidates (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
-    runTypeChecker (createDeclCtx imports) $ do
+    runTypeChecker (createDeclCtx imports) instanceCandidates $ do
       Main <$> typeCheckDecls uncheckedProg
 
 typeCheckExpr ::
-  forall types m.
-  (TypableBuiltin types, MonadCompile m) =>
-  Imports types ->
-  NormalisableExpr types ->
-  m (NormalisableExpr types)
-typeCheckExpr imports expr1 =
-  runTypeChecker (createDeclCtx imports) $ do
+  forall builtin m.
+  (TypableBuiltin builtin, MonadCompile m) =>
+  Imports builtin ->
+  InstanceCandidateDatabase builtin ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
+typeCheckExpr imports instanceCandidates expr1 =
+  runTypeChecker (createDeclCtx imports) instanceCandidates $ do
     (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
-    solveConstraints @types Nothing
+    solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
-    expr5 <- removeIrrelevantCode expr4
-    checkAllUnknownsSolved (Proxy @types)
-    return expr5
+    -- expr5 <- removeIrrelevantCode expr4
+    checkAllUnknownsSolved (Proxy @builtin)
+    return expr4
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM types m) => [NormalisableDecl StandardBuiltinType] -> m [GluedDecl types]
+typeCheckDecls :: (TCM builtin m) => [Decl Ix StandardBuiltin] -> m [GluedDecl builtin]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +70,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall types m. (TCM types m) => NormalisableDecl StandardBuiltinType -> m (GluedDecl types)
+typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix StandardBuiltin -> m (GluedDecl builtin)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -79,34 +79,26 @@ typeCheckDecl uncheckedDecl =
       DefAbstract p n r t -> typeCheckAbstractDef p n r t
       DefFunction p n b t e -> typeCheckFunction p n b t e
 
-    -- when (nameOf gluedDecl == "vectorToList") $ developerError "Hi"
-    checkAllUnknownsSolved (Proxy @types)
+    checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetas gluedDecl
     logCompilerPassOutput $ prettyFriendly (fmap unnormalised finalDecl)
 
     return finalDecl
 
 convertExprFromStandardTypes ::
-  forall types m.
-  (TypableBuiltin types, TCM types m) =>
-  NormalisableExpr StandardBuiltinType ->
-  m (NormalisableExpr types)
-convertExprFromStandardTypes = traverseBuiltinsM builtinUpdateFunction
-  where
-    builtinUpdateFunction :: BuiltinUpdate m () Ix StandardBuiltin (NormalisableBuiltin types)
-    builtinUpdateFunction p1 p2 b args = do
-      case b of
-        CConstructor c -> return $ normAppList p1 (Builtin p2 (CConstructor c)) args
-        CFunction f -> return $ normAppList p1 (Builtin p2 (CFunction f)) args
-        CType t -> convertFromStandardTypes p2 t args
+  forall builtin m.
+  (TypableBuiltin builtin, TCM builtin m) =>
+  Expr Ix StandardBuiltin ->
+  m (Expr Ix builtin)
+convertExprFromStandardTypes = traverseBuiltinsM convertFromStandardTypes
 
 typeCheckAbstractDef ::
-  (TCM types m) =>
+  (TCM builtin m) =>
   Provenance ->
   Identifier ->
   DefAbstractSort ->
-  NormalisableType types ->
-  m (GluedDecl types)
+  Type Ix builtin ->
+  m (GluedDecl builtin)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
   let checkedDecl = DefAbstract p ident defSort checkedType
@@ -132,13 +124,13 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   return gluedDecl
 
 typeCheckFunction ::
-  (TCM types m) =>
+  (TCM builtin m) =>
   Provenance ->
   Identifier ->
   [Annotation] ->
-  NormalisableType types ->
-  NormalisableExpr types ->
-  m (GluedDecl types)
+  Type Ix builtin ->
+  Expr Ix builtin ->
+  m (GluedDecl builtin)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
 
@@ -158,7 +150,9 @@ typeCheckFunction p ident anns typ body = do
     then do
       gluedDecl <- traverse (glueNBE mempty) substDecl
       restrictPropertyType (ident, p) (typeOf gluedDecl)
-      return gluedDecl
+      solveConstraints (Just substDecl)
+      substGluedDecl <- substMetas gluedDecl
+      return substGluedDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-
@@ -172,22 +166,20 @@ typeCheckFunction p ident anns typ body = do
       gluedDecl <- traverse (glueNBE mempty) checkedDecl3
       return gluedDecl
 
-checkDeclType :: (TCM types m) => Identifier -> NormalisableExpr types -> m (NormalisableType types)
+checkDeclType :: (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix builtin)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
-    (checkedType, typeOfType) <- runReaderT (inferExpr declType) mempty
-    assertDeclTypeIsType ident typeOfType
-    return checkedType
+    runReaderT (checkExpr (TypeUniverse mempty 0) declType) mempty
 
 restrictAbstractDefType ::
-  (TCM types m) =>
+  (TCM builtin m) =>
   DefAbstractSort ->
   DeclProvenance ->
-  GluedType types ->
-  m (NormalisableType types)
+  GluedType builtin ->
+  m (Type Ix builtin)
 restrictAbstractDefType resource decl@(ident, _) defType = do
-  let resourceName = pretty resource <+> squotes (pretty ident)
+  let resourceName = pretty resource <+> quotePretty ident
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
       ParameterDef sort -> restrictParameterType sort decl defType
@@ -195,32 +187,19 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       NetworkDef -> restrictNetworkType decl defType
       PostulateDef -> return $ unnormalised defType
 
-assertDeclTypeIsType :: (TCM types m) => Identifier -> NormalisableType types -> m ()
--- This is a bit of a hack to get around having to have a solver for universe
--- levels. As type definitions will always have an annotated Type 0 inserted
--- by delaboration, we can match on it here. Anything else will be unified
--- with type 0.
-assertDeclTypeIsType _ TypeUniverse {} = return ()
-assertDeclTypeIsType ident actualType = do
-  let p = provenanceOf actualType
-  let expectedType = TypeUniverse p 0
-  let origin = CheckingExprType (FreeVar p ident) expectedType actualType
-  createFreshUnificationConstraint p mempty origin expectedType actualType
-  return ()
-
 -------------------------------------------------------------------------------
 -- Constraint solving
 
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> m ()
+solveConstraints :: forall builtin m. (TCM builtin m) => Maybe (Decl Ix builtin) -> m ()
 solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
-    loopOverConstraints :: (TCM types m) => MetaSet -> Int -> Maybe (NormalisableDecl types) -> m ()
+    loopOverConstraints :: (TCM builtin m) => MetaSet -> Int -> Maybe (Decl Ix builtin) -> m ()
     loopOverConstraints recentlySolvedMetas loopNumber decl = do
-      unsolvedConstraints <- getActiveConstraints @types
+      unsolvedConstraints <- getActiveConstraints @builtin
 
       updatedDecl <- traverse substMetas decl
       logUnsolvedUnknowns updatedDecl (Just recentlySolvedMetas)
@@ -240,14 +219,14 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
             let passDoc = "constraint solving pass" <+> pretty loopNumber
             newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
               metasSolvedDuringUnification <-
-                trackSolvedMetas (Proxy @types) $
-                  runUnificationSolver (Proxy @types) recentlySolvedMetas
+                trackSolvedMetas (Proxy @builtin) $
+                  runUnificationSolver (Proxy @builtin) recentlySolvedMetas
 
               logUnsolvedUnknowns updatedDecl (Just recentlySolvedMetas)
 
               metasSolvedDuringInstanceResolution <-
-                trackSolvedMetas (Proxy @types) $
-                  runInstanceSolver (Proxy @types) metasSolvedDuringUnification
+                trackSolvedMetas (Proxy @builtin) $
+                  runInstanceSolver (Proxy @builtin) metasSolvedDuringUnification
               return metasSolvedDuringInstanceResolution
 
             loopOverConstraints newMetasSolved (loopNumber + 1) updatedDecl
@@ -255,22 +234,23 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runInstanceSolver :: forall types m. (TCM types m) => Proxy types -> MetaSet -> m ()
-runInstanceSolver _ metasSolved =
+runInstanceSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
+runInstanceSolver _ metasSolved = do
+  instanceCandidates <- getInstanceCandidates
   logCompilerPass MaxDetail ("instance solver run" <> line) $
-    runConstraintSolver @types
-      getActiveTypeClassConstraints
-      setTypeClassConstraints
-      solveInstance
+    runConstraintSolver @builtin
+      getActiveInstanceConstraints
+      setInstanceConstraints
+      (solveInstance instanceCandidates)
       metasSolved
 
 -- | Attempts to solve as many unification constraints as possible. Takes in
 -- the set of meta-variables solved since unification was last run and outputs
 -- the set of meta-variables solved during this run.
-runUnificationSolver :: forall types m. (TCM types m) => Proxy types -> MetaSet -> m ()
+runUnificationSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
 runUnificationSolver _ metasSolved =
   logCompilerPass MaxDetail "unification solver run" $
-    runConstraintSolver @types
+    runConstraintSolver @builtin
       getActiveUnificationConstraints
       setUnificationConstraints
       solveUnificationConstraint
@@ -279,7 +259,7 @@ runUnificationSolver _ metasSolved =
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
 
-checkAllUnknownsSolved :: (TCM types m) => Proxy types -> m ()
+checkAllUnknownsSolved :: (TCM builtin m) => Proxy builtin -> m ()
 checkAllUnknownsSolved proxy = do
   -- First check all user constraints (i.e. unification and type-class
   -- constraints) are solved.
@@ -291,14 +271,14 @@ checkAllUnknownsSolved proxy = do
   -- ...and the fresh names
   clearFreshNames proxy
 
-checkAllConstraintsSolved :: forall types m. (TCM types m) => Proxy types -> m ()
+checkAllConstraintsSolved :: forall builtin m. (TCM builtin m) => Proxy builtin -> m ()
 checkAllConstraintsSolved _ = do
-  constraints <- getActiveConstraints @types
+  constraints <- getActiveConstraints @builtin
   case constraints of
     [] -> return ()
-    (c : cs) -> handleTypingError $ UnsolvableConstraints (c :| cs)
+    (c : cs) -> throwError $ TypingError $ UnsolvedConstraints (c :| cs)
 
-checkAllMetasSolved :: (TCM types m) => Proxy types -> m ()
+checkAllMetasSolved :: (TCM builtin m) => Proxy builtin -> m ()
 checkAllMetasSolved proxy = do
   unsolvedMetas <- getUnsolvedMetas proxy
   case MetaSet.toList unsolvedMetas of
@@ -313,15 +293,15 @@ checkAllMetasSolved proxy = do
           )
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: forall types m. (TCM types m) => Maybe (NormalisableDecl types) -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: forall builtin m. (TCM builtin m) => Maybe (Decl Ix builtin) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   logDebugM MaxDetail $ do
-    newSubstitution <- getMetaSubstitution @types
+    newSubstitution <- getMetaSubstitution @builtin
     updatedSubst <- substMetas newSubstitution
 
-    unsolvedMetas <- getUnsolvedMetas (Proxy @types)
-    unsolvedMetasDoc <- prettyMetas (Proxy @types) unsolvedMetas
-    unsolvedConstraints <- getActiveConstraints @types
+    unsolvedMetas <- getUnsolvedMetas (Proxy @builtin)
+    unsolvedMetasDoc <- prettyMetas (Proxy @builtin) unsolvedMetas
+    unsolvedConstraints <- getActiveConstraints @builtin
 
     let constraintsDoc = case maybeSolvedMetas of
           Nothing ->
@@ -346,7 +326,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
           Just decl ->
             "current-decl:"
               <> line
-              <> indent 2 (prettyExternal decl)
+              <> indent 2 (prettyVerbose decl)
               <> line
 
     return $
@@ -361,7 +341,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
         <> constraintsDoc
         <> declDoc
 
-prettyBlockedConstraints :: (PrintableBuiltin types) => [WithContext (Constraint types)] -> Doc a
+prettyBlockedConstraints :: (PrintableBuiltin builtin) => [WithContext (Constraint builtin)] -> Doc a
 prettyBlockedConstraints constraints = do
   let pairs = fmap (\c -> prettyFriendly c <> "   " <> pretty (blockedBy $ contextOf c)) constraints
   prettySetLike pairs
@@ -372,12 +352,12 @@ bidirectionalPassDoc = "bidirectional pass over"
 -------------------------------------------------------------------------------
 -- Other
 
-createDeclCtx :: Imports types -> TypingDeclCtx types
+createDeclCtx :: Imports builtin -> TypingDeclCtx builtin
 createDeclCtx imports =
   Map.fromList $
     [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
   where
-    getEntry :: GluedDecl types -> (Identifier, TypingDeclCtxEntry types)
+    getEntry :: GluedDecl builtin -> (Identifier, TypingDeclCtxEntry builtin)
     getEntry d = do
       let ident = identifierOf d
       (ident, mkTypingDeclCtxEntry d)

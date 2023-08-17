@@ -15,6 +15,7 @@ import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.BNFC.Utils
+import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.External.Print as External (Print, printTree)
 import Vehicle.Syntax.Parse.Error
@@ -89,11 +90,12 @@ instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
 instance Delaborate (V.Binder V.Name V.Builtin) B.BasicBinder where
   delabM binder = do
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
+    let m' = delabModalities binder
     t' <- delabM (V.binderType binder)
     return $ case V.visibilityOf binder of
-      V.Explicit -> B.ExplicitBinder n' tokElemOf t'
-      V.Implicit {} -> B.ImplicitBinder n' tokElemOf t'
-      V.Instance {} -> B.InstanceBinder n' tokElemOf t'
+      V.Explicit -> B.ExplicitBinder m' n' tokElemOf t'
+      V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
+      V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
 
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
@@ -107,18 +109,23 @@ cheatDelab n = B.Var (delabSymbol n)
 delabNameBinder :: (MonadDelab m) => V.Binder V.Name V.Builtin -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
-    developerError $
+    developerError
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
   V.NameAndType name -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
-    V.Explicit -> B.ExplicitNameBinder (delabSymbol name)
-    V.Implicit {} -> B.ImplicitNameBinder (delabSymbol name)
-    V.Instance {} -> B.InstanceNameBinder (delabSymbol name)
+    V.Explicit -> B.ExplicitNameBinder (delabModalities b) (delabSymbol name)
+    V.Implicit {} -> B.ImplicitNameBinder (delabModalities b) (delabSymbol name)
+    V.Instance {} -> B.InstanceNameBinder (delabModalities b) (delabSymbol name)
+
+delabModalities :: V.Binder V.Name V.Builtin -> [B.Modality]
+delabModalities binder
+  | V.isRelevant binder = mempty
+  | otherwise = [B.Irrelevant]
 
 delabTypeBinder :: (MonadDelab m) => V.Binder V.Name V.Builtin -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
   V.OnlyName {} ->
-    developerError $
+    developerError
       "Should not be delaborating an `OnlyName` binder to a `TypeBinder`"
   V.NameAndType {} -> B.BasicTypeBinder <$> delabM b
   V.OnlyType {} -> case V.visibilityOf b of
@@ -156,11 +163,12 @@ delabUniverse = \case
 
 delabBuiltin :: (MonadDelab m) => V.Builtin -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltin fun args = case fun of
-  V.Constructor c -> delabConstructor c args
   V.TypeClassOp tc -> delabTypeClassOp tc args
   V.TypeClass t -> delabTypeClass t args
   V.BuiltinFunction f -> delabBuiltinFunction f args
   V.BuiltinType t -> delabBuiltinType t args
+  V.BuiltinConstructor c -> delabConstructor c args
+  V.NatInDomainConstraint -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -169,21 +177,31 @@ delabBuiltinFunction fun args = case fun of
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.Not -> delabOp1 B.Not tokNot args
   V.If -> delabIf args
-  V.FromNat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
-  V.FromRat {} -> delabApp (cheatDelab $ layoutAsText $ pretty fun) args
   V.Neg {} -> delabTypeClassOp V.NegTC args
   V.Add {} -> delabTypeClassOp V.AddTC args
   V.Sub {} -> delabTypeClassOp V.SubTC args
   V.Mul {} -> delabTypeClassOp V.MulTC args
   V.Div {} -> delabTypeClassOp V.DivTC args
-  V.Quantifier q _ -> delabTypeClassOp (V.QuantifierTC q) args
+  V.Quantifier q -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
   V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.Fold V.FoldVector -> delabApp (B.DepFold tokDepFold) args
+  V.Fold V.FoldVector -> delabTypeClassOp V.FoldTC args
+  V.MapList -> delabTypeClassOp V.MapTC args
+  V.MapVector -> delabTypeClassOp V.MapTC args
   V.ConsVector -> delabInfixOp2 B.ConsVector tokConsVector args
+  V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
+  -- Builtins not in the surface syntax.
+  V.FromNat {} -> rawDelab
+  V.FromRat {} -> rawDelab
+  V.MinRat {} -> rawDelab
+  V.MaxRat {} -> rawDelab
+  V.PowRat -> rawDelab
+  V.Optimise {} -> rawDelab
+  where
+    rawDelab = delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 
 delabBuiltinType :: (MonadDelab m) => V.BuiltinType -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabBuiltinType fun args = case fun of
@@ -201,6 +219,7 @@ delabTypeClass tc args = case tc of
   V.HasEq eq -> case eq of
     V.Eq -> delabApp (B.HasEq tokHasEq) args
     V.Neq -> delabApp (B.HasNotEq tokHasNotEq) args
+  V.HasOrd V.Le -> delabApp (B.HasLeq tokHasLeq) args
   V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
   V.HasSub -> delabApp (B.HasSub tokHasSub) args
   V.HasMul -> delabApp (B.HasMul tokHasMul) args
@@ -222,7 +241,9 @@ delabConstructor fun args = case fun of
         then B.Literal $ B.NatLiteral $ delabNatLit i
         else B.Neg tokSub (B.Literal $ B.NatLiteral $ delabNatLit (-i))
   V.LRat r -> return $ B.Literal $ B.RatLiteral $ delabRatLit r
-  V.LVec _ -> B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) args <*> pure tokSeqClose
+  V.LVec _ -> do
+    let explArgs = filter V.isExplicit args
+    B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose
 
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of
@@ -264,7 +285,9 @@ delabOp3 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
 delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabInfixOp2 op tk args@[arg1, arg2]
   | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
-delabInfixOp2 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
+delabInfixOp2 op tk args
+  | null args = delabApp (cheatDelab $ "(" <> tkSymbol tk <> ")") []
+  | otherwise = delabApp (cheatDelab $ tkSymbol tk) args
 
 delabPartialSection :: Int -> [B.Expr] -> ([B.Expr] -> B.Expr) -> B.Expr
 delabPartialSection expectedArgs actualArgs mkOp = do
@@ -272,7 +295,7 @@ delabPartialSection expectedArgs actualArgs mkOp = do
   let missingArgNumbers = [0 .. (expectedArgs - length actualArgs)]
   let missingVarNames = fmap (\v -> delabSymbol (pack "x" <> pack (show v))) missingArgNumbers
   let missingVars = fmap B.Var missingVarNames
-  let missingBinders = fmap B.ExplicitNameBinder missingVarNames
+  let missingBinders = fmap (B.ExplicitNameBinder mempty) missingVarNames
   B.Lam tokLambda missingBinders tokArrow (mkOp (actualArgs <> missingVars))
 
 delabIf :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
@@ -312,7 +335,8 @@ delabPi binder body = case V.binderNamingForm binder of
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr V.Name V.Builtin -> V.Binder V.Name V.Builtin -> V.Expr V.Name V.Builtin -> m B.Expr
 delabLet bound binder body = do
-  let (boundExprs, foldedBody) = foldLetBinders body
+  let (otherBoundExprs, foldedBody) = foldLetBinders body
+  let boundExprs = (binder, bound) : otherBoundExprs
   binders' <- traverse delabLetBinding boundExprs
   body' <- delabM foldedBody
   return $ B.Let tokLet binders' body'
@@ -340,7 +364,7 @@ delabFun name typ expr = do
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabQuantifier q args = case reverse args of
-  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (FoldableBinder (QuantFold q) binder) body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
@@ -352,7 +376,7 @@ delabQuantifier q args = case reverse args of
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabQuantifierIn q args = case reverse args of
-  V.ExplicitArg _ cont : V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ cont : V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     binder' <- delabNameBinder binder
     cont' <- delabM cont
     body' <- delabM body
@@ -366,7 +390,7 @@ delabQuantifierIn q args = case reverse args of
 
 delabForeach :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
 delabForeach args = case reverse args of
-  V.ExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
     binder' <- delabNameBinder binder
     body' <- delabM body
     return $ B.Foreach tokForeach binder' tokDot body'

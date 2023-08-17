@@ -2,7 +2,7 @@
 -- and should not be modified manually!
 -- Metadata:
 --  - Agda version: 2.6.2
---  - Vehicle version: 0.5.0+dev
+--  - Vehicle version: 0.10.0+dev
 
 {-# OPTIONS --allow-exec #-}
 
@@ -22,11 +22,11 @@ postulate f : Vector ℚ 1 → Vector ℚ 1
 abstract
   p : ∀ x → f x (# 0) ℚ.> ℤ.+ 0 ℚ./ 1 ⊎ ⊤
   p = checkSpecification record
-    { proofCache   = "proofcache.vcl-cache"
+    { verificationFolder   = "Marabou.queries"
     }
 
 abstract
   multiProperty : (⊤ ∷ᵥ (⊤ ∷ᵥ (⊤ ∷ᵥ []ᵥ))) ∷ᵥ ((⊥ ∷ᵥ (⊤ ∷ᵥ (⊥ ∷ᵥ []ᵥ))) ∷ᵥ []ᵥ)
   multiProperty = checkSpecification record
-    { proofCache   = "proofcache.vcl-cache"
+    { verificationFolder   = "Marabou.queries"
     }

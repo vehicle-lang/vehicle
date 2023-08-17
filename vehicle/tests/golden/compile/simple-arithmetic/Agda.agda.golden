@@ -2,12 +2,11 @@
 -- and should not be modified manually!
 -- Metadata:
 --  - Agda version: 2.6.2
---  - Vehicle version: 0.5.0+dev
+--  - Vehicle version: 0.10.0+dev
 
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
@@ -15,9 +14,9 @@ open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
+natLitNatLitDiv : ℚ
+natLitNatLitDiv = (ℤ.+ 1 ℚ./ 1) ℚ.÷ (ℤ.+ 2 ℚ./ 1)
+
 postulate f : Vector ℚ 1 → Vector ℚ 1
 
-natNatDiv : ℕ → (ℕ → ℚ)
-natNatDiv x y = f (λ x → λ y → (ℤ.+ x ℚ./ 1) ℚ.÷ (ℤ.+ y ℚ./ 1) x y ∷ᵥ []ᵥ) (# 0)
-
-postulate property : natNatDiv 1 2 ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate property : f (natLitNatLitDiv ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1

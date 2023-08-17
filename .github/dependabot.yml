@@ -9,7 +9,7 @@ updates:
 
   # Maintain dependencies for the documentation
   - package-ecosystem: "pip"
-    directory: "/vehicle-docs"
+    directory: "/docs"
     schedule:
       interval: "weekly"
 

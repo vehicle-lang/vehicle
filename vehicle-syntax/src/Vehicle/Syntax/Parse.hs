@@ -17,6 +17,7 @@ import Data.Text (Text)
 import Data.Text.IO qualified as T
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Elaborate.External
+import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.External.Abs qualified as External (Expr, Prog)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
 import Vehicle.Syntax.External.Lex as External (Token)

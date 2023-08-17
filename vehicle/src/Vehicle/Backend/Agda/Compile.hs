@@ -19,16 +19,17 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Monomorphisation
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Syntax.Sugar
@@ -37,7 +38,7 @@ import Vehicle.Syntax.Sugar
 -- Agda-specific options
 
 data AgdaOptions = AgdaOptions
-  { proofCacheLocation :: Maybe FilePath,
+  { verificationCache :: Maybe FilePath,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String
   }
@@ -46,7 +47,7 @@ compileProgToAgda :: (MonadCompile m) => StandardGluedProg -> AgdaOptions -> m (
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let unnormalisedProg = fmap unnormalised prog
-    monoProg <- monomorphise False unnormalisedProg
+    monoProg <- monomorphise isPropertyDecl "-" unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = descopeNamed prog2
@@ -319,10 +320,10 @@ type MonadAgdaCompile m =
     MonadReader (AgdaOptions, BoolLevel) m
   )
 
-getProofCacheLocation :: (MonadAgdaCompile m) => m (Maybe FilePath)
-getProofCacheLocation = do
+getVerificationFolder :: (MonadAgdaCompile m) => m (Maybe FilePath)
+getVerificationFolder = do
   (options, _) <- ask
-  return $ proofCacheLocation options
+  return $ verificationCache options
 
 getBoolLevel :: (MonadAgdaCompile m) => m BoolLevel
 getBoolLevel = do
@@ -374,7 +375,7 @@ compileExpr expr = do
       cBody <- compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
-    Builtin _ b -> compileBuiltin b []
+    Builtin p b -> compileBuiltin p b []
     App _ fun args -> compileApp fun args
 
   logExit result
@@ -390,7 +391,7 @@ compileVar var = return $ case var of
 compileApp :: (MonadAgdaCompile m) => Expr Name StandardBuiltin -> NonEmpty (Arg Name StandardBuiltin) -> m Code
 compileApp fun args = do
   specialResult <- case fun of
-    Builtin _ b -> Just <$> compileBuiltin b (NonEmpty.toList args)
+    Builtin p b -> Just <$> compileBuiltin p b (NonEmpty.toList args)
     FreeVar _ ident -> case findStdLibFunction ident of
       Nothing -> return Nothing
       Just stdlibFn -> compileStdLibFunction stdlibFn args
@@ -412,14 +413,14 @@ compileStdLibFunction fn args = case fn of
   StdForeach -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
-    [_, _, ExplicitArg p (VecLiteral _ tElem xs)] -> Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
+    [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] -> Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
     _ -> return Nothing
   StdForallIn -> case args of
-    [_, ImplicitArg _ tCont, _, _, ExplicitArg _ lam, ExplicitArg _ cont] ->
+    [_, RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
       Just <$> compileQuantIn Forall tCont lam cont
     _ -> return Nothing
   StdExistsIn -> case args of
-    [ImplicitArg _ tCont, _, _, ExplicitArg _ lam, ExplicitArg _ cont] ->
+    [RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
       Just <$> compileQuantIn Exists tCont lam cont
     _ -> return Nothing
   _ -> return Nothing
@@ -502,18 +503,12 @@ agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
 agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
-compileBuiltin :: (MonadAgdaCompile m) => StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
-compileBuiltin (CType (StandardTypeClassOp op)) allArgs
+compileBuiltin :: (MonadAgdaCompile m) => Provenance -> StandardBuiltin -> [Arg Name StandardBuiltin] -> m Code
+compileBuiltin _p (TypeClassOp op) allArgs
   | not (isTypeClassInAgda op) = do
-      let result = nfTypeClassOp mempty op allArgs
-      case result of
-        Nothing ->
-          compilerDeveloperError $
-            "Unable to normalise type-class op:" <+> pretty op
-        Just res -> do
-          (fn, args) <- res
-          compileApp fn args
-compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
+      (fn, args) <- nfTypeClassOp mempty op allArgs
+      compileApp fn args
+compileBuiltin p op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
   BoolType {} -> compileBooleanType
   NatType {} -> return $ annotateConstant [DataNat] natQualifier
   IntType {} -> return $ annotateConstant [DataInteger] intQualifier
@@ -556,10 +551,11 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   IndexLiteral _ n -> return $ compileIndexLiteral (toInteger n)
   NatLiteral _ n -> return $ compileNatLiteral (toInteger n)
   IntLiteral _ i -> return $ compileIntLiteral (toInteger i)
-  RatLiteral _ p -> return $ compileRatLiteral p
+  RatLiteral _ r -> return $ compileRatLiteral r
   VecLiteral _ _ xs -> compileVecLiteral (fmap argExpr xs)
   HasEqExpr _ _ t _ _ -> compileTypeClass "HasEq" t
   HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
+  HasAddExpr _ t _ _ -> compileTypeClass "HasAdd" t
   HasSubExpr _ t _ _ -> compileTypeClass "HasSub" t
   HasDivExpr _ t _ _ -> compileTypeClass "HasDiv" t
   HasNegExpr _ t _ -> compileTypeClass "HasNeg" t
@@ -567,9 +563,9 @@ compileBuiltin op allArgs = case normAppList mempty (Builtin mempty op) allArgs 
   HasRatLitsExpr _ t -> compileTypeClass "HasRatLits" t
   HasVecLitsExpr {} ->
     compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
-  BuiltinTypeClass _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
+  BuiltinExpr _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
   _ -> do
-    let e = normAppList mempty (Builtin mempty op) allArgs
+    let e = normAppList p (Builtin p op) allArgs
     compilerDeveloperError $
       "unexpected application of builtin found during compilation to Agda:"
         <+> squotes (prettyExternal e)
@@ -580,18 +576,19 @@ nfTypeClassOp ::
   Provenance ->
   TypeClassOp ->
   [Arg var StandardBuiltin] ->
-  Maybe (m (Expr var StandardBuiltin, NonEmpty (Arg var StandardBuiltin)))
+  m (Expr var StandardBuiltin, NonEmpty (Arg var StandardBuiltin))
 nfTypeClassOp _p op args = do
-  let (inst, remainingArgs) = findInstanceArg args
+  (inst, remainingArgs) <- findInstanceArg op args
   case (inst, remainingArgs) of
-    (Meta {}, _) -> Nothing
+    (Meta {}, _) ->
+      compilerDeveloperError $
+        "Unable to normalise type-class op:" <+> pretty op
     (_, v : vs) -> do
       let (fn, args') = toHead inst
-      Just $ return (fn, prependList args' (v :| vs))
+      return (fn, prependList args' (v :| vs))
     (_, []) ->
-      Just $
-        compilerDeveloperError $
-          "Type class operation with no further arguments:" <+> pretty op
+      compilerDeveloperError $
+        "Type class operation with no further arguments:" <+> pretty op
 
 compileTypeClass :: (MonadAgdaCompile m) => Code -> Expr Name StandardBuiltin -> m Code
 compileTypeClass name arg = do
@@ -840,12 +837,12 @@ compilePostulate name t =
 
 compileProperty :: (MonadAgdaCompile m) => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
-  proofCache <- getProofCacheLocation
+  maybeVerificationFolder <- getVerificationFolder
   return $
-    case proofCache of
+    case maybeVerificationFolder of
       Nothing ->
         "postulate" <+> propertyName <+> ":" <+> align propertyBody
-      Just loc ->
+      Just verificationFolder ->
         scopeCode "abstract" $
           propertyName
             <+> ":"
@@ -855,8 +852,8 @@ compileProperty propertyName propertyBody = do
             <+> "= checkSpecification record"
             <> line
             <> indentCode
-              ( "{ proofCache   ="
-                  <+> dquotes (pretty loc)
+              ( "{ verificationFolder   ="
+                  <+> dquotes (pretty verificationFolder)
                   <> line
                   <> "}"
               )
@@ -906,9 +903,9 @@ pattern ITensorType p tElem tDims <-
   App
     p
     (FreeVar _ (Identifier StdLib "Tensor"))
-    [ ExplicitArg _ tElem,
-      ExplicitArg _ tDims
+    [ RelevantExplicitArg _ tElem,
+      IrrelevantExplicitArg _ tDims
       ]
 
 pattern IndexType :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern IndexType p tSize <- TypeExpr p Index [ExplicitArg _ tSize]
+pattern IndexType p tSize <- TypeExpr p Index [IrrelevantExplicitArg _ tSize]

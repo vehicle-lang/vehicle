@@ -1,2 +1,3 @@
-minimum : Bool
-minimum = 1 <= 3
+@property
+prop : Bool
+prop = 0.5 <= 3

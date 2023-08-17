@@ -1,0 +1,28 @@
+bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
+
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = map f (indices n)
+
+forallIndex : forallT n . (Index -> Bool) -> Bool;
+forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+type InputVector = Tensor Rat (2 :: nil)
+
+currentSensor : Index;
+currentSensor = 0
+
+previousSensor : Index;
+previousSensor = 1
+
+safeInput : InputVector -> Bool;
+safeInput x = forallIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25)
+
+safeOutput : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . InputVector -> Bool;
+safeOutput controller x = - 1.25 < controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor and controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor < 1.25
+
+@property;
+safe : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . Bool;
+safe controller = forall x . safeInput x => safeOutput controller x

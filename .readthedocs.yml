@@ -13,9 +13,9 @@ build:
 
 # Build documentation with Sphinx
 sphinx:
-  configuration: vehicle-docs/conf.py
+  configuration: docs/conf.py
 
 # Optionally declare the Python requirements required to build your docs
 python:
   install:
-    - requirements: vehicle-docs/requirements.txt
+    - requirements: docs/requirements.txt

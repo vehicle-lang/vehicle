@@ -3,6 +3,7 @@
 module Vehicle.Compile.Type.Core where
 
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
@@ -10,113 +11,85 @@ import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalisable
 import Vehicle.Expr.Normalised
 
-type Imports types = [GluedProg types]
+type Imports builtin = [GluedProg builtin]
 
 --------------------------------------------------------------------------------
 
 -- | Errors in bidirectional type-checking
-data TypingError types
-  = MissingExplicitArgument (TypingBoundCtx types) (NormalisableBinder types) (NormalisableArg types)
-  | FunctionTypeMismatch (TypingBoundCtx types) (NormalisableExpr types) [NormalisableArg types] (NormalisableExpr types) [NormalisableArg types]
-  | FailedUnification (NonEmpty (WithContext (UnificationConstraint types)))
-  | UnsolvableConstraints (NonEmpty (WithContext (Constraint types)))
-
-instance Pretty (TypingError types) where
-  pretty = \case
-    MissingExplicitArgument {} -> "MissingExplicitArgument"
-    FunctionTypeMismatch {} -> "FunctionTypeMismatch"
-    FailedUnification {} -> "FailedUnification"
-    UnsolvableConstraints {} -> "UnsolvableConstraints"
+data TypingError builtin
+  = MissingExplicitArgument BoundDBCtx (Binder Ix builtin) (Arg Ix builtin)
+  | FunctionTypeMismatch BoundDBCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
+  | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
+  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
+  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Typing declaration context
 
-data TypingDeclCtxEntry types = TypingDeclCtxEntry
+data TypingDeclCtxEntry builtin = TypingDeclCtxEntry
   { declAnns :: [Annotation],
-    declType :: GluedType types,
-    declBody :: Maybe (GluedExpr types)
+    declType :: GluedType builtin,
+    declBody :: Maybe (Value builtin)
   }
 
-type TypingDeclCtx types = DeclCtx (TypingDeclCtxEntry types)
+type TypingDeclCtx builtin = DeclCtx (TypingDeclCtxEntry builtin)
 
-mkTypingDeclCtxEntry :: GluedDecl types -> TypingDeclCtxEntry types
+mkTypingDeclCtxEntry :: GluedDecl builtin -> TypingDeclCtxEntry builtin
 mkTypingDeclCtxEntry decl =
   TypingDeclCtxEntry
     { declAnns = annotationsOf decl,
       declType = typeOf decl,
-      declBody = bodyOf decl
+      declBody = normalised <$> bodyOf decl
     }
 
-addToTypingDeclCtx :: GluedDecl types -> TypingDeclCtx types -> TypingDeclCtx types
+addToTypingDeclCtx :: GluedDecl builtin -> TypingDeclCtx builtin -> TypingDeclCtx builtin
 addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry decl)
 
 --------------------------------------------------------------------------------
 -- Typing declaration context
 
-data NormDeclCtxEntry types = NormDeclCtxEntry
-  { declExpr :: Value types,
-    declAnns :: [Annotation],
-    declArity :: Int
-  }
+type NormDeclCtxEntry builtin = TypingDeclCtxEntry builtin
 
-type NormDeclCtx types = DeclCtx (NormDeclCtxEntry types)
+type NormDeclCtx builtin = DeclCtx (NormDeclCtxEntry builtin)
 
-typingDeclCtxToNormDeclCtx :: TypingDeclCtx types -> NormDeclCtx types
-typingDeclCtxToNormDeclCtx = Map.mapMaybe $ \TypingDeclCtxEntry {..} ->
-  fmap
-    ( \body ->
-        NormDeclCtxEntry
-          { declExpr = normalised body,
-            declAnns = declAnns,
-            declArity = arity (normalised declType)
-          }
-    )
-    declBody
+typingDeclCtxToNormDeclCtx :: TypingDeclCtx builtin -> NormDeclCtx builtin
+typingDeclCtxToNormDeclCtx = id
 
 --------------------------------------------------------------------------------
 -- Meta variable substitution
 
-type MetaSubstitution types = MetaMap (GluedExpr types)
+type MetaSubstitution builtin = MetaMap (GluedExpr builtin)
 
 --------------------------------------------------------------------------------
 -- Bound variable context
 
 -- | The names, types and values if known of the variables that are in
 -- currently in scope, indexed into via De Bruijn expressions.
-type TypingBoundCtxEntry types =
-  ( Maybe Name,
-    NormalisableType types
+type TypingBoundCtxEntry builtin =
+  ( Binder Ix builtin
   )
 
-mkTypingBoundCtxEntry :: NormalisableBinder types -> TypingBoundCtxEntry types
-mkTypingBoundCtxEntry binder = (nameOf binder, binderType binder)
+mkTypingBoundCtxEntry :: Binder Ix builtin -> TypingBoundCtxEntry builtin
+mkTypingBoundCtxEntry = id
 
-type TypingBoundCtx types = BoundCtx (TypingBoundCtxEntry types)
+type TypingBoundCtx builtin = BoundCtx (TypingBoundCtxEntry builtin)
 
-instance HasBoundCtx (TypingBoundCtx types) where
-  boundContextOf = map fst
+instance HasBoundCtx (TypingBoundCtx builtin) where
+  boundContextOf = map nameOf
 
-typingBoundContextToEnv :: TypingBoundCtx types -> Env types
+typingBoundContextToEnv :: TypingBoundCtx builtin -> Env builtin
 typingBoundContextToEnv ctx = do
   let levels = reverse (fmap Lv [0 .. length ctx - 1])
-  zipWith (\level (n, _) -> (n, VBoundVar level [])) levels ctx
+  zipWith (\level binder -> (nameOf binder, VBoundVar level [])) levels ctx
 
 --------------------------------------------------------------------------------
 -- Constraints
 --------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- Constraint origins
-
-data ConstraintOrigin types
-  = CheckingExprType (NormalisableExpr types) (NormalisableType types) (NormalisableType types)
-  | CheckingBinderType (Maybe Name) (NormalisableType types) (NormalisableType types)
-  | CheckingTypeClass (NormalisableExpr types) [NormalisableArg types] types [NormalisableArg types]
-  | CheckingAuxiliary
-  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Blocking status
@@ -145,13 +118,11 @@ isStillBlocked solvedMetas (BlockingStatus status) =
 
 type ConstraintID = Int
 
-data ConstraintContext types = ConstraintContext
+data ConstraintContext builtin = ConstraintContext
   { -- | The id for the constraint, used primarily for logging purposes.
     constraintID :: ConstraintID,
     -- | The original provenance of the constraint
     originalProvenance :: Provenance,
-    -- | The origin of the constraint.
-    origin :: ConstraintOrigin types,
     -- | Where the constraint was instantiated
     creationProvenance :: Provenance,
     -- | The set of metas blocking progress on this constraint.
@@ -159,126 +130,178 @@ data ConstraintContext types = ConstraintContext
     blockedBy :: BlockingStatus,
     -- | TODO reduce this to just `TypingBoundCtx`
     -- (At the moment the full context is needed for normalisation but should
-    -- be able to get that from TCM)
-    boundContext :: TypingBoundCtx types
+    -- be able to get that from TCM).
+    -- When we do, should also make it non-meta-substitutable.
+    boundContext :: TypingBoundCtx builtin
   }
   deriving (Show)
 
-instance Pretty (ConstraintContext types) where
+instance Pretty (ConstraintContext builtin) where
   pretty ctx = pretty (blockedBy ctx)
 
 -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
-instance HasProvenance (ConstraintContext types) where
-  provenanceOf (ConstraintContext _ _ _ creationProvenance _ _) = creationProvenance
+instance HasProvenance (ConstraintContext builtin) where
+  provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
-instance HasBoundCtx (ConstraintContext types) where
+instance HasBoundCtx (ConstraintContext builtin) where
   boundContextOf = boundContextOf . boundContext
 
-blockCtxOn :: MetaSet -> ConstraintContext types -> ConstraintContext types
-blockCtxOn metas (ConstraintContext cid originProv originalConstraint creationProv _ ctx) =
+blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
+blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
   let status = BlockingStatus (Just metas)
-   in ConstraintContext cid originProv originalConstraint creationProv status ctx
+   in ConstraintContext cid originProv creationProv status ctx
 
-extendConstraintBoundCtx :: ConstraintContext types -> NormalisableTelescope types -> ConstraintContext types
-extendConstraintBoundCtx ConstraintContext {..} telescope =
-  ConstraintContext
-    { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
-      ..
-    }
+updateConstraintBoundCtx ::
+  ConstraintContext builtin ->
+  (TypingBoundCtx builtin -> TypingBoundCtx builtin) ->
+  ConstraintContext builtin
+updateConstraintBoundCtx ConstraintContext {..} updateFn =
+  ConstraintContext {boundContext = updateFn boundContext, ..}
 
-contextDBLevel :: ConstraintContext types -> Lv
+setConstraintBoundCtx ::
+  ConstraintContext builtin ->
+  TypingBoundCtx builtin ->
+  ConstraintContext builtin
+setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
+
+contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
+
+--------------------------------------------------------------------------------
+-- Instance constraints
+
+data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
+  { checkedInstanceOp :: Expr Ix builtin,
+    checkedInstanceOpArgs :: [Arg Ix builtin],
+    checkedInstanceOpType :: Type Ix builtin,
+    checkedInstanceType :: Type Ix builtin
+  }
+  deriving (Show)
+
+data InstanceConstraint builtin = Resolve
+  { instanceOrigin :: InstanceConstraintOrigin builtin,
+    instanceSolutionMeta :: MetaID,
+    instanceRelevance :: Relevance,
+    instanceGoal :: Value builtin
+  }
+  deriving (Show)
+
+type instance
+  WithContext (InstanceConstraint builtin) =
+    Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
+
+data InstanceCandidate builtin = InstanceCandidate
+  { candidateExpr :: Expr Ix builtin,
+    candidateSolution :: Expr Ix builtin
+  }
+  deriving (Show)
+
+type instance
+  WithContext (InstanceCandidate builtin) =
+    Contextualised (InstanceCandidate builtin) (TypingBoundCtx builtin)
+
+data InstanceGoal builtin = InstanceGoal
+  { goalTelescope :: Telescope Ix builtin,
+    goalHead :: builtin,
+    goalSpine :: Spine builtin
+  }
+  deriving (Show)
+
+type InstanceConstraintInfo builtin =
+  ( ConstraintContext builtin,
+    InstanceConstraintOrigin builtin
+  )
+
+-- | Stores the list of instance candidates currently in scope.
+-- We use a HashMap rather than an ordinary Map as not all builtins may be
+-- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
+type InstanceCandidateDatabase builtin =
+  HashMap builtin [InstanceCandidate builtin]
 
 --------------------------------------------------------------------------------
 -- Unification constraints
 
+data CheckingExprType builtin = CheckingExpr
+  { checkedExpr :: Expr Ix builtin,
+    checkedExprExpectedType :: Type Ix builtin,
+    checkedExprActualType :: Expr Ix builtin
+  }
+  deriving (Show)
+
+data CheckingBinderType builtin = CheckingBinder
+  { checkedBinderName :: Maybe Name,
+    checkedBinderExpectedType :: Type Ix builtin,
+    checkedBinderActualType :: Type Ix builtin
+  }
+  deriving (Show)
+
+data UnificationConstraintOrigin builtin
+  = CheckingExprType (CheckingExprType builtin)
+  | CheckingBinderType (CheckingBinderType builtin)
+  | CheckingInstanceType (InstanceConstraintOrigin builtin)
+  | CheckingAuxiliary
+  deriving (Show)
+
 -- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint types = Unify (Value types) (Value types)
+data UnificationConstraint builtin
+  = Unify
+      (UnificationConstraintOrigin builtin)
+      (Value builtin)
+      (Value builtin)
   deriving (Show)
 
 type instance
-  WithContext (UnificationConstraint types) =
-    Contextualised (UnificationConstraint types) (ConstraintContext types)
-
---------------------------------------------------------------------------------
--- Type-class constraints
-
-data TypeClassConstraint types = Has MetaID types (ExplicitSpine types)
-  deriving (Show)
-
-tcNormExpr :: TypeClassConstraint types -> Value types
-tcNormExpr (Has _ tc spine) = VBuiltin (CType tc) spine
-
-type instance
-  WithContext (TypeClassConstraint types) =
-    Contextualised (TypeClassConstraint types) (ConstraintContext types)
+  WithContext (UnificationConstraint builtin) =
+    Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)
 
 --------------------------------------------------------------------------------
 -- Constraint
 
-data Constraint types
+data Constraint builtin
   = -- | Represents that the two contained expressions should be equal.
-    UnificationConstraint (UnificationConstraint types)
+    UnificationConstraint (UnificationConstraint builtin)
   | -- | Represents that the provided type must have the required functionality
-    TypeClassConstraint (TypeClassConstraint types)
+    InstanceConstraint (InstanceConstraint builtin)
   deriving (Show)
 
 type instance
-  WithContext (Constraint types) =
-    Contextualised (Constraint types) (ConstraintContext types)
+  WithContext (Constraint builtin) =
+    Contextualised (Constraint builtin) (ConstraintContext builtin)
 
-getTypeClassConstraint :: WithContext (Constraint types) -> Maybe (WithContext (TypeClassConstraint types))
+getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext (InstanceConstraint builtin))
 getTypeClassConstraint (WithContext constraint ctx) = case constraint of
-  TypeClassConstraint tc -> Just (WithContext tc ctx)
+  InstanceConstraint tc -> Just (WithContext tc ctx)
   _ -> Nothing
 
-separateConstraints :: [WithContext (Constraint types)] -> ([WithContext (UnificationConstraint types)], [WithContext (TypeClassConstraint types)])
+separateConstraints :: [WithContext (Constraint builtin)] -> ([WithContext (UnificationConstraint builtin)], [WithContext (InstanceConstraint builtin)])
 separateConstraints [] = ([], [])
 separateConstraints (WithContext c ctx : cs) = case c of
   UnificationConstraint uc -> first (WithContext uc ctx :) (separateConstraints cs)
-  TypeClassConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
+  InstanceConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
 
 blockConstraintOn ::
-  Contextualised c (ConstraintContext types) ->
+  Contextualised c (ConstraintContext builtin) ->
   MetaSet ->
-  Contextualised c (ConstraintContext types)
+  Contextualised c (ConstraintContext builtin)
 blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
-isBlocked :: MetaSet -> ConstraintContext types -> Bool
+isBlocked :: MetaSet -> ConstraintContext builtin -> Bool
 isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
 
-constraintIsBlocked :: MetaSet -> Contextualised c (ConstraintContext types) -> Bool
+constraintIsBlocked :: MetaSet -> Contextualised c (ConstraintContext builtin) -> Bool
 constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
 
 --------------------------------------------------------------------------------
 -- Progress in solving meta-variable constraints
 
-data ConstraintProgress types
+data ConstraintProgress builtin
   = Stuck MetaSet
-  | Progress [WithContext (Constraint types)]
+  | Progress [WithContext (Constraint builtin)]
   deriving (Show)
 
-instance Semigroup (ConstraintProgress types) where
+instance Semigroup (ConstraintProgress builtin) where
   Stuck m1 <> Stuck m2 = Stuck (m1 <> m2)
   Stuck {} <> x@Progress {} = x
   x@Progress {} <> Stuck {} = x
   Progress r1 <> Progress r2 = Progress (r1 <> r2)
-
---------------------------------------------------------------------------------
--- Class for typable builtins
-
-class (Eq types) => PrintableBuiltin types where
-  -- | Convert expressions with the builtin back to expressions with the standard
-  -- builtin type. Used for printing.
-  convertBuiltin ::
-    Provenance ->
-    types ->
-    Expr var Builtin
-
-  isTypeClassOp :: types -> Bool
-
-isTypeClassOperation :: (PrintableBuiltin types) => NormalisableBuiltin types -> Bool
-isTypeClassOperation = \case
-  CType t -> isTypeClassOp t
-  _ -> False

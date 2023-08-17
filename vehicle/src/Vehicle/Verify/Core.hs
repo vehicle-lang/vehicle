@@ -1,15 +1,16 @@
 module Vehicle.Verify.Core where
 
-import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Text (Text)
-import Data.Vector.Unboxed (Vector)
+import Data.Text (Text, unpack)
+import Data.Vector (Vector)
+import Data.Vector qualified as Vector (toList)
 import GHC.Generics (Generic)
+import System.FilePath ((<.>))
+import Vehicle.Backend.Queries.LinearExpr (Assertion, SparseLinearExpr)
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude (Name)
-import Vehicle.Compile.Queries.LinearExpr (Assertion, CLSTProblem, SparseLinearExpr)
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource
 import Vehicle.Prelude
 
@@ -18,7 +19,15 @@ import Vehicle.Prelude
 
 -- | A (satisfying) assignment to a set of reduced network-level variables.
 newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Vector Double)
+  = NetworkVariableAssignment (Vector Rational)
+
+instance Pretty NetworkVariableAssignment where
+  pretty :: NetworkVariableAssignment -> Doc a
+  pretty (NetworkVariableAssignment assignment) = do
+    vsep (prettyVariable <$> zip [0 ..] (Vector.toList assignment))
+    where
+      prettyVariable :: (Int, Rational) -> Doc a
+      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
@@ -41,40 +50,6 @@ instance Pretty UserVariableAssignment where
         name <> ":" <+> valueDoc
 
 --------------------------------------------------------------------------------
--- Verifiers
-
-data VerifierID
-  = Marabou
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
-instance Pretty VerifierID where
-  pretty = pretty . show
-
--- | Location of the verifier executable file
-type VerifierExecutable = FilePath
-
--- | The type of methods to call a verifier on a query
-type VerifierInvocation =
-  forall m.
-  (MonadIO m) =>
-  VerifierExecutable ->
-  MetaNetwork ->
-  QueryFile ->
-  m (Either Text (QueryResult NetworkVariableAssignment))
-
--- | A complete verifier implementation
-data Verifier = Verifier
-  { -- | The identifier for the verifier within Vehicle itself
-    verifierIdentifier :: VerifierID,
-    -- | The query format that the verifier accepts
-    verifierQueryFormat :: QueryFormatID,
-    -- | The name of the executable for the verifier
-    verifierExecutableName :: String,
-    -- | The command to invoke the verifier
-    invokeVerifier :: VerifierInvocation
-  }
-
---------------------------------------------------------------------------------
 -- Addresses
 
 -- | The number of an individual query within a `Property` when traversed
@@ -83,6 +58,20 @@ type QueryID = Int
 
 type QueryAddress = (PropertyAddress, QueryID)
 
+calculateQueryFileName :: QueryAddress -> FilePath
+calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
+  let propertyStr
+        | null propertyIndices = ""
+        | otherwise = showTensorIndices propertyIndices
+
+  unpack propertyName
+    <> propertyStr
+    <> "-query"
+    <> show queryID <.> "txt"
+
+-- | A unique identifier for every individual property that needs to be verified.
+-- Not simply an identifier, as we need to identifier sub-properties in tensors of
+-- properties.
 data PropertyAddress = PropertyAddress
   { propertyName :: Name,
     propertyIndices :: TensorIndices
@@ -169,27 +158,6 @@ metaNetworkVariables reduced metaNetwork = do
   concat (reverse result)
 
 --------------------------------------------------------------------------------
--- Query formats
-
-data QueryFormatID
-  = MarabouQueries
-  | VNNLibQueries
-  deriving (Show, Eq, Bounded, Enum)
-
-instance Pretty QueryFormatID where
-  pretty = \case
-    MarabouQueries -> "Marabou query format"
-    VNNLibQueries -> "VNNLib query format"
-
--- | A format for an output query that verifiers can parse.
-data QueryFormat = QueryFormat
-  { queryFormatID :: QueryFormatID,
-    queryOutputFormat :: ExternalOutputFormat,
-    -- | The command to compile an individual query
-    compileQuery :: forall m. (MonadLogger m) => CLSTProblem -> m QueryText
-  }
-
---------------------------------------------------------------------------------
 -- Query results
 
 data QueryResult witness
@@ -200,6 +168,11 @@ data QueryResult witness
 instance (FromJSON witness) => FromJSON (QueryResult witness)
 
 instance (ToJSON witness) => ToJSON (QueryResult witness)
+
+instance (Pretty witness) => Pretty (QueryResult witness) where
+  pretty = \case
+    SAT w -> "SAT:" <+> pretty w
+    UnSAT -> "UNSAT"
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
@@ -243,6 +216,13 @@ data VariableNormalisationStep
 instance ToJSON VariableNormalisationStep
 
 instance FromJSON VariableNormalisationStep
+
+instance Pretty VariableNormalisationStep where
+  pretty = \case
+    EliminateViaGaussian v s -> "EliminateGaussian[" <+> pretty v <+> "=" <+> pretty s <+> "]"
+    EliminateViaFourierMotzkin v _ -> "EliminateFourierMotzkin[" <+> pretty v <+> "]"
+    Reduce v -> "Reduce[" <+> pretty v <+> "]"
+    Introduce v -> "Introduce[" <+> pretty v <+> "]"
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.

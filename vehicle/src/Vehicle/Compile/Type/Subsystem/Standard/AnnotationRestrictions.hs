@@ -11,6 +11,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -18,13 +19,13 @@ import Vehicle.Expr.Normalised
 
 restrictStandardPropertyType ::
   forall m.
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   DeclProvenance ->
   StandardGluedType ->
   m ()
 restrictStandardPropertyType decl parameterType = go (normalised parameterType)
   where
-    go :: VType StandardBuiltinType -> m ()
+    go :: VType StandardBuiltin -> m ()
     go = \case
       VBoolType {} -> return ()
       VVectorType tElem _ -> go tElem
@@ -34,7 +35,7 @@ restrictStandardPropertyType decl parameterType = go (normalised parameterType)
 -- Parameters
 
 restrictStandardParameterType ::
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   ParameterSort ->
   DeclProvenance ->
   StandardGluedType ->
@@ -44,7 +45,7 @@ restrictStandardParameterType sort = case sort of
   Inferable -> restrictStandardInferableParameterType
 
 restrictStandardNonInferableParameterType ::
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -60,7 +61,7 @@ restrictStandardNonInferableParameterType decl parameterType = do
   return $ unnormalised parameterType
 
 restrictStandardInferableParameterType ::
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -74,7 +75,7 @@ restrictStandardInferableParameterType decl parameterType =
 
 restrictStandardDatasetType ::
   forall m.
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType
@@ -105,7 +106,7 @@ restrictStandardDatasetType decl datasetType = do
 
 restrictStandardNetworkType ::
   forall m.
-  (MonadTypeChecker StandardBuiltinType m) =>
+  (MonadTypeChecker StandardBuiltin m) =>
   DeclProvenance ->
   StandardGluedType ->
   m StandardType

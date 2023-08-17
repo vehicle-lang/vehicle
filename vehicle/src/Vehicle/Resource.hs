@@ -3,17 +3,16 @@
 module Vehicle.Resource where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM, when)
+import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map, assocs)
 import Data.Map qualified as Map
-import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 
@@ -69,6 +68,10 @@ instance FromJSON ResourceIntegrityInfo
 
 instance ToJSON ResourceIntegrityInfo
 
+instance Pretty ResourceIntegrityInfo where
+  pretty ResourceIntegrityInfo {..} =
+    pretty name <+> parens (pretty filePath)
+
 data ResourcesIntegrityInfo = ResourcesIntegrityInfo
   { specificationSummary :: ResourceIntegrityInfo,
     networkSummaries :: [ResourceIntegrityInfo],
@@ -80,6 +83,35 @@ data ResourcesIntegrityInfo = ResourcesIntegrityInfo
 instance FromJSON ResourcesIntegrityInfo
 
 instance ToJSON ResourcesIntegrityInfo
+
+data ResourceIntegrityError
+  = MissingResources (NonEmpty ResourceIntegrityInfo)
+  | AlteredResources (NonEmpty ResourceIntegrityInfo)
+
+instance Pretty ResourceIntegrityError where
+  pretty = \case
+    MissingResources missingResources ->
+      "The following resources cannot not be found:"
+        <> line
+        <> line
+        <> indent 2 (vsep (fmap pretty missingResources))
+        <> line
+        <> line
+        <> "To fix this problem, either move the missing files back to the"
+          <+> locations
+          <+> "above or use Vehicle to re-compile the specification with the new"
+          <+> locations
+        <> "."
+      where
+        locations = "location" <> if length missingResources == 1 then "" else "s"
+    AlteredResources alteredResources ->
+      "The following resources have been altered since verification was last run:"
+        <> line
+        <> line
+        <> indent 2 (vsep (fmap pretty alteredResources))
+        <> line
+        <> line
+        <> "To fix this problem, use Vehicle to re-verify the specification."
 
 --------------------------------------------------------------------------------
 -- Hashing
@@ -160,9 +192,14 @@ checkResourcesIntegrity = \case
 checkIntegrityOfResources ::
   (MonadIO m) =>
   ResourcesIntegrityInfo ->
-  m ([ResourceIntegrityInfo], [ResourceIntegrityInfo])
-checkIntegrityOfResources ResourcesIntegrityInfo {..} =
-  checkResourcesIntegrity $ specificationSummary : networkSummaries <> datasetSummaries
+  m (Maybe ResourceIntegrityError)
+checkIntegrityOfResources ResourcesIntegrityInfo {..} = do
+  let resourceSummaries = specificationSummary : networkSummaries <> datasetSummaries
+  (missingResources, alteredResources) <- checkResourcesIntegrity resourceSummaries
+  case (missingResources, alteredResources) of
+    (x : xs, _) -> return $ Just $ MissingResources (x :| xs)
+    (_, x : xs) -> return $ Just $ AlteredResources (x :| xs)
+    _ -> return Nothing
 
 reparseResources :: ResourcesIntegrityInfo -> Resources
 reparseResources ResourcesIntegrityInfo {..} = do
@@ -175,28 +212,3 @@ reparseResources ResourcesIntegrityInfo {..} = do
 
 reparseResourceType :: [ResourceIntegrityInfo] -> Map Name String
 reparseResourceType = foldr (\info -> Map.insert (name info) (filePath info)) mempty
-
---------------------------------------------------------------------------------
--- Others
-
-warnIfUnusedResources ::
-  (MonadLogger m, HasName ident Name) =>
-  ExternalResource ->
-  Map Name a ->
-  Map ident b ->
-  m ()
-warnIfUnusedResources resourceType given found = do
-  when (null found) $
-    logDebug MinDetail $
-      "No" <+> pretty resourceType <> "s found in program"
-
-  let givenNames = Map.keysSet given
-  let foundNames = Set.map nameOf $ Map.keysSet found
-  let unusedParams = givenNames `Set.difference` foundNames
-  when (Set.size unusedParams > 0) $
-    logWarning $
-      "the following"
-        <+> pretty resourceType
-        <> "s were provided"
-        <+> "but not used by the specification:"
-        <+> prettySet unusedParams

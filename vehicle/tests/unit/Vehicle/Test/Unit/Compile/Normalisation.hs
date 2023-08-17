@@ -9,10 +9,9 @@ import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardBinder, StandardBuiltinType (..), StandardExpr, StandardType)
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
+import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn (Lv)
-import Vehicle.Expr.Normalisable (NormalisableBuiltin (..))
 import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)
 
@@ -30,26 +29,26 @@ normalisationTests =
         NBETest
           { name = "AppLambdaClosedBody",
             dbLevel = 0,
-            input = App p (Lam p (binding (NatType p)) (BoundVar p 0)) [ExplicitArg p $ NatLiteral p 1],
+            input = App p (Lam p (binding (NatType p)) (BoundVar p 0)) [RelevantExplicitArg p $ NatLiteral p 1],
             expected = NatLiteral p 1
           },
         NBETest
           { name = "AppLambdaOpenBody",
             dbLevel = 1,
-            input = App p (Lam p (binding (NatType p)) (BoundVar p 1)) [ExplicitArg p $ NatLiteral p 1],
+            input = App p (Lam p (binding (NatType p)) (BoundVar p 1)) [RelevantExplicitArg p $ NatLiteral p 1],
             expected = BoundVar p 0
           },
         NBETest
           { name = "AppPlus",
             dbLevel = 1,
-            input = App p (Builtin p $ CFunction $ Add AddNat) [ExplicitArg p (NatLiteral p 2), ExplicitArg p (NatLiteral p 1)],
+            input = App p (Builtin p $ BuiltinFunction $ Add AddNat) [RelevantExplicitArg p (NatLiteral p 2), RelevantExplicitArg p (NatLiteral p 1)],
             expected = NatLiteral p 3
           },
         NBETest
           { name = "ListMeta",
             dbLevel = 1,
-            input = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))],
-            expected = App p (Builtin p $ CType $ StandardBuiltinType List) [ExplicitArg p (Meta p (MetaID 0))]
+            input = App p (Builtin p $ BuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))],
+            expected = App p (Builtin p $ BuiltinType List) [RelevantExplicitArg p (Meta p (MetaID 0))]
           }
       ]
 
@@ -66,7 +65,7 @@ data NBETest = NBETest
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- runEmptyNormT @StandardBuiltinType $ whnf (mkNoOpEnv dbLevel) input
+    normInput <- runEmptyNormT @StandardBuiltin $ whnf (mkNoOpEnv dbLevel) input
     actual <- quote mempty dbLevel normInput
 
     let errorMessage =

@@ -1,0 +1,5 @@
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+@property;
+bounded : forallT (f : Tensor Rat (1 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+bounded f = forall x . 0.0 < x and x < 1.0 => 0.0 < f [x] ! 0 and f [x] ! 0 < 1.0

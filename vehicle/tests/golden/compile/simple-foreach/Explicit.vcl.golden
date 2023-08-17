@@ -1,0 +1,8 @@
+foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
+foreachVector n f = map f (indices n)
+
+type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
+
+@property;
+index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Bool (2 :: nil);
+index f = foreachVector 2 (\ i -> f [0.0, 0.0] ! i >= 0.0)

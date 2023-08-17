@@ -1,0 +1,6 @@
+untyped : (\ A -> Vector A) Rat;
+untyped = [0.0]
+
+@property;
+p : forallT (f : Vector Rat -> Vector Rat) . Bool;
+p f = f untyped ! 0 >= 0.0

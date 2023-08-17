@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "v0.5.0"
+current_version = "v0.10.0"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -14,6 +14,7 @@ push = true
 "CONTRIBUTING.md" = [
     "This should print `{pep440_version}`.",
     "vehicle_lang-{pep440_version}-",
+    "<https://github.com/vehicle-lang/vehicle/releases/tag/v{pep440_version}>"
 ]
 "vehicle-python/src/vehicle_lang/_version.py" = [
     '^VERSION: str = "{pep440_version}"$'

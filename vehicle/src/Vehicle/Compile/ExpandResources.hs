@@ -1,6 +1,5 @@
 module Vehicle.Compile.ExpandResources
   ( expandResources,
-    splitResourceCtx,
   )
 where
 
@@ -9,7 +8,9 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Foldable (traverse_)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
@@ -19,7 +20,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalised (pattern VNatLiteral)
+import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Compile.Warning (CompileWarning (..))
+import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
 
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.
@@ -27,7 +30,7 @@ expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
   StandardGluedProg ->
-  m ResourceContext
+  m (NetworkContext, StandardNormDeclCtx, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     (intermediateResourcesCtx, inferableParameterCtx) <-
@@ -35,15 +38,20 @@ expandResources resources prog =
 
     checkForUnusedResources resources intermediateResourcesCtx
 
-    fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
+    resourceContext <- fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
+    let (networkCtx, declCtx) = splitResourceCtx resourceContext
+    integrityInfo <- generateResourcesIntegrityInfo resources
+    return (networkCtx, declCtx, integrityInfo)
 
 splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
 splitResourceCtx ResourceContext {..} = do
+  -- This is a hack. The type is only every used for its arity, so this is okay.
+  let unitType = BuiltinType Unit
   let mkEntry expr =
-        NormDeclCtxEntry
-          { declExpr = expr,
+        TypingDeclCtxEntry
+          { declBody = Just expr,
             declAnns = [],
-            declArity = 0
+            declType = Glued (Builtin mempty unitType) (VBuiltin unitType [])
           }
   let declCtx = fmap mkEntry parameterContext <> fmap mkEntry datasetContext
   (networkContext, declCtx)
@@ -103,4 +111,25 @@ fillInInferableParameters ResourceContext {..} inferableCtx = do
       m ParameterContext
     insertInferableParameter ctx (param, maybeValue) = case maybeValue of
       Left p -> throwError $ InferableParameterUninferrable (param, p)
-      Right (_, _, v) -> return $ Map.insert param (VNatLiteral v) ctx
+      Right (_, _, v) -> do
+        logDebug MaxDetail $ "Inferred" <+> quotePretty param <+> "as" <+> quotePretty v
+        return $ Map.insert param (VNatLiteral v) ctx
+
+warnIfUnusedResources ::
+  (MonadLogger m, HasName ident Name) =>
+  ExternalResource ->
+  Map Name a ->
+  Map ident b ->
+  m ()
+warnIfUnusedResources resourceType given found = do
+  when (null found) $
+    logDebug MinDetail $
+      "No" <+> pretty resourceType <> "s found in program"
+
+  let givenNames = Map.keysSet given
+  let foundNames = Set.map nameOf $ Map.keysSet found
+  let unusedParams = givenNames `Set.difference` foundNames
+  when (Set.size unusedParams > 0) $
+    logWarning $
+      pretty $
+        UnusedResource resourceType unusedParams

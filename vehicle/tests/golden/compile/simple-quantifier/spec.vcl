@@ -1,5 +1,5 @@
 unused : Bool
-unused = forall (x : Int) . True
+unused = forall (x : Rat) . True
 
 @network
 f : Vector Rat 1 -> Vector Rat 1

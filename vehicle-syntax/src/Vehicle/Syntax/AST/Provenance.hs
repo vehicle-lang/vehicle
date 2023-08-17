@@ -1,19 +1,18 @@
 module Vehicle.Syntax.AST.Provenance
-  ( Provenance,
+  ( Provenance (..),
     tkProvenance,
     HasProvenance (..),
     expandProvenance,
     fillInProvenance,
 
     -- * Exported for 'Vehicle.Syntax.AST.Instances.NoThunks'
-    Position,
-    Range,
-    Origin,
+    Position (..),
+    Range (..),
   )
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON (..))
+import Data.Aeson (KeyValue (..), ToJSON (..), object)
 import Data.Hashable (Hashable (..))
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
@@ -46,8 +45,6 @@ instance Show Position where
 instance Pretty Position where
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
 
-instance ToJSON Position
-
 instance Serialize Position
 
 -- | Get the starting position of a token.
@@ -72,6 +69,12 @@ data Range = Range
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
 
+instance Semigroup Range where
+  Range b1 _ <> Range _ b2 = Range b1 b2
+
+instance Monoid Range where
+  mempty = Range (Position 0 0) (Position 0 0)
+
 instance Pretty Range where
   pretty (Range p1 p2) =
     if posLine p1 == posLine p2
@@ -87,51 +90,15 @@ instance Pretty Range where
 
 instance Serialize Range
 
--- Doesn't handle anything except inclusive ranges as that's all we use in our code
--- at the moment.
-mergeRangePair :: Range -> Range -> Range
-mergeRangePair (Range b1 _) (Range _ b2) = Range b1 b2
-
 expandRange :: (Int, Int) -> Range -> Range
 expandRange (l, r) (Range start end) =
   Range (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)
 
 --------------------------------------------------------------------------------
--- Origin
-
--- | The origin of a piece of code
-data Origin
-  = -- | set of locations in the source file
-    FromSource Range
-  | -- | name of the parameter
-    FromParameter Text
-  | FromDataset Text
-  deriving (Show, Eq, Ord, Generic)
-
-instance Semigroup Origin where
-  FromSource r1 <> FromSource r2 = FromSource (mergeRangePair r1 r2)
-  p@FromSource {} <> _ = p
-  _ <> p@FromSource {} = p
-  p@FromDataset {} <> _ = p
-  _ <> p@FromDataset {} = p
-  p@FromParameter {} <> _ = p
-
-instance Monoid Origin where
-  mempty = FromSource (Range (Position 0 0) (Position 0 0))
-
-instance Pretty Origin where
-  pretty = \case
-    FromSource range -> pretty range
-    FromParameter name -> "parameter" <+> squotes (pretty name)
-    FromDataset name -> "in dataset" <+> squotes (pretty name)
-
-instance Serialize Origin
-
---------------------------------------------------------------------------------
 -- Provenance
 
 data Provenance = Provenance
-  { origin :: Origin,
+  { range :: Range,
     modul :: Module
   }
   deriving (Generic)
@@ -141,9 +108,6 @@ instance Show Provenance where
 
 instance NFData Provenance where
   rnf _ = ()
-
-instance ToJSON Provenance where
-  toJSON _ = toJSON ()
 
 instance Eq Provenance where
   _x == _y = True
@@ -155,7 +119,7 @@ instance Serialize Provenance
 
 -- | Get the provenance for a single token.
 tkProvenance :: (IsToken a) => Module -> a -> Provenance
-tkProvenance mod tk = Provenance (FromSource (Range start end)) mod
+tkProvenance mod tk = Provenance (Range start end) mod
   where
     start = tkPosition tk
     end = Position (posLine start) (posColumn start + tkLength tk)
@@ -165,18 +129,13 @@ fillInProvenance provenances = do
   let (starts, ends) = NonEmpty.unzip (fmap getPositions provenances)
   let start = minimum starts
   let end = maximum ends
-  Provenance (FromSource (Range start end)) (modul $ NonEmpty.head provenances)
+  Provenance (Range start end) (modul $ NonEmpty.head provenances)
   where
     getPositions :: Provenance -> (Position, Position)
-    getPositions (Provenance origin _) = case origin of
-      FromSource (Range start end) -> (start, end)
-      _ ->
-        error
-          "Should not be filling in provenance from non-source file locations"
+    getPositions (Provenance (Range start end) modul) = (start, end)
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
-expandProvenance w (Provenance (FromSource rs) o) = Provenance (FromSource (expandRange w rs)) o
-expandProvenance _ p = p
+expandProvenance w (Provenance range o) = Provenance (expandRange w range) o
 
 instance Pretty Provenance where
   pretty (Provenance origin mod) = case mod of

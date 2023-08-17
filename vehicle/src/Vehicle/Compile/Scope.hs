@@ -16,29 +16,25 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
-  (MonadCompile m) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   ImportedModules ->
-  Prog Name Builtin ->
-  m (Prog Ix Builtin)
+  Prog Name builtin ->
+  m (Prog Ix builtin)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
   prog <- runReaderT (scopeProg e) importCtx
   return prog
 
-scopeCheckClosedExpr :: (MonadCompile m) => Expr Name Builtin -> m (Expr Ix Builtin)
+scopeCheckClosedExpr :: (MonadCompile m) => Expr Name builtin -> m (Expr Ix builtin)
 scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 
 --------------------------------------------------------------------------------
 -- Scope checking monad and context
-
-type DeclScopeCtx = Map Name Identifier
-
-type LocalScopeCtx = [Maybe Name]
 
 type MonadScope m =
   ( MonadCompile m,
@@ -48,10 +44,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: (MonadScope m) => Prog Name Builtin -> m (Prog Ix Builtin)
+scopeProg :: (MonadScope m, PrintableBuiltin builtin) => Prog Name builtin -> m (Prog Ix builtin)
 scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: (MonadScope m) => [Decl Name Builtin] -> m [Decl Ix Builtin]
+scopeDecls :: (MonadScope m, PrintableBuiltin builtin) => [Decl Name builtin] -> m [Decl Ix builtin]
 scopeDecls = \case
   [] -> return []
   (d : ds) -> do
@@ -61,12 +57,12 @@ scopeDecls = \case
 
     existingEntry <- asks (Map.lookup identName)
     case existingEntry of
-      Just existingIdent -> throwError $ DuplicateName (provenanceOf d) identName existingIdent
+      Just existingIdent -> throwError $ DeclarationDeclarationShadowing (provenanceOf d) identName existingIdent
       Nothing -> do
         ds' <- bindDecl ident (scopeDecls ds)
         return (d' : ds')
 
-scopeDecl :: (MonadScope m) => Decl Name Builtin -> m (Decl Ix Builtin)
+scopeDecl :: (MonadScope m, PrintableBuiltin builtin) => Decl Name builtin -> m (Decl Ix builtin)
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefAbstract p ident r t ->
@@ -79,8 +75,8 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
 scopeDeclExpr ::
   (MonadScope m) =>
   Bool ->
-  Expr Name Builtin ->
-  m (Expr Ix Builtin)
+  Expr Name builtin ->
+  m (Expr Ix builtin)
 scopeDeclExpr generalise expr = do
   declCtx <- ask
 
@@ -99,7 +95,7 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr Name Builtin -> m (Expr Name Builtin)
+generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr Name builtin -> m (Expr Name builtin)
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
@@ -107,15 +103,15 @@ generaliseExpr declContext expr = do
 findGeneralisableVariables ::
   (MonadCompile m) =>
   DeclScopeCtx ->
-  Expr Name Builtin ->
+  Expr Name builtin ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
-  execWriterT (runReaderT (traverseVars traverseVar expr) (declContext, mempty))
+  execWriterT (runReaderT (traverseExpr registerUnusedVars binderNoOp expr) (declContext, mempty))
   where
-    traverseVar ::
+    registerUnusedVars ::
       (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
       VarUpdate m Name Name
-    traverseVar p symbol = do
+    registerUnusedVars p symbol = do
       (declCtx, boundCtx) <- ask
 
       when (Map.notMember symbol declCtx && notElem (Just symbol) boundCtx) $ do
@@ -123,18 +119,21 @@ findGeneralisableVariables declContext expr =
 
       return $ BoundVar p symbol
 
+    binderNoOp :: (MonadScopeExpr m) => Binder Name builtin -> m ()
+    binderNoOp _ = return ()
+
 generaliseOverVariables ::
   (MonadCompile m) =>
   [GeneralisableVariable] ->
-  Expr Name Builtin ->
-  m (Expr Name Builtin)
+  Expr Name builtin ->
+  m (Expr Name builtin)
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
       (MonadCompile m) =>
-      (Expr Name Builtin, Set Name) ->
+      (Expr Name builtin, Set Name) ->
       GeneralisableVariable ->
-      m (Expr Name Builtin, Set Name)
+      m (Expr Name builtin, Set Name)
     generalise (expr, seenNames) (p, name)
       | name `Set.member` seenNames = return (expr, seenNames)
       | otherwise = do
@@ -154,8 +153,8 @@ type MonadScopeExpr m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-scopeExpr :: (MonadScopeExpr m) => Expr Name Builtin -> m (Expr Ix Builtin)
-scopeExpr = traverseVars scopeVar
+scopeExpr :: (MonadScopeExpr m) => Expr Name builtin -> m (Expr Ix builtin)
+scopeExpr = traverseExpr scopeVar scopeBinder
 
 -- | Find the index for a given name of a given sort.
 scopeVar :: (MonadScopeExpr m) => VarUpdate m Name Ix
@@ -169,6 +168,21 @@ scopeVar p symbol = do
       Nothing -> do
         throwError $ UnboundName p symbol
 
+scopeBinder ::
+  (MonadScopeExpr m) =>
+  Binder Name builtin ->
+  m ()
+scopeBinder binder = case nameOf binder of
+  Nothing -> return ()
+  Just name -> do
+    (declCtx, _boundCtx) <- ask
+    when (name `Map.member` declCtx) $
+      -- This restriction is needed so that
+      -- `Vehicle.Compile.ResourceFunctionalisation`
+      -- doesn't accidentally capture variables.
+      throwError $
+        DeclarationBoundShadowing (provenanceOf binder) name
+
 --------------------------------------------------------------------------------
 -- Utility functions
 
@@ -180,12 +194,20 @@ type MonadTraverse m =
 type VarUpdate m var1 var2 =
   forall builtin. Provenance -> var1 -> m (Expr var2 builtin)
 
-traverseVars ::
+type BinderUpdate m var1 =
+  forall builtin. Binder var1 builtin -> m ()
+
+type DeclScopeCtx = Map Name Identifier
+
+type LocalScopeCtx = [Maybe Name]
+
+traverseExpr ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
+  BinderUpdate m var1 ->
   Expr var1 builtin ->
   m (Expr var2 builtin)
-traverseVars f e = do
+traverseExpr f g e = do
   result <- case e of
     BoundVar p v -> f p v
     FreeVar p v -> return $ FreeVar p v
@@ -193,29 +215,31 @@ traverseVars f e = do
     Meta p i -> return $ Meta p i
     Hole p n -> return $ Hole p n
     Builtin p op -> return $ Builtin p op
-    Ann p ex t -> Ann p <$> traverseVars f ex <*> traverseVars f t
-    App p fun args -> App p <$> traverseVars f fun <*> traverse (traverse (traverseVars f)) args
+    Ann p ex t -> Ann p <$> traverseExpr f g ex <*> traverseExpr f g t
+    App p fun args -> App p <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
     Pi p binder res ->
-      traverseBinder f binder $ \binder' ->
-        Pi p binder' <$> traverseVars f res
+      traverseBinder f g binder $ \binder' ->
+        Pi p binder' <$> traverseExpr f g res
     Lam p binder body -> do
-      traverseBinder f binder $ \binder' ->
-        Lam p binder' <$> traverseVars f body
+      traverseBinder f g binder $ \binder' ->
+        Lam p binder' <$> traverseExpr f g body
     Let p bound binder body -> do
-      bound' <- traverseVars f bound
-      traverseBinder f binder $ \binder' ->
-        Let p bound' binder' <$> traverseVars f body
+      bound' <- traverseExpr f g bound
+      traverseBinder f g binder $ \binder' ->
+        Let p bound' binder' <$> traverseExpr f g body
 
   return result
 
 traverseBinder ::
   (MonadTraverse m) =>
   VarUpdate m var1 var2 ->
+  BinderUpdate m var1 ->
   Binder var1 builtin ->
   (Binder var2 builtin -> m (Expr var2 builtin)) ->
   m (Expr var2 builtin)
-traverseBinder f binder update = do
-  binder' <- traverse (traverseVars f) binder
+traverseBinder f g binder update = do
+  g binder
+  binder' <- traverse (traverseExpr f g) binder
   let updateCtx ctx = nameOf binder : ctx
   local (second updateCtx) (update binder')
 
@@ -225,7 +249,7 @@ logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: MonadTraverse m => NormalisableExpr -> m ()
+logScopeExit :: MonadTraverse m => Expr Ix -> m ()
 logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth

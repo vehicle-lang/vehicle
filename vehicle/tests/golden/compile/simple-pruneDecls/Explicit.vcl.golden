@@ -1,0 +1,10 @@
+add1 : Rat -> Rat;
+add1 x = x + 1.0
+
+@property;
+p1 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+p1 f = forall x . f x ! 0 >= add1 0.0
+
+@property;
+p2 : forallT (g : Vector Rat -> Vector Rat) . Bool;
+p2 g = forall x . g x ! 0 >= 0.0

@@ -1,12 +1,10 @@
 import sys
 
-from .session import Session
+import vehicle_lang.session
 
 
 def main() -> None:
-    with Session() as session:
-        exitCode = session.check_call(sys.argv[1:])
-    exit(exitCode)
+    exit(vehicle_lang.session.check_call(sys.argv[1:]))
 
 
 if __name__ == "__main__":

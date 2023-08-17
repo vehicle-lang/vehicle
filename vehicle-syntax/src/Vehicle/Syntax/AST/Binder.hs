@@ -1,7 +1,6 @@
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
@@ -25,8 +24,6 @@ data BinderNamingForm
   deriving (Eq, Show, Generic)
 
 instance NFData BinderNamingForm
-
-instance ToJSON BinderNamingForm
 
 instance Serialize BinderNamingForm
 
@@ -64,8 +61,6 @@ data BinderDisplayForm = BinderDisplayForm
   deriving (Eq, Show, Generic)
 
 instance NFData BinderDisplayForm
-
-instance ToJSON BinderDisplayForm
 
 instance Hashable BinderDisplayForm
 
@@ -106,8 +101,6 @@ data GenericBinder expr = Binder
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericBinder expr)
-
-instance (ToJSON expr) => ToJSON (GenericBinder expr)
 
 instance (Serialize expr) => Serialize (GenericBinder expr)
 
@@ -158,3 +151,6 @@ wantsToFold = foldingForm . binderDisplayForm
 
 binderNamingForm :: GenericBinder expr -> BinderNamingForm
 binderNamingForm = namingForm . binderDisplayForm
+
+setBinderRelevance :: GenericBinder expr -> Relevance -> GenericBinder expr
+setBinderRelevance (Binder p u v _r x) r = Binder p u v r x

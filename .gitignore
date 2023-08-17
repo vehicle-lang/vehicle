@@ -12,6 +12,10 @@
 .vscode/
 
 # Example folders
+examples/**/.vcl-cache-index
+examples/**/*.vclplan
+examples/**/*.vclresult
+examples/**/*-query*.txt
 examples/windController/agdaProof/WindControllerSpec.agda
 
 # Wheels
@@ -27,7 +31,6 @@ benchmarks.json
 # Vehicle
 ################################################################################
 
-*.vcl-cache
 *.vclo
 
 ################################################################################
@@ -541,3 +544,9 @@ TSWLatexianTemp*
 # option is specified. Footnotes are the stored in a file with suffix Notes.bib.
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
+
+################################################################################
+# Add Vehicle Standard Library
+################################################################################
+
+!/vehicle/lib

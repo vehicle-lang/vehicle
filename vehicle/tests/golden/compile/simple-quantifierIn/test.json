@@ -14,10 +14,16 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --declaration forallInForall --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-plan"],
-    "ignore":
-    {
-      "matches": ".*\"fileHash\".*"
-    }
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "enabled": false
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"]
   }
 ]

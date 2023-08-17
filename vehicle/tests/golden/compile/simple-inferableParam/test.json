@@ -9,11 +9,18 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/",
     "needs": ["spec.vcl"],
-    "produces": ["Marabou.queries/*.txt"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/positive.vcl-plan"],
     "ignore":
     {
-      "matches": ".*\"fileHash\".*"
+      "lines": ".*\"fileHash\".*"
     },
+    "enabled": false
+  },
+  {
+    "name": "Explicit",
+    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Explicit.vcl"],
     "enabled": false
   }
 ]

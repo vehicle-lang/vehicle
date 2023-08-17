@@ -5,33 +5,39 @@
       "needs": ["spec.vcl"]
     },
     {
-      "name": "LossFunction-DL2",
-      "run": "vehicle compile -s spec.vcl -t DL2Loss -o LossFunction-DL2.json --network f:NO_FILE --network g:NO_FILE",
+      "name": "DL2Loss",
+      "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LossFunction-DL2.json"]
+      "produces": ["DL2Loss.vcl"]
     },
     {
-      "name": "LossFunction-Godel",
-      "run": "vehicle compile -s spec.vcl -t GodelLoss -o LossFunction-Godel.json --network f:NO_FILE --network g:NO_FILE",
+      "name": "GodelLoss",
+      "run": "vehicle compile -s spec.vcl -t GodelLoss -o GodelLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LossFunction-Godel.json"]
+      "produces": ["GodelLoss.vcl"]
     },
     {
-      "name": "LossFunction-Lukasiewicz",
-      "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LossFunction-Lukasiewicz.json --network f:NO_FILE --network g:NO_FILE",
+      "name": "LukasiewiczLoss",
+      "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LukasiewiczLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LossFunction-Lukasiewicz.json"]
+      "produces": ["LukasiewiczLoss.vcl"]
     },
     {
-      "name": "LossFunction-Yager",
-      "run": "vehicle compile -s spec.vcl -t YagerLoss -o LossFunction-Yager.json --network f:NO_FILE --network g:NO_FILE",
+      "name": "YagerLoss",
+      "run": "vehicle compile -s spec.vcl -t YagerLoss -o YagerLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LossFunction-Yager.json"]
+      "produces": ["YagerLoss.vcl"]
     },
     {
-      "name": "LossFunction-Product",
-      "run": "vehicle compile -s spec.vcl -t ProductLoss -o LossFunction-Product.json --network f:NO_FILE --network g:NO_FILE",
+      "name": "ProductLoss",
+      "run": "vehicle compile -s spec.vcl -t ProductLoss -o ProductLoss.json",
       "needs": ["spec.vcl"],
-      "produces": ["LossFunction-Product.json"]
+      "produces": ["ProductLoss.json"]
+    },
+    {
+      "name": "Explicit",
+      "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
+      "needs": ["spec.vcl"],
+      "produces": ["Explicit.vcl"]
     }
   ]

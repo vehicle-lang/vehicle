@@ -2,6 +2,7 @@ module Vehicle.Prelude.Misc where
 
 import Control.Monad (when)
 import Control.Monad.Identity (Identity (..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
@@ -15,8 +16,10 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
+import Numeric (readFloat, readSigned)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 
 data VehicleLang = External | Internal
   deriving (Show)
@@ -55,6 +58,14 @@ repeatN f n = f . repeatN f (n - 1)
 
 unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
 unzipWith f = unzip . map f
+
+traverseListLocal :: (MonadReader v m) => (a -> m (v -> v, b)) -> [a] -> m [b]
+traverseListLocal f = \case
+  [] -> return []
+  x : xs -> do
+    (update, y) <- f x
+    ys <- local update (traverseListLocal f xs)
+    return $ y : ys
 
 partitionMaybeM :: (Monad m) => (a -> m (Maybe b)) -> [a] -> m ([b], [a])
 partitionMaybeM _ [] = return ([], [])
@@ -201,3 +212,9 @@ type TensorIndices = [Int]
 
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
+
+readFloatAsRational :: Text -> Rational
+readFloatAsRational str =
+  case readSigned readFloat (Text.unpack str) of
+    ((n, []) : _) -> n
+    _ -> error "Invalid number"

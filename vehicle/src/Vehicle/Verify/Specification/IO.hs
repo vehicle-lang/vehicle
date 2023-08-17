@@ -1,45 +1,55 @@
 module Vehicle.Verify.Specification.IO
   ( readSpecification,
-    readVerificationPlan,
-    outputCompilationResults,
+    writeSpecificationCache,
+    readSpecificationCacheIndex,
+    writeVerificationQuery,
+    writePropertyVerificationPlan,
+    readPropertyResult,
     verifySpecification,
-    verificationPlanFileName,
+    specificationCacheIndexFileName,
     isValidQueryFolder,
   )
 where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM)
+import Control.Monad (forM_, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy qualified as BIO
+import Data.IDX (encodeIDXFile)
+import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Monoid (Sum (..))
 import Data.Text (intercalate, pack, unpack)
-import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as TIO
-import Data.Text.Lazy qualified as Text
+import Data.Text.Lazy qualified as LazyText
+import Data.Vector qualified as BoxedVector
+import Data.Vector.Unboxed qualified as Vector (fromList)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitFailure)
 import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr, stdout)
 import System.ProgressBar
-import Vehicle.Backend.Prelude
+import Vehicle.Backend.Prelude (writeResultToFile)
+import Vehicle.Backend.Queries.Variable (UserVariable (..))
+import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Expr.Boolean
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier (queryFormats)
+import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------
 -- Specification
 
 readSpecification :: (MonadIO m) => FilePath -> m SpecificationText
 readSpecification inputFile
-  | takeExtension inputFile /= vehicleSpecificationFileExtension = do
+  | takeExtension inputFile /= specificationFileExtension = do
       fatalError $
         "Specification"
           <+> quotePretty inputFile
@@ -48,7 +58,7 @@ readSpecification inputFile
           <+> quotePretty (takeExtension inputFile)
           <> "."
             <+> "Only files with a"
-            <+> quotePretty vehicleSpecificationFileExtension
+            <+> quotePretty specificationFileExtension
             <+> "extension are supported."
   | otherwise =
       liftIO $
@@ -63,51 +73,79 @@ readSpecification inputFile
 --------------------------------------------------------------------------------
 -- Verification plan output
 
--- | Outputs the compiled verification plan and queries that make up the specification.
--- If a folder is provided it outputs them to individual files in that folder,
--- otherwise it outputs them to stdout.
-outputCompilationResults ::
-  (MonadIO m, MonadLogger m) =>
-  QueryFormatID ->
-  Maybe FilePath ->
-  (VerificationPlan, VerificationQueries) ->
+writeSpecificationCache ::
+  (MonadIO m) =>
+  FilePath ->
+  SpecificationCacheIndex ->
   m ()
-outputCompilationResults queryFormatID maybeOutputLocation (plan, queries) = do
-  case maybeOutputLocation of
-    Nothing -> return ()
-    Just folder -> liftIO $ createDirectoryIfMissing True folder
-
-  outputVerificationPlan maybeOutputLocation plan
-  writeVerificationQueries queryFormatID maybeOutputLocation queries
-
-isValidQueryFolder :: (MonadIO m) => FilePath -> m Bool
-isValidQueryFolder folder = liftIO $ doesFileExist (verificationPlanFileName folder)
-
-outputVerificationPlan :: (MonadIO m) => Maybe FilePath -> VerificationPlan -> m ()
-outputVerificationPlan maybeFolder plan = do
+writeSpecificationCache folder plan = do
   let planText = encodePretty' prettyJSONConfig plan
-  case maybeFolder of
-    Nothing -> programOutput $ pretty $ decodeUtf8 $ BIO.toStrict $ encodePretty' prettyJSONConfig plan
-    Just folder -> do
-      let planFile = verificationPlanFileName folder
+  let planFile = specificationCacheIndexFileName folder
 
-      maybeError <-
-        liftIO $
-          catch
-            (do BIO.writeFile planFile planText; return Nothing)
-            (\(e :: IOException) -> return $ Just e)
-
-      case maybeError of
-        Nothing -> return ()
-        Just err ->
+  liftIO $
+    catch
+      (do BIO.writeFile planFile planText)
+      ( \(err :: IOException) ->
           fatalError $
             "Unable to write the verification plan to file"
               <+> quotePretty planFile
               <> line
               <> indent 2 ("error:" <+> pretty (show err))
+      )
 
-readVerificationPlan :: (MonadIO m) => FilePath -> m VerificationPlan
-readVerificationPlan planFile = do
+readSpecificationCacheIndex ::
+  (MonadIO m) =>
+  FilePath ->
+  m SpecificationCacheIndex
+readSpecificationCacheIndex cacheFile = do
+  errorOrResult <-
+    liftIO $
+      catch
+        (Right <$> BIO.readFile cacheFile)
+        (\(e :: IOException) -> return $ Left e)
+
+  case errorOrResult of
+    Left err ->
+      fatalError $
+        "Unable to read the verification cache from file"
+          <+> quotePretty cacheFile
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
+    Right result -> case decode result of
+      Nothing ->
+        fatalError $
+          "Unabled to decode the verification cache from file"
+            <+> quotePretty cacheFile
+            <> "."
+              <+> ""
+      Just plan -> return plan
+
+writePropertyVerificationPlan ::
+  (MonadLogger m, MonadIO m) =>
+  FilePath ->
+  PropertyAddress ->
+  PropertyVerificationPlan ->
+  m ()
+writePropertyVerificationPlan folder propertyAddress plan = do
+  let planFile = propertyPlanFileName folder propertyAddress
+  let planText = encodePretty' prettyJSONConfig plan
+
+  liftIO $
+    catch
+      (BIO.writeFile planFile planText)
+      ( \(err :: IOException) ->
+          fatalError $
+            "Unable to write the verification plan to file"
+              <+> quotePretty planFile
+              <> line
+              <> indent 2 ("error:" <+> pretty (show err))
+      )
+
+readPropertyVerificationPlan ::
+  (MonadLogger m, MonadIO m) =>
+  FilePath ->
+  m PropertyVerificationPlan
+readPropertyVerificationPlan planFile = do
   errorOrResult <-
     liftIO $
       catch
@@ -130,105 +168,147 @@ readVerificationPlan planFile = do
               <+> ""
       Just plan -> return plan
 
-writeVerificationQueries ::
-  (MonadIO m, MonadLogger m) =>
-  QueryFormatID ->
-  Maybe FilePath ->
-  VerificationQueries ->
+writeVerificationQuery ::
+  (MonadLogger m, MonadIO m) =>
+  QueryFormat ->
+  FilePath ->
+  (QueryAddress, QueryText) ->
   m ()
-writeVerificationQueries queryFormatID maybeFolder verificationQueries = do
-  let queryFormat = queryFormats queryFormatID
-  let queryOutputForm = Just $ queryOutputFormat queryFormat
-  _ <- flip traverseSpecification verificationQueries $ \(queryAddress, queryText) -> do
-    let queryFileName = calculateQueryFileName queryAddress
-    case maybeFolder of
-      Nothing -> programOutput $ line <> line <> pretty queryAddress <> line <> pretty queryText
-      Just folder -> do
-        let queryFilePath = folder </> queryFileName
-        writeResultToFile queryOutputForm (Just queryFilePath) (pretty queryText)
+writeVerificationQuery queryFormat folder (queryAddress, queryText) = do
+  let queryOutputForm = queryOutputFormat queryFormat
+  let queryFilePath = folder </> calculateQueryFileName queryAddress
+  writeResultToFile (Just queryOutputForm) (Just queryFilePath) (pretty queryText)
 
-  return ()
+writePropertyResult ::
+  (MonadIO m) =>
+  FilePath ->
+  PropertyAddress ->
+  Bool ->
+  m ()
+writePropertyResult verificationCache address result = do
+  let resultFile = propertyResultFileName verificationCache address
+  liftIO $ writeFile resultFile (show result)
 
-verificationPlanFileName :: FilePath -> FilePath
-verificationPlanFileName folder = folder </> "" <.> vehicleVerificationPlanFileExtension
+readPropertyResult ::
+  (MonadIO m) =>
+  FilePath ->
+  PropertyAddress ->
+  m Bool
+readPropertyResult verificationCache address = do
+  let resultFile = propertyResultFileName verificationCache address
+  value <- liftIO $ readFile resultFile
+  return $ read value
+
+isValidQueryFolder :: (MonadIO m) => FilePath -> m Bool
+isValidQueryFolder folder = liftIO $ doesFileExist (specificationCacheIndexFileName folder)
+
+specificationCacheIndexFileName :: FilePath -> FilePath
+specificationCacheIndexFileName folder =
+  folder
+    </> ""
+      <.> specificationCacheIndexFileExtension
+
+propertyPlanFileName :: FilePath -> PropertyAddress -> FilePath
+propertyPlanFileName folder propertyAddress =
+  folder
+    </> layoutAsString (pretty propertyAddress)
+      <.> propertyVerificationPlanFileExtension
+
+propertyResultFileName :: FilePath -> PropertyAddress -> FilePath
+propertyResultFileName folder propertyAddress =
+  folder
+    </> layoutAsString (pretty propertyAddress)
+      <.> propertyVerificationResultFileExtension
 
 --------------------------------------------------------------------------------
 -- Verification
 
--- | Uses the verifier to verify the specification. Failure of one property does
--- not prevent the verification of the other properties.
-verifySpecification ::
-  (MonadIO m) =>
-  FilePath ->
-  Verifier ->
-  VerifierExecutable ->
-  Specification (Property QueryMetaData) ->
-  Maybe FilePath ->
-  m SpecificationStatus
-verifySpecification queryFolder verifier verifierExecutable (Specification namedProperties) assignmentsLocation = do
-  programOutput "Verifying properties:"
-  results <- forM namedProperties $ \(name, property) -> do
-    result <- verifyMultiProperty verifier verifierExecutable queryFolder assignmentsLocation property
-    return (name, result)
-
-  return $ Specification results
-
-verifyMultiProperty ::
-  forall m.
-  (MonadIO m) =>
-  Verifier ->
-  VerifierExecutable ->
-  FilePath ->
-  Maybe FilePath ->
-  MultiProperty (Property QueryMetaData) ->
-  m MultiPropertyStatus
-verifyMultiProperty verifier verifierExecutable queryFolder assignmentsLocation = go
-  where
-    go :: MultiProperty (Property QueryMetaData) -> m MultiPropertyStatus
-    go = \case
-      MultiProperty ps -> MultiProperty <$> traverse go ps
-      SingleProperty address property -> do
-        progressBar <- createPropertyProgressBar address (propertySize property)
-        let readerState = (verifier, verifierExecutable, queryFolder, progressBar)
-        result <- runReaderT (verifyProperty property) readerState
-        liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
-        outputAssignments assignmentsLocation address result
-        return $ SingleProperty address result
-
 type MonadVerify m =
-  ( MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
+  ( MonadLogger m,
     MonadIO m
   )
 
+type MonadVerifyProperty m =
+  ( MonadVerify m,
+    MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
+    MonadWriter (Sum Int) m
+  )
+
+-- | Uses the verifier to verify the specification. Failure of one property does
+-- not prevent the verification of the other properties.
+verifySpecification ::
+  (MonadVerify m) =>
+  FilePath ->
+  Verifier ->
+  VerifierExecutable ->
+  m ()
+verifySpecification queryFolder verifier verifierExecutable = do
+  programOutput "Verifying properties:"
+  let verificationPlanFile = specificationCacheIndexFileName queryFolder
+  SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
+  maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
+  case maybeIntegrityError of
+    Just err -> programOutput $ "Resource error:" <+> pretty err
+    Nothing -> do
+      let propertyAddresses = concatMap (multiPropertyAddresses . snd) properties
+      forM_ propertyAddresses $
+        verifyProperty verifier verifierExecutable queryFolder
+
+verifyProperty ::
+  forall m.
+  (MonadVerify m) =>
+  Verifier ->
+  VerifierExecutable ->
+  FilePath ->
+  PropertyAddress ->
+  m ()
+verifyProperty verifier verifierExecutable verificationCache address = do
+  -- Read the verification plan for the property
+  let propertyPlanFile = propertyPlanFileName verificationCache address
+  PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
+
+  -- Perform the verification
+  let numberOfQueries = propertySize queryMetaData
+  progressBar <- createPropertyProgressBar address numberOfQueries
+  let readerState = (verifier, verifierExecutable, verificationCache, progressBar)
+  (result, Sum numberOfQueriesExecuted) <- runWriterT (runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState)
+
+  -- Tidy up and output results
+  when (numberOfQueriesExecuted < numberOfQueries) $ do
+    -- The progress bar is only closed when all queries are run so in this
+    -- case we have to close it manually.
+    closePropertyProgressBar progressBar
+  outputPropertyResult verificationCache address result
+
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
-verifyProperty ::
-  (MonadVerify m) =>
+verifyPropertyBooleanStructure ::
+  forall m.
+  (MonadVerifyProperty m) =>
   Property QueryMetaData ->
   m PropertyStatus
-verifyProperty property = do
+verifyPropertyBooleanStructure property = do
   (negationStatus, status) <- go property
   return $ PropertyStatus negationStatus status
   where
     go ::
-      (MonadVerify m) =>
       BooleanExpr (QuerySet QueryMetaData) ->
       m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct x y -> do
-        result@(negated, x') <- go x
-        if evaluateQuery negated x'
+        result@(negated, status) <- go x
+        if evaluateQuery negated status
           then return result
           else go y
       Conjunct x y -> do
-        result@(negated, x') <- go x
-        if not (evaluateQuery negated x')
+        result@(negated, status) <- go x
+        if not (evaluateQuery negated status)
           then return result
           else go y
 
 verifyQuerySet ::
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   QuerySet QueryMetaData ->
   m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
 verifyQuerySet (QuerySet negated queries) = case queries of
@@ -239,13 +319,12 @@ verifyQuerySet (QuerySet negated queries) = case queries of
 
 verifyDisjunctAll ::
   forall m.
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   DisjunctAll (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableAssignment)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
-      (Monad m) =>
       NonEmpty (QueryAddress, QueryMetaData) ->
       m (QueryResult UserVariableAssignment)
     go (x :| []) = verifyQuery x
@@ -256,10 +335,11 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
         else go (y :| xs)
 
 verifyQuery ::
-  (MonadVerify m) =>
+  (MonadVerifyProperty m) =>
   (QueryAddress, QueryMetaData) ->
   m (QueryResult UserVariableAssignment)
 verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
+  tell (Sum 1)
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
   errorOrResult <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
@@ -269,56 +349,47 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
       exitFailure
     Right result -> do
       liftIO $ incProgress progressBar 1
-      return $ fmap (reconstructUserVars metaNetwork userVar) result
+      traverse (reconstructUserVars metaNetwork userVar) result
 
 --------------------------------------------------------------------------------
 -- Assignments
 
-outputAssignments ::
+outputPropertyResult ::
   (MonadIO m) =>
-  Maybe FilePath ->
+  FilePath ->
   PropertyAddress ->
   PropertyStatus ->
   m ()
-outputAssignments maybeLocation address (PropertyStatus negated s) = case s of
-  NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> case maybeLocation of
-    Nothing -> do
-      let witnessText = if negated then "Counter-example" else "Witness"
+outputPropertyResult verificationCache address result@(PropertyStatus _negated s) = do
+  liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
+  writePropertyResult verificationCache address (isVerified result)
+  case s of
+    NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> do
+      -- Output assignments to command line
       let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
-      let nameDoc = pretty $ propertyName address
-      let witnessDoc = witnessText <+> "for" <+> nameDoc <> line <> indent 2 assignmentDocs
+      let witnessDoc = indent 6 assignmentDocs
       liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
-    Just _location -> liftIO $ do
-      fatalError "outputting assignments to a file not yet implemented"
-  {-
-  let folder = takeDirectory location </> layoutAsString (pretty address)
-  createDirectoryIfMissing True folder
-  forM_ assignments $ \UserVariableAssignment {..} -> do
-    let file = folder </> Text.unpack variableName
-    let idxData = _
-    encodeIDXFile _ file
-  -}
-  _ -> return ()
+
+      -- Output assignments to file
+      let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
+      liftIO $ createDirectoryIfMissing True witnessFolder
+      forM_ assignments $ \(UserVariable {..}, value) -> do
+        let file = witnessFolder </> unpack userVarName
+        let dims = Vector.fromList userVarDimensions
+        -- TODO got to be a better way to do this conversion...
+        let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)
+        let idxData = IDXDoubles IDXDouble dims unboxedVector
+        liftIO $ encodeIDXFile idxData file
+    _ -> return ()
 
 --------------------------------------------------------------------------------
 -- Calculation of file paths
-
-calculateQueryFileName :: QueryAddress -> FilePath
-calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
-  let propertyStr
-        | null propertyIndices = ""
-        | otherwise = showTensorIndices propertyIndices
-
-  unpack propertyName
-    <> propertyStr
-    <> "-query"
-    <> show queryID <.> "txt"
 
 type PropertyProgressBar = ProgressBar ()
 
 createPropertyProgressBar :: (MonadIO m) => PropertyAddress -> Int -> m PropertyProgressBar
 createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
-  let propertyName = Text.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
+  let propertyName = LazyText.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
   let style =
         defStyle
           { stylePrefix = msg ("  " <> propertyName),
@@ -326,7 +397,10 @@ createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
             styleWidth = ConstantWidth 80
           }
   let initialProgress = Progress 0 numberOfQueries ()
-  liftIO $ newProgressBar style 10 initialProgress
+  liftIO $ hNewProgressBar stdout style 10 initialProgress
+
+closePropertyProgressBar :: (MonadIO m) => PropertyProgressBar -> m ()
+closePropertyProgressBar _progressBar = liftIO $ putStrLn ""
 
 {-
 completeProgress :: MonadIO m => PropertyProgressBar -> m ()
