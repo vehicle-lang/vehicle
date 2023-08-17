@@ -1,3 +1,4 @@
+import fractions
 from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
@@ -7,13 +8,14 @@ from typing import (
     Dict,
     List,
     Optional,
-    Sequence,
     SupportsFloat,
     SupportsInt,
     Tuple,
     Union,
+    cast,
 )
 
+import numpy as np
 import tensorflow as tf
 from typing_extensions import TypeVar, override
 
@@ -22,13 +24,15 @@ from ..typing import (
     DeclarationName,
     DifferentiableLogic,
     Domains,
+    Joiner,
     Optimisers,
+    Predicate,
     QuantifiedVariableName,
     VariableDomain,
     VehicleVector,
 )
 from .abc import ABCBuiltins
-from .error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
+from .error import VehiclePropertyNotFound
 from .python import PythonTranslation
 from .tensorflowpgd import pgd
 
@@ -43,6 +47,7 @@ __all__: List[str] = [
     "Provenance",
     # Translation to Tensorflow
     "TensorflowBuiltins",
+    "TensorflowVariableDomain",
     "TensorflowTranslation",
     # High-level functions
     "compile",
@@ -79,11 +84,12 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
 
     @override
     def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
-        raise VehicleBuiltinUnsupported(vcl.AtVector.__name__)
+        return vector[index]
 
     @override
     def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
-        raise VehicleBuiltinUnsupported(vcl.ConsVector.__name__)
+        # TODO: replace with efficient implementation
+        return (item, *tuple(vector))
 
     @override
     def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -93,7 +99,8 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
     ) -> _T:
-        raise VehicleBuiltinUnsupported(vcl.FoldVector.__name__)
+        # TODO: replace with efficient implementation
+        return reduce(lambda x, y: function(y, x), tuple(vector), initial)
 
     @override
     def Int(self, value: SupportsInt) -> tf.Tensor:
@@ -103,7 +110,9 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
     def MapVector(
         self, function: Callable[[_S], _T], vector: VehicleVector[_S]
     ) -> VehicleVector[_T]:
-        raise VehicleBuiltinUnsupported(vcl.MapVector.__name__)
+        # TODO: replace with efficient implementation
+        # return tf.map_fn(function, vector)
+        return self.Vector(*map(function, tuple(vector)))
 
     @override
     def MaxRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -144,8 +153,8 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         domain: VariableDomain[tf.Tensor],
         minimise: bool,
         context: Dict[str, Any],
-        joiner: Callable[[Any, Any], Any],
-        predicate: Callable[[Any], Any],
+        joiner: Joiner[tf.Tensor],
+        predicate: Predicate[tf.Tensor, tf.Tensor],
     ) -> Any:
         del context
         pgd_losses = [pgd(variable, domain, predicate, minimise) for _ in range(10)]
@@ -157,11 +166,12 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return tf.pow(x, y)
 
     @override
-    def QuantifiedVariable(self, name: str, shape: Tuple[int, ...]) -> tf.Variable:
+    def QuantifiedVariable(
+        self, name: QuantifiedVariableName, shape: Tuple[int, ...]
+    ) -> tf.Variable:
         initial_value = tf.constant(
-            value=0, dtype=self.dtype_rat, shape=shape, name=f"{name}-initialValue"
+            value=0, dtype=self.dtype_rat, shape=shape, name=f"initial_value_for_{name}"
         )
-
         return tf.Variable(
             initial_value=initial_value,
             name=name,
@@ -171,6 +181,8 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
 
     @override
     def Rat(self, value: SupportsFloat) -> tf.Tensor:
+        if isinstance(value, fractions.Fraction):
+            value = value.__float__()
         return tf.convert_to_tensor(value, dtype=self.dtype_rat)
 
     @override
@@ -182,7 +194,7 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return tf.subtract(x, y)
 
     def Vector(self, *values: _T) -> VehicleVector[_T]:
-        raise VehicleBuiltinUnsupported(vcl.Vector.__name__)
+        return cast(VehicleVector[_T], tf.convert_to_tensor(values))
 
     @override
     def ZipWithVector(
@@ -191,7 +203,55 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         vector1: VehicleVector[_S],
         vector2: VehicleVector[_T],
     ) -> VehicleVector[_U]:
-        raise VehicleBuiltinUnsupported(vcl.ZipWithVector.__name__)
+        # TODO: replace with efficient implementation
+        # return tf.map_fn(function, tf.concat(vector1, vector2))
+        return self.Vector(*map(function, tuple(vector1), tuple(vector2)))
+
+
+################################################################################
+### Bounded Variable Domain using TensorFlow
+################################################################################
+
+
+@dataclass(frozen=True)
+class TensorflowVariableDomain(VariableDomain[tf.Tensor]):
+    lower_bounds: tf.Tensor
+    upper_bounds: tf.Tensor
+    dtype: tf.DType
+
+    @staticmethod
+    def from_bounds(
+        lower_bounds: Any,
+        upper_bounds: Any,
+        *,
+        dtype: tf.DType,
+    ) -> VariableDomain[tf.Tensor]:
+        return TensorflowVariableDomain(
+            lower_bounds=tf.convert_to_tensor(lower_bounds, dtype=dtype),
+            upper_bounds=tf.convert_to_tensor(upper_bounds, dtype=dtype),
+            dtype=dtype,
+        )
+
+    @override
+    def dimensions(self) -> Tuple[int, ...]:
+        return tuple(self.lower_bounds.shape.as_list())
+
+    @override
+    def random_value(self) -> tf.Tensor:
+        return (self.lower_bounds + self.upper_bounds) / 2.0
+
+    @override
+    def clip(self, point: VehicleVector[tf.Tensor]) -> tf.Tensor:
+        return tf.clip_by_value(
+            tf.convert_to_tensor(point, dtype=self.dtype),
+            self.lower_bounds,
+            self.upper_bounds,
+        )
+
+
+################################################################################
+### Translation from Vehicle AST to TensorFlow in Python AST
+################################################################################
 
 
 @dataclass(frozen=True)
@@ -226,9 +286,9 @@ def load_loss_function(
     """
     translation = TensorflowTranslation(
         builtins=TensorflowBuiltins(
-            dtype_nat=dtype_nat or tf.uint64,
-            dtype_int=dtype_int or tf.int64,
-            dtype_rat=dtype_rat or tf.float64,
+            dtype_nat=dtype_nat or tf.uint32,
+            dtype_int=dtype_int or tf.int32,
+            dtype_rat=dtype_rat or tf.float32,
             quantified_variables=quantified_variables,
             quantified_variable_domains=quantified_variable_domains,
             quantified_variable_optimisers=quantified_variable_optimisers,

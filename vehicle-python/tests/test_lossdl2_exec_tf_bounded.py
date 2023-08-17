@@ -25,14 +25,14 @@ def test_lossdl2_exec_tf_bounded() -> None:
         specification_filename = "test_bounded.vcl"
         specification_path = Path(__file__).parent / "data" / specification_filename
 
-        def domain_for_x(_ctx: Dict[str, Any]) -> vcl2tf.VariableDomain[tf.float64]:
-            return vcl2tf.BoundedVariableDomain.from_bounds(0, 1, dtype=tf.float64)
+        def domain_for_x(_ctx: Dict[str, Any]) -> vcl2tf.VariableDomain[np.float32]:
+            return vcl2tf.TensorflowVariableDomain.from_bounds(0, 1, dtype=np.float32)
 
         bounded_loss = tf.function(
             vcl2tf.load_loss_function(
                 specification_path,
                 property_name="bounded",
-                dtype_rat=tf.float64,
+                dtype_rat=tf.float32,
                 quantified_variable_domains={"x": domain_for_x},
                 target=vcl2tf.DifferentiableLogic.DL2,
             )

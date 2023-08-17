@@ -15,26 +15,29 @@ def network_validate_output(output: Dict[str, Any]) -> None:
     assert output["prop"](network) == 0.0
 
 
+domain_0to1 = vcl.PythonVariableDomain.from_bounds(0, 1, dtype=np.float32)
+
+
 def quantifier_all_optimiser(
     variable: str,
-    _domain: vcl.BoundedVariableDomain[np.float64],
+    _domain: vcl.PythonVariableDomain[np.float32],
     _minimise: bool,
     _context: Dict[str, Any],
-    joiner: Callable[[np.float64, np.float64], np.float64],
-    predicate: Callable[[np.float64], np.float64],
-) -> np.float64:
-    return reduce(joiner, [predicate(np.float64(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
+    joiner: Callable[[np.float32, np.float32], np.float32],
+    predicate: Callable[[np.float32], np.float32],
+) -> np.float32:
+    return reduce(joiner, [predicate(np.float32(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
 def quantifier_any_optimiser(
     variable: str,
-    _domain: vcl.BoundedVariableDomain[np.float64],
+    _domain: vcl.PythonVariableDomain[np.float32],
     _minimise: bool,
     _context: Dict[str, Any],
-    joiner: Callable[[np.float64, np.float64], np.float64],
-    predicate: Callable[[np.float64], np.float64],
-) -> np.float64:
-    return reduce(joiner, [predicate(np.float64(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
+    joiner: Callable[[np.float32, np.float32], np.float32],
+    predicate: Callable[[np.float32], np.float32],
+) -> np.float32:
+    return reduce(joiner, [predicate(np.float32(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
 @pytest.mark.parametrize(
@@ -50,7 +53,7 @@ def quantifier_any_optimiser(
             "test_at.vcl",
             {},
             {},
-            {"prop": 1.0},
+            {"prop": 0.0},
         ),
         (
             "test_constant.vcl",
@@ -68,7 +71,7 @@ def quantifier_any_optimiser(
             "test_indicator.vcl",
             {},
             {},
-            {"prop": 1.0},
+            {"prop": 0.0},
         ),
         (
             "test_maximum.vcl",
@@ -102,54 +105,46 @@ def quantifier_any_optimiser(
         ),
         (
             "test_quantifier_all.vcl",
-            {
-                "x": lambda _ctx: vcl.BoundedVariableDomain.from_bounds(
-                    0, 1, dtype=np.float64
-                )
-            },
+            {"x": lambda _ctx: domain_0to1},
             {"x": quantifier_all_optimiser},
             {"prop": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
-            {
-                "x": lambda _ctx: vcl.BoundedVariableDomain.from_bounds(
-                    0, 1, dtype=np.float64
-                )
-            },
+            {"x": lambda _ctx: domain_0to1},
             {"x": quantifier_any_optimiser},
-            {"prop": 0.0},
+            {"prop": 1.0},
         ),
         (
             "test_subtraction.vcl",
             {},
             {},
-            {"prop": 0.0},
+            {"prop": 1.0},
         ),
         (
             "test_tensor.vcl",
             {},
             {},
-            {"prop": 0.0},
+            {"prop": 1.0},
         ),
         (
             "test_variable.vcl",
             {},
             {},
-            {"prop": 0.0},
+            {"prop": 1.0},
         ),
     ],
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
     quantified_variable_domains: vclt.Domains[
-        Any, Union[np.uint64, np.int64, np.float64]
+        Any, Union[np.uint64, np.int64, np.float32]
     ],
     quantified_variable_optimisers: vclt.Optimisers[
         vclt.QuantifiedVariableName,
         Any,
-        Union[np.uint64, np.int64, np.float64],
-        np.float64,
+        Union[np.uint64, np.int64, np.float32],
+        np.float32,
     ],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:

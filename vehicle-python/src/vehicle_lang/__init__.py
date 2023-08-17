@@ -3,8 +3,8 @@ from typing import List
 from ._version import VERSION as VERSION
 from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
+from .compile.python import PythonVariableDomain as PythonVariableDomain
 from .compile.python import load_loss_function as load_loss_function
-from .compile.variabledomain import BoundedVariableDomain as BoundedVariableDomain
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
 from .session.error import VehicleSessionClosed as VehicleSessionClosed
@@ -25,7 +25,7 @@ __all__: List[str] = [
     # Compile
     "load_loss_function",
     "VariableDomain",
-    "BoundedVariableDomain",
+    "PythonVariableDomain",
     # Verify
     "verify",
     # Error types

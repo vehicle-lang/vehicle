@@ -1,8 +1,10 @@
 import ast as py
+import sys
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -19,7 +21,10 @@ from typing import (
 )
 
 import numpy as np
+import numpy.typing as npt
 from typing_extensions import Self, TypeVar, final, override
+
+from vehicle_lang.typing import VariableDomain, VehicleVector
 
 from .. import ast as vcl
 from ..ast import (
@@ -62,6 +67,7 @@ __all__: List[str] = [
     # Translation to Python
     "PythonBuiltins",
     "PythonTranslation",
+    "PythonVariableDomain",
     # High-level functions
     "compile",
     "load_loss_function",
@@ -76,9 +82,14 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 
-_Nat = TypeVar("_Nat", bound=np.unsignedinteger[Any])
-_Int = TypeVar("_Int", bound=np.signedinteger[Any])
-_Rat = TypeVar("_Rat", bound=np.floating[Any])
+if TYPE_CHECKING or sys.version_info >= (3, 9):
+    _Nat = TypeVar("_Nat", bound=np.unsignedinteger[Any])
+    _Int = TypeVar("_Int", bound=np.signedinteger[Any])
+    _Rat = TypeVar("_Rat", bound=np.floating[Any])
+else:
+    _Nat = TypeVar("_Nat", bound=np.unsignedinteger)
+    _Int = TypeVar("_Int", bound=np.signedinteger)
+    _Rat = TypeVar("_Rat", bound=np.floating)
 
 
 @final
@@ -146,6 +157,47 @@ class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
         self, name: QuantifiedVariableName, shape: Sequence[int]
     ) -> QuantifiedVariableName:
         return name
+
+
+################################################################################
+### Bounded Variable Domain using Numpy
+################################################################################
+
+_DType = TypeVar("_DType", bound=np.generic)
+
+
+@dataclass(frozen=True)
+class PythonVariableDomain(VariableDomain[_DType]):
+    lower_bounds: npt.NDArray[_DType]
+    upper_bounds: npt.NDArray[_DType]
+    dtype: Type[_DType]
+
+    @staticmethod
+    def from_bounds(
+        lower_bounds: npt.ArrayLike,
+        upper_bounds: npt.ArrayLike,
+        *,
+        dtype: Type[_DType],
+    ) -> VariableDomain[_DType]:
+        return PythonVariableDomain(
+            lower_bounds=np.array(lower_bounds, dtype=dtype),
+            upper_bounds=np.array(upper_bounds, dtype=dtype),
+            dtype=dtype,
+        )
+
+    @override
+    def dimensions(self) -> Tuple[int, ...]:
+        return self.lower_bounds.shape
+
+    @override
+    def random_value(self) -> npt.NDArray[_DType]:
+        return np.divide(np.add(self.lower_bounds, self.upper_bounds), 2.0)
+
+    @override
+    def clip(self, point: VehicleVector[_DType]) -> npt.NDArray[_DType]:
+        return np.clip(
+            np.array(point, dtype=self.dtype), self.lower_bounds, self.upper_bounds
+        )
 
 
 ################################################################################
@@ -621,9 +673,9 @@ def load(
 ) -> Dict[str, Any]:
     translation = PythonTranslation(
         builtins=PythonBuiltins(
-            dtype_nat=dtype_nat or np.uint64,
-            dtype_int=dtype_int or np.int64,
-            dtype_rat=dtype_rat or np.float64,
+            dtype_nat=dtype_nat or np.uint32,
+            dtype_int=dtype_int or np.int32,
+            dtype_rat=dtype_rat or np.float32,
             quantified_variables={v: v for v in quantified_variable_domains.keys()},
             quantified_variable_domains=quantified_variable_domains,
             quantified_variable_optimisers=quantified_variable_optimisers,
