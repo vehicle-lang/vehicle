@@ -24,7 +24,7 @@ module Vehicle.Compile.Type.Monad
     -- Constraints
     copyContext,
     createFreshUnificationConstraint,
-    createFreshTypeClassConstraint,
+    createFreshInstanceConstraint,
     getActiveConstraints,
     getActiveUnificationConstraints,
     getActiveInstanceConstraints,
@@ -38,11 +38,9 @@ module Vehicle.Compile.Type.Monad
     getDeclType,
     instantiateArgForNonExplicitBinder,
     glueNBE,
-    debugError,
   )
 where
 
-import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Proxy (Proxy (..))
@@ -63,8 +61,14 @@ type TCM builtin m =
     TypableBuiltin builtin
   )
 
-runTypeChecker :: (Monad m) => TypingDeclCtx builtin -> TypeCheckerT builtin m a -> m a
-runTypeChecker declCtx e = fst <$> runTypeCheckerT declCtx emptyTypeCheckerState e
+runTypeChecker ::
+  (Monad m) =>
+  TypingDeclCtx builtin ->
+  InstanceCandidateDatabase builtin ->
+  TypeCheckerT builtin m a ->
+  m a
+runTypeChecker declCtx instanceCandidates e =
+  fst <$> runTypeCheckerT declCtx instanceCandidates emptyTypeCheckerState e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -75,8 +79,9 @@ runTypeCheckerHypothetically ::
 runTypeCheckerHypothetically e = do
   callDepth <- getCallDepth
   declCtx <- getDeclContext
+  instanceCandidates <- getInstanceCandidates
   state <- getMetaState
-  result <- runExceptT $ runTypeCheckerT declCtx state e
+  result <- runExceptT $ runTypeCheckerT declCtx instanceCandidates state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of
@@ -112,26 +117,33 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 
 -- | Adds an entirely new type-class constraint (as opposed to one
 -- derived from another constraint).
-createFreshTypeClassConstraint ::
+createFreshInstanceConstraint ::
   forall builtin m.
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
-  (Expr Ix builtin, [Arg Ix builtin]) ->
+  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Relevance ->
   Type Ix builtin ->
   m (GluedExpr builtin)
-createFreshTypeClassConstraint boundCtx (fun, funArgs) relevance tcExpr = do
+createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
+  let origin =
+        InstanceConstraintOrigin
+          { checkedInstanceOp = fun,
+            checkedInstanceOpArgs = funArgs,
+            checkedInstanceOpType = funType,
+            checkedInstanceType = tcExpr
+          }
+
   let env = typingBoundContextToEnv boundCtx
 
   let p = provenanceOf fun
   (meta, metaExpr) <- freshMetaIdAndExpr p tcExpr boundCtx
 
-  let origin = CheckingTypeClass fun funArgs tcExpr
   let originProvenance = provenanceOf tcExpr
   cid <- generateFreshConstraintID (Proxy @builtin)
-  let context = ConstraintContext cid originProvenance origin p unknownBlockingStatus boundCtx
+  let context = ConstraintContext cid originProvenance p unknownBlockingStatus boundCtx
   nTCExpr <- whnf env tcExpr
-  let constraint = WithContext (Has meta relevance nTCExpr) context
+  let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 
   addInstanceConstraints [constraint]
 
@@ -141,7 +153,7 @@ instantiateArgForNonExplicitBinder ::
   (TCM builtin m) =>
   TypingBoundCtx builtin ->
   Provenance ->
-  (Expr Ix builtin, [Arg Ix builtin]) ->
+  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Binder Ix builtin ->
   m (GluedArg builtin)
 instantiateArgForNonExplicitBinder boundCtx p origin binder = do
@@ -149,10 +161,5 @@ instantiateArgForNonExplicitBinder boundCtx p origin binder = do
   checkedExpr <- case visibilityOf binder of
     Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
     Implicit {} -> freshMetaExpr p binderType boundCtx
-    Instance {} -> createFreshTypeClassConstraint boundCtx origin (relevanceOf binder) binderType
+    Instance {} -> createFreshInstanceConstraint boundCtx origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
-
-debugError :: forall builtin m. (TCM builtin m) => Proxy builtin -> Int -> m ()
-debugError _ limit = do
-  idd <- generateFreshConstraintID (Proxy @builtin)
-  when (idd > limit) $ compilerDeveloperError "Hi"

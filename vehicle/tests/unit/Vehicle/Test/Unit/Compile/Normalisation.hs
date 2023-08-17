@@ -11,7 +11,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn (Lv)
 import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)

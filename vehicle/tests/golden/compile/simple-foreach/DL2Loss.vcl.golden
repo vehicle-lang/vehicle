@@ -5,4 +5,4 @@ type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
 
 @property;
 index : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (2 :: nil)) . Tensor Rat (2 :: nil);
-index f = foreachVector 2 (\ i -> max 0.0 (0.0 - f [0.0, 0.0] ! i))
+index f = foreachVector 2 (\ i -> max 0.0 (0.0 - f [0.0, 0.0] ! i) + (if 0.0 == f [0.0, 0.0] ! i then 1.0 else 0.0))

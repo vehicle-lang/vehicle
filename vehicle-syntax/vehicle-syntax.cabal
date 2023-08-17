@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               vehicle-syntax
-version:            0.9.0
+version:            0.10.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -96,6 +96,7 @@ library
   exposed-modules:
     Vehicle.Syntax.AST
     Vehicle.Syntax.Builtin
+    Vehicle.Syntax.Builtin.BasicOperations
     Vehicle.Syntax.Parse
     Vehicle.Syntax.Prelude
     Vehicle.Syntax.Print
@@ -118,7 +119,6 @@ library
     Vehicle.Syntax.BNFC.Elaborate.External
     Vehicle.Syntax.BNFC.Elaborate.Internal
     Vehicle.Syntax.BNFC.Utils
-    Vehicle.Syntax.Builtin.Core
     Vehicle.Syntax.Builtin.TypeClass
     Vehicle.Syntax.Debug
     Vehicle.Syntax.External.Abs

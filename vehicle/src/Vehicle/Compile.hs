@@ -5,25 +5,27 @@ module Vehicle.Compile
 where
 
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.Hashable (Hashable)
 import Vehicle.Backend.Agda
-import Vehicle.Backend.JSON (compileProgToJSON)
+import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
+import Vehicle.Backend.Queries
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Queries
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors (resolveInstanceArguments)
-import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
+import Vehicle.Compile.Type.Monad (TypableBuiltin)
+import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
-import Vehicle.Verify.Core
-import Vehicle.Verify.Verifier (queryFormats)
+import Vehicle.Verify.QueryFormat
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -116,16 +118,19 @@ compileDirect (imports, typedProg) outputFile outputAsJSON = do
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
-  (MonadCompile m, MonadIO m) =>
-  StandardProg ->
+  forall builtin m.
+  (MonadCompile m, MonadIO m, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
+  Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->
   m ()
 compileToJSON prog outputFile outputAsJSON = do
-  relevantProg <- removeIrrelevantCode prog
+  relevantProg <- removeIrrelevantCodeFromProg prog
   let monomorphiseIf = isPropertyDecl
-  monomorphiseProg <- monomorphise monomorphiseIf True "_" relevantProg
-  functionalisedProg <- functionaliseResources monomorphiseProg
+  monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
+  literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
+  hoistedProg <- hoistInferableParameters literalFreeProg
+  functionalisedProg <- functionaliseResources hoistedProg
   etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
     if outputAsJSON

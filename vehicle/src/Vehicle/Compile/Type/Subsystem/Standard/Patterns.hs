@@ -5,59 +5,6 @@ import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
--- Types
---------------------------------------------------------------------------------
-
-pattern NullaryTypeExpr :: Provenance -> BuiltinType -> Expr var StandardBuiltin
-pattern NullaryTypeExpr p b = Builtin p (BuiltinType b)
-
-pattern TypeExpr ::
-  Provenance ->
-  BuiltinType ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
-pattern TypeExpr p b args = BuiltinExpr p (BuiltinType b) args
-
-pattern BoolType :: Provenance -> Expr var StandardBuiltin
-pattern BoolType p = NullaryTypeExpr p Bool
-
-pattern NatType :: Provenance -> Expr var StandardBuiltin
-pattern NatType p = NullaryTypeExpr p Nat
-
-pattern IntType :: Provenance -> Expr var StandardBuiltin
-pattern IntType p = NullaryTypeExpr p Int
-
-pattern RatType :: Provenance -> Expr var StandardBuiltin
-pattern RatType p = NullaryTypeExpr p Rat
-
-pattern ListType :: Provenance -> Expr var StandardBuiltin -> Expr var StandardBuiltin
-pattern ListType p tElem <- TypeExpr p List [RelevantExplicitArg _ tElem]
-
-pattern RawListType :: Provenance -> Expr var StandardBuiltin
-pattern RawListType p = NullaryTypeExpr p List
-
-pattern VectorType ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
-pattern VectorType p tElem tDim <-
-  TypeExpr
-    p
-    Vector
-    [ RelevantExplicitArg _ tElem,
-      IrrelevantExplicitArg _ tDim
-      ]
-  where
-    VectorType p tElem tDim =
-      TypeExpr
-        p
-        Vector
-        [ RelevantExplicitArg p tElem,
-          IrrelevantExplicitArg p tDim
-        ]
-
---------------------------------------------------------------------------------
 -- Type classes
 --------------------------------------------------------------------------------
 
@@ -443,21 +390,6 @@ pattern FromRatExpr ::
   Expr var StandardBuiltin
 pattern FromRatExpr p dom args <- BuiltinFunctionExpr p (FromRat dom) args
 
-{-
-pattern FromVecExpr ::
-  Provenance ->
-  FromVecDomain ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern FromVecExpr p dom explicitArgs <-
-  FreeVar
-    p
-    (FromVec dom)
-    ( ImplicitArg _ _
-        :| ImplicitArg _ _
-        : explicitArgs
-      )
--}
 --------------------------------------------------------------------------------
 -- Boolean operations
 
@@ -555,25 +487,5 @@ pattern AtExpr p tElem tDim explicitArgs <-
     At
     ( RelevantImplicitArg _ tElem
         :| IrrelevantImplicitArg _ tDim
-        : explicitArgs
-      )
-
---------------------------------------------------------------------------------
--- Vector
-
-pattern FoldVectorExpr ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern FoldVectorExpr p tElem size tRes explicitArgs <-
-  BuiltinFunctionExpr
-    p
-    (Fold FoldVector)
-    ( RelevantImplicitArg _ tElem
-        :| IrrelevantImplicitArg _ size
-        : RelevantImplicitArg _ tRes
         : explicitArgs
       )

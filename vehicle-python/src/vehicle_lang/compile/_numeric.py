@@ -26,7 +26,9 @@ class SupportsDunderGE(Protocol):
 
 
 @runtime_checkable
-class SupportsRichComparison(SupportsDunderLT, SupportsDunderGT, Protocol):
+class SupportsRichComparison(
+    SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol
+):
     ...
 
 

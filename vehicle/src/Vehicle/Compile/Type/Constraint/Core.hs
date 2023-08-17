@@ -6,10 +6,9 @@ module Vehicle.Compile.Type.Constraint.Core
     findInstanceGoalHead,
     parseInstanceGoal,
     unify,
-    solveTypeClassMeta,
-    anyOf,
-    allOf,
-    createTC,
+    createInstanceUnification,
+    createSubInstance,
+    mkCandidate,
   )
 where
 
@@ -23,7 +22,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, solveMeta, trackSolvedMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
+import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 
@@ -63,8 +63,8 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
 
               loop (loopNumber + 1) solvedMetas
 
-blockOn :: (MonadCompile m) => [MetaID] -> m (ConstraintProgress builtin)
-blockOn metas = do
+blockOn :: (MonadCompile m) => [MetaID] -> Maybe (m (ConstraintProgress builtin))
+blockOn metas = Just $ do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
 
@@ -72,57 +72,49 @@ malformedConstraintError :: (PrintableBuiltin builtin, MonadCompile m) => WithCo
 malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
+-- | Create a new unification constraint, copying the context as appropriate.
 unify ::
   (MonadTypeChecker builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
+  (Value builtin, Value builtin) ->
+  m (WithContext (UnificationConstraint builtin))
+unify (ctx, origin) (e1, e2) =
+  WithContext (Unify origin e1 e2) <$> copyContext ctx
+
+-- | Create a new unification constraint as a subgoal of an existing instance constraint.
+createInstanceUnification ::
+  (MonadTypeChecker builtin m) =>
+  (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Value builtin ->
   Value builtin ->
   m (WithContext (Constraint builtin))
-unify ctx e1 e2 = WithContext (UnificationConstraint $ Unify e1 e2) <$> copyContext ctx
+createInstanceUnification (ctx, origin) e1 e2 = do
+  let unifyOrigin = CheckingInstanceType origin
+  constraint <- unify (ctx, unifyOrigin) (e1, e2)
+  return $ mapObject UnificationConstraint constraint
 
-{-
-unifyWithPiType ::
-  TCM builtin m =>
-  ConstraintContext builtin ->
-  Value builtin ->
-  m (WithContext (Constraint builtin), Value builtin, Value builtin)
-unifyWithPiType ctx expr = do
-  let p = provenanceOf ctx
-  let boundCtx = boundContext ctx
-  binderType <- normalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
-  bodyType <- normalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
-  let binder = _
-  eq <- unify ctx expr _
-  return (eq, binderType, bodyType)
--}
-
-createTC ::
+-- | Creates an instance constraint as a subgoal of an existing instance constraint.
+createSubInstance ::
   (TCM builtin m) =>
-  ConstraintContext builtin ->
+  (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Relevance ->
   Value builtin ->
   m (Expr Ix builtin, WithContext (Constraint builtin))
-createTC c r t = do
-  let p = provenanceOf c
-  ctx <- copyContext c
-  let dbLevel = contextDBLevel c
+createSubInstance (ctx, origin) r t = do
+  let p = provenanceOf ctx
+  newCtx <- copyContext ctx
+  let dbLevel = contextDBLevel ctx
   newTypeClassExpr <- quote p dbLevel t
-  (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext c)
-  let newConstraint = InstanceConstraint (Has meta r t)
-  return (unnormalised metaExpr, WithContext newConstraint ctx)
-
-solveTypeClassMeta :: (TCM builtin m) => ConstraintContext builtin -> MetaID -> Value builtin -> m ()
-solveTypeClassMeta ctx meta solution = do
-  quotedSolution <- quote mempty (contextDBLevel ctx) solution
-  solveMeta meta quotedSolution (boundContext ctx)
+  (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext ctx)
+  let newConstraint = InstanceConstraint (Resolve origin meta r t)
+  return (unnormalised metaExpr, WithContext newConstraint newCtx)
 
 extractHeadFromInstanceCandidate ::
   (PrintableBuiltin builtin) =>
-  (Provenance -> InstanceCandidate builtin) ->
-  (builtin, Provenance -> InstanceCandidate builtin)
-extractHeadFromInstanceCandidate candidate = do
-  let expr = candidateExpr (candidate mempty)
-  case findInstanceGoalHead expr of
+  InstanceCandidate builtin ->
+  (builtin, InstanceCandidate builtin)
+extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
+  case findInstanceGoalHead candidateExpr of
     Right b -> (b, candidate)
     Left subexpr -> do
       let candidateDoc = prettyVerbose subexpr
@@ -139,6 +131,7 @@ findInstanceGoalHead = \case
   Pi _ binder body
     | not (isExplicit binder) -> findInstanceGoalHead body
   App _ (Builtin _ b) _ -> Right b
+  Builtin _ b -> Right b
   expr -> Left expr
 
 parseInstanceGoal ::
@@ -155,8 +148,9 @@ parseInstanceGoal e = go [] e
       VBuiltin b spine -> return $ InstanceGoal telescope b spine
       _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyVerbose e
 
-anyOf :: [a] -> (a -> Bool) -> Bool
-anyOf = flip any
-
-allOf :: [a] -> (a -> Bool) -> Bool
-allOf = flip all
+mkCandidate :: (DSLExpr builtin, DSLExpr builtin) -> InstanceCandidate builtin
+mkCandidate (expr, solution) = do
+  let p = mempty
+  let expr' = fromDSL p expr
+  let solution' = fromDSL p solution
+  InstanceCandidate expr' solution'

@@ -18,11 +18,11 @@ previousSensor : Index;
 previousSensor = 1
 
 safeInput : InputVector -> Rat;
-safeInput x = forallIndex 2 (\ i -> max 0.0 (- 3.25 - x ! i) + max 0.0 (x ! i - 3.25))
+safeInput x = forallIndex 2 (\ i -> max 0.0 (- 3.25 - x ! i) + (if - 3.25 == x ! i then 1.0 else 0.0) + (max 0.0 (x ! i - 3.25) + (if x ! i == 3.25 then 1.0 else 0.0)))
 
 safeOutput : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . InputVector -> Rat;
-safeOutput controller x = max 0.0 (- 1.25 - (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor)) + (if - 1.25 == controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor then 1.0 else 0.0) + (max 0.0 (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor - 1.25) + (if controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor == 1.25 then 1.0 else 0.0))
+safeOutput controller x = max 0.0 (- 1.25 - (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor)) + max 0.0 (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor - 1.25)
 
 @property;
 safe : forallT (controller : InputVector -> Tensor Rat (1 :: nil)) . Rat;
-safe controller = Optimise[x][min] (+) (\ x -> max 0.0 (safeInput x * safeOutput controller x))
+safe controller = Optimise[min] (+) (\ x -> max 0.0 (safeInput x * safeOutput controller x))

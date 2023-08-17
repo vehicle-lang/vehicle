@@ -16,6 +16,7 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
+import Numeric (readFloat, readSigned)
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -211,3 +212,9 @@ type TensorIndices = [Int]
 
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
+
+readFloatAsRational :: Text -> Rational
+readFloatAsRational str =
+  case readSigned readFloat (Text.unpack str) of
+    ((n, []) : _) -> n
+    _ -> error "Invalid number"

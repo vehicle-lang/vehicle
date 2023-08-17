@@ -20,7 +20,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.DeBruijn (Lv, liftDBIndices, substDBInto)
 import Vehicle.Test.Unit.Common (unitTestCase)
 

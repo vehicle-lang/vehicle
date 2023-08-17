@@ -17,11 +17,11 @@ letLam = let y = \x -> x in y
 
 @property
 forallLet : Bool
-forallLet = forall (x : Nat) . let y = x in y == 1
+forallLet = forall (x : Rat) . let y = x in y == 1
 
 @property
 letForall : Bool
-letForall = let y = 1 in forall (x : Nat) . y == x
+letForall = let y = 1 in forall (x : Rat) . y == x
 
 @property
 forallInLet : Bool

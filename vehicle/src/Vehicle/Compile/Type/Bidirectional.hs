@@ -146,13 +146,14 @@ inferExpr e = do
       checkedExpr <- checkExpr checkedExprType expr
       return (Ann p checkedExpr checkedExprType, checkedExprType)
     Pi p binder resultType -> do
-      (checkedBinderType, typeOfBinderType) <- inferExpr (typeOf binder)
+      checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
       let checkedBinder = replaceBinderType checkedBinderType binder
 
-      (checkedResultType, typeOfResultType) <- extendBoundCtx checkedBinder $ inferExpr resultType
+      checkedResultType <-
+        extendBoundCtx checkedBinder $
+          checkExpr (TypeUniverse p 0) resultType
 
-      maxResultType <- typeOfBinderType `tMax` typeOfResultType
-      return (Pi p checkedBinder checkedResultType, maxResultType)
+      return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
     App p fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
@@ -183,7 +184,7 @@ inferExpr e = do
       -- the application machinary to infer the result type and the type of the bound expression.
       (resultType, boundArgs) <-
         inferArgs
-          (Lam p checkedBinder body, [RelevantExplicitArg p boundExpr])
+          (Lam p checkedBinder body, [RelevantExplicitArg p boundExpr], Pi p checkedBinder typeOfBody)
           (Pi p checkedBinder typeOfBody)
           [RelevantExplicitArg p boundExpr]
 
@@ -225,7 +226,7 @@ inferApp ::
   [Arg Ix builtin] ->
   m (Expr Ix builtin, Type Ix builtin)
 inferApp p fun funType args = do
-  (appliedFunType, checkedArgs) <- inferArgs (fun, args) funType args
+  (appliedFunType, checkedArgs) <- inferArgs (fun, args, funType) funType args
   return (normAppList p fun checkedArgs, appliedFunType)
 
 -- | Takes the expected type of a function and the user-provided arguments
@@ -235,11 +236,11 @@ inferApp p fun funType args = do
 -- (including inserted arguments) and that list of arguments.
 inferArgs ::
   (MonadBidirectional builtin m) =>
-  (Expr Ix builtin, [Arg Ix builtin]) -> -- The original function and its arguments
+  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) -> -- The original function and its arguments
   Type Ix builtin -> -- Type of the function
   [Arg Ix builtin] -> -- User-provided arguments of the function
   m (Type Ix builtin, [Arg Ix builtin])
-inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
+inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
       let p = provenanceOf fun
@@ -251,8 +252,8 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getBoundCtx
-              handleTypingError (MissingExplicitArgument boundCtx binder arg)
+              boundCtx <- boundContextOf <$> getBoundCtx
+              throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
       -- Calculate what the new checked arg should be, create a fresh meta
@@ -266,7 +267,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
           return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
           boundCtx <- getBoundCtx
-          newArg <- instantiateArgForNonExplicitBinder boundCtx p (fun, args') binder
+          newArg <- instantiateArgForNonExplicitBinder boundCtx p original binder
           return $ fmap unnormalised newArg
 
       -- Substitute the checked arg through the result of the Pi type.
@@ -281,7 +282,7 @@ inferArgs original@(fun, args') piT@(Pi _ binder resultType) args
 
       -- Return the result
       return (typeAfterApplication, checkedArg : checkedArgs)
-inferArgs (fun, originalArgs) nonPiType args =
+inferArgs origin@(fun, originalArgs, _) nonPiType args =
   case (nonPiType, args) of
     (_, []) -> return (nonPiType, [])
     (Meta {}, a : _) -> do
@@ -292,30 +293,13 @@ inferArgs (fun, originalArgs) nonPiType args =
       resultMeta <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) (newBinder : ctx)
       let newType = Pi p newBinder resultMeta
       checkExprTypesEqual p (argExpr a) nonPiType newType
-      inferArgs (fun, originalArgs) newType args
+      inferArgs origin newType args
     _ -> do
-      ctx <- getBoundCtx
-      handleTypingError (FunctionTypeMismatch ctx fun originalArgs nonPiType args)
+      ctx <- boundContextOf <$> getBoundCtx
+      throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
 -- Utility functions
-
-universeLevel :: (MonadBidirectional builtin m) => Expr Ix builtin -> m Int
-universeLevel = \case
-  TypeUniverse _ l -> return l
-  -- These next cases are probably going to bite us, apologies.
-  Meta {} -> return 0
-  App _ Meta {} _ -> return 0
-  Pi _ _ r -> universeLevel r
-  t ->
-    compilerDeveloperError $
-      "Expected argument of type Type. Found" <+> prettyVerbose t <> "."
-
-tMax :: (MonadBidirectional builtin m) => Expr Ix builtin -> Expr Ix builtin -> m (Expr Ix builtin)
-tMax t1 t2 = do
-  l1 <- universeLevel t1
-  l2 <- universeLevel t2
-  return $ if l1 > l2 then t1 else t2
 
 checkExprTypesEqual ::
   (MonadBidirectionalInternal builtin m) =>
@@ -326,7 +310,13 @@ checkExprTypesEqual ::
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
   ctx <- getBoundCtx
-  let origin = CheckingExprType expr expectedType actualType
+  let origin =
+        CheckingExprType $
+          CheckingExpr
+            { checkedExpr = expr,
+              checkedExprExpectedType = expectedType,
+              checkedExprActualType = actualType
+            }
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
 checkBinderTypesEqual ::
@@ -338,7 +328,13 @@ checkBinderTypesEqual ::
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
   ctx <- getBoundCtx
-  let origin = CheckingBinderType binderName expectedType actualType
+  let origin =
+        CheckingBinderType $
+          CheckingBinder
+            { checkedBinderName = binderName,
+              checkedBinderExpectedType = expectedType,
+              checkedBinderActualType = actualType
+            }
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
 getBoundCtx :: (MonadBidirectionalInternal builtin m) => m (TypingBoundCtx builtin)

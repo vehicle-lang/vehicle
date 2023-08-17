@@ -18,7 +18,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST.Name (Name)
-import Vehicle.Syntax.Builtin.Core as X
+import Vehicle.Syntax.Builtin.BasicOperations as X
 import Vehicle.Syntax.Builtin.TypeClass as X
 
 --------------------------------------------------------------------------------
@@ -99,6 +99,46 @@ instance Pretty Rational where
 
 --------------------------------------------------------------------------------
 -- Builtin
+
+data OrderDomain
+  = OrderIndex
+  | OrderNat
+  | OrderInt
+  | OrderRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData OrderDomain
+
+instance Hashable OrderDomain
+
+instance Serialize OrderDomain
+
+instance Pretty OrderDomain where
+  pretty = \case
+    OrderNat -> "Nat"
+    OrderIndex -> "Index"
+    OrderInt -> "Int"
+    OrderRat -> "Rat"
+
+data EqualityDomain
+  = EqIndex
+  | EqNat
+  | EqInt
+  | EqRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData EqualityDomain
+
+instance Hashable EqualityDomain
+
+instance Serialize EqualityDomain
+
+instance Pretty EqualityDomain where
+  pretty = \case
+    EqIndex -> "Index"
+    EqNat -> "Nat"
+    EqInt -> "Int"
+    EqRat -> "Rat"
 
 data NegDomain
   = NegInt
@@ -271,7 +311,7 @@ data BuiltinFunction
   | MinRat
   | MaxRat
   | -- True = minimisation, False = maximisation
-    Optimise Name Bool [Name]
+    Optimise Bool
   | -- Comparison expressions
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
@@ -319,9 +359,8 @@ instance Pretty BuiltinFunction where
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
-    Optimise n b ctx -> "Optimise[" <> pretty n <> "]" <> "[" <> direction <> "]" <> ctxDoc
+    Optimise b -> "Optimise[" <> direction <> "]"
       where
-        ctxDoc = if null ctx then "" else pretty ctx
         direction = if b then "min" else "max"
 
 -- | Builtins in the Vehicle language

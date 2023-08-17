@@ -19,8 +19,8 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Descope (descopeNamed)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation
@@ -47,7 +47,7 @@ compileProgToAgda :: (MonadCompile m) => StandardGluedProg -> AgdaOptions -> m (
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     let unnormalisedProg = fmap unnormalised prog
-    monoProg <- monomorphise isPropertyDecl False "-" unnormalisedProg
+    monoProg <- monomorphise isPropertyDecl "-" unnormalisedProg
 
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = descopeNamed prog2

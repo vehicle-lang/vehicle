@@ -76,13 +76,8 @@ substApp ::
 substApp p (fun@(Meta _ m), mArgs) = do
   metaSubst <- getMetaSubstitution
   case MetaMap.lookup m metaSubst of
-    Just value -> subst =<< substArgs (unnormalised value) mArgs
     Nothing -> normAppList p fun <$> subst mArgs
-  where
-    substArgs :: Expr Ix builtin -> [Arg Ix builtin] -> m (Expr Ix builtin)
-    substArgs (Lam _ _ body) (arg : args) = do
-      substArgs (argExpr arg `substDBInto` body) args
-    substArgs e args = return $ normAppList p e args
+    Just value -> subst $ substArgs p (unnormalised value) mArgs
 substApp p (fun, args) = normAppList p <$> subst fun <*> subst args
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Value builtin) where
@@ -121,10 +116,22 @@ instance (MetaSubstitutable m expr) => MetaSubstitutable m (GenericProg expr) wh
   subst (Main ds) = Main <$> traverse subst ds
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraint builtin) where
-  subst (Unify e1 e2) = Unify <$> subst e1 <*> subst e2
+  subst (Unify origin e1 e2) = Unify <$> subst origin <*> subst e1 <*> subst e2
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraint builtin) where
-  subst (Has m r e) = Has m r <$> subst e
+  subst (Resolve origin m r e) = do
+    metaSubst <- getMetaSubstitution @builtin
+    Resolve origin <$> substMetaID metaSubst m <*> pure r <*> subst e
+
+-- This is a massive hack, and only works because we only have instance resolution
+-- for types in the loss typing subsystem which doesn't use dependently types.
+substMetaID :: (MonadCompile m) => MetaSubstitution builtin -> MetaID -> m MetaID
+substMetaID metaSubst m =
+  case MetaMap.lookup m metaSubst of
+    Nothing -> return m
+    Just other -> case normalised other of
+      VMeta m2 [] -> substMetaID metaSubst m2
+      _ -> return m
 
 instance (MonadNorm builtin m) => MetaSubstitutable m (Constraint builtin) where
   subst = \case
@@ -136,21 +143,22 @@ instance (MetaSubstitutable m constraint) => MetaSubstitutable m (Contextualised
     newConstraint <- subst constraint
     return $ WithContext newConstraint context
 
-instance (MonadNorm builtin m) => MetaSubstitutable m (ConstraintContext builtin) where
-  subst ConstraintContext {..} = do
-    substOrigin <- subst origin
-    return $
-      ConstraintContext
-        { origin = substOrigin,
-          ..
-        }
+instance (MonadNorm builtin m) => MetaSubstitutable m (InstanceConstraintOrigin builtin) where
+  subst (InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc) =
+    InstanceConstraintOrigin <$> subst tcOp <*> subst tcOpArgs <*> subst tcOpType <*> subst tc
 
-instance (MonadNorm builtin m) => MetaSubstitutable m (ConstraintOrigin builtin) where
+instance (MonadNorm builtin m) => MetaSubstitutable m (UnificationConstraintOrigin builtin) where
   subst = \case
-    CheckingExprType e t1 t2 -> CheckingExprType <$> subst e <*> subst t1 <*> subst t2
-    CheckingBinderType n t1 t2 -> CheckingBinderType n <$> subst t1 <*> subst t2
-    CheckingTypeClass op opArgs tc -> CheckingTypeClass <$> subst op <*> subst opArgs <*> subst tc
+    CheckingExprType c -> CheckingExprType <$> subst c
+    CheckingBinderType c -> CheckingBinderType <$> subst c
+    CheckingInstanceType c -> CheckingInstanceType <$> subst c
     CheckingAuxiliary -> return CheckingAuxiliary
+
+instance (MonadNorm builtin m) => MetaSubstitutable m (CheckingExprType builtin) where
+  subst (CheckingExpr e t1 t2) = CheckingExpr <$> subst e <*> subst t1 <*> subst t2
+
+instance (MonadNorm builtin m) => MetaSubstitutable m (CheckingBinderType builtin) where
+  subst (CheckingBinder n t1 t2) = CheckingBinder n <$> subst t1 <*> subst t2
 
 instance (MetaSubstitutable m a) => MetaSubstitutable m (MetaMap a) where
   subst (MetaMap t) = MetaMap <$> traverse subst t

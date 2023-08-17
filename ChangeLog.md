@@ -1,8 +1,18 @@
 # Changelog for Vehicle
 
+## Version 0.11.0
+
+* Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
+ `unification of lambdas not implemented` error.
+
 ## Version 0.10.0
 
 * Fixed bug in display of progress bar when verification counter-example found.
+
+* Fixed bug where `forall ... in` and `exists ... in` didn't evaluate properly during verification
+  (introduced in v0.9.0).
+
+* Improved precision of constants in the verifier queries generated.
 
 ## Version 0.9.0
 

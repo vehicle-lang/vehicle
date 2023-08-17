@@ -3,6 +3,7 @@
 module Vehicle.Compile.Type.Core where
 
 import Data.Bifunctor (Bifunctor (..))
+import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
@@ -18,23 +19,14 @@ type Imports builtin = [GluedProg builtin]
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
-  = MissingExplicitArgument (TypingBoundCtx builtin) (Binder Ix builtin) (Arg Ix builtin)
-  | FunctionTypeMismatch (TypingBoundCtx builtin) (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
-  | FailedUnification (NonEmpty (WithContext (UnificationConstraint builtin)))
-  | FailedInstanceSearch (ConstraintContext builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
-  | UnsolvableConstraints (NonEmpty (WithContext (Constraint builtin)))
+  = MissingExplicitArgument BoundDBCtx (Binder Ix builtin) (Arg Ix builtin)
+  | FunctionTypeMismatch BoundDBCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
+  | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
+  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
-
-instance Pretty (TypingError builtin) where
-  pretty = \case
-    MissingExplicitArgument {} -> "MissingExplicitArgument"
-    FunctionTypeMismatch {} -> "FunctionTypeMismatch"
-    FailedUnification {} -> "FailedUnification"
-    FailedInstanceSearch {} -> "FailedInstanceSearch"
-    UnsolvableConstraints {} -> "UnsolvableConstraints"
-    FailedIndexConstraintTooBig {} -> "FailedIndexConstraintTooBig"
-    FailedIndexConstraintUnknown {} -> "FailedIndexConstraintUnknown"
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Typing declaration context
@@ -100,16 +92,6 @@ typingBoundContextToEnv ctx = do
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Constraint origins
-
-data ConstraintOrigin builtin
-  = CheckingExprType (Expr Ix builtin) (Type Ix builtin) (Type Ix builtin)
-  | CheckingBinderType (Maybe Name) (Type Ix builtin) (Type Ix builtin)
-  | CheckingTypeClass (Expr Ix builtin) [Arg Ix builtin] (Type Ix builtin)
-  | CheckingAuxiliary
-  deriving (Show)
-
---------------------------------------------------------------------------------
 -- Blocking status
 
 -- | Denotes whether a constraint is blocked and if so what metas it is blocked
@@ -141,8 +123,6 @@ data ConstraintContext builtin = ConstraintContext
     constraintID :: ConstraintID,
     -- | The original provenance of the constraint
     originalProvenance :: Provenance,
-    -- | The origin of the constraint.
-    origin :: ConstraintOrigin builtin,
     -- | Where the constraint was instantiated
     creationProvenance :: Provenance,
     -- | The set of metas blocking progress on this constraint.
@@ -150,7 +130,8 @@ data ConstraintContext builtin = ConstraintContext
     blockedBy :: BlockingStatus,
     -- | TODO reduce this to just `TypingBoundCtx`
     -- (At the moment the full context is needed for normalisation but should
-    -- be able to get that from TCM)
+    -- be able to get that from TCM).
+    -- When we do, should also make it non-meta-substitutable.
     boundContext :: TypingBoundCtx builtin
   }
   deriving (Show)
@@ -161,44 +142,49 @@ instance Pretty (ConstraintContext builtin) where
 -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
 instance HasProvenance (ConstraintContext builtin) where
-  provenanceOf (ConstraintContext _ _ _ creationProvenance _ _) = creationProvenance
+  provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
 instance HasBoundCtx (ConstraintContext builtin) where
   boundContextOf = boundContextOf . boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
-blockCtxOn metas (ConstraintContext cid originProv originalConstraint creationProv _ ctx) =
+blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
   let status = BlockingStatus (Just metas)
-   in ConstraintContext cid originProv originalConstraint creationProv status ctx
+   in ConstraintContext cid originProv creationProv status ctx
 
-extendConstraintBoundCtx ::
+updateConstraintBoundCtx ::
   ConstraintContext builtin ->
-  Telescope Ix builtin ->
+  (TypingBoundCtx builtin -> TypingBoundCtx builtin) ->
   ConstraintContext builtin
-extendConstraintBoundCtx ConstraintContext {..} telescope =
-  ConstraintContext
-    { boundContext = fmap mkTypingBoundCtxEntry telescope ++ boundContext,
-      ..
-    }
+updateConstraintBoundCtx ConstraintContext {..} updateFn =
+  ConstraintContext {boundContext = updateFn boundContext, ..}
+
+setConstraintBoundCtx ::
+  ConstraintContext builtin ->
+  TypingBoundCtx builtin ->
+  ConstraintContext builtin
+setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
 contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
--- Unification constraints
-
--- | A constraint representing that a pair of expressions should be equal
-data UnificationConstraint builtin = Unify (Value builtin) (Value builtin)
-  deriving (Show)
-
-type instance
-  WithContext (UnificationConstraint builtin) =
-    Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)
-
---------------------------------------------------------------------------------
 -- Instance constraints
 
-data InstanceConstraint builtin = Has MetaID Relevance (Value builtin)
+data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
+  { checkedInstanceOp :: Expr Ix builtin,
+    checkedInstanceOpArgs :: [Arg Ix builtin],
+    checkedInstanceOpType :: Type Ix builtin,
+    checkedInstanceType :: Type Ix builtin
+  }
+  deriving (Show)
+
+data InstanceConstraint builtin = Resolve
+  { instanceOrigin :: InstanceConstraintOrigin builtin,
+    instanceSolutionMeta :: MetaID,
+    instanceRelevance :: Relevance,
+    instanceGoal :: Value builtin
+  }
   deriving (Show)
 
 type instance
@@ -221,6 +207,53 @@ data InstanceGoal builtin = InstanceGoal
     goalSpine :: Spine builtin
   }
   deriving (Show)
+
+type InstanceConstraintInfo builtin =
+  ( ConstraintContext builtin,
+    InstanceConstraintOrigin builtin
+  )
+
+-- | Stores the list of instance candidates currently in scope.
+-- We use a HashMap rather than an ordinary Map as not all builtins may be
+-- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
+type InstanceCandidateDatabase builtin =
+  HashMap builtin [InstanceCandidate builtin]
+
+--------------------------------------------------------------------------------
+-- Unification constraints
+
+data CheckingExprType builtin = CheckingExpr
+  { checkedExpr :: Expr Ix builtin,
+    checkedExprExpectedType :: Type Ix builtin,
+    checkedExprActualType :: Expr Ix builtin
+  }
+  deriving (Show)
+
+data CheckingBinderType builtin = CheckingBinder
+  { checkedBinderName :: Maybe Name,
+    checkedBinderExpectedType :: Type Ix builtin,
+    checkedBinderActualType :: Type Ix builtin
+  }
+  deriving (Show)
+
+data UnificationConstraintOrigin builtin
+  = CheckingExprType (CheckingExprType builtin)
+  | CheckingBinderType (CheckingBinderType builtin)
+  | CheckingInstanceType (InstanceConstraintOrigin builtin)
+  | CheckingAuxiliary
+  deriving (Show)
+
+-- | A constraint representing that a pair of expressions should be equal
+data UnificationConstraint builtin
+  = Unify
+      (UnificationConstraintOrigin builtin)
+      (Value builtin)
+      (Value builtin)
+  deriving (Show)
+
+type instance
+  WithContext (UnificationConstraint builtin) =
+    Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)
 
 --------------------------------------------------------------------------------
 -- Constraint

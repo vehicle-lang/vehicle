@@ -1,4 +1,4 @@
-nat : Nat
+nat : Rat
 nat = 5
 
 @property

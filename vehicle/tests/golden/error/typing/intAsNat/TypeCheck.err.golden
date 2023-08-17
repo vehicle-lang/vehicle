@@ -1,6 +1,6 @@
 Error at Line 2, Columns 7-8: unable to work out a valid type for the overloaded expression '-'.
 Type checking has deduced that it is of type:
   ?3 -> Nat
-but the list of valid types for it is:
+but '-' has only the following valid types:
   Rat -> Rat
   Int -> Int

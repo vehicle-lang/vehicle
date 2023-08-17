@@ -1,33 +1,37 @@
 module Vehicle.Compile.Type.Irrelevance
   ( RemoveIrrelevantCode,
+    removeIrrelevantCodeFromProg,
     removeIrrelevantCode,
   )
 where
 
+import Control.Monad.Identity
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.
-removeIrrelevantCode ::
-  (MonadCompile m) =>
-  Prog Ix StandardBuiltin ->
-  m (Prog Ix StandardBuiltin)
-removeIrrelevantCode x = do
+removeIrrelevantCodeFromProg ::
+  (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
+removeIrrelevantCodeFromProg x = do
   logCompilerPass MinDetail "removal of irrelevant code" $ do
     result <- remove x
     logDebug MaxDetail $ prettyFriendly result
     return result
 
+removeIrrelevantCode :: (RemoveIrrelevantCode Identity a) => a -> a
+removeIrrelevantCode x = runIdentity $ remove x
+
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
 
 type MonadRemove m =
-  ( MonadCompile m
+  ( Monad m
   )
 
 class RemoveIrrelevantCode m a where
@@ -39,9 +43,9 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance RemoveIrrelevantCode m (Expr Ix StandardBuiltin) where
+instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
   remove expr = do
-    showRemoveEntry expr
+    -- showRemoveEntry expr
     result <- case expr of
       App p fun args -> do
         normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
@@ -62,7 +66,7 @@ instance RemoveIrrelevantCode m (Expr Ix StandardBuiltin) where
       Meta {} -> return expr
       Builtin {} -> return expr
 
-    showRemoveExit result
+    -- showRemoveExit result
     return result
 
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
@@ -77,6 +81,7 @@ removeArgs ::
   m [GenericArg expr]
 removeArgs = traverse remove . filter isRelevant
 
+{-
 --------------------------------------------------------------------------------
 -- Debug functions
 
@@ -89,3 +94,4 @@ showRemoveExit :: (MonadRemove m) => Expr Ix builtin -> m ()
 showRemoveExit _e = do
   -- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)
   decrCallDepth
+-}

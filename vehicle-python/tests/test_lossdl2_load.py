@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import vehicle_lang as vcl
-import vehicle_lang.ast as vcla
+import vehicle_lang.ast as vcl2ast
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -18,7 +18,7 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "DL2Loss.vcl.go
 def test_interpret_load(dl2loss_specification_path: Path) -> None:
     specification_path = dl2loss_specification_path.parent / "spec.vcl"
     print(f"Load {specification_path}")
-    vcla.load(
+    vcl2ast.load(
         specification_path,
         target=vcl.DifferentiableLogic.DL2,
     )

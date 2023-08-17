@@ -1,14 +1,12 @@
-import random
 from pathlib import Path
 from typing import Any, Callable, Dict
-
-import vehicle_lang as vcl
 
 
 def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
+        import vehicle_lang as vcl
 
         # Prepare a simple network
         model = tf.keras.Sequential(
@@ -33,11 +31,13 @@ def test_lossdl2_exec_tf_bounded() -> None:
         ) -> tf.Tensor:
             return tf.random.uniform(shape=(1,))
 
-        bounded_loss = vcl.load_loss_function(
-            specification_path,
-            property_name="bounded",
-            target=vcl.DifferentiableLogic.DL2,
-            optimisers={"x": optimiser_for_x},
+        bounded_loss = tf.function(
+            vcl.load_loss_function(
+                specification_path,
+                property_name="bounded",
+                target=vcl.DifferentiableLogic.DL2,
+                optimisers={"x": optimiser_for_x},
+            )
         )
 
         # Prepare training data

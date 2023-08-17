@@ -14,11 +14,11 @@ e2 = let y = 1 in y >= 2
 
 @property;
 forallLet : Bool;
-forallLet = forall (x : Nat) . let y = x in y == 1
+forallLet = forall (x : Rat) . let y = x in y == 1.0
 
 @property;
 letForall : Bool;
-letForall = let y = 1 in forall (x : Nat) . y == x
+letForall = let y = 1.0 in forall (x : Rat) . y == x
 
 @property;
 forallInLet : Bool;

@@ -1,6 +1,10 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Type
   ( typeStandardBuiltin,
     typeOfTypeClassOp,
+    typeOfBuiltinConstructor,
+    typeOfBuiltinFunction,
+    typeOfBuiltinType,
+    typeOfNatInDomainConstraint,
   )
 where
 
@@ -13,12 +17,12 @@ import Prelude hiding (pi)
 -- | Return the type of the provided builtin.
 typeStandardBuiltin :: Provenance -> StandardBuiltin -> StandardType
 typeStandardBuiltin p b = fromDSL p $ case b of
-  BuiltinConstructor c -> typeOfConstructor c
+  BuiltinConstructor c -> typeOfBuiltinConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f
   TypeClassOp tcOp -> typeOfTypeClassOp tcOp
   TypeClass tc -> typeOfTypeClass tc
   BuiltinType s -> typeOfBuiltinType s
-  NatInDomainConstraint {} -> forAll "A" type0 $ \t -> tNat ~> t ~> type0
+  NatInDomainConstraint {} -> typeOfNatInDomainConstraint
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -68,7 +72,7 @@ typeOfBuiltinFunction = \case
   Implies -> tBool ~> tBool ~> tBool
   And -> tBool ~> tBool ~> tBool
   Or -> tBool ~> tBool ~> tBool
-  Quantifier _ -> forAllExpl "A" type0 $ \a -> (a ~> tBool) ~> tBool
+  Quantifier _ -> forAllExpl "A" type0 $ \a -> typeOfQuantifier a
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of
@@ -139,8 +143,8 @@ typeOfBuiltinType = \case
   Vector -> type0 ~> tNat .~> type0
   Index -> tNat .~> type0
 
-typeOfConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
-typeOfConstructor = \case
+typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
+typeOfBuiltinConstructor = \case
   Nil -> typeOfNil
   Cons -> typeOfCons
   LUnit -> tUnit
@@ -225,7 +229,7 @@ typeOfConsVector =
       a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
 typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
-typeOfQuantifier t = t ~> tBool
+typeOfQuantifier t = (t ~> tBool) ~> tBool
 
 typeOfFromNat :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfFromNat t = forAllExpl "n" tNat $ \n -> natInDomainConstraint n t .~~~> t
@@ -242,3 +246,6 @@ typeOfVectorLiteral :: (HasStandardBuiltins builtin) => Int -> DSLExpr builtin
 typeOfVectorLiteral n = do
   forAll "A" type0 $ \tElem ->
     naryFunc n tElem (tVector tElem (natLit n))
+
+typeOfNatInDomainConstraint :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfNatInDomainConstraint = forAll "A" type0 $ \t -> tNat ~> t ~> type0

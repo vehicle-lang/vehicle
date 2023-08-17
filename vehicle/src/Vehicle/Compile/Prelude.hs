@@ -11,6 +11,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
+import Vehicle.Expr.DeBruijn (Ix, substDBInto)
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
@@ -149,3 +150,8 @@ freeVarsIn =
           tell $ Set.singleton i
           return $ normAppList p1 (FreeVar p2 i) args'
       )
+
+substArgs :: Provenance -> Expr Ix builtin -> [Arg Ix builtin] -> Expr Ix builtin
+substArgs p (Lam _ _ body) (arg : args) = do
+  substArgs p (argExpr arg `substDBInto` body) args
+substArgs p e args = normAppList p e args
