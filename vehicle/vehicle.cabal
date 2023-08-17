@@ -162,12 +162,8 @@ library
     Vehicle.TypeCheck
     Vehicle.Validate
     Vehicle.Verify
-    Vehicle.Verify.Core
-    Vehicle.Verify.QueryFormat.Marabou
-    Vehicle.Verify.QueryFormat.VNNLib
-    Vehicle.Verify.Specification
-    Vehicle.Verify.Specification.IO
-    Vehicle.Verify.Specification.Status
+    Vehicle.Verify.QueryFormat
+    Vehicle.Verify.Verifier
 
   other-modules:
     Paths_vehicle
@@ -241,9 +237,13 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
-    Vehicle.Verify.QueryFormat
+    Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
-    Vehicle.Verify.Verifier
+    Vehicle.Verify.QueryFormat.Marabou
+    Vehicle.Verify.QueryFormat.VNNLib
+    Vehicle.Verify.Specification
+    Vehicle.Verify.Specification.IO
+    Vehicle.Verify.Specification.Status
     Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
 

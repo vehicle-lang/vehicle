@@ -1,7 +1,9 @@
 module Vehicle.Verify.QueryFormat
-  ( QueryFormat (..),
-    QueryFormatID,
+  ( QueryFormatID (..),
+    QueryFormat (..),
     queryFormats,
+    marabouQueryFormat,
+    vnnlibQueryFormat,
   )
 where
 
