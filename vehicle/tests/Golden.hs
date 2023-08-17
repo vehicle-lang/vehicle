@@ -14,7 +14,7 @@ options =
       [ [ fromString filePattern,
           fromString ("**" </> filePattern)
         ]
-        | filePattern <- ["*.vclo", ".vcl-plan", ".vcl-cache", ".vcl-cache-index"]
+        | filePattern <- ["*.vclo", ".vcl-cache", ".vcl-cache-index"]
       ]
   ]
 
