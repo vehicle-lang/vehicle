@@ -72,7 +72,7 @@ typeOfBuiltinFunction = \case
   Implies -> tBool ~> tBool ~> tBool
   And -> tBool ~> tBool ~> tBool
   Or -> tBool ~> tBool ~> tBool
-  Quantifier _ -> forAllExpl "A" type0 $ \a -> (a ~> tBool) ~> tBool
+  Quantifier _ -> forAllExpl "A" type0 $ \a -> typeOfQuantifier a
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of
@@ -227,7 +227,7 @@ typeOfConsVector =
       a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
 typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
-typeOfQuantifier t = t ~> tBool
+typeOfQuantifier t = (t ~> tBool) ~> tBool
 
 typeOfFromNat :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfFromNat t = forAllExpl "n" tNat $ \n -> natInDomainConstraint n t .~~~> t

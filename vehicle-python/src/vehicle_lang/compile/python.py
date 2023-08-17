@@ -1,4 +1,5 @@
 import ast as py
+import itertools
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
@@ -13,12 +14,13 @@ from typing import (
     Sequence,
     SupportsFloat,
     SupportsInt,
+    Tuple,
     Type,
     Union,
 )
 
 import numpy as np
-from typing_extensions import Self, final, override
+from typing_extensions import Self, TypeVar, final, override
 
 from .. import ast as vcl
 from ..ast import (
@@ -46,8 +48,8 @@ from ..typing import (
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from .abc import ABCTranslation, AnyBuiltins
-from .abcboolasbool import ABCBoolAsBoolBuiltins
+from ._collections import SupportsVector
+from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
 from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
 
 __all__: List[str] = [
@@ -112,21 +114,43 @@ class VariableDomain(AbstractVariableDomain[np.ndarray]):
 ### Implementation of Vehicle builtins in Python
 ################################################################################
 
+_S = TypeVar("_S")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
+
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(
-    ABCBoolAsBoolBuiltins[
-        int,
-        int,
-        float,
-        str,
-        np.ndarray,
-    ]
-):
+class PythonBuiltins(ABCBuiltins[int, int, float, str]):
+    @override
+    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        assert isinstance(index, int), f"Expected int, found {vector}"
+        return vector[index]
+
+    @override
+    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+        return (item, *vector)
+
+    @override
+    def FoldVector(
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+    ) -> _T:
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        return reduce(lambda x, y: function(y, x), vector, initial)
+
     @override
     def Int(self, value: SupportsInt) -> int:
         return value.__int__()
+
+    @override
+    def MapVector(
+        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
+    ) -> Tuple[_T, ...]:
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        return tuple(map(function, vector))
 
     @override
     def Nat(self, value: SupportsInt) -> int:
@@ -135,6 +159,21 @@ class PythonBuiltins(
     @override
     def Rat(self, value: SupportsFloat) -> float:
         return value.__float__()
+
+    def Vector(self, *values: _T) -> Tuple[_T, ...]:
+        return values
+
+    @override
+    def ZipWithVector(
+        self,
+        function: Callable[[_S, _T], _U],
+        vector1: SupportsVector[_S],
+        vector2: SupportsVector[_T],
+    ) -> Tuple[_U, ...]:
+        assert callable(function), f"Expected function, found {function}"
+        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
+        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
+        return tuple(map(function, vector1, vector2))
 
     @override
     def create_quantified_variable(self, name: str, shape: Sequence[int]) -> str:
@@ -242,7 +281,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 yield self.translate_declaration(declaration)
             except EraseType:
                 name = declaration.get_name()
-                # logging.warning(f"ignored declaration {name}")
                 self.ignored_types.append(name)
 
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:

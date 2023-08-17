@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import pytest
 
@@ -8,6 +8,7 @@ def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
+
         import vehicle_lang.tensorflow as vcl
 
         # Prepare a simple network

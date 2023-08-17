@@ -14,10 +14,12 @@ from typing import (
 )
 
 from typing_extensions import TypeAlias, TypeVar, override
+
 from vehicle_lang.error import VehicleInternalError
 
 from .. import ast as vcl
 from ..typing import AbstractVariableDomain, Context, Optimiser, QuantifiedVariableName
+from . import _numeric
 from ._collections import SupportsList, SupportsVector
 from .error import VehicleBuiltinUnsupported
 
@@ -25,12 +27,10 @@ from .error import VehicleBuiltinUnsupported
 ### Interpretations of Vehicle builtins in Python
 ################################################################################
 
-_Bool = TypeVar("_Bool")
-_Nat = TypeVar("_Nat")
-_Int = TypeVar("_Int")
-_Rat = TypeVar("_Rat")
+_SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
+_SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
+_SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
 _Variable = TypeVar("_Variable")
-_VariableValue = TypeVar("_VariableValue")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -38,81 +38,88 @@ _U = TypeVar("_U")
 
 
 @dataclass(frozen=True, init=False)
-class Builtins(
+class ABCBuiltins(
     Generic[
-        _Bool,
-        _Nat,
-        _Int,
-        _Rat,
+        _SupportsNat,
+        _SupportsInt,
+        _SupportsRat,
         _Variable,
-        _VariableValue,
     ],
     metaclass=ABCMeta,
 ):
     quantified_variable_optimisers: Dict[
-        QuantifiedVariableName, Optimiser[_Variable, _VariableValue, Any, _Rat]
+        QuantifiedVariableName, Optimiser[_Variable, Any, _SupportsRat]
     ] = field(default_factory=dict)
     quantified_variable_domains: Dict[
         QuantifiedVariableName,
-        Callable[[Context[Any]], AbstractVariableDomain[_VariableValue]],
+        Callable[[Context[Any]], AbstractVariableDomain],
     ] = field(default_factory=dict)
     quantified_variables: Dict[str, _Variable] = field(default_factory=dict)
 
-    @abstractmethod
-    def AddInt(self, x: _Int, y: _Int) -> _Int:
-        ...
+    def AddInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x + y
+
+    def AddNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x + y
+
+    def AddRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x + y
+
+    def And(self, x: bool, y: bool) -> bool:
+        assert isinstance(x, bool), f"Expected bool, found {x}"
+        assert isinstance(y, bool), f"Expected bool, found {y}"
+        return x and y
 
     @abstractmethod
-    def AddNat(self, x: _Nat, y: _Nat) -> _Nat:
-        ...
-
-    @abstractmethod
-    def AddRat(self, x: _Rat, y: _Rat) -> _Rat:
-        ...
-
-    @abstractmethod
-    def And(self, x: _Bool, y: _Bool) -> _Bool:
-        ...
-
     def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        assert isinstance(index, int), f"Expected int, found {vector}"
-        return vector[index]
-
-    @abstractmethod
-    def Bool(self, value: bool) -> _Bool:
         ...
+
+    def Bool(self, value: bool) -> bool:
+        assert isinstance(value, bool), f"Expected bool, found {value}"
+        return bool(value)
 
     def ConsList(self, item: _T, iterable: SupportsList[_T]) -> SupportsList[_T]:
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return itertools.chain((item,), iterable)
 
+    @abstractmethod
     def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
-        return (item, *vector)
-
-    @abstractmethod
-    def DivRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
-    @abstractmethod
-    def EqIndex(self, x: int, y: int) -> _Bool:
-        ...
+    def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x / y
 
-    @abstractmethod
-    def EqInt(self, x: _Int, y: _Int) -> _Bool:
-        ...
+    def EqIndex(self, x: int, y: int) -> bool:
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
+        return x == y
 
-    @abstractmethod
-    def EqNat(self, x: _Nat, y: _Nat) -> _Bool:
-        ...
+    def EqInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x == y
 
-    @abstractmethod
-    def EqRat(self, x: _Rat, y: _Rat) -> _Bool:
-        ...
+    def EqNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x == y
+
+    def EqRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x == y
 
     def Exists(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
-    ) -> _Bool:
+        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
+    ) -> bool:
         raise VehicleBuiltinUnsupported(vcl.Exists.__name__)
 
     def FoldList(
@@ -122,47 +129,62 @@ class Builtins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
+    @abstractmethod
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
     ) -> _T:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return reduce(lambda x, y: function(y, x), vector, initial)
-
-    def Forall(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], _Bool]
-    ) -> _Bool:
-        raise VehicleBuiltinUnsupported(vcl.Forall.__name__)
-
-    def GeIndex(self, x: int, y: int) -> _Bool:
-        return self.Not(self.LtIndex(x, y))
-
-    def GeInt(self, x: _Int, y: _Int) -> _Bool:
-        return self.Not(self.LtInt(x, y))
-
-    def GeNat(self, x: _Nat, y: _Nat) -> _Bool:
-        return self.Not(self.LtNat(x, y))
-
-    def GeRat(self, x: _Rat, y: _Rat) -> _Bool:
-        return self.Not(self.LtRat(x, y))
-
-    def GtIndex(self, x: int, y: int) -> _Bool:
-        return self.Not(self.LeIndex(x, y))
-
-    def GtInt(self, x: _Int, y: _Int) -> _Bool:
-        return self.Not(self.LeInt(x, y))
-
-    def GtNat(self, x: _Nat, y: _Nat) -> _Bool:
-        return self.Not(self.LeNat(x, y))
-
-    def GtRat(self, x: _Rat, y: _Rat) -> _Bool:
-        return self.Not(self.LeRat(x, y))
-
-    @abstractmethod
-    def If(self, cond: _Bool, if_true: _T, if_false: _T) -> _T:
         ...
 
-    def Implies(self, x: _Bool, y: _Bool) -> _Bool:
+    def Forall(
+        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
+    ) -> bool:
+        raise VehicleBuiltinUnsupported(vcl.Forall.__name__)
+
+    def GeIndex(self, x: int, y: int) -> bool:
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
+        return x >= y
+
+    def GeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x >= y
+
+    def GeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x >= y
+
+    def GeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x >= y
+
+    def GtIndex(self, x: int, y: int) -> bool:
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
+        return x > y
+
+    def GtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x > y
+
+    def GtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x > y
+
+    def GtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x > y
+
+    def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
+        assert isinstance(cond, bool), f"Expected bool, found {cond}"
+        return if_true if cond else if_false
+
+    def Implies(self, x: bool, y: bool) -> bool:
         return self.Or(self.Not(x), y)
 
     def Index(self, value: SupportsInt) -> int:
@@ -170,39 +192,51 @@ class Builtins(
 
     def Indices(self, upto: int) -> SupportsVector[int]:
         assert isinstance(upto, int), f"Expected int, found {upto}"
-        return tuple(range(0, upto))
+        return self.Vector(*range(0, upto))
 
     @abstractmethod
-    def Int(self, value: SupportsInt) -> _Int:
+    def Int(self, value: SupportsInt) -> _SupportsInt:
         ...
 
-    def LeIndex(self, x: int, y: int) -> _Bool:
-        return self.Or(self.EqIndex(x, y), self.LtIndex(x, y))
+    def LeIndex(self, x: int, y: int) -> bool:
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
+        return x <= y
 
-    def LeInt(self, x: _Int, y: _Int) -> _Bool:
-        return self.Or(self.EqInt(x, y), self.LtInt(x, y))
+    def LeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x <= y
 
-    def LeNat(self, x: _Nat, y: _Nat) -> _Bool:
-        return self.Or(self.EqNat(x, y), self.LtNat(x, y))
+    def LeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x <= y
 
-    def LeRat(self, x: _Rat, y: _Rat) -> _Bool:
-        return self.Or(self.EqRat(x, y), self.LtRat(x, y))
+    def LeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x <= y
 
-    @abstractmethod
-    def LtIndex(self, x: int, y: int) -> _Bool:
-        ...
+    def LtIndex(self, x: int, y: int) -> bool:
+        assert isinstance(x, int), f"Expected int, found {x}"
+        assert isinstance(y, int), f"Expected int, found {y}"
+        return x < y
 
-    @abstractmethod
-    def LtInt(self, x: _Int, y: _Int) -> _Bool:
-        ...
+    def LtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x < y
 
-    @abstractmethod
-    def LtNat(self, x: _Nat, y: _Nat) -> _Bool:
-        ...
+    def LtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x < y
 
-    @abstractmethod
-    def LtRat(self, x: _Rat, y: _Rat) -> _Bool:
-        ...
+    def LtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x < y
 
     def MapList(
         self, function: Callable[[_S], _T], iterable: SupportsList[_S]
@@ -211,63 +245,67 @@ class Builtins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return map(function, iterable)
 
+    @abstractmethod
     def MapVector(
         self, function: Callable[[_S], _T], vector: SupportsVector[_S]
     ) -> SupportsVector[_T]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return tuple(map(function, vector))
-
-    @abstractmethod
-    def MaxRat(self, x: _Rat, y: _Rat) -> _Rat:
         ...
 
-    @abstractmethod
-    def MinRat(self, x: _Rat, y: _Rat) -> _Rat:
-        ...
+    def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return max(x, y)
+
+    def MinRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return min(x, y)
+
+    def MulInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x * y
+
+    def MulNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
+        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
+        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+        return x * y
+
+    def MulRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x * y
 
     @abstractmethod
-    def MulInt(self, x: _Int, y: _Int) -> _Int:
+    def Nat(self, value: SupportsInt) -> _SupportsNat:
         ...
 
-    @abstractmethod
-    def MulNat(self, x: _Nat, y: _Nat) -> _Nat:
-        ...
-
-    @abstractmethod
-    def MulRat(self, x: _Rat, y: _Rat) -> _Rat:
-        ...
-
-    @abstractmethod
-    def Nat(self, value: SupportsInt) -> _Nat:
-        ...
-
-    def NeIndex(self, x: int, y: int) -> _Bool:
+    def NeIndex(self, x: int, y: int) -> bool:
         return self.Not(self.EqIndex(x, y))
 
-    def NeInt(self, x: _Int, y: _Int) -> _Bool:
+    def NeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
         return self.Not(self.EqInt(x, y))
 
-    def NeNat(self, x: _Nat, y: _Nat) -> _Bool:
+    def NeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
         return self.Not(self.EqNat(x, y))
 
-    def NeRat(self, x: _Rat, y: _Rat) -> _Bool:
+    def NeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
         return self.Not(self.EqRat(x, y))
 
-    @abstractmethod
-    def NegInt(self, x: _Int) -> _Int:
-        ...
+    def NegInt(self, x: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        return -x
 
-    @abstractmethod
-    def NegRat(self, x: _Rat) -> _Rat:
-        ...
+    def NegRat(self, x: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        return -x
 
-    def NilList(self) -> SupportsVector[_T]:
+    def NilList(self) -> SupportsList[_T]:
         return ()
 
-    @abstractmethod
-    def Not(self, x: _Bool) -> _Bool:
-        ...
+    def Not(self, x: bool) -> bool:
+        assert isinstance(x, bool), f"Expected bool, found {x}"
+        return not x
 
     def Optimise(
         self,
@@ -306,7 +344,7 @@ class Builtins(
     def OptimiseDefault(
         self,
         variable: _Variable,
-        domain: AbstractVariableDomain[_VariableValue],
+        domain: AbstractVariableDomain,
         minimise: bool,
         context: Dict[str, Any],
         joiner: Callable[[Any, Any], Any],
@@ -316,52 +354,52 @@ class Builtins(
             f"Could not find optimiser for quantified variable '{variable}'."
         )
 
-    @abstractmethod
-    def Or(self, x: _Bool, y: _Bool) -> _Bool:
-        ...
+    def Or(self, x: bool, y: bool) -> bool:
+        assert isinstance(x, bool), f"Expected bool, found {x}"
+        assert isinstance(y, bool), f"Expected bool, found {y}"
+        return x or y
+
+    def PowRat(self, x: _SupportsRat, y: _SupportsInt) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x ** y.__int__()
 
     @abstractmethod
-    def PowRat(self, x: _Rat, y: _Int) -> _Rat:
+    def Rat(self, value: SupportsFloat) -> _SupportsRat:
         ...
 
-    @abstractmethod
-    def Rat(self, value: SupportsFloat) -> _Rat:
-        ...
+    def SubInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
+        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+        return x - y
 
-    @abstractmethod
-    def SubInt(self, x: _Int, y: _Int) -> _Int:
-        ...
-
-    @abstractmethod
-    def SubRat(self, x: _Rat, y: _Rat) -> _Rat:
-        ...
+    def SubRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
+        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+        return x - y
 
     def Unit(self) -> Tuple[()]:
         return ()
 
+    @abstractmethod
+    def Vector(self, *values: _T) -> SupportsVector[_T]:
+        ...
+
+    @abstractmethod
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
         vector1: SupportsVector[_S],
         vector2: SupportsVector[_T],
     ) -> SupportsVector[_U]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
-        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
-        return tuple(map(function, vector1, vector2))
-
-    # NOTE: The definition for `Vector` must be last, otherwise mypy confuses
-    #       it with the generic type `Vector`.
-
-    def Vector(self, *values: _T) -> SupportsVector[_T]:
-        return values
+        ...
 
     @abstractmethod
     def create_quantified_variable(self, name: str, shape: Sequence[int]) -> _Variable:
         ...
 
 
-AnyBuiltins: TypeAlias = Builtins[Any, Any, Any, Any, Any, Any]
+AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST

@@ -4,10 +4,11 @@ from typing import Any, Callable, Dict, Generic, Iterator, Sequence
 
 from typing_extensions import Protocol, TypeAlias, TypeVar
 
+from .compile._collections import SupportsList, SupportsVector
+
 _T = TypeVar("_T")
 _R = TypeVar("_R")
 _Variable = TypeVar("_Variable")
-_VariableValue = TypeVar("_VariableValue")
 
 ################################################################################
 ## Names
@@ -34,7 +35,7 @@ The variable context, a mapping from variable names to values.
 ################################################################################
 
 
-class AbstractVariableDomain(Generic[_VariableValue], metaclass=ABCMeta):
+class AbstractVariableDomain(metaclass=ABCMeta):
     """
     An abstract interface for the domain of a quantified variable,
     i.e. the set of values the variable is allowed to take.
@@ -49,14 +50,14 @@ class AbstractVariableDomain(Generic[_VariableValue], metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def random_value(self) -> _VariableValue:
+    def random_value(self) -> SupportsVector:
         """
         Generate a random value that is guaranteed to lie within the domain.
         """
         ...
 
     @abstractmethod
-    def clip(self, value: _VariableValue) -> _VariableValue:
+    def clip(self, value: SupportsVector) -> SupportsVector:
         """
         Clips a value so that is guaranteed to lie within in the domain.
         """
@@ -67,13 +68,13 @@ DomainFunction: TypeAlias = Callable[
     [
         Context[_T],
     ],
-    AbstractVariableDomain[_VariableValue],
+    AbstractVariableDomain,
 ]
 """
 A function from the current context to the domain of a quantified variable.
 """
 
-AnyDomain: TypeAlias = DomainFunction[Any, Any]
+AnyDomain: TypeAlias = DomainFunction[Any]
 """
 An optimiser that promises to work for any type.
 """
@@ -90,7 +91,7 @@ A mapping from quantified variable names to domains.
 Optimiser: TypeAlias = Callable[
     [
         _Variable,
-        AbstractVariableDomain[_VariableValue],
+        AbstractVariableDomain,
         bool,
         Context[_T],
         Callable[[_R, _R], _R],
@@ -102,7 +103,7 @@ Optimiser: TypeAlias = Callable[
 A function that tries to optimise a variable.
 """
 
-AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any, Any]
+AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any]
 """
 An optimiser that promises to work for any type.
 """

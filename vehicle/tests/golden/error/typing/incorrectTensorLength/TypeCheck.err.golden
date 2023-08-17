@@ -1,6 +1,6 @@
 Error at Line 2, Columns 10-11: unable to work out a valid type for the overloaded expression '[1]'.
 Type checking has deduced that it is of type:
   forallT {A} . Vector A 1 -> ?4 A
-but the list of valid types for it is:
+but '[1]' has only the following valid types:
   forallT {A} . Vector A n -> List A
   forallT {A} . Vector A n -> (\ A -> Vector A n) A
