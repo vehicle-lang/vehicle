@@ -23,7 +23,6 @@ from typing import (
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import Self, TypeVar, final, override
-
 from vehicle_lang.typing import VariableDomain, VehicleVector
 
 from .. import ast as vcl
