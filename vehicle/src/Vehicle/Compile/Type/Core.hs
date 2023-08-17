@@ -154,10 +154,16 @@ blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->
+  (TypingBoundCtx builtin -> TypingBoundCtx builtin) ->
+  ConstraintContext builtin
+updateConstraintBoundCtx ConstraintContext {..} updateFn =
+  ConstraintContext {boundContext = updateFn boundContext, ..}
+
+setConstraintBoundCtx ::
+  ConstraintContext builtin ->
   TypingBoundCtx builtin ->
   ConstraintContext builtin
-updateConstraintBoundCtx ConstraintContext {..} newBoundCtx =
-  ConstraintContext {boundContext = newBoundCtx, ..}
+setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
 contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
