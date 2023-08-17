@@ -489,23 +489,3 @@ pattern AtExpr p tElem tDim explicitArgs <-
         :| IrrelevantImplicitArg _ tDim
         : explicitArgs
       )
-
---------------------------------------------------------------------------------
--- Vector
-
-pattern FoldVectorExpr ::
-  Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
-pattern FoldVectorExpr p tElem size tRes explicitArgs <-
-  BuiltinFunctionExpr
-    p
-    (Fold FoldVector)
-    ( RelevantImplicitArg _ tElem
-        :| IrrelevantImplicitArg _ size
-        : RelevantImplicitArg _ tRes
-        : explicitArgs
-      )
