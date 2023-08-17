@@ -1,3 +1,5 @@
+import Control.Monad (join)
+import Data.String (IsString (fromString))
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
 import Test.Tasty (defaultMain)
@@ -8,7 +10,12 @@ testDirectory = "tests" </> "golden"
 
 options :: [SomeOption]
 options =
-  [ AppendOption (IgnoreFiles ["*.vclo", "**/*.vclo", ".vcl-plan", "**/.vcl-plan"])
+  [ AppendOption . IgnoreFiles . join $
+      [ [ fromString filePattern,
+          fromString ("**" </> filePattern)
+        ]
+        | filePattern <- ["*.vclo", ".vcl-plan", ".vcl-cache", ".vcl-cache-index"]
+      ]
   ]
 
 main :: IO ()
