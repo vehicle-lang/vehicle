@@ -7,6 +7,9 @@
 * Fixed bug where `forall ... in` and `exists ... in` didn't evaluate properly during verification
   (introduced in v0.9.0).
 
+* Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
+ `unification of lambdas not implemented` error.
+
 ## Version 0.9.0
 
 * Removed the notion of a distinct notion of a "proof cache".

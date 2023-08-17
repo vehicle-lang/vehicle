@@ -142,7 +142,7 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
       -- Allow the candidate to access all the arguments in the goal telescope.
       let goalCtxExtension = fmap mkTypingBoundCtxEntry goalTelescope
       let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
-      let extendedGoalInfo = (updateConstraintBoundCtx constraintCtx extendedGoalCtx, constraintOrigin)
+      let extendedGoalInfo = (setConstraintBoundCtx constraintCtx extendedGoalCtx, constraintOrigin)
 
       logCompilerSection MaxDetail "hypothetically accepting candidate" $ do
         -- Instantiate the candidate telescope with metas and subst into body.
@@ -209,7 +209,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
             expr <- freshMetaExpr p binderType boundCtx
             return (unnormalised expr, [])
           Instance {} -> do
-            let newInfo = (updateConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
+            let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
             normBinderType <- eval (typingBoundContextToEnv boundCtx) binderType
             (expr, constraint) <- createSubInstance newInfo (relevanceOf exprBinder) normBinderType
