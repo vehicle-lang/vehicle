@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries.QuerySetStructure
+module Vehicle.Backend.Queries.QuerySetStructure
   ( SeriousPropertyError (..),
     PropertyError (..),
     UnreducedAssertion (..),
@@ -20,13 +20,13 @@ import Data.Map qualified as Map (keysSet, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set (intersection, map, null, singleton)
+import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
+import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Compile.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Resource (NetworkContext)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard

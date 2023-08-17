@@ -34,13 +34,15 @@ import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr, stdout)
 import System.ProgressBar
 import Vehicle.Backend.Prelude (writeResultToFile)
+import Vehicle.Backend.Queries.Variable (UserVariable (..))
+import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.Variable (UserVariable (..))
-import Vehicle.Compile.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Expr.Boolean
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------
 -- Specification

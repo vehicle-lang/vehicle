@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceBuiltins
+module Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
   ( standardBuiltinInstances,
   )
 where

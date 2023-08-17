@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Type.Subsystem.Standard.Constraint.InstanceDefaults where
+module Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults where
 
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error

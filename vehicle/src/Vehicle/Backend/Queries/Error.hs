@@ -1,18 +1,18 @@
-module Vehicle.Compile.Queries.LinearityAndPolarityErrors
+module Vehicle.Backend.Queries.Error
   ( diagnoseNonLinearity,
     diagnoseAlternatingQuantifiers,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Vehicle.Backend.Queries.Error.Linearity
+import Vehicle.Backend.Queries.Error.Polarity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
-import Vehicle.Compile.Type.Subsystem.Linearity
-import Vehicle.Compile.Type.Subsystem.Polarity
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Normalised (GluedExpr (..))
-import Vehicle.Verify.Core (QueryFormatID)
+import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.

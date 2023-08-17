@@ -8,9 +8,6 @@ module Vehicle.Compile.Type.Constraint.Core
     unify,
     createInstanceUnification,
     createSubInstance,
-    solveTypeClassMeta,
-    anyOf,
-    allOf,
     mkCandidate,
   )
 where
@@ -25,7 +22,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, solveMeta, trackSolvedMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
@@ -112,11 +109,6 @@ createSubInstance (ctx, origin) r t = do
   let newConstraint = InstanceConstraint (Resolve origin meta r t)
   return (unnormalised metaExpr, WithContext newConstraint newCtx)
 
-solveTypeClassMeta :: (TCM builtin m) => ConstraintContext builtin -> MetaID -> Value builtin -> m ()
-solveTypeClassMeta ctx meta solution = do
-  quotedSolution <- quote mempty (contextDBLevel ctx) solution
-  solveMeta meta quotedSolution (boundContext ctx)
-
 extractHeadFromInstanceCandidate ::
   (PrintableBuiltin builtin) =>
   InstanceCandidate builtin ->
@@ -155,12 +147,6 @@ parseInstanceGoal e = go [] e
         | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"
       VBuiltin b spine -> return $ InstanceGoal telescope b spine
       _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyVerbose e
-
-anyOf :: [a] -> (a -> Bool) -> Bool
-anyOf = flip any
-
-allOf :: [a] -> (a -> Bool) -> Bool
-allOf = flip all
 
 mkCandidate :: (DSLExpr builtin, DSLExpr builtin) -> InstanceCandidate builtin
 mkCandidate (expr, solution) = do

@@ -60,7 +60,7 @@ import Vehicle.Prelude
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))
-import Vehicle.Verify.Core (QueryFormatID)
+import Vehicle.Verify.QueryFormat
 
 --------------------------------------------------------------------------------
 -- Options objects

@@ -1,20 +1,20 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Type.Subsystem.Linearity
+module Vehicle.Backend.Queries.Error.Linearity
   ( module Core,
   )
 where
 
+import Vehicle.Backend.Queries.Error.Linearity.AnnotationRestrictions (assertConstantLinearity, checkNetworkType)
+import Vehicle.Backend.Queries.Error.Linearity.Core as Core
+import Vehicle.Backend.Queries.Error.Linearity.LinearitySolver
+import Vehicle.Backend.Queries.Error.Linearity.Type
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Compile.Type.Subsystem.Linearity.AnnotationRestrictions (assertConstantLinearity, checkNetworkType)
-import Vehicle.Compile.Type.Subsystem.Linearity.Core as Core
-import Vehicle.Compile.Type.Subsystem.Linearity.LinearitySolver
-import Vehicle.Compile.Type.Subsystem.Linearity.Type
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin hiding (Builtin (..))

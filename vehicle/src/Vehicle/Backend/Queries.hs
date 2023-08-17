@@ -1,4 +1,4 @@
-module Vehicle.Compile.Queries
+module Vehicle.Backend.Queries
   ( compileToQueries,
   )
 where
@@ -13,17 +13,17 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Traversable (for)
 import System.Directory (createDirectoryIfMissing)
+import Vehicle.Backend.Queries.Error
+import Vehicle.Backend.Queries.IfElimination (unfoldIf)
+import Vehicle.Backend.Queries.NetworkElimination
+import Vehicle.Backend.Queries.QuerySetStructure
+import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
+import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.IfElimination (unfoldIf)
-import Vehicle.Compile.Queries.LinearityAndPolarityErrors
-import Vehicle.Compile.Queries.NetworkElimination
-import Vehicle.Compile.Queries.QuerySetStructure
-import Vehicle.Compile.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
-import Vehicle.Compile.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..))
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -33,6 +33,7 @@ import Vehicle.Expr.Boolean
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector))
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
 

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
-module Vehicle.Compile.Queries.IfElimination
+module Vehicle.Backend.Queries.IfElimination
   ( eliminateIfs,
     unfoldIf,
   )

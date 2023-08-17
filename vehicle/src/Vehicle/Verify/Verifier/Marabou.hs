@@ -14,6 +14,8 @@ import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
 -- The main interface

@@ -8,11 +8,12 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Vehicle.Backend.Queries.LinearExpr
+import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Queries.LinearExpr
-import Vehicle.Compile.Queries.Variable
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Marabou query format

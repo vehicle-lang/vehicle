@@ -1,11 +1,11 @@
-module Vehicle.Compile.Type.Subsystem.Linearity.Type
+module Vehicle.Backend.Queries.Error.Linearity.Type
   ( typeLinearityBuiltin,
   )
 where
 
 import Data.Text qualified as Text
+import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Linearity.Core
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Builtin hiding (Builtin (..))

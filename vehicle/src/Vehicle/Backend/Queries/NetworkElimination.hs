@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Vehicle.Compile.Queries.NetworkElimination
+module Vehicle.Backend.Queries.NetworkElimination
   ( MetaNetworkPartition (..),
     replaceNetworkApplications,
   )
@@ -24,12 +24,12 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Traversable (for)
 import GHC.Generics (Generic)
+import Vehicle.Backend.Queries.LinearExpr (VectorEquality (..))
+import Vehicle.Backend.Queries.QuerySetStructure (UnreducedAssertion (..))
+import Vehicle.Backend.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), UserVariable (..), mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Queries.LinearExpr (VectorEquality (..))
-import Vehicle.Compile.Queries.QuerySetStructure (UnreducedAssertion (..))
-import Vehicle.Compile.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), UserVariable (..), mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.Interface

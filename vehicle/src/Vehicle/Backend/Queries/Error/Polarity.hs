@@ -1,21 +1,21 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Type.Subsystem.Polarity
+module Vehicle.Backend.Queries.Error.Polarity
   ( module Core,
   )
 where
 
+import Vehicle.Backend.Queries.Error.Polarity.AnnotationRestrictions (assertUnquantifiedPolarity, checkNetworkType)
+import Vehicle.Backend.Queries.Error.Polarity.Core
+import Vehicle.Backend.Queries.Error.Polarity.Core as Core hiding (BuiltinFunction)
+import Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
+import Vehicle.Backend.Queries.Error.Polarity.Type
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Compile.Type.Subsystem.Polarity.AnnotationRestrictions (assertUnquantifiedPolarity, checkNetworkType)
-import Vehicle.Compile.Type.Subsystem.Polarity.Core
-import Vehicle.Compile.Type.Subsystem.Polarity.Core as Core hiding (BuiltinFunction)
-import Vehicle.Compile.Type.Subsystem.Polarity.PolaritySolver
-import Vehicle.Compile.Type.Subsystem.Polarity.Type
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin hiding (Builtin (..))

@@ -13,9 +13,8 @@ import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
-import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.IO
-import Vehicle.Verify.Verifier (verifiers)
+import Vehicle.Verify.Verifier
 
 data VerifyOptions = VerifyOptions
   { specification :: FilePath,
