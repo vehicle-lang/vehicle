@@ -8,7 +8,7 @@ where
 
 import Control.Applicative (Alternative (..))
 import Control.Monad (unless)
-import Control.Monad.Writer (Any (..), MonadWriter (..), Writer, runWriter)
+import Control.Monad.Writer (MonadWriter (..), Writer, runWriter)
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Encode.Pretty (Config (..), defConfig, encodePrettyToTextBuilder', keyOrder)
 import Data.Aeson.Encode.Pretty qualified as Indent (Indent (..))
@@ -16,6 +16,7 @@ import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Monoid (Any (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
