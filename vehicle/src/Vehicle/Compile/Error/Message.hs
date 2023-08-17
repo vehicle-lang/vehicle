@@ -430,13 +430,14 @@ instance MeaningfulError CompileError where
                 <> line
                 <> indent 2 deducedType
                 <> line
-                <> "but the list of valid types for it is:"
+                <> "but" <+> originExpr <+> "has only the following valid types:"
                 <> line
                 <> indent 2 (vsep (fmap calculateCandidateType candidates)),
             fix = Nothing
           }
       where
         InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
+
         deducedType = calculateOpType (boundContextOf ctx) $ case tc of
           App _ _ as -> NonEmpty.toList as
           _ -> []
@@ -469,22 +470,6 @@ instance MeaningfulError CompileError where
             let body' = arg `substDBInto` body
             instantiateTelescope body' args
           _ -> developerError "Malformed type-class operation type"
-    FailedQuantifierConstraintDomain (ctx, _) typeOfDomain _q ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "cannot quantify over arguments whose type contains"
-                <+> squotes typeDoc
-                <+> "(e.g."
-                <+> squotes typeDoc
-                <> "," <+> squotes vectorTypeDoc <+> "etc.).",
-            fix = Nothing
-          }
-      where
-        toDoc t = prettyFriendly $ WithContext t (boundContextOf ctx)
-        typeDoc = toDoc typeOfDomain
-        vectorTypeDoc = toDoc $ VVectorType typeOfDomain (VFreeVar (Identifier User "n") [])
     TypingError (FailedIndexConstraintTooBig ctx v n) ->
       UError $
         UserError
