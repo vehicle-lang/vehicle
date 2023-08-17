@@ -17,6 +17,7 @@ module Vehicle.Compile.Queries.Variable
     mixedVariableCtx,
     mixedVariableDBCtx,
     Constant,
+    Coefficient,
     scaleConstant,
     prettyConstant,
     addConstants,
@@ -27,6 +28,7 @@ module Vehicle.Compile.Queries.Variable
     pattern VInfiniteQuantifier,
     pattern VFiniteQuantifier,
     pattern VFiniteQuantifierSpine,
+    prettyRationalAsFloat,
   )
 where
 
@@ -40,9 +42,10 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
 import Data.Text qualified as Text (pack)
-import Data.Vector.Unboxed (Vector)
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector (Vector)
+import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
+import Numeric (showFFloat)
 import Prettyprinter (brackets, list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -265,18 +268,20 @@ mixedVariableDBCtx ctx = fmap (Just . layoutAsText . pretty) (mixedVariableCtx c
 --------------------------------------------------------------------------------
 -- Constants
 
-type Constant = Vector Double
+type Coefficient = Rational
 
-scaleConstant :: Double -> Constant -> Constant
+type Constant = Vector Rational
+
+scaleConstant :: Rational -> Constant -> Constant
 scaleConstant v = Vector.map (v *)
 
-addConstants :: Double -> Constant -> Double -> Constant -> Constant
+addConstants :: Coefficient -> Constant -> Coefficient -> Constant -> Constant
 addConstants a xs b ys = Vector.zipWith (\x y -> a * x + b * y) xs ys
 
-foldConstant :: forall a. (Double -> a) -> ([a] -> a) -> TensorDimensions -> Constant -> a
+foldConstant :: forall a. (Rational -> a) -> ([a] -> a) -> TensorDimensions -> Constant -> a
 foldConstant mkValue mkVec dims value = go dims (Vector.toList value)
   where
-    go :: TensorDimensions -> [Double] -> a
+    go :: TensorDimensions -> [Rational] -> a
     go [] xs = mkValue (head xs)
     go (_d : ds) xs = do
       let inputVarIndicesChunks = chunksOf (product ds) xs
@@ -294,6 +299,11 @@ prettyConstant isFirst dims value
   | not isFirst && Vector.all (== 0.0) value = ""
   | not isFirst = " + " <> foldConstant pretty list dims value
   | otherwise = foldConstant pretty list dims value
+
+prettyRationalAsFloat :: Rational -> Doc a
+prettyRationalAsFloat p = do
+  let f = realToFrac p :: Double
+  pretty $ showFFloat Nothing f ""
 
 --------------------------------------------------------------------------------
 -- Variable assignments

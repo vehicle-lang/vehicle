@@ -7,6 +7,8 @@
 * Fixed bug where `forall ... in` and `exists ... in` didn't evaluate properly during verification
   (introduced in v0.9.0).
 
+* Improved precision of constants in the verifier queries generated.
+
 ## Version 0.9.0
 
 * Removed the notion of a distinct notion of a "proof cache".

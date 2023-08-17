@@ -26,6 +26,7 @@ import Data.Monoid (Sum (..))
 import Data.Text (intercalate, pack, unpack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
+import Data.Vector qualified as BoxedVector
 import Data.Vector.Unboxed qualified as Vector (fromList)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Exit (exitFailure)
@@ -373,7 +374,9 @@ outputPropertyResult verificationCache address result@(PropertyStatus _negated s
       forM_ assignments $ \(UserVariable {..}, value) -> do
         let file = witnessFolder </> unpack userVarName
         let dims = Vector.fromList userVarDimensions
-        let idxData = IDXDoubles IDXDouble dims value
+        -- TODO got to be a better way to do this conversion...
+        let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)
+        let idxData = IDXDoubles IDXDouble dims unboxedVector
         liftIO $ encodeIDXFile idxData file
     _ -> return ()
 

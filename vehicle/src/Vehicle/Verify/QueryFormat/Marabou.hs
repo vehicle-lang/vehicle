@@ -63,7 +63,7 @@ compileAssertion varNames assertion = do
 
   let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
   let compiledRel = compileRel rel'
-  let compiledRHS = prettyCoefficient constant'
+  let compiledRHS = prettyRationalAsFloat constant'
 
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
@@ -77,8 +77,8 @@ compileRel = \case
   Right Lt -> "<="
   Right Gt -> ">="
 
-compileVar :: Bool -> (Double, Name) -> Doc a
+compileVar :: Bool -> (Rational, Name) -> Doc a
 compileVar False (1, var) = pretty var
 compileVar True (1, var) = "+" <> pretty var
 compileVar _ (-1, var) = "-" <> pretty var
-compileVar _ (coefficient, var) = prettyCoefficient coefficient <> pretty var
+compileVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> pretty var

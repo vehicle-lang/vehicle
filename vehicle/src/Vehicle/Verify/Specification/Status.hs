@@ -3,7 +3,7 @@ module Vehicle.Verify.Specification.Status where
 import Data.Aeson
 import Data.List.Split (chunksOf)
 import Data.Text (Text, pack)
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
@@ -96,7 +96,7 @@ prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
   let value = prettyFriendly (WithContext valueExpr emptyDBCtx)
   name <> ":" <+> value
 
-assignmentToExpr :: TensorDimensions -> [Double] -> Expr Ix StandardBuiltin
+assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix StandardBuiltin
 assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)
