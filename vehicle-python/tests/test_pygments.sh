@@ -1,13 +1,13 @@
 #!/bin/sh
 
 # See: https://stackoverflow.com/a/4774063
-ROOT_DIR="$(dirname "$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )" )"
+ROOT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )"
 
 # Parse arguments:
 if [ "${1}" = "--update-goldens" ]
 then
     UPDATE_GOLDENS="true"
-    rm -rf "${ROOT_DIR}/tests/golden"
+    rm -rf "${ROOT_DIR}/golden"
 elif [ "${1}" = "" ]
 then
     UPDATE_GOLDENS="false"
@@ -19,11 +19,11 @@ fi
 # POSIX compliant method for 'pipefail':
 fail=$(mktemp)
 
-find "${ROOT_DIR}/vendor/vehicle/tests/golden" -name "*.vcl" | \
+find "${ROOT_DIR}/data" -name "*.vcl" | \
 while read -r file;
 do
     input="${file#"${ROOT_DIR}/"}"
-    golden="tests/golden/${input#"vendor/vehicle/tests/golden/"}.tokens.golden"
+    golden="golden/${input#"data/"}.tokens.golden"
     if [ "${UPDATE_GOLDENS}" = "true" ]
     then
         mkdir -p "$(dirname "${ROOT_DIR}/${golden}")"
