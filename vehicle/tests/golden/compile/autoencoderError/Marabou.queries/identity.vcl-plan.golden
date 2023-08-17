@@ -95,11 +95,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -115,7 +130,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -312,11 +330,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -332,7 +365,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -529,11 +565,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -549,7 +600,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -746,11 +800,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -766,7 +835,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -963,11 +1035,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -983,7 +1070,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -1180,11 +1270,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -1200,7 +1305,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -1397,11 +1505,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -1417,7 +1540,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -1614,11 +1740,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -1634,7 +1775,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -1831,11 +1975,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -1851,7 +2010,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -2048,11 +2210,26 @@
                             5
                           ],
                           "constantValue": [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -2068,7 +2245,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }

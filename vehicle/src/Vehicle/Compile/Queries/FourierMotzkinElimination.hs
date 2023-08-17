@@ -8,7 +8,7 @@ where
 import Control.Monad (foldM)
 import Data.Set (Set)
 import Data.Set qualified as Set (toList)
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.LinearExpr

@@ -2,7 +2,7 @@ module Vehicle.Compile.Queries.VariableReconstruction where
 
 import Data.Foldable (foldlM)
 import Data.Map qualified as Map
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.FourierMotzkinElimination
 import Vehicle.Compile.Queries.GaussianElimination

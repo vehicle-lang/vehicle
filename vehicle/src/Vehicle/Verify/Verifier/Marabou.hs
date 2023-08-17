@@ -6,9 +6,9 @@ where
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
 import Data.Text (Text)
-import Data.Text qualified as Text (pack, splitOn, strip, unpack)
+import Data.Text qualified as Text (pack, splitOn, strip)
 import Data.Text.IO (hPutStrLn)
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
@@ -113,11 +113,11 @@ parseSATAssignment output = do
       return $ NetworkVariableAssignment $ Vector.fromList (inputValues <> outputValues)
     _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
 
-parseSATAssignmentLine :: InputOrOutput -> Text -> Double
+parseSATAssignmentLine :: InputOrOutput -> Text -> Rational
 parseSATAssignmentLine _ txt =
   let parts = Text.strip <$> Text.splitOn "=" txt
    in case parts of
-        [_namePart, valuePart] -> read (Text.unpack valuePart)
+        [_namePart, valuePart] -> readFloatAsRational valuePart
         _ ->
           malformedOutputError $
             "could not split assignment line" <+> squotes (pretty txt) <+> "on '=' sign"

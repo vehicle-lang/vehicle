@@ -1,6 +1,5 @@
 module Vehicle.Compile.Queries.LinearExpr
   ( Relation (..),
-    Coefficient,
     Assertion (..),
     UnreducedAssertion (..),
     VectorEquality (..),
@@ -21,7 +20,6 @@ module Vehicle.Compile.Queries.LinearExpr
     substitute,
     filterTrivialAssertions,
     eliminateVar,
-    prettyCoefficient,
     convertToSparseFormat,
     mapAssertionVariables,
     ordToRelation,
@@ -39,9 +37,8 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
-import Numeric qualified
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Queries.Variable
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -87,8 +84,6 @@ ordToRelation e1 op e2 = case op of
 --------------------------------------------------------------------------------
 -- Variables
 
-type Coefficient = Double
-
 prettyCoefficientVar ::
   (Variable variable) =>
   Bool ->
@@ -102,13 +97,10 @@ prettyCoefficientVar isFirst (variable, coefficient) = do
   let value
         | coefficient == 1 = pretty variable
         | coefficient == -1 = pretty variable
-        | coefficient > 0 = prettyCoefficient coefficient <> pretty variable
-        | otherwise = prettyCoefficient (-coefficient) <> pretty variable
+        | coefficient > 0 = pretty coefficient <> pretty variable
+        | otherwise = pretty (-coefficient) <> pretty variable
 
   sign <> value
-
-prettyCoefficient :: Coefficient -> Doc a
-prettyCoefficient v = pretty $ Numeric.showFFloat Nothing v ""
 
 --------------------------------------------------------------------------------
 -- Sparse representations of linear expressions
@@ -293,7 +285,7 @@ filterTrivialAssertions = go
 convertToSparseFormat ::
   Map NetworkVariable Name ->
   Assertion NetworkVariable ->
-  (NonEmpty (Coefficient, Name), Either () OrderOp, Double)
+  (NonEmpty (Coefficient, Name), Either () OrderOp, Rational)
 convertToSparseFormat nameMap (Assertion rel linearExpr) = do
   let Sparse _ coeffs vectConstant = linearExpr
   let varCoeff = sortVarCoeffs coeffs
@@ -308,7 +300,7 @@ convertToSparseFormat nameMap (Assertion rel linearExpr) = do
   -- Make the properties a tiny bit nicer by checking if all the vars are
   -- negative and if so negating everything.
   let allCoefficientsNegative = all (\(c, _) -> c < 0) coeffName
-  let (almostFinalCoeff, finalOp, almostFinalConstant) =
+  let (almostFinalCoeff, finalOp, finalConstant) =
         if not allCoefficientsNegative
           then (coeffName, op, rhsConstant)
           else do
@@ -316,12 +308,6 @@ convertToSparseFormat nameMap (Assertion rel linearExpr) = do
             let negOp = second flipOrder op
             let negConstant = -rhsConstant
             (negCoeffNames, negOp, negConstant)
-
-  -- Also check for and remove `-0.0`s for cleanliness.
-  let finalConstant =
-        if isNegativeZero almostFinalConstant
-          then 0.0
-          else almostFinalConstant
 
   let finalCoeff = case almostFinalCoeff of
         (c : cs) -> c :| cs
