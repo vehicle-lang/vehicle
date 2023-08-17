@@ -6,15 +6,12 @@ from pathlib import Path
 
 import pytest
 
-PACKAGE_ROOT = Path(__file__).parent.parent
-VEHICLE_GOLDEN_TESTS_PATH = PACKAGE_ROOT / "vendor" / "vehicle" / "tests" / "golden"
-VEHICLE_GOLDEN_TOKENS_PATH = PACKAGE_ROOT / "tests" / "golden"
-VEHICLE_FILES = VEHICLE_GOLDEN_TESTS_PATH.glob(os.path.join("**", "*.vcl"))
+TESTS_DATA = Path(__file__).parent / "data"
 
 
 @pytest.mark.parametrize(
     "vehicle_file",
-    VEHICLE_FILES,
+    TESTS_DATA.glob("*.vcl"),
 )  # type: ignore[misc]
 def test_pygments(vehicle_file: Path) -> None:
     UPDATE_GOLDENS = os.environ.get("UPDATE_GOLDENS")
@@ -31,9 +28,7 @@ def test_pygments(vehicle_file: Path) -> None:
             temporary_file.name,
         ]
     )
-    vehicle_golden_tokens_file = VEHICLE_GOLDEN_TOKENS_PATH / vehicle_file.relative_to(
-        VEHICLE_GOLDEN_TESTS_PATH
-    ).with_suffix(".vcl.tokens.golden")
+    vehicle_golden_tokens_file = vehicle_file.with_suffix(".vcl.tokens.golden")
 
     if UPDATE_GOLDENS:
         vehicle_golden_tokens_file.parent.mkdir(parents=True, exist_ok=True)
