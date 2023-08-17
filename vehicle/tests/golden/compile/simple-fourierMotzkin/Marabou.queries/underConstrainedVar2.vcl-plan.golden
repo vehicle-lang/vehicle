@@ -91,7 +91,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -103,7 +106,10 @@
                                   "unreducedUserVarName": "y"
                                 }
                               },
-                              -0.5
+                              {
+                                "numerator": -1,
+                                "denominator": 2
+                              }
                             ],
                             [
                               {
@@ -116,7 +122,10 @@
                                   "application": 0
                                 }
                               },
-                              0.5
+                              {
+                                "numerator": 1,
+                                "denominator": 2
+                              }
                             ]
                           ]
                         }
@@ -141,7 +150,10 @@
                             "assertionExpr": {
                               "dimensions": [],
                               "constantValue": [
-                                2
+                                {
+                                  "numerator": 2,
+                                  "denominator": 1
+                                }
                               ],
                               "coefficients": [
                                 [
@@ -153,7 +165,10 @@
                                       "unreducedUserVarName": "y"
                                     }
                                   },
-                                  1
+                                  {
+                                    "numerator": 1,
+                                    "denominator": 1
+                                  }
                                 ],
                                 [
                                   {
@@ -166,7 +181,10 @@
                                       "application": 0
                                     }
                                   },
-                                  -1
+                                  {
+                                    "numerator": -1,
+                                    "denominator": 1
+                                  }
                                 ]
                               ]
                             }
@@ -178,7 +196,10 @@
                             "assertionExpr": {
                               "dimensions": [],
                               "constantValue": [
-                                1
+                                {
+                                  "numerator": 1,
+                                  "denominator": 1
+                                }
                               ],
                               "coefficients": [
                                 [
@@ -190,7 +211,10 @@
                                       "unreducedUserVarName": "y"
                                     }
                                   },
-                                  -1
+                                  {
+                                    "numerator": -1,
+                                    "denominator": 1
+                                  }
                                 ]
                               ]
                             }

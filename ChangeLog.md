@@ -10,6 +10,8 @@
 * Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
  `unification of lambdas not implemented` error.
 
+* Improved precision of constants in the verifier queries generated.
+
 ## Version 0.9.0
 
 * Removed the notion of a distinct notion of a "proof cache".

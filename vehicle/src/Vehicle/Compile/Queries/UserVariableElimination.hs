@@ -21,7 +21,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Traversable (for)
-import Data.Vector.Unboxed qualified as Vector
+import Data.Vector qualified as Vector
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalMul)
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)

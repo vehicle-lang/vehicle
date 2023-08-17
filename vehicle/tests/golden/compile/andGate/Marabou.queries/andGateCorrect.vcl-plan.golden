@@ -91,7 +91,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -105,7 +108,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -127,7 +133,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -141,7 +150,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -256,7 +268,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -270,7 +285,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -292,7 +310,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -306,7 +327,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -421,7 +445,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -435,7 +462,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -457,7 +487,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -471,7 +504,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -586,7 +622,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -600,7 +639,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
@@ -622,7 +664,10 @@
                         "solutionEquality": {
                           "dimensions": [],
                           "constantValue": [
-                            0
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
                           ],
                           "coefficients": [
                             [
@@ -636,7 +681,10 @@
                                   "application": 0
                                 }
                               },
-                              1
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
                             ]
                           ]
                         }
