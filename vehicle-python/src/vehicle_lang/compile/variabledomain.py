@@ -4,7 +4,6 @@ from typing import List, Tuple, Type
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import TypeVar, override
-
 from vehicle_lang.typing import VariableDomain, VehicleVector
 
 __all__: List[str] = [

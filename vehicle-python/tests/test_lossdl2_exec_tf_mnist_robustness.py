@@ -64,7 +64,6 @@ ZEROES_28X28: Image = (
 def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
-
         import vehicle_lang.tensorflow as vcl2tf
 
         def domain_for_pertubation(

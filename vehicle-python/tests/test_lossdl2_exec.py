@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Union
 
 import numpy as np
 import pytest
-
 import vehicle_lang as vcl
 import vehicle_lang.compile.python as vcl2py
 import vehicle_lang.typing as vclt
