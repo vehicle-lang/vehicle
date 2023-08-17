@@ -335,18 +335,3 @@ test-suite golden-tests
     , tasty-golden-executable
 
   build-tool-depends: vehicle:vehicle
-
-executable new-golden-test
-  import:        common-executable
-  main-is:       app/NewTest.hs
-  build-depends:
-    , base
-    , containers
-    , directory
-    , filepath
-    , optparse-applicative
-    , tagged
-    , tasty
-    , tasty-golden-executable
-    , text
-    , vehicle
