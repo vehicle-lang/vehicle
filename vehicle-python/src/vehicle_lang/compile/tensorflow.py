@@ -1,4 +1,3 @@
-import ast as py
 from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
@@ -6,34 +5,32 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Optional,
     Sequence,
     SupportsFloat,
     SupportsInt,
+    Tuple,
     Union,
-    cast,
 )
 
-import numpy as np
 import tensorflow as tf
 from typing_extensions import TypeVar, override
 
 from .. import ast as vcl
 from ..typing import (
-    AbstractVariableDomain,
-    AnyDomains,
-    AnyOptimisers,
     DeclarationName,
     DifferentiableLogic,
-    Explicit,
-    Target,
+    Domains,
+    Optimisers,
+    QuantifiedVariableName,
+    VariableDomain,
+    VehicleVector,
 )
-from ._collections import SupportsVector
 from .abc import ABCBuiltins
 from .error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .python import PythonTranslation
+from .tensorflowpgd import pgd
 
 __all__: List[str] = [
     # Abstract Syntax Tree
@@ -44,53 +41,13 @@ __all__: List[str] = [
     "Expression",
     "Program",
     "Provenance",
-    # Translation to Python
-    "PythonBuiltins",
-    "PythonTranslation",
+    # Translation to Tensorflow
+    "TensorflowBuiltins",
+    "TensorflowTranslation",
     # High-level functions
     "compile",
     "load_loss_function",
 ]
-
-################################################################################
-## Notion of a variable domain in tensorflow
-################################################################################
-
-
-class VariableDomain(AbstractVariableDomain[tf.Tensor]):
-    @staticmethod
-    def from_bounds(lower_bound: Any, upper_bound: Any) -> "VariableDomain":
-        return VariableDomain(lower_bound, upper_bound)
-
-    _lower_bounds: np.ndarray
-    _upper_bounds: np.ndarray
-    _shape: tf.TensorShape
-
-    def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray) -> None:
-        self._lower_bounds = np.array(lower_bounds)
-        self._upper_bounds = np.array(upper_bounds)
-
-        lower_shape = self._lower_bounds.shape
-        upper_shape = self._upper_bounds.shape
-        if lower_shape != upper_shape:
-            raise ValueError(
-                f"Variable domain lower and upper bounds must be the same dimensions but found {lower_shape} vs {upper_shape}"
-            )
-        else:
-            self._shape = tf.TensorShape(lower_shape)
-
-    @override
-    def dimensions(self) -> tf.TensorShape:
-        return self._shape
-
-    @override
-    def random_value(self) -> tf.Tensor:
-        return (self._lower_bounds + self._upper_bounds) / 2.0
-
-    @override
-    def clip(self, point: tf.Tensor) -> tf.Tensor:
-        return tf.clip_by_value(point, self._lower_bounds, self._upper_bounds)
-
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Tensorflow
@@ -104,9 +61,9 @@ _U = TypeVar("_U")
 
 @dataclass(frozen=True)
 class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variable]):
-    dtypeNat: tf.DType = tf.uint64
-    dtypeInt: tf.DType = tf.int64
-    dtypeRat: tf.DType = tf.float64
+    dtype_nat: tf.DType = tf.uint64
+    dtype_int: tf.DType = tf.int64
+    dtype_rat: tf.DType = tf.float64
 
     @override
     def AddInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -121,11 +78,11 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return tf.add(x, y)
 
     @override
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
+    def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
         raise VehicleBuiltinUnsupported(vcl.AtVector.__name__)
 
     @override
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+    def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
         raise VehicleBuiltinUnsupported(vcl.ConsVector.__name__)
 
     @override
@@ -134,18 +91,18 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
 
     @override
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
     ) -> _T:
         raise VehicleBuiltinUnsupported(vcl.FoldVector.__name__)
 
     @override
     def Int(self, value: SupportsInt) -> tf.Tensor:
-        return value.__int__()
+        return tf.convert_to_tensor(value, dtype=self.dtype_int)
 
     @override
     def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
-    ) -> SupportsVector[_T]:
+        self, function: Callable[[_S], _T], vector: VehicleVector[_S]
+    ) -> VehicleVector[_T]:
         raise VehicleBuiltinUnsupported(vcl.MapVector.__name__)
 
     @override
@@ -170,7 +127,7 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
 
     @override
     def Nat(self, value: SupportsInt) -> tf.Tensor:
-        return value.__int__()
+        return tf.convert_to_tensor(value, dtype=self.dtype_nat)
 
     @override
     def NegInt(self, x: tf.Tensor) -> tf.Tensor:
@@ -181,41 +138,10 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return tf.negative(x)
 
     @override
-    def PowRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.pow(x, y)
-
-    @override
-    def Rat(self, value: SupportsFloat) -> tf.Tensor:
-        if tf.is_tensor(value):
-            return cast(tf.Tensor, value)
-        else:
-            return tf.convert_to_tensor(float(value), dtype=self.rat_dtype)
-
-    @override
-    def SubInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.subtract(x, y)
-
-    @override
-    def SubRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.subtract(x, y)
-
-    def Vector(self, *values: _T) -> SupportsVector[_T]:
-        raise VehicleBuiltinUnsupported(vcl.Vector.__name__)
-
-    @override
-    def ZipWithVector(
-        self,
-        function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
-    ) -> SupportsVector[_U]:
-        raise VehicleBuiltinUnsupported(vcl.ZipWithVector.__name__)
-
-    @override
     def OptimiseDefault(
         self,
         variable: tf.Variable,
-        domain: AbstractVariableDomain[tf.Tensor],
+        domain: VariableDomain[tf.Tensor],
         minimise: bool,
         context: Dict[str, Any],
         joiner: Callable[[Any, Any], Any],
@@ -227,19 +153,45 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return worst_loss
 
     @override
-    def create_quantified_variable(
-        self, name: str, shape: Sequence[int]
-    ) -> tf.Variable:
+    def PowRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.pow(x, y)
+
+    @override
+    def QuantifiedVariable(self, name: str, shape: Tuple[int, ...]) -> tf.Variable:
         initial_value = tf.constant(
-            value=0, dtype=self.rat_dtype, shape=shape, name=f"{name}-initialValue"
+            value=0, dtype=self.dtype_rat, shape=shape, name=f"{name}-initialValue"
         )
 
         return tf.Variable(
             initial_value=initial_value,
             name=name,
             trainable=True,
-            dtype=self.rat_dtype,
+            dtype=self.dtype_rat,
         )
+
+    @override
+    def Rat(self, value: SupportsFloat) -> tf.Tensor:
+        return tf.convert_to_tensor(value, dtype=self.dtype_rat)
+
+    @override
+    def SubInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.subtract(x, y)
+
+    @override
+    def SubRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.subtract(x, y)
+
+    def Vector(self, *values: _T) -> VehicleVector[_T]:
+        raise VehicleBuiltinUnsupported(vcl.Vector.__name__)
+
+    @override
+    def ZipWithVector(
+        self,
+        function: Callable[[_S, _T], _U],
+        vector1: VehicleVector[_S],
+        vector2: VehicleVector[_T],
+    ) -> VehicleVector[_U]:
+        raise VehicleBuiltinUnsupported(vcl.ZipWithVector.__name__)
 
 
 @dataclass(frozen=True)
@@ -247,46 +199,19 @@ class TensorflowTranslation(PythonTranslation):
     pass
 
 
-def pgd(
-    variable: tf.Variable,
-    domain: AbstractVariableDomain[tf.Tensor],
-    predicate: Callable[[tf.Tensor], tf.Tensor],
-    minimise: bool,
-    number_of_iterations: int = 5,
-    alpha: float = 0.05,
-) -> tf.Tensor:
-    # Generate the starting point of the PGD attack
-    variable.assign(domain.random_value())
-
-    # Calculate which direction we're stepping the gradient.
-    direction = 1 if minimise else -1
-
-    for _ in range(number_of_iterations):
-        # Calculate the loss for the current candidate value
-        with tf.GradientTape() as tape:
-            tape.watch(variable)
-            loss = predicate(variable)
-
-        # Get the gradients of the loss w.r.t to the input variable.
-        gradient = tape.gradient(loss, variable)
-        # Get the sign of the gradients to create the perturbation
-        signed_grad = tf.sign(gradient)
-        # Update the value of the variable
-        perturbed_value = variable + direction * alpha * signed_grad
-        # Clip the variable so it lies within the valid bounds.
-        variable.assign(domain.clip(perturbed_value))
-
-    return loss
-
-
 def load_loss_function(
-    path: Union[str, Path],
+    specification_path: Union[str, Path],
     property_name: DeclarationName,
-    quantified_variable_domains: AnyDomains,
     *,
+    dtype_nat: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
+    dtype_int: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
+    dtype_rat: Optional[Callable[[SupportsFloat], tf.Tensor]] = None,
+    quantified_variables: Dict[QuantifiedVariableName, tf.Variable] = {},
+    quantified_variable_domains: Domains[Any, tf.Tensor] = {},
+    quantified_variable_optimisers: Optimisers[
+        QuantifiedVariableName, tf.Tensor, Any, tf.Tensor
+    ] = {},
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    quantified_variable_optimisers: AnyOptimisers = {},
-    rat_dtype: tf.DType = tf.float32,
 ) -> Any:
     """
     Load a loss function from a property in a Vehicle specification.
@@ -301,17 +226,22 @@ def load_loss_function(
     """
     translation = TensorflowTranslation(
         builtins=TensorflowBuiltins(
+            dtype_nat=dtype_nat or tf.uint64,
+            dtype_int=dtype_int or tf.int64,
+            dtype_rat=dtype_rat or tf.float64,
+            quantified_variables=quantified_variables,
             quantified_variable_domains=quantified_variable_domains,
             quantified_variable_optimisers=quantified_variable_optimisers,
-            rat_dtype=rat_dtype,
         )
     )
-
-    uncompiled_program = vcl.load(
-        path=path, declarations=(property_name,), target=target
+    program = translation.compile(
+        vcl.load(
+            specification_path,
+            declarations=(property_name,),
+            target=target,
+        ),
+        path=specification_path,
     )
-
-    program = translation.compile(uncompiled_program, path=path)
 
     if property_name in program:
         return program[property_name]

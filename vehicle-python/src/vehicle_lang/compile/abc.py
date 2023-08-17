@@ -1,35 +1,42 @@
 import itertools
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import reduce
 from typing import (
     Any,
     Callable,
     Dict,
     Generic,
-    Sequence,
     SupportsFloat,
     SupportsInt,
     Tuple,
+    Union,
 )
 
 from typing_extensions import TypeAlias, TypeVar, override
-from vehicle_lang.error import VehicleInternalError
 
 from .. import ast as vcl
-from ..typing import AbstractVariableDomain, Context, Optimiser, QuantifiedVariableName
-from . import _numeric
-from ._collections import SupportsList, SupportsVector
+from ..typing import (
+    Domains,
+    Optimisers,
+    QuantifiedVariableName,
+    VariableDomain,
+    VehicleInt,
+    VehicleList,
+    VehicleNat,
+    VehicleRat,
+    VehicleVector,
+)
 from .error import VehicleBuiltinUnsupported
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
 ################################################################################
 
-_SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
-_SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
-_SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
-_Variable = TypeVar("_Variable")
+_VehicleNat = TypeVar("_VehicleNat", bound=VehicleNat)
+_VehicleInt = TypeVar("_VehicleInt", bound=VehicleInt)
+_VehicleRat = TypeVar("_VehicleRat", bound=VehicleRat)
+_VehicleVar = TypeVar("_VehicleVar")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -39,35 +46,36 @@ _U = TypeVar("_U")
 @dataclass(frozen=True, init=False)
 class ABCBuiltins(
     Generic[
-        _SupportsNat,
-        _SupportsInt,
-        _SupportsRat,
-        _Variable,
+        _VehicleNat,
+        _VehicleInt,
+        _VehicleRat,
+        _VehicleVar,
     ],
     metaclass=ABCMeta,
 ):
-    quantified_variable_optimisers: Dict[
-        QuantifiedVariableName, Optimiser[_Variable, Any, _SupportsRat]
-    ] = field(default_factory=dict)
-    quantified_variable_domains: Dict[
-        QuantifiedVariableName,
-        Callable[[Context[Any]], AbstractVariableDomain],
-    ] = field(default_factory=dict)
-    quantified_variables: Dict[str, _Variable] = field(default_factory=dict)
+    quantified_variable_optimisers: Optimisers[
+        _VehicleVar, Union[_VehicleNat, _VehicleInt, _VehicleRat], Any, _VehicleRat
+    ]
 
-    def AddInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    quantified_variable_domains: Domains[
+        Any, Union[_VehicleNat, _VehicleInt, _VehicleRat]
+    ]
+
+    quantified_variables: Dict[QuantifiedVariableName, _VehicleVar]
+
+    def AddInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x + y
 
-    def AddNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def AddNat(self, x: _VehicleNat, y: _VehicleNat) -> _VehicleNat:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x + y
 
-    def AddRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def AddRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x + y
 
     def And(self, x: bool, y: bool) -> bool:
@@ -76,24 +84,24 @@ class ABCBuiltins(
         return x and y
 
     @abstractmethod
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
+    def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
         ...
 
     def Bool(self, value: bool) -> bool:
         assert isinstance(value, bool), f"Expected bool, found {value}"
         return bool(value)
 
-    def ConsList(self, item: _T, iterable: SupportsList[_T]) -> SupportsList[_T]:
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
+    def ConsList(self, item: _T, iterable: VehicleList[_T]) -> VehicleList[_T]:
+        assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
         return itertools.chain((item,), iterable)
 
     @abstractmethod
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+    def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
         ...
 
-    def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def DivRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x / y
 
     def EqIndex(self, x: int, y: int) -> bool:
@@ -101,19 +109,19 @@ class ABCBuiltins(
         assert isinstance(y, int), f"Expected int, found {y}"
         return x == y
 
-    def EqInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def EqInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x == y
 
-    def EqNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def EqNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x == y
 
-    def EqRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def EqRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x == y
 
     def Exists(
@@ -122,15 +130,15 @@ class ABCBuiltins(
         raise VehicleBuiltinUnsupported(vcl.Exists.__name__)
 
     def FoldList(
-        self, function: Callable[[_S, _T], _T], initial: _T, iterable: SupportsList[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, iterable: VehicleList[_S]
     ) -> _T:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
+        assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
         return reduce(lambda x, y: function(y, x), iterable, initial)
 
     @abstractmethod
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
     ) -> _T:
         ...
 
@@ -144,19 +152,19 @@ class ABCBuiltins(
         assert isinstance(y, int), f"Expected int, found {y}"
         return x >= y
 
-    def GeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def GeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x >= y
 
-    def GeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def GeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x >= y
 
-    def GeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def GeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x >= y
 
     def GtIndex(self, x: int, y: int) -> bool:
@@ -164,19 +172,19 @@ class ABCBuiltins(
         assert isinstance(y, int), f"Expected int, found {y}"
         return x > y
 
-    def GtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def GtInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x > y
 
-    def GtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def GtNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x > y
 
-    def GtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def GtRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x > y
 
     def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
@@ -189,12 +197,12 @@ class ABCBuiltins(
     def Index(self, value: SupportsInt) -> int:
         return value.__int__()
 
-    def Indices(self, upto: int) -> SupportsVector[int]:
+    def Indices(self, upto: int) -> VehicleVector[int]:
         assert isinstance(upto, int), f"Expected int, found {upto}"
         return self.Vector(*range(0, upto))
 
     @abstractmethod
-    def Int(self, value: SupportsInt) -> _SupportsInt:
+    def Int(self, value: SupportsInt) -> _VehicleInt:
         ...
 
     def LeIndex(self, x: int, y: int) -> bool:
@@ -202,19 +210,19 @@ class ABCBuiltins(
         assert isinstance(y, int), f"Expected int, found {y}"
         return x <= y
 
-    def LeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def LeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x <= y
 
-    def LeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def LeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x <= y
 
-    def LeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def LeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x <= y
 
     def LtIndex(self, x: int, y: int) -> bool:
@@ -222,84 +230,84 @@ class ABCBuiltins(
         assert isinstance(y, int), f"Expected int, found {y}"
         return x < y
 
-    def LtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def LtInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x < y
 
-    def LtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def LtNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x < y
 
-    def LtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def LtRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x < y
 
     def MapList(
-        self, function: Callable[[_S], _T], iterable: SupportsList[_S]
-    ) -> SupportsList[_T]:
+        self, function: Callable[[_S], _T], iterable: VehicleList[_S]
+    ) -> VehicleList[_T]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
+        assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
         return map(function, iterable)
 
     @abstractmethod
     def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
-    ) -> SupportsVector[_T]:
+        self, function: Callable[[_S], _T], vector: VehicleVector[_S]
+    ) -> VehicleVector[_T]:
         ...
 
-    def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def MaxRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return max(x, y)
 
-    def MinRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def MinRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return min(x, y)
 
-    def MulInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def MulInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x * y
 
-    def MulNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
+    def MulNat(self, x: _VehicleNat, y: _VehicleNat) -> _VehicleNat:
+        assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
+        assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
         return x * y
 
-    def MulRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def MulRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x * y
 
     @abstractmethod
-    def Nat(self, value: SupportsInt) -> _SupportsNat:
+    def Nat(self, value: SupportsInt) -> _VehicleNat:
         ...
 
     def NeIndex(self, x: int, y: int) -> bool:
         return self.Not(self.EqIndex(x, y))
 
-    def NeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
+    def NeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
         return self.Not(self.EqInt(x, y))
 
-    def NeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
+    def NeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
         return self.Not(self.EqNat(x, y))
 
-    def NeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
+    def NeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
         return self.Not(self.EqRat(x, y))
 
-    def NegInt(self, x: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
+    def NegInt(self, x: _VehicleInt) -> _VehicleInt:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
         return -x
 
-    def NegRat(self, x: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
+    def NegRat(self, x: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
         return -x
 
-    def NilList(self) -> SupportsList[_T]:
+    def NilList(self) -> VehicleList[_T]:
         return ()
 
     def Not(self, x: bool) -> bool:
@@ -321,7 +329,7 @@ class ABCBuiltins(
         domain = self.quantified_variable_domains[name](context)
 
         if name not in self.quantified_variables:
-            self.quantified_variables[name] = self.create_quantified_variable(
+            self.quantified_variables[name] = self.QuantifiedVariable(
                 name, domain.dimensions()
             )
         variable = self.quantified_variables[name]
@@ -342,8 +350,8 @@ class ABCBuiltins(
 
     def OptimiseDefault(
         self,
-        variable: _Variable,
-        domain: AbstractVariableDomain,
+        variable: _VehicleVar,
+        domain: VariableDomain[Union[_VehicleNat, _VehicleInt, _VehicleRat]],
         minimise: bool,
         context: Dict[str, Any],
         joiner: Callable[[Any, Any], Any],
@@ -358,47 +366,47 @@ class ABCBuiltins(
         assert isinstance(y, bool), f"Expected bool, found {y}"
         return x or y
 
-    def PowRat(self, x: _SupportsRat, y: _SupportsInt) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    def PowRat(self, x: _VehicleRat, y: _VehicleInt) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x ** y.__int__()
 
     @abstractmethod
-    def Rat(self, value: SupportsFloat) -> _SupportsRat:
+    def QuantifiedVariable(self, name: str, shape: Tuple[int, ...]) -> _VehicleVar:
         ...
 
-    def SubInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
+    @abstractmethod
+    def Rat(self, value: SupportsFloat) -> _VehicleRat:
+        ...
+
+    def SubInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
+        assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
+        assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x - y
 
-    def SubRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
+    def SubRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
+        assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
+        assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
         return x - y
 
     def Unit(self) -> Tuple[()]:
         return ()
 
     @abstractmethod
-    def Vector(self, *values: _T) -> SupportsVector[_T]:
+    def Vector(self, *values: _T) -> VehicleVector[_T]:
         ...
 
     @abstractmethod
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
-    ) -> SupportsVector[_U]:
-        ...
-
-    @abstractmethod
-    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> _Variable:
+        vector1: VehicleVector[_S],
+        vector2: VehicleVector[_T],
+    ) -> VehicleVector[_U]:
         ...
 
 
-AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any, Any, Any]
+AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST

@@ -1,5 +1,4 @@
 import ast as py
-import itertools
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
@@ -33,22 +32,21 @@ from ..ast import (
     Provenance,
 )
 from ..typing import (
-    AbstractVariableDomain,
-    AnyDomain,
-    AnyDomains,
-    AnyOptimisers,
-    Context,
+    AnyContext,
     DeclarationName,
     DifferentiableLogic,
-    DomainFunction,
+    Domains,
     Explicit,
+    Optimiser,
+    Optimisers,
     QuantifiedVariableName,
     Target,
+    VariableDomain,
+    VehicleVector,
 )
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from ._collections import SupportsVector
 from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
 from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
 
@@ -71,46 +69,6 @@ __all__: List[str] = [
 
 
 ################################################################################
-## Variable domain
-################################################################################
-
-
-class VariableDomain(AbstractVariableDomain[np.ndarray]):
-    @staticmethod
-    def from_bounds(lower_bound: Any, upper_bound: Any) -> "VariableDomain":
-        np_lower_bounds = np.array(lower_bound)
-        np_upper_bounds = np.array(upper_bound)
-
-        lower_shape = np_lower_bounds.shape
-        upper_shape = np_upper_bounds.shape
-        if lower_shape != upper_shape:
-            raise ValueError(
-                f"Variable domain lower and upper bounds must be the same dimensions but found {lower_shape} vs {upper_shape}"
-            )
-
-        return VariableDomain(np_lower_bounds, np_upper_bounds)
-
-    _lower_bounds: np.ndarray
-    _upper_bounds: np.ndarray
-
-    def __init__(self, lower_bounds: np.ndarray, upper_bounds: np.ndarray):
-        self._lower_bounds = lower_bounds
-        self._upper_bounds = upper_bounds
-
-    @override
-    def dimensions(self) -> Any:
-        return self._lower_bounds.shape
-
-    @override
-    def random_value(self) -> np.ndarray:
-        return (self._lower_bounds + self._upper_bounds) / 2.0
-
-    @override
-    def clip(self, point: np.ndarray) -> np.ndarray:
-        return np.clip(point, self._lower_bounds, self._upper_bounds)
-
-
-################################################################################
 ### Implementation of Vehicle builtins in Python
 ################################################################################
 
@@ -118,47 +76,55 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 
+_Nat = TypeVar("_Nat", bound=np.unsignedinteger[Any])
+_Int = TypeVar("_Int", bound=np.signedinteger[Any])
+_Rat = TypeVar("_Rat", bound=np.floating[Any])
+
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(ABCBuiltins[int, int, float, str]):
+class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
+    dtype_nat: Callable[[SupportsInt], _Nat]
+    dtype_int: Callable[[SupportsInt], _Int]
+    dtype_rat: Callable[[SupportsFloat], _Rat]
+
     @override
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+    def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         assert isinstance(index, int), f"Expected int, found {vector}"
         return vector[index]
 
     @override
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+    def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
         return (item, *vector)
 
     @override
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
     ) -> _T:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         return reduce(lambda x, y: function(y, x), vector, initial)
 
     @override
-    def Int(self, value: SupportsInt) -> int:
-        return value.__int__()
+    def Int(self, value: SupportsInt) -> _Int:
+        return self.dtype_int(value)
 
     @override
     def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
+        self, function: Callable[[_S], _T], vector: VehicleVector[_S]
     ) -> Tuple[_T, ...]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         return tuple(map(function, vector))
 
     @override
-    def Nat(self, value: SupportsInt) -> int:
-        return value.__int__()
+    def Nat(self, value: SupportsInt) -> _Nat:
+        return self.dtype_nat(value)
 
     @override
-    def Rat(self, value: SupportsFloat) -> float:
-        return value.__float__()
+    def Rat(self, value: SupportsFloat) -> _Rat:
+        return self.dtype_rat(value)
 
     def Vector(self, *values: _T) -> Tuple[_T, ...]:
         return values
@@ -167,18 +133,18 @@ class PythonBuiltins(ABCBuiltins[int, int, float, str]):
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
+        vector1: VehicleVector[_S],
+        vector2: VehicleVector[_T],
     ) -> Tuple[_U, ...]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
-        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
+        assert isinstance(vector1, VehicleVector), f"Expected vector, found {vector1}"
+        assert isinstance(vector2, VehicleVector), f"Expected vector, found {vector2}"
         return tuple(map(function, vector1, vector2))
 
     @override
-    def create_quantified_variable(self, name: str, shape: Sequence[int]) -> str:
-        # Don't need to create any special variable object so just return
-        # the variable name.
+    def QuantifiedVariable(
+        self, name: QuantifiedVariableName, shape: Sequence[int]
+    ) -> QuantifiedVariableName:
         return name
 
 
@@ -205,11 +171,23 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     @classmethod
     def from_optimisers(
         cls: Type[Self],
-        quantified_variable_domains: AnyDomains,
-        quantified_variable_optimisers: AnyOptimisers,
+        dtype_nat: Callable[[SupportsInt], _Nat],
+        dtype_int: Callable[[SupportsInt], _Int],
+        dtype_rat: Callable[[SupportsFloat], _Rat],
+        quantified_variable_domains: Dict[
+            QuantifiedVariableName,
+            Callable[[AnyContext], VariableDomain[Union[_Nat, _Int, _Rat]]],
+        ],
+        quantified_variable_optimisers: Dict[
+            QuantifiedVariableName, Optimiser[str, Union[_Nat, _Int, _Rat], Any, _Rat]
+        ],
     ) -> Self:
         return cls.from_builtins(
             builtins=PythonBuiltins(
+                dtype_nat=dtype_nat,
+                dtype_int=dtype_int,
+                dtype_rat=dtype_rat,
+                quantified_variables={},
                 quantified_variable_domains=quantified_variable_domains,
                 quantified_variable_optimisers=quantified_variable_optimisers,
             )
@@ -632,15 +610,25 @@ def load(
     path: Union[str, Path],
     *,
     declarations: Iterable[DeclarationName] = (),
+    dtype_nat: Optional[Callable[[SupportsInt], _Nat]] = None,
+    dtype_int: Optional[Callable[[SupportsInt], _Int]] = None,
+    dtype_rat: Optional[Callable[[SupportsFloat], _Rat]] = None,
+    quantified_variable_domains: Domains[Any, Union[_Nat, _Int, _Rat]] = {},
+    quantified_variable_optimisers: Optimisers[
+        QuantifiedVariableName, Union[_Nat, _Int, _Rat], Any, _Rat
+    ] = {},
     target: Target = Explicit.Explicit,
-    translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:
-    if translation is None:
-        translation = PythonTranslation(
-            builtins=PythonBuiltins(
-                quantified_variable_optimisers={}, quantified_variable_domains={}
-            )
+    translation = PythonTranslation(
+        builtins=PythonBuiltins(
+            dtype_nat=dtype_nat or np.uint64,
+            dtype_int=dtype_int or np.int64,
+            dtype_rat=dtype_rat or np.float64,
+            quantified_variables={v: v for v in quantified_variable_domains.keys()},
+            quantified_variable_domains=quantified_variable_domains,
+            quantified_variable_optimisers=quantified_variable_optimisers,
         )
+    )
     return translation.compile(
         vcl.load(path, declarations=declarations, target=target), path=path
     )
@@ -649,13 +637,15 @@ def load(
 def load_loss_function(
     path: Union[str, Path],
     property_name: DeclarationName,
-    quantified_variable_domains: Dict[
-        QuantifiedVariableName,
-        Callable[[Context[Any]], AbstractVariableDomain[np.ndarray]],
-    ],
     *,
+    dtype_nat: Optional[Callable[[SupportsInt], _Nat]] = None,
+    dtype_int: Optional[Callable[[SupportsInt], _Int]] = None,
+    dtype_rat: Optional[Callable[[SupportsFloat], _Rat]] = None,
+    quantified_variable_domains: Domains[Any, Union[_Nat, _Int, _Rat]] = {},
+    quantified_variable_optimisers: Optimisers[
+        QuantifiedVariableName, Union[_Nat, _Int, _Rat], Any, _Rat
+    ] = {},
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    quantified_variable_optimisers: AnyOptimisers = {},
 ) -> Any:
     """
     Load a loss function from a property in a Vehicle specification.
@@ -667,17 +657,16 @@ def load_loss_function(
     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
-    translation = PythonTranslation(
-        builtins=PythonBuiltins(
-            quantified_variable_domains=quantified_variable_domains,
-            quantified_variable_optimisers=quantified_variable_optimisers,
-        )
-    )
+
     declarations = load(
         path,
         declarations=(property_name,),
         target=target,
-        translation=translation,
+        dtype_nat=dtype_nat,
+        dtype_int=dtype_int,
+        dtype_rat=dtype_rat,
+        quantified_variable_domains=quantified_variable_domains,
+        quantified_variable_optimisers=quantified_variable_optimisers,
     )
     if property_name in declarations:
         return declarations[property_name]

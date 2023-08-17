@@ -1,14 +1,147 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, Iterator, Sequence
+from typing import Any, Callable, Dict, Generic, Iterable, Tuple
 
-from typing_extensions import Protocol, TypeAlias, TypeVar
+from typing_extensions import Protocol, Self, TypeAlias, TypeVar, runtime_checkable
 
-from .compile._collections import SupportsList, SupportsVector
-
+_S = TypeVar("_S")
 _T = TypeVar("_T")
+_U = TypeVar("_U")
 _R = TypeVar("_R")
-_Variable = TypeVar("_Variable")
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+################################################################################
+# Protocols for Vehicle's builtin List and Vector types
+################################################################################
+
+
+@runtime_checkable
+class VehicleList(Iterable[_T_co], Protocol[_T_co]):
+    pass
+
+
+@runtime_checkable
+class Subscriptable(Protocol[_T_co]):
+    def __getitem__(self, index: int) -> _T_co:
+        ...
+
+
+@runtime_checkable
+class VehicleVector(Iterable[_T_co], Subscriptable[_T_co], Protocol[_T_co]):
+    pass
+
+
+################################################################################
+# Protocols for Vehicle's builtin Nat, Int, and Rat types
+################################################################################
+
+
+@runtime_checkable
+class SupportsDunderLT(Protocol):
+    def __lt__(self, other: Self) -> bool:
+        ...
+
+
+@runtime_checkable
+class SupportsDunderGT(Protocol):
+    def __gt__(self, other: Self) -> bool:
+        ...
+
+
+@runtime_checkable
+class SupportsDunderLE(Protocol):
+    def __le__(self, other: Self) -> bool:
+        ...
+
+
+@runtime_checkable
+class SupportsDunderGE(Protocol):
+    def __ge__(self, other: Self) -> bool:
+        ...
+
+
+@runtime_checkable
+class SupportsRichComparison(
+    SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol
+):
+    ...
+
+
+@runtime_checkable
+class SupportsAbs(Protocol):
+    def __abs__(self: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class SupportsAdd(Protocol):
+    def __add__(self: Self, other: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class SupportsMul(Protocol):
+    def __mul__(self: Self, other: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class VehicleNat(
+    SupportsRichComparison,
+    SupportsAbs,
+    SupportsAdd,
+    SupportsMul,
+    Protocol,
+):
+    def __int__(self: Self) -> int:
+        ...
+
+
+@runtime_checkable
+class SupportsNeg(Protocol):
+    def __neg__(self: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class SupportsSub(Protocol):
+    def __sub__(self: Self, other: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class VehicleInt(
+    VehicleNat,
+    SupportsNeg,
+    SupportsSub,
+    Protocol,
+):
+    ...
+
+
+@runtime_checkable
+class SupportsDiv(Protocol):
+    def __truediv__(self: Self, other: Self) -> Self:
+        ...
+
+
+@runtime_checkable
+class SupportsPow2(Protocol):
+    def __pow__(self: Self, other: int) -> Self:
+        ...
+
+
+@runtime_checkable
+class VehicleRat(
+    VehicleInt,
+    SupportsDiv,
+    SupportsPow2,
+    Protocol,
+):
+    def __float__(self: Self) -> float:
+        ...
+
 
 ################################################################################
 ## Names
@@ -30,72 +163,81 @@ Context: TypeAlias = Dict[QuantifiedVariableName, _T]
 The variable context, a mapping from variable names to values.
 """
 
+AnyContext: TypeAlias = Context[Any]
+
 ################################################################################
 ## Variable domains
 ################################################################################
 
 
-class AbstractVariableDomain(metaclass=ABCMeta):
+class VariableDomain(Generic[_T], metaclass=ABCMeta):
     """
-    An abstract interface for the domain of a quantified variable,
-    i.e. the set of values the variable is allowed to take.
-    Parameterised by the type o.
+    An abstract interface for the domain of a quantified variable, i.e., the
+    set of values the variable is allowed to take.
     """
 
     @abstractmethod
-    def dimensions(self) -> Sequence[int]:
+    def dimensions(self) -> Tuple[int, ...]:
         """
         Return the dimensions of the domain.
         """
         ...
 
     @abstractmethod
-    def random_value(self) -> SupportsVector:
+    def random_value(self) -> VehicleVector[_T]:
         """
         Generate a random value that is guaranteed to lie within the domain.
         """
         ...
 
     @abstractmethod
-    def clip(self, value: SupportsVector) -> SupportsVector:
+    def clip(self, value: VehicleVector[_T]) -> VehicleVector[_T]:
         """
         Clips a value so that is guaranteed to lie within in the domain.
         """
         ...
 
 
-DomainFunction: TypeAlias = Callable[
+Domain: TypeAlias = Callable[
     [
         Context[_T],
     ],
-    AbstractVariableDomain,
+    VariableDomain[_R],
 ]
 """
 A function from the current context to the domain of a quantified variable.
 """
 
-AnyDomain: TypeAlias = DomainFunction[Any]
+Domains: TypeAlias = Dict[QuantifiedVariableName, Domain[_T, _R]]
+"""
+A mapping from quantified variable names and contexts to domains.
+"""
+
+AnyDomain: TypeAlias = Domain[Any, Any]
 """
 An optimiser that promises to work for any type.
 """
 
 AnyDomains: TypeAlias = Dict[QuantifiedVariableName, AnyDomain]
-"""
-A mapping from quantified variable names to domains.
-"""
 
 ################################################################################
 ## Quantifier optimisers
 ################################################################################
 
+Minimise: TypeAlias = bool
+
+Joiner: TypeAlias = Callable[[_T, _T], _T]
+
+Predicate: TypeAlias = Callable[[_S], _T]
+
 Optimiser: TypeAlias = Callable[
     [
-        _Variable,
-        AbstractVariableDomain,
-        bool,
-        Context[_T],
-        Callable[[_R, _R], _R],
-        Callable[[_T], _R],
+        _S,
+        VariableDomain[_T],
+        Minimise,
+        Context[_U],
+        Joiner[_R],
+        Predicate[_T, _R],
     ],
     _R,
 ]
@@ -103,14 +245,19 @@ Optimiser: TypeAlias = Callable[
 A function that tries to optimise a variable.
 """
 
-AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any]
+Optimisers: TypeAlias = Dict[QuantifiedVariableName, Optimiser[_S, _T, _U, _R]]
+"""
+A mapping from quantified variable names to optimisers.
+"""
+
+AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any, Any]
 """
 An optimiser that promises to work for any type.
 """
 
 AnyOptimisers: TypeAlias = Dict[QuantifiedVariableName, AnyOptimiser]
 """
-A mapping from quantified variable names to optimisers.
+A set of optimisers that promises to work for any type.
 """
 
 

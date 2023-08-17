@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple, cast
+from typing import Any, Dict, Tuple, cast
 
 import pytest
-import vehicle_lang.tensorflow as vcl
 from typing_extensions import TypeAlias
 
 GOLDEN_PATH = (
@@ -66,20 +65,26 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
 
-        def domain_for_pertubation(_context: Dict[str, Any]) -> vcl.VariableDomain:
-            eps = _context["epsilon"]
-            return vcl.VariableDomain.from_bounds(
-                lower_bound=tf.fill(dims=[28, 28], value=-eps),
-                upper_bound=tf.fill(dims=[28, 28], value=eps),
+        import vehicle_lang.tensorflow as vcl2tf
+
+        def domain_for_pertubation(
+            ctx: Dict[str, Any]
+        ) -> vcl2tf.VariableDomain[tf.float64]:
+            eps: tf.float64 = cast(tf.float64, ctx["epsilon"])
+            return vcl2tf.BoundedVariableDomain.from_bounds(
+                lower_bounds=tf.fill(dims=[28, 28], value=-eps),
+                upper_bounds=tf.fill(dims=[28, 28], value=eps),
+                dtype=tf.float64,
             )
 
         def classifier(image: Image) -> LabelDistribution:
             return one_hot(0)
 
-        robust_loss = vcl.load_loss_function(
+        robust_loss = vcl2tf.load_loss_function(
             MNIST_ROBUSTNESS,
             property_name="robust",
-            target=vcl.DifferentiableLogic.DL2,
+            target=vcl2tf.DifferentiableLogic.DL2,
+            dtype_rat=tf.float64,
             quantified_variable_domains={"pertubation": domain_for_pertubation},
         )
 

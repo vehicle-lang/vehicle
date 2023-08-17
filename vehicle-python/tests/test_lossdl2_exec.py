@@ -2,9 +2,12 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, Dict, Union
 
+import numpy as np
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.compile.python as vcl2py
+import vehicle_lang.typing as vclt
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
@@ -15,28 +18,28 @@ def network_validate_output(output: Dict[str, Any]) -> None:
 
 def quantifier_all_optimiser(
     variable: str,
-    _domain: vcl.VariableDomain,
+    _domain: vcl.BoundedVariableDomain[np.float64],
     _minimise: bool,
     _context: Dict[str, Any],
-    joiner: Callable[[float, float], float],
-    predicate: Callable[[Any], float],
-) -> float:
-    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
+    joiner: Callable[[np.float64, np.float64], np.float64],
+    predicate: Callable[[np.float64], np.float64],
+) -> np.float64:
+    return reduce(joiner, [predicate(np.float64(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
 def quantifier_any_optimiser(
     variable: str,
-    _domain: vcl.VariableDomain,
+    _domain: vcl.BoundedVariableDomain[np.float64],
     _minimise: bool,
     _context: Dict[str, Any],
-    joiner: Callable[[float, float], float],
-    predicate: Callable[[Any], float],
-) -> float:
-    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
+    joiner: Callable[[np.float64, np.float64], np.float64],
+    predicate: Callable[[np.float64], np.float64],
+) -> np.float64:
+    return reduce(joiner, [predicate(np.float64(v)) for v in [-10.0, -1.0, 1.0, 10.0]])
 
 
 @pytest.mark.parametrize(
-    "specification_filename,domains,optimisers,validate_output",
+    "specification_filename,quantified_variable_domains,quantified_variable_optimisers,validate_output",
     [
         (
             "test_addition.vcl",
@@ -100,13 +103,21 @@ def quantifier_any_optimiser(
         ),
         (
             "test_quantifier_all.vcl",
-            {"x": lambda _ctx: vcl.VariableDomain.from_bounds(0, 1)},
+            {
+                "x": lambda _ctx: vcl.BoundedVariableDomain.from_bounds(
+                    0, 1, dtype=np.float64
+                )
+            },
             {"x": quantifier_all_optimiser},
             {"prop": 11.0},
         ),
         (
             "test_quantifier_any.vcl",
-            {"x": lambda _ctx: vcl.VariableDomain.from_bounds(0, 1)},
+            {
+                "x": lambda _ctx: vcl.BoundedVariableDomain.from_bounds(
+                    0, 1, dtype=np.float64
+                )
+            },
             {"x": quantifier_any_optimiser},
             {"prop": 0.0},
         ),
@@ -132,16 +143,24 @@ def quantifier_any_optimiser(
 )  # type: ignore[misc]
 def test_loss_function_exec(
     specification_filename: str,
-    domains: Dict[str, Any],
-    optimisers: Dict[str, Any],
+    quantified_variable_domains: vclt.Domains[
+        Any, Union[np.uint64, np.int64, np.float64]
+    ],
+    quantified_variable_optimisers: vclt.Optimisers[
+        vclt.QuantifiedVariableName,
+        Any,
+        Union[np.uint64, np.int64, np.float64],
+        np.float64,
+    ],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
     actual_declarations = vcl2py.load(
-        specification_path,
+        path=specification_path,
+        quantified_variable_domains=quantified_variable_domains,
+        quantified_variable_optimisers=quantified_variable_optimisers,
         target=vcl.DifferentiableLogic.DL2,
-        translation=vcl2py.PythonTranslation.from_optimisers(domains, optimisers),
     )
     if isinstance(validate_output, dict):
         for key in validate_output.keys():
