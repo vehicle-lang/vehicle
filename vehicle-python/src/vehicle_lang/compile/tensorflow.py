@@ -1,5 +1,5 @@
 import fractions
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import reduce
 from pathlib import Path
 from typing import (
@@ -71,9 +71,11 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtype_int: tf.DType = tf.int64
     dtype_rat: tf.DType = tf.float64
 
-    domains: Domains[tf.Tensor] = {}
-    optimisers: Optimisers[tf.Variable, tf.Tensor, tf.Tensor] = {}
-    variables: Dict[QuantifiedVariableName, tf.Variable] = {}
+    domains: Domains[tf.Tensor] = field(default_factory=dict)
+    optimisers: Optimisers[tf.Variable, tf.Tensor, tf.Tensor] = field(
+        default_factory=dict
+    )
+    variables: Dict[QuantifiedVariableName, tf.Variable] = field(default_factory=dict)
 
     @override
     def AddInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
