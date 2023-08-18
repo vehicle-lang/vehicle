@@ -10,7 +10,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DeBruijn (Lv)
 import Vehicle.Expr.Normalised
 import Vehicle.Test.Unit.Common (unitTestCase)
@@ -58,8 +58,8 @@ normalisationTests =
 data NBETest = NBETest
   { name :: String,
     dbLevel :: Lv,
-    input :: StandardExpr,
-    expected :: StandardExpr
+    input :: Expr Ix Builtin,
+    expected :: Expr Ix Builtin
   }
 
 normalisationTest :: NBETest -> TestTree
@@ -87,7 +87,7 @@ normalisationTest NBETest {..} =
 p :: Provenance
 p = mempty
 
-binding :: StandardType -> StandardBinder
+binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> Env builtin

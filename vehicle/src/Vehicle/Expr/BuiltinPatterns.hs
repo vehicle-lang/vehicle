@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Subsystem.Standard.Patterns where
+module Vehicle.Expr.BuiltinPatterns where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -11,16 +11,16 @@ import Vehicle.Syntax.AST
 pattern BuiltinTypeClass ::
   Provenance ->
   TypeClass ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern BuiltinTypeClass p tc args = BuiltinExpr p (TypeClass tc) args
 
 pattern HasVecLitsExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasVecLitsExpr p tElem n tCont <-
   BuiltinTypeClass
     p
@@ -32,9 +32,9 @@ pattern HasVecLitsExpr p tElem n tCont <-
 
 pattern HasFoldExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasFoldExpr p tElem tCont <-
   BuiltinTypeClass
     p
@@ -46,9 +46,9 @@ pattern HasFoldExpr p tElem tCont <-
 pattern HasQuantifierInExpr ::
   Provenance ->
   Quantifier ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasQuantifierInExpr p q tElem tCont <-
   BuiltinTypeClass
     p
@@ -59,8 +59,8 @@ pattern HasQuantifierInExpr p q tElem tCont <-
 
 pattern HasNatLitsExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasNatLitsExpr p t <-
   BuiltinTypeClass
     p
@@ -70,8 +70,8 @@ pattern HasNatLitsExpr p t <-
 
 pattern HasRatLitsExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasRatLitsExpr p t <-
   BuiltinTypeClass
     p
@@ -82,10 +82,10 @@ pattern HasRatLitsExpr p t <-
 pattern HasArithOp2Expr ::
   Provenance ->
   TypeClass ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasArithOp2Expr p tc t1 t2 t3 <-
   BuiltinTypeClass
     p
@@ -97,41 +97,41 @@ pattern HasArithOp2Expr p tc t1 t2 t3 <-
 
 pattern HasAddExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasAddExpr p t1 t2 t3 <- HasArithOp2Expr p HasAdd t1 t2 t3
 
 pattern HasSubExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasSubExpr p t1 t2 t3 <- HasArithOp2Expr p HasSub t1 t2 t3
 
 pattern HasMulExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasMulExpr p t1 t2 t3 <- HasArithOp2Expr p HasMul t1 t2 t3
 
 pattern HasDivExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasDivExpr p t1 t2 t3 <- HasArithOp2Expr p HasDiv t1 t2 t3
 
 pattern HasNegExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasNegExpr p argType resType <-
   BuiltinTypeClass
     p
@@ -143,10 +143,10 @@ pattern HasNegExpr p argType resType <-
 pattern HasOrdExpr ::
   Provenance ->
   OrderOp ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasOrdExpr p ord arg1Type arg2Type resType <-
   BuiltinTypeClass
     p
@@ -159,10 +159,10 @@ pattern HasOrdExpr p ord arg1Type arg2Type resType <-
 pattern HasEqExpr ::
   Provenance ->
   EqualityOp ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern HasEqExpr p eq arg1Type arg2Type resType <-
   BuiltinTypeClass
     p
@@ -179,17 +179,17 @@ pattern HasEqExpr p eq arg1Type arg2Type resType <-
 pattern BuiltinTypeClassOp ::
   Provenance ->
   TypeClassOp ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern BuiltinTypeClassOp p tc args = BuiltinExpr p (TypeClassOp tc) args
 
 -- | Matches on `forall` and `exists`, but not `foreach`
 pattern QuantifierTCExpr ::
   Provenance ->
   Quantifier ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern QuantifierTCExpr p q binder body <-
   BuiltinTypeClassOp
     p
@@ -201,22 +201,22 @@ pattern QuantifierTCExpr p q binder body <-
 
 pattern ForallTCExpr ::
   Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern ForallTCExpr p binder body <- QuantifierTCExpr p Forall binder body
 
 pattern ExistsTCExpr ::
   Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern ExistsTCExpr p binder body <- QuantifierTCExpr p Exists binder body
 
 pattern AddTCExpr ::
   Provenance ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern AddTCExpr p args <-
   BuiltinTypeClassOp
     p
@@ -230,8 +230,8 @@ pattern AddTCExpr p args <-
 
 pattern SubTCExpr ::
   Provenance ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern SubTCExpr p args <-
   BuiltinTypeClassOp
     p
@@ -246,11 +246,11 @@ pattern SubTCExpr p args <-
 pattern EqualityTCExpr ::
   Provenance ->
   EqualityOp ->
-  Type var StandardBuiltin ->
-  Type var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  Type var Builtin ->
+  Type var Builtin ->
+  Expr var Builtin ->
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
   BuiltinTypeClassOp
     p
@@ -274,11 +274,11 @@ pattern EqualityTCExpr p op t1 t2 solution explicitArgs <-
 pattern OrderTCExpr ::
   Provenance ->
   OrderOp ->
-  Type var StandardBuiltin ->
-  Type var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  Type var Builtin ->
+  Type var Builtin ->
+  Expr var Builtin ->
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern OrderTCExpr p op t1 t2 solution explicitArgs <-
   BuiltinTypeClassOp
     p
@@ -303,22 +303,22 @@ pattern OrderTCExpr p op t1 t2 solution explicitArgs <-
 pattern NullaryBuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
-  Expr var StandardBuiltin
+  Expr var Builtin
 pattern NullaryBuiltinFunctionExpr p b = Builtin p (BuiltinFunction b)
 
 pattern BuiltinFunctionExpr ::
   Provenance ->
   BuiltinFunction ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern BuiltinFunctionExpr p b args = BuiltinExpr p (BuiltinFunction b) args
 
 pattern QuantifierExpr ::
   Provenance ->
   Quantifier ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern QuantifierExpr p q binder body <-
   BuiltinFunctionExpr
     p
@@ -335,17 +335,17 @@ pattern QuantifierExpr p q binder body <-
 
 pattern ExistsExpr ::
   Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern ExistsExpr p binder body =
   QuantifierExpr p Exists binder body
 
 pattern ForallExpr ::
   Provenance ->
-  Binder var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin
+  Binder var Builtin ->
+  Expr var Builtin ->
+  Expr var Builtin
 pattern ForallExpr p binder body =
   QuantifierExpr p Forall binder body
 
@@ -354,9 +354,9 @@ pattern ForallExpr p binder body =
 
 pattern IfExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern IfExpr p tRes args <-
   BuiltinFunctionExpr
     p
@@ -379,15 +379,15 @@ pattern IfExpr p tRes args <-
 pattern FromNatExpr ::
   Provenance ->
   FromNatDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern FromNatExpr p dom args <- BuiltinFunctionExpr p (FromNat dom) args
 
 pattern FromRatExpr ::
   Provenance ->
   FromRatDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern FromRatExpr p dom args <- BuiltinFunctionExpr p (FromRat dom) args
 
 --------------------------------------------------------------------------------
@@ -396,20 +396,20 @@ pattern FromRatExpr p dom args <- BuiltinFunctionExpr p (FromRat dom) args
 pattern BooleanOp2Expr ::
   BuiltinFunction ->
   Provenance ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern BooleanOp2Expr op p explicitArgs = BuiltinFunctionExpr p op explicitArgs
 
-pattern AndExpr :: Provenance -> NonEmpty (Arg var StandardBuiltin) -> Expr var StandardBuiltin
+pattern AndExpr :: Provenance -> NonEmpty (Arg var Builtin) -> Expr var Builtin
 pattern AndExpr p explicitArgs = BooleanOp2Expr And p explicitArgs
 
-pattern OrExpr :: Provenance -> NonEmpty (Arg var StandardBuiltin) -> Expr var StandardBuiltin
+pattern OrExpr :: Provenance -> NonEmpty (Arg var Builtin) -> Expr var Builtin
 pattern OrExpr p explicitArgs = BooleanOp2Expr Or p explicitArgs
 
-pattern ImpliesExpr :: Provenance -> NonEmpty (Arg var StandardBuiltin) -> Expr var StandardBuiltin
+pattern ImpliesExpr :: Provenance -> NonEmpty (Arg var Builtin) -> Expr var Builtin
 pattern ImpliesExpr p explicitArgs = BooleanOp2Expr Implies p explicitArgs
 
-pattern NotExpr :: Provenance -> NonEmpty (Arg var StandardBuiltin) -> Expr var StandardBuiltin
+pattern NotExpr :: Provenance -> NonEmpty (Arg var Builtin) -> Expr var Builtin
 pattern NotExpr p explicitArgs = BuiltinFunctionExpr p Not explicitArgs
 
 --------------------------------------------------------------------------------
@@ -418,36 +418,36 @@ pattern NotExpr p explicitArgs = BuiltinFunctionExpr p Not explicitArgs
 pattern NegExpr ::
   Provenance ->
   NegDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern NegExpr p dom args = BuiltinFunctionExpr p (Neg dom) args
 
 pattern AddExpr ::
   Provenance ->
   AddDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern AddExpr p dom args = BuiltinFunctionExpr p (Add dom) args
 
 pattern SubExpr ::
   Provenance ->
   SubDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern SubExpr p dom args = BuiltinFunctionExpr p (Sub dom) args
 
 pattern MulExpr ::
   Provenance ->
   MulDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern MulExpr p dom args = BuiltinFunctionExpr p (Mul dom) args
 
 pattern DivExpr ::
   Provenance ->
   DivDomain ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern DivExpr p dom args = BuiltinFunctionExpr p (Div dom) args
 
 --------------------------------------------------------------------------------
@@ -457,8 +457,8 @@ pattern EqualityExpr ::
   Provenance ->
   EqualityDomain ->
   EqualityOp ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern EqualityExpr p dom op args = BuiltinFunctionExpr p (Equals dom op) args
 
 --------------------------------------------------------------------------------
@@ -468,8 +468,8 @@ pattern OrderExpr ::
   Provenance ->
   OrderDomain ->
   OrderOp ->
-  NonEmpty (Arg var StandardBuiltin) ->
-  Expr var StandardBuiltin
+  NonEmpty (Arg var Builtin) ->
+  Expr var Builtin
 pattern OrderExpr p dom op args = BuiltinFunctionExpr p (Order dom op) args
 
 --------------------------------------------------------------------------------
@@ -477,10 +477,10 @@ pattern OrderExpr p dom op args = BuiltinFunctionExpr p (Order dom op) args
 
 pattern AtExpr ::
   Provenance ->
-  Expr var StandardBuiltin ->
-  Expr var StandardBuiltin ->
-  [Arg var StandardBuiltin] ->
-  Expr var StandardBuiltin
+  Expr var Builtin ->
+  Expr var Builtin ->
+  [Arg var Builtin] ->
+  Expr var Builtin
 pattern AtExpr p tElem tDim explicitArgs <-
   BuiltinFunctionExpr
     p

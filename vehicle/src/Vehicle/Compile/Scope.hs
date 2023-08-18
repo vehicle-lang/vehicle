@@ -17,12 +17,10 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.DeBruijn
 
 scopeCheck ::
   (MonadCompile m, PrintableBuiltin builtin) =>
-  ImportedModules ->
+  Imports ->
   Prog Name builtin ->
   m (Prog Ix builtin)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
@@ -254,12 +252,12 @@ logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
 -}
-getImportCtx :: ImportedModules -> DeclScopeCtx
+getImportCtx :: Imports -> DeclScopeCtx
 getImportCtx imports =
   Map.fromList $
     [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
   where
-    getEntry :: StandardGluedDecl -> (Name, Identifier)
+    getEntry :: Decl Ix builtin -> (Name, Identifier)
     getEntry d = do
       let ident = identifierOf d
       (nameOf ident, ident)

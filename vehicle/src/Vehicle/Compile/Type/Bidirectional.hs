@@ -16,6 +16,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Expr.BuiltinInterface (TypableBuiltin (..))
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Prelude hiding (pi)
@@ -36,7 +37,7 @@ type MonadBidirectionalInternal builtin m =
 -- type-checking pass.
 type MonadBidirectional builtin m =
   ( MonadBidirectionalInternal builtin m,
-    TypableBuiltin builtin
+    HasTypeSystem builtin
   )
 
 --------------------------------------------------------------------------------

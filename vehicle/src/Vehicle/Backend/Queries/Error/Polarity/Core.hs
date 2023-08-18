@@ -6,7 +6,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData (..))
+import Vehicle.Expr.BuiltinInterface (HasStandardData (..))
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.AST

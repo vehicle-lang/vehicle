@@ -22,7 +22,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
@@ -31,8 +31,8 @@ readIDX ::
   (MonadExpandResources m, MonadIO m) =>
   FilePath ->
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardNormExpr
+  GluedType Builtin ->
+  m (Value Builtin)
 readIDX file decl expectedType = do
   contents <- readIDXFile decl file
   case contents of
@@ -71,7 +71,7 @@ parseIDX ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   Vector a ->
-  m StandardNormExpr
+  m (Value Builtin)
 parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems = do
   parseContainer ctx True actualDatasetDims elems (normalised expectedDatasetType)
 
@@ -81,8 +81,8 @@ parseContainer ::
   Bool ->
   TensorDimensions ->
   Vector a ->
-  StandardNormType ->
-  m StandardNormExpr
+  VType Builtin ->
+  m (Value Builtin)
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
   VListType expectedElemType -> parseList ctx expectedElemType actualDims elems
   VVectorType expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
@@ -96,9 +96,9 @@ parseVector ::
   ParseContext m a ->
   TensorDimensions ->
   Vector a ->
-  StandardNormType ->
-  StandardNormExpr ->
-  m StandardNormExpr
+  VType Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 parseVector ctx [] _ _ _ = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
@@ -127,10 +127,10 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  StandardNormType ->
+  VType Builtin ->
   TensorDimensions ->
   Vector a ->
-  m StandardNormExpr
+  m (Value Builtin)
 parseList ctx expectedElemType actualDims actualElems =
   case actualDims of
     [] -> dimensionMismatchError ctx
@@ -144,8 +144,8 @@ parseElement ::
   ParseContext m a ->
   TensorDimensions ->
   Vector a ->
-  StandardNormType ->
-  m StandardNormExpr
+  VType Builtin ->
+  m (Value Builtin)
 parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
   | not (null dims) = dimensionMismatchError ctx
   | Vector.length elems /= 1 = compilerDeveloperError "Malformed IDX file: mismatch between dimensions and acutal data"
@@ -154,17 +154,17 @@ parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
 type ParseContext m a =
   ( DeclProvenance, -- The provenance of the dataset declaration
     FilePath, -- The path of the dataset
-    StandardGluedType, -- The overall dataset type
+    GluedType Builtin, -- The overall dataset type
     TensorDimensions, -- Actual dimensions of dataset
     ElemParser m a
   )
 
-type ElemParser m a = a -> StandardNormType -> m StandardNormExpr
+type ElemParser m a = a -> VType Builtin -> m (Value Builtin)
 
 doubleElemParser ::
   (MonadExpandResources m) =>
   DeclProvenance ->
-  StandardGluedType ->
+  GluedType Builtin ->
   FilePath ->
   ElemParser m Double
 doubleElemParser decl datasetType file value expectedElementType = case expectedElementType of
@@ -176,7 +176,7 @@ doubleElemParser decl datasetType file value expectedElementType = case expected
 intElemParser ::
   (MonadExpandResources m) =>
   DeclProvenance ->
-  StandardGluedType ->
+  GluedType Builtin ->
   FilePath ->
   ElemParser m Int
 intElemParser decl datasetType file value expectedElementType = case expectedElementType of
@@ -200,7 +200,7 @@ partitionData dim dims content = do
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
 
-variableSizeError :: (MonadCompile m) => ParseContext m a -> StandardNormExpr -> m b
+variableSizeError :: (MonadCompile m) => ParseContext m a -> Value Builtin -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
   throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 

@@ -3,8 +3,9 @@
 module Vehicle.Compile.Prelude.MonadContext where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
-import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
+import Control.Monad.State
+import Control.Monad.Writer
 import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.Map qualified as Map
@@ -12,9 +13,8 @@ import Vehicle.Compile.Error (MonadCompile, lookupInDeclCtx, lookupIxInBoundCtx,
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, eval, runNormT)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..), typingBoundContextToEnv)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn
+import Vehicle.Compile.Type.Core (NormDeclCtx, TypingDeclCtxEntry (..), typingBoundContextToEnv)
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -75,17 +75,10 @@ normalise ::
   Expr Ix builtin ->
   m (Value builtin)
 normalise e = do
-  declCtx <- getDeclCtx (Proxy @builtin)
+  declCtx <- getNormDeclCtx (Proxy @builtin)
   boundCtx <- getBoundCtx (Proxy @builtin)
-  let normDeclCtx = flip fmap declCtx $ \d ->
-        TypingDeclCtxEntry
-          { declAnns = annotationsOf d,
-            declType = typeOf d,
-            declBody = normalised <$> bodyOf d
-          }
-
   let boundEnv = typingBoundContextToEnv boundCtx
-  runNormT defaultEvalOptions normDeclCtx mempty (eval boundEnv e)
+  runNormT defaultEvalOptions declCtx mempty (eval boundEnv e)
 
 unnormalise ::
   forall builtin m.
@@ -95,6 +88,17 @@ unnormalise ::
 unnormalise e = do
   boundCtx <- getBoundCtx (Proxy @builtin)
   return $ Quote.unnormalise (Lv $ length boundCtx) e
+
+getNormDeclCtx :: forall builtin m. (MonadContext builtin m) => Proxy builtin -> m (NormDeclCtx builtin)
+getNormDeclCtx p = do
+  declCtx <- getDeclCtx p
+  let normDeclCtx = flip fmap declCtx $ \d ->
+        TypingDeclCtxEntry
+          { declAnns = annotationsOf d,
+            declType = typeOf d,
+            declBody = normalised <$> bodyOf d
+          }
+  return normDeclCtx
 
 --------------------------------------------------------------------------------
 -- Fresh names
@@ -119,6 +123,27 @@ piBinderToLamBinder binder@(Binder p _ v r t) = do
   return $ Binder p displayForm v r t
 
 --------------------------------------------------------------------------------
+-- Lifting monads
+
+instance (MonadContext builtin m) => MonadContext builtin (ReaderT a m) where
+  addDeclToContext d = mapReaderT (addDeclToContext d)
+  addBinderToContext b = mapReaderT (addBinderToContext b)
+  getDeclCtx = lift . getDeclCtx
+  getBoundCtx = lift . getBoundCtx
+
+instance (MonadContext builtin m) => MonadContext builtin (StateT a m) where
+  addDeclToContext d = mapStateT (addDeclToContext d)
+  addBinderToContext b = mapStateT (addBinderToContext b)
+  getDeclCtx = lift . getDeclCtx
+  getBoundCtx = lift . getBoundCtx
+
+instance (MonadContext builtin m, Monoid a) => MonadContext builtin (WriterT a m) where
+  addDeclToContext d = mapWriterT (addDeclToContext d)
+  addBinderToContext b = mapWriterT (addBinderToContext b)
+  getDeclCtx = lift . getDeclCtx
+  getBoundCtx = lift . getBoundCtx
+
+--------------------------------------------------------------------------------
 -- Context monad instance
 
 newtype ContextT builtin m a = ContextT
@@ -129,8 +154,13 @@ newtype ContextT builtin m a = ContextT
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
-runContextT :: (Monad m) => ContextT builtin m a -> m a
-runContextT (ContextT contextFn) = runReaderT contextFn mempty
+runContextT ::
+  (Monad m) =>
+  Proxy builtin ->
+  ContextT builtin m a ->
+  (FullDeclCtx builtin, FullBoundCtx builtin) ->
+  m a
+runContextT _ (ContextT contextFn) = runReaderT contextFn
 
 instance MonadTrans (ContextT builtin) where
   lift = ContextT . lift
@@ -146,6 +176,13 @@ instance (MonadLogger m) => MonadLogger (ContextT builtin m) where
 instance (MonadError e m) => MonadError e (ContextT builtin m) where
   throwError = lift . throwError
   catchError m f = ContextT (catchError (uncontextT m) (uncontextT . f))
+
+instance (MonadIO m) => MonadIO (ContextT builtin m) where
+  liftIO = lift . liftIO
+
+instance (MonadState e m) => MonadState e (ContextT s m) where
+  get = lift get
+  put = lift . put
 
 instance (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadContext builtin (ContextT builtin m) where
   addDeclToContext decl cont = do

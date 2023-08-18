@@ -298,7 +298,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let constraintLevel = contextDBLevel ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
   let boundCtx = boundContextOf ctx
-  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: StandardExpr) boundCtx)) dbIndices
+  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix Builtin) boundCtx)) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
     let levelSet = IntSet.fromList $ fmap unLv newDependencies

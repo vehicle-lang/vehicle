@@ -29,8 +29,7 @@ import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 
@@ -85,10 +84,12 @@ lookupFreeVar ident = do
   declSubst <- getDeclSubstitution
   let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
   evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @builtin)
+  -- logDebug MaxDetail $ "Hi" <> pretty ident
   if isFiniteQuantifier && not evalFiniteQuants
     then return $ VFreeVar ident []
     else do
       TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
+      -- logDebug MaxDetail $ "Hi2" <> prettyVerbose declBody
       case declBody of
         Just expr | isInlinable declAnns -> return expr
         _ -> return $ VFreeVar ident []

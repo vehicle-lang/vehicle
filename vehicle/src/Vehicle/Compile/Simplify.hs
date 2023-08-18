@@ -7,7 +7,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard.Interface (PrintableBuiltin (isCoercion))
+import Vehicle.Expr.BuiltinInterface (PrintableBuiltin (isCoercion))
 import Vehicle.Syntax.Builtin
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,

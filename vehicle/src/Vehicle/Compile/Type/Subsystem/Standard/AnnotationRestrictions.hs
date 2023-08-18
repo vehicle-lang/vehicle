@@ -11,7 +11,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -19,13 +19,13 @@ import Vehicle.Expr.Normalised
 
 restrictStandardPropertyType ::
   forall m.
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   DeclProvenance ->
-  StandardGluedType ->
+  GluedType StandardTypingBuiltin ->
   m ()
 restrictStandardPropertyType decl parameterType = go (normalised parameterType)
   where
-    go :: VType StandardBuiltin -> m ()
+    go :: VType StandardTypingBuiltin -> m ()
     go = \case
       VBoolType {} -> return ()
       VVectorType tElem _ -> go tElem
@@ -35,20 +35,20 @@ restrictStandardPropertyType decl parameterType = go (normalised parameterType)
 -- Parameters
 
 restrictStandardParameterType ::
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   ParameterSort ->
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardType
+  GluedType StandardTypingBuiltin ->
+  m (Type Ix StandardTypingBuiltin)
 restrictStandardParameterType sort = case sort of
   NonInferable -> restrictStandardNonInferableParameterType
   Inferable -> restrictStandardInferableParameterType
 
 restrictStandardNonInferableParameterType ::
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardType
+  GluedType StandardTypingBuiltin ->
+  m (Type Ix StandardTypingBuiltin)
 restrictStandardNonInferableParameterType decl parameterType = do
   case normalised parameterType of
     VIndexType {} -> return ()
@@ -61,10 +61,10 @@ restrictStandardNonInferableParameterType decl parameterType = do
   return $ unnormalised parameterType
 
 restrictStandardInferableParameterType ::
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardType
+  GluedType StandardTypingBuiltin ->
+  m (Type Ix StandardTypingBuiltin)
 restrictStandardInferableParameterType decl parameterType =
   case normalised parameterType of
     VNatType {} -> return (unnormalised parameterType)
@@ -75,15 +75,15 @@ restrictStandardInferableParameterType decl parameterType =
 
 restrictStandardDatasetType ::
   forall m.
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardType
+  GluedType StandardTypingBuiltin ->
+  m (Type Ix StandardTypingBuiltin)
 restrictStandardDatasetType decl datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
   where
-    checkContainerType :: Bool -> StandardNormType -> m ()
+    checkContainerType :: Bool -> VType StandardTypingBuiltin -> m ()
     checkContainerType topLevel = \case
       VListType tElem -> checkContainerType False tElem
       VVectorType tElem _tDims -> checkContainerType False tElem
@@ -92,7 +92,7 @@ restrictStandardDatasetType decl datasetType = do
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
-    checkDatasetElemType :: StandardNormType -> m ()
+    checkDatasetElemType :: VType StandardTypingBuiltin -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
       VIntType {} -> return ()
@@ -106,10 +106,10 @@ restrictStandardDatasetType decl datasetType = do
 
 restrictStandardNetworkType ::
   forall m.
-  (MonadTypeChecker StandardBuiltin m) =>
+  (MonadTypeChecker StandardTypingBuiltin m) =>
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardType
+  GluedType StandardTypingBuiltin ->
+  m (Type Ix StandardTypingBuiltin)
 restrictStandardNetworkType decl networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
@@ -123,10 +123,10 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
         return $ unnormalised networkType
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    checkTensorType :: InputOrOutput -> StandardNormType -> m ()
+    checkTensorType :: InputOrOutput -> VType StandardTypingBuiltin -> m ()
     checkTensorType io = go True
       where
-        go :: Bool -> StandardNormType -> m ()
+        go :: Bool -> VType StandardTypingBuiltin -> m ()
         go topLevel = \case
           VTensorType tElem _ -> go False tElem
           VVectorType tElem _ -> go False tElem
@@ -135,7 +135,7 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
               else checkElementType io elemType
 
-    checkElementType :: InputOrOutput -> StandardNormType -> m ()
+    checkElementType :: InputOrOutput -> VType StandardTypingBuiltin -> m ()
     checkElementType io = \case
       VRatType {} -> return ()
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

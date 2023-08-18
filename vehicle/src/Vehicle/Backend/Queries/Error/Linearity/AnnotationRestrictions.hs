@@ -10,7 +10,6 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 checkNetworkType ::

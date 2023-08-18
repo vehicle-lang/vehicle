@@ -28,13 +28,13 @@ import Vehicle.Backend.Queries.LinearExpr (VectorEquality (..))
 import Vehicle.Backend.Queries.QuerySetStructure (UnreducedAssertion (..))
 import Vehicle.Backend.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), UserVariable (..), mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean (BooleanExpr (..), DisjunctAll (..))
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Hashing ()
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
@@ -98,9 +98,9 @@ data NetworkReaderCtx = NetworkReaderCtx
 --------------------------------------------------------------------------------
 -- Partioning
 
-type NetworkApplication = (Name, StandardSpine)
+type NetworkApplication = (Name, Spine Builtin)
 
-applicationExpr :: NetworkApplication -> StandardNormExpr
+applicationExpr :: NetworkApplication -> Value Builtin
 applicationExpr (networkName, spine) = VFreeVar (Identifier User networkName) spine
 
 -- | A tree of network applications that are contained within one another. e.g.
@@ -127,10 +127,10 @@ compareApplicationTree a b = do
   let (g, y) = nodeApp b
   compare f g <> compareSpine x y
   where
-    compareSpine :: StandardSpine -> StandardSpine -> Ordering
+    compareSpine :: Spine Builtin -> Spine Builtin -> Ordering
     compareSpine x y = liftCompare compareValue (mapMaybe getExplicitArg x) (mapMaybe getExplicitArg y)
 
-    compareValue :: StandardNormExpr -> StandardNormExpr -> Ordering
+    compareValue :: Value Builtin -> Value Builtin -> Ordering
     compareValue x y = case (x, y) of
       (VBoundVar v1 spine1, VBoundVar v2 spine2) -> compare v1 v2 <> compareSpine spine1 spine2
       (VBoundVar {}, _) -> LT
@@ -198,7 +198,7 @@ findApplicationsInAssertion = \case
 
 findApplicationsInExpr ::
   (MonadTraverseApplications m) =>
-  StandardNormExpr ->
+  Value Builtin ->
   m NetworkApplicationForest
 findApplicationsInExpr expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -219,7 +219,7 @@ findApplicationsInExpr expr = case expr of
 
 findApplicationsInSpine ::
   (MonadTraverseApplications m) =>
-  StandardSpine ->
+  Spine Builtin ->
   m NetworkApplicationForest
 findApplicationsInSpine spine =
   HashSet.unions <$> traverse findApplicationsInExpr (fmap argExpr spine)
@@ -234,7 +234,7 @@ data MetaNetworkPartition = MetaNetworkPartition
     partitionExpr :: BooleanExpr UnreducedAssertion
   }
 
-type MetaNetworkVariableSubstitution = HashMap NetworkApplication StandardNormExpr
+type MetaNetworkVariableSubstitution = HashMap NetworkApplication (Value Builtin)
 
 replaceApplications ::
   (MonadTraverseApplications m) =>
@@ -275,7 +275,7 @@ replaceApplications (partitionID, (applications, expr)) = do
 
 type NetworkAppInfo =
   ( UnreducedAssertion,
-    StandardNormExpr,
+    Value Builtin,
     [NetworkVariable],
     MetaNetworkEntry
   )
@@ -380,7 +380,7 @@ getNetworkContext ::
   BoundCtx NetworkVariable
 getNetworkContext = concatMap (\(_, (_, _, networkVars, _)) -> networkVars)
 
-getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m StandardNormExpr
+getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m (Value Builtin)
 getNetworkApplicationArg (networkName, spine) = case spine of
   [RelevantExplicitArg _ arg] -> return arg
   _ ->
@@ -397,15 +397,15 @@ getNetworkDetailsFromCtx networkCtx name = do
 
 mkInputVarEqualityExpr ::
   TensorDimensions ->
-  StandardNormArg ->
-  StandardNormArg ->
-  StandardNormExpr
+  VArg Builtin ->
+  VArg Builtin ->
+  Value Builtin
 mkInputVarEqualityExpr dimensions e1 e2 = do
   mkVectorEquality (fmap VNatLiteral dimensions) [e1, e2]
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinary here,
     -- but it seems incredibly complicated to setup...
-    mkVectorEquality :: [StandardNormExpr] -> StandardSpine -> StandardNormExpr
+    mkVectorEquality :: [Value Builtin] -> Spine Builtin -> Value Builtin
     mkVectorEquality dims spine =
       let p = mempty
        in case dims of
@@ -443,8 +443,8 @@ replaceApplicationsInAssertion subst = \case
 replaceApplicationsInExpr ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
-  StandardNormExpr ->
-  m StandardNormExpr
+  Value Builtin ->
+  m (Value Builtin)
 replaceApplicationsInExpr subst expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -465,8 +465,8 @@ replaceApplicationsInExpr subst expr = case expr of
 replaceApplicationsInSpine ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
-  StandardSpine ->
-  m StandardSpine
+  Spine Builtin ->
+  m (Spine Builtin)
 replaceApplicationsInSpine subst =
   traverse (traverse (replaceApplicationsInExpr subst))
 
@@ -475,7 +475,7 @@ replaceApplication ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
   NetworkApplication ->
-  m StandardNormExpr
+  m (Value Builtin)
 replaceApplication subst app = do
   let expr = applicationExpr app
   case HashMap.lookup app subst of
