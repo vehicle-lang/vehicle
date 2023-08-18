@@ -176,8 +176,8 @@ class VariableDomain(Generic[_T], metaclass=ABCMeta):
     set of values the variable is allowed to take.
     """
 
-    @abstractmethod
     @property
+    @abstractmethod
     def shape(self) -> Tuple[int, ...]:
         """
         Return the dimensions of the domain.
