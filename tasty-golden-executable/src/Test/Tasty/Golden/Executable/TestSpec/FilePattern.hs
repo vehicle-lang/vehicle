@@ -17,7 +17,7 @@ import Data.Sequence (Seq, (|>))
 import Data.Sequence qualified as Seq
 import Data.String (IsString (..))
 import Data.Text qualified as Text (unpack)
-import System.FilePath qualified as FilePath (addExtension, normalize)
+import System.FilePath qualified as FilePath (addExtension, normalise)
 import System.FilePath.Glob (CompOptions (..))
 import System.FilePath.Glob qualified as Glob
 import Test.Tasty.Options (safeRead)
@@ -51,14 +51,14 @@ addExtension (FilePattern patternString exts _) ext =
 --   i.e., it has no wildcards, character ranges, etc.
 asLiteral :: FilePattern -> Maybe FilePath
 asLiteral (FilePattern patternString _ pattern)
-  | Glob.isLiteral pattern = Just (FilePath.normalize patternString)
+  | Glob.isLiteral pattern = Just (FilePath.normalise patternString)
   | otherwise = Nothing
 
 -- | Parse a file pattern.
 readEither :: String -> Either String FilePattern
 readEither patternString =
   FilePattern patternString Seq.empty
-    <$> Glob.tryCompileWith globCompOptions (FilePath.normalize patternString)
+    <$> Glob.tryCompileWith globCompOptions (FilePath.normalise patternString)
 
 globCompOptions :: Glob.CompOptions
 globCompOptions =
