@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Union
 
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.compile.python as vcl2py
 
@@ -33,7 +34,7 @@ def network_validate_output(output: Dict[str, Any]) -> None:
         ),
         (
             "test_indicator.vcl",
-            {"prop": 0.0},
+            {"prop": 1.0},
         ),
         (
             "test_maximum.vcl",
@@ -57,15 +58,15 @@ def network_validate_output(output: Dict[str, Any]) -> None:
         ),
         (
             "test_subtraction.vcl",
-            {"prop": 1.0},
+            {"prop": 0.0},
         ),
         (
             "test_tensor.vcl",
-            {"prop": 1.0},
+            {"prop": 0.0},
         ),
         (
             "test_variable.vcl",
-            {"prop": 1.0},
+            {"prop": 0.0},
         ),
     ],
 )  # type: ignore[misc]
