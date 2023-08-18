@@ -93,8 +93,14 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
 
     @override
     def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
-        # TODO: replace with efficient implementation
-        return (item, *tuple(vector))
+        assert isinstance(item, tf.Tensor)
+        assert isinstance(vector, tf.Tensor)
+        return cast(
+            VehicleVector[_T],
+            tf.concat([tf.reshape(item, shape=(1, *item.shape)), vector], axis=0),
+        )
+        # NOTE: inefficient default implementation
+        # return (item, *tuple(vector))
 
     @override
     def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -115,9 +121,10 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     def MapVector(
         self, function: Callable[[_S], _T], vector: VehicleVector[_S]
     ) -> VehicleVector[_T]:
-        # TODO: replace with efficient implementation
-        # return tf.map_fn(function, vector)
-        return self.Vector(*map(function, tuple(vector)))
+        assert isinstance(vector, tf.Tensor)
+        return cast(VehicleVector[_T], tf.map_fn(function, vector))
+        # NOTE: inefficient default implementation
+        # return self.Vector(*map(function, tuple(vector)))
 
     @override
     def MaxRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -229,9 +236,14 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
         vector1: VehicleVector[_S],
         vector2: VehicleVector[_T],
     ) -> VehicleVector[_U]:
-        # TODO: replace with efficient implementation
-        # return tf.map_fn(function, tf.concat(vector1, vector2))
-        return self.Vector(*map(function, tuple(vector1), tuple(vector2)))
+        assert isinstance(vector1, tf.Tensor)
+        assert isinstance(vector2, tf.Tensor)
+        return cast(
+            VehicleVector[_U],
+            tf.map_fn(function, tf.stack((vector1, vector2), axis=1)),
+        )
+        # TODO: inefficient default implementation
+        # return self.Vector(*map(function, tuple(vector1), tuple(vector2)))
 
 
 ################################################################################
