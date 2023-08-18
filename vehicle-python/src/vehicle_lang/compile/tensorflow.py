@@ -95,8 +95,11 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
 
     @override
     def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
+        if not tf.is_tensor(item):
+            item = tf.convert_to_tensor(item)
         assert isinstance(item, tf.Tensor)
-        assert isinstance(vector, tf.Tensor)
+        if not tf.is_tensor(vector):
+            vector = tf.convert_to_tensor(vector)
         return cast(
             VehicleVector[_T],
             tf.concat([tf.reshape(item, shape=(1, *item.shape)), vector], axis=0),
@@ -123,7 +126,8 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     def MapVector(
         self, function: Callable[[_S], _T], vector: VehicleVector[_S]
     ) -> VehicleVector[_T]:
-        assert isinstance(vector, tf.Tensor)
+        if not tf.is_tensor(vector):
+            vector = tf.convert_to_tensor(vector)
         return cast(VehicleVector[_T], tf.map_fn(function, vector))
         # NOTE: inefficient default implementation
         # return self.Vector(*map(function, tuple(vector)))
@@ -238,8 +242,10 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
         vector1: VehicleVector[_S],
         vector2: VehicleVector[_T],
     ) -> VehicleVector[_U]:
-        assert isinstance(vector1, tf.Tensor)
-        assert isinstance(vector2, tf.Tensor)
+        if not tf.is_tensor(vector1):
+            vector1 = tf.convert_to_tensor(vector1)
+        if not tf.is_tensor(vector2):
+            vector2 = tf.convert_to_tensor(vector2)
         return cast(
             VehicleVector[_U],
             tf.map_fn(function, tf.stack((vector1, vector2), axis=1)),
