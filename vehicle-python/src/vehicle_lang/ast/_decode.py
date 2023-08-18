@@ -406,6 +406,9 @@ _DEFAULT_DECODER.register(dict, DictDecoder())
 _DEFAULT_DECODER.register(collections.abc.Mapping, DictDecoder())
 _DEFAULT_DECODER.register(collections.abc.MutableMapping, DictDecoder())
 
+# NOTE: We check for the presence of 'Literal' in typing_extensions for
+#       compatibility with typing_extensions 4.5, which is the upper bound
+#       that is compatible with tensorflow 2.13.
 if hasattr(typing_extensions, "Literal"):
     _DEFAULT_DECODER.register(typing_extensions.Literal, LiteralDecoder())
 
