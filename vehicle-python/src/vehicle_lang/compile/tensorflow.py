@@ -71,8 +71,8 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtype_int: tf.DType = tf.int64
     dtype_rat: tf.DType = tf.float64
 
-    domains: Domains[Any, tf.Tensor] = {}
-    optimisers: Optimisers[tf.Variable, tf.Tensor, Any, tf.Tensor] = {}
+    domains: Domains[tf.Tensor] = {}
+    optimisers: Optimisers[tf.Variable, tf.Tensor, tf.Tensor] = {}
     variables: Dict[QuantifiedVariableName, tf.Variable] = {}
 
     @override
@@ -305,8 +305,8 @@ def load_loss_function(
     dtype_nat: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
     dtype_int: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
     dtype_rat: Optional[Callable[[SupportsFloat], tf.Tensor]] = None,
-    domains: Domains[Any, tf.Tensor] = {},
-    optimisers: Optimisers[tf.Variable, tf.Tensor, Any, tf.Tensor] = {},
+    domains: Domains[tf.Tensor] = {},
+    optimisers: Optimisers[tf.Variable, tf.Tensor, tf.Tensor] = {},
     variables: Dict[QuantifiedVariableName, tf.Variable] = {},
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
 ) -> Any:

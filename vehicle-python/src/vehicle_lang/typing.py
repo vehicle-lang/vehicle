@@ -4,11 +4,10 @@ from typing import Any, Callable, Dict, Generic, Iterable, Tuple
 
 from typing_extensions import Protocol, Self, TypeAlias, TypeVar, runtime_checkable
 
-_S = TypeVar("_S")
-_T = TypeVar("_T")
-_U = TypeVar("_U")
-_R = TypeVar("_R")
+_Loss = TypeVar("_Loss")
+_Variable = TypeVar("_Variable")
 
+_T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 
 ################################################################################
@@ -158,7 +157,7 @@ QuantifiedVariableName: TypeAlias = str
 A name of a quantified variable in a Vehicle specification file.
 """
 
-Context: TypeAlias = Dict[QuantifiedVariableName, _T]
+Context: TypeAlias = Dict[QuantifiedVariableName, _Loss]
 """
 The variable context, a mapping from variable names to values.
 """
@@ -170,7 +169,7 @@ AnyContext: TypeAlias = Context[Any]
 ################################################################################
 
 
-class VariableDomain(Generic[_T], metaclass=ABCMeta):
+class VariableDomain(Generic[_Loss], metaclass=ABCMeta):
     """
     An abstract interface for the domain of a quantified variable, i.e., the
     set of values the variable is allowed to take.
@@ -185,14 +184,14 @@ class VariableDomain(Generic[_T], metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def random_value(self) -> VehicleVector[_T]:
+    def random_value(self) -> VehicleVector[_Loss]:
         """
         Generate a random value that is guaranteed to lie within the domain.
         """
         ...
 
     @abstractmethod
-    def clip(self, value: VehicleVector[_T]) -> VehicleVector[_T]:
+    def clip(self, value: VehicleVector[_Loss]) -> VehicleVector[_Loss]:
         """
         Clips a value so that is guaranteed to lie within in the domain.
         """
@@ -201,20 +200,20 @@ class VariableDomain(Generic[_T], metaclass=ABCMeta):
 
 Domain: TypeAlias = Callable[
     [
-        Context[_T],
+        AnyContext,
     ],
-    VariableDomain[_R],
+    VariableDomain[_Loss],
 ]
 """
 A function from the current context to the domain of a quantified variable.
 """
 
-Domains: TypeAlias = Dict[QuantifiedVariableName, Domain[_T, _R]]
+Domains: TypeAlias = Dict[QuantifiedVariableName, Domain[_Loss]]
 """
 A mapping from quantified variable names and contexts to domains.
 """
 
-AnyDomain: TypeAlias = Domain[Any, Any]
+AnyDomain: TypeAlias = Domain[Any]
 """
 An optimiser that promises to work for any type.
 """
@@ -227,31 +226,31 @@ AnyDomains: TypeAlias = Dict[QuantifiedVariableName, AnyDomain]
 
 Minimise: TypeAlias = bool
 
-Joiner: TypeAlias = Callable[[_T, _T], _T]
+Joiner: TypeAlias = Callable[[_Loss, _Loss], _Loss]
 
-Predicate: TypeAlias = Callable[[_S], _T]
+Predicate: TypeAlias = Callable[[_T], _Loss]
 
 Optimiser: TypeAlias = Callable[
     [
-        _S,
-        VariableDomain[_T],
+        _Variable,
+        VariableDomain[_Loss],
         Minimise,
-        Context[_U],
-        Joiner[_R],
-        Predicate[_T, _R],
+        AnyContext,
+        Joiner[_Loss],
+        Predicate[_T, _Loss],
     ],
-    _R,
+    _Loss,
 ]
 """
 A function that tries to optimise a variable.
 """
 
-Optimisers: TypeAlias = Dict[QuantifiedVariableName, Optimiser[_S, _T, _U, _R]]
+Optimisers: TypeAlias = Dict[QuantifiedVariableName, Optimiser[_Variable, _Loss, _T]]
 """
 A mapping from quantified variable names to optimisers.
 """
 
-AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any, Any]
+AnyOptimiser: TypeAlias = Optimiser[Any, Any, Any]
 """
 An optimiser that promises to work for any type.
 """
