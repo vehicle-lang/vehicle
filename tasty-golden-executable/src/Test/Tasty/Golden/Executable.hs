@@ -1,78 +1,40 @@
 module Test.Tasty.Golden.Executable
-  ( TestSpec (..),
-    TestSpecs (..),
-    readTestSpecsFile,
-    writeTestSpecsFile,
-    GoldenFilePattern,
-    addOrReplaceTestSpec,
-    makeTestTreesFromFile,
-    makeTestTreeFromDirectoryRecursive,
-    SomeOption (..),
+  ( SomeOption (..),
+    AllowlistExternals (..),
+    External (..),
     Ignore (..),
-    IgnoreFile,
-    IgnoreFileOption (..),
-    ignoreFileOption,
-    ignoreFileOptionIngredient,
-    IgnoreLine,
-    IgnoreLineOption (..),
-    ignoreLineOption,
-    ignoreLineOptionIngredient,
-    External,
-    ExternalOption,
-    externalOptionIngredient,
+    IgnoreFiles (..),
+    makeTestTreeFromFile,
+    makeTestTreeFromDirectoryRecursive,
   )
 where
 
-import Control.Monad (filterM, forM)
-import Data.Function ((&))
+import Control.Monad (filterM)
 import Data.Functor ((<&>))
-import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Data.Text (Text)
-import Data.Text qualified as Text
-import Data.Text.IO qualified as Text
-import General.Extra.File (copyRecursively, createDirectoryRecursive, listFilesRecursive)
 import General.Extra.Option (SomeOption (..), someLocalOptions)
-import System.Directory
-  ( doesDirectoryExist,
-    doesFileExist,
-    listDirectory,
-  )
-import System.FilePath
-  ( makeRelative,
-    takeDirectory,
-    takeFileName,
-    (</>),
-  )
-import System.IO.Temp (withSystemTempDirectory)
-import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
-import Test.Tasty (TestName, TestTree, askOption, testGroup)
-import Test.Tasty.Golden.Advanced (goldenTest)
-import Test.Tasty.Golden.Executable.TestSpec
-  ( TestOutput (..),
-    TestSpec (..),
-    TestSpecs (..),
-    addOrReplaceTestSpec,
-    readGoldenFiles,
-    readTestSpecsFile,
-    testSpecExternal,
-    testSpecIgnore,
-    testSpecIgnoreTestOutput,
-    testSpecIsEnabled,
-    testSpecName,
-    testSpecNeeds,
-    testSpecOptions,
-    testSpecRun,
-    writeGoldenFiles,
-    writeTestSpecsFile,
-  )
-import Test.Tasty.Golden.Executable.TestSpec.External (External, ExternalOnlyOption (..), ExternalOption (..), externalOptionIngredient)
-import Test.Tasty.Golden.Executable.TestSpec.FilePattern (GoldenFilePattern, IsFilePattern (..))
-import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFile, IgnoreFileOption (..), IgnoreLine, IgnoreLineOption (..), ignoreFileOption, ignoreFileOptionIngredient, ignoreLineOption, ignoreLineOptionIngredient)
-import Test.Tasty.Golden.Executable.TestSpec.Ignore qualified as Ignore
-import Text.Printf (printf)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeFileName, (</>))
+import Test.Tasty (testGroup)
+import Test.Tasty.Golden.Executable.Runner ()
+import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
+import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..), External (..))
+import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..))
+import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName)
+import Test.Tasty.Providers (TestName, TestTree, singleTest)
+
+-- | Test whether a path refers to an existing test specification file.
+isTestSpecFile :: FilePath -> IO Bool
+isTestSpecFile path = (takeFileName path == testSpecsFileName &&) <$> doesFileExist path
+
+-- | Read a test specification and return a TestTree.
+makeTestTreeFromFile :: [SomeOption] -> FilePath -> IO [TestTree]
+makeTestTreeFromFile testOptions testSpecFile = do
+  TestSpecs testSpecs <- readTestSpecsFile testSpecFile
+  return
+    [ someLocalOptions testOptions (singleTest (testSpecName testSpec) testSpec)
+      | testSpec <- NonEmpty.toList testSpecs
+    ]
 
 -- | Create a test tree from all test specifications in a directory, recursively.
 makeTestTreeFromDirectoryRecursive :: [SomeOption] -> TestName -> FilePath -> IO TestTree
@@ -80,14 +42,14 @@ makeTestTreeFromDirectoryRecursive testOptions testGroupLabel testDirectory = do
   -- List all paths in `testDirectory`
   testDirectoryEntries <- listDirectory testDirectory
 
-  -- Construct test trees for each .test.json file in the current directory:
+  -- Construct test trees for each test.json file in the current directory:
   testTreesFromHere <-
     -- Filter directory entries to only test specifications
     filterM (isTestSpecFile . (testDirectory </>)) testDirectoryEntries
       -- Make test trees
       >>= traverse
         ( \testSpecFileName ->
-            makeTestTreesFromFile testOptions (testDirectory </> testSpecFileName)
+            makeTestTreeFromFile testOptions (testDirectory </> testSpecFileName)
         )
       <&> concat
 
@@ -106,99 +68,3 @@ makeTestTreeFromDirectoryRecursive testOptions testGroupLabel testDirectory = do
   let result = testGroup testGroupLabel (testTreesFromHere <> testTreesFromFurther)
 
   return result
-
--- | Read a test specification and return a TestTree.
-makeTestTreesFromFile :: [SomeOption] -> FilePath -> IO [TestTree]
-makeTestTreesFromFile testOptions testSpecFile = do
-  TestSpecs testSpecs <- readTestSpecsFile testSpecFile
-  let enabledTestSpec = filter testSpecIsEnabled $ NonEmpty.toList testSpecs
-  return $ toTestTree testOptions testSpecFile <$> enabledTestSpec
-
--- | Test whether all required external dependencies are allowed.
-testSpecExternalAllowed :: ExternalOnlyOption -> ExternalOption -> TestSpec -> Bool
-testSpecExternalAllowed (ExternalOnlyOption externalOnly) (ExternalOption allowedExternals) testSpec
-  | externalOnly = neededExternals == allowedExternals
-  | otherwise = neededExternals `Set.isSubsetOf` allowedExternals
-  where
-    neededExternals = Set.fromList (testSpecExternal testSpec)
-
--- | Test whether a path refers to an existing test specification file.
-isTestSpecFile :: FilePath -> IO Bool
-isTestSpecFile path = (takeFileName path == "test.json" &&) <$> doesFileExist path
-
--- | Convert a test specifications to a test tree.
-toTestTree :: [SomeOption] -> FilePath -> TestSpec -> TestTree
-toTestTree testOptions testSpecFile testSpec =
-  someLocalOptions (testOptions <> testSpecOptions testSpec) $
-    askOption $ \(IgnoreLineOption optionIgnoreLines) ->
-      askOption $ \(IgnoreFileOption optionIgnoreFiles) ->
-        let testSpecIgnoreLines :: [IgnoreLine]
-            testSpecIgnoreLines = maybe [] ignoreLines (testSpecIgnore testSpec)
-            testSpecIgnoreFiles :: [IgnoreFile]
-            testSpecIgnoreFiles = maybe [] ignoreFiles (testSpecIgnore testSpec)
-            updatedTestSpec :: TestSpec
-            updatedTestSpec =
-              testSpec
-                { testSpecIgnore =
-                    Just
-                      Ignore
-                        { ignoreLines = testSpecIgnoreLines <> optionIgnoreLines,
-                          ignoreFiles = testSpecIgnoreFiles <> optionIgnoreFiles
-                        }
-                }
-         in toTestTreeHelper testSpecFile updatedTestSpec
-
-toTestTreeHelper :: FilePath -> TestSpec -> TestTree
-toTestTreeHelper testSpecFile testSpec = testTree
-  where
-    testDirectory :: FilePath
-    testDirectory = takeDirectory testSpecFile
-
-    testTree :: TestTree
-    testTree =
-      askOption $ \external ->
-        askOption $ \externalOnly ->
-          if testSpecExternalAllowed externalOnly external testSpec
-            then goldenTest testName readGolden runTest compareTestOutput updateGolden
-            else testGroup testName []
-      where
-        testName = testSpecName testSpec
-        readGolden = readGoldenFiles testDirectory testSpec
-        compareTestOutput = testSpecIgnoreTestOutput testSpec
-        updateGolden = writeGoldenFiles testDirectory testSpec
-        runTest = do
-          -- Create a temporary directory:
-          let tempDirectoryNameTemplate = printf "vehicle-test-%s" (testSpecName testSpec)
-          withSystemTempDirectory tempDirectoryNameTemplate $ \tempDirectory -> do
-            -- Copy over all needed files:
-            let neededFiles = Set.fromList $ testSpecNeeds testSpec
-            allCopiedFiles <- forM (Set.toList neededFiles) $ \neededFile -> do
-              createDirectoryRecursive (tempDirectory </> takeDirectory neededFile)
-              let originalFilePath = testDirectory </> neededFile
-              let finalFilePath = tempDirectory </> neededFile
-              copyRecursively originalFilePath finalFilePath
-            let copiedFiles = Set.fromList (drop (length tempDirectory + 1) <$> concat allCopiedFiles)
-
-            -- Run the command in the specified directory:
-            let cmdSpec = (shell $ testSpecRun testSpec) {cwd = Just tempDirectory}
-            (_exitCode, stdoutString, stderrString) <- readCreateProcessWithExitCode cmdSpec ""
-
-            -- Gather the outputs
-            let testOutputStdout = Text.pack stdoutString
-            let testOutputStderr = Text.pack stderrString
-            let ignoreFiles = maybe [] Ignore.ignoreFiles (testSpecIgnore testSpec)
-            testOutputFiles <- HashMap.fromList <$> getTestOutputFiles ignoreFiles copiedFiles tempDirectory
-
-            return TestOutput {..}
-
-getTestOutputFiles :: [IgnoreFile] -> Set FilePath -> FilePath -> IO [(FilePath, Text)]
-getTestOutputFiles ignoreFilePatterns copiedFiles tempDirectory = do
-  absoluteFilePaths <- listFilesRecursive tempDirectory
-  let shouldIgnore filePath = any (`match` filePath) ignoreFilePatterns
-  let outputFilePaths =
-        absoluteFilePaths
-          <&> makeRelative tempDirectory
-          & filter (\filePath -> not $ Set.member filePath copiedFiles || shouldIgnore filePath)
-  forM outputFilePaths $ \filePath -> do
-    fileContents <- Text.readFile $ tempDirectory </> filePath
-    return (filePath, fileContents)
