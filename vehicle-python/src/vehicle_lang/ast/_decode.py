@@ -16,8 +16,8 @@ from typing import (
     cast,
 )
 
+import typing_extensions
 from typing_extensions import (
-    Literal,
     TypeAlias,
     TypeVar,
     assert_never,
@@ -405,7 +405,10 @@ _DEFAULT_DECODER.register(collections.abc.MutableSequence, ListDecoder())
 _DEFAULT_DECODER.register(dict, DictDecoder())
 _DEFAULT_DECODER.register(collections.abc.Mapping, DictDecoder())
 _DEFAULT_DECODER.register(collections.abc.MutableMapping, DictDecoder())
-_DEFAULT_DECODER.register(Literal, LiteralDecoder())
+
+if hasattr(typing_extensions, "Literal"):
+    _DEFAULT_DECODER.register(typing_extensions.Literal, LiteralDecoder())
+
 _DEFAULT_DECODER.register(Union, UnionDecoder())
 
 
