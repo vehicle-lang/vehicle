@@ -17,13 +17,11 @@ from typing_extensions import TypeAlias, TypeVar, override
 
 from .. import ast as vcl
 from ..typing import (
-    Domains,
+    AnyContext,
     Joiner,
     Minimise,
-    Optimisers,
     Predicate,
     QuantifiedVariableName,
-    VariableDomain,
     VehicleInt,
     VehicleList,
     VehicleNat,
@@ -39,7 +37,6 @@ from .error import VehicleBuiltinUnsupported
 _VehicleNat = TypeVar("_VehicleNat", bound=VehicleNat)
 _VehicleInt = TypeVar("_VehicleInt", bound=VehicleInt)
 _VehicleRat = TypeVar("_VehicleRat", bound=VehicleRat)
-_VehicleVar = TypeVar("_VehicleVar")
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")
@@ -52,20 +49,9 @@ class ABCBuiltins(
         _VehicleNat,
         _VehicleInt,
         _VehicleRat,
-        _VehicleVar,
     ],
     metaclass=ABCMeta,
 ):
-    quantified_variable_optimisers: Optimisers[
-        _VehicleVar, Union[_VehicleNat, _VehicleInt, _VehicleRat], Any, _VehicleRat
-    ]
-
-    quantified_variable_domains: Domains[
-        Any, Union[_VehicleNat, _VehicleInt, _VehicleRat]
-    ]
-
-    quantified_variables: Dict[QuantifiedVariableName, _VehicleVar]
-
     def AddInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
         # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
         # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
@@ -319,50 +305,13 @@ class ABCBuiltins(
 
     def Optimise(
         self,
-        name: str,
-        minimise: bool,
-        context: Dict[str, Any],
-        joiner: Callable[[Any, Any], Any],
-        predicate: Callable[[Any], Any],
-    ) -> Any:
-        if name not in self.quantified_variable_domains:
-            raise TypeError(
-                f"No lower and upper bounds provided for quantified variable '{name}'."
-            )
-        domain = self.quantified_variable_domains[name](context)
-
-        if name not in self.quantified_variables:
-            self.quantified_variables[name] = self.QuantifiedVariable(
-                name, domain.dimensions()
-            )
-        variable = self.quantified_variables[name]
-
-        if name in self.quantified_variable_optimisers:
-            optimiser = self.quantified_variable_optimisers[name]
-        else:
-            optimiser = self.OptimiseDefault
-
-        return optimiser(
-            variable,
-            domain,
-            minimise,
-            context,
-            joiner,
-            predicate,
-        )
-
-    def OptimiseDefault(
-        self,
-        variable: _VehicleVar,
-        domain: VariableDomain[Union[_VehicleNat, _VehicleInt, _VehicleRat]],
+        name: QuantifiedVariableName,
         minimise: Minimise,
-        context: Dict[str, Any],
+        context: AnyContext,
         joiner: Joiner[_VehicleRat],
         predicate: Predicate[Union[_VehicleNat, _VehicleInt, _VehicleRat], _VehicleRat],
-    ) -> Any:
-        raise TypeError(
-            f"Could not find optimiser for quantified variable '{variable}'."
-        )
+    ) -> _VehicleRat:
+        raise VehicleBuiltinUnsupported(vcl.Optimise.__name__)
 
     def Or(self, x: bool, y: bool) -> bool:
         # assert isinstance(x, bool), f"Expected bool, found {x}"
@@ -373,10 +322,6 @@ class ABCBuiltins(
         # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
         # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
         return x ** y.__int__()
-
-    @abstractmethod
-    def QuantifiedVariable(self, name: str, shape: Tuple[int, ...]) -> _VehicleVar:
-        ...
 
     @abstractmethod
     def Rat(self, value: SupportsFloat) -> _VehicleRat:
@@ -409,7 +354,7 @@ class ABCBuiltins(
         ...
 
 
-AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any]
+AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST

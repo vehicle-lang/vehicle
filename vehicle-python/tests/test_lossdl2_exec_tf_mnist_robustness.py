@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, cast
 
 import numpy as np
-import pytest
 from typing_extensions import TypeAlias
 
 GOLDEN_PATH = (
@@ -65,13 +64,14 @@ ZEROES_28X28: Image = (
 def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
+
         import vehicle_lang.tensorflow as vcl2tf
 
         def domain_for_pertubation(
             ctx: Dict[str, Any]
         ) -> vcl2tf.VariableDomain[np.float32]:
             eps: np.float32 = cast(np.float32, ctx["epsilon"])
-            return vcl2tf.TensorflowVariableDomain.from_bounds(
+            return vcl2tf.BoundedVariableDomain.from_bounds(
                 lower_bounds=tf.fill(dims=[28, 28], value=-eps),
                 upper_bounds=tf.fill(dims=[28, 28], value=eps),
                 dtype=np.float32,
@@ -85,7 +85,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
             property_name="robust",
             target=vcl2tf.DifferentiableLogic.DL2,
             dtype_rat=tf.float32,
-            quantified_variable_domains={"pertubation": domain_for_pertubation},
+            domains={"pertubation": domain_for_pertubation},
         )
 
         loss = robust_loss(
@@ -101,7 +101,3 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
         from logging import warning
 
         warning("test_lossdl2_exec_tf_mnist_robustness requires tensorflow")
-
-
-if __name__ == "__main__":
-    pytest.main(["vehicle-python/tests/test_lossdl2_exec_tf_mnist_robustness.py"])

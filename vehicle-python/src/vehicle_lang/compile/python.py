@@ -1,17 +1,14 @@
 import ast as py
-import sys
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Iterable,
     Iterator,
     List,
-    Optional,
     Sequence,
     SupportsFloat,
     SupportsInt,
@@ -20,10 +17,9 @@ from typing import (
     Union,
 )
 
-import numpy as np
-import numpy.typing as npt
 from typing_extensions import Self, TypeVar, final, override
-from vehicle_lang.typing import VariableDomain, VehicleVector
+
+from vehicle_lang.typing import VehicleVector
 
 from .. import ast as vcl
 from ..ast import (
@@ -36,16 +32,11 @@ from ..ast import (
     Provenance,
 )
 from ..typing import (
-    AnyContext,
     DeclarationName,
     DifferentiableLogic,
-    Domains,
     Explicit,
-    Optimiser,
-    Optimisers,
     QuantifiedVariableName,
     Target,
-    VariableDomain,
     VehicleVector,
 )
 from ._ast_compat import arguments as py_arguments
@@ -66,7 +57,6 @@ __all__: List[str] = [
     # Translation to Python
     "PythonBuiltins",
     "PythonTranslation",
-    "PythonVariableDomain",
     # High-level functions
     "compile",
     "load_loss_function",
@@ -81,23 +71,10 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 
-if TYPE_CHECKING or sys.version_info >= (3, 9):
-    _Nat = TypeVar("_Nat", bound=np.unsignedinteger[Any])
-    _Int = TypeVar("_Int", bound=np.signedinteger[Any])
-    _Rat = TypeVar("_Rat", bound=np.floating[Any])
-else:
-    _Nat = TypeVar("_Nat", bound=np.unsignedinteger)
-    _Int = TypeVar("_Int", bound=np.signedinteger)
-    _Rat = TypeVar("_Rat", bound=np.floating)
-
 
 @final
 @dataclass(frozen=True)
-class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
-    dtype_nat: Callable[[SupportsInt], _Nat]
-    dtype_int: Callable[[SupportsInt], _Int]
-    dtype_rat: Callable[[SupportsFloat], _Rat]
-
+class PythonBuiltins(ABCBuiltins[int, int, float]):
     @override
     def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
         assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
@@ -117,8 +94,8 @@ class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
         return reduce(lambda x, y: function(y, x), vector, initial)
 
     @override
-    def Int(self, value: SupportsInt) -> _Int:
-        return self.dtype_int(value)
+    def Int(self, value: SupportsInt) -> int:
+        return value.__int__()
 
     @override
     def MapVector(
@@ -129,12 +106,12 @@ class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
         return tuple(map(function, vector))
 
     @override
-    def Nat(self, value: SupportsInt) -> _Nat:
-        return self.dtype_nat(value)
+    def Nat(self, value: SupportsInt) -> int:
+        return value.__int__()
 
     @override
-    def Rat(self, value: SupportsFloat) -> _Rat:
-        return self.dtype_rat(value)
+    def Rat(self, value: SupportsFloat) -> float:
+        return value.__float__()
 
     def Vector(self, *values: _T) -> Tuple[_T, ...]:
         return values
@@ -150,53 +127,6 @@ class PythonBuiltins(ABCBuiltins[_Nat, _Int, _Rat, QuantifiedVariableName]):
         assert isinstance(vector1, VehicleVector), f"Expected vector, found {vector1}"
         assert isinstance(vector2, VehicleVector), f"Expected vector, found {vector2}"
         return tuple(map(function, vector1, vector2))
-
-    @override
-    def QuantifiedVariable(
-        self, name: QuantifiedVariableName, shape: Sequence[int]
-    ) -> QuantifiedVariableName:
-        return name
-
-
-################################################################################
-### Bounded Variable Domain using Numpy
-################################################################################
-
-_DType = TypeVar("_DType", bound=np.generic)
-
-
-@dataclass(frozen=True)
-class PythonVariableDomain(VariableDomain[_DType]):
-    lower_bounds: npt.NDArray[_DType]
-    upper_bounds: npt.NDArray[_DType]
-    dtype: Type[_DType]
-
-    @staticmethod
-    def from_bounds(
-        lower_bounds: npt.ArrayLike,
-        upper_bounds: npt.ArrayLike,
-        *,
-        dtype: Type[_DType],
-    ) -> VariableDomain[_DType]:
-        return PythonVariableDomain(
-            lower_bounds=np.array(lower_bounds, dtype=dtype),
-            upper_bounds=np.array(upper_bounds, dtype=dtype),
-            dtype=dtype,
-        )
-
-    @override
-    def dimensions(self) -> Tuple[int, ...]:
-        return self.lower_bounds.shape
-
-    @override
-    def random_value(self) -> npt.NDArray[_DType]:
-        return np.divide(np.add(self.lower_bounds, self.upper_bounds), 2.0)
-
-    @override
-    def clip(self, point: VehicleVector[_DType]) -> npt.NDArray[_DType]:
-        return np.clip(
-            np.array(point, dtype=self.dtype), self.lower_bounds, self.upper_bounds
-        )
 
 
 ################################################################################
@@ -218,31 +148,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     @classmethod
     def from_builtins(cls: Type[Self], builtins: AnyBuiltins) -> Self:
         return cls(builtins=builtins)
-
-    @classmethod
-    def from_optimisers(
-        cls: Type[Self],
-        dtype_nat: Callable[[SupportsInt], _Nat],
-        dtype_int: Callable[[SupportsInt], _Int],
-        dtype_rat: Callable[[SupportsFloat], _Rat],
-        quantified_variable_domains: Dict[
-            QuantifiedVariableName,
-            Callable[[AnyContext], VariableDomain[Union[_Nat, _Int, _Rat]]],
-        ],
-        quantified_variable_optimisers: Dict[
-            QuantifiedVariableName, Optimiser[str, Union[_Nat, _Int, _Rat], Any, _Rat]
-        ],
-    ) -> Self:
-        return cls.from_builtins(
-            builtins=PythonBuiltins(
-                dtype_nat=dtype_nat,
-                dtype_int=dtype_int,
-                dtype_rat=dtype_rat,
-                quantified_variables={},
-                quantified_variable_domains=quantified_variable_domains,
-                quantified_variable_optimisers=quantified_variable_optimisers,
-            )
-        )
 
     def compile(
         self,
@@ -661,25 +566,9 @@ def load(
     path: Union[str, Path],
     *,
     declarations: Iterable[DeclarationName] = (),
-    dtype_nat: Optional[Callable[[SupportsInt], _Nat]] = None,
-    dtype_int: Optional[Callable[[SupportsInt], _Int]] = None,
-    dtype_rat: Optional[Callable[[SupportsFloat], _Rat]] = None,
-    quantified_variable_domains: Domains[Any, Union[_Nat, _Int, _Rat]] = {},
-    quantified_variable_optimisers: Optimisers[
-        QuantifiedVariableName, Union[_Nat, _Int, _Rat], Any, _Rat
-    ] = {},
     target: Target = Explicit.Explicit,
 ) -> Dict[str, Any]:
-    translation = PythonTranslation(
-        builtins=PythonBuiltins(
-            dtype_nat=dtype_nat or np.uint32,
-            dtype_int=dtype_int or np.int32,
-            dtype_rat=dtype_rat or np.float32,
-            quantified_variables={v: v for v in quantified_variable_domains.keys()},
-            quantified_variable_domains=quantified_variable_domains,
-            quantified_variable_optimisers=quantified_variable_optimisers,
-        )
-    )
+    translation = PythonTranslation(builtins=PythonBuiltins())
     return translation.compile(
         vcl.load(path, declarations=declarations, target=target), path=path
     )
@@ -689,13 +578,6 @@ def load_loss_function(
     path: Union[str, Path],
     property_name: DeclarationName,
     *,
-    dtype_nat: Optional[Callable[[SupportsInt], _Nat]] = None,
-    dtype_int: Optional[Callable[[SupportsInt], _Int]] = None,
-    dtype_rat: Optional[Callable[[SupportsFloat], _Rat]] = None,
-    quantified_variable_domains: Domains[Any, Union[_Nat, _Int, _Rat]] = {},
-    quantified_variable_optimisers: Optimisers[
-        QuantifiedVariableName, Union[_Nat, _Int, _Rat], Any, _Rat
-    ] = {},
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
 ) -> Any:
     """
@@ -709,16 +591,7 @@ def load_loss_function(
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
 
-    declarations = load(
-        path,
-        declarations=(property_name,),
-        target=target,
-        dtype_nat=dtype_nat,
-        dtype_int=dtype_int,
-        dtype_rat=dtype_rat,
-        quantified_variable_domains=quantified_variable_domains,
-        quantified_variable_optimisers=quantified_variable_optimisers,
-    )
+    declarations = load(path, declarations=(property_name,), target=target)
     if property_name in declarations:
         return declarations[property_name]
     else:

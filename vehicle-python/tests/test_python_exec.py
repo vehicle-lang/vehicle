@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Union
 
 import pytest
+
 import vehicle_lang.compile.python as vcl2py
 
 
@@ -11,11 +12,11 @@ def network_validate_output(output: Dict[str, Any]) -> None:
     assert output["prop"](network) == True
 
 
-def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+def quantifier_all_sampler(_ctx: Dict[str, Any]) -> Iterator[Any]:
     yield from [-10.0, -1.0, 1.0, 10.0]
 
 
-def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+def quantifier_any_sampler(_ctx: Dict[str, Any]) -> Iterator[Any]:
     yield from [-10.0, -1.0, 1.0, 10.0]
 
 
@@ -91,7 +92,3 @@ def test_loss_function_exec(
                 assert key in output
     elif callable(validate_output):
         validate_output(output)
-
-
-if __name__ == "__main__":
-    pytest.main(["vehicle-python/tests/test_python_exec.py"])

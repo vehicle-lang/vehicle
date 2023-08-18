@@ -2,7 +2,7 @@ from typing import List
 
 from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
-from .compile.tensorflow import TensorflowVariableDomain as TensorflowVariableDomain
+from .compile.tensorflow import BoundedVariableDomain as BoundedVariableDomain
 from .compile.tensorflow import load_loss_function as load_loss_function
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
@@ -23,7 +23,7 @@ __all__: List[str] = [
     # Compile
     "load_loss_function",
     "VariableDomain",
-    "TensorflowVariableDomain",
+    "BoundedVariableDomain",
     # Error types
     "VehicleError",
     "VehicleSessionClosed",

@@ -15,16 +15,17 @@ from typing import (
     cast,
 )
 
-import numpy as np
 import tensorflow as tf
 from typing_extensions import TypeVar, override
 
 from .. import ast as vcl
 from ..typing import (
+    AnyContext,
     DeclarationName,
     DifferentiableLogic,
     Domains,
     Joiner,
+    Minimise,
     Optimisers,
     Predicate,
     QuantifiedVariableName,
@@ -32,7 +33,7 @@ from ..typing import (
     VehicleVector,
 )
 from .abc import ABCBuiltins
-from .error import VehiclePropertyNotFound
+from .error import VehicleDomainNotFound, VehiclePropertyNotFound
 from .python import PythonTranslation
 from .tensorflowpgd import pgd
 
@@ -47,7 +48,7 @@ __all__: List[str] = [
     "Provenance",
     # Translation to Tensorflow
     "TensorflowBuiltins",
-    "TensorflowVariableDomain",
+    "BoundedVariableDomain",
     "TensorflowTranslation",
     # High-level functions
     "compile",
@@ -65,10 +66,14 @@ _U = TypeVar("_U")
 
 
 @dataclass(frozen=True)
-class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variable]):
+class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
     dtype_nat: tf.DType = tf.uint64
     dtype_int: tf.DType = tf.int64
     dtype_rat: tf.DType = tf.float64
+
+    domains: Domains[Any, tf.Tensor] = {}
+    optimisers: Optimisers[tf.Variable, tf.Tensor, Any, tf.Tensor] = {}
+    variables: Dict[QuantifiedVariableName, tf.Variable] = {}
 
     @override
     def AddInt(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
@@ -147,37 +152,58 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
         return tf.negative(x)
 
     @override
-    def OptimiseDefault(
+    def Optimise(
         self,
-        variable: tf.Variable,
-        domain: VariableDomain[tf.Tensor],
-        minimise: bool,
-        context: Dict[str, Any],
+        name: QuantifiedVariableName,
+        minimise: Minimise,
+        context: AnyContext,
         joiner: Joiner[tf.Tensor],
         predicate: Predicate[tf.Tensor, tf.Tensor],
-    ) -> Any:
-        del context
-        pgd_losses = [pgd(variable, domain, predicate, minimise) for _ in range(10)]
-        worst_loss = reduce(joiner, pgd_losses)
-        return worst_loss
+    ) -> tf.Tensor:
+        # Ensure that a domain was provided
+        if name not in self.domains:
+            raise VehicleDomainNotFound(name)
+
+        # Construct an instance of the domain from the context
+        domain = self.domains[name](context)
+
+        # Ensure that we have a variable
+        if name not in self.variables:
+            self.variables[name] = tf.Variable(
+                initial_value=tf.constant(
+                    value=0,
+                    dtype=self.dtype_rat,
+                    shape=domain.shape,
+                    name=f"initial_value_for_{name}",
+                ),
+                name=name,
+                trainable=True,
+                dtype=self.dtype_rat,
+            )
+        variable = self.variables[name]
+
+        # Ensure that we have an optimiser
+        if name not in self.optimisers:
+            self.optimisers[
+                name
+            ] = lambda variable, domain, minimise, _context, joiner, predicate: reduce(
+                joiner, [pgd(variable, domain, predicate, minimise) for _ in range(10)]
+            )
+        optimiser = self.optimisers[name]
+
+        # Run the optimiser
+        return optimiser(
+            variable,
+            domain,
+            minimise,
+            context,
+            joiner,
+            predicate,
+        )
 
     @override
     def PowRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.pow(x, y)
-
-    @override
-    def QuantifiedVariable(
-        self, name: QuantifiedVariableName, shape: Tuple[int, ...]
-    ) -> tf.Variable:
-        initial_value = tf.constant(
-            value=0, dtype=self.dtype_rat, shape=shape, name=f"initial_value_for_{name}"
-        )
-        return tf.Variable(
-            initial_value=initial_value,
-            name=name,
-            trainable=True,
-            dtype=self.dtype_rat,
-        )
 
     @override
     def Rat(self, value: SupportsFloat) -> tf.Tensor:
@@ -214,7 +240,7 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor, tf.Variabl
 
 
 @dataclass(frozen=True)
-class TensorflowVariableDomain(VariableDomain[tf.Tensor]):
+class BoundedVariableDomain(VariableDomain[tf.Tensor]):
     lower_bounds: tf.Tensor
     upper_bounds: tf.Tensor
     dtype: tf.DType
@@ -226,14 +252,15 @@ class TensorflowVariableDomain(VariableDomain[tf.Tensor]):
         *,
         dtype: tf.DType,
     ) -> VariableDomain[tf.Tensor]:
-        return TensorflowVariableDomain(
+        return BoundedVariableDomain(
             lower_bounds=tf.convert_to_tensor(lower_bounds, dtype=dtype),
             upper_bounds=tf.convert_to_tensor(upper_bounds, dtype=dtype),
             dtype=dtype,
         )
 
     @override
-    def dimensions(self) -> Tuple[int, ...]:
+    @property
+    def shape(self) -> Tuple[int, ...]:
         return tuple(self.lower_bounds.shape.as_list())
 
     @override
@@ -266,11 +293,9 @@ def load_loss_function(
     dtype_nat: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
     dtype_int: Optional[Callable[[SupportsInt], tf.Tensor]] = None,
     dtype_rat: Optional[Callable[[SupportsFloat], tf.Tensor]] = None,
-    quantified_variables: Dict[QuantifiedVariableName, tf.Variable] = {},
-    quantified_variable_domains: Domains[Any, tf.Tensor] = {},
-    quantified_variable_optimisers: Optimisers[
-        QuantifiedVariableName, tf.Tensor, Any, tf.Tensor
-    ] = {},
+    domains: Domains[Any, tf.Tensor] = {},
+    optimisers: Optimisers[tf.Variable, tf.Tensor, Any, tf.Tensor] = {},
+    variables: Dict[QuantifiedVariableName, tf.Variable] = {},
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
 ) -> Any:
     """
@@ -289,9 +314,9 @@ def load_loss_function(
             dtype_nat=dtype_nat or tf.uint32,
             dtype_int=dtype_int or tf.int32,
             dtype_rat=dtype_rat or tf.float32,
-            quantified_variables=quantified_variables,
-            quantified_variable_domains=quantified_variable_domains,
-            quantified_variable_optimisers=quantified_variable_optimisers,
+            domains=domains,
+            optimisers=optimisers,
+            variables=variables,
         )
     )
     program = translation.compile(

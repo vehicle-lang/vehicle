@@ -177,7 +177,8 @@ class VariableDomain(Generic[_T], metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def dimensions(self) -> Tuple[int, ...]:
+    @property
+    def shape(self) -> Tuple[int, ...]:
         """
         Return the dimensions of the domain.
         """
