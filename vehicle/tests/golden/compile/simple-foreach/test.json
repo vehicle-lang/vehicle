@@ -10,7 +10,6 @@
     "needs": ["spec.vcl", "fake.onnx"],
     "produces": [
       "Marabou.queries/*.txt",
-      "Marabou.queries/.vcl-cache-index",
       "Marabou.queries/index!0.vcl-plan",
       "Marabou.queries/index!1.vcl-plan"
     ],

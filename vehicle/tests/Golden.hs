@@ -8,7 +8,7 @@ testDirectory = "tests" </> "golden"
 
 options :: [SomeOption]
 options =
-  [ AppendOption $ IgnoreFiles ["*.vclo", "**/*.vclo"]
+  [ AppendOption $ IgnoreFiles ["*.vclo", "**/*.vclo", "**/.vcl-cache-index"]
   ]
 
 main :: IO ()

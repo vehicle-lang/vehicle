@@ -8,11 +8,7 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
-    "produces": [
-      "Marabou.queries/*.txt",
-      "Marabou.queries/.vcl-cache-index",
-      "Marabou.queries/*.vcl-plan"
-    ],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/*.vcl-plan"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     }
