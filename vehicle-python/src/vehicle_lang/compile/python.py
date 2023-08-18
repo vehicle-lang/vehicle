@@ -18,7 +18,6 @@ from typing import (
 )
 
 from typing_extensions import Self, TypeVar, final, override
-
 from vehicle_lang.typing import VehicleVector
 
 from .. import ast as vcl
