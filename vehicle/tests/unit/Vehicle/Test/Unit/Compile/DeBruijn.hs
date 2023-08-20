@@ -3,24 +3,10 @@ module Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests) where
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
-  ( BinderDisplayForm (BinderDisplayForm),
-    BinderNamingForm (OnlyName),
-    Expr (Lam),
-    GenericBinder (Binder),
-    Pretty (pretty),
-    Provenance,
-    Relevance (Relevant),
-    Visibility (Explicit),
-    indent,
-    layoutAsString,
-    line,
-    (<+>),
-    pattern BoundVar,
-  )
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (Expr Ix Builtin, Binder Ix Builtin, Expr Ix Builtin, Expr Ix Builtin)
 import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn (Lv, liftDBIndices, substDBInto)
+import Vehicle.Expr.DeBruijn (liftDBIndices, substDBInto)
+import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
