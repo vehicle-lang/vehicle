@@ -6,10 +6,9 @@ import GHC.Generics
 import Prettyprinter (Pretty (..))
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
-import Vehicle.Prelude (layoutAsText)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin (BuiltinConstructor, BuiltinFunction, BuiltinType (..))
 import Vehicle.Syntax.Builtin qualified as S
@@ -100,7 +99,7 @@ instance PrintableBuiltin LossBuiltin where
     BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
     BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
     BuiltinType f -> Builtin p (S.BuiltinType f)
-    b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
+    b -> cheatConvertBuiltin p b
 
   isCoercion = const False
 

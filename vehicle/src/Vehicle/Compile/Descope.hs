@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
 import Vehicle.Expr.Relevant (RelBinder, RelExpr, RelProg)
 import Vehicle.Expr.Relevant qualified as R

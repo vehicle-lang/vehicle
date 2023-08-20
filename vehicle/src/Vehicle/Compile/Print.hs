@@ -32,9 +32,8 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Print
 
@@ -148,19 +147,19 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To convert a named normalised expr, first denormalise to a checked expr.
   StrategyFor ('Named tags) (Contextualised (Value builtin) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) BoundDBCtx))
   -- To convert an assertion simply defer to normalised expressions
-  StrategyFor tags UnreducedAssertion = StrategyFor tags StandardNormExpr
-  StrategyFor tags (Contextualised UnreducedAssertion BoundDBCtx) = StrategyFor tags (Contextualised StandardNormExpr BoundDBCtx)
+  StrategyFor tags UnreducedAssertion = StrategyFor tags (Value Builtin)
+  StrategyFor tags (Contextualised UnreducedAssertion BoundDBCtx) = StrategyFor tags (Contextualised (Value Builtin) BoundDBCtx)
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised StandardNormExpr BoundDBCtx))
-  StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
-  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
-  StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags StandardNormExpr)
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
+  StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
+  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
+  StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   -- Simplification
   StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
@@ -440,7 +439,7 @@ instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) 
 -- Instances for unreduced assertions
 
 instance
-  (PrettyUsing rest StandardNormExpr) =>
+  (PrettyUsing rest (Value Builtin)) =>
   PrettyUsing rest UnreducedAssertion
   where
   prettyUsing = \case
@@ -451,7 +450,7 @@ instance
     NonVectorEqualityAssertion expr -> prettyUsing @rest expr
 
 instance
-  (PrettyUsing rest (Contextualised StandardNormExpr BoundDBCtx)) =>
+  (PrettyUsing rest (Contextualised (Value Builtin) BoundDBCtx)) =>
   PrettyUsing rest (Contextualised UnreducedAssertion BoundDBCtx)
   where
   prettyUsing (WithContext assertion ctx) = case assertion of

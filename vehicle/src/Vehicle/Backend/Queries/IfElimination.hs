@@ -10,7 +10,7 @@ where
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -28,8 +28,8 @@ import Vehicle.Expr.Normalised
 --     lifting and eliminating them
 eliminateIfs ::
   (MonadCompile m) =>
-  StandardNormExpr ->
-  m (Maybe (Maybe StandardNormExpr))
+  Value Builtin ->
+  m (Maybe (Maybe (Value Builtin)))
 eliminateIfs e = do
   ifLiftedExpr <- recLiftIf e
   case ifLiftedExpr of
@@ -44,7 +44,7 @@ currentPass = "if elimination"
 --------------------------------------------------------------------------------
 -- If operations
 
-liftIf :: (StandardNormExpr -> StandardNormExpr) -> StandardNormExpr -> StandardNormExpr
+liftIf :: (Value Builtin -> Value Builtin) -> Value Builtin -> Value Builtin
 liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
   VBuiltinFunction
     If
@@ -55,7 +55,7 @@ liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
     ]
 liftIf f e = f e
 
-recLiftIf :: (MonadCompile m) => StandardNormExpr -> m (Maybe StandardNormExpr)
+recLiftIf :: (MonadCompile m) => Value Builtin -> m (Maybe (Value Builtin))
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -74,14 +74,14 @@ recLiftIf expr = case expr of
       Nothing -> return Nothing
       Just xs -> return $ Just $ liftSpine (VBuiltin b) xs
 
-liftArg :: (StandardNormArg -> StandardNormExpr) -> StandardNormArg -> StandardNormExpr
+liftArg :: (VArg Builtin -> Value Builtin) -> VArg Builtin -> Value Builtin
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
 liftSpine ::
-  (StandardSpine -> StandardNormExpr) ->
-  StandardSpine ->
-  StandardNormExpr
+  (Spine Builtin -> Value Builtin) ->
+  Spine Builtin ->
+  Value Builtin
 liftSpine f [] = f []
 liftSpine f (x : xs) =
   if visibilityOf x == Explicit
@@ -90,11 +90,11 @@ liftSpine f (x : xs) =
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
-elimIf :: StandardNormExpr -> StandardNormExpr
+elimIf :: Value Builtin -> Value Builtin
 elimIf (VBuiltinFunction If [_, cond, e1, e2]) = unfoldIf cond (elimIf (argExpr e1)) (elimIf (argExpr e2))
 elimIf e = e
 
-unfoldIf :: StandardNormArg -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+unfoldIf :: VArg Builtin -> Value Builtin -> Value Builtin -> Value Builtin
 unfoldIf c x y =
   VBuiltinFunction
     Or

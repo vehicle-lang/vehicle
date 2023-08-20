@@ -7,9 +7,11 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Foldable (traverse_)
+import Control.Monad.Writer (MonadWriter, WriterT (..), tell)
+import Data.Data (Proxy (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -17,103 +19,122 @@ import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource
-import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Prelude.MonadContext (FullDeclCtx, MonadContext, addDeclToContext, getDecl, runContextT)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.Normalised
 
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.
 expandResources ::
   (MonadIO m, MonadCompile m) =>
   Resources ->
-  StandardGluedProg ->
-  m (NetworkContext, StandardNormDeclCtx, ResourcesIntegrityInfo)
+  Prog Ix Builtin ->
+  m (Prog Ix Builtin, NetworkContext, FullDeclCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    (intermediateResourcesCtx, inferableParameterCtx) <-
-      execStateT (runReaderT (readResourcesInProg prog) resources) (emptyResourceCtx, mempty)
+    ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialDeclCtx) <-
+      runContextT (Proxy @Builtin) (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty))) mempty
 
-    checkForUnusedResources resources intermediateResourcesCtx
+    checkForUnusedResources resources partialDeclCtx
 
-    resourceContext <- fillInInferableParameters intermediateResourcesCtx inferableParameterCtx
-    let (networkCtx, declCtx) = splitResourceCtx resourceContext
+    declCtx <- fillInInferableParameters partialDeclCtx inferableParameterCtx
     integrityInfo <- generateResourcesIntegrityInfo resources
-    return (networkCtx, declCtx, integrityInfo)
+    return (progWithoutResources, networkCtx, declCtx, integrityInfo)
 
-splitResourceCtx :: ResourceContext -> (NetworkContext, StandardNormDeclCtx)
-splitResourceCtx ResourceContext {..} = do
+mkFunctionDefFromResource :: Provenance -> Identifier -> Value Builtin -> GluedDecl Builtin
+mkFunctionDefFromResource p ident value = do
   -- This is a hack. The type is only every used for its arity, so this is okay.
   let unitType = BuiltinType Unit
-  let mkEntry expr =
-        TypingDeclCtxEntry
-          { declBody = Just expr,
-            declAnns = [],
-            declType = Glued (Builtin mempty unitType) (VBuiltin unitType [])
-          }
-  let declCtx = fmap mkEntry parameterContext <> fmap mkEntry datasetContext
-  (networkContext, declCtx)
+  -- We're doing something wrong here as we only really need the value
+  let gluedType = Glued (Builtin mempty unitType) (VBuiltin unitType [])
+  let gluedExpr = Glued (Builtin mempty (BuiltinConstructor LUnit)) value
+  DefFunction p ident mempty gluedType gluedExpr
+
+addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> Value Builtin -> m ()
+addFunctionDefFromResource p ident value = do
+  let decl = mkFunctionDefFromResource p ident value
+  tell (Map.singleton ident decl)
 
 type MonadReadResources m =
   ( MonadIO m,
-    MonadExpandResources m
+    MonadExpandResources m,
+    MonadContext Builtin m,
+    MonadWriter (FullDeclCtx Builtin) m
   )
 
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
 -- note of the values for implicit parameters.
-readResourcesInProg :: (MonadReadResources m) => StandardGluedProg -> m ()
-readResourcesInProg (Main ds) = traverse_ readResourcesInDecl ds
+readResourcesInProg :: (MonadReadResources m) => Prog Ix Builtin -> m (Prog Ix Builtin)
+readResourcesInProg (Main ds) = Main <$> readResourcesInDecls ds
 
-readResourcesInDecl :: (MonadReadResources m) => StandardGluedDecl -> m ()
-readResourcesInDecl decl = case decl of
-  DefFunction {} -> return ()
-  DefAbstract p ident defType declType ->
-    case defType of
-      ParameterDef sort -> case sort of
-        Inferable ->
-          noteInferableParameter p ident
-        NonInferable -> do
-          parameterValues <- asks parameters
-          parameterExpr <- parseParameterValue parameterValues (ident, p) declType
-          addParameter ident parameterExpr
-      DatasetDef -> do
-        datasetLocations <- asks datasets
-        datasetExpr <- parseDataset datasetLocations (ident, p) declType
-        addDataset ident datasetExpr
-      NetworkDef -> do
-        networkLocations <- asks networks
-        networkDetails <- checkNetwork networkLocations (ident, p) declType
-        addNetworkType ident networkDetails
-      PostulateDef -> return ()
+readResourcesInDecls :: forall m. (MonadReadResources m) => [Decl Ix Builtin] -> m [Decl Ix Builtin]
+readResourcesInDecls = \case
+  [] -> return []
+  decl : decls -> addDeclToContext decl $ do
+    maybeDecl <- case decl of
+      DefFunction {} -> return $ Just decl
+      DefAbstract p ident defType _declType -> do
+        gluedDecl <- getDecl @Builtin @m (Proxy @Builtin) "expandResources" (identifierOf decl)
+        let gluedType = typeOf gluedDecl
+        case defType of
+          ParameterDef sort -> case sort of
+            Inferable -> do
+              noteInferableParameter p ident
+              return Nothing
+            NonInferable -> do
+              parameterValues <- asks parameters
+              parameterExpr <- parseParameterValue parameterValues (ident, p) gluedType
+              addFunctionDefFromResource p ident parameterExpr
+              return Nothing
+          DatasetDef -> do
+            datasetLocations <- asks datasets
+            datasetExpr <- parseDataset datasetLocations (ident, p) gluedType
+            addFunctionDefFromResource p ident datasetExpr
+            return Nothing
+          NetworkDef -> do
+            networkLocations <- asks networks
+            networkDetails <- checkNetwork networkLocations (ident, p) gluedType
+            addNetworkType ident networkDetails
+            tell (Map.singleton ident (DefAbstract p ident NetworkDef gluedType))
+            return Nothing
+          PostulateDef ->
+            return (Just decl)
+
+    decls' <- readResourcesInDecls decls
+    return $ maybeToList maybeDecl <> decls'
 
 checkForUnusedResources ::
   (MonadLogger m) =>
   Resources ->
-  ResourceContext ->
+  FullDeclCtx Builtin ->
   m ()
-checkForUnusedResources Resources {..} ResourceContext {..} = do
-  warnIfUnusedResources Parameter parameters parameterContext
-  warnIfUnusedResources Dataset datasets datasetContext
-  warnIfUnusedResources Network networks networkContext
+checkForUnusedResources Resources {..} declCtx = do
+  warnIfUnusedResources Parameter parameters declCtx
+  warnIfUnusedResources Dataset datasets declCtx
+  warnIfUnusedResources Network networks declCtx
 
-fillInInferableParameters :: (MonadCompile m) => ResourceContext -> InferableParameterContext -> m ResourceContext
-fillInInferableParameters ResourceContext {..} inferableCtx = do
-  newParameterCtx <- foldM insertInferableParameter parameterContext (Map.assocs inferableCtx)
-  return $ ResourceContext {parameterContext = newParameterCtx, ..}
+fillInInferableParameters ::
+  (MonadCompile m) =>
+  FullDeclCtx Builtin ->
+  InferableParameterContext ->
+  m (FullDeclCtx Builtin)
+fillInInferableParameters declCtx inferableCtx =
+  foldM insertInferableParameter declCtx (Map.assocs inferableCtx)
   where
     insertInferableParameter ::
       (MonadCompile m) =>
-      ParameterContext ->
+      FullDeclCtx Builtin ->
       (Identifier, Either Provenance InferableParameterEntry) ->
-      m ParameterContext
-    insertInferableParameter ctx (param, maybeValue) = case maybeValue of
-      Left p -> throwError $ InferableParameterUninferrable (param, p)
-      Right (_, _, v) -> do
-        logDebug MaxDetail $ "Inferred" <+> quotePretty param <+> "as" <+> quotePretty v
-        return $ Map.insert param (VNatLiteral v) ctx
+      m (FullDeclCtx Builtin)
+    insertInferableParameter ctx (ident, maybeValue) = case maybeValue of
+      Left p -> throwError $ InferableParameterUninferrable (ident, p)
+      Right ((_, p), _, v) -> do
+        logDebug MaxDetail $ "Inferred" <+> quotePretty ident <+> "as" <+> quotePretty v
+        let decl = mkFunctionDefFromResource p ident (VNatLiteral v)
+        return $ Map.insert ident decl ctx
 
 warnIfUnusedResources ::
   (MonadLogger m, HasName ident Name) =>

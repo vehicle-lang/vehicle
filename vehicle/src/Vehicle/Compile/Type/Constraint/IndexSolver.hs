@@ -11,7 +11,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 solveIndexConstraint ::

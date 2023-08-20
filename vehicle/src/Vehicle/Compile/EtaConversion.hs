@@ -3,12 +3,13 @@ module Vehicle.Compile.EtaConversion
   )
 where
 
+import Data.Data (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Ix, liftDBIndices)
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.DeBruijn (liftDBIndices)
 import Vehicle.Expr.Normalised (VType, Value (..))
 
 etaExpandProg ::
@@ -17,7 +18,7 @@ etaExpandProg ::
   Prog Ix builtin ->
   m (Prog Ix builtin)
 etaExpandProg (Main ds) =
-  runContextT @m @builtin (Main <$> etaExpandDecls ds)
+  runContextT (Proxy @builtin) (Main <$> etaExpandDecls ds) mempty
 
 etaExpandDecls ::
   (MonadContext builtin m, PrintableBuiltin builtin) =>

@@ -11,7 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ checkNetwork ::
   (MonadExpandResources m) =>
   NetworkLocations ->
   DeclProvenance ->
-  StandardGluedType ->
+  GluedType Builtin ->
   m (FilePath, NetworkType)
 checkNetwork networkLocations decl@(ident, _) networkType = do
   case Map.lookup (identifierName ident) networkLocations of
@@ -37,7 +37,7 @@ getNetworkType ::
   forall m.
   (MonadExpandResources m) =>
   DeclProvenance ->
-  StandardGluedType ->
+  GluedType Builtin ->
   m NetworkType
 getNetworkType decl networkType = case normalised networkType of
   VPi binder result
@@ -47,15 +47,14 @@ getNetworkType decl networkType = case normalised networkType of
         outputDetails <- getTensorType Output result
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails
-  _ ->
-    throwError $ NetworkTypeIsNotAFunction decl networkType
+  _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    getTensorType :: InputOrOutput -> StandardNormType -> m NetworkTensorType
+    getTensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
     getTensorType io tensorType = do
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> StandardNormType -> m (NetworkBaseType, TensorDimensions)
+        go :: Bool -> VType Builtin -> m (NetworkBaseType, TensorDimensions)
         go topLevel = \case
           VTensorType _ dims ->
             throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
@@ -70,7 +69,7 @@ getNetworkType decl networkType = case normalised networkType of
                 elemType <- getElementType t
                 return (elemType, [])
 
-    getTensorDimension :: InputOrOutput -> StandardNormType -> m Int
+    getTensorDimension :: InputOrOutput -> VType Builtin -> m Int
     getTensorDimension io dim =
       case dim of
         VNatLiteral n -> return n
@@ -83,7 +82,7 @@ getNetworkType decl networkType = case normalised networkType of
         dims ->
           throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
 
-    getElementType :: StandardNormType -> m NetworkBaseType
+    getElementType :: VType Builtin -> m NetworkBaseType
     getElementType = \case
       VRatType {} -> return NetworkRatType
       _ -> typingError

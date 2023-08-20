@@ -8,6 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
+import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
@@ -21,15 +22,15 @@ import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonL
 import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
+import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude.MonadContext (MonadContext (addDeclToContext), getNormDeclCtx, runContextT)
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Resource
-import Vehicle.Compile.Type.Core (TypingDeclCtxEntry (..))
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.BuiltinPatterns
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector))
 import Vehicle.Verify.Core
@@ -49,7 +50,7 @@ currentPass = "compilation of properties"
 compileToQueries ::
   (MonadIO m, MonadCompile m) =>
   QueryFormat ->
-  StandardGluedProg ->
+  Prog Ix Builtin ->
   Resources ->
   Maybe FilePath ->
   m ()
@@ -61,11 +62,14 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
       Just folder -> liftIO $ createDirectoryIfMissing True folder
 
     -- Expand out the external resources in the specification (datasets, networks etc.)
-    (networkCtx, declCtx, integrityInfo) <- expandResources resources typedProg
-    let queryDeclCtx = fmap (,mempty) declCtx
+    (Main resourceFreeDecls, networkCtx, declCtx, integrityInfo) <- expandResources resources typedProg
 
     -- Perform the actual compilation to queries
-    properties <- compileProgToQueries queryFormat networkCtx queryDeclCtx maybeVerificationFolder typedProg
+    properties <-
+      runContextT
+        (Proxy @Builtin)
+        (compileDecls typedProg queryFormat networkCtx mempty resourceFreeDecls maybeVerificationFolder)
+        (declCtx, mempty)
 
     -- Check that there were actually properties in the specification.
     when (null properties) $ do
@@ -80,62 +84,48 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 --------------------------------------------------------------------------------
 -- Getting properties
 
-compileProgToQueries ::
-  (MonadIO m, MonadCompile m) =>
-  QueryFormat ->
-  NetworkContext ->
-  QueryDeclCtx ->
-  Maybe FilePath ->
-  GenericProg StandardGluedExpr ->
-  m [(Name, MultiProperty ())]
-compileProgToQueries queryFormat networkCtx queryDeclCtx outputLocation prog@(Main decls) = do
-  compileDecls prog queryFormat networkCtx queryDeclCtx decls outputLocation
-
 compileDecls ::
-  (MonadIO m, MonadCompile m) =>
-  StandardGluedProg ->
+  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
+  Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
-  QueryDeclCtx ->
-  [StandardGluedDecl] ->
+  UsedFunctionsCtx ->
+  [Decl Ix Builtin] ->
   Maybe FilePath ->
   m [(Name, MultiProperty ())]
 compileDecls _ _ _ _ [] _ = return []
-compileDecls prog queryFormat networkCtx queryDeclCtx (d : ds) outputLocation = do
+compileDecls prog queryFormat networkCtx usedFunctionCtx (d : ds) outputLocation = do
   property <- case d of
     DefFunction p ident anns _ body
       | isProperty anns ->
           Just
-            <$> compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident body outputLocation
+            <$> compilePropertyDecl prog queryFormat networkCtx usedFunctionCtx p ident body outputLocation
     _ -> return Nothing
 
-  let declCtxEntry = TypingDeclCtxEntry (annotationsOf d) (typeOf d) (normalised <$> bodyOf d)
-  let maybeUsedFunctionsInfo = getUsedFunctions (queryDeclCtxToInfoDeclCtx queryDeclCtx) mempty . unnormalised <$> bodyOf d
+  let maybeUsedFunctionsInfo = getUsedFunctions usedFunctionCtx mempty <$> bodyOf d
   let usedFunctionsInfo = fromMaybe mempty maybeUsedFunctionsInfo
   -- We use `insertWith` to choose the old value here because expanded resources already exist in the map.
-  let newQueryDeclCtx = Map.insertWith (const id) (identifierOf d) (declCtxEntry, usedFunctionsInfo) queryDeclCtx
-  properties <- compileDecls prog queryFormat networkCtx newQueryDeclCtx ds outputLocation
+  let newUsedFunctionCtx = Map.insertWith (const id) (identifierOf d) usedFunctionsInfo usedFunctionCtx
 
-  return $ maybeToList property ++ properties
+  addDeclToContext d $ do
+    properties <- compileDecls prog queryFormat networkCtx newUsedFunctionCtx ds outputLocation
+    return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadIO m, MonadCompile m) =>
-  StandardGluedProg ->
+  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
+  Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
-  QueryDeclCtx ->
+  UsedFunctionsCtx ->
   Provenance ->
   Identifier ->
-  StandardGluedExpr ->
+  Expr Ix Builtin ->
   Maybe FilePath ->
   m (Name, MultiProperty ())
 compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-    -- Normalise the property expression.
-    -- Note: we can't use the `normalised` part of the glued expression here because
-    -- the external resources have been added since it was normalised during type-checking.
-    let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
-    normalisedExpr <- runNormT defaultEvalOptions declCtx mempty $ eval mempty (unnormalised expr)
+    declCtx <- getNormDeclCtx (Proxy @Builtin)
+    normalisedExpr <- runNormT defaultEvalOptions declCtx mempty $ eval mempty expr
 
     let computeProperty = compileMultiProperty queryFormat networkCtx queryDeclCtx p ident outputLocation normalisedExpr
     property <-
@@ -153,18 +143,18 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m) =>
+  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
   QueryFormat ->
   NetworkContext ->
-  QueryDeclCtx ->
+  UsedFunctionsCtx ->
   Provenance ->
   Identifier ->
   Maybe FilePath ->
-  StandardNormExpr ->
+  Value Builtin ->
   m (MultiProperty ())
 compileMultiProperty queryFormat networkCtx declCtx p ident outputLocation = go []
   where
-    go :: TensorIndices -> StandardNormExpr -> m (MultiProperty ())
+    go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
     go indices expr = case expr of
       VVecLiteral es -> do
         let es' = zip [0 :: QueryID ..] es
@@ -186,7 +176,7 @@ compileMultiProperty queryFormat networkCtx declCtx p ident outputLocation = go 
 
 data PropertyState = PropertyState
   { queryFormat :: QueryFormat,
-    queryDeclCtx :: QueryDeclCtx,
+    queryDeclCtx :: UsedFunctionsCtx,
     networkCtx :: NetworkContext,
     declProvenance :: DeclProvenance,
     propertyAddress :: PropertyAddress
@@ -195,14 +185,15 @@ data PropertyState = PropertyState
 type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
-    MonadState QueryID m
+    MonadState QueryID m,
+    MonadContext Builtin m
   )
 
 -- Compiles an individual property
 compileProperty ::
   (MonadCompileProperty m, MonadIO m) =>
   Maybe FilePath ->
-  StandardNormExpr ->
+  Value Builtin ->
   m ()
 compileProperty outputLocation expr = do
   property <- compilePropertyTopLevelStructure expr
@@ -222,11 +213,11 @@ compileProperty outputLocation expr = do
 compilePropertyTopLevelStructure ::
   forall m.
   (MonadCompileProperty m) =>
-  StandardNormExpr ->
+  Value Builtin ->
   m (Property (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
   where
-    go :: StandardNormExpr -> m (Property (QueryMetaData, QueryText))
+    go :: Value Builtin -> m (Property (QueryMetaData, QueryText))
     go expr = case expr of
       VBoolLiteral {} ->
         Query <$> compileQuerySet False expr
@@ -270,7 +261,7 @@ compilePropertyTopLevelStructure = go
 compileQuerySet ::
   (MonadCompileProperty m) =>
   Bool ->
-  StandardNormExpr ->
+  Value Builtin ->
   m (QuerySet (QueryMetaData, QueryText))
 compileQuerySet isPropertyNegated expr = do
   PropertyState {..} <- ask
@@ -321,7 +312,7 @@ compileMetaNetworkPartition ::
   m (MaybeTrivial (DisjunctAll (QueryAddress, (QueryMetaData, QueryText))))
 compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionID, MetaNetworkPartition {..}) = do
   PropertyState {..} <- ask
-  let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
+  declCtx <- getNormDeclCtx (Proxy @Builtin)
   logCompilerPass MinDetail ("compilation of meta-network partition" <+> pretty partitionID) $ do
     -- Convert it into linear satisfaction problems in the network variables
     let mixedVariables = MixedVariables userVariables networkVars

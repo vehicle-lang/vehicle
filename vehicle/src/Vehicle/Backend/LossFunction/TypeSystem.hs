@@ -19,15 +19,16 @@ import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised (GluedExpr (..), GluedType, VType, Value (..), isNMeta)
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 instance TypableBuiltin LossBuiltin where
-  convertFromStandardTypes = convertToLossTypes
-  useDependentMetas _ = False
   typeBuiltin = typeLossBuiltin
+
+instance HasTypeSystem LossBuiltin where
+  convertFromStandardBuiltins = convertToLossTypes
+  useDependentMetas _ = False
   restrictNetworkType = checkNetworkType
   restrictDatasetType = checkDatasetType
   restrictParameterType = checkParameterType
@@ -73,16 +74,14 @@ convertToLossTypes p1 p2 b args = case b of
   S.BuiltinConstructor c -> case c of
     S.LBool v -> return $ mkTypeClassOp (LBoolTC v) args
     _ -> return $ normAppList p1 (Builtin p2 (BuiltinConstructor c)) args
-  S.TypeClass {} ->
-    monomorphisationError "TypeClass"
-  S.TypeClassOp {} ->
-    compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
+  S.TypeClass {} -> monomorphisationError "TypeClass"
+  S.TypeClassOp {} -> monomorphisationError "TypeClassOp"
   S.NatInDomainConstraint -> monomorphisationError "TypeClass"
   where
     monomorphisationError :: Doc () -> m a
     monomorphisationError name =
       compilerDeveloperError $
-        "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args
+        "Monomorphisation should have got rid of" <+> name <+> "but found" <+> prettyVerbose args
 
     mkTypeClassOp :: LossTypeClassOp -> [Arg Ix LossBuiltin] -> Expr Ix LossBuiltin
     mkTypeClassOp op = normAppList p1 (Builtin p2 (LossTCOp op))

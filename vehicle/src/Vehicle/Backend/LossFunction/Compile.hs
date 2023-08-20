@@ -12,13 +12,11 @@ import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments, typeCheckWithSubsystem)
-import Vehicle.Compile.Type.Subsystem.Standard.Core (StandardBuiltin)
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
-import Vehicle.Expr.DeBruijn (Ix)
-import Vehicle.Expr.Normalised
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.BuiltinPatterns
 import Vehicle.Libraries.StandardLibrary
+import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------
 -- Compilation
@@ -27,7 +25,7 @@ import Vehicle.Libraries.StandardLibrary
 compile ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
-  Prog Ix StandardBuiltin ->
+  Prog Ix Builtin ->
   m (Prog Ix LossBuiltin)
 compile logic typedProg =
   logCompilerPass MinDetail currentPass $ do
@@ -40,7 +38,7 @@ compile logic typedProg =
     let instanceCandidates = lossBuiltinInstances logicImplementation
     lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates reformattedProg
 
-    lossProg <- resolveInstanceArguments (fmap unnormalised lossProgWithInstances)
+    lossProg <- resolveInstanceArguments lossProgWithInstances
 
     return lossProg
 
@@ -57,11 +55,11 @@ preprocessLogicalOperators ::
   forall m.
   (MonadCompile m) =>
   DifferentialLogicImplementation ->
-  Prog Ix StandardBuiltin ->
-  m (Prog Ix StandardBuiltin)
+  Prog Ix Builtin ->
+  m (Prog Ix Builtin)
 preprocessLogicalOperators logic = traverse (traverseBuiltinsM builtinUpdateFunction)
   where
-    builtinUpdateFunction :: BuiltinUpdate m Ix StandardBuiltin StandardBuiltin
+    builtinUpdateFunction :: BuiltinUpdate m Ix Builtin Builtin
     builtinUpdateFunction p1 p2 b args = do
       maybeUpdatedExpr <- case b of
         S.BuiltinFunction S.Not -> case compileNot logic of
@@ -72,7 +70,7 @@ preprocessLogicalOperators logic = traverse (traverseBuiltinsM builtinUpdateFunc
       let unchangedExpr = normAppList p1 (Builtin p2 b) args
       return $ fromMaybe unchangedExpr maybeUpdatedExpr
 
-    lowerNot :: Provenance -> Expr Ix StandardBuiltin -> m (Expr Ix StandardBuiltin)
+    lowerNot :: Provenance -> Expr Ix Builtin -> m (Expr Ix Builtin)
     lowerNot notProv arg = case arg of
       -- Base cases
       BoolLiteral p b -> return $ BoolLiteral p (not b)

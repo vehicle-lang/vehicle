@@ -1,6 +1,6 @@
 module Vehicle.Compile.Type.Subsystem.Standard.Type
   ( typeStandardBuiltin,
-    typeOfTypeClassOp,
+    typeStandardTypingBuiltin,
     typeOfBuiltinConstructor,
     typeOfBuiltinFunction,
     typeOfBuiltinType,
@@ -10,12 +10,24 @@ where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeStandardBuiltin :: Provenance -> StandardBuiltin -> StandardType
+typeStandardTypingBuiltin :: Provenance -> StandardTypingBuiltin -> Type Ix StandardTypingBuiltin
+typeStandardTypingBuiltin p b = fromDSL p $ case b of
+  StandardBuiltin d -> case d of
+    BuiltinConstructor c -> typeOfBuiltinConstructor c
+    BuiltinFunction f -> typeOfBuiltinFunction f
+    TypeClassOp tcOp -> typeOfTypeClassOp tcOp
+    TypeClass tc -> typeOfTypeClass tc
+    BuiltinType s -> typeOfBuiltinType s
+    NatInDomainConstraint {} -> typeOfNatInDomainConstraint
+
+-- ResourceConstraint c -> _
+
+typeStandardBuiltin :: Provenance -> Builtin -> Type Ix Builtin
 typeStandardBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfBuiltinConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f
@@ -27,7 +39,7 @@ typeStandardBuiltin p b = fromDSL p $ case b of
 --------------------------------------------------------------------------------
 -- Type classes
 
-typeOfTypeClass :: TypeClass -> StandardDSLExpr
+typeOfTypeClass :: (HasStandardTypes builtin) => TypeClass -> DSLExpr builtin
 typeOfTypeClass tc = case tc of
   HasEq {} -> type0 ~> type0 ~> type0
   HasOrd {} -> type0 ~> type0 ~> type0
@@ -44,7 +56,7 @@ typeOfTypeClass tc = case tc of
   HasRatLits -> type0 ~> type0
   HasVecLits {} -> tNat ~> type0 ~> type0
 
-typeOfTypeClassOp :: TypeClassOp -> StandardDSLExpr
+typeOfTypeClassOp :: (HasStandardBuiltins builtin, HasStandardTypeClasses builtin) => TypeClassOp -> DSLExpr builtin
 typeOfTypeClassOp b = case b of
   NegTC -> typeOfTCOp1 hasNeg
   AddTC -> typeOfTCOp2 hasAdd
@@ -155,34 +167,34 @@ typeOfBuiltinConstructor = \case
   LRat {} -> tRat
   LVec n -> typeOfVectorLiteral n
 
-typeOfIf :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfIf :: (HasStandardTypes builtin) => DSLExpr builtin
 typeOfIf =
   forAll "A" type0 $ \t ->
     tBool ~> t ~> t ~> t
 
-typeOfTCOp1 :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+typeOfTCOp1 :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCOp1 constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       constraint t1 t2 ~~~> t1 ~> t2
 
-typeOfTCOp2 :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+typeOfTCOp2 :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCOp2 constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       forAll "C" type0 $ \t3 ->
         constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3
 
-typeOfTCComparisonOp :: (HasStandardBuiltins builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+typeOfTCComparisonOp :: (HasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCComparisonOp constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       constraint t1 t2 ~~~> typeOfComparisonOp t1 t2
 
-typeOfComparisonOp :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+typeOfComparisonOp :: (HasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfComparisonOp t1 t2 = t1 ~> t2 ~> tBool
 
-typeOfIndices :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfIndices :: (HasStandardTypes builtin) => DSLExpr builtin
 typeOfIndices =
   pi (Just "n") Explicit Relevant tNat $ \n -> tVector (tIndex n) n
 

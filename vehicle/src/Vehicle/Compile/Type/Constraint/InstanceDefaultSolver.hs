@@ -16,8 +16,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised (Value (..))
 
 class HasInstanceDefaults builtin where

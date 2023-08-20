@@ -10,9 +10,8 @@ import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Expr.Boolean (MaybeTrivial (..))
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 
@@ -96,7 +95,7 @@ prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
   let value = prettyFriendly (WithContext valueExpr emptyDBCtx)
   name <> ":" <+> value
 
-assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix StandardBuiltin
+assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix Builtin
 assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)

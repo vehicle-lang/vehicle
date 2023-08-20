@@ -13,27 +13,18 @@ import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 
-instance PrintableBuiltin LinearityBuiltin where
-  convertBuiltin = convertFromLinearityTypes
-  isCoercion = const False
-
-convertFromLinearityTypes :: Provenance -> LinearityBuiltin -> Expr var S.Builtin
-convertFromLinearityTypes p = \case
-  BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
-  BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
-  b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
-
 instance TypableBuiltin LinearityBuiltin where
-  convertFromStandardTypes = convertToLinearityTypes
-  useDependentMetas _ = False
   typeBuiltin = typeLinearityBuiltin
+
+instance HasTypeSystem LinearityBuiltin where
+  convertFromStandardBuiltins = convertToLinearityTypes
+  useDependentMetas _ = False
   restrictNetworkType = checkNetworkType
   restrictDatasetType = assertConstantLinearity
   restrictParameterType = const assertConstantLinearity
@@ -43,7 +34,7 @@ instance TypableBuiltin LinearityBuiltin where
   generateDefaultConstraint = const $ return False
 
 freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
-freshLinearityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
+freshLinearityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
 
 convertToLinearityTypes ::
   forall m.

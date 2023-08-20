@@ -26,7 +26,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Expr.DeBruijn (Ix)
 
 --------------------------------------------------------------------------------
 -- Implementation

@@ -36,7 +36,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Hashing ()
 import Vehicle.Libraries.StandardLibrary

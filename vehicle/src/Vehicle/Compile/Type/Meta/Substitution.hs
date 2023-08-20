@@ -14,7 +14,6 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
 
 -- | Substitutes meta-variables through the provided object, returning the

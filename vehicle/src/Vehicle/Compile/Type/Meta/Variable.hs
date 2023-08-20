@@ -19,7 +19,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -- Eventually when metas make into the builtins, this should module

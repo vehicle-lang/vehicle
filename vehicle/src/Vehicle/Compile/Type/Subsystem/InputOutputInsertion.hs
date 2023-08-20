@@ -8,8 +8,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshInstanceConstraint, freshMetaExpr)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin
 

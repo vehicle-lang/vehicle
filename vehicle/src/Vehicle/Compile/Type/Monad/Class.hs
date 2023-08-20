@@ -24,8 +24,7 @@ import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Ix)
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -132,17 +131,13 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) w
 -- Abstract interface for a type system.
 
 -- | A class that provides an abstract interface for a set of builtins.
-class (PrintableBuiltin builtin, HasStandardData builtin) => TypableBuiltin builtin where
-  convertFromStandardTypes ::
+class (HasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
+  convertFromStandardBuiltins ::
     (MonadTypeChecker builtin m) =>
-    BuiltinUpdate m Ix StandardBuiltin builtin
+    BuiltinUpdate m Ix Builtin builtin
 
   -- | Can meta-variables be dependent on their context?
   useDependentMetas :: Proxy builtin -> Bool
-
-  -- | Construct a type for the builtin
-  typeBuiltin ::
-    Provenance -> builtin -> Type Ix builtin
 
   restrictNetworkType ::
     (MonadTypeChecker builtin m) =>

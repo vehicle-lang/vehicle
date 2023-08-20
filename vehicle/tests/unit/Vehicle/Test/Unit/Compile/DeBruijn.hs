@@ -3,24 +3,10 @@ module Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests) where
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
-  ( BinderDisplayForm (BinderDisplayForm),
-    BinderNamingForm (OnlyName),
-    Expr (Lam),
-    GenericBinder (Binder),
-    Pretty (pretty),
-    Provenance,
-    Relevance (Relevant),
-    Visibility (Explicit),
-    indent,
-    layoutAsString,
-    line,
-    (<+>),
-    pattern BoundVar,
-  )
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard (StandardExpr, TypeCheckedBinder, TypeCheckedExpr, TypeCheckedType)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Lv, liftDBIndices, substDBInto)
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.DeBruijn (liftDBIndices, substDBInto)
+import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------
@@ -85,9 +71,9 @@ liftingTests =
 
 data SubstitutionTest = SubstitutionTest
   { name :: String,
-    value :: StandardExpr,
-    expr :: StandardExpr,
-    expected :: StandardExpr
+    value :: Expr Ix Builtin,
+    expr :: Expr Ix Builtin,
+    expected :: Expr Ix Builtin
   }
 
 substTest :: SubstitutionTest -> TestTree
@@ -121,8 +107,8 @@ substTest SubstitutionTest {..} =
 data LiftingTest = LiftingTest
   { name :: String,
     amount :: Lv,
-    input :: TypeCheckedExpr,
-    expected :: TypeCheckedExpr
+    input :: Expr Ix Builtin,
+    expected :: Expr Ix Builtin
   }
 
 liftTest :: LiftingTest -> TestTree
@@ -151,5 +137,5 @@ liftTest LiftingTest {..} =
 p :: Provenance
 p = mempty
 
-binding :: TypeCheckedType -> TypeCheckedBinder
+binding :: Expr Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant

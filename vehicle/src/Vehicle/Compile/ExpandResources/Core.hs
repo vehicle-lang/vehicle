@@ -8,7 +8,11 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type.Subsystem.Standard.Core
+
+--------------------------------------------------------------------------------
+-- Context
+
+type NetworkContext = Map Name (FilePath, NetworkType)
 
 --------------------------------------------------------------------------------
 -- Resource contexts
@@ -23,7 +27,7 @@ type InferableParameterContext = Map Identifier (Either Provenance InferablePara
 type MonadExpandResources m =
   ( MonadCompile m,
     MonadReader Resources m,
-    MonadState (ResourceContext, InferableParameterContext) m
+    MonadState (NetworkContext, InferableParameterContext) m
   )
 
 getInferableParameterContext ::
@@ -54,38 +58,9 @@ addPossibleInferableParameterSolution ::
 addPossibleInferableParameterSolution ident entry =
   modify (second $ Map.insert ident (Right entry))
 
-emptyResourceCtx :: ResourceContext
-emptyResourceCtx = ResourceContext mempty mempty mempty
-
-addParameter ::
-  (MonadExpandResources m) =>
-  Identifier ->
-  StandardNormExpr ->
-  m ()
-addParameter ident value = modify $ first $ \ResourceContext {..} ->
-  ResourceContext
-    { parameterContext = Map.insert ident value parameterContext,
-      ..
-    }
-
-addDataset ::
-  (MonadExpandResources m) =>
-  Identifier ->
-  StandardNormExpr ->
-  m ()
-addDataset ident value = modify $ first $ \ResourceContext {..} ->
-  ResourceContext
-    { datasetContext = Map.insert ident value datasetContext,
-      ..
-    }
-
 addNetworkType ::
   (MonadExpandResources m) =>
   Identifier ->
   (FilePath, NetworkType) ->
   m ()
-addNetworkType ident details = modify $ first $ \ResourceContext {..} ->
-  ResourceContext
-    { networkContext = Map.insert (nameOf ident) details networkContext,
-      ..
-    }
+addNetworkType ident details = modify $ first $ Map.insert (nameOf ident) details

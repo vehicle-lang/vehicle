@@ -6,12 +6,12 @@ import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Compile.Prelude
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
-import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
+import Vehicle.Syntax.Builtin qualified as S
 
 --------------------------------------------------------------------------------
 -- LinearityProvenance
@@ -118,6 +118,16 @@ instance Pretty LinearityBuiltin where
     BuiltinFunction f -> pretty f
     Linearity l -> pretty l
     LinearityRelation tc -> pretty tc
+
+instance PrintableBuiltin LinearityBuiltin where
+  convertBuiltin = convertFromLinearityTypes
+  isCoercion = const False
+
+convertFromLinearityTypes :: Provenance -> LinearityBuiltin -> Expr var S.Builtin
+convertFromLinearityTypes p = \case
+  BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
+  BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
+  b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
 
 instance HasStandardData LinearityBuiltin where
   mkBuiltinFunction = BuiltinFunction

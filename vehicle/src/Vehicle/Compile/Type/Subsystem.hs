@@ -17,16 +17,15 @@ import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (GluedProg)
 
 typeCheckWithSubsystem ::
   forall builtin m.
-  (TypableBuiltin builtin, MonadCompile m) =>
+  (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
-  StandardProg ->
-  m (GluedProg builtin)
+  Prog Ix Builtin ->
+  m (Prog Ix builtin)
 typeCheckWithSubsystem instanceCandidates prog = do
   typeClassFreeProg <- resolveInstanceArguments prog
   irrelevantFreeProg <- removeIrrelevantCodeFromProg typeClassFreeProg
@@ -34,7 +33,7 @@ typeCheckWithSubsystem instanceCandidates prog = do
   literalFreeProg <- removeLiteralCoercions "-" monomorphisedProg
   implicitFreeProg <- removeImplicitAndInstanceArgs literalFreeProg
 
-  resultOrError <- runExceptT $ typeCheckProg mempty instanceCandidates implicitFreeProg
+  resultOrError <- runExceptT $ typeCheckProg instanceCandidates mempty implicitFreeProg
   case resultOrError of
     Right value -> return value
     Left err@TypingError {} ->
@@ -60,14 +59,18 @@ resolveInstanceArguments prog =
           return $ substArgs p1 inst remainingArgs
       | otherwise = return $ normAppList p1 (Builtin p2 b) args
 
-removeImplicitAndInstanceArgs :: forall m. (MonadCompile m) => TypeCheckedProg -> m TypeCheckedProg
+removeImplicitAndInstanceArgs ::
+  forall m builtin.
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  Prog Ix builtin ->
+  m (Prog Ix builtin)
 removeImplicitAndInstanceArgs prog =
   logCompilerPass MaxDetail "removal of implicit arguments" $ do
     result <- traverse go prog
     logCompilerPassOutput $ prettyExternal result
     return result
   where
-    go :: TypeCheckedExpr -> m TypeCheckedExpr
+    go :: Expr Ix builtin -> m (Expr Ix builtin)
     go expr = case expr of
       App p fun args -> do
         fun' <- go fun
@@ -89,6 +92,7 @@ removeImplicitAndInstanceArgs prog =
             -- TODO This is a massive hack to get around the unused implicit
             -- {l} argument in `mapVector` in the standard library that isn't
             -- handled by monomorphisation.
+            -- STILL NEEDED?
             body' <- go body
             let removedBody = Hole p "_" `substDBInto` body'
             return removedBody

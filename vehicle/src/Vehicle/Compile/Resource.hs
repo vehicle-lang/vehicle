@@ -2,10 +2,10 @@ module Vehicle.Compile.Resource where
 
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
-import Data.Map (Map)
+import Data.Hashable (Hashable)
 import GHC.Generics
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -59,16 +59,20 @@ instance Pretty NetworkBaseType where
     NetworkRatType -> pretty Rat
 
 --------------------------------------------------------------------------------
--- Context
+-- Resource constraints
 
-type ParameterContext = Map Identifier StandardNormExpr
+data ResourceConstraint
+  = IsValidParameterType
+  | IsValidDatasetType
+  | IsValidNetworkType
+  | IsValidPropertyType
+  deriving (Show, Eq, Ord, Generic)
 
-type DatasetContext = Map Identifier StandardNormExpr
+instance Hashable ResourceConstraint
 
-type NetworkContext = Map Name (FilePath, NetworkType)
-
-data ResourceContext = ResourceContext
-  { parameterContext :: ParameterContext,
-    datasetContext :: DatasetContext,
-    networkContext :: NetworkContext
-  }
+instance Pretty ResourceConstraint where
+  pretty = \case
+    IsValidParameterType -> "IsValidParameterType"
+    IsValidDatasetType -> "IsValidDatasetType"
+    IsValidNetworkType -> "IsValidNetworkType"
+    IsValidPropertyType -> "IsValidPropertyType"

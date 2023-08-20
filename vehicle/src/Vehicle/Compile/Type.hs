@@ -10,7 +10,6 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (ReaderT (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map qualified as Map (fromList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Monad (getMetaSubstitution)
@@ -26,43 +25,43 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
 typeCheckProg ::
-  (TypableBuiltin builtin, MonadCompile m) =>
-  Imports builtin ->
+  (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
-  Prog Ix StandardBuiltin ->
-  m (GluedProg builtin)
-typeCheckProg imports instanceCandidates (Main uncheckedProg) =
-  logCompilerPass MinDetail "type checking" $
-    runTypeChecker (createDeclCtx imports) instanceCandidates $ do
-      Main <$> typeCheckDecls uncheckedProg
+  TypingDeclCtx builtin ->
+  Prog Ix Builtin ->
+  m (Prog Ix builtin)
+typeCheckProg instanceCandidates declCtx (Main uncheckedProg) =
+  logCompilerPass MinDetail "type checking" $ do
+    runTypeChecker declCtx instanceCandidates $ do
+      gluedProg <- Main <$> typeCheckDecls uncheckedProg
+      return $ fmap unnormalised gluedProg
 
 typeCheckExpr ::
   forall builtin m.
-  (TypableBuiltin builtin, MonadCompile m) =>
-  Imports builtin ->
+  (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
-  Expr Ix builtin ->
+  TypingDeclCtx builtin ->
+  Expr Ix Builtin ->
   m (Expr Ix builtin)
-typeCheckExpr imports instanceCandidates expr1 =
-  runTypeChecker (createDeclCtx imports) instanceCandidates $ do
-    (expr3, _exprType) <- runReaderT (inferExpr expr1) mempty
+typeCheckExpr instanceCandidates declCtx expr1 = do
+  runTypeChecker declCtx instanceCandidates $ do
+    expr2 <- convertExprFromStandardTypes expr1
+    (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
-    -- expr5 <- removeIrrelevantCode expr4
     checkAllUnknownsSolved (Proxy @builtin)
     return expr4
 
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM builtin m) => [Decl Ix StandardBuiltin] -> m [GluedDecl builtin]
+typeCheckDecls :: (TCM builtin m) => [Decl Ix Builtin] -> m [GluedDecl builtin]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +69,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix StandardBuiltin -> m (GluedDecl builtin)
+typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix Builtin -> m (GluedDecl builtin)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -87,10 +86,10 @@ typeCheckDecl uncheckedDecl =
 
 convertExprFromStandardTypes ::
   forall builtin m.
-  (TypableBuiltin builtin, TCM builtin m) =>
-  Expr Ix StandardBuiltin ->
+  (HasTypeSystem builtin, TCM builtin m) =>
+  Expr Ix Builtin ->
   m (Expr Ix builtin)
-convertExprFromStandardTypes = traverseBuiltinsM convertFromStandardTypes
+convertExprFromStandardTypes = traverseBuiltinsM convertFromStandardBuiltins
 
 typeCheckAbstractDef ::
   (TCM builtin m) =>
@@ -348,16 +347,3 @@ prettyBlockedConstraints constraints = do
 
 bidirectionalPassDoc :: Doc a
 bidirectionalPassDoc = "bidirectional pass over"
-
--------------------------------------------------------------------------------
--- Other
-
-createDeclCtx :: Imports builtin -> TypingDeclCtx builtin
-createDeclCtx imports =
-  Map.fromList $
-    [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
-  where
-    getEntry :: GluedDecl builtin -> (Identifier, TypingDeclCtxEntry builtin)
-    getEntry d = do
-      let ident = identifierOf d
-      (ident, mkTypingDeclCtxEntry d)
