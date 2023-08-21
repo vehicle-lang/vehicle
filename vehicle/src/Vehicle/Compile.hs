@@ -4,8 +4,10 @@ module Vehicle.Compile
   )
 where
 
+import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Hashable (Hashable)
+import Data.Map qualified as Map
 import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -43,7 +45,7 @@ data CompileOptions = CompileOptions
   deriving (Eq, Show)
 
 compile :: LoggingSettings -> CompileOptions -> IO ()
-compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
+compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSettings $ do
   (imports, prog) <-
     typeCheckUserProg $
       TypeCheckOptions
@@ -60,10 +62,9 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
       compileToQueryFormat result resources queryFormatID outputFile
     LossFunction differentiableLogic ->
       compileToLossFunction result differentiableLogic outputFile outputAsJSON
-    ITP Agda -> do
-      let agdaOptions = AgdaOptions verificationCache outputFile moduleName
-      compileToAgda agdaOptions result outputFile
-    ExplicitVehicle -> do
+    ITP Agda ->
+      compileToAgda options result
+    ExplicitVehicle ->
       compileDirect result outputFile outputAsJSON
 
 --------------------------------------------------------------------------------
@@ -83,11 +84,12 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = d
 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
-  AgdaOptions ->
+  CompileOptions ->
   (Imports, Prog Ix Builtin) ->
-  Maybe FilePath ->
   m ()
-compileToAgda agdaOptions (_, typedProg) outputFile = do
+compileToAgda options@CompileOptions {..} (_, typedProg) = do
+  warnIfResourcesProvidedToITP Agda options
+  let agdaOptions = AgdaOptions verificationCache outputFile moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile outputFile agdaCode
 
@@ -137,3 +139,26 @@ compileToJSON prog outputFile outputAsJSON = do
       else do
         return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result
+
+warnIfResourcesProvided :: (MonadCompile m) => Target -> Doc a -> CompileOptions -> m ()
+warnIfResourcesProvided itp src CompileOptions {..} = do
+  let parameters = fmap (Parameter,) (Map.keys parameterValues)
+  let datasets = fmap (Dataset,) (Map.keys datasetLocations)
+  let networks = fmap (Network,) (Map.keys networkLocations)
+  let resources = parameters <> datasets <> networks
+  let resourceDocs = vsep (fmap (\(r, n) -> pretty r <+> pretty n) resources)
+  unless (null resources) $ do
+    logWarning $
+      "The following provided resources:"
+        <> line
+        <> line
+        <> indent 2 resourceDocs
+        <> line
+        <> line
+        <> "will be ignored as when compiling to" <+> pretty itp <+> src
+
+warnIfResourcesProvidedToITP :: (MonadCompile m) => ITP -> CompileOptions -> m ()
+warnIfResourcesProvidedToITP itp =
+  warnIfResourcesProvided
+    (ITP itp)
+    "their values will be taken directly from the verification cache."

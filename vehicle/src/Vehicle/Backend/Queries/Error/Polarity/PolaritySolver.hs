@@ -69,7 +69,7 @@ solveQuantifierPolarity q info [lam, res] = case lam of
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity q
-    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [resPol, res]))
+    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [resPol, res]))
     return $ Progress [binderEq, addConstraint]
   _ -> Nothing
 solveQuantifierPolarity _ _c _ = Nothing
@@ -135,8 +135,8 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     return $ Progress [resEq]
   (VPi binder1 body1, VPi binder2 body2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
-    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [body1, body2]))
+    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [typeOf binder1, typeOf binder2]))
+    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
   _ -> Nothing
 solveFunctionPolarity _ _ _ = Nothing

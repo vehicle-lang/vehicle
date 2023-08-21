@@ -15,7 +15,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c Marabou.queries --network f:NO_FILE",
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda -c Marabou.queries",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },

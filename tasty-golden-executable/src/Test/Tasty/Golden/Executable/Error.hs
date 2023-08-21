@@ -91,12 +91,14 @@ handleProducedFilesError ProducedFilesError {..} = do
           ]
   return $ testFailed message
 
-data Diff = Diff {prettyDiff :: String} | NoDiff
+data Diff
+  = Diff String
+  | NoDiff String
 
 instance Show Diff where
   show :: Diff -> String
-  show (Diff {..}) = prettyDiff
-  show NoDiff = "No diff"
+  show (Diff prettyDiff) = prettyDiff
+  show (NoDiff reason) = "No diff: " <> reason
 
 instance Exception Diff
 

@@ -214,7 +214,7 @@ solutionToExpr variables (var, Sparse {..}) = do
   return (var, foldr combFn constant varCoeffList)
   where
     mkTensorType :: VType Builtin -> VType Builtin -> VType Builtin
-    mkTensorType tElem dims = VFreeVar TensorIdent [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dims]
+    mkTensorType tElem dims = VFreeVar TensorIdent [Arg mempty Explicit Relevant tElem, Arg mempty Explicit Irrelevant dims]
 
     mkRatVectorAdd :: [Value Builtin] -> [Value Builtin] -> Value Builtin
     mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
@@ -229,17 +229,17 @@ solutionToExpr variables (var, Sparse {..}) = do
       [Value Builtin] ->
       Value Builtin
     mkVectorOp baseOp libOp dims spine = case dims of
-      [] -> VBuiltinFunction baseOp (RelevantExplicitArg mempty <$> spine)
+      [] -> VBuiltinFunction baseOp (Arg mempty Explicit Relevant <$> spine)
       (d : ds) ->
         VFreeVar
           (identifierOf libOp)
-          ( [ RelevantImplicitArg p vecType,
-              RelevantImplicitArg p vecType,
-              RelevantImplicitArg p vecType,
-              IrrelevantImplicitArg p d,
-              RelevantInstanceArg p (mkVectorOp baseOp libOp ds [])
+          ( [ Arg p (Implicit True) Relevant vecType,
+              Arg p (Implicit True) Relevant vecType,
+              Arg p (Implicit True) Relevant vecType,
+              Arg p (Implicit True) Irrelevant d,
+              Arg p (Instance True) Relevant (mkVectorOp baseOp libOp ds [])
             ]
-              <> fmap (RelevantExplicitArg p) spine
+              <> fmap (Arg p Explicit Relevant) spine
           )
         where
           p = mempty; vecType = mkTensorType VRatType (mkVList ds)
@@ -623,7 +623,7 @@ convertToLNF = lnf
           (Sub dom, [e1, e2]) -> return $ normSub dom e1 e2
           (Mul dom, [e1, e2]) -> return $ normMul dom e1 e2
           (Div dom, [e1, e2]) -> return $ normDiv dom e1 e2
-          _ -> return $ VBuiltinFunction fun (RelevantExplicitArg mempty <$> args')
+          _ -> return $ VBuiltinFunction fun (Arg mempty Explicit Relevant <$> args')
       VBuiltin {} -> return expr
       VBoundVar {} -> return expr
 
@@ -632,20 +632,20 @@ convertToLNF = lnf
       (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
         let r1 = normMul dom e1 (argExpr v1)
         let r2 = normMul dom e1 (argExpr v2)
-        VBuiltinFunction (Add addDom) (RelevantExplicitArg mempty <$> [r1, r2])
+        VBuiltinFunction (Add addDom) (Arg mempty Explicit Relevant <$> [r1, r2])
       (VBuiltinFunction (Add addDom) [v1, v2], _) -> do
         let r1 = normMul dom (argExpr v1) e2
         let r2 = normMul dom (argExpr v2) e2
-        VBuiltinFunction (Add addDom) (RelevantExplicitArg mempty <$> [r1, r2])
+        VBuiltinFunction (Add addDom) (Arg mempty Explicit Relevant <$> [r1, r2])
       (x1, x2) -> case evalMul dom [x1, x2] of
-        Nothing -> VBuiltinFunction (Mul dom) (RelevantExplicitArg mempty <$> [e1, e2])
+        Nothing -> VBuiltinFunction (Mul dom) (Arg mempty Explicit Relevant <$> [e1, e2])
         Just r -> r
 
     normSub :: SubDomain -> Value Builtin -> Value Builtin -> Value Builtin
     normSub dom e1 e2 = do
       let negDom = subToNegDomain dom
       let addDom = subToAddDomain dom
-      VBuiltinFunction (Add addDom) [RelevantExplicitArg mempty e1, lowerNeg negDom e2]
+      VBuiltinFunction (Add addDom) [Arg mempty Explicit Relevant e1, lowerNeg negDom e2]
 
     normDiv :: DivDomain -> Value Builtin -> Value Builtin -> Value Builtin
     normDiv dom e1 e2 = case (e1, e2) of
@@ -653,20 +653,20 @@ convertToLNF = lnf
         let mulDom = divToMulDomain dom
         normMul mulDom e1 (VRatLiteral (1 / l))
       _ -> do
-        VBuiltinFunction (Div dom) (RelevantExplicitArg mempty <$> [e1, e2])
+        VBuiltinFunction (Div dom) (Arg mempty Explicit Relevant <$> [e1, e2])
 
     lowerNeg :: NegDomain -> Value Builtin -> VArg Builtin
-    lowerNeg dom expr = RelevantExplicitArg mempty $ case expr of
+    lowerNeg dom expr = Arg mempty Explicit Relevant $ case expr of
       -- Base cases
       VBuiltinFunction (Neg _) [e] -> argExpr e
       VIntLiteral x -> VIntLiteral (-x)
       VRatLiteral x -> VRatLiteral (-x)
       VBoundVar _ [] -> do
         let mulDom = negToMulDomain dom
-        let minus1 = RelevantExplicitArg mempty $ case dom of
+        let minus1 = Arg mempty Explicit Relevant $ case dom of
               NegInt -> VIntLiteral (-1)
               NegRat -> VRatLiteral (-1)
-        VBuiltinFunction (Mul mulDom) [minus1, RelevantExplicitArg mempty expr]
+        VBuiltinFunction (Mul mulDom) [minus1, Arg mempty Explicit Relevant expr]
 
       -- Inductive cases
       VBuiltinFunction (Add addDom) [e1, e2] ->

@@ -59,8 +59,8 @@ makeMetaExpr ::
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [RelevantExplicitArg p (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
-  let normBoundEnv = [RelevantExplicitArg p (VBoundVar (Lv i) []) | i <- dependencyLevels]
+  let unnormBoundEnv = [Arg p Explicit Relevant (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
+  let normBoundEnv = [Arg p Explicit Relevant (VBoundVar (Lv i) []) | i <- dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   Glued

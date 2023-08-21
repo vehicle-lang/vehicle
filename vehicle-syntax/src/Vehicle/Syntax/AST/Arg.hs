@@ -41,32 +41,29 @@ instance HasRelevance (GenericArg expr) where
 --------------------------------------------------------------------------------
 -- Patterns
 
+-- NOTE: these are all unidirectional pattern synonyms because we want to force
+-- the user to consider all arguments when constructing them.
+
 pattern ExplicitArg :: Provenance -> Relevance -> expr -> GenericArg expr
-pattern ExplicitArg p r e = Arg p Explicit r e
+pattern ExplicitArg p r e <- Arg p Explicit r e
 
 pattern RelevantExplicitArg :: Provenance -> expr -> GenericArg expr
-pattern RelevantExplicitArg p e = Arg p Explicit Relevant e
+pattern RelevantExplicitArg p e <- Arg p Explicit Relevant e
 
 pattern IrrelevantExplicitArg :: Provenance -> expr -> GenericArg expr
-pattern IrrelevantExplicitArg p e = Arg p Explicit Irrelevant e
+pattern IrrelevantExplicitArg p e <- Arg p Explicit Irrelevant e
 
 pattern RelevantImplicitArg :: Provenance -> expr -> GenericArg expr
 pattern RelevantImplicitArg p e <- Arg p Implicit {} Relevant e
-  where
-    RelevantImplicitArg p e = Arg p (Implicit True) Relevant e
 
 pattern IrrelevantImplicitArg :: Provenance -> expr -> GenericArg expr
 pattern IrrelevantImplicitArg p e <- Arg p Implicit {} Irrelevant e
-  where
-    IrrelevantImplicitArg p e = Arg p (Implicit True) Irrelevant e
 
 pattern InstanceArg :: Provenance -> Relevance -> expr -> GenericArg expr
-pattern InstanceArg p r e = Arg p (Instance True) r e
+pattern InstanceArg p r e <- Arg p (Instance True) r e
 
 pattern RelevantInstanceArg :: Provenance -> expr -> GenericArg expr
 pattern RelevantInstanceArg p e <- Arg p Instance {} Relevant e
-  where
-    RelevantInstanceArg p e = Arg p (Instance True) Relevant e
 
 --------------------------------------------------------------------------------
 -- Helper functions

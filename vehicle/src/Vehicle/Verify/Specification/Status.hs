@@ -100,7 +100,7 @@ assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)
   let inputVarIndicesChunks = chunksOf (product dims) xs
-  let elems = fmap (RelevantExplicitArg mempty . assignmentToExpr dims) inputVarIndicesChunks
+  let elems = fmap (Arg mempty Explicit Relevant . assignmentToExpr dims) inputVarIndicesChunks
   normAppList mempty vecConstructor elems
 
 --------------------------------------------------------------------------------
