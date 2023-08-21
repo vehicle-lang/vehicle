@@ -14,8 +14,9 @@ import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData, PrintableBuiltin)
+import Vehicle.Expr.BuiltinInterface (HasStandardData, PrintableBuiltin)
 import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -59,36 +60,37 @@ data CompileError
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
-  | NetworkTypeIsNotAFunction DeclProvenance StandardGluedType
-  | NetworkTypeIsNotOverTensors DeclProvenance StandardGluedType StandardNormType InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance StandardGluedType StandardNormBinder
-  | NetworkTypeHasVariableSizeTensor DeclProvenance StandardGluedType StandardNormType InputOrOutput
-  | NetworkTypeHasImplicitSizeTensor DeclProvenance StandardGluedType Identifier InputOrOutput
-  | NetworkTypeHasUnsupportedElementType DeclProvenance StandardGluedType StandardNormType InputOrOutput
-  | DatasetTypeUnsupportedContainer DeclProvenance StandardGluedType
-  | DatasetTypeUnsupportedElement DeclProvenance StandardGluedType StandardNormType
-  | DatasetVariableSizeTensor DeclProvenance StandardGluedType StandardNormType
+  | NetworkTypeIsNotAFunction DeclProvenance (GluedType StandardTypingBuiltin)
+  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin) InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType StandardTypingBuiltin) (VBinder StandardTypingBuiltin)
+  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin) InputOrOutput
+  | DatasetTypeUnsupportedContainer DeclProvenance (GluedType StandardTypingBuiltin)
+  | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin)
+  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorDimensions TensorDimensions
-  | DatasetDimensionsMismatch DeclProvenance FilePath StandardGluedExpr TensorDimensions
-  | DatasetTypeMismatch DeclProvenance FilePath StandardGluedType StandardNormType StandardNormType
+  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorDimensions
+  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (VType Builtin) (VType Builtin)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
-  | ParameterTypeUnsupported DeclProvenance StandardGluedType
-  | ParameterTypeVariableSizeIndex DeclProvenance StandardGluedType
+  | ParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
+  | ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin)
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
-  | InferableParameterTypeUnsupported DeclProvenance StandardGluedType
+  | InferableParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParameterUninferrable DeclProvenance
-  | PropertyTypeUnsupported DeclProvenance StandardGluedType
+  | PropertyTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
+  | -- Unsupported networks
+    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
   | -- Backend errors
     NoPropertiesFound
   | UnsupportedInequality QueryFormatID DeclProvenance
   | UnsupportedPolymorphicEquality ITP Provenance Name
   | NoNetworkUsedInProperty DeclProvenance
-  | UnsupportedVariableType QueryFormatID Identifier Provenance Name StandardNormType StandardNormType [Builtin]
+  | UnsupportedVariableType QueryFormatID Identifier Provenance Name (VType Builtin) (VType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
   | UnsupportedNegatedOperation DifferentiableLogicID Provenance

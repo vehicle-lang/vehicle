@@ -48,24 +48,23 @@ fromEdges outEdges = do
 -- Constructing the dependency graph
 
 constructGraph ::
-  forall m expr var builtin.
+  forall m builtin.
   (MonadLogger m) =>
-  (expr -> Expr var builtin) ->
-  GenericProg expr ->
+  Prog Ix builtin ->
   m DependencyGraph
-constructGraph toExpr prog = do
+constructGraph prog = do
   depsList <- goProg prog
   return $ fromEdges depsList
   where
-    goProg :: (MonadLogger m) => GenericProg expr -> m DependencyList
+    goProg :: (MonadLogger m) => Prog Ix builtin -> m DependencyList
     goProg (Main ds) = traverse goDecl ds
 
-    goDecl :: (MonadLogger m) => GenericDecl expr -> m (Identifier, Dependencies)
+    goDecl :: (MonadLogger m) => Decl Ix builtin -> m (Identifier, Dependencies)
     goDecl d = do
-      deps <- execWriterT (traverse_ (go . toExpr) d)
+      deps <- execWriterT (traverse_ go d)
       return (identifierOf d, deps)
 
-    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr var builtin -> m1 ()
+    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr Ix builtin -> m1 ()
     go = \case
       BoundVar {} -> return ()
       Universe {} -> return ()
@@ -83,15 +82,14 @@ constructGraph toExpr prog = do
 
 analyseDependenciesAndPrune ::
   (MonadCompile m) =>
-  (expr -> Expr var builtin) ->
-  GenericProg expr ->
+  Prog Ix expr ->
   DeclarationNames ->
-  m (GenericProg expr)
-analyseDependenciesAndPrune toExpr prog declarationsToCompile = do
+  m (Prog Ix expr)
+analyseDependenciesAndPrune prog declarationsToCompile = do
   if null declarationsToCompile
     then return prog
     else do
-      dependencyGraph <- constructGraph toExpr prog
+      dependencyGraph <- constructGraph prog
       startingVertices <- forM declarationsToCompile $ \name ->
         case vertexFromIdent dependencyGraph (Identifier User name) of
           Just vertex -> return vertex

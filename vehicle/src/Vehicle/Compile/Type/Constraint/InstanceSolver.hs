@@ -19,7 +19,7 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn (Ix, Lv (..), dbLevelToIndex, substDBInto)
+import Vehicle.Expr.DeBruijn (dbLevelToIndex, substDBInto)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------

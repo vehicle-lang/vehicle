@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Backend.Queries.Error.Linearity.Type
   ( typeLinearityBuiltin,
   )
@@ -7,7 +9,6 @@ import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
 -- | Return the type of the provided builtin.

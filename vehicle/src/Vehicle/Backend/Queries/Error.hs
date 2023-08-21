@@ -11,14 +11,13 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.Normalised (GluedExpr (..))
 import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
   (MonadCompile m) =>
   QueryFormatID ->
-  StandardGluedProg ->
+  Prog Ix Builtin ->
   Identifier ->
   m CompileError
 diagnoseNonLinearity queryFormat prog propertyIdentifier = do
@@ -28,12 +27,11 @@ diagnoseNonLinearity queryFormat prog propertyIdentifier = do
       <+> quotePretty propertyIdentifier
       <> line
 
-  let unnormalisedProg = fmap unnormalised prog
-  Main typedDecls <- typeCheckWithSubsystem mempty unnormalisedProg
+  Main typedDecls <- typeCheckWithSubsystem mempty prog
 
   -- Extract and diagnose the type.
   let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
-  let propertyType = unnormalised $ typeOf property
+  let propertyType = typeOf property
   case propertyType of
     LinearityExpr _ (NonLinear p pp1 pp2) -> do
       let propertyProv = (propertyIdentifier, provenanceOf property)
@@ -44,7 +42,7 @@ diagnoseAlternatingQuantifiers ::
   forall m.
   (MonadCompile m) =>
   QueryFormatID ->
-  StandardGluedProg ->
+  Prog Ix Builtin ->
   Identifier ->
   m CompileError
 diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
@@ -54,12 +52,11 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
       <+> quotePretty propertyIdentifier
       <> line
 
-  let unnormalisedProg = fmap unnormalised prog
-  Main typedDecls <- typeCheckWithSubsystem mempty unnormalisedProg
+  Main typedDecls <- typeCheckWithSubsystem mempty prog
 
   -- Extract and diagnose the type.
   let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
-  let propertyType = unnormalised $ typeOf property
+  let propertyType = typeOf property
   case propertyType of
     PolarityExpr _ (MixedSequential p pp1 pp2) -> do
       let propertyProv = (propertyIdentifier, provenanceOf property)

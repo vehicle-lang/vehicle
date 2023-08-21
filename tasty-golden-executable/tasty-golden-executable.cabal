@@ -8,6 +8,7 @@ maintainer:      wenkokke@users.noreply.github.com
 copyright:       © Wen Kokke
 category:        Testing
 build-type:      Simple
+tested-with:     GHC ==8.10.7 || ==9.0.2 || ==9.2.7 || ==9.4.4 || ==9.6.1
 extra-doc-files: CHANGELOG.md
 
 common common-language
@@ -32,12 +33,20 @@ library
   other-modules:
     General.Extra
     General.Extra.Aeson
+    General.Extra.Diff
     General.Extra.File
+    General.Extra.NonEmpty
     General.Extra.Option
+    Test.Tasty.Golden.Executable.Error
+    Test.Tasty.Golden.Executable.Runner
     Test.Tasty.Golden.Executable.TestSpec
+    Test.Tasty.Golden.Executable.TestSpec.Accept
     Test.Tasty.Golden.Executable.TestSpec.External
     Test.Tasty.Golden.Executable.TestSpec.FilePattern
     Test.Tasty.Golden.Executable.TestSpec.Ignore
+    Test.Tasty.Golden.Executable.TestSpec.TextPattern
+    Test.Tasty.Golden.Executable.TestSpec.Timeout
+    Test.Tasty.Golden.Executable.TestSpecs
 
   build-depends:
     , aeson                 >=2.1.1   && <2.2
@@ -49,16 +58,18 @@ library
     , Diff                  >=0.4.1   && <0.5
     , directory             >=1.3.6   && <1.4
     , dlist                 >=1.0     && <1.1
+    , exceptions            >=0.10    && <0.11
     , filepath              >=1.4     && <2
     , Glob                  >=0.10.2  && <0.11
     , hashable              >=1.3     && <2
     , mtl                   >=2.2     && <3
     , optparse-applicative  >=0.16    && <1
+    , pretty
     , process               >=1.2     && <2
     , regex-tdfa            >=1.3.2   && <1.4
     , tagged                >=0.8.7   && <0.9
     , tasty                 >=1.4.3   && <1.5
-    , tasty-golden          >=2.3.5   && <2.4
     , temporary             >=1.3     && <1.4
     , text                  >=1.2     && <3
+    , transformers          >=0.4     && <0.7
     , unordered-containers  >=0.2.19  && <0.3

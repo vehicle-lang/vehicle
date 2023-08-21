@@ -8,9 +8,8 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
     "needs": ["spec.vcl", "fake.onnx", "images.idx", "labels.idx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/robust*.vcl-plan"],
-    "ignore":
-    {
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/robust*.vcl-plan"],
+    "ignore": {
       "lines": ".*\"fileHash\".*"
     }
   },

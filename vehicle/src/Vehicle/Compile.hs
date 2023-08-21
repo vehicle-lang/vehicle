@@ -19,11 +19,9 @@ import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise,
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
-import Vehicle.Compile.Type.Monad (TypableBuiltin)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.DeBruijn (Ix)
-import Vehicle.Expr.Normalised (GluedExpr (..))
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -53,7 +51,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
           typingSystem = Standard
         }
 
-  prunedProg <- analyseDependenciesAndPrune unnormalised prog declarationsToCompile
+  prunedProg <- analyseDependenciesAndPrune prog declarationsToCompile
   let result = (imports, prunedProg)
 
   let resources = Resources specification networkLocations datasetLocations parameterValues
@@ -73,7 +71,7 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
 
 compileToQueryFormat ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, StandardGluedProg) ->
+  (Imports, Prog Ix Builtin) ->
   Resources ->
   QueryFormatID ->
   Maybe FilePath ->
@@ -86,7 +84,7 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = d
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
   AgdaOptions ->
-  (ImportedModules, StandardGluedProg) ->
+  (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   m ()
 compileToAgda agdaOptions (_, typedProg) outputFile = do
@@ -95,31 +93,31 @@ compileToAgda agdaOptions (_, typedProg) outputFile = do
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, StandardGluedProg) ->
+  (Imports, Prog Ix Builtin) ->
   DifferentiableLogicID ->
   Maybe FilePath ->
   Bool ->
   m ()
 compileToLossFunction (imports, typedProg) differentiableLogic outputFile outputAsJSON = do
-  let mergedProg = unnormalised <$> mergeImports imports typedProg
+  let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
   compileToJSON lossProg outputFile outputAsJSON
 
 compileDirect ::
   (MonadCompile m, MonadIO m) =>
-  (ImportedModules, StandardGluedProg) ->
+  (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()
 compileDirect (imports, typedProg) outputFile outputAsJSON = do
-  let mergedProg = unnormalised <$> mergeImports imports typedProg
+  let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
   compileToJSON resolvedProg outputFile outputAsJSON
 
 compileToJSON ::
   forall builtin m.
-  (MonadCompile m, MonadIO m, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
+  (MonadCompile m, MonadIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->

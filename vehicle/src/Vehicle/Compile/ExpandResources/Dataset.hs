@@ -12,6 +12,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset.IDX (readIDX)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Dataset parsing
@@ -20,8 +21,8 @@ parseDataset ::
   (MonadIO m, MonadExpandResources m) =>
   DatasetLocations ->
   DeclProvenance ->
-  StandardGluedType ->
-  m StandardNormExpr
+  GluedType Builtin ->
+  m (Value Builtin)
 parseDataset datasetLocations decl@(ident, _) expectedType =
   case Map.lookup (nameOf ident) datasetLocations of
     Just file -> do

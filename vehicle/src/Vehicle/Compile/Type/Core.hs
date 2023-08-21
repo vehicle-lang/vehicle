@@ -10,10 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
-
-type Imports builtin = [GluedProg builtin]
 
 --------------------------------------------------------------------------------
 

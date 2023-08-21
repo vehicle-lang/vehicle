@@ -27,9 +27,8 @@ import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedErro
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData, PrintableBuiltin)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface qualified as V
+import Vehicle.Expr.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
+import Vehicle.Expr.BuiltinInterface qualified as V
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
 import Vehicle.Expr.Relevant
@@ -47,7 +46,7 @@ compileProgToJSON ::
   m (Doc a)
 compileProgToJSON prog = do
   logCompilerPass MinDetail currentPass $ do
-    jProg <- runContextT @m @builtin $ toJProg prog
+    jProg <- runContextT (Proxy @builtin) (toJProg prog) mempty
     let namedProg = descopeNamed jProg
     let json = toJSON namedProg
     return $ pretty $ unpack $ encodePretty' prettyJSONConfig json

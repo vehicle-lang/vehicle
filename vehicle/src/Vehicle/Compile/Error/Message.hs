@@ -20,9 +20,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn (Ix, substDBInto)
+import Vehicle.Expr.DeBruijn (substDBInto)
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
@@ -763,7 +763,7 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: StandardNormType -> Int
+        dimensionsOf :: VType Builtin -> Int
         dimensionsOf = \case
           VListType t -> 1 + dimensionsOf t
           VVectorType t _ -> 1 + dimensionsOf t
@@ -1192,7 +1192,12 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-unsupportedAnnotationTypeDescription :: Doc a -> Identifier -> StandardGluedType -> Doc a
+unsupportedAnnotationTypeDescription ::
+  (PrintableBuiltin builtin) =>
+  Doc a ->
+  Identifier ->
+  GluedType builtin ->
+  Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType =
   "The type of"
     <+> annotation

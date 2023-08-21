@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest >=7.1,<8", "packaging >=23"]
+test = ["pytest >=7.1,<8", "packaging >=23", "pygments >=2.14, <3"]
 mypy = ["types_setuptools >=45", "types_pygments >=2.14,<3"]
 pygments = ["pygments >=2.14,<3"]
 tensorflow = [
@@ -113,7 +113,6 @@ extras =
   py38,py39,py310,py311: tensorflow
 commands =
   {env_python} -m pytest {posargs}
-  sh {package_root}/tests/test_pygments.sh
 
 [testenv:build-py{37,38,39,310,311}-{lin,mac,win}]
 deps =

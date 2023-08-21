@@ -14,9 +14,8 @@ import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (freshMeta)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Expr.DeBruijn
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
@@ -26,9 +25,11 @@ instance PrintableBuiltin PolarityBuiltin where
   isCoercion = const False
 
 instance TypableBuiltin PolarityBuiltin where
-  convertFromStandardTypes = convertToPolarityTypes
-  useDependentMetas _ = False
   typeBuiltin = typePolarityBuiltin
+
+instance HasTypeSystem PolarityBuiltin where
+  convertFromStandardBuiltins = convertToPolarityTypes
+  useDependentMetas _ = False
   restrictNetworkType = checkNetworkType
   restrictDatasetType = assertUnquantifiedPolarity
   restrictParameterType = const assertUnquantifiedPolarity
@@ -47,7 +48,7 @@ convertFromPolarityTypes p = \case
   b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
 
 freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (GluedExpr PolarityBuiltin)
-freshPolarityMeta p = snd <$> freshMeta p (TypeUniverse p 0) mempty
+freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
 
 convertToPolarityTypes ::
   forall m.
@@ -69,11 +70,9 @@ convertToPolarityTypes p1 p2 b args = case b of
     Vector -> case args of
       [tElem] -> return $ argExpr tElem
       _ -> monomorphisationError "Vector"
-  S.TypeClass {} ->
-    monomorphisationError "TypeClass"
-  S.TypeClassOp {} ->
-    compilerDeveloperError "Type class operations should have been resolved before converting to other type systems"
-  S.NatInDomainConstraint -> monomorphisationError "TypeClass"
+  S.TypeClass {} -> monomorphisationError "TypeClass"
+  S.TypeClassOp {} -> monomorphisationError "TypeClassOp"
+  S.NatInDomainConstraint -> monomorphisationError "IndexConstraints"
   where
     monomorphisationError :: Doc () -> m a
     monomorphisationError name =

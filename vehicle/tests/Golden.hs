@@ -1,22 +1,18 @@
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
-import Test.Tasty (defaultIngredients, defaultMainWithIngredients)
-import Test.Tasty.Golden.Executable (SomeOption (..), externalOptionIngredient, ignoreFileOption, makeTestTreeFromDirectoryRecursive)
-import Test.Tasty.Ingredients (Ingredient)
+import Test.Tasty (defaultMain)
+import Test.Tasty.Golden.Executable (IgnoreFiles (..), SomeOption (..), makeTestTreeFromDirectoryRecursive)
 
 testDirectory :: FilePath
 testDirectory = "tests" </> "golden"
 
 options :: [SomeOption]
 options =
-  [ ignoreFileOption ["*.vclo", "**/*.vclo"]
+  [ AppendOption $ IgnoreFiles ["*.vclo", "**/*.vclo", "**/.vcl-cache-index"]
   ]
 
 main :: IO ()
 main = do
   setLocaleEncoding utf8
   testTree <- makeTestTreeFromDirectoryRecursive options "Compiler" testDirectory
-  defaultMainWithIngredients ingredients testTree
-
-ingredients :: [Ingredient]
-ingredients = externalOptionIngredient : defaultIngredients
+  defaultMain testTree

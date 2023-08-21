@@ -1,12 +1,95 @@
-module Vehicle.Compile.Type.Subsystem.Standard.Interface where
+module Vehicle.Expr.BuiltinInterface where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Expr.DSL
+import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary
+import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
+
+--------------------------------------------------------------------------------
+-- Interface to standard builtins
+--------------------------------------------------------------------------------
+
+-- At various points in the compiler, we have different sets of builtins (e.g.
+-- first time we type-check we use the standard set of builtins + type +
+-- type classes, but when checking polarity and linearity information we
+-- subsitute out all the types and type-classes for new types.)
+--
+-- The interfaces defined in this file allow us to abstract over the exact set
+-- of builtins being used, and therefore allows us to define operations
+-- (e.g. normalisation) once, rather than once for each builtin type.
+
+--------------------------------------------------------------------------------
+-- HasStandardData
+
+-- | Indicates that this set of builtins has the standard builtin constructors
+-- and functions.
+class HasStandardData builtin where
+  mkBuiltinConstructor :: BuiltinConstructor -> builtin
+  getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
+
+  mkBuiltinFunction :: BuiltinFunction -> builtin
+  getBuiltinFunction :: builtin -> Maybe BuiltinFunction
+
+  isTypeClassOp :: builtin -> Bool
+
+instance HasStandardData Builtin where
+  mkBuiltinFunction = BuiltinFunction
+  getBuiltinFunction = \case
+    BuiltinFunction c -> Just c
+    _ -> Nothing
+
+  mkBuiltinConstructor = BuiltinConstructor
+  getBuiltinConstructor = \case
+    BuiltinConstructor c -> Just c
+    _ -> Nothing
+
+  isTypeClassOp = \case
+    TypeClassOp {} -> True
+    _ -> False
+
+--------------------------------------------------------------------------------
+-- HasStandardTypes
+
+-- | Indicates that this set of builtins has the standard set of types.
+class HasStandardTypes builtin where
+  mkBuiltinType :: BuiltinType -> builtin
+  getBuiltinType :: builtin -> Maybe BuiltinType
+
+  mkNatInDomainConstraint :: builtin
+
+instance HasStandardTypes Builtin where
+  mkBuiltinType = BuiltinType
+  getBuiltinType = \case
+    BuiltinType c -> Just c
+    _ -> Nothing
+
+  mkNatInDomainConstraint = NatInDomainConstraint
+
+--------------------------------------------------------------------------------
+-- HasStandardBuiltins
+
+-- | Indicates that this set of builtins has the standard set of constructors,
+-- functions and types.
+class HasStandardTypeClasses builtin where
+  mkBuiltinTypeClass :: TypeClass -> builtin
+
+instance HasStandardTypeClasses Builtin where
+  mkBuiltinTypeClass = TypeClass
+
+--------------------------------------------------------------------------------
+-- HasStandardBuiltins
+
+-- | Indicates that this set of builtins has the standard set of constructors,
+-- functions and types.
+type HasStandardBuiltins builtin =
+  ( HasStandardTypes builtin,
+    HasStandardData builtin
+  )
 
 --------------------------------------------------------------------------------
 -- Printing builtins
@@ -34,65 +117,18 @@ instance PrintableBuiltin Builtin where
     TypeClassOp FromVecTC {} -> True
     _ -> False
 
+-- | Use to convert builtins for printing that have no representation in the
+-- standard `Builtin` type.
+cheatConvertBuiltin :: (Pretty builtin) => Provenance -> builtin -> Expr var Builtin
+cheatConvertBuiltin p b = FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
+
 --------------------------------------------------------------------------------
--- Interface to standard builtins
+-- Typable builtin
 
--- At various points in the compiler, we have different sets of builtins (e.g.
--- first time we type-check we use the standard set of builtins + type +
--- type classes, but when checking polarity and linearity information we
--- subsitute out all the types and type-classes for new types.)
---
--- The interfaces defined in this file allow us to abstract over the exact set
--- of builtins being used, and therefore allows us to define operations
--- (e.g. normalisation) once, rather than once for each builtin type.
-
--- | Indicates that this set of builtins has the standard builtin constructors
--- and functions.
-class HasStandardData builtin where
-  mkBuiltinConstructor :: BuiltinConstructor -> builtin
-  getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
-
-  mkBuiltinFunction :: BuiltinFunction -> builtin
-  getBuiltinFunction :: builtin -> Maybe BuiltinFunction
-
-  isTypeClassOp :: builtin -> Bool
-
--- | Indicates that this set of builtins has the standard set of types.
-class HasStandardTypes builtin where
-  mkBuiltinType :: BuiltinType -> builtin
-  getBuiltinType :: builtin -> Maybe BuiltinType
-
-  mkNatInDomainConstraint :: builtin
-
--- | Indicates that this set of builtins has the standard set of constructors,
--- functions and types.
-type HasStandardBuiltins builtin =
-  ( HasStandardTypes builtin,
-    HasStandardData builtin
-  )
-
-instance HasStandardTypes Builtin where
-  mkBuiltinType = BuiltinType
-  getBuiltinType = \case
-    BuiltinType c -> Just c
-    _ -> Nothing
-
-  mkNatInDomainConstraint = NatInDomainConstraint
-
-instance HasStandardData Builtin where
-  mkBuiltinFunction = BuiltinFunction
-  getBuiltinFunction = \case
-    BuiltinFunction c -> Just c
-    _ -> Nothing
-
-  mkBuiltinConstructor = BuiltinConstructor
-  getBuiltinConstructor = \case
-    BuiltinConstructor c -> Just c
-    _ -> Nothing
-
-  isTypeClassOp = \case
-    TypeClassOp {} -> True
-    _ -> False
+class (PrintableBuiltin builtin) => TypableBuiltin builtin where
+  -- | Construct a type for the builtin
+  typeBuiltin ::
+    Provenance -> builtin -> Type Ix builtin
 
 --------------------------------------------------------------------------------
 -- Types DSL
@@ -132,6 +168,9 @@ forAllIrrelevantNat name = pi (Just name) (Implicit False) Irrelevant tNat
 
 irrelImplNatLam :: (HasStandardTypes builtin) => Name -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 irrelImplNatLam n = lam n (Implicit False) Irrelevant tNat
+
+natInDomainConstraint :: (HasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+natInDomainConstraint n t = builtin mkNatInDomainConstraint @@ [n, t]
 
 --------------------------------------------------------------------------------
 -- Type exprs
@@ -264,16 +303,6 @@ ratLit r = builtinConstructor (LRat r)
 
 unitLit :: (HasStandardData builtin) => DSLExpr builtin
 unitLit = builtinConstructor LUnit
-
---------------------------------------------------------------------------------
--- Constraints DSL
-
-natInDomainConstraint ::
-  (HasStandardTypes builtin) =>
-  DSLExpr builtin ->
-  DSLExpr builtin ->
-  DSLExpr builtin
-natInDomainConstraint n t = builtin mkNatInDomainConstraint @@ [n, t]
 
 --------------------------------------------------------------------------------
 -- Expr constructors patterns
@@ -457,3 +486,57 @@ pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> Spin
 pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
   where
     VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args
+
+--------------------------------------------------------------------------------
+-- Type classes
+
+builtinTypeClass :: (HasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin
+builtinTypeClass = builtin . mkBuiltinTypeClass
+
+typeClass :: (HasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
+typeClass tc args = builtinTypeClass tc @@ args
+
+hasEq :: (HasStandardTypeClasses builtin) => EqualityOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasEq eq t1 t2 = typeClass (HasEq eq) [t1, t2]
+
+hasOrd :: (HasStandardTypeClasses builtin) => OrderOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasOrd ord t1 t2 = typeClass (HasOrd ord) [t1, t2]
+
+hasQuantifier :: (HasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
+hasQuantifier q t = typeClass (HasQuantifier q) [t]
+
+numOp2TypeClass :: (HasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
+
+hasAdd :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasAdd = numOp2TypeClass HasAdd
+
+hasSub :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasSub = numOp2TypeClass HasSub
+
+hasMul :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasMul = numOp2TypeClass HasMul
+
+hasDiv :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasDiv = numOp2TypeClass HasDiv
+
+hasNeg :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasNeg t1 t2 = typeClass HasNeg [t1, t2]
+
+hasMap :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+hasMap tCont = typeClass HasMap [tCont]
+
+hasFold :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+hasFold tCont = typeClass HasFold [tCont]
+
+hasQuantifierIn :: (HasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
+
+hasNatLits :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+hasNatLits t = typeClass HasNatLits [t]
+
+hasRatLits :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+hasRatLits t = typeClass HasRatLits [t]
+
+hasVecLits :: (HasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasVecLits n d = typeClass HasVecLits [n, d]

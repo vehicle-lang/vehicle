@@ -49,8 +49,7 @@ import Numeric (showFFloat)
 import Prettyprinter (brackets, list)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Expr.DeBruijn (Lv (..))
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (fromFiniteQuantifier, toFiniteQuantifier)
 
@@ -63,14 +62,14 @@ class
   where
   variableDimensions :: variable -> TensorDimensions
 
-  reduceVariable :: Lv -> variable -> ([variable], StandardNormExpr)
+  reduceVariable :: Lv -> variable -> ([variable], Value Builtin)
 
   toMixedVariable :: variable -> MixedVariable
 
 isRationalVariable :: (Variable variable) => variable -> Bool
 isRationalVariable v = null (variableDimensions v)
 
-variableCtxToNormEnv :: (Variable variable) => BoundCtx variable -> StandardEnv
+variableCtxToNormEnv :: (Variable variable) => BoundCtx variable -> Env Builtin
 variableCtxToNormEnv ctx = do
   let mkEntry lv var = (Just (layoutAsText $ pretty var), VBoundVar (Lv lv) [])
   zipWith mkEntry (reverse [0 .. length ctx - 1]) ctx
@@ -104,7 +103,7 @@ instance Variable UserVariable where
   reduceVariable = reduceUserVariable
   toMixedVariable = UserVar
 
-reduceUserVariable :: Lv -> UserVariable -> (BoundCtx UserVariable, StandardNormExpr)
+reduceUserVariable :: Lv -> UserVariable -> (BoundCtx UserVariable, Value Builtin)
 reduceUserVariable dbLevel UserVariable {..} = do
   let (vars, expr) = runSupply (go userVarName userVarDimensions) [dbLevel ..]
   (reverse vars, expr)
@@ -112,7 +111,7 @@ reduceUserVariable dbLevel UserVariable {..} = do
     go ::
       Name ->
       TensorDimensions ->
-      Supply Lv ([UserVariable], StandardNormExpr)
+      Supply Lv ([UserVariable], Value Builtin)
     go name = \case
       [] -> do
         lv <- demand
@@ -166,7 +165,7 @@ instance Variable NetworkVariable where
 
   toMixedVariable = NetworkVar
 
-reduceNetworkVariable :: Lv -> NetworkVariable -> (BoundCtx NetworkVariable, StandardNormExpr)
+reduceNetworkVariable :: Lv -> NetworkVariable -> (BoundCtx NetworkVariable, Value Builtin)
 reduceNetworkVariable dbLevel NetworkVariable {..} = do
   let (vars, expr) = runSupply (go networkVarDimensions) [0 :: Int ..]
   (reverse vars, expr)
@@ -174,7 +173,7 @@ reduceNetworkVariable dbLevel NetworkVariable {..} = do
     go ::
       (MonadSupply Int m) =>
       TensorDimensions ->
-      m ([NetworkVariable], StandardNormExpr)
+      m ([NetworkVariable], Value Builtin)
     go = \case
       [] -> do
         index <- demand
@@ -288,7 +287,7 @@ foldConstant mkValue mkVec dims value = go dims (Vector.toList value)
       let elems = fmap (go ds) inputVarIndicesChunks
       mkVec elems
 
-constantExpr :: TensorDimensions -> Constant -> StandardNormExpr
+constantExpr :: TensorDimensions -> Constant -> Value Builtin
 constantExpr = foldConstant (VRatLiteral . toRational) mkVLVec
 
 -- | Pretty prints a constant value given a set of dimensions.
@@ -346,25 +345,25 @@ lookupAndRemoveAll assignment = foldM op ([], assignment)
 
 pattern VInfiniteQuantifier ::
   Quantifier ->
-  [StandardNormArg] ->
-  StandardNormBinder ->
-  StandardEnv ->
-  TypeCheckedExpr ->
-  StandardNormExpr
+  [VArg Builtin] ->
+  VBinder Builtin ->
+  Env Builtin ->
+  Expr Ix Builtin ->
+  Value Builtin
 pattern VInfiniteQuantifier q args binder env body <-
   VBuiltin (BuiltinFunction (Quantifier q)) (reverse -> RelevantExplicitArg _ (VLam binder env body) : args)
   where
     VInfiniteQuantifier q args binder env body =
       VBuiltin (BuiltinFunction (Quantifier q)) (reverse (RelevantExplicitArg mempty (VLam binder env body) : args))
 
-pattern VFiniteQuantifier :: Quantifier -> StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardNormExpr
+pattern VFiniteQuantifier :: Quantifier -> Spine Builtin -> VBinder Builtin -> Env Builtin -> Expr Ix Builtin -> Value Builtin
 pattern VFiniteQuantifier q spine binder env body <-
   VFreeVar (toFiniteQuantifier -> Just q) (VFiniteQuantifierSpine spine binder env body)
   where
     VFiniteQuantifier q spine binder env body =
       VFreeVar (fromFiniteQuantifier q) (VFiniteQuantifierSpine spine binder env body)
 
-pattern VFiniteQuantifierSpine :: StandardSpine -> StandardNormBinder -> StandardEnv -> TypeCheckedExpr -> StandardSpine
+pattern VFiniteQuantifierSpine :: Spine Builtin -> VBinder Builtin -> Env Builtin -> Expr Ix Builtin -> Spine Builtin
 pattern VFiniteQuantifierSpine spine binder env body <- (reverse -> RelevantExplicitArg _ (VLam binder env body) : spine)
   where
     VFiniteQuantifierSpine spine binder env body =

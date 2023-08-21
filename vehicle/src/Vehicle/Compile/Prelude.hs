@@ -1,6 +1,8 @@
 module Vehicle.Compile.Prelude
   ( module X,
     module Vehicle.Compile.Prelude,
+    Ix (..),
+    Lv (..),
   )
 where
 
@@ -11,10 +13,11 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Prelude.Contexts as X
 import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Expr.DeBruijn (Ix, substDBInto)
+import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), substDBInto)
 import Vehicle.Prelude as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
+import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------
 -- Type synonyms
@@ -155,3 +158,8 @@ substArgs :: Provenance -> Expr Ix builtin -> [Arg Ix builtin] -> Expr Ix builti
 substArgs p (Lam _ _ body) (arg : args) = do
   substArgs p (argExpr arg `substDBInto` body) args
 substArgs p e args = normAppList p e args
+
+type Imports = [Prog Ix Builtin]
+
+mergeImports :: Imports -> Prog Ix Builtin -> Prog Ix Builtin
+mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])

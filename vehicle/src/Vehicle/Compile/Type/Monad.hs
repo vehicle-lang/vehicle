@@ -2,7 +2,7 @@ module Vehicle.Compile.Type.Monad
   ( TCM,
     MonadTypeChecker (..),
     TypeCheckerState,
-    TypableBuiltin (..),
+    HasTypeSystem (..),
     -- Top-level interface
     runTypeChecker,
     runTypeCheckerHypothetically,
@@ -51,14 +51,13 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
-import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 
 -- | The type-checking monad.
 type TCM builtin m =
   ( MonadTypeChecker builtin m,
     MonadNorm builtin m,
-    TypableBuiltin builtin
+    HasTypeSystem builtin
   )
 
 runTypeChecker ::

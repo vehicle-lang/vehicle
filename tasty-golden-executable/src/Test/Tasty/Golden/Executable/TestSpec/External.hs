@@ -1,68 +1,58 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Test.Tasty.Golden.Executable.TestSpec.External where
+module Test.Tasty.Golden.Executable.TestSpec.External
+  ( External (..),
+    AllowlistExternals (..),
+  )
+where
 
-import Data.Aeson (FromJSON)
-import Data.Aeson.Types (ToJSON)
+import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value, typeMismatch)
+import Data.Aeson.Types qualified as Value (Value (..))
 import Data.Data (Typeable)
-import Data.Proxy (Proxy (..))
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.String (IsString (..))
 import Data.Tagged (Tagged)
-import Data.Text (Text)
 import Data.Text qualified as Text
-import Options.Applicative.Types qualified as Options (Parser)
-import Test.Tasty.Ingredients (Ingredient)
-import Test.Tasty.Ingredients.Basic (includingOptions)
-import Test.Tasty.Options (IsOption (..), OptionDescription (..), flagCLParser, safeReadBool)
+import Test.Tasty.Options (IsOption (..), safeRead)
 
-externalOptionIngredient :: Ingredient
-externalOptionIngredient =
-  includingOptions
-    [ Option (Proxy :: Proxy ExternalOption),
-      Option (Proxy :: Proxy ExternalOnlyOption)
-    ]
+-- | The name of an external program.
+newtype External = External {programName :: FilePath}
+  deriving (Eq, Ord, Typeable)
 
-newtype External = External {unExternal :: Text}
-  deriving (Eq, Ord, Show, Typeable, FromJSON, ToJSON, IsString)
+instance Show External where
+  show :: External -> String
+  show (External programName) = programName
 
-newtype ExternalOption = ExternalOption {unExternalOption :: Set External}
+instance Read External where
+  readsPrec :: Int -> ReadS External
+  readsPrec _prec programName = [(External programName, "")]
+
+instance IsString External where
+  fromString :: String -> External
+  fromString = External
+
+instance FromJSON External where
+  parseJSON :: Value -> Parser External
+  parseJSON (Value.String name) = return $ External (Text.unpack name)
+  parseJSON value = typeMismatch "String" value
+
+instance ToJSON External where
+  toJSON :: External -> Value
+  toJSON = toJSON . programName
+
+newtype AllowlistExternals = AllowlistExternals [External]
   deriving (Eq, Ord, Show, Typeable, Semigroup, Monoid)
 
-instance IsOption ExternalOption where
-  defaultValue :: ExternalOption
-  defaultValue = ExternalOption Set.empty
+instance IsOption AllowlistExternals where
+  defaultValue :: AllowlistExternals
+  defaultValue = mempty
 
-  parseValue :: String -> Maybe ExternalOption
-  parseValue value =
-    Just $
-      ExternalOption $
-        Set.fromList
-          [ External (Text.strip external)
-            | external <- Text.splitOn "," (Text.pack value)
-          ]
+  parseValue :: String -> Maybe AllowlistExternals
+  parseValue input = AllowlistExternals <$> traverse safeRead names
+    where
+      names = Text.unpack . Text.strip <$> Text.splitOn "," (Text.pack input)
 
-  optionName :: Tagged ExternalOption String
-  optionName = return "external"
+  optionName :: Tagged AllowlistExternals String
+  optionName = return "allowlist-externals"
 
-  optionHelp :: Tagged ExternalOption String
-  optionHelp = return "Run tests with an external dependency that matches the argument."
-
-newtype ExternalOnlyOption = ExternalOnlyOption {unExternalOnlyOption :: Bool}
-
-instance IsOption ExternalOnlyOption where
-  defaultValue :: ExternalOnlyOption
-  defaultValue = ExternalOnlyOption False
-
-  parseValue :: String -> Maybe ExternalOnlyOption
-  parseValue = fmap ExternalOnlyOption . safeReadBool
-
-  optionName :: Tagged ExternalOnlyOption String
-  optionName = return "external-only"
-
-  optionHelp :: Tagged ExternalOnlyOption String
-  optionHelp = return "Run only tests with the specified external dependencies."
-
-  optionCLParser :: Options.Parser ExternalOnlyOption
-  optionCLParser = flagCLParser Nothing (ExternalOnlyOption True)
+  optionHelp :: Tagged AllowlistExternals String
+  optionHelp = return "A list of allowed external programs."

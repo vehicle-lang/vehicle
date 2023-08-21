@@ -42,6 +42,7 @@ import GHC.Generics (Generic)
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Relation
@@ -71,10 +72,10 @@ relationToOp = \case
   LessThanOrEqualTo -> Right Le
 
 ordToRelation ::
-  StandardNormExpr ->
+  Value Builtin ->
   OrderOp ->
-  StandardNormExpr ->
-  (StandardNormExpr, Relation, StandardNormExpr)
+  Value Builtin ->
+  (Value Builtin, Relation, Value Builtin)
 ordToRelation e1 op e2 = case op of
   Lt -> (e1, LessThan, e2)
   Le -> (e1, LessThanOrEqualTo, e2)
@@ -335,17 +336,17 @@ mapAssertionVariables f Assertion {..} =
 -- conjunctions.
 data UnreducedAssertion
   = VectorEqualityAssertion VectorEquality
-  | NonVectorEqualityAssertion StandardNormExpr
+  | NonVectorEqualityAssertion (Value Builtin)
 
 -- | An encoding of a vector equality.
 data VectorEquality = VectorEquality
-  { assertionLHS :: StandardNormExpr,
-    assertionRHS :: StandardNormExpr,
+  { assertionLHS :: Value Builtin,
+    assertionRHS :: Value Builtin,
     assertionDims :: TensorDimensions,
-    assertionOriginalRel :: StandardNormArg -> StandardNormArg -> StandardNormExpr
+    assertionOriginalRel :: VArg Builtin -> VArg Builtin -> Value Builtin
   }
 
-originalVectorEqualityExpr :: VectorEquality -> StandardNormExpr
+originalVectorEqualityExpr :: VectorEquality -> Value Builtin
 originalVectorEqualityExpr VectorEquality {..} =
   assertionOriginalRel (RelevantExplicitArg mempty assertionLHS) (RelevantExplicitArg mempty assertionRHS)
 

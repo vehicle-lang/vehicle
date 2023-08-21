@@ -8,13 +8,13 @@ where
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
+import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary
 
-standardBuiltinInstances :: InstanceCandidateDatabase StandardBuiltin
+standardBuiltinInstances :: InstanceCandidateDatabase StandardTypingBuiltin
 standardBuiltinInstances = do
   let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) candidates
   Map.fromListWith (<>) tcAndCandidates
@@ -28,7 +28,7 @@ standardBuiltinInstances = do
 -- Also note that annoyingly because of a lack of first class records we have
 -- to duplicate the context for both the candidate and the candidate's solution.
 
-candidates :: [StandardInstanceCandidate]
+candidates :: [InstanceCandidate StandardTypingBuiltin]
 candidates =
   mkCandidate
     <$> [
@@ -236,6 +236,8 @@ candidates =
                 builtin (Quantifier q) @@@ [t, n] @@@@ [quant]
         )
       ]
+
+type StandardDSLExpr = DSLExpr StandardTypingBuiltin
 
 builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction

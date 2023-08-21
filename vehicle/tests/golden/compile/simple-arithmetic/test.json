@@ -14,11 +14,10 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/property.vcl-plan"],
-    "ignore":
-      {
-        "lines": ".*\"fileHash\".*"
-      }
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/property.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
   },
   {
     "name": "Agda",

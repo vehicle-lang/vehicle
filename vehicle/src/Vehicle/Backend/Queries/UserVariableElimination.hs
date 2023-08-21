@@ -35,10 +35,11 @@ import Vehicle.Compile.Normalise.Builtin (evalMul)
 import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), pattern TensorIdent)
@@ -49,7 +50,7 @@ import Vehicle.Verify.Core
 -- network variables.
 eliminateUserVariables ::
   (MonadCompile m) =>
-  StandardNormDeclCtx ->
+  NormDeclCtx Builtin ->
   DeclProvenance ->
   MetaNetwork ->
   MixedVariables ->
@@ -98,7 +99,7 @@ type MonadSMT m =
 type LCSState =
   ( DeclProvenance,
     MetaNetwork,
-    StandardNormDeclCtx
+    NormDeclCtx Builtin
   )
 
 --------------------------------------------------------------------------------
@@ -106,7 +107,7 @@ type LCSState =
 
 -- | Solutions for vector-level user variables. They are ordered so that
 -- earlier solutions may depend on solved variables later in the list.
-type UnreducedVariableSolutions = [(UserVariable, StandardNormExpr)]
+type UnreducedVariableSolutions = [(UserVariable, Value Builtin)]
 
 type SolvableAssertion = Assertion MixedVariable
 
@@ -196,7 +197,7 @@ solutionToExpr ::
   (MonadCompile m) =>
   BoundCtx MixedVariable ->
   (UserVariable, SparseLinearExpr MixedVariable) ->
-  m (UserVariable, StandardNormExpr)
+  m (UserVariable, Value Builtin)
 solutionToExpr variables (var, Sparse {..}) = do
   let findVarIx v = Ix $ fromMaybe (developerError ("Variable" <+> pretty var <+> "not found")) (v `elemIndex` variables)
   let toExprVar v = VBoundVar (dbIndexToLevel (Lv $ length variables) (findVarIx v)) []
@@ -212,21 +213,21 @@ solutionToExpr variables (var, Sparse {..}) = do
   let varCoeffList = Map.toList coefficients
   return (var, foldr combFn constant varCoeffList)
   where
-    mkTensorType :: StandardNormType -> StandardNormType -> StandardNormType
+    mkTensorType :: VType Builtin -> VType Builtin -> VType Builtin
     mkTensorType tElem dims = VFreeVar TensorIdent [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dims]
 
-    mkRatVectorAdd :: [StandardNormExpr] -> [StandardNormExpr] -> StandardNormExpr
+    mkRatVectorAdd :: [Value Builtin] -> [Value Builtin] -> Value Builtin
     mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
 
-    mkRatVectorSub :: [StandardNormExpr] -> [StandardNormExpr] -> StandardNormExpr
+    mkRatVectorSub :: [Value Builtin] -> [Value Builtin] -> Value Builtin
     mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
 
     mkVectorOp ::
       BuiltinFunction ->
       StdLibFunction ->
-      [StandardNormExpr] ->
-      [StandardNormExpr] ->
-      StandardNormExpr
+      [Value Builtin] ->
+      [Value Builtin] ->
+      Value Builtin
     mkVectorOp baseOp libOp dims spine = case dims of
       [] -> VBuiltinFunction baseOp (RelevantExplicitArg mempty <$> spine)
       (d : ds) ->
@@ -262,11 +263,11 @@ compilerVectorLinearExpr ::
   (MonadSMT m) =>
   BoundCtx MixedVariable ->
   TensorDimensions ->
-  StandardNormExpr ->
+  Value Builtin ->
   m (Maybe (SparseLinearExpr MixedVariable))
 compilerVectorLinearExpr variables dimensions = go
   where
-    go :: StandardNormExpr -> m (Maybe (SparseLinearExpr MixedVariable))
+    go :: Value Builtin -> m (Maybe (SparseLinearExpr MixedVariable))
     go e = case e of
       VBoundVar v [] ->
         Just <$> singletonVar v 1
@@ -289,19 +290,19 @@ compilerVectorLinearExpr variables dimensions = go
       let constant = Vector.replicate (product dimensions) 0
       return $ Sparse dimensions (Map.singleton var coef) constant
 
-    isAddVector :: StandardNormExpr -> Maybe (StandardNormExpr, StandardNormExpr)
+    isAddVector :: Value Builtin -> Maybe (Value Builtin, Value Builtin)
     isAddVector = \case
       VFreeVar ident [_, _, _, _, _, e1, e2]
         | ident == identifierOf StdAddVector -> Just (argExpr e1, argExpr e2)
       _ -> Nothing
 
-    isSubVector :: StandardNormExpr -> Maybe (StandardNormExpr, StandardNormExpr)
+    isSubVector :: Value Builtin -> Maybe (Value Builtin, Value Builtin)
     isSubVector = \case
       VFreeVar ident [_, _, _, _, _, e1, e2]
         | ident == identifierOf StdSubVector -> Just (argExpr e1, argExpr e2)
       _ -> Nothing
 
-    isConstant :: StandardNormExpr -> Maybe Constant
+    isConstant :: Value Builtin -> Maybe Constant
     isConstant = \case
       VVecLiteral xs -> mconcat <$> traverse (isConstant . argExpr) xs
       VRatLiteral r -> Just $ Vector.singleton (fromRational r)
@@ -348,7 +349,7 @@ reduceVariables ::
   (MonadCompile m) =>
   MixedVariables ->
   Set UserVariable ->
-  m (MixedVariables, VariableNormalisationSteps, StandardEnv, Map UserVariable Ix)
+  m (MixedVariables, VariableNormalisationSteps, Env Builtin, Map UserVariable Ix)
 reduceVariables variables solvedUserVariables = do
   logDebug MidDetail $ "Reducing unsolved variables..." <> line
   (userVarLv, reducedUserVariables, userVarReconstructionSteps, reducedUserVarEnv, solvedUserVariableIndices) <-
@@ -365,8 +366,8 @@ reduceVariables variables solvedUserVariables = do
       (MonadCompile m, Variable variable) =>
       Set variable ->
       variable ->
-      (Lv, BoundCtx variable, VariableNormalisationSteps, StandardEnv, Map variable Lv) ->
-      m (Lv, BoundCtx variable, VariableNormalisationSteps, StandardEnv, Map variable Lv)
+      (Lv, BoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv) ->
+      m (Lv, BoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv)
     possiblyReduceVariable solvedVariables var (currentLv, reducedVariables, steps, subst, solvedIndices)
       | var `Set.member` solvedVariables = do
           logDebug MaxDetail $
@@ -396,17 +397,17 @@ reduceVariables variables solvedUserVariables = do
 substituteReducedVariablesThroughSolutions ::
   forall m.
   (MonadSMT m) =>
-  StandardEnv ->
+  Env Builtin ->
   UnreducedVariableSolutions ->
   Map UserVariable Ix ->
-  m StandardEnv
+  m (Env Builtin)
 substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePositions = do
   logDebug MidDetail "Substituting reduced variables through variable solutions..."
   (_, _, declCtx) <- ask
   result <- foldrM (f declCtx) partialEnv solutions
   return result
   where
-    f :: StandardNormDeclCtx -> (UserVariable, StandardNormExpr) -> StandardEnv -> m StandardEnv
+    f :: NormDeclCtx Builtin -> (UserVariable, Value Builtin) -> Env Builtin -> m (Env Builtin)
     f declCtx (var, solution) env = do
       normalisedSolution <- runNormT defaultEvalOptions declCtx mempty (reeval env solution)
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
@@ -486,7 +487,7 @@ mkGaussianReconstructionStep (v, e) =
 compileReducedAssertion ::
   (MonadSMT m) =>
   MixedVariables ->
-  StandardEnv ->
+  Env Builtin ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
 compileReducedAssertion variables variableSubstEnv assertion = do
@@ -509,8 +510,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
     splitUpAssertions ::
       (MonadSMT m) =>
       Bool ->
-      StandardNormExpr ->
-      m (MaybeTrivial (BooleanExpr (StandardNormExpr, Relation, StandardNormExpr)))
+      Value Builtin ->
+      m (MaybeTrivial (BooleanExpr (Value Builtin, Relation, Value Builtin)))
     splitUpAssertions alreadyLiftedIfs expr = case expr of
       VBoolLiteral b -> return $ Trivial b
       VBuiltinFunction And [e1, e2] -> do
@@ -540,8 +541,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 
     liftIfs ::
       (MonadSMT m) =>
-      StandardNormExpr ->
-      m (MaybeTrivial (BooleanExpr (StandardNormExpr, Relation, StandardNormExpr)))
+      Value Builtin ->
+      m (MaybeTrivial (BooleanExpr (Value Builtin, Relation, Value Builtin)))
     liftIfs expr = do
       maybeExprWithoutIf <- eliminateIfs expr
       case maybeExprWithoutIf of
@@ -555,7 +556,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 
     reduceAssertion ::
       (MonadSMT m) =>
-      (StandardNormExpr, Relation, StandardNormExpr) ->
+      (Value Builtin, Relation, Value Builtin) ->
       m SolvableAssertion
     reduceAssertion (lhs, rel, rhs) = do
       lhsLinExpr <- compileReducedLinearExpr variableCtx lhs
@@ -567,13 +568,13 @@ compileReducedLinearExpr ::
   forall m.
   (MonadSMT m) =>
   BoundCtx MixedVariable ->
-  StandardNormExpr ->
+  Value Builtin ->
   m (SparseLinearExpr MixedVariable)
 compileReducedLinearExpr variables expr = do
   lnfExpr <- convertToLNF expr
   go lnfExpr
   where
-    go :: StandardNormExpr -> m (SparseLinearExpr MixedVariable)
+    go :: Value Builtin -> m (SparseLinearExpr MixedVariable)
     go e = case e of
       VBoundVar v [] ->
         singletonVar v 1
@@ -605,10 +606,10 @@ compileReducedLinearExpr variables expr = do
 -- | Converts the provided expression to linear normal form,
 -- i.e. consisting of only additions and multiplications by constants.
 -- e.g. x + 3 * (x + y) ====> x + 3 * x + 3 * y
-convertToLNF :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
+convertToLNF :: (MonadCompile m) => Value Builtin -> m (Value Builtin)
 convertToLNF = lnf
   where
-    lnf :: (MonadCompile m) => StandardNormExpr -> m StandardNormExpr
+    lnf :: (MonadCompile m) => Value Builtin -> m (Value Builtin)
     lnf expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -626,7 +627,7 @@ convertToLNF = lnf
       VBuiltin {} -> return expr
       VBoundVar {} -> return expr
 
-    normMul :: MulDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+    normMul :: MulDomain -> Value Builtin -> Value Builtin -> Value Builtin
     normMul dom e1 e2 = case (e1, e2) of
       (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
         let r1 = normMul dom e1 (argExpr v1)
@@ -640,13 +641,13 @@ convertToLNF = lnf
         Nothing -> VBuiltinFunction (Mul dom) (RelevantExplicitArg mempty <$> [e1, e2])
         Just r -> r
 
-    normSub :: SubDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+    normSub :: SubDomain -> Value Builtin -> Value Builtin -> Value Builtin
     normSub dom e1 e2 = do
       let negDom = subToNegDomain dom
       let addDom = subToAddDomain dom
       VBuiltinFunction (Add addDom) [RelevantExplicitArg mempty e1, lowerNeg negDom e2]
 
-    normDiv :: DivDomain -> StandardNormExpr -> StandardNormExpr -> StandardNormExpr
+    normDiv :: DivDomain -> Value Builtin -> Value Builtin -> Value Builtin
     normDiv dom e1 e2 = case (e1, e2) of
       (_, VRatLiteral l) -> do
         let mulDom = divToMulDomain dom
@@ -654,7 +655,7 @@ convertToLNF = lnf
       _ -> do
         VBuiltinFunction (Div dom) (RelevantExplicitArg mempty <$> [e1, e2])
 
-    lowerNeg :: NegDomain -> StandardNormExpr -> StandardNormArg
+    lowerNeg :: NegDomain -> Value Builtin -> VArg Builtin
     lowerNeg dom expr = RelevantExplicitArg mempty $ case expr of
       -- Base cases
       VBuiltinFunction (Neg _) [e] -> argExpr e

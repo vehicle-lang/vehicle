@@ -10,7 +10,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface (HasStandardData (getBuiltinFunction))
+import Vehicle.Expr.BuiltinInterface (HasStandardData (getBuiltinFunction))
 import Vehicle.Expr.Normalised
 
 -----------------------------------------------------------------------------

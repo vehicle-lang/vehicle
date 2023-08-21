@@ -3,9 +3,8 @@
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/",
     "needs": ["spec.vcl"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index", "Marabou.queries/p.vcl-plan"],
-    "ignore":
-    {
+    "produces": ["Marabou.queries/p.vcl-plan"],
+    "ignore": {
       "lines": ".*\"fileHash\".*"
     }
   }

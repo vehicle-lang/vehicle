@@ -7,10 +7,9 @@ where
 import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
 import Vehicle.Compile.Type.Subsystem.Standard.Type qualified as Standard
+import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.

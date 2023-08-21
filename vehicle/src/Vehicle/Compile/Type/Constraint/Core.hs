@@ -24,7 +24,6 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
 import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn (Ix)
 import Vehicle.Expr.Normalised
 
 -- | Attempts to solve as many constraints as possible. Takes in

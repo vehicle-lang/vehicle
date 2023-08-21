@@ -4,9 +4,7 @@ module Vehicle.Backend.Queries.QuerySetStructure
     UnreducedAssertion (..),
     compileQueryStructure,
     eliminateNot,
-    QueryDeclCtx,
-    queryDeclCtxToInfoDeclCtx,
-    queryDeclCtxToNormDeclCtx,
+    UsedFunctionsCtx,
     UsedFunctionsInfo,
     getUsedFunctions,
   )
@@ -14,6 +12,7 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Data (Proxy (..))
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet (fromList, intersection, null, singleton)
 import Data.Map qualified as Map (keysSet, lookup)
@@ -24,16 +23,16 @@ import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Resource (NetworkContext)
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.Interface
-import Vehicle.Compile.Type.Subsystem.Standard.Patterns
 import Vehicle.Expr.Boolean
-import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), dbLevelToIndex)
+import Vehicle.Expr.BuiltinInterface
+import Vehicle.Expr.BuiltinPatterns
+import Vehicle.Expr.DeBruijn (dbLevelToIndex)
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
@@ -47,11 +46,11 @@ import Vehicle.Verify.Core
 -- Only reduces quantified variables of `Vector` type as much as is required
 -- in order to be able to reach DNF.
 compileQueryStructure ::
-  (MonadCompile m) =>
+  (MonadCompile m, MonadContext Builtin m) =>
   DeclProvenance ->
-  QueryDeclCtx ->
+  UsedFunctionsCtx ->
   NetworkContext ->
-  StandardNormExpr ->
+  Value Builtin ->
   m (Either SeriousPropertyError (BoundCtx UserVariable, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
 compileQueryStructure declProv queryDeclCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
@@ -87,9 +86,9 @@ cumulativeVarsToCtx = fmap (Just . userVarName)
 -- we can't normalise the `map` and hence the `fold` until we normalise the quantified
 -- variable `xs` to two separate quantifiers.
 data TemporaryPropertyError
-  = CannotEliminateIfs StandardNormExpr
-  | CannotEliminateNot StandardNormExpr
-  | NonBooleanQueryStructure StandardNormExpr
+  = CannotEliminateIfs (Value Builtin)
+  | CannotEliminateNot (Value Builtin)
+  | NonBooleanQueryStructure (Value Builtin)
   deriving (Show)
 
 instance Pretty TemporaryPropertyError where
@@ -101,8 +100,8 @@ instance Pretty TemporaryPropertyError where
 -- | Serious errors that are fundemental problems with the specification
 data SeriousPropertyError
   = AlternatingQuantifiers
-  | NonLinearSpecification StandardNormExpr
-  | UnsupportedQuantifierType StandardNormBinder StandardNormType
+  | NonLinearSpecification (Value Builtin)
+  | UnsupportedQuantifierType (VBinder Builtin) (VType Builtin)
   | UnsupportedInequalityOp
 
 data PropertyError
@@ -114,8 +113,8 @@ type QueryStructureResult =
 
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
-  StandardNormExpr ->
-  Maybe (StandardNormArg, StandardNormArg, TensorDimensions, StandardNormArg -> StandardNormArg -> StandardNormExpr)
+  Value Builtin ->
+  Maybe (VArg Builtin, VArg Builtin, TensorDimensions, VArg Builtin -> VArg Builtin -> Value Builtin)
 isVectorEquals = \case
   VFreeVar ident args
     | ident == identifierOf StdEqualsVector -> case args of
@@ -128,7 +127,7 @@ isVectorEquals = \case
         _ -> Nothing
   _ -> Nothing
 
-getTensorDimensions :: StandardNormExpr -> Maybe TensorDimensions
+getTensorDimensions :: Value Builtin -> Maybe TensorDimensions
 getTensorDimensions = \case
   VRatType -> Just []
   VVectorType tElem dim -> do
@@ -142,32 +141,32 @@ getTensorDimensions = \case
 
 type MonadQueryStructure m =
   ( MonadCompile m,
-    MonadReader (DeclProvenance, QueryDeclCtx, NetworkContext) m
+    MonadReader (DeclProvenance, UsedFunctionsCtx, NetworkContext) m,
+    MonadContext Builtin m
   )
 
 -- | For efficiency reasons, we sometimes want to avoid expanding out
 -- finite quantifiers
 evalWhilePreservingFiniteQuantifiers ::
   (MonadQueryStructure m) =>
-  StandardEnv ->
-  TypeCheckedExpr ->
-  m StandardNormExpr
+  Env Builtin ->
+  Expr Ix Builtin ->
+  m (Value Builtin)
 evalWhilePreservingFiniteQuantifiers env body = do
-  (_, queryDeclCtx, _) <- ask
+  declCtx <- getNormDeclCtx (Proxy @Builtin)
   let evalOptions = EvalOptions {evalFiniteQuantifiers = False}
-  let declCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
   runNormT evalOptions declCtx mempty (eval env body)
 
 compileBoolExpr ::
   forall m.
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  StandardNormExpr ->
+  Value Builtin ->
   m QueryStructureResult
 compileBoolExpr = go False
   where
     -- \| Traverses an arbitrary expression of type `Bool`.
-    go :: Bool -> CumulativeCtx -> StandardNormExpr -> m QueryStructureResult
+    go :: Bool -> CumulativeCtx -> Value Builtin -> m QueryStructureResult
     go alreadyLiftedIfs quantifiedVariables expr = case expr of
       ----------------
       -- Base cases --
@@ -214,11 +213,11 @@ compileBoolExpr = go False
     compileEquality ::
       CumulativeCtx ->
       Bool ->
-      StandardNormArg ->
+      VArg Builtin ->
       EqualityOp ->
-      StandardNormArg ->
+      VArg Builtin ->
       TensorDimensions ->
-      (StandardNormArg -> StandardNormArg -> StandardNormExpr) ->
+      (VArg Builtin -> VArg Builtin -> Value Builtin) ->
       m QueryStructureResult
     compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
       let ctx = cumulativeVarsToCtx quantifiedVariables
@@ -237,7 +236,7 @@ compileBoolExpr = go False
           Neq ->
             return $ Left $ SeriousError UnsupportedInequalityOp
 
-    compileOrder :: Bool -> CumulativeCtx -> StandardNormExpr -> m QueryStructureResult
+    compileOrder :: Bool -> CumulativeCtx -> Value Builtin -> m QueryStructureResult
     compileOrder alreadyLiftedIfs quantifiedVariables expr = do
       -- Even though we're sticking the result in a `NonVectorEqualityAssertion` we still need
       -- to lift and eliminate `if`s as they may be inside network applications.
@@ -248,7 +247,7 @@ compileBoolExpr = go False
           let assertion = NonVectorEqualityAssertion expr
           return $ Right ([], NonTrivial $ Query assertion, [])
 
-    elimIfs :: Bool -> CumulativeCtx -> StandardNormExpr -> m (Maybe QueryStructureResult)
+    elimIfs :: Bool -> CumulativeCtx -> Value Builtin -> m (Maybe QueryStructureResult)
     elimIfs alreadyLiftedIfs quantifiedVariables expr
       | alreadyLiftedIfs = return Nothing
       | otherwise = do
@@ -260,9 +259,8 @@ compileBoolExpr = go False
             Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
-              (_, queryDeclCtx, _) <- ask
+              normDeclCtx <- getNormDeclCtx (Proxy @Builtin)
               let env = variableCtxToNormEnv quantifiedVariables
-              let normDeclCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
               normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx mempty $ reeval env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
               Just <$> go True quantifiedVariables normExprWithoutIf
@@ -273,8 +271,8 @@ compileBoolExpr = go False
       (forall a. MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a)) ->
       Bool ->
       CumulativeCtx ->
-      StandardNormExpr ->
-      StandardNormExpr ->
+      Value Builtin ->
+      Value Builtin ->
       m QueryStructureResult
     compileOp2 op processingLiftedIfs quantifiedVariables e1 e2 = do
       let lhsVariables = quantifiedVariables
@@ -293,7 +291,7 @@ compileBoolExpr = go False
 --------------------------------------------------------------------------------
 -- Not elimination
 
-eliminateNot :: StandardNormExpr -> Maybe StandardNormExpr
+eliminateNot :: Value Builtin -> Maybe (Value Builtin)
 eliminateNot arg = case arg of
   -- Base cases
   VBoolLiteral b -> Just $ VBoolLiteral (not b)
@@ -342,14 +340,13 @@ compileFiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
   Quantifier ->
-  StandardSpine ->
-  StandardNormBinder ->
-  StandardEnv ->
-  TypeCheckedExpr ->
+  Spine Builtin ->
+  VBinder Builtin ->
+  Env Builtin ->
+  Expr Ix Builtin ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
-  (_, queryDeclCtx, _) <- ask
-  let normCtx = queryDeclCtxToNormDeclCtx queryDeclCtx
+  normCtx <- getNormDeclCtx (Proxy @Builtin)
 
   let foldedResult = do
         let foldedExpr = VFiniteQuantifier q quantSpine binder env body
@@ -371,14 +368,13 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
 -- conjunctions.
 canLeaveFiniteQuantifierUnexpanded ::
   (MonadQueryStructure m) =>
-  StandardEnv ->
-  StandardExpr ->
+  Env Builtin ->
+  Expr Ix Builtin ->
   m Bool
 canLeaveFiniteQuantifierUnexpanded env expr = do
-  (_, queryDeclCtx, networkCtx) <- ask
-  let declUsageCtx = queryDeclCtxToInfoDeclCtx queryDeclCtx
+  (_, usedFunctionsCtx, networkCtx) <- ask
 
-  let (usedFunctions, usedFreeVars) = getUsedFunctions declUsageCtx (getUsedFunctionsCtx declUsageCtx env) expr
+  let (usedFunctions, usedFreeVars) = getUsedFunctions usedFunctionsCtx (getUsedFunctionsCtx usedFunctionsCtx env) expr
   let forbiddenFunctions =
         HashSet.fromList
           [ Quantifier Exists,
@@ -396,9 +392,9 @@ canLeaveFiniteQuantifierUnexpanded env expr = do
 compileInfiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  StandardNormBinder ->
-  StandardEnv ->
-  TypeCheckedExpr ->
+  VBinder Builtin ->
+  Env Builtin ->
+  Expr Ix Builtin ->
   m QueryStructureResult
 compileInfiniteQuantifier quantifiedVariables binder env body = do
   let variableName = getBinderName binder
@@ -459,17 +455,17 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
                     let allQuantifiedVariables = newQuantifiedVariables <> subQuantifiedVariables
                     return $ Right (allQuantifiedVariables, substructure, normalisationStep : varReconstruction)
 
-calculateVariableDimensions :: StandardNormBinder -> Either PropertyError TensorDimensions
+calculateVariableDimensions :: VBinder Builtin -> Either PropertyError TensorDimensions
 calculateVariableDimensions binder = go (typeOf binder)
   where
-    go :: StandardNormType -> Either PropertyError TensorDimensions
+    go :: VType Builtin -> Either PropertyError TensorDimensions
     go = \case
       VVectorType tElem (VNatLiteral dim) -> do
         dims <- go tElem
         return $ dim : dims
       t -> goBase t
 
-    goBase :: StandardNormType -> Either PropertyError TensorDimensions
+    goBase :: VType Builtin -> Either PropertyError TensorDimensions
     goBase = \case
       VRatType {} -> return []
       baseType -> Left $ SeriousError $ UnsupportedQuantifierType binder baseType
@@ -477,20 +473,14 @@ calculateVariableDimensions binder = go (typeOf binder)
 --------------------------------------------------------------------------------
 -- Builtin and free variable tracking
 
-type QueryDeclCtx = DeclCtx (NormDeclCtxEntry StandardBuiltin, UsedFunctionsInfo)
-
-queryDeclCtxToNormDeclCtx :: QueryDeclCtx -> StandardNormDeclCtx
-queryDeclCtxToNormDeclCtx = fmap fst
-
-queryDeclCtxToInfoDeclCtx :: QueryDeclCtx -> DeclCtx UsedFunctionsInfo
-queryDeclCtxToInfoDeclCtx = fmap snd
+type UsedFunctionsCtx = DeclCtx UsedFunctionsInfo
 
 type UsedFunctionsInfo = (HashSet BuiltinFunction, Set Identifier)
 
 getUsedFunctions ::
   DeclCtx UsedFunctionsInfo ->
   BoundCtx UsedFunctionsInfo ->
-  StandardExpr ->
+  Expr Ix Builtin ->
   UsedFunctionsInfo
 getUsedFunctions declCtx boundCtx expr = case expr of
   Universe {} -> mempty
@@ -508,7 +498,7 @@ getUsedFunctions declCtx boundCtx expr = case expr of
 getUsedNormFunctions ::
   DeclCtx UsedFunctionsInfo ->
   BoundCtx UsedFunctionsInfo ->
-  StandardNormExpr ->
+  Value Builtin ->
   UsedFunctionsInfo
 getUsedNormFunctions declCtx boundCtx expr = case expr of
   VPi {} -> mempty
@@ -532,7 +522,7 @@ getUsedNormFunctions declCtx boundCtx expr = case expr of
     builtinInfo <> spineInfo
 
 getUsedFunctionsBuiltin ::
-  StandardBuiltin ->
+  Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsBuiltin = \case
   BuiltinFunction f -> (HashSet.singleton f, mempty)
@@ -555,7 +545,7 @@ getUsedVarsBoundVar boundCtx ix =
 getUsedFunctionsSpine ::
   DeclCtx UsedFunctionsInfo ->
   BoundCtx UsedFunctionsInfo ->
-  StandardSpine ->
+  Spine Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsSpine declCtx boundCtx =
   foldMap (getUsedNormFunctions declCtx boundCtx . argExpr)
@@ -563,14 +553,14 @@ getUsedFunctionsSpine declCtx boundCtx =
 getUsedFunctionsEnv ::
   DeclCtx UsedFunctionsInfo ->
   BoundCtx UsedFunctionsInfo ->
-  StandardEnv ->
+  Env Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsEnv declCtx boundCtx =
   foldMap (getUsedNormFunctions declCtx boundCtx . snd)
 
 getUsedFunctionsCtx ::
   DeclCtx UsedFunctionsInfo ->
-  StandardEnv ->
+  Env Builtin ->
   BoundCtx UsedFunctionsInfo
 getUsedFunctionsCtx declCtx =
   foldr (\u v -> getUsedNormFunctions declCtx v (snd u) : v) mempty
