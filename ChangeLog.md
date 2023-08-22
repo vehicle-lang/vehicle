@@ -5,6 +5,8 @@
 * Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
  `unification of lambdas not implemented` error.
 
+* Added warnings to `compile` command when unneeded resources are passed.
+
 ## Version 0.10.0
 
 * Fixed bug in display of progress bar when verification counter-example found.

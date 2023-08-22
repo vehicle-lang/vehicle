@@ -74,7 +74,7 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
     _ -> unnormalised <$> freshMetaExpr p (TypeUniverse p 0) mempty
 
   let constraintArgs =
-        RelevantExplicitArg p <$> case position of
+        Arg p Explicit Relevant <$> case position of
           FunctionInput {} -> [newExpr, existingExpr]
           FunctionOutput {} -> [existingExpr, newExpr]
   let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs

@@ -178,7 +178,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
 
       extraResourceNames <- lookupInDeclCtx currentPass ident resourceUsageDeclCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
-      let extraResourceArgs = fmap (RelevantExplicitArg p1) extraResourceVarArgs
+      let extraResourceArgs = fmap (Arg p1 Explicit Relevant) extraResourceVarArgs
       return $ normAppList p1 newFun (extraResourceArgs <> args')
 
 createBinders ::

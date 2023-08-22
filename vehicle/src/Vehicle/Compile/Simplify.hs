@@ -55,7 +55,7 @@ instance Simplify (Expr Name Builtin) where
               p1
               (Builtin p2 (BuiltinConstructor (LVec n)))
               [ head args,
-                RelevantExplicitArg p2 (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
+                Arg p2 Explicit Relevant (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
                 last args
               ]
         where

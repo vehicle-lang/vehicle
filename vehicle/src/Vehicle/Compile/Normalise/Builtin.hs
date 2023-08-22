@@ -322,9 +322,9 @@ evalFoldList evalApp = \case
     Just $ return e
   [f, e, VCons [x, xs]] ->
     Just $ do
-      let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [RelevantExplicitArg mempty f, RelevantExplicitArg mempty e, xs]
+      let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
       r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
-      evalApp f [x, RelevantExplicitArg mempty r]
+      evalApp f [x, Arg mempty Explicit Relevant r]
   _ -> Nothing
 
 evalFoldVector ::
@@ -339,7 +339,7 @@ evalFoldVector evalApp = \case
         evalApp
           f
           [ x,
-            RelevantExplicitArg mempty r
+            Arg mempty Explicit Relevant r
           ]
   _ -> Nothing
 
@@ -369,9 +369,9 @@ evalMapList evalApp = \case
   [f, VCons [x, xs]] -> Just $ do
     fx <- evalApp f [x]
     fxs <- case evalMapList evalApp [f, argExpr xs] of
-      Nothing -> return $ VBuiltin (mkBuiltinFunction MapList) [RelevantExplicitArg mempty f, xs]
+      Nothing -> return $ VBuiltin (mkBuiltinFunction MapList) [Arg mempty Explicit Relevant f, xs]
       Just fxs -> fxs
-    return $ VBuiltin (mkBuiltinConstructor Cons) (RelevantExplicitArg mempty <$> [fx, fxs])
+    return $ VBuiltin (mkBuiltinConstructor Cons) (Arg mempty Explicit Relevant <$> [fx, fxs])
   _ -> Nothing
 
 evalMapVector ::
@@ -404,9 +404,9 @@ type EvalDerived builtin m =
 evalImplies :: EvalDerived builtin m
 evalImplies = \case
   [e1, e2] -> Just $ do
-    let defaultNot = VBuiltin (mkBuiltinFunction Not) [RelevantExplicitArg mempty e1]
+    let defaultNot = VBuiltin (mkBuiltinFunction Not) [Arg mempty Explicit Relevant e1]
     let ne1 = fromMaybe defaultNot (evalNot [e1])
-    let defaultOr = VBuiltin (mkBuiltinFunction Or) [RelevantExplicitArg mempty ne1, RelevantExplicitArg mempty e2]
+    let defaultOr = VBuiltin (mkBuiltinFunction Or) [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
     let maybeRes = evalOr [ne1, e2]
     return $ fromMaybe defaultOr maybeRes
   _ -> Nothing

@@ -217,7 +217,7 @@ instance PrintableBuiltin JBuiltin where
     VectorType -> V.Builtin p (V.BuiltinType V.Vector)
     Optimise minimise ctx ->
       V.App p (V.Builtin p (V.BuiltinFunction $ V.Optimise minimise)) $
-        V.RelevantExplicitArg p <$> [ctxVar]
+        V.Arg p V.Explicit V.Relevant <$> [ctxVar]
       where
         mkVar doc = V.FreeVar p $ V.Identifier V.User (layoutAsText doc)
         ctxVar = mkVar $ if null ctx then "" else pretty ctx

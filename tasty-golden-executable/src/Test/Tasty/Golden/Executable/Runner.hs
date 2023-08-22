@@ -479,8 +479,8 @@ findTestProducesGolden_ testProduces = do
           return filesForPattern
   return $ concat filesByPattern
 
-fileSizeCutOff :: Integer
-fileSizeCutOff = 1000
+fileSizeCutOffBytes :: Integer
+fileSizeCutOffBytes = 100000
 
 -- | Compare two files.
 --
@@ -493,9 +493,9 @@ diffFile eq golden actual = do
     withFile actual ReadMode $ \actualHandle -> do
       actualSize <- hFileSize actualHandle
       actualContents <- LazyIO.hGetContents actualHandle
-      if max goldenSize actualSize < fileSizeCutOff
+      if max goldenSize actualSize < fileSizeCutOffBytes
         then diffText eq goldenContents actualContents
-        else when (goldenContents /= actualContents) $ throw NoDiff
+        else when (goldenContents /= actualContents) $ throw (NoDiff "file too big")
 
 -- | Compare two texts.
 --

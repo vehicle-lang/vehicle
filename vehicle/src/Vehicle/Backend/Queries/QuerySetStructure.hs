@@ -324,11 +324,11 @@ eliminateNot arg = case arg of
   -- normalising the quantifier.
   VInfiniteQuantifier q args binder env body -> do
     let p = mempty
-    let negatedBody = NotExpr p [RelevantExplicitArg p body]
+    let negatedBody = NotExpr p [Arg p Explicit Relevant body]
     Just $ VInfiniteQuantifier (neg q) args binder env negatedBody
   VFiniteQuantifier q args binder env body -> do
     let p = mempty
-    let negatedBody = NotExpr p [RelevantExplicitArg p body]
+    let negatedBody = NotExpr p [Arg p Explicit Relevant body]
     Just $ VFiniteQuantifier (neg q) args binder env negatedBody
   -- Errors
   _ -> Nothing

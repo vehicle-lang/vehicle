@@ -100,9 +100,9 @@ getCandidates ctx (Resolve origin _ _ expr) = do
           VIndexType size -> do
             succN <- do
               let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
-              let defaultExpr = VBuiltin (StandardBuiltin (BuiltinFunction (Add AddNat))) [n, RelevantExplicitArg mempty (VNatLiteral 1)]
+              let defaultExpr = VBuiltin (StandardBuiltin (BuiltinFunction (Add AddNat))) [n, Arg mempty Explicit Relevant (VNatLiteral 1)]
               return $ fromMaybe defaultExpr maybeNormResult
-            Just (succN, [IrrelevantImplicitArg mempty size])
+            Just (succN, [Arg mempty (Implicit False) Irrelevant size])
           _ -> Nothing
         _ -> Nothing
 

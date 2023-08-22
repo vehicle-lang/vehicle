@@ -218,6 +218,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
       where
-        newVar p = RelevantExplicitArg p (BoundVar p $ shiftDBIndex 0 d)
+        newVar p = Arg p Explicit Relevant (BoundVar p $ shiftDBIndex 0 d)
         goBinder = fmap (go d)
         goArgs = fmap (fmap (go d))

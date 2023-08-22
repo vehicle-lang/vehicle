@@ -291,7 +291,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network controller:controller.onnx",
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },

@@ -50,8 +50,8 @@ liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
     If
     [ t,
       cond,
-      RelevantExplicitArg mempty (liftIf f $ argExpr e1),
-      RelevantExplicitArg mempty (liftIf f $ argExpr e2)
+      Arg mempty Explicit Relevant (liftIf f $ argExpr e1),
+      Arg mempty Explicit Relevant (liftIf f $ argExpr e2)
     ]
 liftIf f e = f e
 
@@ -98,7 +98,7 @@ unfoldIf :: VArg Builtin -> Value Builtin -> Value Builtin -> Value Builtin
 unfoldIf c x y =
   VBuiltinFunction
     Or
-    $ RelevantExplicitArg mempty
-      <$> [ VBuiltinFunction And [c, RelevantExplicitArg mempty x],
-            VBuiltinFunction And [RelevantExplicitArg mempty (VBuiltinFunction Not [c]), RelevantExplicitArg mempty y]
+    $ Arg mempty Explicit Relevant
+      <$> [ VBuiltinFunction And [c, Arg mempty Explicit Relevant x],
+            VBuiltinFunction And [Arg mempty Explicit Relevant (VBuiltinFunction Not [c]), Arg mempty Explicit Relevant y]
           ]

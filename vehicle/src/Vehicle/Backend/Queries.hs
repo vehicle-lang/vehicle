@@ -252,7 +252,7 @@ compilePropertyTopLevelStructure = go
               -- If the property is universally quantified then we negate the expression.
               logDebug MinDetail ("Negating property..." <> line)
               let p = mempty
-              return (True, BuiltinFunctionExpr p Not [RelevantExplicitArg p body])
+              return (True, BuiltinFunctionExpr p Not [Arg p Explicit Relevant body])
 
           let negatedExpr = VInfiniteQuantifier Exists args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr

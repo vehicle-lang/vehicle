@@ -414,10 +414,10 @@ mkInputVarEqualityExpr dimensions e1 e2 = do
               where
                 tensorType = VUnitLiteral
                 nonExplicitArgs =
-                  [ RelevantImplicitArg p tensorType,
-                    RelevantImplicitArg p tensorType,
-                    IrrelevantImplicitArg p d,
-                    RelevantInstanceArg p (mkVectorEquality ds [])
+                  [ Arg p (Implicit True) Relevant tensorType,
+                    Arg p (Implicit True) Relevant tensorType,
+                    Arg p (Implicit True) Irrelevant d,
+                    Arg p (Instance True) Relevant (mkVectorEquality ds [])
                   ]
 
 replaceApplicationsInAssertion ::

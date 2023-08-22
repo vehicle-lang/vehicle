@@ -88,3 +88,9 @@ markInserted = \case
   Explicit {} -> Explicit
   Implicit {} -> Implicit True
   Instance {} -> Instance True
+
+wasInsertedByCompiler :: (HasVisibility a) => a -> InsertedByCompiler
+wasInsertedByCompiler x = case visibilityOf x of
+  Explicit {} -> False
+  Implicit b -> b
+  Instance b -> b
