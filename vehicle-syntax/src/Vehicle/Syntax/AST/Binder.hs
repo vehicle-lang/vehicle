@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
@@ -68,13 +70,6 @@ instance HasName BinderDisplayForm (Maybe Name) where
   nameOf = nameOf . namingForm
 
 instance Serialize BinderDisplayForm
-
-mapBinderFormName :: (Name -> Name) -> BinderDisplayForm -> BinderDisplayForm
-mapBinderFormName f binderDisplayForm =
-  BinderDisplayForm
-    { namingForm = mapBindingNamingFormName f $ namingForm binderDisplayForm,
-      foldingForm = foldingForm binderDisplayForm
-    }
 
 --------------------------------------------------------------------------------
 -- Binders
@@ -154,3 +149,14 @@ binderNamingForm = namingForm . binderDisplayForm
 
 setBinderRelevance :: GenericBinder expr -> Relevance -> GenericBinder expr
 setBinderRelevance (Binder p u v _r x) r = Binder p u v r x
+
+mapBinderNamingForm :: (BinderNamingForm -> BinderNamingForm) -> GenericBinder expr -> GenericBinder expr
+mapBinderNamingForm f Binder {..} =
+  Binder
+    { binderDisplayForm =
+        BinderDisplayForm
+          { namingForm = f $ namingForm binderDisplayForm,
+            foldingForm = foldingForm binderDisplayForm
+          },
+      ..
+    }

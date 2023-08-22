@@ -13,6 +13,7 @@ import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
+import Vehicle.Backend.Tensors.Clean (cleanUpHigherOrderStuff)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.EtaConversion (etaExpandProg)
@@ -104,7 +105,7 @@ compileToLossFunction (imports, typedProg) differentiableLogic outputFile output
   let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
-  compileToJSON lossProg outputFile outputAsJSON
+  compileToTensors lossProg outputFile outputAsJSON
 
 compileDirect ::
   (MonadCompile m, MonadIO m) =>
@@ -115,21 +116,25 @@ compileDirect ::
 compileDirect (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
-  compileToJSON resolvedProg outputFile outputAsJSON
+  compileToTensors resolvedProg outputFile outputAsJSON
 
-compileToJSON ::
+compileToTensors ::
   forall builtin m.
   (MonadCompile m, MonadIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileToJSON prog outputFile outputAsJSON = do
+compileToTensors prog outputFile outputAsJSON = do
   relevantProg <- removeIrrelevantCodeFromProg prog
   let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
   literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  hoistedProg <- hoistInferableParameters literalFreeProg
+  logDebug MinDetail $ prettyFriendly literalFreeProg
+  cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
+  logDebug MinDetail $ prettyFriendly cleanedProg
+
+  hoistedProg <- hoistInferableParameters cleanedProg
   functionalisedProg <- functionaliseResources hoistedProg
   etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
