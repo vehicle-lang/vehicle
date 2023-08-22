@@ -130,9 +130,7 @@ compileToTensors prog outputFile outputAsJSON = do
   let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
   literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  logDebug MinDetail $ prettyFriendly literalFreeProg
   cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
-  logDebug MinDetail $ prettyFriendly cleanedProg
 
   hoistedProg <- hoistInferableParameters cleanedProg
   functionalisedProg <- functionaliseResources hoistedProg
