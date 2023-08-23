@@ -6,7 +6,6 @@
     "fake.onnx"
   ],
   "produces": [
-    "Marabou.queries/multiProperty!1!0-query1.txt",
     "Marabou.queries/*.vcl-plan"
   ],
   "ignore": {
