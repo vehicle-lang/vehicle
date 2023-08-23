@@ -8,7 +8,7 @@ This page lists supported and possible future verifier backends, and relevant in
 
 ![Top Language](https://img.shields.io/github/languages/top/NeuralNetworkVerification/Marabou)
 
-![Verifier Type](https://img.shields.io/badge/verifier%20type-complete-brightgreen)
+![Verifier Type](https://img.shields.io/badge/verifier%20type-sound%20and%20complete-brightgreen)
 
 ![Last Commit](https://img.shields.io/github/last-commit/NeuralNetworkVerification/Marabou)
 
