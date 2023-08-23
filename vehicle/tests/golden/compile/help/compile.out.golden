@@ -1,7 +1,7 @@
 Usage: vehicle compile (-t|--target TARGET) (-s|--specification FILE) 
                        [-e|--declaration NAME] [-n|--network NAME:FILE] 
                        [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
-                       [-o|--outputFile FILE] [-m|--moduleName MODULENAME] 
+                       [-o|--output FILE] [-m|--module-name MODULENAME] 
                        [-c|--cache FILE]
 
   Compile a .vcl specification file.
@@ -32,9 +32,9 @@ Available options:
                            colon-separated pair of the name of the parameter in
                            the specification and its value. Can be provided
                            multiple times.
-  -o,--outputFile FILE     Output location for compiled file(s). Defaults to
+  -o,--output FILE         Output location for compiled file(s). Defaults to
                            stdout if not provided.
-  -m,--moduleName MODULENAME
+  -m,--module-name MODULENAME
                            Override the name of the exported ITP module. For
                            example, compiling with 'Foo.Bar' will result in the
                            Agda module with the internal name `Foo.Bar.agda`. If
