@@ -44,7 +44,7 @@ meanScalingValues : Vector Rat;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : Vector Rat -> Vector Rat;
-normalise x = map (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i)) (indices 5)
+normalise x = map (\ i -> (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) (indices 5)
 
 normAcasXu : forallT (acasXu : Vector Rat -> Vector Rat) . Vector Rat -> Vector Rat;
 normAcasXu acasXu x = acasXu (normalise x)
