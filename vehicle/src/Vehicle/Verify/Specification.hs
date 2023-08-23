@@ -47,7 +47,7 @@ instance Pretty QueryMetaData where
 
 data QuerySet a = QuerySet
   { negated :: QuerySetNegationStatus,
-    queries :: MaybeTrivial (DisjunctAll (QueryAddress, a))
+    queries :: DisjunctAll (QueryAddress, a)
   }
   deriving (Show, Generic, Functor, Foldable, Traversable)
 
@@ -61,13 +61,11 @@ traverseQuerySet ::
   QuerySet a ->
   m (QuerySet b)
 traverseQuerySet f QuerySet {..} = do
-  queries' <- traverse (traverse (\(address, query) -> (address,) <$> f (address, query))) queries
+  queries' <- traverse (\(address, query) -> (address,) <$> f (address, query)) queries
   return $ QuerySet negated queries'
 
 querySetSize :: QuerySet a -> Int
-querySetSize QuerySet {..} = case queries of
-  Trivial {} -> 0
-  NonTrivial qs -> length qs
+querySetSize QuerySet {..} = length queries
 
 --------------------------------------------------------------------------------
 -- Property expression
@@ -78,17 +76,25 @@ querySetSize QuerySet {..} = case queries of
 --
 -- This type captures this boolean structure, and is parameterised by the type
 -- of data stored at the position of each query.
-type Property a = BooleanExpr (QuerySet a)
+type Property a = MaybeTrivial (BooleanExpr (QuerySet a))
 
 traverseProperty ::
+  forall m a b.
   (Monad m) =>
   ((QueryAddress, a) -> m b) ->
   Property a ->
   m (Property b)
 traverseProperty f = \case
-  Query qs -> Query <$> traverseQuerySet f qs
-  Disjunct x y -> Disjunct <$> traverseProperty f x <*> traverseProperty f y
-  Conjunct x y -> Conjunct <$> traverseProperty f x <*> traverseProperty f y
+  Trivial b -> return $ Trivial b
+  NonTrivial b -> NonTrivial <$> traverseBoolExpr b
+  where
+    traverseBoolExpr ::
+      BooleanExpr (QuerySet a) ->
+      m (BooleanExpr (QuerySet b))
+    traverseBoolExpr = \case
+      Query qs -> Query <$> traverseQuerySet f qs
+      Disjunct x y -> Disjunct <$> traverseBoolExpr x <*> traverseBoolExpr y
+      Conjunct x y -> Conjunct <$> traverseBoolExpr x <*> traverseBoolExpr y
 
 forQueryInProperty ::
   (Monad m) =>
@@ -100,7 +106,9 @@ forQueryInProperty p f = do
   return ()
 
 propertySize :: Property a -> Int
-propertySize p = sum (fmap querySetSize p)
+propertySize = \case
+  Trivial {} -> 0
+  NonTrivial p -> sum (fmap querySetSize p)
 
 --------------------------------------------------------------------------------
 -- MultiProperty

@@ -1,3 +1,6 @@
+@network
+f : Vector Rat 1 -> Vector Rat 1
+
 @property
 trivial : Bool
-trivial = True
+trivial = f [0] ! 0 > 0

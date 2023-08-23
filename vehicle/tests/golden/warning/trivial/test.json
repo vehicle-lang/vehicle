@@ -1,0 +1,15 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
+  "needs": [
+    "spec.vcl",
+    "fake.onnx"
+  ],
+  "produces": [
+    "Marabou.queries/multiProperty!1!0-query1.txt",
+    "Marabou.queries/*.vcl-plan"
+  ],
+  "ignore": {
+    "lines": ".*\"fileHash\".*"
+  }
+}

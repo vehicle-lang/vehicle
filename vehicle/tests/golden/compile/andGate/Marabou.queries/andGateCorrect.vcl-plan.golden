@@ -1,10 +1,10 @@
 {
   "queryMetaData": {
-    "tag": "Query",
+    "tag": "NonTrivial",
     "contents": {
-      "queries": {
-        "tag": "NonTrivial",
-        "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
           "unDisjunctAll": [
             [
               [
@@ -715,9 +715,9 @@
               }
             ]
           ]
-        }
-      },
-      "negated": true
+        },
+        "negated": true
+      }
     }
   }
 }

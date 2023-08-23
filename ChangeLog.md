@@ -7,6 +7,9 @@
 
 * Added warnings to `compile` command when unneeded resources are passed.
 
+* Added warnings to `verify` command when properties are found to be trivial
+  (i.e. there was no need to call a verifier).
+
 ## Version 0.10.0
 
 * Fixed bug in display of progress bar when verification counter-example found.

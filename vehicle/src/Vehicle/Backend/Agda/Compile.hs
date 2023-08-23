@@ -311,8 +311,8 @@ type MonadAgdaCompile m =
     MonadReader (AgdaOptions, BoolLevel) m
   )
 
-getVerificationFolder :: (MonadAgdaCompile m) => m (Maybe FilePath)
-getVerificationFolder = do
+getVerificationCache :: (MonadAgdaCompile m) => m (Maybe FilePath)
+getVerificationCache = do
   (options, _) <- ask
   return $ verificationCache options
 
@@ -855,12 +855,12 @@ compilePostulate name t =
 
 compileProperty :: (MonadAgdaCompile m) => Code -> Code -> m Code
 compileProperty propertyName propertyBody = do
-  maybeVerificationFolder <- getVerificationFolder
+  maybeVerificationCache <- getVerificationCache
   return $
-    case maybeVerificationFolder of
+    case maybeVerificationCache of
       Nothing ->
         "postulate" <+> propertyName <+> ":" <+> align propertyBody
-      Just verificationFolder ->
+      Just verificationCache ->
         scopeCode "abstract" $
           propertyName
             <+> ":"
@@ -870,8 +870,8 @@ compileProperty propertyName propertyBody = do
             <+> "= checkSpecification record"
             <> line
             <> indentCode
-              ( "{ verificationFolder   ="
-                  <+> dquotes (pretty verificationFolder)
+              ( "{ cache ="
+                  <+> dquotes (pretty verificationCache)
                   <> line
                   <> "}"
               )

@@ -1,16 +1,16 @@
 {
   "queryMetaData": {
-    "tag": "Conjunct",
-    "contents": [
-      {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Conjunct",
+      "contents": [
+        {
+          "tag": "Conjunct",
+          "contents": [
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
                   "unDisjunctAll": [
                     [
                       [
@@ -112,17 +112,14 @@
                       }
                     ]
                   ]
-                }
-              },
-              "negated": false
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
+                },
+                "negated": false
+              }
+            },
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
                   "unDisjunctAll": [
                     [
                       [
@@ -224,22 +221,19 @@
                       }
                     ]
                   ]
-                }
-              },
-              "negated": false
+                },
+                "negated": false
+              }
             }
-          }
-        ]
-      },
-      {
-        "tag": "Conjunct",
-        "contents": [
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
+          ]
+        },
+        {
+          "tag": "Conjunct",
+          "contents": [
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
                   "unDisjunctAll": [
                     [
                       [
@@ -341,17 +335,14 @@
                       }
                     ]
                   ]
-                }
-              },
-              "negated": false
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "tag": "NonTrivial",
-                "contents": {
+                },
+                "negated": false
+              }
+            },
+            {
+              "tag": "Query",
+              "contents": {
+                "queries": {
                   "unDisjunctAll": [
                     [
                       [
@@ -453,13 +444,13 @@
                       }
                     ]
                   ]
-                }
-              },
-              "negated": false
+                },
+                "negated": false
+              }
             }
-          }
-        ]
-      }
-    ]
+          ]
+        }
+      ]
+    }
   }
 }

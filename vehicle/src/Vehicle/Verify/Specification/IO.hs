@@ -287,13 +287,15 @@ verifyPropertyBooleanStructure ::
   (MonadVerifyProperty m) =>
   Property QueryMetaData ->
   m PropertyStatus
-verifyPropertyBooleanStructure property = do
-  (negationStatus, status) <- go property
-  return $ PropertyStatus negationStatus status
+verifyPropertyBooleanStructure = \case
+  Trivial status -> return $ PropertyStatus (Trivial status)
+  NonTrivial structure -> do
+    (negationStatus, status) <- go structure
+    return $ PropertyStatus $ NonTrivial (negationStatus, status)
   where
     go ::
       BooleanExpr (QuerySet QueryMetaData) ->
-      m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
+      m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct x y -> do
@@ -310,12 +312,10 @@ verifyPropertyBooleanStructure property = do
 verifyQuerySet ::
   (MonadVerifyProperty m) =>
   QuerySet QueryMetaData ->
-  m (QuerySetNegationStatus, MaybeTrivial (QueryResult UserVariableAssignment))
-verifyQuerySet (QuerySet negated queries) = case queries of
-  Trivial b -> return (negated, Trivial b)
-  NonTrivial disjuncts -> do
-    result <- verifyDisjunctAll disjuncts
-    return (negated, NonTrivial result)
+  m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
+verifyQuerySet (QuerySet negated disjuncts) = do
+  result <- verifyDisjunctAll disjuncts
+  return (negated, result)
 
 verifyDisjunctAll ::
   forall m.
@@ -360,11 +360,11 @@ outputPropertyResult ::
   PropertyAddress ->
   PropertyStatus ->
   m ()
-outputPropertyResult verificationCache address result@(PropertyStatus _negated s) = do
+outputPropertyResult verificationCache address result@(PropertyStatus status) = do
   liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
   writePropertyResult verificationCache address (isVerified result)
-  case s of
-    NonTrivial (SAT (Just (UserVariableAssignment assignments))) -> do
+  case status of
+    NonTrivial (_, SAT (Just (UserVariableAssignment assignments))) -> do
       -- Output assignments to command line
       let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
       let witnessDoc = indent 6 assignmentDocs

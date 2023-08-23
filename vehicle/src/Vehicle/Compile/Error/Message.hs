@@ -999,8 +999,6 @@ instance MeaningfulError CompileError where
                   <+> "be used as the dimension of a dataset"
                   <+> "(networks will be supported later)."
           }
-    -- Property
-
     PropertyTypeUnsupported (ident, p) actualType ->
       UError $
         UserError
