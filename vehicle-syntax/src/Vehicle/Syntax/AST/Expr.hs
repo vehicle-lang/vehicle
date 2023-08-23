@@ -192,7 +192,9 @@ type Telescope var builtin = [Binder var builtin]
 mkHole :: Provenance -> Name -> Expr var builtin
 mkHole p name = Hole p ("_" <> name)
 
-isTypeSynonym :: Expr var builtin -> Bool
+-- | Tests if a definition's type indicates that the definition is a type
+-- synonym.
+isTypeSynonym :: Type var builtin -> Bool
 isTypeSynonym = \case
   Universe {} -> True
   Pi _ _ res -> isTypeSynonym res

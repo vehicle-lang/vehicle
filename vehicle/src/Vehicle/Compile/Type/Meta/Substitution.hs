@@ -91,8 +91,6 @@ instance (MonadNorm builtin m) => MetaSubstitutable m (Value builtin) where
           case args of
             [] -> return substValue
             (a : as) -> evalApp substValue (a : as)
-    -- logDebug MaxDetail $ prettyVerbose substValue -- <+> prettyVerbose (fmap argExpr (a : as))
-
     VUniverse {} -> return expr
     VFreeVar v spine -> VFreeVar v <$> traverse subst spine
     VBoundVar v spine -> VBoundVar v <$> traverse subst spine

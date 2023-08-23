@@ -1,12 +1,10 @@
-bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd : Vector Bool -> Bool;
 bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 @noinline;
 equalsVector : Vector Rat -> Vector Rat -> Bool;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
 
-type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
-
 @property;
-reachable : forallT (f : Tensor Rat (2 :: nil) -> Tensor Rat (1 :: nil)) . Bool;
+reachable : forallT (f : Vector Rat -> Vector Rat) . Bool;
 reachable f = exists x . equalsVector (f x) [0.0]
