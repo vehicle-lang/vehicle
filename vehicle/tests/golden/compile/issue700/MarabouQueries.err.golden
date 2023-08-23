@@ -1,0 +1,6 @@
+Error at Line 7, Columns 1-13: The property 'robustAround' contains a non-linear constraint which is not supported by the Marabou query format.
+In particular the division at Line 8, Columns 29-30 involves
+  1. the output of network 'classifier' at Line 4, Columns 1-11
+  2. which is used in the denominator of the division
+
+Fix: try rewriting the specification to avoid the non-linearity.

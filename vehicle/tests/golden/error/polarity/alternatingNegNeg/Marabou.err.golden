@@ -4,3 +4,4 @@ In particular:
   2. which is turned into a 'forall' by the 'not' at Line 6, Columns 21-24
   3. which is turned into an 'exists' by the 'not' at Line 6, Columns 16-19
   4. which alternates with the outer 'forall' at Line 6, Columns 5-11
+Fix: try simplifying the specification to avoid the alternating quantifiers.

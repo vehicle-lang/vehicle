@@ -4,10 +4,9 @@ module Vehicle.Compile.Type.Subsystem
   )
 where
 
-import Control.Monad.Except (MonadError (..), runExceptT)
+import Control.Monad.Except (runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
-import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Monomorphisation (monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
@@ -24,9 +23,10 @@ typeCheckWithSubsystem ::
   forall builtin m.
   (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
+  (forall a. CompileError -> m a) ->
   Prog Ix Builtin ->
   m (Prog Ix builtin)
-typeCheckWithSubsystem instanceCandidates prog = do
+typeCheckWithSubsystem instanceCandidates errorHandler prog = do
   typeClassFreeProg <- resolveInstanceArguments prog
   irrelevantFreeProg <- removeIrrelevantCodeFromProg typeClassFreeProg
   monomorphisedProg <- monomorphise isPropertyDecl "-" irrelevantFreeProg
@@ -36,10 +36,7 @@ typeCheckWithSubsystem instanceCandidates prog = do
   resultOrError <- runExceptT $ typeCheckProg instanceCandidates mempty implicitFreeProg
   case resultOrError of
     Right value -> return value
-    Left err@TypingError {} ->
-      compilerDeveloperError $
-        "Subsystem should not be throwing error:" <> line <> indent 2 (pretty (details err))
-    Left otherError -> throwError otherError
+    Left err -> errorHandler err
 
 resolveInstanceArguments ::
   forall m builtin.

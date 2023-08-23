@@ -8,6 +8,7 @@ import Data.Maybe (mapMaybe)
 import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
@@ -23,6 +24,8 @@ solvePolarityConstraint ::
   m ()
 solvePolarityConstraint _ (WithContext constraint ctx) = do
   normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
+  logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
+
   (tc, spine) <- getTypeClass expr
   let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
   let nConstraint = WithContext normConstraint ctx
