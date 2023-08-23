@@ -23,17 +23,14 @@ instance IsVerified (QueryResult witness) where
     SAT {} -> True
     UnSAT -> False
 
-evaluateQuery :: QuerySetNegationStatus -> MaybeTrivial (QueryResult witness) -> Bool
-evaluateQuery negated q =
-  negated `xor` case q of
-    Trivial b -> b
-    NonTrivial a -> isVerified a
+evaluateQuery :: QuerySetNegationStatus -> QueryResult witness -> Bool
+evaluateQuery negated q = negated `xor` isVerified q
 
 --------------------------------------------------------------------------------
 -- Verification status of a single property
 
-data PropertyStatus
-  = PropertyStatus QuerySetNegationStatus (MaybeTrivial (QueryResult UserVariableAssignment))
+newtype PropertyStatus
+  = PropertyStatus (MaybeTrivial (QuerySetNegationStatus, QueryResult UserVariableAssignment))
   deriving (Generic)
 
 instance FromJSON PropertyStatus
@@ -41,17 +38,20 @@ instance FromJSON PropertyStatus
 instance ToJSON PropertyStatus
 
 instance IsVerified PropertyStatus where
-  isVerified (PropertyStatus negated result) = evaluateQuery negated result
+  isVerified (PropertyStatus maybeResult) = case maybeResult of
+    Trivial b -> b
+    NonTrivial (negated, result) -> evaluateQuery negated result
 
 instance Pretty PropertyStatus where
-  pretty (PropertyStatus negated s) = do
-    let witnessText = if negated then "counterexample" else "witness"
-    let (verified, evidenceText) = case s of
-          Trivial status -> (status `xor` negated, "(trivial)")
-          NonTrivial status -> case status of
-            UnSAT -> (negated, "proved no" <+> witnessText <+> "exists")
-            SAT Nothing -> (not negated, "no" <> witnessText <+> "found")
-            SAT Just {} -> (not negated, witnessText <+> "found")
+  pretty (PropertyStatus maybeResult) = do
+    let (verified, evidenceText) = case maybeResult of
+          Trivial status -> (status, "(trivial)")
+          NonTrivial (negated, status) -> do
+            let witnessText = if negated then "counterexample" else "witness"
+            case status of
+              UnSAT -> (negated, "proved no" <+> witnessText <+> "exists")
+              SAT Nothing -> (not negated, "no" <> witnessText <+> "found")
+              SAT Just {} -> (not negated, witnessText <+> "found")
     pretty (statusSymbol verified) <+> "-" <+> evidenceText
 
 --------------------------------------------------------------------------------

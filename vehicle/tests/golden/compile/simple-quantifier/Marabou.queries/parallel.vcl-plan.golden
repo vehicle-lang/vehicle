@@ -1,13 +1,13 @@
 {
   "queryMetaData": {
-    "tag": "Conjunct",
-    "contents": [
-      {
-        "tag": "Query",
-        "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Conjunct",
+      "contents": [
+        {
+          "tag": "Query",
+          "contents": {
+            "queries": {
               "unDisjunctAll": [
                 [
                   [
@@ -151,17 +151,14 @@
                   }
                 ]
               ]
-            }
-          },
-          "negated": true
-        }
-      },
-      {
-        "tag": "Query",
-        "contents": {
-          "queries": {
-            "tag": "NonTrivial",
-            "contents": {
+            },
+            "negated": true
+          }
+        },
+        {
+          "tag": "Query",
+          "contents": {
+            "queries": {
               "unDisjunctAll": [
                 [
                   [
@@ -305,11 +302,11 @@
                   }
                 ]
               ]
-            }
-          },
-          "negated": false
+            },
+            "negated": false
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }

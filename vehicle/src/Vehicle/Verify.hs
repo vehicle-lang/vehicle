@@ -33,19 +33,19 @@ data VerifyOptions = VerifyOptions
 verify :: LoggingSettings -> VerifyOptions -> IO ()
 verify loggingSettings options@VerifyOptions {..} = do
   validQueryFolder <- isValidQueryFolder specification
+  let verifier = verifiers verifierID
+  verifierExecutable <- locateVerifierExecutable verifier verifierLocation
   if validQueryFolder
-    then do
-      let queryFolder = specification
-      verifyQueries loggingSettings queryFolder verifierID verifierLocation
+    then verifyQueries loggingSettings specification verifier verifierExecutable
     else
-      if takeExtension specification == specificationFileExtension
-        then compileAndVerifyQueries loggingSettings options
-        else do
-          fatalError (invalidTargetError specification)
+      if takeExtension specification /= specificationFileExtension
+        then fatalError (invalidTargetError specification)
+        else compileAndVerifyQueries loggingSettings options $ \folder ->
+          verifyQueries loggingSettings folder verifier verifierExecutable
 
 -- | Compiles the specification to a temporary directory and then tries to verify it.
-compileAndVerifyQueries :: LoggingSettings -> VerifyOptions -> IO ()
-compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
+compileAndVerifyQueries :: LoggingSettings -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
+compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
   let queryFormat = VerifierQueries $ verifierQueryFormat $ verifiers verifierID
 
   let inFolder = case verificationCache of
@@ -65,14 +65,12 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
           ..
         }
 
-    verifyQueries loggingSettings tempDir verifierID verifierLocation
+    verifyCommand tempDir
 
-verifyQueries :: LoggingSettings -> FilePath -> VerifierID -> Maybe FilePath -> IO ()
-verifyQueries loggingSettings queryFolder verifierID verifierLocation = do
-  let verifierImpl = verifiers verifierID
-  verifierExecutable <- locateVerifierExecutable verifierImpl verifierLocation
-  runImmediateLogger loggingSettings $
-    verifySpecification queryFolder verifierImpl verifierExecutable
+verifyQueries :: LoggingSettings -> FilePath -> Verifier -> VerifierExecutable -> IO ()
+verifyQueries loggingSettings queryFolder verifier verifierExecutable = do
+  runImmediateLogger loggingSettings $ do
+    verifySpecification queryFolder verifier verifierExecutable
 
 -- | Tries to locate the executable for the verifier at the provided
 -- location and falls back to the PATH variable if none provided. If not

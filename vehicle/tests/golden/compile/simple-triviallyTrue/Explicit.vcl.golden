@@ -1,7 +1,0 @@
-@property;
-p : forallT (f : Vector Rat -> Vector Rat) . Bool;
-p f = (forall x . f x ! 0 > 0.0) or True
-
-@property;
-multiProperty : Vector (Vector Bool);
-multiProperty = [[True, True, True], [False, True, False]]

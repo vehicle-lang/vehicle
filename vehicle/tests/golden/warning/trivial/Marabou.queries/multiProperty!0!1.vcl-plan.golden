@@ -9,8 +9,11 @@
             [
               [
                 {
-                  "propertyName": "increasing",
-                  "propertyIndices": []
+                  "propertyName": "multiProperty",
+                  "propertyIndices": [
+                    0,
+                    1
+                  ]
                 },
                 1
               ],
@@ -47,6 +50,54 @@
                     }
                   },
                   {
+                    "tag": "EliminateViaGaussian",
+                    "contents": [
+                      {
+                        "tag": "UserVar",
+                        "contents": {
+                          "userVarName": "x",
+                          "userVarDimensions": [
+                            1
+                          ],
+                          "unreducedUserVarName": "x"
+                        }
+                      },
+                      {
+                        "solutionEquality": {
+                          "dimensions": [
+                            1
+                          ],
+                          "constantValue": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "coefficients": [
+                            [
+                              {
+                                "tag": "NetworkVar",
+                                "contents": {
+                                  "networkVarIndices": null,
+                                  "networkVarDimensions": [
+                                    1
+                                  ],
+                                  "networkName": "f",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              },
+                              {
+                                "numerator": 1,
+                                "denominator": 1
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
                     "tag": "Reduce",
                     "contents": {
                       "tag": "NetworkVar",
@@ -75,48 +126,6 @@
                         "application": 0
                       }
                     }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "f",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
                 "metaNetwork": [

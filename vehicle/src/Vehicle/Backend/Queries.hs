@@ -28,6 +28,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Prelude.MonadContext (MonadContext (addDeclToContext), getNormDeclCtx, runContextT)
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Compile.Warning (CompileWarning (..))
 import Vehicle.Expr.Boolean
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.BuiltinPatterns
@@ -197,14 +198,21 @@ compileProperty ::
   m ()
 compileProperty outputLocation expr = do
   property <- compilePropertyTopLevelStructure expr
-  let (propertyMetaData, propertyQueries) = (NonEmpty.unzip . fmap NonEmpty.unzip) property
+
+  PropertyState {..} <- ask
+  (propertyMetaData, propertyQueries) <- case property of
+    NonTrivial b -> do
+      let (metaData, queries) = (NonEmpty.unzip . fmap NonEmpty.unzip) b
+      return (NonTrivial metaData, NonTrivial queries)
+    Trivial status -> do
+      logWarning (pretty $ TrivialProperty propertyAddress status)
+      return (Trivial status, Trivial status)
 
   case outputLocation of
     Nothing -> do
       forQueryInProperty propertyQueries $ \(queryAddress, queryText) ->
         programOutput $ line <> line <> pretty queryAddress <> line <> pretty queryText
     Just folder -> do
-      PropertyState {..} <- ask
       writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan propertyMetaData)
       forQueryInProperty propertyQueries $ writeVerificationQuery queryFormat folder
 
@@ -220,18 +228,18 @@ compilePropertyTopLevelStructure = go
     go :: Value Builtin -> m (Property (QueryMetaData, QueryText))
     go expr = case expr of
       VBoolLiteral {} ->
-        Query <$> compileQuerySet False expr
+        fmap Query <$> compileQuerySet False expr
       VBuiltinFunction Equals {} _ ->
-        Query <$> compileQuerySet False expr
+        fmap Query <$> compileQuerySet False expr
       VBuiltinFunction Order {} _ ->
-        Query <$> compileQuerySet False expr
+        fmap Query <$> compileQuerySet False expr
       VFreeVar ident _
         | ident == identifierOf StdEqualsVector ->
-            Query <$> compileQuerySet False expr
+            fmap Query <$> compileQuerySet False expr
       VBuiltinFunction And [e1, e2] ->
-        smartConjunct <$> go (argExpr e1) <*> go (argExpr e2)
+        andTrivial Conjunct <$> go (argExpr e1) <*> go (argExpr e2)
       VBuiltinFunction Or [e1, e2] ->
-        smartDisjunct <$> go (argExpr e1) <*> go (argExpr e2)
+        orTrivial Disjunct <$> go (argExpr e1) <*> go (argExpr e2)
       VBuiltinFunction Not [e] ->
         case eliminateNot (argExpr e) of
           Nothing -> compilerDeveloperError $ "Unable to push not through:" <+> prettyVerbose e
@@ -255,14 +263,14 @@ compilePropertyTopLevelStructure = go
               return (True, BuiltinFunctionExpr p Not [Arg p Explicit Relevant body])
 
           let negatedExpr = VInfiniteQuantifier Exists args binder env existsBody
-          Query <$> compileQuerySet isPropertyNegated negatedExpr
+          fmap Query <$> compileQuerySet isPropertyNegated negatedExpr
       _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
 
 compileQuerySet ::
   (MonadCompileProperty m) =>
   Bool ->
   Value Builtin ->
-  m (QuerySet (QueryMetaData, QueryText))
+  m (MaybeTrivial (QuerySet (QueryMetaData, QueryText)))
 compileQuerySet isPropertyNegated expr = do
   PropertyState {..} <- ask
   -- First we attempt to recursively compile down the remaining boolean structure,
@@ -285,16 +293,17 @@ compileQuerySet isPropertyNegated expr = do
       UnsupportedInequalityOp -> do
         throwError $ UnsupportedInequality (queryFormatID queryFormat) declProvenance
     Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
-      queries <- case maybeTrivialBoolExpr of
-        Trivial b -> return $ Trivial b
+      case maybeTrivialBoolExpr of
+        Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
         NonTrivial boolExpr -> do
           metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
           let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
           let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
           queries <- traverse compilePartition numberedMetaNetworkPartitions
-          return $ fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
-
-      return $ QuerySet isPropertyNegated queries
+          let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
+          case maybeFlattenedQueries of
+            Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
+            NonTrivial flattenedQueries -> return $ NonTrivial $ QuerySet isPropertyNegated flattenedQueries
 
 -- | Constructs a temporary error with no real fields. This should be recaught
 -- and populated higher up the query compilation process.
@@ -341,18 +350,3 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
 
                 return (queryAddress, (queryData, queryText))
             )
-
---------------------------------------------------------------------------------
--- Other
-
-smartConjunct :: BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a)
-smartConjunct x y = case (x, y) of
-  (Query (QuerySet _ (Trivial b)), _) -> if b then y else x
-  (_, Query (QuerySet _ (Trivial b))) -> if b then x else y
-  (_, _) -> Conjunct x y
-
-smartDisjunct :: BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a) -> BooleanExpr (QuerySet a)
-smartDisjunct x y = case (x, y) of
-  (Query (QuerySet _ (Trivial b)), _) -> if b then x else y
-  (_, Query (QuerySet _ (Trivial b))) -> if b then y else x
-  (_, _) -> Disjunct x y

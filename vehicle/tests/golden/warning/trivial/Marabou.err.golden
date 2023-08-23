@@ -1,0 +1,3 @@
+[93mWarning: The property 'p' was found to be True without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.[m
+[93mWarning: The property 'multiProperty!0!0' was found to be True without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.[m
+[93mWarning: The property 'multiProperty!0!2' was found to be False without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.[m
