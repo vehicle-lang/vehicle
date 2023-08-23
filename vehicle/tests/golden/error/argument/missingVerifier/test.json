@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle verify --specification spec.vcl --verifier Marabou --verifierLocation missing.exe",
+  "run": "vehicle verify --specification spec.vcl --verifier Marabou --verifier-location missing.exe",
   "needs": ["spec.vcl"]
 }

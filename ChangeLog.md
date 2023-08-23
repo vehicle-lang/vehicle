@@ -2,6 +2,12 @@
 
 ## Version 0.11.0
 
+* In order to better follow the kebab-case conventions for command line arguments
+  the following command-line arguments have been renamed as follows:
+    - `outputFile` -> `output`
+    - `moduleName` -> `module-name`
+    - `verifierLocation` -> `verifier-location`
+
 * Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
  `unification of lambdas not implemented` error.
 

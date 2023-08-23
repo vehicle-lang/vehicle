@@ -38,7 +38,7 @@ data CompileOptions = CompileOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    outputFile :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String,
     verificationCache :: Maybe FilePath,
     outputAsJSON :: Bool
@@ -60,13 +60,13 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
   let resources = Resources specification networkLocations datasetLocations parameterValues
   case target of
     VerifierQueries queryFormatID ->
-      compileToQueryFormat result resources queryFormatID outputFile
+      compileToQueryFormat result resources queryFormatID output
     LossFunction differentiableLogic ->
-      compileToLossFunction result differentiableLogic outputFile outputAsJSON
+      compileToLossFunction result differentiableLogic output outputAsJSON
     ITP Agda ->
       compileToAgda options result
     ExplicitVehicle ->
-      compileDirect result outputFile outputAsJSON
+      compileDirect result output outputAsJSON
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -78,10 +78,10 @@ compileToQueryFormat ::
   QueryFormatID ->
   Maybe FilePath ->
   m ()
-compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = do
+compileToQueryFormat (imports, typedProg) resources queryFormatID output = do
   let mergedProg = mergeImports imports typedProg
   let verifier = queryFormats queryFormatID
-  compileToQueries verifier mergedProg resources outputFile
+  compileToQueries verifier mergedProg resources output
 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
@@ -90,9 +90,9 @@ compileToAgda ::
   m ()
 compileToAgda options@CompileOptions {..} (_, typedProg) = do
   warnIfResourcesProvidedToITP Agda options
-  let agdaOptions = AgdaOptions verificationCache outputFile moduleName
+  let agdaOptions = AgdaOptions verificationCache output moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
-  writeAgdaFile outputFile agdaCode
+  writeAgdaFile output agdaCode
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
@@ -101,11 +101,11 @@ compileToLossFunction ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction (imports, typedProg) differentiableLogic outputFile outputAsJSON = do
+compileToLossFunction (imports, typedProg) differentiableLogic output outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
-  compileToTensors lossProg outputFile outputAsJSON
+  compileToTensors lossProg output outputAsJSON
 
 compileDirect ::
   (MonadCompile m, MonadIO m) =>

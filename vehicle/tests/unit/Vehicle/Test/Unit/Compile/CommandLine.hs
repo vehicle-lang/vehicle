@@ -110,7 +110,7 @@ verifyTests =
         "vehicle verify \
         \--specification queries \
         \--verifier Marabou \
-        \--verifierLocation bin/Marabou \
+        \--verifier-location bin/Marabou \
         \--cache local/outputFolder"
         Options
           { globalOptions = defaultGlobalOptions,

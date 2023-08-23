@@ -37,7 +37,7 @@ import Vehicle.Syntax.Sugar
 
 data AgdaOptions = AgdaOptions
   { verificationCache :: Maybe FilePath,
-    outputFile :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String
   }
 
@@ -55,7 +55,7 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
 
     let nameOfModule = Text.pack $ case moduleName options of
           Just name -> name
-          _ -> maybe "Spec" takeBaseName (outputFile options)
+          _ -> maybe "Spec" takeBaseName (output options)
 
     let agdaProgram =
           unAnnotate

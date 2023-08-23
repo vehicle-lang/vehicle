@@ -58,7 +58,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} = do
         { target = queryFormat,
           specification = specification,
           declarationsToCompile = properties,
-          outputFile = Just tempDir,
+          output = Just tempDir,
           moduleName = Nothing,
           verificationCache = verificationCache,
           outputAsJSON = False,
@@ -109,7 +109,7 @@ unlocatableVerifierExecutableError verifierName =
     <+> quotePretty verifierName
     <+> "via the PATH environment variable."
     <> line
-    <> "Please either provide it using the `--verifierLocation` command line option"
+    <> "Please either provide it using the `--verifier-location` command line option"
       <+> "or add it to the PATH environment variable."
 
 invalidTargetError :: FilePath -> Doc a
