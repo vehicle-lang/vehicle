@@ -41,11 +41,12 @@ data TypeCheckOptions = TypeCheckOptions
 
 typeCheck :: LoggingSettings -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggingSettings $ do
-  (_, typedProg) <- typeCheckUserProg options
+  (imports, typedProg) <- typeCheckUserProg options
+  let mergedProg = mergeImports imports typedProg
   case typingSystem of
     Standard -> return ()
-    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin mempty typedProg
-    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin mempty typedProg
+    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin mempty throwError mergedProg
+    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin mempty throwError mergedProg
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes

@@ -1,0 +1,7 @@
+[
+  {
+    "name": "MarabouQueries",
+    "run": "vehicle verify --specification spec.vcl --network classifier:fake.onnx --verifier Marabou",
+    "needs": ["spec.vcl", "fake.onnx"]
+  }
+]

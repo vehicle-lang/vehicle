@@ -683,6 +683,6 @@ currentPass = "linear satisfaction problem"
 -- and populated higher up the query compilation process.
 catchableUnsupportedNonLinearConstraint :: CompileError
 catchableUnsupportedNonLinearConstraint =
-  UnsupportedNonLinearConstraint x x x x x
+  UnsupportedNonLinearConstraint x x x
   where
     x = developerError "Evaluating temporary quantifier error"

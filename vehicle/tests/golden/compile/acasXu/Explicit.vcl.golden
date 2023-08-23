@@ -59,7 +59,7 @@ meanScalingValues : UnnormalisedInputVector;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : UnnormalisedInputVector -> InputVector;
-normalise x = foreachVector__Rat 5 (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i))
+normalise x = foreachVector__Rat 5 (\ i -> (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i))
 
 normAcasXu : forallT (acasXu : InputVector -> OutputVector) . UnnormalisedInputVector -> OutputVector;
 normAcasXu acasXu x = acasXu (normalise x)
@@ -71,7 +71,7 @@ maximalScore : forallT (acasXu : InputVector -> OutputVector) . Index -> Unnorma
 maximalScore acasXu i x = forallIndex 5 (\ j -> i != j => normAcasXu acasXu x ! i > normAcasXu acasXu x ! j)
 
 scaleCOCOutput : Rat -> Rat;
-scaleCOCOutput x = (x - 7.518884) - 373.94992
+scaleCOCOutput x = (x - 7.518884) / 373.94992
 
 intruderDistantAndSlower : UnnormalisedInputVector -> Bool;
 intruderDistantAndSlower x = x ! distanceToIntruder >= 55947.691 and x ! speed >= 1145.0 and x ! intruderSpeed <= 60.0

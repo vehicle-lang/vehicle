@@ -103,7 +103,7 @@ tokSub = mkToken B.TokSub "-"
 
 tokMul = mkToken B.TokMul "*"
 
-tokDiv = mkToken B.TokDiv "-"
+tokDiv = mkToken B.TokDiv "/"
 
 tokSeqOpen = mkToken B.TokSeqOpen "["
 

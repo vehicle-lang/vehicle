@@ -5,6 +5,12 @@
 * Fixed bug where using `forall ... in` and `exists ... in` would sometimes throw
  `unification of lambdas not implemented` error.
 
+* When compiling a non-linear specification to verify queries, fixed the following bugs
+  with the non-linearity analysis:
+  - The presence of type-synonyms would cause the analysis to error.
+  - Using a linear quantity as the denominator of a division would sometimes cause the analysis to error.
+  - Using a linear quantity as the denominator of a division would sometimes display an erroneous error referencing a non-existent multiplication.
+
 * Added warnings to `compile` command when unneeded resources are passed.
 
 ## Version 0.10.0
