@@ -1,4 +1,4 @@
-untyped : (\ A -> Vector A) Rat;
+untyped : Vector Rat;
 untyped = [0.0]
 
 @property;

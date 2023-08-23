@@ -1,8 +1,5 @@
-bigAnd : (\ A -> Vector A) Bool -> Bool;
+bigAnd : Vector Bool -> Bool;
 bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-foreachVector : forallT n . (Index -> Bool) -> Vector Bool;
-foreachVector n f = map f (indices n)
 
 @noinline;
 addVector__Rat__Rat__Rat : Vector Rat -> Vector Rat -> Vector Rat;
@@ -20,26 +17,21 @@ subVector__Rat__Rat__Rat _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 subVector__Vector_Rat__Vector_Rat__Vector_Rat : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 subVector__Vector_Rat__Vector_Rat__Vector_Rat _x0 _x1 = zipWith (\ x -> \ y -> subVector__Rat__Rat__Rat x y) _x0 _x1
 
-forallIndex : forallT n . (Index -> Bool) -> Bool;
-forallIndex n f = bigAnd (foreachVector n (\ i -> f i))
-
-type Tensor A ds = fold (\ d -> \ t -> Vector t) A ds
-
-zeroD : Tensor Rat nil;
+zeroD : Rat;
 zeroD = 2.5
 
-oneD : Tensor Rat (2 :: nil);
+oneD : Vector Rat;
 oneD = [zeroD, 1.0]
 
-twoD : Tensor Rat (2 :: 2 :: nil);
+twoD : Vector (Vector Rat);
 twoD = [oneD, [2.0, 3.0]]
 
-addition : Tensor Rat (2 :: 2 :: nil);
+addition : Vector (Vector Rat);
 addition = addVector__Vector_Rat__Vector_Rat__Vector_Rat twoD twoD
 
-subtraction : Tensor Rat (2 :: 2 :: nil);
+subtraction : Vector (Vector Rat);
 subtraction = subVector__Vector_Rat__Vector_Rat__Vector_Rat twoD twoD
 
 @property;
-p : forallT (f : Tensor Rat (2 :: 2 :: nil) -> Tensor Rat (2 :: 2 :: nil)) . Bool;
-p f = forallIndex 2 (\ i -> forallIndex 2 (\ j -> addVector__Vector_Rat__Vector_Rat__Vector_Rat (f subtraction) addition ! i ! j >= 0.0))
+p : forallT (f : Vector (Vector Rat) -> Vector (Vector Rat)) . Bool;
+p f = bigAnd (map (\ i -> bigAnd (map (\ j -> addVector__Vector_Rat__Vector_Rat__Vector_Rat (f subtraction) addition ! i ! j >= 0.0) (indices 2))) (indices 2))
