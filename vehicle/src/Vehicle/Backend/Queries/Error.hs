@@ -18,47 +18,53 @@ diagnoseNonLinearity ::
   (MonadCompile m) =>
   QueryFormatID ->
   Prog Ix Builtin ->
-  Identifier ->
+  DeclProvenance ->
   m CompileError
-diagnoseNonLinearity queryFormat prog propertyIdentifier = do
+diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
   setCallDepth 0
   logDebug MinDetail $
     "ERROR: found non-linear property. Switching to linearity type-checking mode for"
       <+> quotePretty propertyIdentifier
       <> line
 
-  Main typedDecls <- typeCheckWithSubsystem mempty prog
+  Main typedDecls <- typeCheckWithSubsystem mempty handleUnexpectedError prog
 
   -- Extract and diagnose the type.
   let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
   let propertyType = typeOf property
   case propertyType of
-    LinearityExpr _ (NonLinear p pp1 pp2) -> do
-      let propertyProv = (propertyIdentifier, provenanceOf property)
-      throwError $ UnsupportedNonLinearConstraint queryFormat propertyProv p pp1 pp2
-    _ -> compilerDeveloperError $ "Unexpected linearity type for property" <+> quotePretty propertyIdentifier
+    LinearityExpr _ (NonLinear source) -> do
+      throwError $ UnsupportedNonLinearConstraint queryFormat propertyProv (Right source)
+    _ -> handleUnexpectedError (DevError $ "Unexpected linearity type for property" <+> quotePretty propertyIdentifier)
+  where
+    handleUnexpectedError :: (MonadCompile m) => CompileError -> m a
+    handleUnexpectedError err =
+      throwError $ UnsupportedNonLinearConstraint queryFormat propertyProv (Left err)
 
 diagnoseAlternatingQuantifiers ::
   forall m.
   (MonadCompile m) =>
   QueryFormatID ->
   Prog Ix Builtin ->
-  Identifier ->
+  DeclProvenance ->
   m CompileError
-diagnoseAlternatingQuantifiers queryFormat prog propertyIdentifier = do
+diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier, _) = do
   setCallDepth 0
   logDebug MinDetail $
     "ERROR: found property with alterating quantifiers. Switching to polarity type-checking mode for"
       <+> quotePretty propertyIdentifier
       <> line
 
-  Main typedDecls <- typeCheckWithSubsystem mempty prog
+  Main typedDecls <- typeCheckWithSubsystem mempty handleUnexpectedError prog
 
   -- Extract and diagnose the type.
   let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
   let propertyType = typeOf property
   case propertyType of
-    PolarityExpr _ (MixedSequential p pp1 pp2) -> do
-      let propertyProv = (propertyIdentifier, provenanceOf property)
-      throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv p pp1 pp2
+    PolarityExpr _ (MixedSequential q p pp2) -> do
+      throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Right (q, p, pp2))
     _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier
+  where
+    handleUnexpectedError :: (MonadCompile m) => CompileError -> m a
+    handleUnexpectedError err =
+      throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Left err)

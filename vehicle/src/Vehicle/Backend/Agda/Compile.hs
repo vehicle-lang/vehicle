@@ -29,7 +29,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.BuiltinPatterns
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Syntax.Sugar
 
@@ -38,7 +37,7 @@ import Vehicle.Syntax.Sugar
 
 data AgdaOptions = AgdaOptions
   { verificationCache :: Maybe FilePath,
-    outputFile :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String
   }
 
@@ -46,7 +45,6 @@ compileProgToAgda :: (MonadCompile m) => Prog Ix Builtin -> AgdaOptions -> m (Do
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     monoProg <- monomorphise isPropertyDecl "-" prog
-
     let prog2 = capitaliseTypeNames monoProg
     let prog3 = descopeNamed prog2
     programDoc <- compileProg prog3
@@ -57,7 +55,7 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
 
     let nameOfModule = Text.pack $ case moduleName options of
           Just name -> name
-          _ -> maybe "Spec" takeBaseName (outputFile options)
+          _ -> maybe "Spec" takeBaseName (output options)
 
     let agdaProgram =
           unAnnotate
@@ -279,12 +277,7 @@ annotateInfixOp2 dependencies precedence opBraces qualifier op args = result
       [] -> qualifierDoc <> "_" <> op <> "_"
       [e1] -> e1 <+> qualifierDoc <> op <> "_"
       [e1, e2] -> e1 <+> qualifierDoc <> op <+> e2
-      _ ->
-        developerError $
-          "was expecting no more than 2 arguments for"
-            <+> op
-            <+> "but found the following arguments:"
-            <+> list args
+      allArgs -> annotateApp [] ("_" <> op <> "_") allArgs
     result = annotate (Set.fromList dependencies, precedence) (opBraces doc)
 
 bracketIfRequired :: Precedence -> Code -> Code
@@ -357,7 +350,7 @@ compileExpr expr = do
     Hole {} -> resolutionError currentPhase "Hole"
     Meta {} -> resolutionError currentPhase "Meta"
     Universe _ l -> return $ compileType l
-    FreeVar _ n -> compileVar (nameOf n)
+    FreeVar _ n -> return $ annotateConstant [] (pretty (nameOf n))
     BoundVar _ n -> return $ annotateConstant [] (pretty n)
     Pi _ binder result -> case binderNamingForm binder of
       OnlyType -> do
@@ -378,13 +371,6 @@ compileExpr expr = do
 
   logExit result
   return result
-
-compileVar :: (MonadAgdaCompile m) => Name -> m Code
-compileVar var = return $ case var of
-  -- Standard library operators that we would like to compile
-  "Tensor" -> annotateConstant [DataTensor] "Tensor"
-  -- Other variables
-  v -> annotateConstant [] (pretty v)
 
 compileApp :: (MonadAgdaCompile m) => Expr Name Builtin -> NonEmpty (Arg Name Builtin) -> m Code
 compileApp fun args = do
@@ -411,7 +397,8 @@ compileStdLibFunction fn args = case fn of
   StdForeach -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
-    [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] -> Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
+    [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] ->
+      Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
     _ -> return Nothing
   StdForallIn -> case args of
     [_, RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
@@ -444,6 +431,9 @@ compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
 
 compileAnn :: Code -> Code -> Code
 compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t, e]
+
+compileArgs :: (MonadAgdaCompile m) => [Arg Name Builtin] -> m [Code]
+compileArgs args = traverse compileArg (filter (not . wasInsertedByCompiler) args)
 
 compileBooleanType :: (MonadAgdaCompile m) => m Code
 compileBooleanType = do
@@ -480,15 +470,6 @@ compileBinder binder = do
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
 
-isTypeClassInAgda :: TypeClassOp -> Bool
-isTypeClassInAgda = \case
-  AddTC {} -> True
-  SubTC {} -> True
-  EqualsTC {} -> True
-  OrderTC {} -> True
-  QuantifierTC {} -> True
-  _ -> False
-
 agdaNegInt :: [Code] -> Code
 agdaNegInt = annotateInfixOp1 [DataInteger] 6 (Just intQualifier) "-"
 
@@ -502,96 +483,137 @@ agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
 compileBuiltin :: (MonadAgdaCompile m) => Provenance -> Builtin -> [Arg Name Builtin] -> m Code
-compileBuiltin _p (TypeClassOp op) allArgs
-  | not (isTypeClassInAgda op) = do
-      (fn, args) <- nfTypeClassOp mempty op allArgs
-      compileApp fn args
-compileBuiltin p op allArgs = case normAppList mempty (Builtin mempty op) allArgs of
-  BoolType {} -> compileBooleanType
-  NatType {} -> return $ annotateConstant [DataNat] natQualifier
-  IntType {} -> return $ annotateConstant [DataInteger] intQualifier
-  RatType {} -> return $ annotateConstant [DataRat] ratQualifier
-  ListType _ tElem -> annotateApp [DataList] listQualifier <$> traverse compileExpr [tElem]
-  VectorType _ tElem tDim -> annotateApp [DataVector] vectorQualifier <$> traverse compileExpr [tElem, tDim]
-  IndexType _ size -> annotateApp [DataFin] finQualifier <$> traverse compileExpr [size]
-  FromNatExpr _ dom args -> compileFromNat dom <$> traverse compileArg (NonEmpty.toList args)
-  FromRatExpr _ dom args -> compileFromRat dom <$> traverse compileArg (NonEmpty.toList args)
-  IfExpr _ _ [e1, e2, e3] -> do
-    ce1 <- setBoolLevel BoolLevel $ compileArg e1
-    ce2 <- compileArg e2
-    ce3 <- compileArg e3
-    return $
-      annotate
-        (Set.singleton DataBool, 0)
-        ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
-  AndExpr _ args -> compileAnd =<< traverse compileArg (NonEmpty.toList args)
-  OrExpr _ args -> compileOr =<< traverse compileArg (NonEmpty.toList args)
-  ImpliesExpr _ args -> compileImplies =<< traverse compileArg (NonEmpty.toList args)
-  NotExpr _ args -> compileNot =<< traverse compileArg (NonEmpty.toList args)
-  AddExpr _ dom args -> compileAdd dom <$> traverse compileArg (NonEmpty.toList args)
-  SubExpr _ dom args -> compileSub dom <$> traverse compileArg (NonEmpty.toList args)
-  MulExpr _ dom args -> compileMul dom <$> traverse compileArg (NonEmpty.toList args)
-  DivExpr _ dom args -> compileDiv dom <$> traverse compileArg (NonEmpty.toList args)
-  NegExpr _ dom args -> compileNeg dom <$> traverse compileArg (NonEmpty.toList args)
-  ForallTCExpr _ binder body -> compileTypeLevelQuantifier Forall [binder] body
-  ExistsTCExpr _ binder body -> compileTypeLevelQuantifier Exists [binder] body
-  OrderTCExpr _ ord t1 _ _ args -> compileOrder ord t1 =<< traverse compileArg args
-  EqualityTCExpr _ eq t1 _ _ args -> case eq of
-    Eq -> compileEquality t1 =<< traverse compileArg args
-    Neq -> compileInequality t1 =<< traverse compileArg args
-  AddTCExpr _ args -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊕" <$> traverse compileArg args
-  SubTCExpr _ args -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊖" <$> traverse compileArg args
-  NilExpr _ _ -> return compileNil
-  ConsExpr _ _ args -> compileCons <$> traverse compileArg args
-  AtExpr _ _ _ [xs, i] -> compileAt (argExpr xs) (argExpr i)
-  UnitLiteral _ -> return $ annotateConstant [DataUnit] "tt"
-  BoolLiteral _ b -> compileBoolOp0 b
-  IndexLiteral _ n -> return $ compileIndexLiteral (toInteger n)
-  NatLiteral _ n -> return $ compileNatLiteral (toInteger n)
-  IntLiteral _ i -> return $ compileIntLiteral (toInteger i)
-  RatLiteral _ r -> return $ compileRatLiteral r
-  VecLiteral _ _ xs -> compileVecLiteral (fmap argExpr xs)
-  HasEqExpr _ _ t _ _ -> compileTypeClass "HasEq" t
-  HasOrdExpr _ _ t _ _ -> compileTypeClass "HasOrd" t
-  HasAddExpr _ t _ _ -> compileTypeClass "HasAdd" t
-  HasSubExpr _ t _ _ -> compileTypeClass "HasSub" t
-  HasDivExpr _ t _ _ -> compileTypeClass "HasDiv" t
-  HasNegExpr _ t _ -> compileTypeClass "HasNeg" t
-  HasNatLitsExpr _ t -> compileTypeClass "HasNatLits" t
-  HasRatLitsExpr _ t -> compileTypeClass "HasRatLits" t
-  HasVecLitsExpr {} ->
-    compilerDeveloperError "Compilation of HasVecLits type-class constraint to Agda not yet supported"
-  BuiltinExpr _ NatInDomainConstraint {} [t] -> compileTypeClass "NatInDomain" (argExpr t)
-  _ -> do
-    let e = normAppList p (Builtin p op) allArgs
-    compilerDeveloperError $
-      "unexpected application of builtin found during compilation to Agda:"
-        <+> squotes (prettyExternal e)
-        <+> parens (pretty $ provenanceOf e)
-
-nfTypeClassOp ::
-  (MonadCompile m) =>
-  Provenance ->
-  TypeClassOp ->
-  [Arg var Builtin] ->
-  m (Expr var Builtin, NonEmpty (Arg var Builtin))
-nfTypeClassOp _p op args = do
-  (inst, remainingArgs) <- findInstanceArg op args
-  case (inst, remainingArgs) of
-    (Meta {}, _) ->
+compileBuiltin _p b args = case b of
+  TypeClass c -> case c of
+    HasEq {} -> annotateApp [] "HasEq" <$> compileArgs args
+    HasOrd {} -> annotateApp [] "HasOrd" <$> compileArgs args
+    HasAdd -> annotateApp [] "HasAdd" <$> compileArgs args
+    HasSub -> annotateApp [] "HasSub" <$> compileArgs args
+    HasMul -> annotateApp [] "HasMul" <$> compileArgs args
+    HasDiv -> annotateApp [] "HasDiv" <$> compileArgs args
+    HasNeg -> annotateApp [] "HasNeg" <$> compileArgs args
+    HasNatLits -> annotateApp [] "HasNatLits" <$> compileArgs args
+    HasRatLits -> annotateApp [] "HasRatLits" <$> compileArgs args
+    HasQuantifier {} -> unsupportedError
+    HasVecLits -> unsupportedError
+    HasFold -> unsupportedError
+    HasMap -> unsupportedError
+    HasQuantifierIn {} -> unsupportedError
+  TypeClassOp op -> case op of
+    QuantifierTC q -> case reverse args of
+      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+      _ -> unsupportedArgsError
+    OrderTC {} -> resolveInstance b args
+    EqualsTC eq -> case args of
+      [] -> unsupportedArgsError
+      tElem : _ -> do
+        deps <- equalityDependencies (argExpr tElem)
+        case eq of
+          Eq -> compileEquality deps =<< compileArgs args
+          Neq -> compileInequality deps =<< compileArgs args
+    FromNatTC {} -> resolveInstance b args
+    FromRatTC {} -> resolveInstance b args
+    FromVecTC {} -> resolveInstance b args
+    AddTC {} -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊕" <$> compileArgs args
+    SubTC {} -> annotateInfixOp2 [VehicleUtils] 6 id Nothing "⊖" <$> compileArgs args
+    -- TODO we should really have our own Agda type-classes for all of these
+    NegTC {} -> resolveInstance b args
+    MulTC {} -> resolveInstance b args
+    DivTC {} -> resolveInstance b args
+    MapTC {} -> resolveInstance b args
+    FoldTC {} -> resolveInstance b args
+  BuiltinType t -> case t of
+    Unit -> return compileUnit
+    Bool -> compileBooleanType
+    Nat -> return $ annotateConstant [DataNat] natQualifier
+    Int -> return $ annotateConstant [DataInteger] intQualifier
+    Rat -> return $ annotateConstant [DataRat] ratQualifier
+    List -> annotateApp [DataList] "List" <$> compileArgs args
+    Vector -> annotateApp [DataVector] "Vector" <$> compileArgs args
+    Index -> annotateApp [DataFin] "Fin" <$> compileArgs args
+  BuiltinConstructor c -> case c of
+    Nil -> return compileNil
+    Cons -> compileCons <$> compileArgs args
+    LUnit -> return $ annotateConstant [DataUnit] "tt"
+    LBool v -> compileBoolOp0 v
+    LIndex n -> return $ compileIndexLiteral (toInteger n)
+    LNat n -> return $ compileNatLiteral (toInteger n)
+    LInt i -> return $ compileIntLiteral (toInteger i)
+    LRat r -> return $ compileRatLiteral r
+    LVec _ -> case args of
+      _tElem : elems -> compileVecLiteral (fmap argExpr elems)
+      [] -> unsupportedArgsError
+  BuiltinFunction f -> case f of
+    And -> compileAnd =<< compileArgs args
+    Or -> compileOr =<< compileArgs args
+    Implies -> compileImplies =<< compileArgs args
+    Not -> compileNot =<< compileArgs args
+    Add dom -> compileAdd dom <$> compileArgs args
+    Sub dom -> compileSub dom <$> compileArgs args
+    Mul dom -> compileMul dom <$> compileArgs args
+    Div dom -> compileDiv dom <$> compileArgs args
+    Neg dom -> compileNeg dom <$> compileArgs args
+    MinRat -> compileMin <$> compileArgs args
+    MaxRat -> compileMax <$> compileArgs args
+    PowRat -> unsupportedError
+    Equals dom Eq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
+    Equals dom Neq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
+    Order dom ord -> compileOrder ord dom =<< compileArgs args
+    ConsVector -> annotateInfixOp2 [DataList] 5 id (Just vectorQualifier) (listQualifier <> ".foldr") <$> compileArgs args
+    Fold dom -> case dom of
+      FoldList -> annotateApp [DataList] (listQualifier <> ".foldr") <$> compileArgs args
+      FoldVector -> annotateApp [DataVector] (vectorQualifier <> ".foldr") <$> compileArgs args
+    MapList -> annotateApp [DataList] (listQualifier <> ".map") <$> compileArgs args
+    MapVector -> annotateApp [DataVector] (vectorQualifier <> ".map") <$> compileArgs args
+    ZipWithVector -> annotateApp [DataVector] (vectorQualifier <> ".zipWith") <$> compileArgs args
+    Indices {} -> annotateApp [DataFin] "allFin" <$> compileArgs args
+    Quantifier q -> case reverse args of
+      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+      _ -> unsupportedArgsError
+    FromNat dom -> case reverse args of
+      (_inst : value : _) -> compileFromNat dom <$> compileArg value
+      _ -> unsupportedArgsError
+    FromRat dom -> case reverse args of
+      (value : _) -> compileFromRat dom <$> compileArg value
+      _ -> unsupportedArgsError
+    -- Needs to be special cased as `At` in Agda is simply function application.
+    At -> case args of
+      [_tElem, _size, xs, index] -> annotateApp [] <$> compileExpr (argExpr xs) <*> compileArgs [index]
+      _ -> annotateInfixOp2 [FunctionBase] (-1) id Nothing "$" <$> compileArgs args
+    -- Needs to be special cased as we need to enforce that the decision
+    -- procedure is decidable. Would be fixed by
+    -- https://github.com/vehicle-lang/vehicle/issues/694.
+    If -> case args of
+      [_, e1, e2, e3] -> do
+        ce1 <- setBoolLevel BoolLevel $ compileArg e1
+        ce2 <- compileArg e2
+        ce3 <- compileArg e3
+        return $
+          annotate
+            (Set.singleton DataBool, 0)
+            ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
+      _ -> unsupportedArgsError
+    Optimise {} -> unsupportedError
+  NatInDomainConstraint -> unsupportedError
+  where
+    unsupportedError :: (MonadAgdaCompile m) => m a
+    unsupportedError =
       compilerDeveloperError $
-        "Unable to normalise type-class op:" <+> pretty op
-    (_, v : vs) -> do
-      let (fn, args') = toHead inst
-      return (fn, prependList args' (v :| vs))
-    (_, []) ->
-      compilerDeveloperError $
-        "Type class operation with no further arguments:" <+> pretty op
+        "compilation of builtin" <+> quotePretty b <+> "to Agda unsupported"
 
-compileTypeClass :: (MonadAgdaCompile m) => Code -> Expr Name Builtin -> m Code
-compileTypeClass name arg = do
-  arg' <- compileExpr arg
-  return $ annotateApp [] name [arg']
+    unsupportedArgsError :: (MonadAgdaCompile m) => m a
+    unsupportedArgsError =
+      compilerDeveloperError $
+        "compilation of builtin"
+          <+> quotePretty b
+          <+> "with args"
+          <+> prettyFriendly args
+          <+> "to Agda unsupported"
+
+    resolveInstance :: (MonadAgdaCompile m) => Builtin -> [Arg Name Builtin] -> m Code
+    resolveInstance op as = do
+      (fn, newArgs) <- findInstanceArg op as
+      compileExpr (normAppList mempty fn newArgs)
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
@@ -648,6 +670,9 @@ compileVecLiteral = \case
     cx <- compileExpr x
     cxs <- compileVecLiteral xs
     return $ annotateInfixOp2 [] 5 id Nothing "∷ᵥ" [cx, cxs]
+
+compileUnit :: Code
+compileUnit = annotateConstant [DataUnit] "⊤"
 
 compileNil :: Code
 compileNil = annotateConstant [DataList] "[]"
@@ -707,18 +732,16 @@ compileNeg dom args = do
 
   annotateInfixOp1 [dependency] 8 (Just qualifier) "-" args
 
-compileFromNat :: FromNatDomain -> [Code] -> Code
-compileFromNat dom args = case dom of
+compileFromNat :: FromNatDomain -> Code -> Code
+compileFromNat dom value = case dom of
   FromNatToIndex -> agdaNatToFin [value]
   FromNatToNat -> value
-  FromNatToInt -> agdaPosInt args
+  FromNatToInt -> agdaPosInt [value]
   FromNatToRat -> agdaDivRat [agdaPosInt [value], "1"]
-  where
-    value = args !! (length args - 2)
 
-compileFromRat :: FromRatDomain -> [Code] -> Code
-compileFromRat dom args = case dom of
-  FromRatToRat -> head args
+compileFromRat :: FromRatDomain -> Code -> Code
+compileFromRat dom arg = case dom of
+  FromRatToRat -> arg
 
 {-
 compileFromVec :: FromVecDomain -> [Code] -> Code
@@ -759,26 +782,27 @@ compileDiv dom args = do
 
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "÷" args
 
-isRatType :: Type var Builtin -> Bool
-isRatType RatType {} = True
-isRatType _ = False
+compileMin :: [Code] -> Code
+compileMin = annotateInfixOp2 [DataRat] 6 id (Just ratQualifier) "⊓"
 
-compileOrder :: (MonadAgdaCompile m) => OrderOp -> Expr Name Builtin -> [Code] -> m Code
-compileOrder originalOrder elemType originalArgs = do
+compileMax :: [Code] -> Code
+compileMax = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "⊔"
+
+compileOrder :: (MonadAgdaCompile m) => OrderOp -> OrderDomain -> [Code] -> m Code
+compileOrder originalOrder dom originalArgs = do
   boolLevel <- getBoolLevel
 
   -- HACK because v1.7 of stdlib doesn't have >? and >=?. Fixed in v2.0 so remove when released.
   let (order, args) =
-        if isRatType elemType && boolLevel == BoolLevel && (originalOrder == Ge || originalOrder == Gt)
+        if dom == OrderRat && boolLevel == BoolLevel && (originalOrder == Ge || originalOrder == Gt)
           then (flipOrder originalOrder, reverse originalArgs)
           else (originalOrder, originalArgs)
 
-  (qualifier, elemDep) <- case elemType of
-    IndexType {} -> return (finQualifier, DataFin)
-    NatType {} -> return (natQualifier, DataNat)
-    IntType {} -> return (intQualifier, DataInteger)
-    RatType {} -> return (ratQualifier, DataRat)
-    _ -> unexpectedTypeError elemType $ map pretty [Nat, Int, Rat, Index]
+  (qualifier, elemDep) <- case dom of
+    OrderIndex -> return (finQualifier, DataFin)
+    OrderNat -> return (natQualifier, DataNat)
+    OrderInt -> return (intQualifier, DataInteger)
+    OrderRat -> return (ratQualifier, DataRat)
 
   let (boolDecDoc, boolDeps, opBraces) = case boolLevel of
         BoolLevel -> ("?", [RelNullary], boolBraces)
@@ -794,27 +818,23 @@ compileOrder originalOrder elemType originalArgs = do
   let opDoc = orderDoc <> boolDecDoc
   return $ annotateInfixOp2 dependencies 4 opBraces (Just qualifier) opDoc args
 
-compileAt :: (MonadAgdaCompile m) => Expr Name Builtin -> Expr Name Builtin -> m Code
-compileAt xs i = annotateApp [] <$> compileExpr xs <*> traverse compileExpr [i]
-
-compileEquality :: (MonadAgdaCompile m) => Expr Name Builtin -> [Code] -> m Code
-compileEquality tElem args = do
+compileEquality :: (MonadAgdaCompile m) => [Dependency] -> [Code] -> m Code
+compileEquality dependencies args = do
   boolLevel <- getBoolLevel
   case boolLevel of
     TypeLevel -> return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≡" args
     BoolLevel -> do
       -- Boolean function equality is more complicated as we need an actual decision procedure.
       -- We handle this using instance arguments
-      instanceArgDependencies <- equalityDependencies tElem
-      return $ annotateInfixOp2 ([RelNullary] <> instanceArgDependencies) 4 boolBraces Nothing "≟" args
+      return $ annotateInfixOp2 ([RelNullary] <> dependencies) 4 boolBraces Nothing "≟" args
 
-compileInequality :: (MonadAgdaCompile m) => Expr Name Builtin -> [Code] -> m Code
-compileInequality tElem args = do
+compileInequality :: (MonadAgdaCompile m) => [Dependency] -> [Code] -> m Code
+compileInequality deps args = do
   boolLevel <- getBoolLevel
   case boolLevel of
     TypeLevel -> return $ annotateInfixOp2 [PropEquality] 4 id Nothing "≢" args
     BoolLevel -> do
-      eq <- compileEquality tElem args
+      eq <- compileEquality deps args
       compileNot [eq]
 
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
@@ -856,11 +876,20 @@ compileProperty propertyName propertyBody = do
                   <> "}"
               )
 
+equalityDomDependencies :: EqualityDomain -> [Dependency]
+equalityDomDependencies = \case
+  EqIndex -> [DataFin]
+  EqNat -> [DataNat]
+  EqInt -> [DataInteger]
+  EqRat -> [DataRat]
+
 -- Calculates the dependencies needed for equality over the provided type
 equalityDependencies :: (MonadAgdaCompile m) => Expr Name Builtin -> m [Dependency]
 equalityDependencies = \case
+  IndexType _ _ -> return [DataFin]
   NatType _ -> return [DataNatInstances]
   IntType _ -> return [DataIntegerInstances]
+  RatType _ -> return [DataRatInstances]
   BoolType _ -> return [DataBoolInstances]
   ListType _ tElem -> do
     deps <- equalityDependencies tElem
@@ -868,12 +897,12 @@ equalityDependencies = \case
   VectorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataVectorInstances] <> deps
-  ITensorType _ tElem _tDims -> do
+  TensorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
   FreeVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p (nameOf n)
   BoundVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p n
-  t -> unexpectedTypeError t (map pretty [Bool, Nat, Int, List, Vector] <> [pretty (identifierName TensorIdent)])
+  t -> unexpectedTypeError t (map pretty [Bool, Index, Nat, Int, Rat, List, Vector] <> [pretty (identifierName TensorIdent)])
 
 unexpectedTypeError :: (MonadCompile m) => Expr Name Builtin -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes =
@@ -882,7 +911,7 @@ unexpectedTypeError actualType expectedTypes =
       <+> "Was expecting one of"
       <+> list expectedTypes
       <+> "but found"
-      <+> prettyExternal actualType
+      <+> prettyFriendly actualType
       <+> "at"
       <+> pretty (provenanceOf actualType)
       <> "."
@@ -892,12 +921,12 @@ currentPhase = "compilation to Agda"
 
 -- | Ugly hack until we work out how to bind builtins in the
 -- user syntax.
-pattern ITensorType ::
+pattern TensorType ::
   Provenance ->
   Expr Name Builtin ->
   Expr Name Builtin ->
   Expr Name Builtin
-pattern ITensorType p tElem tDims <-
+pattern TensorType p tElem tDims <-
   App
     p
     (FreeVar _ (Identifier StdLib "Tensor"))
@@ -905,5 +934,13 @@ pattern ITensorType p tElem tDims <-
       IrrelevantExplicitArg _ tDims
       ]
 
-pattern IndexType :: Provenance -> Expr var Builtin -> Expr var Builtin
-pattern IndexType p tSize <- TypeExpr p Index [IrrelevantExplicitArg _ tSize]
+pattern IndexType ::
+  Provenance ->
+  Expr Name Builtin ->
+  Expr Name Builtin
+pattern IndexType p size <-
+  App
+    p
+    (Builtin _ (BuiltinType Index))
+    [ IrrelevantExplicitArg _ size
+      ]

@@ -1,14 +1,11 @@
-bigAnd__lam_A__Vector_A : (\ A -> Vector A) Bool -> Bool;
+bigAnd__lam_A__Vector_A : Vector Bool -> Bool;
 bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
 
 bigAnd__List : List Bool -> Bool;
 bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 
-bigOr : (\ A -> Vector A) Bool -> Bool;
+bigOr : Vector Bool -> Bool;
 bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
-
-forallIn : (Vector Rat -> Bool) -> List (Vector Rat) -> Bool;
-forallIn f xs = bigAnd__List (map f xs)
 
 @noinline;
 equalsVector : Vector Rat -> Vector Rat -> Bool;
@@ -23,16 +20,16 @@ dataset = [0.5, 1.0] :: nil
 
 @property;
 empty : Bool;
-empty = forallIn (\ x -> True) dataset
+empty = bigAnd__List (map (\ x -> True) dataset)
 
 @property;
 double : Bool;
-double = forallIn (\ x -> forallIn (\ y -> equalsVector x y) dataset) dataset
+double = bigAnd__List (map (\ x -> bigAnd__List (map (\ y -> equalsVector x y) dataset)) dataset)
 
 @property;
 forallForallIn : Bool;
-forallForallIn = forall x . forallIn (\ y -> equalsVector x y) dataset
+forallForallIn = forall x . bigAnd__List (map (\ y -> equalsVector x y) dataset)
 
 @property;
 forallInForall : forallT (f : Vector Rat -> Vector Rat) . Bool;
-forallInForall f = forallIn (\ x -> forall y . notEqualsVector (f x) y) dataset
+forallInForall f = bigAnd__List (map (\ x -> forall y . notEqualsVector (f x) y) dataset)

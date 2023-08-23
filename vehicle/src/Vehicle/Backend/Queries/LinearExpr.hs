@@ -348,7 +348,7 @@ data VectorEquality = VectorEquality
 
 originalVectorEqualityExpr :: VectorEquality -> Value Builtin
 originalVectorEqualityExpr VectorEquality {..} =
-  assertionOriginalRel (RelevantExplicitArg mempty assertionLHS) (RelevantExplicitArg mempty assertionRHS)
+  assertionOriginalRel (Arg mempty Explicit Relevant assertionLHS) (Arg mempty Explicit Relevant assertionRHS)
 
 assertionToVectorEquality :: UnreducedAssertion -> Maybe VectorEquality
 assertionToVectorEquality = \case

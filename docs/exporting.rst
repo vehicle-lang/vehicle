@@ -23,8 +23,8 @@ This can be done using the :code:`vehicle export` command:
 
   vehicle export \
     --target Agda \
-    --proofCache examples/windController/windController.vcl-cache \
-    --outputFile examples/windController/agdaProof/WindControllerSpec.agda
+    --cache examples/windController/windController.vcl-cache \
+    --output examples/windController/agdaProof/WindControllerSpec.agda
 
 Command-line options
 --------------------
@@ -43,7 +43,7 @@ for the :code:`export` command.
     exported specification should be generated. If not provided then
     all ``@property`` declarations will be converted into ``postulates``.
 
-.. option:: --outputFile, -o
+.. option:: --output, -o
 
     Set the name and location of the generated output file.
 

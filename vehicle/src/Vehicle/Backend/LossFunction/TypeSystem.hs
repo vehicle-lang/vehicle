@@ -58,7 +58,7 @@ convertToLossTypes p1 p2 b args = case b of
       -- the instance insertion mechanism doesn't kick in unless the
       -- type-class operation has at least one arg.
       meta <- unnormalised <$> freshMetaExpr p1 (TypeUniverse p1 0) mempty
-      let constraintTC = BuiltinExpr p1 (LossTC IsBoolType) [RelevantExplicitArg p1 meta]
+      let constraintTC = BuiltinExpr p1 (LossTC IsBoolType) [Arg p1 Explicit Relevant meta]
       _ <- createFreshInstanceConstraint mempty (BoolType p1, mempty, TypeUniverse p1 0) Irrelevant constraintTC
       return meta
     _ -> return $ normAppList p1 (Builtin p2 (BuiltinType t)) args
@@ -133,7 +133,7 @@ checkPropertyType (ident, p) parameterType = go (normalised parameterType)
       typ -> do
         -- The basic element of properties should always have the loss type.
         let unnormType = unnormalise 0 typ
-        let constraintType = App p (Builtin p (LossTC ValidPropertyBaseType)) [RelevantExplicitArg p unnormType]
+        let constraintType = App p (Builtin p (LossTC ValidPropertyBaseType)) [Arg p Explicit Relevant unnormType]
         let origin = (FreeVar p ident, mempty, constraintType)
         _ <- createFreshInstanceConstraint mempty origin Irrelevant constraintType
         return ()

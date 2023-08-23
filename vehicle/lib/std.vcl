@@ -52,10 +52,10 @@ notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 --------------------------------------------------------------------------------
 
 existsIndex : forallT n . (Index n -> Bool) -> Bool
-existsIndex n f = bigOr (foreach i . f i)
+existsIndex n f = bigOr (map f (indices n))
 
 forallIndex : forallT n . (Index n -> Bool) -> Bool
-forallIndex n f = bigAnd (foreach i . f i)
+forallIndex n f = bigAnd (map f (indices n))
 
 --------------------------------------------------------------------------------
 -- Tensor

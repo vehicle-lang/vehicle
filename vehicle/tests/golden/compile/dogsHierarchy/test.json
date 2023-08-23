@@ -25,7 +25,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda --network score:fake.onnx",
+    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   }

@@ -95,7 +95,7 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
     Which verifier should be used to perform the verification.
     At the moment the only supported option is :code:`Marabou`.
 
-.. option:: --verifierLocation, -l
+.. option:: --verifier-location, -l
 
     Location of the executable for the verifier. If not provided, then Vehicle
     will search for the name of the executable in the ``PATH`` environment variable.
@@ -223,7 +223,7 @@ The full list of available command line arguments are as follows:
 
     See description above for ``verify`` mode.
 
-.. option:: --verifierLocation, -l
+.. option:: --verifier-location, -l
 
     See description above for ``verify`` mode.
 

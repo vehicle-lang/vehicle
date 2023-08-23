@@ -185,9 +185,9 @@ inferExpr e = do
       -- the application machinary to infer the result type and the type of the bound expression.
       (resultType, boundArgs) <-
         inferArgs
-          (Lam p checkedBinder body, [RelevantExplicitArg p boundExpr], Pi p checkedBinder typeOfBody)
+          (Lam p checkedBinder body, [Arg p Explicit Relevant boundExpr], Pi p checkedBinder typeOfBody)
           (Pi p checkedBinder typeOfBody)
-          [RelevantExplicitArg p boundExpr]
+          [Arg p Explicit Relevant boundExpr]
 
       -- Extract the type of the bound expression
       checkedBoundExpr <- case boundArgs of

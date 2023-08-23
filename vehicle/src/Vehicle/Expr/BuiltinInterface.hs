@@ -221,14 +221,6 @@ pattern VectorType p tElem tDim <-
     [ RelevantExplicitArg _ tElem,
       IrrelevantExplicitArg _ tDim
       ]
-  where
-    VectorType p tElem tDim =
-      TypeExpr
-        p
-        Vector
-        [ RelevantExplicitArg p tElem,
-          IrrelevantExplicitArg p tDim
-        ]
 
 --------------------------------------------------------------------------------
 -- Type values
@@ -245,8 +237,6 @@ pattern VBoolType <- VBuiltinType Bool []
 
 pattern VIndexType :: (HasStandardTypes builtin) => VType builtin -> VType builtin
 pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
-  where
-    VIndexType size = VBuiltinType Index [IrrelevantExplicitArg mempty size]
 
 pattern VNatType :: (HasStandardTypes builtin) => VType builtin
 pattern VNatType <- VBuiltinType Nat []
@@ -273,8 +263,6 @@ pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]
 
 pattern VVectorType :: (HasStandardTypes builtin) => VType builtin -> Value builtin -> VType builtin
 pattern VVectorType tElem dim <- VBuiltinType Vector [RelevantExplicitArg _ tElem, IrrelevantExplicitArg _ dim]
-  where
-    VVectorType tElem dim = VBuiltinType Vector [RelevantExplicitArg mempty tElem, IrrelevantExplicitArg mempty dim]
 
 pattern VTensorType :: (HasStandardTypes builtin) => VType builtin -> Value builtin -> VType builtin
 pattern VTensorType tElem dims <-
@@ -351,42 +339,9 @@ pattern VecLiteral ::
   Expr var builtin
 pattern VecLiteral p tElem xs <-
   BuiltinExpr p (getBuiltinConstructor -> Just (LVec _)) (RelevantImplicitArg _ tElem :| xs)
-  where
-    VecLiteral p tElem xs =
-      BuiltinExpr p (mkBuiltinConstructor (LVec (length xs))) (RelevantImplicitArg p tElem :| xs)
-
-pattern NilExpr ::
-  (HasStandardData builtin) =>
-  Provenance ->
-  Type var builtin ->
-  Expr var builtin
-pattern NilExpr p tElem <- BuiltinExpr p (getBuiltinConstructor -> Just Nil) [RelevantImplicitArg _ tElem]
-  where
-    NilExpr p tElem = BuiltinExpr p (mkBuiltinConstructor Nil) [RelevantImplicitArg p tElem]
-
-pattern ConsExpr ::
-  (HasStandardData builtin) =>
-  Provenance ->
-  Type var builtin ->
-  [Arg var builtin] ->
-  Expr var builtin
-pattern ConsExpr p tElem explicitArgs <-
-  BuiltinExpr
-    p
-    (getBuiltinConstructor -> Just Cons)
-    ( RelevantImplicitArg _ tElem
-        :| explicitArgs
-      )
-  where
-    ConsExpr p tElem explicitArgs =
-      BuiltinExpr
-        p
-        (mkBuiltinConstructor Cons)
-        ( RelevantImplicitArg p tElem
-            :| explicitArgs
-        )
 
 mkList ::
+  forall var builtin.
   (HasStandardData builtin) =>
   Provenance ->
   Expr var builtin ->
@@ -394,14 +349,23 @@ mkList ::
   Expr var builtin
 mkList p elemType = foldr mkCons mkNil
   where
-    mkNil = NilExpr p elemType
+    mkNil :: Expr var builtin
+    mkNil = BuiltinExpr p (mkBuiltinConstructor Nil) [Arg p (Implicit True) Relevant elemType]
+
+    mkCons ::
+      (HasStandardData builtin) =>
+      Expr var builtin ->
+      Expr var builtin ->
+      Expr var builtin
     mkCons x xs =
-      ConsExpr
+      BuiltinExpr
         p
-        elemType
-        [ RelevantExplicitArg p x,
-          RelevantExplicitArg p xs
-        ]
+        (mkBuiltinConstructor Cons)
+        ( Arg p (Implicit True) Relevant elemType
+            :| [ Arg p Explicit Relevant x,
+                 Arg p Explicit Relevant xs
+               ]
+        )
 
 --------------------------------------------------------------------------------
 -- Value constructors patterns
@@ -451,10 +415,13 @@ mkVList :: (HasStandardData builtin) => [Value builtin] -> Value builtin
 mkVList = foldr mkCons mkNil
   where
     mkNil = VBuiltin (mkBuiltinConstructor Nil) []
-    mkCons y ys = VBuiltin (mkBuiltinConstructor Cons) (RelevantExplicitArg mempty <$> [y, ys])
+    mkCons y ys = VBuiltin (mkBuiltinConstructor Cons) (Arg mempty Explicit Relevant <$> [y, ys])
 
 mkVLVec :: (HasStandardData builtin) => [Value builtin] -> Value builtin
-mkVLVec xs = VBuiltin (mkBuiltinConstructor (LVec (length xs))) (RelevantImplicitArg mempty VUnitLiteral : (RelevantExplicitArg mempty <$> xs))
+mkVLVec xs =
+  VBuiltin
+    (mkBuiltinConstructor (LVec (length xs)))
+    (Arg mempty (Implicit True) Relevant VUnitLiteral : (Arg mempty Explicit Relevant <$> xs))
 
 getNatLiteral :: (HasStandardData builtin) => Value builtin -> Maybe Int
 getNatLiteral = \case

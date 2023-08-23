@@ -87,20 +87,24 @@ generaliseOverUnsolvedMetaVariables ::
   (TCM builtin m) =>
   Decl Ix builtin ->
   m (Decl Ix builtin)
-generaliseOverUnsolvedMetaVariables decl = do
-  let declType = typeOf decl
+generaliseOverUnsolvedMetaVariables decl =
+  logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
+    let declType = typeOf decl
 
-  if isTypeUniverse declType
-    then -- In a type synonym so don't quantify over anything
-      return decl
-    else do
-      -- Quantify over any unsolved type-level meta variables
-      unsolvedMetas <- metasIn (typeOf decl)
-      if MetaSet.null unsolvedMetas
-        then return decl
-        else logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
-          result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
-          substMetas result
+    unsolvedMetas <-
+      if not (isTypeSynonym declType)
+        then -- Quantify over the metas in the type of the declaration.
+          metasIn (typeOf decl)
+        else -- In a type synonym so quantify over metas in the body.
+        -- Needed for the sub-typing systems (e.g. see issue700 test)
+          maybe (return mempty) metasIn (bodyOf decl)
+
+    -- Quantify over any unsolved type-level meta variables
+    if MetaSet.null unsolvedMetas
+      then return decl
+      else do
+        result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
+        substMetas result
 
 quantifyOverMeta ::
   forall builtin m.
@@ -218,6 +222,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
       where
-        newVar p = RelevantExplicitArg p (BoundVar p $ shiftDBIndex 0 d)
+        newVar p = Arg p Explicit Relevant (BoundVar p $ shiftDBIndex 0 d)
         goBinder = fmap (go d)
         goArgs = fmap (fmap (go d))

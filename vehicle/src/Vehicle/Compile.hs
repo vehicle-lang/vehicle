@@ -4,13 +4,16 @@ module Vehicle.Compile
   )
 where
 
+import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Hashable (Hashable)
+import Data.Map qualified as Map
 import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
+import Vehicle.Backend.Tensors.Clean (cleanUpHigherOrderStuff)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.EtaConversion (etaExpandProg)
@@ -35,7 +38,7 @@ data CompileOptions = CompileOptions
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    outputFile :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String,
     verificationCache :: Maybe FilePath,
     outputAsJSON :: Bool
@@ -43,7 +46,7 @@ data CompileOptions = CompileOptions
   deriving (Eq, Show)
 
 compile :: LoggingSettings -> CompileOptions -> IO ()
-compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ do
+compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSettings $ do
   (imports, prog) <-
     typeCheckUserProg $
       TypeCheckOptions
@@ -57,14 +60,13 @@ compile loggingSettings CompileOptions {..} = runCompileMonad loggingSettings $ 
   let resources = Resources specification networkLocations datasetLocations parameterValues
   case target of
     VerifierQueries queryFormatID ->
-      compileToQueryFormat result resources queryFormatID outputFile
+      compileToQueryFormat result resources queryFormatID output
     LossFunction differentiableLogic ->
-      compileToLossFunction result differentiableLogic outputFile outputAsJSON
-    ITP Agda -> do
-      let agdaOptions = AgdaOptions verificationCache outputFile moduleName
-      compileToAgda agdaOptions result outputFile
-    ExplicitVehicle -> do
-      compileDirect result outputFile outputAsJSON
+      compileToLossFunction result differentiableLogic output outputAsJSON
+    ITP Agda ->
+      compileToAgda options result
+    ExplicitVehicle ->
+      compileDirect result output outputAsJSON
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -76,20 +78,21 @@ compileToQueryFormat ::
   QueryFormatID ->
   Maybe FilePath ->
   m ()
-compileToQueryFormat (imports, typedProg) resources queryFormatID outputFile = do
+compileToQueryFormat (imports, typedProg) resources queryFormatID output = do
   let mergedProg = mergeImports imports typedProg
   let verifier = queryFormats queryFormatID
-  compileToQueries verifier mergedProg resources outputFile
+  compileToQueries verifier mergedProg resources output
 
 compileToAgda ::
   (MonadCompile m, MonadIO m) =>
-  AgdaOptions ->
+  CompileOptions ->
   (Imports, Prog Ix Builtin) ->
-  Maybe FilePath ->
   m ()
-compileToAgda agdaOptions (_, typedProg) outputFile = do
+compileToAgda options@CompileOptions {..} (_, typedProg) = do
+  warnIfResourcesProvidedToITP Agda options
+  let agdaOptions = AgdaOptions verificationCache output moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
-  writeAgdaFile outputFile agdaCode
+  writeAgdaFile output agdaCode
 
 compileToLossFunction ::
   (MonadCompile m, MonadIO m) =>
@@ -98,11 +101,11 @@ compileToLossFunction ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction (imports, typedProg) differentiableLogic outputFile outputAsJSON = do
+compileToLossFunction (imports, typedProg) differentiableLogic output outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
   lossProg <- LossFunction.compile differentiableLogic resolvedProg
-  compileToJSON lossProg outputFile outputAsJSON
+  compileToTensors lossProg output outputAsJSON
 
 compileDirect ::
   (MonadCompile m, MonadIO m) =>
@@ -113,21 +116,23 @@ compileDirect ::
 compileDirect (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
   resolvedProg <- resolveInstanceArguments mergedProg
-  compileToJSON resolvedProg outputFile outputAsJSON
+  compileToTensors resolvedProg outputFile outputAsJSON
 
-compileToJSON ::
+compileToTensors ::
   forall builtin m.
   (MonadCompile m, MonadIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileToJSON prog outputFile outputAsJSON = do
+compileToTensors prog outputFile outputAsJSON = do
   relevantProg <- removeIrrelevantCodeFromProg prog
   let monomorphiseIf = isPropertyDecl
   monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
   literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  hoistedProg <- hoistInferableParameters literalFreeProg
+  cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
+
+  hoistedProg <- hoistInferableParameters cleanedProg
   functionalisedProg <- functionaliseResources hoistedProg
   etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
@@ -137,3 +142,26 @@ compileToJSON prog outputFile outputAsJSON = do
       else do
         return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result
+
+warnIfResourcesProvided :: (MonadCompile m) => Target -> Doc a -> CompileOptions -> m ()
+warnIfResourcesProvided itp src CompileOptions {..} = do
+  let parameters = fmap (Parameter,) (Map.keys parameterValues)
+  let datasets = fmap (Dataset,) (Map.keys datasetLocations)
+  let networks = fmap (Network,) (Map.keys networkLocations)
+  let resources = parameters <> datasets <> networks
+  let resourceDocs = vsep (fmap (\(r, n) -> pretty r <+> pretty n) resources)
+  unless (null resources) $ do
+    logWarning $
+      "The following provided resources:"
+        <> line
+        <> line
+        <> indent 2 resourceDocs
+        <> line
+        <> line
+        <> "will be ignored as when compiling to" <+> pretty itp <+> src
+
+warnIfResourcesProvidedToITP :: (MonadCompile m) => ITP -> CompileOptions -> m ()
+warnIfResourcesProvidedToITP itp =
+  warnIfResourcesProvided
+    (ITP itp)
+    "their values will be taken directly from the verification cache."

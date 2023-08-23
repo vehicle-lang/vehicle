@@ -8,6 +8,7 @@ import Data.Maybe (mapMaybe)
 import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution (substMetas)
@@ -23,6 +24,8 @@ solvePolarityConstraint ::
   m ()
 solvePolarityConstraint _ (WithContext constraint ctx) = do
   normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
+  logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
+
   (tc, spine) <- getTypeClass expr
   let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
   let nConstraint = WithContext normConstraint ctx
@@ -69,7 +72,7 @@ solveQuantifierPolarity q info [lam, res] = case lam of
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity q
-    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [resPol, res]))
+    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [resPol, res]))
     return $ Progress [binderEq, addConstraint]
   _ -> Nothing
 solveQuantifierPolarity _ _c _ = Nothing
@@ -135,8 +138,8 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     return $ Progress [resEq]
   (VPi binder1 body1, VPi binder2 body2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [typeOf binder1, typeOf binder2]))
-    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (RelevantExplicitArg mempty <$> [body1, body2]))
+    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [typeOf binder1, typeOf binder2]))
+    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
   _ -> Nothing
 solveFunctionPolarity _ _ _ = Nothing

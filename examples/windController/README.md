@@ -35,7 +35,7 @@ run the following command:
 vehicle compile \
   --target MarabouQueries \
   --specification examples/windController/windController.vcl \
-  --outputFile examples/windController/verificationResult \
+  --output examples/windController/verificationResult \
   --network controller:examples/windController/controller.onnx
 ```
 
@@ -49,7 +49,7 @@ The (verified) specification may then be compiled to Agda by running the command
 vehicle export \
   --target Agda \
   --cache examples/windController/verificationResult \
-  --outputFile examples/windController/agdaProof/WindControllerSpec.agda
+  --output examples/windController/agdaProof/WindControllerSpec.agda
 ```
 
 The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.

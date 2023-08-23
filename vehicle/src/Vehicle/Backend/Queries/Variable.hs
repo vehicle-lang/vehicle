@@ -354,7 +354,7 @@ pattern VInfiniteQuantifier q args binder env body <-
   VBuiltin (BuiltinFunction (Quantifier q)) (reverse -> RelevantExplicitArg _ (VLam binder env body) : args)
   where
     VInfiniteQuantifier q args binder env body =
-      VBuiltin (BuiltinFunction (Quantifier q)) (reverse (RelevantExplicitArg mempty (VLam binder env body) : args))
+      VBuiltin (BuiltinFunction (Quantifier q)) (reverse (Arg mempty Explicit Relevant (VLam binder env body) : args))
 
 pattern VFiniteQuantifier :: Quantifier -> Spine Builtin -> VBinder Builtin -> Env Builtin -> Expr Ix Builtin -> Value Builtin
 pattern VFiniteQuantifier q spine binder env body <-
@@ -367,4 +367,4 @@ pattern VFiniteQuantifierSpine :: Spine Builtin -> VBinder Builtin -> Env Builti
 pattern VFiniteQuantifierSpine spine binder env body <- (reverse -> RelevantExplicitArg _ (VLam binder env body) : spine)
   where
     VFiniteQuantifierSpine spine binder env body =
-      reverse (RelevantExplicitArg mempty (VLam binder env body) : spine)
+      reverse (Arg mempty Explicit Relevant (VLam binder env body) : spine)

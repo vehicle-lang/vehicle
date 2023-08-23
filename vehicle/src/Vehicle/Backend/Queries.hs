@@ -132,8 +132,8 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
       computeProperty `catchError` \e -> do
         let formatID = queryFormatID queryFormat
         case e of
-          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog ident
-          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
+          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog (ident, p)
+          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog (ident, p)
           _ -> throwError e
 
     return (nameOf ident, property)
@@ -252,7 +252,7 @@ compilePropertyTopLevelStructure = go
               -- If the property is universally quantified then we negate the expression.
               logDebug MinDetail ("Negating property..." <> line)
               let p = mempty
-              return (True, BuiltinFunctionExpr p Not [RelevantExplicitArg p body])
+              return (True, BuiltinFunctionExpr p Not [Arg p Explicit Relevant body])
 
           let negatedExpr = VInfiniteQuantifier Exists args binder env existsBody
           Query <$> compileQuerySet isPropertyNegated negatedExpr
@@ -300,7 +300,7 @@ compileQuerySet isPropertyNegated expr = do
 -- and populated higher up the query compilation process.
 catchableUnsupportedAlternatingQuantifiersError :: CompileError
 catchableUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x x x
+  UnsupportedAlternatingQuantifiers x x x
   where
     x = developerError "Evaluating temporary quantifier error"
 

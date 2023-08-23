@@ -32,7 +32,7 @@ checkNetworkType (ident, p) networkType = case normalised networkType of
     logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
     let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
     let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
-    let linConstraint = App p (Builtin p (LinearityRelation MaxLinearity)) (RelevantExplicitArg p <$> linConstraintArgs)
+    let linConstraint = App p (Builtin p (LinearityRelation MaxLinearity)) (Arg p Explicit Relevant <$> linConstraintArgs)
     let linConstraintBinder = Binder p (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
     return $ Pi p linConstraintBinder (unnormalised networkType)
   _ -> compilerDeveloperError "Invalid network type should have been caught by the main type system"

@@ -33,8 +33,8 @@ typeOfBuiltinFunction = \case
   Add {} -> typeOfOp2 maxLinearity
   Sub {} -> typeOfOp2 maxLinearity
   Mul {} -> typeOfOp2 mulLinearity
-  Div {} -> typeOfOp2 mulLinearity
-  PowRat {} -> typeOfOp2 mulLinearity
+  Div {} -> typeOfOp2 divLinearity
+  PowRat {} -> typeOfOp2 powLinearity
   MinRat {} -> typeOfOp2 maxLinearity
   MaxRat {} -> typeOfOp2 maxLinearity
   -- Comparisons
@@ -68,6 +68,8 @@ typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
 typeOfLinearityRelation = \case
   MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
   MulLinearity -> tLin ~> tLin ~> tLin ~> type0
+  DivLinearity -> tLin ~> tLin ~> tLin ~> type0
+  PowLinearity -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity {} -> tLin ~> tLin ~> type0
   QuantifierLinearity {} -> (tLin ~> tLin) ~> tLin ~> type0
 
@@ -105,7 +107,7 @@ typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
 typeOfFold :: LinearityDSLExpr
 typeOfFold =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l2 ~> l1 ~> l3
 
 typeOfMap :: LinearityDSLExpr
 typeOfMap =

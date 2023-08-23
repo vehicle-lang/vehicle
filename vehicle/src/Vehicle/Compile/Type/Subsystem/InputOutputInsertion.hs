@@ -25,10 +25,11 @@ addFunctionAuxiliaryInputOutputConstraints ::
   Decl Ix builtin ->
   m (Decl Ix builtin)
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
-  DefFunction p ident anns t e -> do
-    logCompilerPass MaxDetail "insertion of input/output constraints" $ do
-      t' <- evalStateT (decomposePiType mkConstraint (ident, p) 0 t) mempty
-      return $ DefFunction p ident anns t' e
+  DefFunction p ident anns t e
+    | not (isTypeSynonym t) -> do
+        logCompilerPass MaxDetail "insertion of input/output constraints" $ do
+          t' <- evalStateT (decomposePiType mkConstraint (ident, p) 0 t) mempty
+          return $ DefFunction p ident anns t' e
   d -> return d
 
 decomposePiType ::
@@ -74,7 +75,7 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
     _ -> unnormalised <$> freshMetaExpr p (TypeUniverse p 0) mempty
 
   let constraintArgs =
-        RelevantExplicitArg p <$> case position of
+        Arg p Explicit Relevant <$> case position of
           FunctionInput {} -> [newExpr, existingExpr]
           FunctionOutput {} -> [existingExpr, newExpr]
   let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs

@@ -127,6 +127,7 @@ library
     Vehicle.Backend.Queries.UserVariableElimination
     Vehicle.Backend.Queries.Variable
     Vehicle.Backend.Queries.VariableReconstruction
+    Vehicle.Backend.Tensors.Clean
     Vehicle.CommandLine
     Vehicle.Compile
     Vehicle.Compile.Descope
