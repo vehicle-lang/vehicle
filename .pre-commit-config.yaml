@@ -60,6 +60,7 @@ repos:
           - "types_setuptools >=45"
           - "types_pygments >=2.14"
           - "packaging >=23"
+          - "numpy >=1.21,<2"
         files: '^vehicle-python\/.*\.py$'
   - repo: local
     hooks:

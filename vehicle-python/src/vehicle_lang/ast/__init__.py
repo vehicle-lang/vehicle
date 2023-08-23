@@ -551,7 +551,7 @@ class Main(Program):
 
 
 def load(
-    path: Union[str, Path],
+    specification_path: Union[str, Path],
     *,
     declarations: Iterable[DeclarationName] = (),
     target: Target = Explicit.Explicit,
@@ -562,7 +562,7 @@ def load(
             "--target",
             target._vehicle_option_name,
             "--json",
-            f"--specification={path}",
+            f"--specification={specification_path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],
         ]
     )

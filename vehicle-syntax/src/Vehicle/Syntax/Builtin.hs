@@ -310,8 +310,6 @@ data BuiltinFunction
   | PowRat
   | MinRat
   | MaxRat
-  | -- True = minimisation, False = maximisation
-    Optimise Bool
   | -- Comparison expressions
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
@@ -359,9 +357,6 @@ instance Pretty BuiltinFunction where
     At -> "!"
     ConsVector -> "::v"
     Indices -> "indices"
-    Optimise b -> "Optimise[" <> direction <> "]"
-      where
-        direction = if b then "min" else "max"
 
 -- | Builtins in the Vehicle language
 data Builtin

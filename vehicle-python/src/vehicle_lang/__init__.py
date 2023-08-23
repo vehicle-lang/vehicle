@@ -8,12 +8,14 @@ from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
 from .session.error import VehicleSessionClosed as VehicleSessionClosed
 from .session.error import VehicleSessionUsed as VehicleSessionUsed
-from .typing import AnyOptimiser as AnyOptimiser
-from .typing import AnyOptimisers as AnyOptimisers
 from .typing import DeclarationName as DeclarationName
 from .typing import DifferentiableLogic as DifferentiableLogic
+from .typing import Domain as Domain
+from .typing import Domains as Domains
 from .typing import Optimiser as Optimiser
+from .typing import Optimisers as Optimisers
 from .typing import QuantifiedVariableName as QuantifiedVariableName
+from .typing import VariableDomain as VariableDomain
 from .typing import Verifier as Verifier
 from .verify import verify as verify
 

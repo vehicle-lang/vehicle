@@ -9,6 +9,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DSL
 import Vehicle.Expr.Normalised
+import Vehicle.Prelude (Doc)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin (BuiltinConstructor, BuiltinFunction, BuiltinType (..))
 import Vehicle.Syntax.Builtin qualified as S
@@ -57,11 +58,13 @@ instance Pretty LossTypeClassOp where
 -----------------------------------------------------------------------------
 -- Type synonyms
 
+-- | The et of builtins used by the loss function type-system.
 data LossBuiltin
   = BuiltinConstructor BuiltinConstructor
   | BuiltinFunction BuiltinFunction
   | BuiltinType BuiltinType
   | NatInDomainConstraint
+  | Optimise Bool
   | LossTC LossTypeClass
   | LossTCOp LossTypeClassOp
   deriving (Show, Eq, Ord, Generic)
@@ -69,7 +72,19 @@ data LossBuiltin
 instance Hashable LossBuiltin
 
 instance Pretty LossBuiltin where
-  pretty = pretty . show
+  pretty = \case
+    BuiltinConstructor b -> pretty b
+    BuiltinFunction b -> pretty b
+    BuiltinType b -> pretty b
+    NatInDomainConstraint -> "NatInDomainConstraint"
+    Optimise b -> prettyOptimise b
+    LossTC b -> pretty b
+    LossTCOp b -> pretty b
+
+prettyOptimise :: Bool -> Doc a
+prettyOptimise direction = "Optimise[" <> directionStr <> "]"
+  where
+    directionStr = if direction then "min" else "max"
 
 instance HasStandardTypes LossBuiltin where
   mkBuiltinType = BuiltinType

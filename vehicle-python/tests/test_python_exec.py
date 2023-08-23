@@ -11,11 +11,11 @@ def network_validate_output(output: Dict[str, Any]) -> None:
     assert output["prop"](network) == True
 
 
-def quantifier_all_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+def quantifier_all_sampler(_ctx: Dict[str, Any]) -> Iterator[Any]:
     yield from [-10.0, -1.0, 1.0, 10.0]
 
 
-def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
+def quantifier_any_sampler(_ctx: Dict[str, Any]) -> Iterator[Any]:
     yield from [-10.0, -1.0, 1.0, 10.0]
 
 
@@ -28,7 +28,7 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
         ),
         (
             "test_at.vcl",
-            {"prop": False},
+            {"prop": True},
         ),
         (
             "test_constant.vcl",
@@ -62,14 +62,6 @@ def quantifier_any_sampler(context: Dict[str, Any]) -> Iterator[Any]:
             "test_network.vcl",
             network_validate_output,
         ),
-        # (
-        #     "test_quantifier_all.vcl",
-        #     {"prop": True},
-        # ),
-        # (
-        #     "test_quantifier_any.vcl",
-        #     {"prop": True},
-        # ),
         (
             "test_subtraction.vcl",
             {"prop": True},
@@ -99,6 +91,3 @@ def test_loss_function_exec(
                 assert key in output
     elif callable(validate_output):
         validate_output(output)
-
-
-test_loss_function_exec("test_maximum.vcl", {"prop": False})

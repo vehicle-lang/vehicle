@@ -1,5 +1,4 @@
 import ast as py
-import itertools
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
@@ -10,7 +9,6 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Optional,
     Sequence,
     SupportsFloat,
     SupportsInt,
@@ -20,6 +18,7 @@ from typing import (
 )
 
 from typing_extensions import Self, TypeVar, final, override
+from vehicle_lang.typing import VehicleVector
 
 from .. import ast as vcl
 from ..ast import (
@@ -32,16 +31,16 @@ from ..ast import (
     Provenance,
 )
 from ..typing import (
-    AnyOptimisers,
     DeclarationName,
     DifferentiableLogic,
     Explicit,
+    QuantifiedVariableName,
     Target,
+    VehicleVector,
 )
 from ._ast_compat import arguments as py_arguments
 from ._ast_compat import dump as py_ast_dump
 from ._ast_compat import unparse as py_ast_unparse
-from ._collections import SupportsVector
 from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
 from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
 
@@ -62,6 +61,7 @@ __all__: List[str] = [
     "load_loss_function",
 ]
 
+
 ################################################################################
 ### Implementation of Vehicle builtins in Python
 ################################################################################
@@ -75,21 +75,21 @@ _U = TypeVar("_U")
 @dataclass(frozen=True)
 class PythonBuiltins(ABCBuiltins[int, int, float]):
     @override
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+    def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         assert isinstance(index, int), f"Expected int, found {vector}"
         return vector[index]
 
     @override
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
+    def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
         return (item, *vector)
 
     @override
     def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
+        self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
     ) -> _T:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         return reduce(lambda x, y: function(y, x), vector, initial)
 
     @override
@@ -98,10 +98,10 @@ class PythonBuiltins(ABCBuiltins[int, int, float]):
 
     @override
     def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
+        self, function: Callable[[_S], _T], vector: VehicleVector[_S]
     ) -> Tuple[_T, ...]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
+        assert isinstance(vector, VehicleVector), f"Expected vector, found {vector}"
         return tuple(map(function, vector))
 
     @override
@@ -112,7 +112,6 @@ class PythonBuiltins(ABCBuiltins[int, int, float]):
     def Rat(self, value: SupportsFloat) -> float:
         return value.__float__()
 
-    @override
     def Vector(self, *values: _T) -> Tuple[_T, ...]:
         return values
 
@@ -120,12 +119,12 @@ class PythonBuiltins(ABCBuiltins[int, int, float]):
     def ZipWithVector(
         self,
         function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
+        vector1: VehicleVector[_S],
+        vector2: VehicleVector[_T],
     ) -> Tuple[_U, ...]:
         assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
-        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
+        assert isinstance(vector1, VehicleVector), f"Expected vector, found {vector1}"
+        assert isinstance(vector2, VehicleVector), f"Expected vector, found {vector2}"
         return tuple(map(function, vector1, vector2))
 
 
@@ -149,19 +148,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def from_builtins(cls: Type[Self], builtins: AnyBuiltins) -> Self:
         return cls(builtins=builtins)
 
-    @classmethod
-    def from_optimisers(cls: Type[Self], optimisers: AnyOptimisers) -> Self:
-        return cls.from_builtins(builtins=PythonBuiltins(optimisers=optimisers))
-
     def compile(
         self,
         program: vcl.Program,
         path: Union[str, Path],
-        declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
-            declaration_context["__vehicle__"] = self.builtins
+            declaration_context = {"__vehicle__": self.builtins}
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
@@ -318,6 +312,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             # NOTE: We extract the name of the bound variable from the lambda,
             #       which should be the _second_ argument.
             name = predicate.binders[0].name
+
             return py_app(
                 py_builtin(
                     builtin=expression.function.builtin.__class__.__name__,
@@ -571,10 +566,8 @@ def load(
     *,
     declarations: Iterable[DeclarationName] = (),
     target: Target = Explicit.Explicit,
-    translation: Optional[PythonTranslation] = None,
 ) -> Dict[str, Any]:
-    if translation is None:
-        translation = PythonTranslation(builtins=PythonBuiltins(optimisers={}))
+    translation = PythonTranslation(builtins=PythonBuiltins())
     return translation.compile(
         vcl.load(path, declarations=declarations, target=target), path=path
     )
@@ -585,24 +578,19 @@ def load_loss_function(
     property_name: DeclarationName,
     *,
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    optimisers: AnyOptimisers = {},
 ) -> Any:
     """
     Load a loss function from a property in a Vehicle specification.
 
     :param path: The path to the Vehicle specification file.
     :param property_name: The name of the Vehicle property to load.
+    :param quantified_variable_domains: A mapping from Vehicle functions to the domains of quantified variables.
     :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
-    translation = PythonTranslation(builtins=PythonBuiltins(optimisers=optimisers))
-    declarations = load(
-        path,
-        declarations=(property_name,),
-        target=target,
-        translation=translation,
-    )
+
+    declarations = load(path, declarations=(property_name,), target=target)
     if property_name in declarations:
         return declarations[property_name]
     else:

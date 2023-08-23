@@ -69,7 +69,6 @@ evalBuiltinFunction evalApp b args
       FromRat dom -> return <$> evalFromRat dom args
       Indices -> return <$> evalIndices args
       Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
-      Optimise {} -> Nothing
 
 isDerived :: BuiltinFunction -> Bool
 isDerived = \case
