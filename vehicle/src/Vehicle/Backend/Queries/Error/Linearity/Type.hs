@@ -108,7 +108,7 @@ typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
 typeOfFold :: LinearityDSLExpr
 typeOfFold =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l2) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l2 ~> l1 ~> l3
 
 typeOfMap :: LinearityDSLExpr
 typeOfMap =
