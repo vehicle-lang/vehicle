@@ -11,7 +11,7 @@ import Vehicle.Verify.Specification.IO
 data ExportOptions = ExportOptions
   { target :: ITP,
     verificationCache :: FilePath,
-    outputFile :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String
   }
   deriving (Eq, Show)
@@ -31,7 +31,7 @@ export loggingSettings ExportOptions {..} = do
         networkLocations = networks resources,
         datasetLocations = datasets resources,
         parameterValues = parameters resources,
-        outputFile = outputFile,
+        output = output,
         moduleName = moduleName,
         verificationCache = Just verificationCache,
         outputAsJSON = False

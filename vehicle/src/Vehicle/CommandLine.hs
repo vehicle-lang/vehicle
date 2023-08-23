@@ -103,7 +103,7 @@ data ModeOptions
 -- List of all options
 --------------------------------------------------------------------------------
 {-
-assignmentsLocation = Opt "a" "assignmentsLocation"
+--  - a
 --  - b
 cache       = Opt "c" "cache"
 dataset     = Opt "d" "dataset"
@@ -114,19 +114,19 @@ declaration = Opt "e" "declaration"
 --  - i
 --  - j
 --  - k
-verifierLocation = Opt "l" "verifierLocation"
-moduleName       = Opt "m" "moduleName"
-network          = Opt "n" "network"
-outputFile       = Opt "o" "outputFile"
-parameter        = Opt "p" "parameter"
-queries          = Opt "q" "queries"
+verifier-location = Opt "l" "verifier-location"
+module-name       = Opt "m" "module-name"
+network           = Opt "n" "network"
+output        = Opt "o" "output"
+parameter         = Opt "p" "parameter"
+queries           = Opt "q" "queries"
 --  - r
-specification    = Opt "s" "specification"
-target           = Opt "t" "target"
+specification     = Opt "s" "specification"
+target            = Opt "t" "target"
 --  - u
-verifier         = Opt "v" "verifier"
+verifier          = Opt "v" "verifier"
 --  - x
-property         = Opt "y" "property"
+property          = Opt "y" "property"
 --  - z
 -}
 
@@ -209,7 +209,7 @@ compileParser =
     <*> networkParser
     <*> datasetParser
     <*> parameterParser
-    <*> outputFileParser
+    <*> outputParser
     <*> modulePrefixOption
     <*> compileCacheParser
     <*> outputAsJSONParser
@@ -273,7 +273,7 @@ exportParser =
   ExportOptions
     <$> exportTargetParser
     <*> exportCacheParser
-    <*> outputFileParser
+    <*> outputParser
     <*> modulePrefixOption
 
 exportParserInfo :: ParserInfo ModeOptions
@@ -446,7 +446,7 @@ modulePrefixOption :: Parser (Maybe String)
 modulePrefixOption =
   optional $
     strOption $
-      long "moduleName"
+      long "module-name"
         <> short 'm'
         <> metavar "MODULENAME"
         <> help
@@ -455,11 +455,11 @@ modulePrefixOption =
           \the Agda module with the internal name `Foo.Bar.agda`. If not \
           \provided then the name will default to the name of the output file."
 
-outputFileParser :: Parser (Maybe String)
-outputFileParser =
+outputParser :: Parser (Maybe String)
+outputParser =
   optional $
     strOption $
-      long "outputFile"
+      long "output"
         <> short 'o'
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
@@ -512,7 +512,7 @@ verifierLocationParser :: Parser (Maybe FilePath)
 verifierLocationParser =
   optional $
     strOption $
-      long "verifierLocation"
+      long "verifier-location"
         <> short 'l'
         <> metavar "FILE"
         <> help

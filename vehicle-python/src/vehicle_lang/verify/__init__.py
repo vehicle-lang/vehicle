@@ -46,7 +46,7 @@ def verify(
     args.extend(["--verifier", verifier._vehicle_option_name])
 
     if verifier_location is not None:
-        args.extend(["--verifierLocation", str(verifier_location)])
+        args.extend(["--verifier-location", str(verifier_location)])
 
     if cache is not None:
         args.extend(["--cache", str(cache)])

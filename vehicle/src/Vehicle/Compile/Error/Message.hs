@@ -1026,7 +1026,7 @@ instance MeaningfulError CompileError where
     -- Backend errors --
     --------------------
 
-    UnsupportedAlternatingQuantifiers queryFormat (ident, p) q pq pp ->
+    UnsupportedAlternatingQuantifiers queryFormat (ident, p) cause ->
       UError $
         UserError
           { provenance = p,
@@ -1042,12 +1042,18 @@ instance MeaningfulError CompileError where
                 <+> pretty queryFormat
                 <> "."
                 <> line
-                <> "In particular:"
-                <> line
-                <> indent 2 (prettyPolarityProvenance pq q pp),
-            fix = Nothing
+                <> causeDoc,
+            fix = Just "try simplifying the specification to avoid the alternating quantifiers."
           }
-    UnsupportedNonLinearConstraint queryFormat (ident, p) p' v1 v2 ->
+      where
+        causeDoc :: Doc a
+        causeDoc = case cause of
+          Left err -> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+          Right (q, pq, pp) ->
+            "In particular:"
+              <> line
+              <> indent 2 (prettyPolarityProvenance pq q pp)
+    UnsupportedNonLinearConstraint queryFormat (ident, p) cause ->
       UError $
         UserError
           { provenance = p,
@@ -1059,17 +1065,37 @@ instance MeaningfulError CompileError where
                 <+> pretty queryFormat
                 <> "."
                 <> line
-                <> "In particular the multiplication at"
-                  <+> pretty p'
-                  <+> "involves"
-                <> prettyLinearityProvenance v1 True
-                <> "and"
-                <> prettyLinearityProvenance v2 False,
+                <> causeDoc,
             fix =
-              Just $
-                "try avoiding it, otherwise please open an issue on the"
-                  <+> "Vehicle issue tracker."
+              Just "try rewriting the specification to avoid the non-linearity."
           }
+      where
+        causeDoc :: Doc a
+        causeDoc = case cause of
+          Left err -> errorInSubsystemMessage "locate the original source of the non-linearity" err
+          Right source -> case source of
+            LinearTimesLinear opProv lhs rhs ->
+              "In particular the multiplication at"
+                <+> pretty opProv
+                <+> "involves"
+                <> prettyLinearityProvenance lhs "left hand side of the multiplication"
+                <> "and"
+                <> prettyLinearityProvenance rhs "right hand side of the multiplication"
+            DivideByLinear opProv rhs ->
+              "In particular the division at"
+                <+> pretty opProv
+                <+> "involves"
+                <> prettyLinearityProvenance rhs "denominator of the division"
+            PowLinearBase opProv lhs ->
+              "In particular the power at"
+                <+> pretty opProv
+                <+> "involves"
+                <> prettyLinearityProvenance lhs "base of the power"
+            PowLinearExponent opProv lhs ->
+              "In particular the power at"
+                <+> pretty opProv
+                <+> "involves"
+                <> prettyLinearityProvenance lhs "exponent of the power"
     UnsupportedVariableType queryFormat ident p name problemType baseType supportedTypes ->
       UError $
         UserError
@@ -1225,6 +1251,18 @@ supportedNetworkTypeDescription =
     <> line
     <> "where 'a_i' and 'b_i' are all constants."
 
+errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
+errorInSubsystemMessage task err =
+  line
+    <> "Unfortunately while trying to" <+> task
+    <> ","
+      <+> "the following error was encountered:"
+    <> line
+    <> indent 2 (pretty (details err))
+    <> line
+    <> "Please report this as an issue on Github" <+> parens githubIssues
+    <> line
+
 githubIssues :: Doc a
 githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
 
@@ -1285,8 +1323,8 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         <+> "at"
         <+> pretty topQuantifierProv
 
-prettyLinearityProvenance :: LinearityProvenance -> Bool -> Doc a
-prettyLinearityProvenance lp isLHS =
+prettyLinearityProvenance :: forall a. LinearityProvenance -> Doc a -> Doc a
+prettyLinearityProvenance lp location =
   line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
   where
     go :: LinearityProvenance -> [Doc a]
@@ -1299,10 +1337,7 @@ prettyLinearityProvenance lp isLHS =
         (prettyAuxiliaryFunctionProvenance position <+> "at" <+> pretty p) : go pp
 
     finalLine :: Doc a
-    finalLine =
-      "which is used on the"
-        <+> (if isLHS then "left" else "right")
-        <+> "hand side of the multiplication"
+    finalLine = "which is used in the" <+> location
 
 prettyAuxiliaryFunctionProvenance :: FunctionPosition -> Doc a
 prettyAuxiliaryFunctionProvenance = \case

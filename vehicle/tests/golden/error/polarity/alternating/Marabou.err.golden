@@ -2,3 +2,4 @@ Error at Line 5, Columns 1-2: The property 'p' contains alternating 'forall' and
 In particular:
   1. the inner quantifier is the 'exists' located at Line 6, Columns 16-22
   2. which alternates with the outer 'forall' at Line 6, Columns 5-11
+Fix: try simplifying the specification to avoid the alternating quantifiers.

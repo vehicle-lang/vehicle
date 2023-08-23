@@ -36,7 +36,7 @@ compile logic typedProg =
     reformattedProg <- preprocessLogicalOperators logicImplementation typedProg
 
     let instanceCandidates = lossBuiltinInstances logicImplementation
-    lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates reformattedProg
+    lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates throwError reformattedProg
 
     lossProg <- resolveInstanceArguments lossProgWithInstances
 

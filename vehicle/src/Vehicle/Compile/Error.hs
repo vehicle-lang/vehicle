@@ -91,8 +91,8 @@ data CompileError
   | UnsupportedPolymorphicEquality ITP Provenance Name
   | NoNetworkUsedInProperty DeclProvenance
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name (VType Builtin) (VType Builtin) [Builtin]
-  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance Quantifier Provenance PolarityProvenance
-  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance Provenance LinearityProvenance LinearityProvenance
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
   | UnsupportedNegatedOperation DifferentiableLogicID Provenance
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name

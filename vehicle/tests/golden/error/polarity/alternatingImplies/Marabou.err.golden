@@ -3,3 +3,4 @@ In particular:
   1. the inner quantifier is the 'forall' located at Line 6, Columns 17-23
   2. which is turned into an 'exists' by being on the LHS of the '=>' at Line 6, Columns 42-44
   3. which alternates with the outer 'forall' at Line 6, Columns 5-11
+Fix: try simplifying the specification to avoid the alternating quantifiers.

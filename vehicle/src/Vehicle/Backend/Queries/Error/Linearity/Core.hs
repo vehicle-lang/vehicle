@@ -40,6 +40,34 @@ instance Hashable LinearityProvenance where
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
+-- NonLinearity
+
+-- | Possible sources of non-linearity in the program
+data NonLinearitySource
+  = -- | A multiplication where both arguments are linear
+    LinearTimesLinear Provenance LinearityProvenance LinearityProvenance
+  | -- | A division where the divisor is linear.
+    DivideByLinear Provenance LinearityProvenance
+  | -- | An power where the base is linear
+    PowLinearBase Provenance LinearityProvenance
+  | -- | An power where the exponent is linear
+    PowLinearExponent Provenance LinearityProvenance
+  deriving (Eq, Show, Generic)
+
+instance Pretty NonLinearitySource where
+  pretty = \case
+    LinearTimesLinear {} -> "X*X"
+    DivideByLinear {} -> "?/X"
+    PowLinearBase {} -> "X^?"
+    PowLinearExponent {} -> "?^X"
+
+instance NFData NonLinearitySource
+
+instance Hashable NonLinearitySource
+
+instance Serialize NonLinearitySource
+
+--------------------------------------------------------------------------------
 -- Linearity
 
 -- | Used to annotate numeric types, representing whether it represents a
@@ -47,7 +75,7 @@ instance Hashable LinearityProvenance where
 data Linearity
   = Constant
   | Linear LinearityProvenance
-  | NonLinear Provenance LinearityProvenance LinearityProvenance
+  | NonLinear NonLinearitySource
   deriving (Eq, Show, Generic)
 
 instance Ord Linearity where
@@ -67,15 +95,18 @@ instance Pretty Linearity where
   pretty = \case
     Constant -> "Constant"
     Linear {} -> "Linear"
-    NonLinear {} -> "NonLinear"
+    NonLinear nl -> "NonLinear[" <+> pretty nl <+> "]"
 
-mapLinearityProvenance :: (LinearityProvenance -> LinearityProvenance) -> Linearity -> Linearity
+mapLinearityProvenance ::
+  (LinearityProvenance -> LinearityProvenance) ->
+  Linearity ->
+  Linearity
 mapLinearityProvenance f = \case
   Constant -> Constant
   Linear lp -> Linear (f lp)
   -- At the moment we don't change non-linear provenance because we
   -- want the minimal example.
-  NonLinear p lp lp' -> NonLinear p lp lp'
+  NonLinear l -> NonLinear l
 
 --------------------------------------------------------------------------------
 -- Linearity constraints
@@ -83,6 +114,8 @@ mapLinearityProvenance f = \case
 data LinearityRelation
   = MaxLinearity
   | MulLinearity
+  | DivLinearity
+  | PowLinearity
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
   deriving (Eq, Generic, Show)
@@ -97,8 +130,10 @@ instance Pretty LinearityRelation where
   pretty = \case
     MaxLinearity -> "MaxLinearity"
     MulLinearity -> "MulLinearity"
-    QuantifierLinearity q -> "QuantifierLinearity" <> pretty q
-    FunctionLinearity p -> "FunctionLinearity" <> pretty p
+    DivLinearity -> "DivLinearity"
+    PowLinearity -> "PowLinearity"
+    QuantifierLinearity q -> "QuantifierLinearity[" <> pretty q <> "]"
+    FunctionLinearity p -> "FunctionLinearity[" <> pretty p <> "]"
 
 -----------------------------------------------------------------------------
 -- Full builtin
@@ -178,6 +213,12 @@ maxLinearity l1 l2 l3 = linearityRelation MaxLinearity [l1, l2, l3]
 
 mulLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 mulLinearity l1 l2 l3 = linearityRelation MulLinearity [l1, l2, l3]
+
+divLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+divLinearity l1 l2 l3 = linearityRelation DivLinearity [l1, l2, l3]
+
+powLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+powLinearity l1 l2 l3 = linearityRelation PowLinearity [l1, l2, l3]
 
 quantLinearity :: Quantifier -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 quantLinearity q l1 l2 = linearityRelation (QuantifierLinearity q) [l1, l2]

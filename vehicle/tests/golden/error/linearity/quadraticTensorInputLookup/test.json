@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s quadraticTensorInputLookup.vcl -t MarabouQueries --network f:fake.onnx",
-  "needs": ["quadraticTensorInputLookup.vcl", "fake.onnx"]
+  "run": "vehicle compile -s spec.vcl -t MarabouQueries --network f:fake.onnx",
+  "needs": ["spec.vcl", "fake.onnx"]
 }

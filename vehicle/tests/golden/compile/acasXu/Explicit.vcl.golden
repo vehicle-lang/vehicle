@@ -44,7 +44,7 @@ meanScalingValues : Vector Rat;
 meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
 
 normalise : Vector Rat -> Vector Rat;
-normalise x = map (\ i -> (x ! i - meanScalingValues ! i) - (maximumInputValues ! i - minimumInputValues ! i)) (indices 5)
+normalise x = map (\ i -> (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) (indices 5)
 
 normAcasXu : forallT (acasXu : Vector Rat -> Vector Rat) . Vector Rat -> Vector Rat;
 normAcasXu acasXu x = acasXu (normalise x)
@@ -56,7 +56,7 @@ maximalScore : forallT (acasXu : Vector Rat -> Vector Rat) . Index -> Vector Rat
 maximalScore acasXu i x = bigAnd (map (\ j -> i != j => normAcasXu acasXu x ! i > normAcasXu acasXu x ! j) (indices 5))
 
 scaleCOCOutput : Rat -> Rat;
-scaleCOCOutput x = (x - 7.518884) - 373.94992
+scaleCOCOutput x = (x - 7.518884) / 373.94992
 
 intruderDistantAndSlower : Vector Rat -> Bool;
 intruderDistantAndSlower x = x ! distanceToIntruder >= 55947.691 and x ! speed >= 1145.0 and x ! intruderSpeed <= 60.0

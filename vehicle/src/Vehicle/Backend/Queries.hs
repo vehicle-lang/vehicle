@@ -133,8 +133,8 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
       computeProperty `catchError` \e -> do
         let formatID = queryFormatID queryFormat
         case e of
-          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog ident
-          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog ident
+          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog (ident, p)
+          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog (ident, p)
           _ -> throwError e
 
     return (nameOf ident, property)
@@ -309,7 +309,7 @@ compileQuerySet isPropertyNegated expr = do
 -- and populated higher up the query compilation process.
 catchableUnsupportedAlternatingQuantifiersError :: CompileError
 catchableUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x x x
+  UnsupportedAlternatingQuantifiers x x x
   where
     x = developerError "Evaluating temporary quantifier error"
 

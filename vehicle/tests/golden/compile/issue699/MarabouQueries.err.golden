@@ -1,0 +1,7 @@
+Error at Line 33, Columns 1-7: The property 'robust' contains a non-linear constraint which is not supported by the Marabou query format.
+In particular the division at Line 15, Columns 42-43 involves
+  1. the output of network 'classifier' at Line 9, Columns 1-11
+  2. which is returned as an output of the function 'scaler' at Line 34, Columns 10-32
+  3. which is used in the denominator of the division
+
+Fix: try rewriting the specification to avoid the non-linearity.

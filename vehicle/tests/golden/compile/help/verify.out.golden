@@ -1,7 +1,7 @@
 Usage: vehicle verify (-s|--specification FILE) [-y|--property NAME] 
                       [-n|--network NAME:FILE] [-d|--dataset NAME:FILE] 
                       [-p|--parameter NAME:VALUE] [-c|--cache FILE]
-                      (-v|--verifier VERIFIER) [-l|--verifierLocation FILE]
+                      (-v|--verifier VERIFIER) [-l|--verifier-location FILE]
 
   Verify whether properties in a .vcl specification file are true or false.
 
@@ -32,7 +32,7 @@ Available options:
                            specification will be generated. If not provided then
                            no cache will be created.
   -v,--verifier VERIFIER   Verifier to use. Supported options: Marabou
-  -l,--verifierLocation FILE
+  -l,--verifier-location FILE
                            Location of the executable for the verifier. If not
                            provided then Vehicle will search for it in the PATH
                            environment variable.
