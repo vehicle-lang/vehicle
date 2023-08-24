@@ -5,6 +5,7 @@ where
 
 import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Polarity.Core
+import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
 import Vehicle.Expr.DSL
 import Vehicle.Expr.DeBruijn
 import Vehicle.Prelude
@@ -53,6 +54,7 @@ typeOfBuiltinFunction = \case
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
   b@Optimise {} -> developerError $ "Should not be polarity typing" <+> pretty b
+  Ann -> typeOfAnn
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

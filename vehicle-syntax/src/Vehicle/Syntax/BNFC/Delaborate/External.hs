@@ -68,7 +68,6 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.FreeVar _ n -> return $ B.Var (delabSymbol (V.nameOf n))
     V.BoundVar _ n -> return $ B.Var (delabSymbol n)
     V.Hole _ n -> return $ B.Hole (mkToken B.HoleToken n)
-    V.Ann _ e t -> B.Ann <$> delabM e <*> pure tokElemOf <*> delabM t
     V.Pi _ t1 t2 -> delabPi t1 t2
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
@@ -193,6 +192,7 @@ delabBuiltinFunction fun args = case fun of
   V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
+  V.Ann -> delabInfixOp2 B.Ann tokElemOf args
   -- Builtins not in the surface syntax.
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab

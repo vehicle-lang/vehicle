@@ -5,7 +5,6 @@ module Vehicle.Syntax.AST.Expr
     Decl,
     Expr
       ( Universe,
-        Ann,
         App,
         Pi,
         Builtin,
@@ -76,11 +75,6 @@ data Expr var builtin
     Universe
       Provenance
       UniverseLevel
-  | -- | User annotation
-    Ann
-      Provenance
-      (Expr var builtin) -- The term
-      (Expr var builtin) -- The type of the term
   | -- | Application of one term to another.
     UnsafeApp
       Provenance
@@ -148,7 +142,7 @@ pattern App p f xs <- UnsafeApp p f xs
   where
     App p f xs = normApp p f xs
 
-{-# COMPLETE Universe, Ann, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
+{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -162,7 +156,6 @@ instance HasProvenance (Expr var builtin) where
     Universe p _ -> p
     Hole p _ -> p
     Meta p _ -> p
-    Ann p _ _ -> p
     App p _ _ -> p
     Pi p _ _ -> p
     Builtin p _ -> p

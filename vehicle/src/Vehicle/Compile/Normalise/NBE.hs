@@ -54,7 +54,6 @@ eval env expr = do
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
     Builtin _ b -> return $ VBuiltin b []
-    Ann _ e _ -> eval env e
     Lam _ binder body -> do
       binder' <- evalBinder env binder
       return $ VLam binder' env body

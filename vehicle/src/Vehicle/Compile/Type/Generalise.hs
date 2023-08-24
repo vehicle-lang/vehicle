@@ -216,7 +216,6 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
       Builtin {} -> expr
       FreeVar {} -> expr
       BoundVar {} -> expr
-      Ann p e t -> Ann p (go d e) (go d t)
       App p fun args -> App p (go d fun) (goArgs args)
       Pi p binder result -> Pi p (goBinder binder) (go (d + 1) result)
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)

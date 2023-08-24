@@ -360,7 +360,6 @@ compileExpr expr = do
       _ -> do
         let (binders, body) = foldBinders (FoldableBinder PiFold binder) result
         compileTypeLevelQuantifier Forall (binder :| binders) body
-    Ann _ e t -> compileAnn <$> compileExpr e <*> compileExpr t
     Let _ bound binding body -> do
       cBoundExpr <- compileLetBinder (binding, bound)
       cBody <- compileExpr body
@@ -429,8 +428,8 @@ compileLam binder expr = do
 compileArg :: (MonadAgdaCompile m) => Arg Name Builtin -> m Code
 compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
 
-compileAnn :: Code -> Code -> Code
-compileAnn e t = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t, e]
+compileAnn :: [Code] -> Code
+compileAnn args = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" (reverse args)
 
 compileArgs :: (MonadAgdaCompile m) => [Arg Name Builtin] -> m [Code]
 compileArgs args = traverse compileArg (filter (not . wasInsertedByCompiler) args)
@@ -593,6 +592,7 @@ compileBuiltin _p b args = case b of
             (Set.singleton DataBool, 0)
             ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
       _ -> unsupportedArgsError
+    Ann -> compileAnn <$> compileArgs args
     Optimise {} -> unsupportedError
   NatInDomainConstraint -> unsupportedError
   where

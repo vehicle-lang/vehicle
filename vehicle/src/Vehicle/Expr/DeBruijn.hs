@@ -104,7 +104,6 @@ instance Substitutable (Expr Ix builtin) (Expr Ix builtin) where
     Hole {} -> return expr
     Builtin {} -> return expr
     FreeVar {} -> return expr
-    Ann p term typ -> Ann p <$> subst term <*> subst typ
     App p fun args -> App p <$> subst fun <*> traverse subst args
     Pi p binder res -> Pi p <$> traverse subst binder <*> underDBBinder (subst res)
     Let p e1 binder e2 -> Let p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)

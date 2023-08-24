@@ -69,7 +69,6 @@ traverseBuiltinsM f expr = case expr of
   App p1 (Builtin p2 b) args -> do
     args' <- traverse (traverseBuiltinsArg f) args
     f p1 p2 b (NonEmpty.toList args')
-  Ann p e t -> Ann p <$> traverseBuiltinsM f e <*> traverseBuiltinsM f t
   App p fun args -> App p <$> traverseBuiltinsM f fun <*> traverse (traverseBuiltinsArg f) args
   Pi p binder res -> Pi p <$> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f res
   Let p bound binder body -> Let p <$> traverseBuiltinsM f bound <*> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f body
@@ -128,7 +127,6 @@ traverseFreeVarsM underBinder processFreeVar = go
       Meta {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
-      Ann p e t -> Ann p <$> go e <*> go t
       Pi p binder res -> do
         binder' <- traverse go binder
         res' <- underBinder binder' (go res)

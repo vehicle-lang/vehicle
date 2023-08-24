@@ -221,7 +221,6 @@ instance PrintableBuiltin JBuiltin where
       where
         mkVar doc = V.FreeVar p $ V.Identifier V.User (layoutAsText doc)
         ctxVar = mkVar $ if null ctx then "" else pretty ctx
-
   isCoercion = const False
 
 --------------------------------------------------------------------------------
@@ -314,6 +313,7 @@ instance ToJBuiltin V.BuiltinFunction where
     V.Indices -> return Indices
     V.ZipWithVector -> return ZipWithVector
     V.Optimise b -> asks (Optimise b)
+    V.Ann -> compilerDeveloperError "Type-annotations should have been removed earlier"
 
 instance ToJBuiltin V.BuiltinType where
   toJBuiltin b = return $ case b of
@@ -430,7 +430,8 @@ type MonadJSON builtin m =
     MonadContext builtin m,
     ToJBuiltin builtin,
     PrintableBuiltin builtin,
-    TypableBuiltin builtin
+    TypableBuiltin builtin,
+    HasStandardData builtin
   )
 
 toJProg :: (MonadJSON builtin m) => V.Prog Ix builtin -> m (JProg Ix)
@@ -458,7 +459,6 @@ toJExpr :: forall builtin m. (MonadJSON builtin m) => V.Expr Ix builtin -> m (JE
 toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
-  V.Ann _ e _ -> toJExpr e
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
   V.Builtin p b -> do
     boundCtx <- getBoundCtx (Proxy @builtin)
@@ -467,6 +467,9 @@ toJExpr expr = case expr of
     return $ Builtin p jBuiltin
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
+  -- Strip out type-annotations
+  V.AnnExpr _ _t e -> toJExpr e
+  -- Otherwise, calculate whether function is partial or not.
   V.App p fun args -> do
     fun' <- toJExpr fun
     let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
@@ -558,7 +561,6 @@ functionArity = go
         V.Builtin _ b -> do
           let t = typeBuiltin mempty b
           return $ explicitArityFromType t
-        V.Ann _ e _ -> go e
         V.Let _ _bound binder body ->
           addBinderToContext binder $ go body
       return result

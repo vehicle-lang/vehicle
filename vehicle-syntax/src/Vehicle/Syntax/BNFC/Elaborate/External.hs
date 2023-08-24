@@ -284,7 +284,6 @@ elabExpr = \case
   B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
   B.Hole n -> V.mkHole <$> mkProvenance n <*> pure (tkSymbol n)
   B.Literal l -> elabLiteral l
-  B.Ann e tk t -> op2 V.Ann tk (elabExpr e) (elabExpr t)
   B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
   B.App e1 e2 -> elabApp e1 e2
@@ -336,6 +335,8 @@ elabExpr = \case
   B.HasMul tk -> builtinTypeClass V.HasMul tk []
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
+  -- NOTE: we reverse the arguments to make it well-typed.
+  B.Ann e tk t -> builtinFunction V.Ann tk [t, e]
 
 elabArg :: (MonadElab m) => B.Arg -> m (V.Arg V.Name V.Builtin)
 elabArg = \case

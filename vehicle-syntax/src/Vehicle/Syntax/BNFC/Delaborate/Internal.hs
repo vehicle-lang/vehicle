@@ -64,7 +64,6 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.BoundVar _ n -> return $ B.Var (delabSymbol n)
     V.Hole _ n -> return $ B.Hole (mkToken B.HoleToken n)
     V.Builtin _ op -> return $ delabBuiltin op
-    V.Ann _ e t -> B.Ann <$> delabM e <*> delabM t
     V.Pi _ b t -> B.Pi <$> delabM b <*> delabM t
     V.Let _ v b e -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e

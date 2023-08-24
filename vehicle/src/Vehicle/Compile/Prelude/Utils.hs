@@ -24,7 +24,6 @@ freeNamesIn = \case
   Hole {} -> []
   Meta {} -> []
   Builtin {} -> []
-  Ann _ e t -> freeNamesIn e <> freeNamesIn t
   App _ fun args -> freeNamesIn fun <> concatMap (freeNamesIn . argExpr) args
   Pi _ binder result -> freeNamesIn (binderType binder) <> freeNamesIn result
   Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (binderType binder) <> freeNamesIn body

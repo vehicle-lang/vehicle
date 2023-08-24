@@ -111,7 +111,6 @@ instance HasMetas (Expr Ix builtin) where
     Builtin {} -> return ()
     BoundVar {} -> return ()
     FreeVar {} -> return ()
-    Ann _ e t -> do findMetas e; findMetas t
     Pi _ binder result -> do findMetas binder; findMetas result
     Let _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
     Lam _ binder body -> do findMetas binder; findMetas body

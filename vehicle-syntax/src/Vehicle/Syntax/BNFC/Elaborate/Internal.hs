@@ -58,7 +58,6 @@ instance Elab B.Expr (V.Expr V.Name V.Builtin) where
   elab = \case
     B.Type l -> convType l
     B.Hole name -> V.Hole <$> mkProvenance name <*> pure (tkSymbol name)
-    B.Ann term typ -> op2 V.Ann <$> elab term <*> elab typ
     B.Pi binder expr -> op2 V.Pi <$> elab binder <*> elab expr
     B.Lam binder e -> op2 V.Lam <$> elab binder <*> elab e
     B.Let binder e1 e2 -> op3 V.Let <$> elab e1 <*> elab binder <*> elab e2

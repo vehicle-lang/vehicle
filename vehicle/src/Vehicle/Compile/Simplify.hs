@@ -35,7 +35,6 @@ instance Simplify (Expr Name Builtin) where
     Builtin {} -> expr
     BoundVar {} -> expr
     FreeVar {} -> expr
-    Ann p e t -> Ann p (uninsert e) (uninsert t)
     Pi p binder result -> Pi p (uninsert binder) (uninsert result)
     Let p bound binder body -> Let p (uninsert bound) (uninsert binder) (uninsert body)
     Lam p binder body -> Lam p (uninsert binder) (uninsert body)
