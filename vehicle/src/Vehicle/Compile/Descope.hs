@@ -119,7 +119,6 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Meta p i -> return $ Meta p i
   FreeVar p v -> return $ FreeVar p v
   BoundVar p v -> BoundVar p <$> f p v
-  Ann p e1 t -> Ann p <$> descopeExpr f e1 <*> descopeExpr f t
   App p fun args -> App p <$> descopeExpr f fun <*> traverse (descopeArg f) args
   Let p bound binder body -> do
     bound' <- descopeExpr f bound

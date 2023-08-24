@@ -57,7 +57,6 @@ instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) w
         if isIrrelevant binder
           then remove $ UnitLiteral p `substDBInto` body
           else Lam p <$> remove binder <*> remove body
-      Ann p e t -> Ann p <$> remove e <*> remove t
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Universe {} -> return expr
       FreeVar {} -> return expr

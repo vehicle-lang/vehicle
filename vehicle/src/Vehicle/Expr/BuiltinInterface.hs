@@ -331,6 +331,9 @@ pattern RatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LRat n))
   where
     RatLiteral p n = Builtin p (mkBuiltinConstructor (LRat n))
 
+pattern AnnExpr :: (HasStandardData builtin) => Provenance -> Type var builtin -> Expr var builtin -> Expr var builtin
+pattern AnnExpr p t e <- BuiltinExpr p (getBuiltinFunction -> Just Ann) [ExplicitArg _ _ t, ExplicitArg _ _ e]
+
 pattern VecLiteral ::
   (HasStandardData builtin) =>
   Provenance ->

@@ -490,7 +490,6 @@ getUsedFunctions declCtx boundCtx expr = case expr of
   BoundVar _ v -> getUsedVarsBoundVar boundCtx v
   Builtin _ b -> getUsedFunctionsBuiltin b
   FreeVar _ ident -> getUsedFunctionsFreeVar declCtx ident
-  Ann _ term _typ -> getUsedFunctions declCtx boundCtx term
   App _ fun args -> foldr (<>) (getUsedFunctions declCtx boundCtx fun) (fmap (getUsedFunctions declCtx boundCtx . argExpr) args)
   Let _ e1 _binder e2 -> getUsedFunctions declCtx boundCtx e1 <> getUsedFunctions declCtx boundCtx e2
   Lam _ _binder e -> getUsedFunctions declCtx (mempty : boundCtx) e

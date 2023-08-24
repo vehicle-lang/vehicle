@@ -82,7 +82,6 @@ cleanExpr expr = case expr of
   Meta {} -> return expr
   Hole {} -> return expr
   Builtin {} -> return expr
-  Ann _p e _t -> cleanExpr e
   Let p e1 binder e2 -> Let p <$> cleanExpr e1 <*> traverse cleanExpr binder <*> cleanExpr e2
   Lam p binder e -> Lam p <$> traverse cleanExpr binder <*> cleanExpr e
 

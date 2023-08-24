@@ -70,6 +70,7 @@ evalBuiltinFunction evalApp b args
       Indices -> return <$> evalIndices args
       Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
       Optimise {} -> Nothing
+      Ann -> return <$> evalAnn args
 
 isDerived :: BuiltinFunction -> Bool
 isDerived = \case
@@ -388,6 +389,11 @@ evalMapVector evalApp = \case
 evalIndices :: EvalSimpleBuiltin builtin
 evalIndices = \case
   [VNatLiteral n] -> Just $ mkVLVec (fmap VIndexLiteral [0 .. n - 1])
+  _ -> Nothing
+
+evalAnn :: EvalSimpleBuiltin builtin
+evalAnn = \case
+  [_t, e] -> Just e
   _ -> Nothing
 
 -----------------------------------------------------------------------------

@@ -56,7 +56,6 @@ instance (MonadNorm builtin m) => MetaSubstitutable m (Expr Ix builtin) where
       Builtin {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr
-      Ann p term typ -> Ann p <$> subst term <*> subst typ
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
       Pi p binder res -> Pi p <$> subst binder <*> subst res

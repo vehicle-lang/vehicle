@@ -80,7 +80,6 @@ removeImplicitAndInstanceArgs prog =
       Meta {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
-      Ann p e t -> Ann p <$> go e <*> go t
       Pi p binder res -> Pi p <$> traverse go binder <*> go res
       Lam p binder body
         | isExplicit binder || not (isTypeUniverse (typeOf binder)) ->

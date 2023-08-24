@@ -139,13 +139,6 @@ inferExpr e = do
       metaExpr <- unnormalised <$> freshMetaExpr p metaType boundCtx
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
-    Ann p expr exprType -> do
-      -- Check the annotation is a type.
-      (checkedExprType, exprTypeType) <- inferExpr exprType
-      checkExprTypesEqual p exprType (TypeUniverse p 0) exprTypeType
-
-      checkedExpr <- checkExpr checkedExprType expr
-      return (Ann p checkedExpr checkedExprType, checkedExprType)
     Pi p binder resultType -> do
       checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
       let checkedBinder = replaceBinderType checkedBinderType binder
