@@ -12,7 +12,6 @@ import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Monad (getMetaSubstitution)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
@@ -22,8 +21,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Normalised
 
@@ -295,7 +294,7 @@ checkAllMetasSolved proxy = do
 logUnsolvedUnknowns :: forall builtin m. (TCM builtin m) => Maybe (Decl Ix builtin) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   logDebugM MaxDetail $ do
-    newSubstitution <- getMetaSubstitution @builtin
+    newSubstitution <- getMetaSubstitution (Proxy @builtin)
     updatedSubst <- substMetas newSubstitution
 
     unsolvedMetas <- getUnsolvedMetas (Proxy @builtin)

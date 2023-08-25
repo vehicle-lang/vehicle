@@ -20,11 +20,12 @@ import Vehicle.Expr.Normalised
 -- of the expresson.
 forceHead ::
   (MonadNorm builtin m) =>
+  MetaSubstitution builtin ->
   ConstraintContext builtin ->
   Value builtin ->
   m (Value builtin, MetaSet)
-forceHead ctx expr = do
-  (maybeForcedExpr, blockingMetas) <- forceExpr expr
+forceHead subst ctx expr = do
+  (maybeForcedExpr, blockingMetas) <- forceExpr subst expr
   forcedExpr <- case maybeForcedExpr of
     Nothing -> return expr
     Just forcedExpr -> do
@@ -38,20 +39,20 @@ forceHead ctx expr = do
 forceExpr ::
   forall builtin m.
   (MonadNorm builtin m) =>
+  MetaSubstitution builtin ->
   Value builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceExpr = go
+forceExpr subst = go
   where
     go :: Value builtin -> m (Maybe (Value builtin), MetaSet)
     go = \case
       VMeta m spine -> goMeta m spine
-      VBuiltin b spine -> forceBuiltin b spine
+      VBuiltin b spine -> forceBuiltin subst b spine
       _ -> return (Nothing, mempty)
 
     goMeta :: MetaID -> Spine builtin -> m (Maybe (Value builtin), MetaSet)
     goMeta m spine = do
-      metaSubst <- getMetaSubstitution
-      case MetaMap.lookup m metaSubst of
+      case MetaMap.lookup m subst of
         Just solution -> do
           normMetaExpr <- evalApp (normalised solution) spine
           (maybeForcedExpr, blockingMetas) <- go normMetaExpr
@@ -59,22 +60,27 @@ forceExpr = go
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
-forceArg :: (MonadNorm builtin m) => VArg builtin -> m (VArg builtin, (Bool, MetaSet))
-forceArg arg = do
-  (maybeResult, blockingMetas) <- unpairArg <$> traverse forceExpr arg
+forceArg ::
+  (MonadNorm builtin m) =>
+  MetaSubstitution builtin ->
+  VArg builtin ->
+  m (VArg builtin, (Bool, MetaSet))
+forceArg subst arg = do
+  (maybeResult, blockingMetas) <- unpairArg <$> traverse (forceExpr subst) arg
   let result = fmap (fromMaybe (argExpr arg)) maybeResult
   let reduced = isJust $ argExpr maybeResult
   return (result, (reduced, blockingMetas))
 
 forceBuiltin ::
   (MonadNorm builtin m) =>
+  MetaSubstitution builtin ->
   builtin ->
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceBuiltin b spine = case getBuiltinFunction b of
+forceBuiltin subst b spine = case getBuiltinFunction b of
   Nothing -> return (Nothing, mempty)
   Just {} -> do
-    (argResults, argData) <- unzip <$> traverse forceArg spine
+    (argResults, argData) <- unzip <$> traverse (forceArg subst) spine
     let (argsReduced, argBlockingMetas) = unzip argData
     let anyArgsReduced = or argsReduced
     let blockingMetas = MetaSet.unions argBlockingMetas

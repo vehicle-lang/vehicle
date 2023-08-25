@@ -14,7 +14,6 @@ import Data.Maybe (mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Monad (MonadNorm (..))
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
@@ -25,8 +24,8 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
-import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
@@ -43,12 +42,14 @@ import Vehicle.Expr.Normalised
 type MonadUnify builtin m = TCM builtin m
 
 solveUnificationConstraint ::
+  forall builtin m.
   (MonadUnify builtin m) =>
   WithContext (UnificationConstraint builtin) ->
   m ()
 solveUnificationConstraint (WithContext (Unify origin' e1 e2) ctx) = do
-  (ne1', e1BlockingMetas) <- forceHead ctx e1
-  (ne2', e2BlockingMetas) <- forceHead ctx e2
+  metaSubst <- getMetaSubstitution (Proxy @builtin)
+  (ne1', e1BlockingMetas) <- forceHead metaSubst ctx e1
+  (ne2', e2BlockingMetas) <- forceHead metaSubst ctx e2
 
   -- In theory this substitution shouldn't be needed, but in practice it is as if
   -- not all the meta-variables are substituted through then the scope of some
@@ -264,7 +265,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
                 <+> "found in own solution"
                 <+> squotes (prettyVerbose attemptedSolution)
         | otherwise -> do
-            metaSubst <- getMetaSubstitution
+            metaSubst <- getMetaSubstitution (Proxy @builtin)
             case MetaMap.lookup m metaSubst of
               Just solution -> go =<< evalApp (normalised solution) spine
               Nothing -> do

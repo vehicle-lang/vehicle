@@ -22,7 +22,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Substitution
+import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
@@ -208,9 +208,25 @@ trackSolvedMetas _ performComputation = do
           ..
         }
 
+getMetaSubstitution ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  Proxy builtin ->
+  m (MetaSubstitution builtin)
+getMetaSubstitution _ = currentSubstitution <$> getMetaState
+
+substMetas ::
+  forall builtin m a.
+  (MonadTypeChecker builtin m, MetaSubstitutable m builtin a) =>
+  a ->
+  m a
+substMetas x = do
+  s <- getMetaSubstitution (Proxy @builtin)
+  MetaSubstitution.subst s x
+
 getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
 getUnsolvedMetas proxy = do
-  metasSolved <- MetaMap.keys <$> getMetaSubstitution @builtin
+  metasSolved <- MetaMap.keys <$> getMetaSubstitution (Proxy @builtin)
   numberOfMetasCreated <- getNumberOfMetasCreated proxy
   let metasCreated = MetaSet.fromList $ fmap MetaID [0 .. numberOfMetasCreated - 1]
   return $ MetaSet.difference metasCreated metasSolved
@@ -285,9 +301,6 @@ getMetaProvenance _ m = metaProvenance <$> getMetaInfo @builtin m
 
 getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
 getMetaType m = metaType <$> getMetaInfo m
-
-getSubstMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
-getSubstMetaType m = substMetas =<< getMetaType m
 
 -- | Get the bound context the meta-variable was created in.
 getMetaCtx :: (MonadTypeChecker builtin m) => MetaID -> m (TypingBoundCtx builtin)
@@ -379,7 +392,7 @@ solveMeta m solution solutionCtx = do
       <+> prettyExternal (WithContext abstractedSolution (boundContextOf solutionCtx))
   -- "as" <+> prettyFriendly (WithContext abstractedSolution (boundContextOf ctx))
 
-  metaSubst <- getMetaSubstitution @builtin
+  metaSubst <- getMetaSubstitution (Proxy @builtin)
   case MetaMap.lookup m metaSubst of
     Just existing ->
       compilerDeveloperError $
@@ -427,6 +440,10 @@ getDeclType ident = do
   ctx <- getDeclContext
   TypingDeclCtxEntry {..} <- lookupInDeclCtx "type-checking" ident ctx
   return $ unnormalised declType
+
+getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
+getSubstMetaType m = do
+  substMetas =<< getMetaType m
 
 --------------------------------------------------------------------------------
 -- Constraints

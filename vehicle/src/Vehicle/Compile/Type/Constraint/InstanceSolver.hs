@@ -17,7 +17,6 @@ import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
 import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.DeBruijn (dbLevelToIndex, substDBInto)
 import Vehicle.Expr.Normalised

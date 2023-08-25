@@ -33,22 +33,18 @@ defaultEvalOptions =
 class (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) => MonadNorm builtin m where
   getEvalOptions :: Proxy builtin -> m EvalOptions
   getDeclSubstitution :: m (NormDeclCtx builtin)
-  getMetaSubstitution :: m (MetaSubstitution builtin)
 
 instance (MonadNorm builtin m) => MonadNorm builtin (StateT s m) where
   getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
-  getMetaSubstitution = lift getMetaSubstitution
 
 instance (Monoid s, MonadNorm builtin m) => MonadNorm builtin (WriterT s m) where
   getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
-  getMetaSubstitution = lift getMetaSubstitution
 
 instance (MonadNorm builtin m) => MonadNorm builtin (ReaderT s m) where
   getEvalOptions = lift . getEvalOptions
   getDeclSubstitution = lift getDeclSubstitution
-  getMetaSubstitution = lift getMetaSubstitution
 
 newtype NormT builtin m a = NormT
   { unnormT :: ReaderT (EvalOptions, NormDeclCtx builtin, MetaSubstitution builtin) m a
@@ -79,4 +75,3 @@ instance (MonadError e m) => MonadError e (NormT builtin m) where
 instance (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) => MonadNorm builtin (NormT builtin m) where
   getEvalOptions _ = NormT $ asks (\(opts, _, _) -> opts)
   getDeclSubstitution = NormT $ asks (\(_, declCtx, _) -> declCtx)
-  getMetaSubstitution = NormT $ asks (\(_, _, metaCtx) -> metaCtx)
