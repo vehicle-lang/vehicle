@@ -13,7 +13,6 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint.Core (createInstanceUnification)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Substitution
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
 import Vehicle.Expr.BuiltinInterface

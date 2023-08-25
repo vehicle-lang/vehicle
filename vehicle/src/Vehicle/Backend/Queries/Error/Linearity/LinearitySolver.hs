@@ -14,9 +14,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta.Substitution (substMetas)
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
-import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta)
+import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta, substMetas)
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Syntax.Builtin

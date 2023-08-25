@@ -77,8 +77,6 @@ instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m)
 
   getDeclSubstitution = TypeCheckerT $ asks (typingDeclCtxToNormDeclCtx . fst)
 
-  getMetaSubstitution = TypeCheckerT (gets currentSubstitution)
-
 instance (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getDeclContext = TypeCheckerT (asks fst)
   addDeclContext d s = TypeCheckerT $ local (first (addToTypingDeclCtx d)) (unTypeCheckerT s)

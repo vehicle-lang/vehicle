@@ -21,6 +21,7 @@ module Vehicle.Compile.Type.Monad
     trackSolvedMetas,
     prettyMeta,
     prettyMetas,
+    substMetas,
     -- Constraints
     copyContext,
     createFreshUnificationConstraint,
