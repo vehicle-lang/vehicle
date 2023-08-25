@@ -79,10 +79,6 @@ class TensorflowBuiltins(ABCBuiltins[tf.Tensor, tf.Tensor, tf.Tensor]):
         raise VehicleBuiltinUnsupported(vcl.AtVector.__name__)
 
     @override
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
-        raise VehicleBuiltinUnsupported(vcl.ConsVector.__name__)
-
-    @override
     def DivRat(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
         return tf.divide(x, y)
 

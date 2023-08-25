@@ -133,7 +133,6 @@ typeOfBuiltinFunction = \case
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat tRat
   -- Container functions
-  ConsVector -> typeOfConsVector
   Fold dom -> case dom of
     FoldList -> typeOfFold tListRaw
     FoldVector -> forAllIrrelevantNat "n" $ \n -> typeOfFold (tVectorFunctor n)
@@ -238,12 +237,6 @@ typeOfFold f =
   forAll "A" type0 $ \a ->
     forAll "B" type0 $ \b ->
       (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
-
-typeOfConsVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
-typeOfConsVector =
-  forAll "A" type0 $ \a ->
-    forAllIrrelevantNat "n" $ \n ->
-      a ~> tVector a n ~> tVector a (addNat n (natLit 1))
 
 typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfQuantifier t = (t ~> tBool) ~> tBool

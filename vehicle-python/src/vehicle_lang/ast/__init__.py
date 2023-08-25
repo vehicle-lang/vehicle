@@ -96,11 +96,6 @@ class ConsList(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class ConsVector(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
 class DivRat(BuiltinFunction):
     pass
 

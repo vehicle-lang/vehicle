@@ -305,7 +305,6 @@ elabExpr = \case
   B.Vector tk -> builtinType V.Vector tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
-  B.ConsVector e1 tk e2 -> builtinFunction V.ConsVector tk [e1, e2]
   B.Indices tk -> builtinFunction V.Indices tk []
   B.Not tk e -> builtinFunction V.Not tk [e]
   B.Impl e1 tk e2 -> builtinFunction V.Implies tk [e1, e2]

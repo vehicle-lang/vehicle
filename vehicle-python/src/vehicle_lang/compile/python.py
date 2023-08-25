@@ -81,10 +81,6 @@ class PythonBuiltins(ABCBuiltins[int, int, float]):
         return vector[index]
 
     @override
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
-        return (item, *vector)
-
-    @override
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
     ) -> _T:

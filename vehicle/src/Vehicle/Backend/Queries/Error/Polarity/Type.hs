@@ -46,7 +46,6 @@ typeOfBuiltinFunction = \case
   FromNat {} -> unquantified ~> unquantified
   FromRat {} -> unquantified ~> unquantified
   -- Container functions
-  ConsVector -> typeOfOp2 maxPolarity
   Fold {} -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap

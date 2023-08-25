@@ -316,7 +316,6 @@ data BuiltinFunction
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
   | At
-  | ConsVector
   | Fold FoldDomain
   | MapList
   | MapVector
@@ -360,7 +359,6 @@ instance Pretty BuiltinFunction where
     MapVector -> "mapVector"
     ZipWithVector -> "zipWith"
     At -> "!"
-    ConsVector -> "::v"
     Indices -> "indices"
     Ann -> ":"
     Optimise b -> "Optimise[" <> direction <> "]"

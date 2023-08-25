@@ -45,7 +45,6 @@ typeOfBuiltinFunction = \case
   FromNat {} -> constant ~> constant
   FromRat {} -> constant ~> constant
   -- Container functions
-  ConsVector -> typeOfOp2 maxLinearity
   Fold {} -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap

@@ -68,10 +68,6 @@ class ABCBuiltins(
         assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
         return itertools.chain((item,), iterable)
 
-    @abstractmethod
-    def ConsVector(self, item: _T, vector: SupportsVector[_T]) -> SupportsVector[_T]:
-        ...
-
     def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
         assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
         assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"

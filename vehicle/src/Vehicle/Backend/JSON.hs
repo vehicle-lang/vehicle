@@ -122,7 +122,6 @@ data JBuiltin
   | GtInt
   | GtRat
   | AtVector
-  | ConsVector
   | FoldList
   | FoldVector
   | MapList
@@ -200,7 +199,6 @@ instance PrintableBuiltin JBuiltin where
     GtInt -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderInt V.Gt)
     GtRat -> V.Builtin p (V.BuiltinFunction $ V.Order V.OrderRat V.Gt)
     AtVector -> V.Builtin p (V.BuiltinFunction V.At)
-    ConsVector -> V.Builtin p (V.BuiltinFunction V.ConsVector)
     FoldList -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldList)
     FoldVector -> V.Builtin p (V.BuiltinFunction $ V.Fold V.FoldVector)
     MapList -> V.Builtin p (V.BuiltinFunction V.MapList)
@@ -305,7 +303,6 @@ instance ToJBuiltin V.BuiltinFunction where
     V.Order V.OrderInt V.Gt -> return GtInt
     V.Order V.OrderRat V.Gt -> return GtRat
     V.At -> return AtVector
-    V.ConsVector -> return ConsVector
     V.Fold V.FoldList -> return FoldList
     V.Fold V.FoldVector -> return FoldVector
     V.MapList -> return MapList
