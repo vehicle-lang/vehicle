@@ -60,7 +60,6 @@ evalBuiltinFunction evalApp b args
       Order dom op -> return <$> evalOrder dom op args
       If -> return <$> evalIf args
       At -> return <$> evalAt args
-      ConsVector -> return <$> evalConsVector args
       Fold dom -> evalFold dom evalApp args
       ZipWithVector -> evalZipWith evalApp args
       MapList -> evalMapList evalApp args

@@ -113,8 +113,6 @@ tokNil = mkToken B.TokNil "nil"
 
 tokCons = mkToken B.TokCons "::"
 
-tokConsVector = mkToken B.TokConsVector "::"
-
 tokZipWith = mkToken B.TokZipWith "zipWith"
 
 tokAt = mkToken B.TokAt "!"

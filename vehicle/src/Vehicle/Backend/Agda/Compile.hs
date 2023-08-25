@@ -558,7 +558,6 @@ compileBuiltin _p b args = case b of
     Equals dom Eq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
     Equals dom Neq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
     Order dom ord -> compileOrder ord dom =<< compileArgs args
-    ConsVector -> annotateInfixOp2 [DataList] 5 id (Just vectorQualifier) (listQualifier <> ".foldr") <$> compileArgs args
     Fold dom -> case dom of
       FoldList -> annotateApp [DataList] (listQualifier <> ".foldr") <$> compileArgs args
       FoldVector -> annotateApp [DataVector] (vectorQualifier <> ".foldr") <$> compileArgs args
