@@ -4,10 +4,13 @@ module Vehicle.Verify.QueryFormat.Marabou
 where
 
 import Control.Monad.Writer
+-- Needs to be imported qualified as GHC 9.6 doesn't seem to import it via Prelude.
+
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Semigroup qualified as Semigroup
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
@@ -79,10 +82,10 @@ compileRel = \case
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
   Right Lt -> do
-    tell (Any True)
+    tell (Semigroup.Any True)
     return "<="
   Right Gt -> do
-    tell (Any True)
+    tell (Semigroup.Any True)
     return ">="
 
 compileVar :: Bool -> (Rational, Name) -> Doc a
