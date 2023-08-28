@@ -22,6 +22,9 @@
 * Added warnings to `verify` command when properties are found to be trivial
   (i.e. there was no need to call a verifier).
 
+* Added warnings to `verify` command when properties require the mildly unsound
+  conversion of strict to non-strict inequalities.
+
 ## Version 0.10.0
 
 * Fixed bug in display of progress bar when verification counter-example found.

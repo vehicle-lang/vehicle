@@ -3,6 +3,7 @@ module Vehicle.Verify.Core where
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Monoid (Any)
 import Data.Text (Text, unpack)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector (toList)
@@ -232,3 +233,7 @@ instance Pretty VariableNormalisationStep where
 --
 -- The steps are stored in the same order they occured during compilation.
 type VariableNormalisationSteps = [VariableNormalisationStep]
+
+-- | Whether or a not a strict order has been converted to a non-strict order
+-- due to issue https://github.com/vehicle-lang/vehicle/issues/74
+type UnsoundStrictOrderConversion = Any

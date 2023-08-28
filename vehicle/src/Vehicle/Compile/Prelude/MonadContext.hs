@@ -143,11 +143,17 @@ instance (MonadContext builtin m, Monoid a) => MonadContext builtin (WriterT a m
   getDeclCtx = lift . getDeclCtx
   getBoundCtx = lift . getBoundCtx
 
+test2 :: (MonadContext Int m) => m (Int, [Int])
+test2 = runWriterT test
+
+test :: (MonadContext Int m, MonadWriter a m) => m Int
+test = return 2
+
 --------------------------------------------------------------------------------
 -- Context monad instance
 
 newtype ContextT builtin m a = ContextT
-  { uncontextT :: ReaderT (FullDeclCtx builtin, FullBoundCtx builtin) m a
+  { unContextT :: ReaderT (FullDeclCtx builtin, FullBoundCtx builtin) m a
   }
   deriving (Functor, Applicative, Monad)
 
@@ -162,6 +168,12 @@ runContextT ::
   m a
 runContextT _ (ContextT contextFn) = runReaderT contextFn
 
+mapContextT ::
+  (m a -> m b) ->
+  ContextT builtin m a ->
+  ContextT builtin m b
+mapContextT f = ContextT . mapReaderT f . unContextT
+
 instance MonadTrans (ContextT builtin) where
   lift = ContextT . lift
 
@@ -175,7 +187,7 @@ instance (MonadLogger m) => MonadLogger (ContextT builtin m) where
 
 instance (MonadError e m) => MonadError e (ContextT builtin m) where
   throwError = lift . throwError
-  catchError m f = ContextT (catchError (uncontextT m) (uncontextT . f))
+  catchError m f = ContextT (catchError (unContextT m) (unContextT . f))
 
 instance (MonadIO m) => MonadIO (ContextT builtin m) where
   liftIO = lift . liftIO
@@ -184,16 +196,21 @@ instance (MonadState e m) => MonadState e (ContextT s m) where
   get = lift get
   put = lift . put
 
+instance (MonadWriter e m) => MonadWriter e (ContextT s m) where
+  tell = lift . tell
+  listen = mapContextT listen
+  pass = mapContextT pass
+
 instance (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadContext builtin (ContextT builtin m) where
   addDeclToContext decl cont = do
     gluedDecl <- traverse (\e -> Glued e <$> normalise e) decl
     ContextT $ do
       let updateCtx = first (Map.insert (identifierOf decl) gluedDecl)
-      local updateCtx (uncontextT cont)
+      local updateCtx (unContextT cont)
 
   addBinderToContext binder cont = ContextT $ do
     let updateCtx = second (binder :)
-    local updateCtx (uncontextT cont)
+    local updateCtx (unContextT cont)
 
   getDeclCtx _ = ContextT $ asks fst
 
