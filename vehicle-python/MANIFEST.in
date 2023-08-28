@@ -10,7 +10,6 @@ include cabal.project.config
 include cabal.project.freeze
 
 graft tests/data
-graft tests/golden
 graft vendor/vehicle
 graft vendor/vehicle-syntax
 
