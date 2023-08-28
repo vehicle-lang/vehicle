@@ -8,10 +8,12 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
+import Data.Monoid (Any (..))
 import Data.Traversable (for)
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
@@ -128,14 +130,18 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
     declCtx <- getNormDeclCtx (Proxy @Builtin)
     normalisedExpr <- runNormT defaultEvalOptions declCtx mempty $ eval mempty expr
 
-    let computeProperty = compileMultiProperty queryFormat networkCtx queryDeclCtx p ident outputLocation normalisedExpr
-    property <-
+    let computeProperty = runWriterT $ compileMultiProperty queryFormat networkCtx queryDeclCtx p ident outputLocation normalisedExpr
+
+    (property, unsoundConversion) <-
       computeProperty `catchError` \e -> do
         let formatID = queryFormatID queryFormat
         case e of
           UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog (ident, p)
           UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog (ident, p)
           _ -> throwError e
+
+    when (getAny unsoundConversion) $
+      logWarning (pretty (UnsoundStrictOrderConversion (nameOf ident) (queryFormatID queryFormat)))
 
     return (nameOf ident, property)
 
@@ -144,7 +150,7 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
+  (MonadIO m, MonadCompile m, MonadContext Builtin m, MonadWriter UnsoundStrictOrderConversion m) =>
   QueryFormat ->
   NetworkContext ->
   UsedFunctionsCtx ->
@@ -187,7 +193,8 @@ type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
     MonadState QueryID m,
-    MonadContext Builtin m
+    MonadContext Builtin m,
+    MonadWriter UnsoundStrictOrderConversion m
   )
 
 -- Compiles an individual property

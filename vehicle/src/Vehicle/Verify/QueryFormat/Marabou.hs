@@ -3,11 +3,15 @@ module Vehicle.Verify.QueryFormat.Marabou
   )
 where
 
+-- Needs to be imported qualified as GHC 9.6 doesn't seem to import it via Prelude.
+
 import Control.Monad (forM)
+import Control.Monad.Writer (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Semigroup qualified as Semigroup
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
@@ -36,7 +40,10 @@ marabouQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileMarabouQuery :: (MonadLogger m) => CLSTProblem -> m QueryText
+compileMarabouQuery ::
+  (MonadLogger m, MonadWriter UnsoundStrictOrderConversion m) =>
+  CLSTProblem ->
+  m QueryText
 compileMarabouQuery (CLSTProblem variables assertions) = do
   let variableNames = sequentialNetworkVariableNaming "x" "y" variables
   let variableNamesMap = Map.fromList (zip variables variableNames)
@@ -45,7 +52,7 @@ compileMarabouQuery (CLSTProblem variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  (MonadLogger m) =>
+  (MonadLogger m, MonadWriter UnsoundStrictOrderConversion m) =>
   Map NetworkVariable Name ->
   Assertion NetworkVariable ->
   m (Doc a)
@@ -63,20 +70,24 @@ compileAssertion varNames assertion = do
           _ -> (coeffVars, rel, constant, True)
 
   let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
-  let compiledRel = compileRel rel'
+  compiledRel <- compileRel rel'
   let compiledRHS = prettyRationalAsFloat constant'
 
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: Either () OrderOp -> Doc a
+compileRel :: (MonadWriter UnsoundStrictOrderConversion m) => Either () OrderOp -> m (Doc a)
 compileRel = \case
-  Left () -> "="
-  Right Le -> "<="
-  Right Ge -> ">="
+  Left () -> return "="
+  Right Le -> return "<="
+  Right Ge -> return ">="
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-  Right Lt -> "<="
-  Right Gt -> ">="
+  Right Lt -> do
+    tell (Semigroup.Any True)
+    return "<="
+  Right Gt -> do
+    tell (Semigroup.Any True)
+    return ">="
 
 compileVar :: Bool -> (Rational, Name) -> Doc a
 compileVar False (1, var) = pretty var

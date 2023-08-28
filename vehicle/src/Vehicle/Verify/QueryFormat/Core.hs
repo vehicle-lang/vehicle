@@ -1,8 +1,10 @@
 module Vehicle.Verify.QueryFormat.Core where
 
+import Control.Monad.Writer (MonadWriter)
 import Data.Text (Text)
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Prelude
+import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Query formats
@@ -22,5 +24,5 @@ data QueryFormat = QueryFormat
   { queryFormatID :: QueryFormatID,
     queryOutputFormat :: ExternalOutputFormat,
     -- | The command to compile an individual query
-    compileQuery :: forall m. (MonadLogger m) => CLSTProblem -> m Text
+    compileQuery :: forall m. (MonadLogger m, MonadWriter UnsoundStrictOrderConversion m) => CLSTProblem -> m Text
   }
