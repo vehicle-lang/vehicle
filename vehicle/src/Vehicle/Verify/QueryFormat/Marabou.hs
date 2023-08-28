@@ -3,9 +3,10 @@ module Vehicle.Verify.QueryFormat.Marabou
   )
 where
 
-import Control.Monad.Writer
 -- Needs to be imported qualified as GHC 9.6 doesn't seem to import it via Prelude.
 
+import Control.Monad (forM)
+import Control.Monad.Writer (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)

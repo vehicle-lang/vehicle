@@ -143,12 +143,6 @@ instance (MonadContext builtin m, Monoid a) => MonadContext builtin (WriterT a m
   getDeclCtx = lift . getDeclCtx
   getBoundCtx = lift . getBoundCtx
 
-test2 :: (MonadContext Int m) => m (Int, [Int])
-test2 = runWriterT test
-
-test :: (MonadContext Int m, MonadWriter a m) => m Int
-test = return 2
-
 --------------------------------------------------------------------------------
 -- Context monad instance
 
