@@ -3,10 +3,11 @@ module Vehicle.Backend.Queries
   )
 where
 
+import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
-import Control.Monad.Writer
+import Control.Monad.Writer (WriterT, runWriterT)
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
