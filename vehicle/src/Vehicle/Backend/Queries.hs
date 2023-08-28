@@ -13,6 +13,7 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
+import Data.Monoid (Any (..))
 import Data.Traversable (for)
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
