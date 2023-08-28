@@ -8,7 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
-import Control.Monad.Writer (MonadWriter (..), WriterT, runWriterT)
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
