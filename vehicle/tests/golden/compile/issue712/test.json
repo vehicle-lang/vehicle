@@ -1,0 +1,12 @@
+{
+  "name": "MarabouQueries",
+  "run": "vehicle compile -t MarabouQueries -s spec.vcl -n f:fake.onnx -o Marabou.queries/",
+  "needs": [
+    "spec.vcl",
+    "fake.onnx"
+  ],
+  "produces": [
+    "Marabou.queries/isMalcious-query1.txt",
+    "Marabou.queries/isMalcious.vcl-plan"
+  ]
+}

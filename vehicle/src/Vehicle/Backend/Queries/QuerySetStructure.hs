@@ -167,48 +167,51 @@ compileBoolExpr = go False
   where
     -- \| Traverses an arbitrary expression of type `Bool`.
     go :: Bool -> CumulativeCtx -> Value Builtin -> m QueryStructureResult
-    go alreadyLiftedIfs quantifiedVariables expr = case expr of
-      ----------------
-      -- Base cases --
-      ----------------
-      VBoolLiteral b ->
-        return $ Right ([], Trivial b, [])
-      VBuiltinFunction op@(Equals _ eq) [e1, e2] -> do
-        let mkOp e1' e2' = VBuiltinFunction op [e1', e2']
-        compileEquality quantifiedVariables alreadyLiftedIfs e1 eq e2 [] mkOp
-      VBuiltinFunction Order {} [_, _] -> do
-        compileOrder alreadyLiftedIfs quantifiedVariables expr
-      (isVectorEquals -> Just (e1, e2, dims, mkOp)) -> do
-        compileEquality quantifiedVariables alreadyLiftedIfs e1 Eq e2 dims mkOp
+    go alreadyLiftedIfs quantifiedVariables expr =
+      case expr of
+        ----------------
+        -- Base cases --
+        ----------------
+        VBoolLiteral b ->
+          return $ Right ([], Trivial b, [])
+        VBuiltinFunction op@(Equals _ eq) (reverse -> e2 : e1 : args) -> do
+          -- `reverse` pattern match above is needed as EqIndex has implicit arguments.
+          -- and not matching them causes issue #712.
+          let mkOp e1' e2' = VBuiltinFunction op (args <> [e1', e2'])
+          compileEquality quantifiedVariables alreadyLiftedIfs e1 eq e2 [] mkOp
+        VBuiltinFunction Order {} _ -> do
+          compileOrder alreadyLiftedIfs quantifiedVariables expr
+        (isVectorEquals -> Just (e1, e2, dims, mkOp)) -> do
+          compileEquality quantifiedVariables alreadyLiftedIfs e1 Eq e2 dims mkOp
 
-      ---------------------
-      -- Recursive cases --
-      ---------------------
-      VBuiltinFunction And [e1, e2] ->
-        compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
-      VBuiltinFunction Or [e1, e2] ->
-        compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
-      VBuiltinFunction Not [e] ->
-        -- As the expression is of type `Not` we can try lowering the `not` down
-        -- through the expression.
-        case eliminateNot (argExpr e) of
-          Nothing -> return $ Left $ TemporaryError $ CannotEliminateNot expr
-          Just result -> go alreadyLiftedIfs quantifiedVariables result
-      VBuiltinFunction If [_, c, x, y] -> do
-        -- As the expression is of type `Bool` we can immediately unfold the `if`.
-        let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
-        go alreadyLiftedIfs quantifiedVariables unfoldedExpr
-      VInfiniteQuantifier q _ binder env body -> case q of
-        -- If we're at a `Forall` we know we must have alternating quantifiers.
-        Forall -> return $ Left $ SeriousError AlternatingQuantifiers
-        -- Otherwise try to compile away the quantifier.
-        Exists -> compileInfiniteQuantifier quantifiedVariables binder env body
-      VFiniteQuantifier q args binder env body ->
-        compileFiniteQuantifier quantifiedVariables q args binder env body
-      ------------
-      -- Errors --
-      ------------
-      _ -> return $ Left $ TemporaryError $ NonBooleanQueryStructure expr
+        ---------------------
+        -- Recursive cases --
+        ---------------------
+        VBuiltinFunction And [e1, e2] ->
+          compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+        VBuiltinFunction Or [e1, e2] ->
+          compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+        VBuiltinFunction Not [e] ->
+          -- As the expression is of type `Not` we can try lowering the `not` down
+          -- through the expression.
+          case eliminateNot (argExpr e) of
+            Nothing -> return $ Left $ TemporaryError $ CannotEliminateNot expr
+            Just result -> go alreadyLiftedIfs quantifiedVariables result
+        VBuiltinFunction If [_, c, x, y] -> do
+          -- As the expression is of type `Bool` we can immediately unfold the `if`.
+          let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
+          go alreadyLiftedIfs quantifiedVariables unfoldedExpr
+        VInfiniteQuantifier q _ binder env body -> case q of
+          -- If we're at a `Forall` we know we must have alternating quantifiers.
+          Forall -> return $ Left $ SeriousError AlternatingQuantifiers
+          -- Otherwise try to compile away the quantifier.
+          Exists -> compileInfiniteQuantifier quantifiedVariables binder env body
+        VFiniteQuantifier q args binder env body ->
+          compileFiniteQuantifier quantifiedVariables q args binder env body
+        ------------
+        -- Errors --
+        ------------
+        _ -> return $ Left $ TemporaryError $ NonBooleanQueryStructure expr
 
     compileEquality ::
       CumulativeCtx ->
