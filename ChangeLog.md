@@ -1,5 +1,10 @@
 # Changelog for Vehicle
 
+## Version 0.12.0
+
+* Fixed bug properties involving the comparison of abstract `Index` values would throw
+  a `Something went wrong in query compilation` error.
+
 ## Version 0.11.0
 
 * In order to better follow the kebab-case conventions for command line arguments
