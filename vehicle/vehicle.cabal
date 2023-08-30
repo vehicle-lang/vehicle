@@ -151,17 +151,20 @@ library
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
     Vehicle.Compile.Type.Subsystem.Standard
+    Vehicle.Data.BooleanExpr
+    Vehicle.Data.BuiltinInterface
+    Vehicle.Data.BuiltinPatterns
+    Vehicle.Data.DeBruijn
+    Vehicle.Data.DSL
+    Vehicle.Data.Hashing
+    Vehicle.Data.NormalisedExpr
     Vehicle.Export
-    Vehicle.Expr.Boolean
-    Vehicle.Expr.BuiltinInterface
-    Vehicle.Expr.BuiltinPatterns
-    Vehicle.Expr.DeBruijn
-    Vehicle.Expr.DSL
-    Vehicle.Expr.Hashing
-    Vehicle.Expr.Normalised
     Vehicle.Libraries
+    Vehicle.Libraries.Core
     Vehicle.Libraries.StandardLibrary
+    Vehicle.Libraries.StandardLibrary.Definitions
     Vehicle.Prelude
+    Vehicle.Prelude.Logging
     Vehicle.Resource
     Vehicle.TypeCheck
     Vehicle.Validate
@@ -207,6 +210,7 @@ library
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
+    Vehicle.Compile.Print.Warning
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.IndexSolver
@@ -232,11 +236,9 @@ library
     Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
     Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults
     Vehicle.Compile.Type.Subsystem.Standard.Type
-    Vehicle.Compile.Warning
+    Vehicle.Data.RelevantExpr
     Vehicle.Debug
-    Vehicle.Expr.Relevant
     Vehicle.Prelude.IO
-    Vehicle.Prelude.Logging
     Vehicle.Prelude.Logging.Backend
     Vehicle.Prelude.Logging.Class
     Vehicle.Prelude.Logging.Instance
@@ -244,8 +246,10 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
+    Vehicle.Prelude.Warning
     Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
+    Vehicle.Verify.QueryFormat.Interface
     Vehicle.Verify.QueryFormat.Marabou
     Vehicle.Verify.QueryFormat.VNNLib
     Vehicle.Verify.Specification

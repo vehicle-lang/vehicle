@@ -1,4 +1,4 @@
-module Vehicle.Expr.Relevant where
+module Vehicle.Data.RelevantExpr where
 
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity

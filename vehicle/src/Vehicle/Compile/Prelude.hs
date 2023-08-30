@@ -14,8 +14,9 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Context.Bound.Core as X
 import Vehicle.Compile.Context.Free.Core as X
 import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), substDBInto)
+import Vehicle.Data.DeBruijn (Ix (..), Lv (..), substDBInto)
 import Vehicle.Prelude as X
+import Vehicle.Prelude.Logging as X
 import Vehicle.Resource as X
 import Vehicle.Syntax.AST as X
 import Vehicle.Syntax.Builtin (Builtin)

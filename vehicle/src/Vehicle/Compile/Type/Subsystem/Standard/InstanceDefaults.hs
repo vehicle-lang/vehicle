@@ -10,8 +10,8 @@ import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised (Spine, Value (..), isNMeta)
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr (Spine, Value (..), isNMeta)
 
 instance HasInstanceDefaults StandardTypingBuiltin where
   getCandidatesFromConstraint = getCandidates

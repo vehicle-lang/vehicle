@@ -27,11 +27,11 @@ import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
-import Vehicle.Expr.BuiltinInterface qualified as V
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised (GluedExpr (..), normalised)
-import Vehicle.Expr.Relevant
+import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
+import Vehicle.Data.BuiltinInterface qualified as V
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr (GluedExpr (..), normalised)
+import Vehicle.Data.RelevantExpr
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Builtin qualified as V

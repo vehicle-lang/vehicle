@@ -51,11 +51,14 @@ import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Prettyprinter (brackets, list)
-import Vehicle.Compile.Prelude
+import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (fromFiniteQuantifier, toFiniteQuantifier)
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (fromFiniteQuantifier, toFiniteQuantifier)
+import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Variable class

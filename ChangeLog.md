@@ -5,6 +5,11 @@
 * Fixed bug properties involving the comparison of abstract `Index` values would throw
   a `Something went wrong in query compilation` error.
 
+* Added warnings to `compile` command when you hit Marabou bug
+  https://github.com/NeuralNetworkVerification/Marabou/issues/670
+
+* Added warnings to `compile` command when not all input variables are well-constrained.
+
 ## Version 0.11.0
 
 * In order to better follow the kebab-case conventions for command line arguments

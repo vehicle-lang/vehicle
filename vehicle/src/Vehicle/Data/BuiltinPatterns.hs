@@ -1,4 +1,4 @@
-module Vehicle.Expr.BuiltinPatterns where
+module Vehicle.Data.BuiltinPatterns where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core

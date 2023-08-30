@@ -11,8 +11,8 @@ where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.

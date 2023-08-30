@@ -22,7 +22,7 @@ type VerifierExecutable = FilePath
 -- | The type of methods to call a verifier on a query
 type VerifierInvocation =
   forall m.
-  (MonadIO m) =>
+  (MonadLogger m, MonadIO m) =>
   VerifierExecutable ->
   MetaNetwork ->
   QueryFile ->

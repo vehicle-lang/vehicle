@@ -6,9 +6,9 @@ import GHC.Generics
 import Prettyprinter (Pretty (..))
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin (BuiltinConstructor, BuiltinFunction, BuiltinType (..))
 import Vehicle.Syntax.Builtin qualified as S

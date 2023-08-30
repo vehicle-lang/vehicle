@@ -10,8 +10,8 @@ where
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Primary function

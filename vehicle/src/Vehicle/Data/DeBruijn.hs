@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Expr.DeBruijn
+module Vehicle.Data.DeBruijn
   ( Ix (..),
     Lv (..),
     Substitution,

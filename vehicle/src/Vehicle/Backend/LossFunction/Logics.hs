@@ -8,8 +8,8 @@ where
 import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------

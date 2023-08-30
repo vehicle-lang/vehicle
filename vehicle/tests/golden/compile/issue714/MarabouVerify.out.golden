@@ -1,0 +1,3 @@
+Verifying properties:
+  isSane [.........................................................] 0/1 queries  isSane [=========================================================] 1/1 queries
+    result: [91m✗[m - proved no witness exists

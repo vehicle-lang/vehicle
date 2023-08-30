@@ -1,7 +1,7 @@
 module Vehicle.Compile.Arity where
 
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 type Arity = Int
 

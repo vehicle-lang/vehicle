@@ -10,7 +10,7 @@ import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Context monad class

@@ -33,9 +33,9 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Boolean
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Print
 
 --------------------------------------------------------------------------------

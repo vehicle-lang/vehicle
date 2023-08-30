@@ -20,10 +20,11 @@ import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Prelude.Warning (CompileWarning (..))
 
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.
@@ -153,5 +154,4 @@ warnIfUnusedResources resourceType given found = do
   let unusedParams = givenNames `Set.difference` foundNames
   when (Set.size unusedParams > 0) $
     logWarning $
-      pretty $
-        UnusedResource resourceType unusedParams
+      UnusedResource resourceType unusedParams

@@ -3,24 +3,24 @@ module Vehicle.Backend.Queries
   )
 where
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
-import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.List.NonEmpty as NonEmpty (unzip)
+import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, maybeToList)
-import Data.Monoid (Any (..))
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Traversable (for)
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
 import Vehicle.Backend.Queries.IfElimination (unfoldIf)
+import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.NetworkElimination
 import Vehicle.Backend.Queries.QuerySetStructure
 import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
-import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), UserVariableCtx, pattern VInfiniteQuantifier)
+import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), NetworkVariable (..), UserVariableCtx, pattern VInfiniteQuantifier)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
@@ -28,13 +28,14 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Warning (CompileWarning (..))
-import Vehicle.Expr.Boolean
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.BuiltinPatterns
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (StdEqualsVector))
+import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinPatterns
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector))
+import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -127,18 +128,15 @@ compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr output
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
     normalisedExpr <- eval defaultNBEOptions mempty expr
 
-    let computeProperty = runWriterT $ compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
+    let computeProperty = compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
 
-    (property, unsoundConversion) <-
+    property <-
       computeProperty `catchError` \e -> do
         let formatID = queryFormatID queryFormat
         case e of
           UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog (ident, p)
           UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog (ident, p)
           _ -> throwError e
-
-    when (getAny unsoundConversion) $
-      logWarning (pretty (UnsoundStrictOrderConversion (nameOf ident) (queryFormatID queryFormat)))
 
     return (nameOf ident, property)
 
@@ -147,7 +145,7 @@ compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr output
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m, MonadWriter UnsoundStrictOrderConversion m) =>
+  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   QueryFormat ->
   NetworkContext ->
   UsedFunctionsCtx ->
@@ -190,8 +188,7 @@ type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
     MonadState QueryID m,
-    MonadFreeContext Builtin m,
-    MonadWriter UnsoundStrictOrderConversion m
+    MonadFreeContext Builtin m
   )
 
 -- Compiles an individual property
@@ -209,7 +206,7 @@ compileProperty outputLocation expr = do
       let (metaData, queries) = (NonEmpty.unzip . fmap NonEmpty.unzip) b
       return (NonTrivial metaData, NonTrivial queries)
     Trivial status -> do
-      logWarning (pretty $ TrivialProperty propertyAddress status)
+      logWarning (TrivialProperty propertyAddress status)
       return (Trivial status, Trivial status)
 
   case outputLocation of
@@ -343,7 +340,8 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
                 queryID <- get
                 put (queryID + 1)
 
-                queryText <- compileQuery queryFormat conjunctions
+                checkIfInputsWellSpecificied conjunctions
+                queryText <- compileQuery queryFormat (propertyName propertyAddress) conjunctions
                 let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
                 let queryAddress = (propertyAddress, queryID)
                 let queryData = QueryData metaNetwork allVariableSteps
@@ -353,3 +351,42 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
 
                 return (queryAddress, (queryData, queryText))
             )
+
+-- | Checks for presence of
+checkIfInputsWellSpecificied ::
+  (MonadCompileProperty m) =>
+  CLSTProblem ->
+  m ()
+checkIfInputsWellSpecificied (CLSTProblem variables assertions) = do
+  PropertyState {..} <- ask
+  let property = propertyName propertyAddress
+  let format = queryFormatID queryFormat
+  let inputVariables = filter (\v -> inputOrOutput v == Input) variables
+  let initialStatuses = Map.fromList (fmap (,UnderConstrained Unconstrained) inputVariables)
+  let finalStatuses = foldr updateStatuses initialStatuses assertions
+
+  -- If Marabou, then warn if all inputs are constant.
+  -- See https://github.com/NeuralNetworkVerification/Marabou/issues/670
+  when (format == MarabouQueries && all (== Constant) finalStatuses) $
+    logWarning $
+      AllConstantInputsMarabouBug property
+
+  -- Check if all inputs are well-specified.
+  let underSpecified = mapMaybe (\(v, s) -> (v,) <$> toUnderConstrainedStatus s) $ Map.toList finalStatuses
+  unless (null underSpecified) $
+    logWarning $
+      UnderSpecifiedNetworkInputs property format underSpecified
+  where
+    updateStatuses ::
+      Assertion NetworkVariable ->
+      Map NetworkVariable VariableConstraintStatus ->
+      Map NetworkVariable VariableConstraintStatus
+    updateStatuses assertion statuses = case coefficientsList assertion of
+      [(v, c)] | inputOrOutput v == Input -> do
+        let status = case assertionRel assertion of
+              Equal -> Constant
+              _
+                | c >= 0 -> UnderConstrained BoundedAbove
+                | otherwise -> UnderConstrained BoundedBelow
+        Map.insertWith (<>) v status statuses
+      _ -> statuses

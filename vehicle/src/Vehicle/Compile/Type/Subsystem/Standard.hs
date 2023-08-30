@@ -18,8 +18,8 @@ import Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
 import Vehicle.Compile.Type.Subsystem.Standard.Core as Core
 import Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults ()
 import Vehicle.Compile.Type.Subsystem.Standard.Type
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
 import Prelude hiding (pi)
 
 -----------------------------------------------------------------------------

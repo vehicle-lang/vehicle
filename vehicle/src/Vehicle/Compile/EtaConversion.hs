@@ -10,9 +10,9 @@ import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn (liftDBIndices)
-import Vehicle.Expr.Normalised (VType, Value (..))
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn (liftDBIndices)
+import Vehicle.Data.NormalisedExpr (VType, Value (..))
 
 etaExpandProg ::
   forall m builtin.

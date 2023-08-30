@@ -1,10 +1,10 @@
-module Vehicle.Expr.BuiltinInterface where
+module Vehicle.Data.BuiltinInterface where
 
 import Data.List.NonEmpty (NonEmpty (..))
-import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Data.DSL
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin

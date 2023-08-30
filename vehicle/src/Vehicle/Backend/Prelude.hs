@@ -1,10 +1,6 @@
 module Vehicle.Backend.Prelude where
 
-import Control.Monad.IO.Class
 import Data.Maybe (catMaybes)
-import Data.Text.IO qualified as TIO
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath (takeDirectory)
 import Vehicle.Prelude
 import Vehicle.Verify.QueryFormat.Core
 
@@ -106,18 +102,3 @@ prependfileHeader doc format = case format of
       <> doc
     where
       targetVersion = maybe "unknown" pretty formatVersion
-
-writeResultToFile ::
-  (MonadIO m, MonadLogger m) =>
-  Maybe ExternalOutputFormat ->
-  Maybe FilePath ->
-  Doc a ->
-  m ()
-writeResultToFile target filepath doc = do
-  let text = layoutAsText $ prependfileHeader doc target
-  case filepath of
-    Nothing -> liftIO $ TIO.putStrLn text
-    Just outputFilePath -> do
-      logDebug MaxDetail $ "Creating file:" <+> pretty filepath
-      liftIO $ createDirectoryIfMissing True (takeDirectory outputFilePath)
-      liftIO $ TIO.writeFile outputFilePath text

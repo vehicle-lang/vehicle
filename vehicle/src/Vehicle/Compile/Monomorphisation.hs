@@ -36,10 +36,10 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Hashing ()
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.Hashing ()
+import Vehicle.Libraries.StandardLibrary.Definitions
 
 --------------------------------------------------------------------------------
 -- Public interface

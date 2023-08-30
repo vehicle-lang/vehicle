@@ -8,7 +8,7 @@ import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCode)
 import Vehicle.Compile.Type.Subsystem.Standard.Type qualified as Standard
-import Vehicle.Expr.DSL
+import Vehicle.Data.DSL
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.

@@ -2,8 +2,8 @@ module Vehicle.Compile.Normalise.Quote where
 
 import Vehicle.Compile.Error (MonadCompile, runCompileMonadSilently)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
 
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested

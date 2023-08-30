@@ -28,12 +28,12 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.Boolean
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.BuiltinPatterns
-import Vehicle.Expr.DeBruijn (dbLevelToIndex)
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
+import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinPatterns
+import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics
-import Vehicle.Compile.Prelude
+import Vehicle.Prelude
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 --------------------------------------------------------------------------------

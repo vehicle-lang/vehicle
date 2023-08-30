@@ -7,6 +7,7 @@ where
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Vehicle.Prelude
+import Vehicle.Prelude.Logging
 import Vehicle.Resource
 import Vehicle.Verify.Specification (SpecificationCacheIndex (..), multiPropertyAddresses, properties)
 import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCacheIndex)

@@ -1,0 +1,5 @@
+[93m
+Warning:  While compiling property 'property', in at least one of the generated SAT problems all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of degenerate problems.
+
+See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details.
+[m

@@ -33,11 +33,11 @@ import System.Exit (exitFailure)
 import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr, stdout)
 import System.ProgressBar
-import Vehicle.Backend.Prelude (writeResultToFile)
+import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.Variable (UserVariable (..))
 import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Boolean
+import Vehicle.Data.BooleanExpr
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -401,9 +401,3 @@ createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
 
 closePropertyProgressBar :: (MonadIO m) => PropertyProgressBar -> m ()
 closePropertyProgressBar _progressBar = liftIO $ putStrLn ""
-
-{-
-completeProgress :: MonadIO m => PropertyProgressBar -> m ()
-completeProgress progressBar = liftIO $ updateProgress progressBar $ \Progress{..} ->
-  Progress { progressDone = progressTodo, .. }
--}

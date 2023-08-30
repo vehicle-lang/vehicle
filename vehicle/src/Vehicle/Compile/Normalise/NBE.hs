@@ -24,9 +24,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 
 -----------------------------------------------------------------------------
 -- Options during NBE

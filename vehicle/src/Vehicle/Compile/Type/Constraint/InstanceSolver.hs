@@ -18,8 +18,8 @@ import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn (dbLevelToIndex, substDBInto)
-import Vehicle.Expr.Normalised
+import Vehicle.Data.DeBruijn (dbLevelToIndex, substDBInto)
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Public interface

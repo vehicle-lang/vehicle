@@ -19,7 +19,7 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Vehicle.Expr.Boolean
+import Vehicle.Data.BooleanExpr
 import Vehicle.Prelude
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Syntax.AST (Name)

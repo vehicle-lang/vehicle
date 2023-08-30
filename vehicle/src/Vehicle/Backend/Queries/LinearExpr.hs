@@ -23,6 +23,8 @@ module Vehicle.Backend.Queries.LinearExpr
     convertToSparseFormat,
     mapAssertionVariables,
     ordToRelation,
+    coefficientsList,
+    assertionVariables,
   )
 where
 
@@ -40,9 +42,10 @@ import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import Vehicle.Backend.Queries.Variable
-import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Relation
@@ -227,6 +230,9 @@ instance (Variable variable) => Pretty (Assertion variable) where
   pretty (Assertion rel linearExpr) =
     pretty linearExpr <+> pretty rel <+> "0.0"
 
+coefficientsList :: Assertion variable -> [(variable, Coefficient)]
+coefficientsList (Assertion _ (Sparse _ coeffs _)) = Map.toList coeffs
+
 isEquality :: Assertion variable -> Bool
 isEquality a = assertionRel a == Equal
 
@@ -247,10 +253,12 @@ prettyAssertions assertions =
 substitute :: (Variable variable) => Assertion variable -> variable -> SparseLinearExpr variable -> Assertion variable
 substitute (Assertion r2 e2) var e1 = Assertion r2 (eliminateVar var e1 e2)
 
+assertionVariables :: (Variable variable) => Assertion variable -> Set variable
+assertionVariables (Assertion _ e) = Set.fromList $ Map.keys $ coefficients e
+
 referencesVariables :: (Variable variable) => Assertion variable -> Set variable -> Bool
-referencesVariables (Assertion _ e) variables = do
-  let presentVariables = Set.fromList $ Map.keys $ coefficients e
-  not $ Set.null $ variables `Set.intersection` presentVariables
+referencesVariables assertion variables =
+  not $ Set.null $ variables `Set.intersection` assertionVariables assertion
 
 -- | Checks whether an assertion is trivial or not. Returns `Nothing` if
 -- non-trivial, and otherwise `Just b` where `b` is the value of the assertion

@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Expr.Normalised (GluedExpr (..), Value (..))
+import Vehicle.Data.NormalisedExpr (GluedExpr (..), Value (..))
 
 --------------------------------------------------------------------------------
 -- Substitution operation

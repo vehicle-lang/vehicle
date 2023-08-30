@@ -10,6 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.QueryFormat.Interface
 
 --------------------------------------------------------------------------------
 -- Marabou query format
@@ -32,8 +33,8 @@ vnnlibQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileVNNLibQuery :: (MonadLogger m) => CLSTProblem -> m QueryText
-compileVNNLibQuery (CLSTProblem variables assertions) = do
+compileVNNLibQuery :: (MonadLogger m) => Name -> CLSTProblem -> m QueryText
+compileVNNLibQuery _propertyName (CLSTProblem variables assertions) = do
   let variableNames = sequentialNetworkVariableNaming "X_" "Y_" variables
   let variableNamesMap = Map.fromList (zip variables variableNames)
   variableDocs <- forM variableNames compileVariable

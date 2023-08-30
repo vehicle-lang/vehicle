@@ -20,8 +20,8 @@ import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised (GluedExpr (..), GluedType, VType, Value (..), isNMeta)
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr (GluedExpr (..), GluedType, VType, Value (..), isNMeta)
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 instance TypableBuiltin LossBuiltin where

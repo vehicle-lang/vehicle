@@ -46,17 +46,15 @@ import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude
   ( Doc,
-    LoggingLevel,
-    defaultLoggingLevel,
     enumerate,
     indent,
     layoutAsString,
     line,
-    loggingLevelHelp,
     specificationFileExtension,
     supportedOptions,
     vsep,
   )
+import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifierID, VerifyOptions (..))

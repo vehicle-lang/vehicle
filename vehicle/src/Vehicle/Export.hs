@@ -3,7 +3,7 @@ module Vehicle.Export where
 import Control.Monad.IO.Class (MonadIO (..))
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
-import Vehicle.Prelude
+import Vehicle.Prelude.Logging
 import Vehicle.Resource
 import Vehicle.Verify.Specification (SpecificationCacheIndex (..))
 import Vehicle.Verify.Specification.IO

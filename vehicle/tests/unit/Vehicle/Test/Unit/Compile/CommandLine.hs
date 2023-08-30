@@ -16,12 +16,12 @@ import Vehicle.CommandLine
     defaultGlobalOptions,
   )
 import Vehicle.Prelude
-  ( LoggingLevel (MinDetail),
-    Pretty (pretty),
+  ( Pretty (pretty),
     indent,
     layoutAsString,
     line,
   )
+import Vehicle.Prelude.Logging (LoggingLevel (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifyOptions (..))

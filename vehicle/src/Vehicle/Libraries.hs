@@ -9,44 +9,15 @@ where
 import Control.Exception (IOException, catch)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson (FromJSON, ToJSON, decode)
+import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BIO
-import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-import GHC.Generics (Generic)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((<.>), (</>))
+import Vehicle.Libraries.Core
 import Vehicle.Prelude
-
-type LibraryName = String
-
-data LibraryInfo = LibraryInfo
-  { libraryName :: LibraryName,
-    libraryVersion :: VersionString
-  }
-  deriving (Generic)
-
-instance FromJSON LibraryInfo
-
-instance ToJSON LibraryInfo
-
-data Library = Library
-  { libraryInfo :: LibraryInfo,
-    libraryContent :: Text
-  }
-
-getLibraryPath :: (MonadIO m) => LibraryName -> m FilePath
-getLibraryPath name = do
-  vehiclePath <- getVehiclePath
-  return $ vehiclePath </> "libraries" </> name
-
-getLibraryInfoFile :: FilePath -> FilePath
-getLibraryInfoFile libraryFolder = libraryFolder </> vehicleLibraryExtension
-
-getLibraryContentFile :: FilePath -> LibraryName -> FilePath
-getLibraryContentFile libraryFolder fileName =
-  libraryFolder </> fileName <.> specificationFileExtension
+import Vehicle.Prelude.Logging
 
 installLibrary :: (MonadIO m, MonadLogger m) => Library -> m ()
 installLibrary Library {..} = do

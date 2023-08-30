@@ -8,8 +8,9 @@ where
 
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Prelude
-import Vehicle.Expr.BuiltinInterface
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Prelude
+import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin as Syntax
 
 -----------------------------------------------------------------------------

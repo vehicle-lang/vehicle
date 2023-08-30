@@ -10,8 +10,8 @@ import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::

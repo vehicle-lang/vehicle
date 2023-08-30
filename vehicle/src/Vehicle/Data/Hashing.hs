@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Expr.Hashing () where
+module Vehicle.Data.Hashing () where
 
 import Data.Hashable (Hashable (..))
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.AST
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices
