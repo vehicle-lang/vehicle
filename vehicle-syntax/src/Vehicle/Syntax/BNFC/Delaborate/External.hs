@@ -90,7 +90,7 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.BasicBinder where
   delabM binder = do
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
     let m' = delabModalities binder
-    t' <- delabM (V.binderType binder)
+    t' <- delabM (V.binderValue binder)
     return $ case V.visibilityOf binder of
       V.Explicit -> B.ExplicitBinder m' n' tokElemOf t'
       V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
@@ -128,9 +128,9 @@ delabTypeBinder b = case V.binderNamingForm b of
       "Should not be delaborating an `OnlyName` binder to a `TypeBinder`"
   V.NameAndType {} -> B.BasicTypeBinder <$> delabM b
   V.OnlyType {} -> case V.visibilityOf b of
-    V.Explicit -> B.ExplicitTypeBinder <$> delabM (V.binderType b)
-    V.Implicit {} -> B.ImplicitTypeBinder <$> delabM (V.binderType b)
-    V.Instance {} -> B.InstanceTypeBinder <$> delabM (V.binderType b)
+    V.Explicit -> B.ExplicitTypeBinder <$> delabM (V.binderValue b)
+    V.Implicit {} -> B.ImplicitTypeBinder <$> delabM (V.binderValue b)
+    V.Instance {} -> B.InstanceTypeBinder <$> delabM (V.binderValue b)
 
 delabLetBinding :: (MonadDelab m) => (V.Binder V.Name V.Builtin, V.Expr V.Name V.Builtin) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabNameBinder binder <*> delabM bound

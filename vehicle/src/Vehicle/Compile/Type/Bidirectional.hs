@@ -30,7 +30,7 @@ import Prelude hiding (pi)
 
 type MonadBidirectionalInternal builtin m =
   ( MonadTypeChecker builtin m,
-    MonadReader (TypingBoundCtx builtin, Relevance) m
+    MonadReader (BoundCtx builtin, Relevance) m
   )
 
 -- | Type checking monad with additional bound context for the bidirectional
@@ -246,7 +246,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- boundContextOf <$> getBoundCtx
+              boundCtx <- getBoundCtx
               throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
@@ -289,7 +289,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs origin newType args
     _ -> do
-      ctx <- boundContextOf <$> getBoundCtx
+      ctx <- getBoundCtx
       throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
@@ -331,7 +331,7 @@ checkBinderTypesEqual p binderName expectedType actualType = do
             }
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
-getBoundCtx :: (MonadBidirectionalInternal builtin m) => m (TypingBoundCtx builtin)
+getBoundCtx :: (MonadBidirectionalInternal builtin m) => m (BoundCtx builtin)
 getBoundCtx = asks fst
 
 getCurrentRelevance :: (MonadBidirectionalInternal builtin m) => m Relevance

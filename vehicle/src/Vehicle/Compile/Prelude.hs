@@ -11,7 +11,8 @@ import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Compile.Prelude.Contexts as X
+import Vehicle.Compile.Context.Bound.Core as X
+import Vehicle.Compile.Context.Free.Core as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Expr.DeBruijn (Ix (..), Lv (..), substDBInto)
 import Vehicle.Prelude as X
@@ -34,17 +35,6 @@ data Contextualised object context = WithContext
   deriving (Show)
 
 type family WithContext a
-
-class HasType expr typ | expr -> typ where
-  typeOf :: expr -> typ
-
-instance HasType (GenericBinder expr) expr where
-  typeOf = binderType
-
-instance HasType (GenericDecl expr) expr where
-  typeOf = \case
-    DefAbstract _ _ _ t -> t
-    DefFunction _ _ _ t _ -> t
 
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}

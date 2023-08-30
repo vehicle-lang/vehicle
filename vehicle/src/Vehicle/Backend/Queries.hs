@@ -21,14 +21,14 @@ import Vehicle.Backend.Queries.IfElimination (unfoldIf)
 import Vehicle.Backend.Queries.NetworkElimination
 import Vehicle.Backend.Queries.QuerySetStructure
 import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
-import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), UserVariable (..), pattern VInfiniteQuantifier)
+import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), UserVariableCtx, pattern VInfiniteQuantifier)
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext (MonadContext (addDeclToContext), getNormDeclCtx, runContextT)
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Warning (CompileWarning (..))
 import Vehicle.Expr.Boolean
@@ -69,10 +69,9 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 
     -- Perform the actual compilation to queries
     properties <-
-      runContextT
-        (Proxy @Builtin)
+      runFreeContextT
+        declCtx
         (compileDecls typedProg queryFormat networkCtx mempty resourceFreeDecls maybeVerificationFolder)
-        (declCtx, mempty)
 
     -- Check that there were actually properties in the specification.
     when (null properties) $ do
@@ -88,7 +87,7 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 -- Getting properties
 
 compileDecls ::
-  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
+  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
@@ -115,7 +114,7 @@ compileDecls prog queryFormat networkCtx usedFunctionCtx (d : ds) outputLocation
     return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadIO m, MonadCompile m, MonadContext Builtin m) =>
+  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
@@ -128,7 +127,7 @@ compilePropertyDecl ::
 compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
     declCtx <- getNormDeclCtx (Proxy @Builtin)
-    normalisedExpr <- runNormT defaultEvalOptions declCtx mempty $ eval mempty expr
+    normalisedExpr <- runNormT defaultEvalOptions declCtx $ eval mempty expr
 
     let computeProperty = runWriterT $ compileMultiProperty queryFormat networkCtx queryDeclCtx p ident outputLocation normalisedExpr
 
@@ -150,7 +149,7 @@ compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr output
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m, MonadContext Builtin m, MonadWriter UnsoundStrictOrderConversion m) =>
+  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m, MonadWriter UnsoundStrictOrderConversion m) =>
   QueryFormat ->
   NetworkContext ->
   UsedFunctionsCtx ->
@@ -193,7 +192,7 @@ type MonadCompileProperty m =
   ( MonadCompile m,
     MonadReader PropertyState m,
     MonadState QueryID m,
-    MonadContext Builtin m,
+    MonadFreeContext Builtin m,
     MonadWriter UnsoundStrictOrderConversion m
   )
 
@@ -253,10 +252,10 @@ compilePropertyTopLevelStructure = go
           Just r -> go r
       VBuiltinFunction If [_, c, x, y] -> do
         let unfoldedIf = unfoldIf c (argExpr x) (argExpr y)
-        logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendly (WithContext unfoldedIf emptyDBCtx)
+        logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendlyEmptyCtx unfoldedIf
         go unfoldedIf
       VInfiniteQuantifier q args binder env body -> do
-        let subsectionDoc = "compilation of set of queries:" <+> prettyFriendly (WithContext expr emptyDBCtx)
+        let subsectionDoc = "compilation of set of queries:" <+> prettyFriendlyEmptyCtx expr
         logCompilerPass MaxDetail subsectionDoc $ do
           -- Have to check whether to negate the quantifier here, rather than at the top
           -- of the property, as we may have parallel quantifiers of different polarities
@@ -294,7 +293,7 @@ compileQuerySet isPropertyNegated expr = do
         let target = queryFormatID queryFormat
         let p = provenanceOf binder
         let baseName = getBinderName binder
-        let baseType = binderType binder
+        let baseType = typeOf binder
         let declIdent = fst declProvenance
         throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
       UnsupportedInequalityOp -> do
@@ -323,7 +322,7 @@ catchableUnsupportedAlternatingQuantifiersError =
 compileMetaNetworkPartition ::
   (MonadCompileProperty m) =>
   VariableNormalisationSteps ->
-  BoundCtx UserVariable ->
+  UserVariableCtx ->
   (Int, MetaNetworkPartition) ->
   m (MaybeTrivial (DisjunctAll (QueryAddress, (QueryMetaData, QueryText))))
 compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionID, MetaNetworkPartition {..}) = do

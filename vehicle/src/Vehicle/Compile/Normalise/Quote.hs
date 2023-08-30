@@ -30,9 +30,9 @@ instance Quote (Value builtin) (Expr Ix builtin) where
       Pi p <$> quote p level binder <*> quote p (level + 1) body
     VLam binder env body -> do
       quotedBinder <- quote p level binder
-      quotedEnv <- traverse (\(_n, e) -> quote p (level + 1) e) env
-      let liftedEnv = BoundVar p 0 : quotedEnv
-      let quotedBody = substituteDB 0 (envSubst liftedEnv) body
+      let lamBinderEnvEntry = fmap (const (VBoundVar level [])) binder
+      quotedEnv <- traverse (\b -> quote p (level + 1) b) (lamBinderEnvEntry : env)
+      let quotedBody = substituteDB 0 (envSubst quotedEnv) body
       -- Here we deliberately avoid using the standard `quote . eval` approach below
       -- on the body of the lambda, in order to avoid the dependency cycles that
       -- prevent us from printing during NBE.
@@ -50,9 +50,9 @@ instance Quote (VArg builtin) (Arg Ix builtin) where
 quoteApp :: (MonadCompile m) => Lv -> Provenance -> Expr Ix builtin -> Spine builtin -> m (Expr Ix builtin)
 quoteApp l p fn spine = normAppList p fn <$> traverse (quote p l) spine
 
-envSubst :: BoundCtx (Expr Ix builtin) -> Substitution (Expr Ix builtin)
+envSubst :: BoundCtx builtin -> Substitution (Expr Ix builtin)
 envSubst env i = case lookupIx env i of
-  Just v -> Right v
+  Just v -> Right (binderValue v)
   Nothing ->
     developerError $
       "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i

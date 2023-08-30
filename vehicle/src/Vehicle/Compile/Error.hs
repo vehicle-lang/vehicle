@@ -164,7 +164,7 @@ internalScopingError pass ident =
         <+> quotePretty ident
         <+> "not found in scope..."
 
-outOfBoundsError :: (MonadError CompileError m) => Doc () -> BoundCtx a -> Ix -> m b
+outOfBoundsError :: (MonadError CompileError m) => Doc () -> GenericBoundCtx a -> Ix -> m b
 outOfBoundsError pass ctx i =
   compilerDeveloperError $
     "Internal scoping error during"
@@ -175,17 +175,38 @@ outOfBoundsError pass ctx i =
         <+> "is smaller than the found DB index"
         <+> pretty i
 
-lookupInDeclCtx :: (MonadError CompileError m) => Doc () -> Identifier -> DeclCtx a -> m a
+-- | Looks up the declaration associated the provided `Identifier`, throwing
+-- an error if that identifier is out of scope.
+lookupInDeclCtx ::
+  (MonadError CompileError m) =>
+  Doc () ->
+  Identifier ->
+  GenericFreeCtx a ->
+  m a
 lookupInDeclCtx pass ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError pass ident
   Just x -> return x
 
-lookupLvInBoundCtx :: (MonadError CompileError m) => Doc () -> Lv -> BoundCtx a -> m a
+-- | Looks up the value associated with the variable given the provided `Lv`, throwing
+-- an error if that level is out of scope.
+lookupLvInBoundCtx ::
+  (MonadError CompileError m) =>
+  Doc () ->
+  Lv ->
+  GenericBoundCtx a ->
+  m a
 lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
   Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
   Just x -> return x
 
-lookupIxInBoundCtx :: (MonadError CompileError m) => Doc () -> Ix -> BoundCtx a -> m a
+-- | Looks up the value associated with the variable given the provided `Ix`, throwing
+-- an error if that index is out of scope.
+lookupIxInBoundCtx ::
+  (MonadError CompileError m) =>
+  Doc () ->
+  Ix ->
+  GenericBoundCtx a ->
+  m a
 lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
   Nothing -> outOfBoundsError pass ctx ix
   Just x -> return x

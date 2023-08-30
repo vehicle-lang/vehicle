@@ -191,6 +191,15 @@ library
     Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
     Vehicle.Backend.Queries.Error.Polarity.Type
     Vehicle.Compile.Arity
+    Vehicle.Compile.Context.Bound
+    Vehicle.Compile.Context.Bound.Class
+    Vehicle.Compile.Context.Bound.Core
+    Vehicle.Compile.Context.Bound.Instance
+    Vehicle.Compile.Context.Free
+    Vehicle.Compile.Context.Free.Class
+    Vehicle.Compile.Context.Free.Core
+    Vehicle.Compile.Context.Free.Instance
+    Vehicle.Compile.Context.Var
     Vehicle.Compile.Dependency
     Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
@@ -198,8 +207,6 @@ library
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
-    Vehicle.Compile.Prelude.Contexts
-    Vehicle.Compile.Prelude.MonadContext
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core

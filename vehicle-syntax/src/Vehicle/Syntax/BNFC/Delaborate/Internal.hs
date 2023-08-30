@@ -82,7 +82,7 @@ instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
 
 instance Delaborate (V.Binder V.Name V.Builtin) B.Binder where
   delabM binder = do
-    t' <- delabM $ V.binderType binder
+    t' <- delabM $ V.binderValue binder
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
     return $ case (V.visibilityOf binder, V.relevanceOf binder) of
       (V.Explicit {}, V.Relevant) -> B.RelevantExplicitBinder n' t'

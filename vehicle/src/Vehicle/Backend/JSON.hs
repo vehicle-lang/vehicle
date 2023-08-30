@@ -22,10 +22,10 @@ import Data.Ratio (denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Vehicle.Backend.LossFunction.TypeSystem qualified as L
 import Vehicle.Compile.Arity (Arity, arityFromVType, explicitArityFromType)
+import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
-import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
 import Vehicle.Expr.BuiltinInterface qualified as V
@@ -46,7 +46,7 @@ compileProgToJSON ::
   m (Doc a)
 compileProgToJSON prog = do
   logCompilerPass MinDetail currentPass $ do
-    jProg <- runContextT (Proxy @builtin) (toJProg prog) mempty
+    jProg <- runFreshVarContextT (Proxy @builtin) (toJProg prog)
     let namedProg = descopeNamed jProg
     let json = toJSON namedProg
     return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
@@ -424,7 +424,7 @@ currentPass = "conversion to JSON"
 
 type MonadJSON builtin m =
   ( MonadCompile m,
-    MonadContext builtin m,
+    MonadVarContext builtin m,
     ToJBuiltin builtin,
     PrintableBuiltin builtin,
     TypableBuiltin builtin,
@@ -513,7 +513,7 @@ foldLamBinders = \case
 
 toJBinder :: (MonadJSON builtin m) => V.Binder Ix builtin -> m (JBinder Ix)
 toJBinder binder = do
-  type' <- toJExpr $ V.binderType binder
+  type' <- toJExpr $ typeOf binder
   let p = V.binderProvenance binder
   let maybeName = case V.namingForm (V.binderDisplayForm binder) of
         V.NameAndType n -> Just n

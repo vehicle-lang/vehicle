@@ -33,7 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.BuiltinInterface
@@ -245,7 +245,7 @@ getMonomorphisedName name args = do
           Text.intercalate typeJoiner parts
 
 getImplicitName :: (PrintableBuiltin builtin) => Type Ix builtin -> Text
-getImplicitName t = layoutAsText $ prettyFriendly $ WithContext t emptyDBCtx
+getImplicitName t = layoutAsText $ prettyFriendlyEmptyCtx t
 
 getTypeJoiner :: Text -> Text
 getTypeJoiner nameJoiner = nameJoiner <> nameJoiner

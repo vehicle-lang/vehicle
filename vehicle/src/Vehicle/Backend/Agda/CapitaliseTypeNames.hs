@@ -59,8 +59,8 @@ instance CapitaliseTypes (Arg var builtin) where
 
 instance CapitaliseTypes (Binder var builtin) where
   cap Binder {..} = do
-    binderType' <- cap binderType
-    return $ Binder {binderType = binderType', ..}
+    binderValue' <- cap binderValue
+    return $ Binder {binderValue = binderValue', ..}
 
 capitaliseIdentifier :: (MonadCapitalise m) => Identifier -> m Identifier
 capitaliseIdentifier ident@(Identifier m s) = do

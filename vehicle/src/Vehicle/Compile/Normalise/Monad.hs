@@ -47,15 +47,15 @@ instance (MonadNorm builtin m) => MonadNorm builtin (ReaderT s m) where
   getDeclSubstitution = lift getDeclSubstitution
 
 newtype NormT builtin m a = NormT
-  { unnormT :: ReaderT (EvalOptions, NormDeclCtx builtin, MetaSubstitution builtin) m a
+  { unnormT :: ReaderT (EvalOptions, NormDeclCtx builtin) m a
   }
   deriving (Functor, Applicative, Monad)
 
-runNormT :: EvalOptions -> NormDeclCtx builtin -> MetaSubstitution builtin -> NormT builtin m a -> m a
-runNormT opts declSubst metaSubst x = runReaderT (unnormT x) (opts, declSubst, metaSubst)
+runNormT :: EvalOptions -> NormDeclCtx builtin -> NormT builtin m a -> m a
+runNormT opts declSubst x = runReaderT (unnormT x) (opts, declSubst)
 
 runEmptyNormT :: NormT builtin m a -> m a
-runEmptyNormT = runNormT defaultEvalOptions mempty mempty
+runEmptyNormT = runNormT defaultEvalOptions mempty
 
 instance MonadTrans (NormT builtin) where
   lift = NormT . lift
@@ -73,5 +73,5 @@ instance (MonadError e m) => MonadError e (NormT builtin m) where
   catchError m f = NormT (catchError (unnormT m) (unnormT . f))
 
 instance (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) => MonadNorm builtin (NormT builtin m) where
-  getEvalOptions _ = NormT $ asks (\(opts, _, _) -> opts)
-  getDeclSubstitution = NormT $ asks (\(_, declCtx, _) -> declCtx)
+  getEvalOptions _ = NormT $ asks fst
+  getDeclSubstitution = NormT $ asks snd

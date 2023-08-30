@@ -14,6 +14,7 @@ module Vehicle.Compile.Print
     prettyVerbose,
     prettyFriendly,
     prettyExternal,
+    prettyFriendlyEmptyCtx,
   )
 where
 
@@ -67,6 +68,16 @@ prettyExternal = prettyWith @ExternalTags
 --  the user. Must provide the context of the thing being printed.
 prettyFriendly :: (PrettyFriendly a) => a -> Doc b
 prettyFriendly = prettyWith @FriendlyTags
+
+-- | Prints to the external language for things that need to be displayed to
+--  the user. Should only be used when the bound context is guaranteed to
+-- be empty.
+prettyFriendlyEmptyCtx ::
+  forall f builtin b.
+  (PrettyFriendly (Contextualised (f builtin) (BoundCtx builtin))) =>
+  f builtin ->
+  Doc b
+prettyFriendlyEmptyCtx x = prettyFriendly (WithContext x (emptyBoundCtx @builtin))
 
 --------------------------------------------------------------------------------
 -- Printing strategies
@@ -141,22 +152,22 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- we need to have the context in scope.
   StrategyFor ('Named tags) (Prog Ix builtin) = 'DescopeWithNames (StrategyFor tags (Prog Name Builtin))
   StrategyFor ('Named tags) (Decl Ix builtin) = 'DescopeWithNames (StrategyFor tags (Decl Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Expr Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) BoundDBCtx) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Expr Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
-  StrategyFor ('Named tags) (Contextualised (Value builtin) BoundDBCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (Value builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
   -- To convert an assertion simply defer to normalised expressions
   StrategyFor tags UnreducedAssertion = StrategyFor tags (Value Builtin)
-  StrategyFor tags (Contextualised UnreducedAssertion BoundDBCtx) = StrategyFor tags (Contextualised (Value Builtin) BoundDBCtx)
+  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (Value Builtin) (BoundCtx builtin))
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) BoundDBCtx))
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
   StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
   StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
   StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
@@ -329,21 +340,21 @@ instance (PrettyUsing rest (Decl Name builtin)) => PrettyUsing ('DescopeWithName
 
 instance
   (PrettyUsing rest (Expr Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) BoundDBCtx)
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) (BoundCtx builtin))
   where
-  prettyUsing = prettyUsing @rest . descopeNamed
+  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
 
 instance
   (PrettyUsing rest (Arg Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) BoundDBCtx)
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) (BoundCtx builtin))
   where
-  prettyUsing = prettyUsing @rest . descopeNamed
+  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
 
 instance
   (PrettyUsing rest (Binder Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) BoundDBCtx)
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) (BoundCtx builtin))
   where
-  prettyUsing = prettyUsing @rest . descopeNamed
+  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
 
 --------------------------------------------------------------------------------
 -- Simplification
@@ -422,8 +433,8 @@ instance
 -- Instances for normalised types
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Ix builtin) BoundDBCtx)) =>
-  PrettyUsing ('Denormalise rest) (Contextualised (Value builtin) BoundDBCtx)
+  (PrettyUsing rest (Contextualised (Expr Ix builtin) (BoundCtx builtin))) =>
+  PrettyUsing ('Denormalise rest) (Contextualised (Value builtin) (BoundCtx builtin))
   where
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(Value builtin) @(Expr Ix builtin) (Lv $ length ctx) e
@@ -450,8 +461,8 @@ instance
     NonVectorEqualityAssertion expr -> prettyUsing @rest expr
 
 instance
-  (PrettyUsing rest (Contextualised (Value Builtin) BoundDBCtx)) =>
-  PrettyUsing rest (Contextualised UnreducedAssertion BoundDBCtx)
+  (PrettyUsing rest (Contextualised (Value Builtin) (BoundCtx builtin))) =>
+  PrettyUsing rest (Contextualised UnreducedAssertion (BoundCtx builtin))
   where
   prettyUsing (WithContext assertion ctx) = case assertion of
     VectorEqualityAssertion VectorEquality {..} -> do
@@ -500,7 +511,7 @@ instance
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
+  (PrettyUsing rest (Contextualised (Value builtin) (BoundCtx builtin))) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
@@ -509,7 +520,7 @@ instance
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (Value builtin) BoundDBCtx)) =>
+  (PrettyUsing rest (Contextualised (Value builtin) (BoundCtx builtin))) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do

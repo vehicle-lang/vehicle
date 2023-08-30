@@ -15,14 +15,9 @@ import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
 import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInDeclCtx)
-import Vehicle.Compile.Prelude (FreeVarUpdate, traverseFreeVarsM)
-import Vehicle.Compile.Prelude.Contexts (DeclCtx)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
-import Vehicle.Expr.DeBruijn (Ix, Lv (..), dbLevelToIndex)
-import Vehicle.Prelude (traverseListLocal)
-import Vehicle.Prelude.Logging
-import Vehicle.Prelude.Prettyprinter
-import Vehicle.Syntax.AST
+import Vehicle.Expr.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -62,7 +57,7 @@ currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
   { resourceDeclarations :: LinkedHashMap Name (Type Ix builtin),
-    resourceUsageDeclCtx :: DeclCtx [Name]
+    resourceUsageDeclCtx :: GenericFreeCtx [Name]
   }
 
 addResourceDeclaration :: Identifier -> Type Ix builtin -> FuncState builtin -> FuncState builtin

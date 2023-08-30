@@ -74,13 +74,13 @@ instance Serialize BinderDisplayForm
 --------------------------------------------------------------------------------
 -- Binders
 
--- | Binder for lambda and let expressions
+-- | Binder for introducing new variables in lambda and let expressions
 --
 -- The binder stores the optional type annotation in order to ensure
 -- reversibility during delaboration, and that as the type annotation was
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
-data GenericBinder expr = Binder
+data GenericBinder value = Binder
   { -- | Location of the binder in the source file
     binderProvenance :: Provenance,
     -- | What form the binder should take when displayed
@@ -89,9 +89,9 @@ data GenericBinder expr = Binder
     binderVisibility :: Visibility,
     -- | The relevancy of the binder
     binderRelevance :: Relevance,
-    -- | The representation of the bound variable
-    binderType :: expr
-    -- The type of the bound variable
+    -- | The value associated with the bound variable.
+    -- Usually (but not always) its type.
+    binderValue :: value
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 

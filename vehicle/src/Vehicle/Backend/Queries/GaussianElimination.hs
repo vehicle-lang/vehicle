@@ -22,7 +22,7 @@ import Vehicle.Verify.Core
 -- unused assertions and the indices of the solved assertions.
 gaussianElimination ::
   (MonadCompile m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   [GaussianAssertion] ->
   m ([(MixedVariable, GaussianAssertion)], [GaussianAssertion], IntSet)
 gaussianElimination variablesToEliminate exprs =

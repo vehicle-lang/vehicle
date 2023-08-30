@@ -4,9 +4,11 @@
 {-# HLINT ignore "Eta reduce" #-}
 module Vehicle.Backend.Queries.Variable
   ( Variable (..),
-    variableCtxToNormEnv,
+    variableCtxToEnv,
     UserVariable (..),
+    UserVariableCtx,
     NetworkVariable (..),
+    NetworkVariableCtx,
     sequentialNetworkVariableNaming,
     MixedVariable (..),
     isRationalVariable,
@@ -16,6 +18,7 @@ module Vehicle.Backend.Queries.Variable
     MixedVariables (..),
     mixedVariableCtx,
     mixedVariableDBCtx,
+    MixedVariableCtx,
     Constant,
     Coefficient,
     scaleConstant,
@@ -29,6 +32,8 @@ module Vehicle.Backend.Queries.Variable
     pattern VFiniteQuantifier,
     pattern VFiniteQuantifierSpine,
     prettyRationalAsFloat,
+    variableCtxToBoundCtx,
+    mkVariableBinder,
   )
 where
 
@@ -69,10 +74,22 @@ class
 isRationalVariable :: (Variable variable) => variable -> Bool
 isRationalVariable v = null (variableDimensions v)
 
-variableCtxToNormEnv :: (Variable variable) => BoundCtx variable -> Env Builtin
-variableCtxToNormEnv ctx = do
-  let mkEntry lv var = (Just (layoutAsText $ pretty var), VBoundVar (Lv lv) [])
-  zipWith mkEntry (reverse [0 .. length ctx - 1]) ctx
+mkVariableBinder :: Name -> expr -> GenericBinder expr
+mkVariableBinder name value = Binder mempty displayForm Explicit Relevant value
+  where
+    displayForm = BinderDisplayForm (OnlyName name) True
+
+variableToEnvEntry :: (Variable variable) => Lv -> variable -> GenericBinder (Value Builtin)
+variableToEnvEntry lv var = mkVariableBinder (layoutAsText $ pretty var) (VBoundVar lv [])
+
+variableCtxToEnv :: (Variable variable) => [variable] -> Env Builtin
+variableCtxToEnv ctx = zipWith variableToEnvEntry (reverse [0 .. Lv (length ctx - 1)]) ctx
+
+variableCtxToBoundCtxEntry :: (Variable variable) => Ix -> variable -> Binder Ix Builtin
+variableCtxToBoundCtxEntry ix var = mkVariableBinder (layoutAsText $ pretty var) (BoundVar mempty ix)
+
+variableCtxToBoundCtx :: (Variable variable) => [variable] -> BoundCtx Builtin
+variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
 
 --------------------------------------------------------------------------------
 -- User variables
@@ -103,7 +120,9 @@ instance Variable UserVariable where
   reduceVariable = reduceUserVariable
   toMixedVariable = UserVar
 
-reduceUserVariable :: Lv -> UserVariable -> (BoundCtx UserVariable, Value Builtin)
+type UserVariableCtx = [UserVariable]
+
+reduceUserVariable :: Lv -> UserVariable -> (UserVariableCtx, Value Builtin)
 reduceUserVariable dbLevel UserVariable {..} = do
   let (vars, expr) = runSupply (go userVarName userVarDimensions) [dbLevel ..]
   (reverse vars, expr)
@@ -165,7 +184,9 @@ instance Variable NetworkVariable where
 
   toMixedVariable = NetworkVar
 
-reduceNetworkVariable :: Lv -> NetworkVariable -> (BoundCtx NetworkVariable, Value Builtin)
+type NetworkVariableCtx = [NetworkVariable]
+
+reduceNetworkVariable :: Lv -> NetworkVariable -> (NetworkVariableCtx, Value Builtin)
 reduceNetworkVariable dbLevel NetworkVariable {..} = do
   let (vars, expr) = runSupply (go networkVarDimensions) [0 :: Int ..]
   (reverse vars, expr)
@@ -187,7 +208,7 @@ reduceNetworkVariable dbLevel NetworkVariable {..} = do
         let userVars = concat elementUserVars
         return (userVars, mkVLVec subexprs)
 
-sequentialNetworkVariableNaming :: Text -> Text -> BoundCtx NetworkVariable -> [Name]
+sequentialNetworkVariableNaming :: Text -> Text -> NetworkVariableCtx -> [Name]
 sequentialNetworkVariableNaming inputPrefix outputPrefix variables = do
   let (_, _, result) = foldl forNetwork (0, 0, []) (reverse variables)
   result
@@ -252,17 +273,19 @@ getUserVariable = \case
   UserVar v -> Just v
   NetworkVar {} -> Nothing
 
+type MixedVariableCtx = [MixedVariable]
+
 data MixedVariables = MixedVariables
-  { userVariableCtx :: BoundCtx UserVariable,
-    networkVariableCtx :: BoundCtx NetworkVariable
+  { userVariableCtx :: UserVariableCtx,
+    networkVariableCtx :: NetworkVariableCtx
   }
 
-mixedVariableCtx :: MixedVariables -> BoundCtx MixedVariable
+mixedVariableCtx :: MixedVariables -> MixedVariableCtx
 mixedVariableCtx MixedVariables {..} =
   fmap NetworkVar networkVariableCtx <> fmap UserVar userVariableCtx
 
-mixedVariableDBCtx :: MixedVariables -> BoundDBCtx
-mixedVariableDBCtx ctx = fmap (Just . layoutAsText . pretty) (mixedVariableCtx ctx)
+mixedVariableDBCtx :: MixedVariables -> BoundCtx Builtin
+mixedVariableDBCtx ctx = variableCtxToBoundCtx (mixedVariableCtx ctx)
 
 --------------------------------------------------------------------------------
 -- Constants

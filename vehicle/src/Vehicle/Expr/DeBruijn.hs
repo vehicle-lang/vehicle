@@ -33,7 +33,7 @@ import Vehicle.Syntax.AST
 newtype Ix = Ix
   { unIx :: Int
   }
-  deriving (Eq, Ord, Num, Show, Generic)
+  deriving (Eq, Ord, Num, Enum, Show, Generic)
 
 instance NFData Ix
 

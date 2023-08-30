@@ -4,14 +4,15 @@ module Vehicle.Backend.Tensors.Clean
 where
 
 import Control.Monad.State (MonadState, evalStateT, gets, modify)
+import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
-import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext (MonadContext (addDeclToContext), normalise, runContextT, unnormalise)
 import Vehicle.Expr.BuiltinInterface
 
 cleanUpHigherOrderStuff ::
@@ -20,12 +21,12 @@ cleanUpHigherOrderStuff ::
   Prog Ix builtin ->
   m (Prog Ix builtin)
 cleanUpHigherOrderStuff (Main ds) =
-  Main <$> runContextT (Proxy @builtin) (evalStateT (cleanDecls ds) mempty) mempty
+  Main <$> runFreshVarContextT (Proxy @builtin) (evalStateT (cleanDecls ds) mempty)
 
 type MonadClean m builtin =
   ( MonadCompile m,
     MonadState (Map Identifier (Bool, Expr Ix builtin)) m,
-    MonadContext builtin m,
+    MonadVarContext builtin m,
     PrintableBuiltin builtin
   )
 
