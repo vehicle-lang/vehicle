@@ -30,12 +30,12 @@ import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.QuerySetStructure (eliminateNot)
 import Vehicle.Backend.Queries.Variable
+import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalMul)
-import Vehicle.Compile.Normalise.NBE (defaultEvalOptions, reeval, runNormT)
+import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, reeval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Expr.Boolean
@@ -49,15 +49,14 @@ import Vehicle.Verify.Core
 -- over those variables, and returns a list of assertions only over the fully reduced
 -- network variables.
 eliminateUserVariables ::
-  (MonadCompile m) =>
-  NormDeclCtx Builtin ->
+  (MonadCompile m, MonadFreeContext Builtin m) =>
   DeclProvenance ->
   MetaNetwork ->
   MixedVariables ->
   BooleanExpr UnreducedAssertion ->
   m (MaybeTrivial (DisjunctAll (CLSTProblem, VariableNormalisationSteps)))
-eliminateUserVariables declSubst declProvenance metaNetwork variables expr =
-  flip runReaderT (declProvenance, metaNetwork, declSubst) $ do
+eliminateUserVariables declProvenance metaNetwork variables expr =
+  flip runReaderT (declProvenance, metaNetwork) $ do
     -- The first step is to try to solve for as many user variables as possible
     -- without performing any reduction of any vector variables.
     unreducedSolverResult <- tryToSolveForUnreducedUserVariables variables expr
@@ -93,13 +92,13 @@ eliminateUserVariables declSubst declProvenance metaNetwork variables expr =
 
 type MonadSMT m =
   ( MonadCompile m,
+    MonadFreeContext Builtin m,
     MonadReader LCSState m
   )
 
 type LCSState =
   ( DeclProvenance,
-    MetaNetwork,
-    NormDeclCtx Builtin
+    MetaNetwork
   )
 
 --------------------------------------------------------------------------------
@@ -403,13 +402,11 @@ substituteReducedVariablesThroughSolutions ::
   m (Env Builtin)
 substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePositions = do
   logDebug MidDetail "Substituting reduced variables through variable solutions..."
-  (_, _, declCtx) <- ask
-  result <- foldrM (f declCtx) partialEnv solutions
-  return result
+  foldrM f partialEnv solutions
   where
-    f :: NormDeclCtx Builtin -> (UserVariable, Value Builtin) -> Env Builtin -> m (Env Builtin)
-    f declCtx (var, solution) env = do
-      normalisedSolution <- runNormT defaultEvalOptions declCtx (reeval env solution)
+    f :: (UserVariable, Value Builtin) -> Env Builtin -> m (Env Builtin)
+    f (var, solution) env = do
+      normalisedSolution <- reeval defaultNBEOptions env solution
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
       let index = unIx $ fromMaybe errorMsg $ Map.lookup var solvedVariablePositions
       let newEnv = take index env <> [mkDefaultBinder (layoutAsText $ pretty var) normalisedSolution] <> drop (index + 1) env
@@ -425,7 +422,7 @@ solveForReducedUserVariables ::
   m ([Assertion NetworkVariable], VariableNormalisationSteps)
 solveForReducedUserVariables variables assertions =
   logCompilerPass MidDetail "elimination of user variables" $ do
-    ((ident, _), _, _) <- ask
+    ((ident, _), _) <- ask
 
     let userVars = fmap UserVar (userVariableCtx variables)
     let userVariablesSet = Set.fromList userVars
@@ -496,8 +493,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         NonVectorEqualityAssertion expr -> expr
 
   -- First normalise the expression under the new environment of reduced variables
-  (_, _, declSubst) <- ask
-  normExpr <- runNormT defaultEvalOptions declSubst $ reeval variableSubstEnv assertionExpr
+  normExpr <- reeval defaultNBEOptions variableSubstEnv assertionExpr
 
   -- Then extract the relation and arguments
   splitAssertions <- splitUpAssertions False normExpr
@@ -549,9 +545,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         Nothing -> splitUpAssertions True expr
         Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
         Just (Just exprWithoutIf) -> do
-          (_, _, declSubst) <- ask
           let env = variableCtxToEnv variableCtx
-          normExprWithoutIf <- runNormT defaultEvalOptions declSubst (reeval env exprWithoutIf)
+          normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
           splitUpAssertions True normExprWithoutIf
 
     reduceAssertion ::

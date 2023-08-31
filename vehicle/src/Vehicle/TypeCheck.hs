@@ -24,7 +24,6 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
@@ -54,10 +53,10 @@ typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggin
 parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m (Expr Ix Builtin)
 parseAndTypeCheckExpr expr = do
   standardLibraryProg <- loadLibrary standardLibrary
-  declCtx <- createDeclCtx [standardLibraryProg]
+  freeCtx <- createFreeCtx [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckExpr standardBuiltinInstances declCtx scopedExpr
+  typedExpr <- typeCheckExpr standardBuiltinInstances freeCtx scopedExpr
   convertBackToStandardBuiltin typedExpr
 
 parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
@@ -86,8 +85,8 @@ typeCheckProgram ::
 typeCheckProgram modul imports spec = do
   vehicleProg <- parseProgText modul spec
   scopedProg <- scopeCheck imports vehicleProg
-  declCtx <- createDeclCtx imports
-  typedProg <- typeCheckProg standardBuiltinInstances declCtx scopedProg
+  freeCtx <- createFreeCtx imports
+  typedProg <- typeCheckProg standardBuiltinInstances freeCtx scopedProg
   traverse convertBackToStandardBuiltin typedProg
 
 -- | Parses and type-checks the program but does
@@ -155,11 +154,11 @@ convertBackToStandardBuiltin = traverseBuiltinsM $
   \p1 p2 b args -> case b of
     StandardBuiltin c -> return $ normAppList p1 (Builtin p2 c) args
 
-createDeclCtx ::
+createFreeCtx ::
   (MonadCompile m) =>
   Imports ->
-  m (TypingDeclCtx StandardTypingBuiltin)
-createDeclCtx imports = do
+  m (FreeCtx StandardTypingBuiltin)
+createFreeCtx imports = do
   let decls = [d | imp <- imports, let Main ds = imp, d <- ds]
   convertedDecls <- traverse (traverse (traverseBuiltinsM convertToTypingBuiltins)) decls
   runFreshFreeContextT (Proxy @StandardTypingBuiltin) (calculateCtx convertedDecls)
@@ -167,7 +166,7 @@ createDeclCtx imports = do
     calculateCtx ::
       (MonadFreeContext StandardTypingBuiltin m) =>
       [Decl Ix StandardTypingBuiltin] ->
-      m (TypingDeclCtx StandardTypingBuiltin)
+      m (FreeCtx StandardTypingBuiltin)
     calculateCtx = \case
-      [] -> fmap mkTypingDeclCtxEntry <$> getFreeCtx (Proxy @StandardTypingBuiltin)
+      [] -> getFreeCtx (Proxy @StandardTypingBuiltin)
       d : ds -> addDeclToContext d $ calculateCtx ds

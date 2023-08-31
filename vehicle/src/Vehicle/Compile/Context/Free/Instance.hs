@@ -11,11 +11,9 @@ import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
-import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Compile.Type.Core (mkTypingDeclCtxEntry)
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -82,10 +80,7 @@ normaliseInEnv ::
   Env builtin ->
   Expr Ix builtin ->
   m (Value builtin)
-normaliseInEnv env e = do
-  declCtx <- getFreeCtx (Proxy @builtin)
-  let normDeclCtx = fmap mkTypingDeclCtxEntry declCtx
-  runNormT defaultEvalOptions normDeclCtx (eval env e)
+normaliseInEnv = eval defaultNBEOptions
 
 normaliseInEmptyEnv ::
   (MonadFreeContext builtin m) =>

@@ -205,7 +205,6 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.Normalise.Builtin
-    Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Type.Bidirectional

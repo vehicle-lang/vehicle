@@ -22,7 +22,7 @@ runFreshVarContextT ::
   Proxy builtin ->
   BoundContextT builtin (FreeContextT builtin m) a ->
   m a
-runFreshVarContextT p = runFreshFreeContextT p . runFreshBoundContextT
+runFreshVarContextT p = runFreshFreeContextT p . runFreshBoundContextT p
 
 normalise ::
   forall builtin m.

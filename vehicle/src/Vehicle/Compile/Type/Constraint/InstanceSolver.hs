@@ -11,7 +11,7 @@ import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
 import Vehicle.Compile.Type (runUnificationSolver)
@@ -137,7 +137,7 @@ checkCandidate ::
 checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..} candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
-    result <- runTypeCheckerHypothetically $ do
+    result <- runTypeCheckerTHypothetically $ do
       -- Allow the candidate to access all the arguments in the goal telescope.
       let goalCtxExtension = goalTelescope
       let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
@@ -190,7 +190,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
     let initialCtx = goalCtxExtension ++ candidateCtx
     (candidateBody, candidateSol, newInstanceConstraints, finalCtx) <-
       go (candidateExpr, candidateSolution, [], initialCtx)
-    normCandidateBody <- eval (boundContextToEnv finalCtx) candidateBody
+    normCandidateBody <- eval defaultNBEOptions (boundContextToEnv finalCtx) candidateBody
     return (normCandidateBody, candidateSol, newInstanceConstraints)
   where
     go ::
@@ -210,7 +210,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
           Instance {} -> do
             let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
-            normBinderType <- eval (boundContextToEnv boundCtx) binderType
+            normBinderType <- eval defaultNBEOptions (boundContextToEnv boundCtx) binderType
             (expr, constraint) <- createSubInstance newInfo (relevanceOf exprBinder) normBinderType
             return (expr, [constraint])
         let exprBodyResult = newArg `substDBInto` exprBody

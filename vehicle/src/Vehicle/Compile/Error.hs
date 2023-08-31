@@ -177,13 +177,13 @@ outOfBoundsError pass ctx i =
 
 -- | Looks up the declaration associated the provided `Identifier`, throwing
 -- an error if that identifier is out of scope.
-lookupInDeclCtx ::
+lookupInFreeCtx ::
   (MonadError CompileError m) =>
   Doc () ->
   Identifier ->
   GenericFreeCtx a ->
   m a
-lookupInDeclCtx pass ident ctx = case Map.lookup ident ctx of
+lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError pass ident
   Just x -> return x
 

@@ -4,8 +4,8 @@ module Vehicle.Compile.Type.Monad
     TypeCheckerState,
     HasTypeSystem (..),
     -- Top-level interface
-    runTypeChecker,
-    runTypeCheckerHypothetically,
+    runTypeCheckerTInitially,
+    runTypeCheckerTHypothetically,
     adoptHypotheticalState,
     -- Meta variables
     freshMetaExpr,
@@ -35,8 +35,6 @@ module Vehicle.Compile.Type.Monad
     addUnificationConstraints,
     -- Other
     clearMetaCtx,
-    getBinderNameOrFreshName,
-    getDeclType,
     instantiateArgForNonExplicitBinder,
     glueNBE,
   )
@@ -45,8 +43,8 @@ where
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (CompileError (..), compilerDeveloperError)
-import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
@@ -57,31 +55,31 @@ import Vehicle.Expr.Normalised
 -- | The type-checking monad.
 type TCM builtin m =
   ( MonadTypeChecker builtin m,
-    MonadNorm builtin m,
     HasTypeSystem builtin
   )
 
-runTypeChecker ::
+runTypeCheckerTInitially ::
   (Monad m) =>
-  TypingDeclCtx builtin ->
+  FreeCtx builtin ->
   InstanceCandidateDatabase builtin ->
   TypeCheckerT builtin m a ->
   m a
-runTypeChecker declCtx instanceCandidates e =
-  fst <$> runTypeCheckerT declCtx instanceCandidates emptyTypeCheckerState e
+runTypeCheckerTInitially freeCtx instanceCandidates e =
+  fst <$> runTypeCheckerT freeCtx instanceCandidates emptyTypeCheckerState e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
-runTypeCheckerHypothetically ::
+runTypeCheckerTHypothetically ::
+  forall builtin m a.
   (TCM builtin m) =>
   TypeCheckerT builtin (ExceptT CompileError m) a ->
   m (Either CompileError (a, TypeCheckerState builtin))
-runTypeCheckerHypothetically e = do
+runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
-  declCtx <- getDeclContext
+  freeCtx <- getFreeCtx (Proxy @builtin)
   instanceCandidates <- getInstanceCandidates
   state <- getMetaState
-  result <- runExceptT $ runTypeCheckerT declCtx instanceCandidates state e
+  result <- runExceptT $ runTypeCheckerT freeCtx instanceCandidates state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of
@@ -142,7 +140,7 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
   let originProvenance = provenanceOf tcExpr
   cid <- generateFreshConstraintID (Proxy @builtin)
   let context = ConstraintContext cid originProvenance p unknownBlockingStatus boundCtx
-  nTCExpr <- whnf env tcExpr
+  nTCExpr <- eval defaultNBEOptions env tcExpr
   let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 
   addInstanceConstraints [constraint]

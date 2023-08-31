@@ -14,7 +14,7 @@ import Data.Map qualified as Map (fromList, insert, lookup)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
-import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInDeclCtx)
+import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Expr.DeBruijn (dbLevelToIndex)
@@ -57,7 +57,7 @@ currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
   { resourceDeclarations :: LinkedHashMap Name (Type Ix builtin),
-    resourceUsageDeclCtx :: GenericFreeCtx [Name]
+    resourceUsageFreeCtx :: GenericFreeCtx [Name]
   }
 
 addResourceDeclaration :: Identifier -> Type Ix builtin -> FuncState builtin -> FuncState builtin
@@ -70,7 +70,7 @@ addResourceDeclaration resource typ FuncState {..} =
 addResourceUsage :: Identifier -> [Name] -> FuncState builtin -> FuncState builtin
 addResourceUsage ident newArgNames FuncState {..} =
   FuncState
-    { resourceUsageDeclCtx = Map.insert ident newArgNames resourceUsageDeclCtx,
+    { resourceUsageFreeCtx = Map.insert ident newArgNames resourceUsageFreeCtx,
       ..
     }
 
@@ -132,7 +132,7 @@ findResourceUses e = execWriterT $ traverseFreeVarsM (const id) updateFn e
       let name = nameOf ident
       when (name `LinkedHashMap.member` resourceDeclarations) $ do
         tell (Set.singleton name)
-      resourceArgs <- lookupInDeclCtx currentPass ident resourceUsageDeclCtx
+      resourceArgs <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
       tell (Set.fromList resourceArgs)
       return $ normAppList p1 (FreeVar p2 ident) args'
 
@@ -171,7 +171,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
           then mkResourceVar name
           else return $ FreeVar p2 ident
 
-      extraResourceNames <- lookupInDeclCtx currentPass ident resourceUsageDeclCtx
+      extraResourceNames <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
       let extraResourceArgs = fmap (Arg p1 Explicit Relevant) extraResourceVarArgs
       return $ normAppList p1 newFun (extraResourceArgs <> args')

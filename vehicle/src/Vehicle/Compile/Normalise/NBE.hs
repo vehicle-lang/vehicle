@@ -3,18 +3,14 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Normalise.NBE
-  ( whnf,
-    EvalOptions (..),
-    defaultEvalOptions,
+  ( NBEOptions (..),
+    defaultNBEOptions,
     eval,
     evalApp,
     extendEnv,
     extendEnvOverBinder,
     lookupIdentValueInEnv,
     reeval,
-    NormT,
-    runNormT,
-    runEmptyNormT,
     findInstanceArg,
   )
 where
@@ -23,31 +19,40 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Maybe (isNothing)
 import Vehicle.Compile.Arity
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getDecl)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
-import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Core
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
 
 -----------------------------------------------------------------------------
--- Main method
+-- Options during NBE
 
-whnf ::
-  (MonadNorm builtin m) =>
-  Env builtin ->
-  Expr Ix builtin ->
-  m (Value builtin)
-whnf = eval
+newtype NBEOptions = NBEOptions
+  { evalFiniteQuantifiers :: Bool
+  }
+
+defaultNBEOptions :: NBEOptions
+defaultNBEOptions =
+  NBEOptions
+    { evalFiniteQuantifiers = True
+    }
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
-eval :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m (Value builtin)
-eval env expr = do
+type MonadNorm builtin m = MonadFreeContext builtin m
+
+eval ::
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  Env builtin ->
+  Expr Ix builtin ->
+  m (Value builtin)
+eval opts env expr = do
   showEntry env expr
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
@@ -55,41 +60,51 @@ eval env expr = do
     Universe _ u -> return $ VUniverse u
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
-      binder' <- evalBinder env binder
+      binder' <- evalBinder opts env binder
       return $ VLam binder' env body
     Pi _ binder body -> do
-      binder' <- evalBinder env binder
+      binder' <- evalBinder opts env binder
       let newEnv = extendEnvOverBinder binder' env
-      body' <- eval newEnv body
+      body' <- eval opts newEnv body
       return $ VPi binder' body'
     BoundVar _ i ->
       lookupIxValueInEnv i env
     FreeVar _ ident ->
-      lookupIdentValueInEnv ident
+      lookupIdentValueInEnv opts ident
     Let _ bound binder body -> do
-      binder' <- evalBinder env binder
-      boundNormExpr <- eval env bound
+      binder' <- evalBinder opts env binder
+      boundNormExpr <- eval opts env bound
       let newEnv = extendEnv binder' boundNormExpr env
-      eval newEnv body
+      eval opts newEnv body
     App _ fun args -> do
-      fun' <- eval env fun
-      args' <- traverse (traverse (eval env)) (NonEmpty.toList args)
-      evalApp fun' args'
+      fun' <- eval opts env fun
+      args' <- traverse (traverse (eval opts env)) (NonEmpty.toList args)
+      evalApp opts fun' args'
 
   showExit env result
   return result
 
-evalBinder :: (MonadNorm builtin m) => Env builtin -> Binder Ix builtin -> m (VBinder builtin)
-evalBinder env = traverse (eval env)
+evalBinder ::
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  Env builtin ->
+  Binder Ix builtin ->
+  m (VBinder builtin)
+evalBinder opts env = traverse (eval opts env)
 
-evalApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m (Value builtin)
-evalApp fun [] = return fun
-evalApp fun args@(a : as) = do
+evalApp ::
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  Value builtin ->
+  Spine builtin ->
+  m (Value builtin)
+evalApp _opts fun [] = return fun
+evalApp opts fun args@(a : as) = do
   showApp fun args
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
-    VFreeVar v spine -> evalFreeVarApp v (spine <> args)
+    VFreeVar v spine -> evalFreeVarApp opts v (spine <> args)
     VLam binder env body
       | not (visibilityMatches binder a) -> do
           compilerDeveloperError $
@@ -105,16 +120,16 @@ evalApp fun args@(a : as) = do
                 )
       | otherwise -> do
           let newEnv = extendEnv binder (argExpr a) env
-          body' <- eval newEnv body
+          body' <- eval opts newEnv body
           case as of
             [] -> return body'
-            (b : bs) -> evalApp body' (b : bs)
+            (b : bs) -> evalApp opts body' (b : bs)
     VBuiltin b spine
       | not (isTypeClassOp b) -> do
-          evalBuiltin evalApp b (spine <> args)
+          evalBuiltin (evalApp opts) b (spine <> args)
       | otherwise -> do
           (inst, remainingArgs) <- findInstanceArg b args
-          evalApp inst remainingArgs
+          evalApp opts inst remainingArgs
     VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
     VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
 
@@ -123,21 +138,22 @@ evalApp fun args@(a : as) = do
 
 -- | This evaluates a free variable applied to an application.
 evalFreeVarApp ::
+  forall builtin m.
   (MonadNorm builtin m) =>
+  NBEOptions ->
   Identifier ->
   Spine builtin ->
   m (Value builtin)
-evalFreeVarApp ident spine = do
-  declSubst <- getDeclSubstitution
-  TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
-  case declBody of
+evalFreeVarApp opts ident spine = do
+  decl <- getDecl (Proxy @builtin) currentPass ident
+  case bodyOf decl of
     -- If free variable was annotated with a `@noinline` annotation but all
     -- it's explicit arguments are actually values then we should actually
     -- substitute it through and evaluate.
-    Just expr | not (isInlinable declAnns) && length spine == arityFromVType (normalised declType) -> do
+    Just expr | not (isInlinable (annotationsOf decl)) && length spine == arityFromVType (normalised (typeOf decl)) -> do
       let allExplicitArgsAreValues = all (isFullyReduced . argExpr) $ filter isExplicit spine
       if allExplicitArgsAreValues
-        then evalApp expr spine
+        then evalApp opts (normalised expr) spine
         else return $ VFreeVar ident spine
     _ -> return $ VFreeVar ident spine
 
@@ -151,19 +167,20 @@ isFullyReduced = \case
   VBoundVar {} -> False
   VBuiltin b _ -> isNothing $ getBuiltinFunction b
 
-lookupIdentValueInEnv :: forall builtin m. (MonadNorm builtin m) => Identifier -> m (Value builtin)
-lookupIdentValueInEnv ident = do
-  declSubst <- getDeclSubstitution
+lookupIdentValueInEnv ::
+  forall builtin m.
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  Identifier ->
+  m (Value builtin)
+lookupIdentValueInEnv opts ident = do
   let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
-  evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @builtin)
-  -- logDebug MaxDetail $ "Hi" <> pretty ident
-  if isFiniteQuantifier && not evalFiniteQuants
+  if isFiniteQuantifier && not (evalFiniteQuantifiers opts)
     then return $ VFreeVar ident []
     else do
-      TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
-      -- logDebug MaxDetail $ "Hi2" <> prettyVerbose declBody
-      case declBody of
-        Just expr | isInlinable declAnns -> return expr
+      decl <- getDecl (Proxy @builtin) currentPass ident
+      case bodyOf decl of
+        Just expr | isInlinable (annotationsOf decl) -> return $ normalised expr
         _ -> return $ VFreeVar ident []
 
 lookupIxValueInEnv ::
@@ -179,33 +196,39 @@ lookupIxValueInEnv l env =
 
 reeval ::
   (MonadNorm builtin m) =>
+  NBEOptions ->
   Env builtin ->
   Value builtin ->
   m (Value builtin)
-reeval env expr = do
+reeval opts env expr = do
   showNormEntry env expr
   result <- case expr of
     VUniverse {} -> return expr
     VLam binder lamEnv body -> do
-      lamEnv' <- traverse (traverse (reeval env)) lamEnv
+      lamEnv' <- traverse (traverse (reeval opts env)) lamEnv
       return $ VLam binder lamEnv' body
     VPi {} -> return expr
-    VMeta m spine -> VMeta m <$> reevalSpine env spine
+    VMeta m spine -> VMeta m <$> reevalSpine opts env spine
     VFreeVar v spine -> do
-      value <- lookupIdentValueInEnv v
-      spine' <- reevalSpine env spine
-      evalApp value spine'
+      value <- lookupIdentValueInEnv opts v
+      spine' <- reevalSpine opts env spine
+      evalApp opts value spine'
     VBoundVar v spine -> do
       value <- lookupLvValueInEnv v env
-      spine' <- reevalSpine env spine
-      evalApp value spine'
+      spine' <- reevalSpine opts env spine
+      evalApp opts value spine'
     VBuiltin b spine ->
-      evalBuiltin evalApp b =<< reevalSpine env spine
+      evalBuiltin (evalApp opts) b =<< reevalSpine opts env spine
   showNormExit env result
   return result
 
-reevalSpine :: (MonadNorm builtin m) => Env builtin -> Spine builtin -> m (Spine builtin)
-reevalSpine env = traverse (traverse (reeval env))
+reevalSpine ::
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  Env builtin ->
+  Spine builtin ->
+  m (Spine builtin)
+reevalSpine opts env = traverse (traverse (reeval opts env))
 
 lookupLvValueInEnv ::
   (MonadNorm builtin m) =>

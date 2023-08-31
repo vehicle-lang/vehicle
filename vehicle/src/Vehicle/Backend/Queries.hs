@@ -9,7 +9,6 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (MonadState (..), evalStateT)
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
-import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (unzip)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
@@ -65,12 +64,12 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
       Just folder -> liftIO $ createDirectoryIfMissing True folder
 
     -- Expand out the external resources in the specification (datasets, networks etc.)
-    (Main resourceFreeDecls, networkCtx, declCtx, integrityInfo) <- expandResources resources typedProg
+    (Main resourceFreeDecls, networkCtx, freeCtx, integrityInfo) <- expandResources resources typedProg
 
     -- Perform the actual compilation to queries
     properties <-
       runFreeContextT
-        declCtx
+        freeCtx
         (compileDecls typedProg queryFormat networkCtx mempty resourceFreeDecls maybeVerificationFolder)
 
     -- Check that there were actually properties in the specification.
@@ -124,12 +123,11 @@ compilePropertyDecl ::
   Expr Ix Builtin ->
   Maybe FilePath ->
   m (Name, MultiProperty ())
-compilePropertyDecl prog queryFormat networkCtx queryDeclCtx p ident expr outputLocation = do
+compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-    declCtx <- getNormDeclCtx (Proxy @Builtin)
-    normalisedExpr <- runNormT defaultEvalOptions declCtx $ eval mempty expr
+    normalisedExpr <- eval defaultNBEOptions mempty expr
 
-    let computeProperty = runWriterT $ compileMultiProperty queryFormat networkCtx queryDeclCtx p ident outputLocation normalisedExpr
+    let computeProperty = runWriterT $ compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
 
     (property, unsoundConversion) <-
       computeProperty `catchError` \e -> do
@@ -158,7 +156,7 @@ compileMultiProperty ::
   Maybe FilePath ->
   Value Builtin ->
   m (MultiProperty ())
-compileMultiProperty queryFormat networkCtx declCtx p ident outputLocation = go []
+compileMultiProperty queryFormat networkCtx freeCtx p ident outputLocation = go []
   where
     go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
     go indices expr = case expr of
@@ -173,7 +171,7 @@ compileMultiProperty queryFormat networkCtx declCtx p ident outputLocation = go 
 
         logFunction $ do
           let propertyAddress = PropertyAddress (nameOf ident) indices
-          let propertyState = PropertyState queryFormat declCtx networkCtx (ident, p) propertyAddress
+          let propertyState = PropertyState queryFormat freeCtx networkCtx (ident, p) propertyAddress
           evalStateT (runReaderT (compileProperty outputLocation expr) propertyState) 1
           return $ SingleProperty propertyAddress ()
 
@@ -182,7 +180,7 @@ compileMultiProperty queryFormat networkCtx declCtx p ident outputLocation = go 
 
 data PropertyState = PropertyState
   { queryFormat :: QueryFormat,
-    queryDeclCtx :: UsedFunctionsCtx,
+    queryFreeCtx :: UsedFunctionsCtx,
     networkCtx :: NetworkContext,
     declProvenance :: DeclProvenance,
     propertyAddress :: PropertyAddress
@@ -281,7 +279,7 @@ compileQuerySet isPropertyNegated expr = do
   PropertyState {..} <- ask
   -- First we attempt to recursively compile down the remaining boolean structure,
   -- stopping at the level of individual propositions (e.g. equality or ordering assertions)
-  queryStructureResult <- compileQueryStructure declProvenance queryDeclCtx networkCtx expr
+  queryStructureResult <- compileQueryStructure declProvenance queryFreeCtx networkCtx expr
   case queryStructureResult of
     Left err -> case err of
       AlternatingQuantifiers ->
@@ -327,11 +325,10 @@ compileMetaNetworkPartition ::
   m (MaybeTrivial (DisjunctAll (QueryAddress, (QueryMetaData, QueryText))))
 compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionID, MetaNetworkPartition {..}) = do
   PropertyState {..} <- ask
-  declCtx <- getNormDeclCtx (Proxy @Builtin)
   logCompilerPass MinDetail ("compilation of meta-network partition" <+> pretty partitionID) $ do
     -- Convert it into linear satisfaction problems in the network variables
     let mixedVariables = MixedVariables userVariables networkVars
-    clstQueries <- eliminateUserVariables declCtx declProvenance metaNetwork mixedVariables partitionExpr
+    clstQueries <- eliminateUserVariables declProvenance metaNetwork mixedVariables partitionExpr
 
     -- Compile the query to the specific verifiers.
     case clstQueries of

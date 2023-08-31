@@ -5,7 +5,6 @@ module Vehicle.Compile.Type.Core where
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Map qualified as Map
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
@@ -13,6 +12,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
+-- Typing errors
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
@@ -24,38 +24,6 @@ data TypingError builtin
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   deriving (Show)
-
---------------------------------------------------------------------------------
--- Typing declaration context
-
-data TypingDeclCtxEntry builtin = TypingDeclCtxEntry
-  { declAnns :: [Annotation],
-    declType :: GluedType builtin,
-    declBody :: Maybe (Value builtin)
-  }
-
-type TypingDeclCtx builtin = GenericFreeCtx (TypingDeclCtxEntry builtin)
-
-mkTypingDeclCtxEntry :: GluedDecl builtin -> TypingDeclCtxEntry builtin
-mkTypingDeclCtxEntry decl =
-  TypingDeclCtxEntry
-    { declAnns = annotationsOf decl,
-      declType = typeOf decl,
-      declBody = normalised <$> bodyOf decl
-    }
-
-addToTypingDeclCtx :: GluedDecl builtin -> TypingDeclCtx builtin -> TypingDeclCtx builtin
-addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry decl)
-
---------------------------------------------------------------------------------
--- Typing declaration context
-
-type NormDeclCtxEntry builtin = TypingDeclCtxEntry builtin
-
-type NormDeclCtx builtin = GenericFreeCtx (NormDeclCtxEntry builtin)
-
-typingDeclCtxToNormDeclCtx :: TypingDeclCtx builtin -> NormDeclCtx builtin
-typingDeclCtxToNormDeclCtx = id
 
 --------------------------------------------------------------------------------
 -- Meta variable substitution

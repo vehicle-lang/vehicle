@@ -1,15 +1,16 @@
 module Vehicle.Compile.Type.Monad.Class where
 
 import Control.Monad (foldM, unless)
-import Control.Monad.Reader (ReaderT (..), mapReaderT)
-import Control.Monad.State (StateT (..), mapStateT)
+import Control.Monad.Reader (ReaderT (..))
+import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Writer (WriterT (..), mapWriterT)
+import Control.Monad.Writer (WriterT (..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, lookupInDeclCtx)
-import Vehicle.Compile.Normalise.Monad
-import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Context.Bound.Instance
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -91,9 +92,7 @@ emptyTypeCheckerState =
 -- The type-checking monad class
 
 -- | The type-checking monad.
-class (MonadCompile m, MonadNorm builtin m) => MonadTypeChecker builtin m where
-  getDeclContext :: m (TypingDeclCtx builtin)
-  addDeclContext :: GluedDecl builtin -> m a -> m a
+class (MonadCompile m, MonadFreeContext builtin m) => MonadTypeChecker builtin m where
   getMetaState :: m (TypeCheckerState builtin)
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type Ix builtin -> m Name
@@ -101,8 +100,6 @@ class (MonadCompile m, MonadNorm builtin m) => MonadTypeChecker builtin m where
   getInstanceCandidates :: m (InstanceCandidateDatabase builtin)
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (WriterT w m) where
-  getDeclContext = lift getDeclContext
-  addDeclContext d = mapWriterT (addDeclContext d)
   getMetaState = lift getMetaState
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
@@ -110,8 +107,6 @@ instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (Wri
   getInstanceCandidates = lift getInstanceCandidates
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (ReaderT w m) where
-  getDeclContext = lift getDeclContext
-  addDeclContext d = mapReaderT (addDeclContext d)
   getMetaState = lift getMetaState
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
@@ -119,8 +114,13 @@ instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (Rea
   getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) where
-  getDeclContext = lift getDeclContext
-  addDeclContext d = mapStateT (addDeclContext d)
+  getMetaState = lift getMetaState
+  modifyMetaCtx = lift . modifyMetaCtx
+  getFreshName = lift . getFreshName
+  clearFreshNames = lift . clearFreshNames
+  getInstanceCandidates = lift getInstanceCandidates
+
+instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT builtin m) where
   getMetaState = lift getMetaState
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
@@ -174,7 +174,7 @@ class (HasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin
 
   -- | Solves a type-class constraint
   solveInstance ::
-    (MonadNorm builtin m, MonadTypeChecker builtin m) =>
+    (MonadTypeChecker builtin m, MonadFreeContext builtin m) =>
     InstanceCandidateDatabase builtin ->
     WithContext (InstanceConstraint builtin) ->
     m ()
@@ -303,8 +303,8 @@ getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
 getMetaType m = metaType <$> getMetaInfo m
 
 -- | Get the bound context the meta-variable was created in.
-getMetaCtx :: (MonadTypeChecker builtin m) => MetaID -> m (BoundCtx builtin)
-getMetaCtx m = metaCtx <$> getMetaInfo m
+getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx builtin)
+getMetaCtx _ m = metaCtx <$> getMetaInfo m
 
 extendBoundCtxOfMeta :: (MonadTypeChecker builtin m) => MetaID -> Binder Ix builtin -> m ()
 extendBoundCtxOfMeta m binder =
@@ -435,12 +435,6 @@ clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
   modifyMetaCtx @builtin (const emptyTypeCheckerState)
 
-getDeclType :: (MonadTypeChecker builtin m) => Identifier -> m (Type Ix builtin)
-getDeclType ident = do
-  ctx <- getDeclContext
-  TypingDeclCtxEntry {..} <- lookupInDeclCtx "type-checking" ident ctx
-  return $ unnormalised declType
-
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
 getSubstMetaType m = do
   substMetas =<< getMetaType m
@@ -516,8 +510,8 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  normExpectedType <- whnf env expectedType
-  normActualType <- whnf env actualType
+  normExpectedType <- eval defaultNBEOptions env expectedType
+  normActualType <- eval defaultNBEOptions env actualType
   cid <- generateFreshConstraintID (Proxy @builtin)
   let context = ConstraintContext cid p p unknownBlockingStatus ctx
   let unification = Unify origin normExpectedType normActualType
@@ -535,10 +529,5 @@ copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx)
 -- Constraints
 --------------------------------------------------------------------------------
 
-getBinderNameOrFreshName :: (MonadTypeChecker builtin m) => Maybe Name -> Type Ix builtin -> m Name
-getBinderNameOrFreshName piName typ = case piName of
-  Just x -> return x
-  Nothing -> getFreshName typ
-
-glueNBE :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m (GluedExpr builtin)
-glueNBE env e = Glued e <$> whnf env e
+glueNBE :: (MonadFreeContext builtin m) => Env builtin -> Expr Ix builtin -> m (GluedExpr builtin)
+glueNBE env e = Glued e <$> eval defaultNBEOptions env e
