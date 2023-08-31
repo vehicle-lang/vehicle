@@ -376,20 +376,20 @@ reduceVariables variables solvedUserVariables = do
               <+> "not reduced as previously solved"
               <> line
           let newExpr = VFreeVar (Identifier User (layoutAsText ("Should not appear - SOLVED" <+> pretty var))) []
-          let newEnv = mkVariableBinder varName newExpr : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           let newSolvedIndices = Map.insert var (Lv $ length subst) solvedIndices
           return (currentLv, reducedVariables, steps, newEnv, newSolvedIndices)
       | isRationalVariable var = do
           logDebug MaxDetail $ "Variable" <+> quotePretty var <+> "already fully reduced" <> line
           let newNormVariables = var : reducedVariables
           let newExpr = VBoundVar (Lv $ length subst) []
-          let newEnv = mkVariableBinder varName newExpr : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           return (currentLv + 1, newNormVariables, steps, newEnv, solvedIndices)
       | otherwise = do
           let (newVars, newExpr) = reduceVariable currentLv var
           logDebug MaxDetail $ "Variable" <+> quotePretty var <+> "reduced to" <> line <> indent 2 (pretty newVars) <> line
           let newNormVariables = newVars <> reducedVariables
-          let newEnv = mkVariableBinder varName newExpr : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           return (currentLv + Lv (length newVars), newNormVariables, Reduce (toMixedVariable var) : steps, newEnv, solvedIndices)
       where
         varName = layoutAsText $ pretty var
@@ -412,7 +412,7 @@ substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePo
       normalisedSolution <- runNormT defaultEvalOptions declCtx (reeval env solution)
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
       let index = unIx $ fromMaybe errorMsg $ Map.lookup var solvedVariablePositions
-      let newEnv = take index env <> [mkVariableBinder (layoutAsText $ pretty var) normalisedSolution] <> drop (index + 1) env
+      let newEnv = take index env <> [mkDefaultBinder (layoutAsText $ pretty var) normalisedSolution] <> drop (index + 1) env
       return newEnv
 
 --------------------------------------------------------------------------------

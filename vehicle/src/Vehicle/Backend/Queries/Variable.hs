@@ -33,7 +33,6 @@ module Vehicle.Backend.Queries.Variable
     pattern VFiniteQuantifierSpine,
     prettyRationalAsFloat,
     variableCtxToBoundCtx,
-    mkVariableBinder,
   )
 where
 
@@ -74,19 +73,14 @@ class
 isRationalVariable :: (Variable variable) => variable -> Bool
 isRationalVariable v = null (variableDimensions v)
 
-mkVariableBinder :: Name -> expr -> GenericBinder expr
-mkVariableBinder name value = Binder mempty displayForm Explicit Relevant value
-  where
-    displayForm = BinderDisplayForm (OnlyName name) True
-
 variableToEnvEntry :: (Variable variable) => Lv -> variable -> GenericBinder (Value Builtin)
-variableToEnvEntry lv var = mkVariableBinder (layoutAsText $ pretty var) (VBoundVar lv [])
+variableToEnvEntry lv var = mkDefaultBinder (layoutAsText $ pretty var) (VBoundVar lv [])
 
 variableCtxToEnv :: (Variable variable) => [variable] -> Env Builtin
 variableCtxToEnv ctx = zipWith variableToEnvEntry (reverse [0 .. Lv (length ctx - 1)]) ctx
 
 variableCtxToBoundCtxEntry :: (Variable variable) => Ix -> variable -> Binder Ix Builtin
-variableCtxToBoundCtxEntry ix var = mkVariableBinder (layoutAsText $ pretty var) (BoundVar mempty ix)
+variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)
 
 variableCtxToBoundCtx :: (Variable variable) => [variable] -> BoundCtx Builtin
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx

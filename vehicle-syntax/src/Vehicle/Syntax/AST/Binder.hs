@@ -160,3 +160,8 @@ mapBinderNamingForm f Binder {..} =
           },
       ..
     }
+
+mkDefaultBinder :: Name -> expr -> GenericBinder expr
+mkDefaultBinder name = Binder mempty displayForm Explicit Relevant
+  where
+    displayForm = BinderDisplayForm (OnlyName name) True
