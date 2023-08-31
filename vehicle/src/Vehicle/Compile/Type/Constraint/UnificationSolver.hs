@@ -26,7 +26,6 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Expr.Normalised
 
@@ -299,13 +298,12 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let constraintLevel = contextDBLevel ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
   let boundCtx = boundContextOf ctx
-  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix Builtin) boundCtx)) dbIndices
+  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix builtin) boundCtx)) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
     let levelSet = IntSet.fromList $ fmap unLv newDependencies
     let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
-    let typingBoundCtx = boundContext ctx
-    let ctxWithLevels = zip (reverse [0 .. length typingBoundCtx - 1 :: Int]) typingBoundCtx
+    let ctxWithLevels = zip (reverse [0 .. length boundCtx - 1 :: Int]) boundCtx
     let restrictedContext = mapMaybe makeElem ctxWithLevels
     newMetaExpr <- freshMetaExpr p metaType restrictedContext
 

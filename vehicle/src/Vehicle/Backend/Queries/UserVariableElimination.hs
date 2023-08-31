@@ -163,7 +163,7 @@ tryToSolveForUnreducedUserVariables variables expr =
 extractSolvableVectorEqualities ::
   forall m.
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   BooleanExpr UnreducedAssertion ->
   m ([(UnreducedAssertion, SolvableAssertion)], Maybe (BooleanExpr UnreducedAssertion))
 extractSolvableVectorEqualities mixedVariables = go
@@ -195,7 +195,7 @@ extractSolvableVectorEqualities mixedVariables = go
 -- Vehicle expression.
 solutionToExpr ::
   (MonadCompile m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   (UserVariable, SparseLinearExpr MixedVariable) ->
   m (UserVariable, Value Builtin)
 solutionToExpr variables (var, Sparse {..}) = do
@@ -246,7 +246,7 @@ solutionToExpr variables (var, Sparse {..}) = do
 
 compileVectorEquality ::
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   VectorEquality ->
   m (Maybe SolvableAssertion)
 compileVectorEquality variables VectorEquality {..} = do
@@ -261,7 +261,7 @@ compileVectorEquality variables VectorEquality {..} = do
 compilerVectorLinearExpr ::
   forall m.
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   TensorDimensions ->
   Value Builtin ->
   m (Maybe (SparseLinearExpr MixedVariable))
@@ -366,8 +366,8 @@ reduceVariables variables solvedUserVariables = do
       (MonadCompile m, Variable variable) =>
       Set variable ->
       variable ->
-      (Lv, BoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv) ->
-      m (Lv, BoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv)
+      (Lv, GenericBoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv) ->
+      m (Lv, GenericBoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv)
     possiblyReduceVariable solvedVariables var (currentLv, reducedVariables, steps, subst, solvedIndices)
       | var `Set.member` solvedVariables = do
           logDebug MaxDetail $
@@ -376,20 +376,20 @@ reduceVariables variables solvedUserVariables = do
               <+> "not reduced as previously solved"
               <> line
           let newExpr = VFreeVar (Identifier User (layoutAsText ("Should not appear - SOLVED" <+> pretty var))) []
-          let newEnv = (Just varName, newExpr) : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           let newSolvedIndices = Map.insert var (Lv $ length subst) solvedIndices
           return (currentLv, reducedVariables, steps, newEnv, newSolvedIndices)
       | isRationalVariable var = do
           logDebug MaxDetail $ "Variable" <+> quotePretty var <+> "already fully reduced" <> line
           let newNormVariables = var : reducedVariables
           let newExpr = VBoundVar (Lv $ length subst) []
-          let newEnv = (Just varName, newExpr) : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           return (currentLv + 1, newNormVariables, steps, newEnv, solvedIndices)
       | otherwise = do
           let (newVars, newExpr) = reduceVariable currentLv var
           logDebug MaxDetail $ "Variable" <+> quotePretty var <+> "reduced to" <> line <> indent 2 (pretty newVars) <> line
           let newNormVariables = newVars <> reducedVariables
-          let newEnv = (Just varName, newExpr) : subst
+          let newEnv = mkDefaultBinder varName newExpr : subst
           return (currentLv + Lv (length newVars), newNormVariables, Reduce (toMixedVariable var) : steps, newEnv, solvedIndices)
       where
         varName = layoutAsText $ pretty var
@@ -409,10 +409,10 @@ substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePo
   where
     f :: NormDeclCtx Builtin -> (UserVariable, Value Builtin) -> Env Builtin -> m (Env Builtin)
     f declCtx (var, solution) env = do
-      normalisedSolution <- runNormT defaultEvalOptions declCtx mempty (reeval env solution)
+      normalisedSolution <- runNormT defaultEvalOptions declCtx (reeval env solution)
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
       let index = unIx $ fromMaybe errorMsg $ Map.lookup var solvedVariablePositions
-      let newEnv = take index env <> [(Nothing, normalisedSolution)] <> drop (index + 1) env
+      let newEnv = take index env <> [mkDefaultBinder (layoutAsText $ pretty var) normalisedSolution] <> drop (index + 1) env
       return newEnv
 
 --------------------------------------------------------------------------------
@@ -497,14 +497,14 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 
   -- First normalise the expression under the new environment of reduced variables
   (_, _, declSubst) <- ask
-  normExpr <- runNormT defaultEvalOptions declSubst mempty $ reeval variableSubstEnv assertionExpr
+  normExpr <- runNormT defaultEvalOptions declSubst $ reeval variableSubstEnv assertionExpr
 
   -- Then extract the relation and arguments
   splitAssertions <- splitUpAssertions False normExpr
   -- Then reduce the assertions
   traverse (traverse reduceAssertion) splitAssertions
   where
-    variableCtx :: BoundCtx MixedVariable
+    variableCtx :: MixedVariableCtx
     variableCtx = mixedVariableCtx variables
 
     splitUpAssertions ::
@@ -550,8 +550,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
         Just (Just exprWithoutIf) -> do
           (_, _, declSubst) <- ask
-          let env = variableCtxToNormEnv variableCtx
-          normExprWithoutIf <- runNormT defaultEvalOptions declSubst mempty (reeval env exprWithoutIf)
+          let env = variableCtxToEnv variableCtx
+          normExprWithoutIf <- runNormT defaultEvalOptions declSubst (reeval env exprWithoutIf)
           splitUpAssertions True normExprWithoutIf
 
     reduceAssertion ::
@@ -567,7 +567,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 compileReducedLinearExpr ::
   forall m.
   (MonadSMT m) =>
-  BoundCtx MixedVariable ->
+  MixedVariableCtx ->
   Value Builtin ->
   m (SparseLinearExpr MixedVariable)
 compileReducedLinearExpr variables expr = do

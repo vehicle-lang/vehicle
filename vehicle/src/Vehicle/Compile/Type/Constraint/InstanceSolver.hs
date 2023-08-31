@@ -103,11 +103,11 @@ findCandidatesInBoundCtx ::
   forall builtin m.
   (MonadInstance builtin m) =>
   InstanceGoal builtin ->
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   m [WithContext (InstanceCandidate builtin)]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: (MonadCompile m) => TypingBoundCtx builtin -> m [WithContext (InstanceCandidate builtin)]
+    go :: (MonadCompile m) => BoundCtx builtin -> m [WithContext (InstanceCandidate builtin)]
     go = \case
       [] -> return []
       (binder : localCtx) -> do
@@ -139,7 +139,7 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerHypothetically $ do
       -- Allow the candidate to access all the arguments in the goal telescope.
-      let goalCtxExtension = fmap mkTypingBoundCtxEntry goalTelescope
+      let goalCtxExtension = goalTelescope
       let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
       let extendedGoalInfo = (setConstraintBoundCtx constraintCtx extendedGoalCtx, constraintOrigin)
 
@@ -180,7 +180,7 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
 instantiateCandidateTelescope ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
   m (Value builtin, Expr Ix builtin, [WithContext (Constraint builtin)])
@@ -190,13 +190,13 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
     let initialCtx = goalCtxExtension ++ candidateCtx
     (candidateBody, candidateSol, newInstanceConstraints, finalCtx) <-
       go (candidateExpr, candidateSolution, [], initialCtx)
-    normCandidateBody <- eval (typingBoundContextToEnv finalCtx) candidateBody
+    normCandidateBody <- eval (boundContextToEnv finalCtx) candidateBody
     return (normCandidateBody, candidateSol, newInstanceConstraints)
   where
     go ::
       (MonadInstance builtin m) =>
-      (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], TypingBoundCtx builtin) ->
-      m (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], TypingBoundCtx builtin)
+      (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx builtin) ->
+      m (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx builtin)
     go = \case
       (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody, constraints, boundCtx) -> do
         let binderType = typeOf exprBinder
@@ -210,7 +210,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
           Instance {} -> do
             let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
-            normBinderType <- eval (typingBoundContextToEnv boundCtx) binderType
+            normBinderType <- eval (boundContextToEnv boundCtx) binderType
             (expr, constraint) <- createSubInstance newInfo (relevanceOf exprBinder) normBinderType
             return (expr, [constraint])
         let exprBodyResult = newArg `substDBInto` exprBody
@@ -221,7 +221,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
 -- TODO move this to Print
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
-  prettyExternal (WithContext (candidateExpr candidate) (boundContextOf ctx))
+  prettyExternal (WithContext (candidateExpr candidate) ctx)
 
 goalExpr :: InstanceGoal builtin -> Value builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine

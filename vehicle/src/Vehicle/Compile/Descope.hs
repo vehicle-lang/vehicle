@@ -23,25 +23,25 @@ instance DescopeNamed (Prog Ix builtin) (Prog Name builtin) where
 instance DescopeNamed (Decl Ix builtin) (Decl Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
-instance DescopeNamed (Contextualised (Expr Ix builtin) BoundDBCtx) (Expr Name builtin) where
+instance DescopeNamed (Contextualised (Expr Ix builtin) NamedBoundCtx) (Expr Name builtin) where
   descopeNamed = performDescoping descopeDBIndexVar
 
 instance
-  (DescopeNamed (Contextualised expr1 BoundDBCtx) expr2) =>
-  DescopeNamed (Contextualised (GenericArg expr1) BoundDBCtx) (GenericArg expr2)
+  (DescopeNamed (Contextualised expr1 NamedBoundCtx) expr2) =>
+  DescopeNamed (Contextualised (GenericArg expr1) NamedBoundCtx) (GenericArg expr2)
   where
   descopeNamed (WithContext arg ctx) = fmap (\e -> descopeNamed (WithContext e ctx)) arg
 
 instance
-  (DescopeNamed (Contextualised expr1 BoundDBCtx) expr2) =>
-  DescopeNamed (Contextualised (GenericBinder expr1) BoundDBCtx) (GenericBinder expr2)
+  (DescopeNamed (Contextualised expr1 NamedBoundCtx) expr2) =>
+  DescopeNamed (Contextualised (GenericBinder expr1) NamedBoundCtx) (GenericBinder expr2)
   where
   descopeNamed (WithContext binder ctx) = fmap (\e -> descopeNamed (WithContext e ctx)) binder
 
 instance DescopeNamed (RelProg Ix builtin) (RelProg Name builtin) where
-  descopeNamed = R.fmapRelProg (\e -> descopeNamed (WithContext e emptyDBCtx))
+  descopeNamed = R.fmapRelProg (\e -> descopeNamed (WithContext e emptyNamedCtx))
 
-instance DescopeNamed (Contextualised (RelExpr Ix builtin) BoundDBCtx) (RelExpr Name builtin) where
+instance DescopeNamed (Contextualised (RelExpr Ix builtin) NamedBoundCtx) (RelExpr Name builtin) where
   descopeNamed (WithContext e ctx) = runReader (descopeRelExpr descopeDBIndexVar e) ctx
 
 --------------------------------------------------------------------------------
@@ -79,15 +79,15 @@ instance DescopeNaive (Value builtin) (Expr Name builtin) where
 --------------------------------------------------------------------------------
 -- Core utils
 
-type MonadDescope m = MonadReader BoundDBCtx m
+type MonadDescope m = MonadReader NamedBoundCtx m
 
-runWithNoCtx :: (Contextualised a BoundDBCtx -> b) -> a -> b
+runWithNoCtx :: (Contextualised a NamedBoundCtx -> b) -> a -> b
 runWithNoCtx run e = run (WithContext e mempty)
 
-addBinderToCtx :: (HasName binder (Maybe Name)) => binder -> BoundDBCtx -> BoundDBCtx
+addBinderToCtx :: (HasName binder (Maybe Name)) => binder -> NamedBoundCtx -> NamedBoundCtx
 addBinderToCtx binder ctx = nameOf binder : ctx
 
-addBindersToCtx :: (HasName binder (Maybe Name)) => [binder] -> BoundDBCtx -> BoundDBCtx
+addBindersToCtx :: (HasName binder (Maybe Name)) => [binder] -> NamedBoundCtx -> NamedBoundCtx
 addBindersToCtx binders ctx = fmap nameOf (reverse binders) <> ctx
 
 descopeDBIndexVarNaive :: (MonadDescope m) => Provenance -> Ix -> m Name
@@ -101,8 +101,8 @@ descopeDBLevelVarNaive _ l = layoutAsText $ pretty l
 
 performDescoping ::
   (Show var) =>
-  (Provenance -> var -> Reader BoundDBCtx Name) ->
-  Contextualised (Expr var builtin) BoundDBCtx ->
+  (Provenance -> var -> Reader NamedBoundCtx Name) ->
+  Contextualised (Expr var builtin) NamedBoundCtx ->
   Expr Name builtin
 performDescoping convertVar (WithContext e ctx) =
   runReader (descopeExpr convertVar e) ctx
@@ -135,14 +135,14 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
     return $ Pi p binder' body'
 
 descopeBinder ::
-  (MonadReader BoundDBCtx f, Show var) =>
+  (MonadReader NamedBoundCtx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Binder var builtin ->
   f (Binder Name builtin)
 descopeBinder f = traverse (descopeExpr f)
 
 descopeArg ::
-  (MonadReader BoundDBCtx f, Show var) =>
+  (MonadReader NamedBoundCtx f, Show var) =>
   (Provenance -> var -> f Name) ->
   Arg var builtin ->
   f (Arg Name builtin)

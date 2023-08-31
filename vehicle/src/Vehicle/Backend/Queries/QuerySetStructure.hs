@@ -22,11 +22,11 @@ import Data.Set qualified as Set (intersection, map, null, singleton)
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Backend.Queries.Variable
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Expr.Boolean
@@ -46,12 +46,12 @@ import Vehicle.Verify.Core
 -- Only reduces quantified variables of `Vector` type as much as is required
 -- in order to be able to reach DNF.
 compileQueryStructure ::
-  (MonadCompile m, MonadContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m) =>
   DeclProvenance ->
   UsedFunctionsCtx ->
   NetworkContext ->
   Value Builtin ->
-  m (Either SeriousPropertyError (BoundCtx UserVariable, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
+  m (Either SeriousPropertyError (UserVariableCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
 compileQueryStructure declProv queryDeclCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
     result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx, networkCtx)
@@ -71,12 +71,12 @@ compileQueryStructure declProv queryDeclCtx networkCtx expr =
 -- top level. Essentially the set of quantifiers that are before the current
 -- point in the tree when traversed depth first. These are ordered in appearance
 -- order and therefore are *not* a bound context.
-type CumulativeCtx = BoundCtx UserVariable
+type CumulativeCtx = UserVariableCtx
 
 type RevGlobalCtx = [UserVariable]
 
-cumulativeVarsToCtx :: CumulativeCtx -> BoundDBCtx
-cumulativeVarsToCtx = fmap (Just . userVarName)
+cumulativeVarsToCtx :: CumulativeCtx -> BoundCtx Builtin
+cumulativeVarsToCtx = variableCtxToBoundCtx
 
 -- | The only time we should be throwing this error is because we haven't sufficiently
 -- normalised a user quantified variable above us in the tree, e.g. in the following
@@ -142,7 +142,7 @@ getTensorDimensions = \case
 type MonadQueryStructure m =
   ( MonadCompile m,
     MonadReader (DeclProvenance, UsedFunctionsCtx, NetworkContext) m,
-    MonadContext Builtin m
+    MonadFreeContext Builtin m
   )
 
 -- | For efficiency reasons, we sometimes want to avoid expanding out
@@ -155,7 +155,7 @@ evalWhilePreservingFiniteQuantifiers ::
 evalWhilePreservingFiniteQuantifiers env body = do
   declCtx <- getNormDeclCtx (Proxy @Builtin)
   let evalOptions = EvalOptions {evalFiniteQuantifiers = False}
-  runNormT evalOptions declCtx mempty (eval env body)
+  runNormT evalOptions declCtx (eval env body)
 
 compileBoolExpr ::
   forall m.
@@ -263,8 +263,8 @@ compileBoolExpr = go False
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
               normDeclCtx <- getNormDeclCtx (Proxy @Builtin)
-              let env = variableCtxToNormEnv quantifiedVariables
-              normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx mempty $ reeval env exprWithoutIf
+              let env = variableCtxToEnv quantifiedVariables
+              normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx $ reeval env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
               Just <$> go True quantifiedVariables normExprWithoutIf
           decrCallDepth
@@ -361,8 +361,8 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
   if canLeaveUnexpanded
     then foldedResult
     else do
-      normResult <- runNormT defaultEvalOptions normCtx mempty $ do
-        quantImplementation <- lookupFreeVar (fromFiniteQuantifier q)
+      normResult <- runNormT defaultEvalOptions normCtx $ do
+        quantImplementation <- lookupIdentValueInEnv (fromFiniteQuantifier q)
         evalApp quantImplementation (VFiniteQuantifierSpine quantSpine binder env body)
       compileBoolExpr quantifiedVariables normResult
 
@@ -476,13 +476,13 @@ calculateVariableDimensions binder = go (typeOf binder)
 --------------------------------------------------------------------------------
 -- Builtin and free variable tracking
 
-type UsedFunctionsCtx = DeclCtx UsedFunctionsInfo
+type UsedFunctionsCtx = GenericFreeCtx UsedFunctionsInfo
 
 type UsedFunctionsInfo = (HashSet BuiltinFunction, Set Identifier)
 
 getUsedFunctions ::
-  DeclCtx UsedFunctionsInfo ->
-  BoundCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
+  GenericBoundCtx UsedFunctionsInfo ->
   Expr Ix Builtin ->
   UsedFunctionsInfo
 getUsedFunctions declCtx boundCtx expr = case expr of
@@ -498,8 +498,8 @@ getUsedFunctions declCtx boundCtx expr = case expr of
   Lam _ _binder e -> getUsedFunctions declCtx (mempty : boundCtx) e
 
 getUsedNormFunctions ::
-  DeclCtx UsedFunctionsInfo ->
-  BoundCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
+  GenericBoundCtx UsedFunctionsInfo ->
   Value Builtin ->
   UsedFunctionsInfo
 getUsedNormFunctions declCtx boundCtx expr = case expr of
@@ -531,38 +531,38 @@ getUsedFunctionsBuiltin = \case
   _ -> mempty
 
 getUsedFunctionsFreeVar ::
-  DeclCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
   Identifier ->
   UsedFunctionsInfo
 getUsedFunctionsFreeVar declCtx ident =
   (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident declCtx)
 
 getUsedVarsBoundVar ::
-  BoundCtx UsedFunctionsInfo ->
+  GenericBoundCtx UsedFunctionsInfo ->
   Ix ->
   UsedFunctionsInfo
 getUsedVarsBoundVar boundCtx ix =
   fromMaybe mempty (lookupIx boundCtx ix)
 
 getUsedFunctionsSpine ::
-  DeclCtx UsedFunctionsInfo ->
-  BoundCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
+  GenericBoundCtx UsedFunctionsInfo ->
   Spine Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsSpine declCtx boundCtx =
   foldMap (getUsedNormFunctions declCtx boundCtx . argExpr)
 
 getUsedFunctionsEnv ::
-  DeclCtx UsedFunctionsInfo ->
-  BoundCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
+  GenericBoundCtx UsedFunctionsInfo ->
   Env Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsEnv declCtx boundCtx =
-  foldMap (getUsedNormFunctions declCtx boundCtx . snd)
+  foldMap (getUsedNormFunctions declCtx boundCtx . binderValue)
 
 getUsedFunctionsCtx ::
-  DeclCtx UsedFunctionsInfo ->
+  GenericFreeCtx UsedFunctionsInfo ->
   Env Builtin ->
-  BoundCtx UsedFunctionsInfo
+  GenericBoundCtx UsedFunctionsInfo
 getUsedFunctionsCtx declCtx =
-  foldr (\u v -> getUsedNormFunctions declCtx v (snd u) : v) mempty
+  foldr (\u v -> getUsedNormFunctions declCtx v (binderValue u) : v) mempty

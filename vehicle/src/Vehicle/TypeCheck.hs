@@ -16,11 +16,11 @@ import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries.Error.Linearity.Core (LinearityBuiltin)
 import Vehicle.Backend.Queries.Error.Polarity.Core (PolarityBuiltin)
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
@@ -133,7 +133,7 @@ printPropertyTypes (Main decls) = do
     propertySummary :: (PrintableBuiltin builtin) => Decl Ix builtin -> Doc a
     propertySummary decl = do
       let propertyName = pretty $ identifierName $ identifierOf decl
-      let propertyType = prettyExternal (WithContext (typeOf decl) emptyDBCtx)
+      let propertyType = prettyFriendlyEmptyCtx (typeOf decl)
       propertyName <+> ":" <+> propertyType
 
 runCompileMonad ::
@@ -162,12 +162,12 @@ createDeclCtx ::
 createDeclCtx imports = do
   let decls = [d | imp <- imports, let Main ds = imp, d <- ds]
   convertedDecls <- traverse (traverse (traverseBuiltinsM convertToTypingBuiltins)) decls
-  runContextT (Proxy @StandardTypingBuiltin) (calculateCtx convertedDecls) mempty
+  runFreshFreeContextT (Proxy @StandardTypingBuiltin) (calculateCtx convertedDecls)
   where
     calculateCtx ::
-      (MonadContext StandardTypingBuiltin m) =>
+      (MonadFreeContext StandardTypingBuiltin m) =>
       [Decl Ix StandardTypingBuiltin] ->
       m (TypingDeclCtx StandardTypingBuiltin)
     calculateCtx = \case
-      [] -> fmap mkTypingDeclCtxEntry <$> getDeclCtx (Proxy @StandardTypingBuiltin)
+      [] -> fmap mkTypingDeclCtxEntry <$> getFreeCtx (Proxy @StandardTypingBuiltin)
       d : ds -> addDeclToContext d $ calculateCtx ds

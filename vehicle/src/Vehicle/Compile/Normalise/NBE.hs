@@ -10,7 +10,7 @@ module Vehicle.Compile.Normalise.NBE
     evalApp,
     extendEnv,
     extendEnvOverBinder,
-    lookupFreeVar,
+    lookupIdentValueInEnv,
     reeval,
     NormT,
     runNormT,
@@ -59,16 +59,17 @@ eval env expr = do
       return $ VLam binder' env body
     Pi _ binder body -> do
       binder' <- evalBinder env binder
-      let newEnv = extendEnvOverBinder binder env
+      let newEnv = extendEnvOverBinder binder' env
       body' <- eval newEnv body
       return $ VPi binder' body'
-    BoundVar _ i -> do
-      (_, value) <- lookupIxInBoundCtx currentPass i env
-      return value
-    FreeVar _ ident -> lookupFreeVar ident
+    BoundVar _ i ->
+      lookupIxValueInEnv i env
+    FreeVar _ ident ->
+      lookupIdentValueInEnv ident
     Let _ bound binder body -> do
+      binder' <- evalBinder env binder
       boundNormExpr <- eval env bound
-      let newEnv = extendEnv binder boundNormExpr env
+      let newEnv = extendEnv binder' boundNormExpr env
       eval newEnv body
     App _ fun args -> do
       fun' <- eval env fun
@@ -77,21 +78,6 @@ eval env expr = do
 
   showExit env result
   return result
-
-lookupFreeVar :: forall builtin m. (MonadNorm builtin m) => Identifier -> m (Value builtin)
-lookupFreeVar ident = do
-  declSubst <- getDeclSubstitution
-  let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
-  evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @builtin)
-  -- logDebug MaxDetail $ "Hi" <> pretty ident
-  if isFiniteQuantifier && not evalFiniteQuants
-    then return $ VFreeVar ident []
-    else do
-      TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
-      -- logDebug MaxDetail $ "Hi2" <> prettyVerbose declBody
-      case declBody of
-        Just expr | isInlinable declAnns -> return expr
-        _ -> return $ VFreeVar ident []
 
 evalBinder :: (MonadNorm builtin m) => Env builtin -> Binder Ix builtin -> m (VBinder builtin)
 evalBinder env = traverse (eval env)
@@ -165,6 +151,29 @@ isFullyReduced = \case
   VBoundVar {} -> False
   VBuiltin b _ -> isNothing $ getBuiltinFunction b
 
+lookupIdentValueInEnv :: forall builtin m. (MonadNorm builtin m) => Identifier -> m (Value builtin)
+lookupIdentValueInEnv ident = do
+  declSubst <- getDeclSubstitution
+  let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
+  evalFiniteQuants <- evalFiniteQuantifiers <$> getEvalOptions (Proxy @builtin)
+  -- logDebug MaxDetail $ "Hi" <> pretty ident
+  if isFiniteQuantifier && not evalFiniteQuants
+    then return $ VFreeVar ident []
+    else do
+      TypingDeclCtxEntry {..} <- lookupInDeclCtx currentPass ident declSubst
+      -- logDebug MaxDetail $ "Hi2" <> prettyVerbose declBody
+      case declBody of
+        Just expr | isInlinable declAnns -> return expr
+        _ -> return $ VFreeVar ident []
+
+lookupIxValueInEnv ::
+  (MonadNorm builtin m) =>
+  Ix ->
+  Env builtin ->
+  m (Value builtin)
+lookupIxValueInEnv l env =
+  binderValue <$> lookupIxInBoundCtx currentPass l env
+
 -----------------------------------------------------------------------------
 -- Reevaluation
 
@@ -178,16 +187,16 @@ reeval env expr = do
   result <- case expr of
     VUniverse {} -> return expr
     VLam binder lamEnv body -> do
-      lamEnv' <- traverse (\(a, b) -> (a,) <$> reeval env b) lamEnv
+      lamEnv' <- traverse (traverse (reeval env)) lamEnv
       return $ VLam binder lamEnv' body
     VPi {} -> return expr
     VMeta m spine -> VMeta m <$> reevalSpine env spine
     VFreeVar v spine -> do
-      value <- lookupFreeVar v
+      value <- lookupIdentValueInEnv v
       spine' <- reevalSpine env spine
       evalApp value spine'
     VBoundVar v spine -> do
-      (_, value) <- lookupLvInBoundCtx currentPass v env
+      value <- lookupLvValueInEnv v env
       spine' <- reevalSpine env spine
       evalApp value spine'
     VBuiltin b spine ->
@@ -197,6 +206,14 @@ reeval env expr = do
 
 reevalSpine :: (MonadNorm builtin m) => Env builtin -> Spine builtin -> m (Spine builtin)
 reevalSpine env = traverse (traverse (reeval env))
+
+lookupLvValueInEnv ::
+  (MonadNorm builtin m) =>
+  Lv ->
+  Env builtin ->
+  m (Value builtin)
+lookupLvValueInEnv l env =
+  binderValue <$> lookupLvInBoundCtx currentPass l env
 
 -----------------------------------------------------------------------------
 -- Other

@@ -13,13 +13,13 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext (FullDeclCtx, MonadContext, addDeclToContext, getDecl, runContextT)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Compile.Warning (CompileWarning (..))
 import Vehicle.Expr.BuiltinInterface
@@ -28,14 +28,15 @@ import Vehicle.Expr.Normalised
 -- | Calculates the context for external resources, reading them from disk and
 -- inferring the values of inferable parameters.
 expandResources ::
+  forall m.
   (MonadIO m, MonadCompile m) =>
   Resources ->
   Prog Ix Builtin ->
-  m (Prog Ix Builtin, NetworkContext, FullDeclCtx Builtin, ResourcesIntegrityInfo)
+  m (Prog Ix Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialDeclCtx) <-
-      runContextT (Proxy @Builtin) (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty))) mempty
+      runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty)))
 
     checkForUnusedResources resources partialDeclCtx
 
@@ -60,8 +61,8 @@ addFunctionDefFromResource p ident value = do
 type MonadReadResources m =
   ( MonadIO m,
     MonadExpandResources m,
-    MonadContext Builtin m,
-    MonadWriter (FullDeclCtx Builtin) m
+    MonadFreeContext Builtin m,
+    MonadWriter (FreeCtx Builtin) m
   )
 
 -- | Goes through the program finding all
@@ -109,7 +110,7 @@ readResourcesInDecls = \case
 checkForUnusedResources ::
   (MonadLogger m) =>
   Resources ->
-  FullDeclCtx Builtin ->
+  FreeCtx Builtin ->
   m ()
 checkForUnusedResources Resources {..} declCtx = do
   warnIfUnusedResources Parameter parameters declCtx
@@ -118,17 +119,17 @@ checkForUnusedResources Resources {..} declCtx = do
 
 fillInInferableParameters ::
   (MonadCompile m) =>
-  FullDeclCtx Builtin ->
+  FreeCtx Builtin ->
   InferableParameterContext ->
-  m (FullDeclCtx Builtin)
+  m (FreeCtx Builtin)
 fillInInferableParameters declCtx inferableCtx =
   foldM insertInferableParameter declCtx (Map.assocs inferableCtx)
   where
     insertInferableParameter ::
       (MonadCompile m) =>
-      FullDeclCtx Builtin ->
+      FreeCtx Builtin ->
       (Identifier, Either Provenance InferableParameterEntry) ->
-      m (FullDeclCtx Builtin)
+      m (FreeCtx Builtin)
     insertInferableParameter ctx (ident, maybeValue) = case maybeValue of
       Left p -> throwError $ InferableParameterUninferrable (ident, p)
       Right ((_, p), _, v) -> do

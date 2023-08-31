@@ -4,9 +4,11 @@ module Vehicle.Compile.EtaConversion
 where
 
 import Data.Data (Proxy (..))
+import Vehicle.Compile.Context.Bound.Class
+import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Prelude.MonadContext
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Expr.BuiltinInterface
 import Vehicle.Expr.DeBruijn (liftDBIndices)
@@ -18,10 +20,10 @@ etaExpandProg ::
   Prog Ix builtin ->
   m (Prog Ix builtin)
 etaExpandProg (Main ds) =
-  runContextT (Proxy @builtin) (Main <$> etaExpandDecls ds) mempty
+  runFreshVarContextT (Proxy @builtin) (Main <$> etaExpandDecls ds)
 
 etaExpandDecls ::
-  (MonadContext builtin m, PrintableBuiltin builtin) =>
+  (MonadVarContext builtin m, PrintableBuiltin builtin) =>
   [Decl Ix builtin] ->
   m [Decl Ix builtin]
 etaExpandDecls = \case
@@ -38,18 +40,19 @@ etaExpandDecls = \case
 
 etaExpand ::
   forall m builtin.
-  (MonadContext builtin m, PrintableBuiltin builtin) =>
+  (MonadVarContext builtin m, PrintableBuiltin builtin) =>
   Identifier ->
   Type Ix builtin ->
   Expr Ix builtin ->
   m (Expr Ix builtin)
 etaExpand declIdent originalType originalBody = do
-  normType <- normalise originalType
+  normType <- normaliseInEmptyEnv originalType
   go normType originalBody
   where
     go :: VType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
     go typ body = case (typ, body) of
-      (VPi _ piBody, Lam p lamBinder lamBody) -> Lam p lamBinder <$> go piBody lamBody
+      (VPi _ piBody, Lam p lamBinder lamBody) ->
+        Lam p lamBinder <$> addBinderToContext lamBinder (go piBody lamBody)
       (VPi piBinder piBody, _) -> do
         unnormPiBinder <- traverse unnormalise piBinder
         lamBinder <- piBinderToLamBinder unnormPiBinder

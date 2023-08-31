@@ -26,7 +26,7 @@ import Data.Traversable (for)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Queries.LinearExpr (VectorEquality (..))
 import Vehicle.Backend.Queries.QuerySetStructure (UnreducedAssertion (..))
-import Vehicle.Backend.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), UserVariable (..), mixedVariableDBCtx, pattern VFiniteQuantifier)
+import Vehicle.Backend.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), NetworkVariableCtx, UserVariableCtx, mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
@@ -61,7 +61,7 @@ replaceNetworkApplications ::
   (MonadCompile m) =>
   DeclProvenance ->
   NetworkContext ->
-  BoundCtx UserVariable ->
+  UserVariableCtx ->
   BooleanExpr UnreducedAssertion ->
   m (DisjunctAll MetaNetworkPartition)
 replaceNetworkApplications declProv networkCtx userVariables boolExpr = do
@@ -92,7 +92,7 @@ type MonadTraverseApplications m =
 
 data NetworkReaderCtx = NetworkReaderCtx
   { networkContext :: NetworkContext,
-    userVariables :: BoundCtx UserVariable
+    userVariables :: UserVariableCtx
   }
 
 --------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ findApplicationsInSpine spine =
 
 data MetaNetworkPartition = MetaNetworkPartition
   { metaNetwork :: MetaNetwork,
-    networkVars :: BoundCtx NetworkVariable,
+    networkVars :: NetworkVariableCtx,
     networkNormSteps :: VariableNormalisationSteps,
     partitionExpr :: BooleanExpr UnreducedAssertion
   }
@@ -377,7 +377,7 @@ getOutputVarSubsitution applications =
 
 getNetworkContext ::
   [(NetworkApplication, NetworkAppInfo)] ->
-  BoundCtx NetworkVariable
+  NetworkVariableCtx
 getNetworkContext = concatMap (\(_, (_, _, networkVars, _)) -> networkVars)
 
 getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m (Value Builtin)

@@ -16,8 +16,8 @@ import Vehicle.Expr.Normalised
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
-  = MissingExplicitArgument BoundDBCtx (Binder Ix builtin) (Arg Ix builtin)
-  | FunctionTypeMismatch BoundDBCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  = MissingExplicitArgument (BoundCtx builtin) (Binder Ix builtin) (Arg Ix builtin)
+  | FunctionTypeMismatch (BoundCtx builtin) (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
   | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
   | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
@@ -34,7 +34,7 @@ data TypingDeclCtxEntry builtin = TypingDeclCtxEntry
     declBody :: Maybe (Value builtin)
   }
 
-type TypingDeclCtx builtin = DeclCtx (TypingDeclCtxEntry builtin)
+type TypingDeclCtx builtin = GenericFreeCtx (TypingDeclCtxEntry builtin)
 
 mkTypingDeclCtxEntry :: GluedDecl builtin -> TypingDeclCtxEntry builtin
 mkTypingDeclCtxEntry decl =
@@ -52,7 +52,7 @@ addToTypingDeclCtx decl = Map.insert (identifierOf decl) (mkTypingDeclCtxEntry d
 
 type NormDeclCtxEntry builtin = TypingDeclCtxEntry builtin
 
-type NormDeclCtx builtin = DeclCtx (NormDeclCtxEntry builtin)
+type NormDeclCtx builtin = GenericFreeCtx (NormDeclCtxEntry builtin)
 
 typingDeclCtxToNormDeclCtx :: TypingDeclCtx builtin -> NormDeclCtx builtin
 typingDeclCtxToNormDeclCtx = id
@@ -61,28 +61,6 @@ typingDeclCtxToNormDeclCtx = id
 -- Meta variable substitution
 
 type MetaSubstitution builtin = MetaMap (GluedExpr builtin)
-
---------------------------------------------------------------------------------
--- Bound variable context
-
--- | The names, types and values if known of the variables that are in
--- currently in scope, indexed into via De Bruijn expressions.
-type TypingBoundCtxEntry builtin =
-  ( Binder Ix builtin
-  )
-
-mkTypingBoundCtxEntry :: Binder Ix builtin -> TypingBoundCtxEntry builtin
-mkTypingBoundCtxEntry = id
-
-type TypingBoundCtx builtin = BoundCtx (TypingBoundCtxEntry builtin)
-
-instance HasBoundCtx (TypingBoundCtx builtin) where
-  boundContextOf = map nameOf
-
-typingBoundContextToEnv :: TypingBoundCtx builtin -> Env builtin
-typingBoundContextToEnv ctx = do
-  let levels = reverse (fmap Lv [0 .. length ctx - 1])
-  zipWith (\level binder -> (nameOf binder, VBoundVar level [])) levels ctx
 
 --------------------------------------------------------------------------------
 -- Constraints
@@ -125,11 +103,8 @@ data ConstraintContext builtin = ConstraintContext
     -- | The set of metas blocking progress on this constraint.
     -- If |Nothing| then the set is unknown.
     blockedBy :: BlockingStatus,
-    -- | TODO reduce this to just `TypingBoundCtx`
-    -- (At the moment the full context is needed for normalisation but should
-    -- be able to get that from TCM).
-    -- When we do, should also make it non-meta-substitutable.
-    boundContext :: TypingBoundCtx builtin
+    -- | The set of bound variables in scope at the point the constraint was generated.
+    boundContext :: BoundCtx builtin
   }
   deriving (Show)
 
@@ -141,8 +116,8 @@ instance Pretty (ConstraintContext builtin) where
 instance HasProvenance (ConstraintContext builtin) where
   provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
-instance HasBoundCtx (ConstraintContext builtin) where
-  boundContextOf = boundContextOf . boundContext
+instance HasBoundCtx (ConstraintContext builtin) builtin where
+  boundContextOf = boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
 blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
@@ -151,14 +126,14 @@ blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->
-  (TypingBoundCtx builtin -> TypingBoundCtx builtin) ->
+  (BoundCtx builtin -> BoundCtx builtin) ->
   ConstraintContext builtin
 updateConstraintBoundCtx ConstraintContext {..} updateFn =
   ConstraintContext {boundContext = updateFn boundContext, ..}
 
 setConstraintBoundCtx ::
   ConstraintContext builtin ->
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   ConstraintContext builtin
 setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
@@ -196,7 +171,7 @@ data InstanceCandidate builtin = InstanceCandidate
 
 type instance
   WithContext (InstanceCandidate builtin) =
-    Contextualised (InstanceCandidate builtin) (TypingBoundCtx builtin)
+    Contextualised (InstanceCandidate builtin) (BoundCtx builtin)
 
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope Ix builtin,

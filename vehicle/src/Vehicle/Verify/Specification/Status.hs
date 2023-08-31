@@ -8,7 +8,7 @@ import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Expr.BuiltinInterface
@@ -92,7 +92,7 @@ prettyUserVariableAssignment :: (UserVariable, VariableValue) -> Doc a
 prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
   let name = pretty userVarName
   let valueExpr = assignmentToExpr userVarDimensions (Vector.toList variableValue)
-  let value = prettyFriendly (WithContext valueExpr emptyDBCtx)
+  let value = prettyFriendlyEmptyCtx valueExpr
   name <> ":" <+> value
 
 assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix Builtin

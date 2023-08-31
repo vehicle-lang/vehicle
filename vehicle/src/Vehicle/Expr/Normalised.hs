@@ -2,7 +2,7 @@ module Vehicle.Expr.Normalised where
 
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Prelude.Contexts (BoundCtx)
+import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Expr.DeBruijn
 import Vehicle.Syntax.AST
 
@@ -40,14 +40,19 @@ type VType builtin = Value builtin
 -- | A list of arguments for an application that cannot be normalised.
 type Spine builtin = [VArg builtin]
 
-type Env builtin = BoundCtx (Maybe Name, Value builtin)
+type Env builtin = GenericBoundCtx (GenericBinder (Value builtin))
 
-extendEnv :: GenericBinder expr -> Value builtin -> Env builtin -> Env builtin
-extendEnv binder value = ((nameOf binder, value) :)
+extendEnv :: VBinder builtin -> Value builtin -> Env builtin -> Env builtin
+extendEnv binder value = (fmap (const value) binder :)
 
-extendEnvOverBinder :: GenericBinder expr -> Env builtin -> Env builtin
+extendEnvOverBinder :: VBinder builtin -> Env builtin -> Env builtin
 extendEnvOverBinder binder env =
   extendEnv binder (VBoundVar (Lv $ length env) []) env
+
+boundContextToEnv :: BoundCtx builtin -> Env builtin
+boundContextToEnv ctx = do
+  let levels = reverse (fmap Lv [0 .. length ctx - 1])
+  zipWith (\level binder -> fmap (const $ VBoundVar level []) binder) levels ctx
 
 -----------------------------------------------------------------------------
 -- Patterns

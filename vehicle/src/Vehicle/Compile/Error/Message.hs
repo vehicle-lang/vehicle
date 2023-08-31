@@ -445,7 +445,7 @@ instance MeaningfulError CompileError where
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        calculateOpType :: BoundDBCtx -> [Arg Ix builtin] -> Doc a
+        calculateOpType :: BoundCtx builtin -> [Arg Ix builtin] -> Doc a
         calculateOpType dbCtx args = do
           let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
@@ -453,14 +453,14 @@ instance MeaningfulError CompileError where
 
         calculateCandidateType :: WithContext (InstanceCandidate builtin) -> Doc a
         calculateCandidateType (WithContext candidate typingCtx) =
-          go (boundContextOf typingCtx) (candidateExpr candidate)
+          go typingCtx (candidateExpr candidate)
           where
-            go :: BoundDBCtx -> Expr Ix builtin -> Doc a
+            go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
             go dbCtx = \case
               App _ (Builtin _ _tc) args ->
                 calculateOpType dbCtx (NonEmpty.toList args)
               Pi _ binder result ->
-                go (nameOf binder : dbCtx) result
+                go (binder : dbCtx) result
               _ -> "UNSUPPORTED PRINTING"
 
         instantiateTelescope :: Expr Ix builtin -> [Expr Ix builtin] -> Expr Ix builtin
@@ -607,7 +607,7 @@ instance MeaningfulError CompileError where
               unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as the"
                 <+> pretty io
-                <+> squotes (prettyFriendly (WithContext nonTensorType emptyDBCtx))
+                <+> squotes (prettyFriendlyEmptyCtx nonTensorType)
                 <+> "is not one of"
                 <+> list [pretty Vector, pretty (identifierName TensorIdent)]
                 <> ".",
@@ -625,7 +625,7 @@ instance MeaningfulError CompileError where
             problem =
               unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
                 <+> "as it contains the non-explicit argument of type"
-                <+> squotes (prettyFriendly (WithContext (typeOf binder) emptyDBCtx))
+                <+> squotes (prettyFriendlyEmptyCtx (typeOf binder))
                 <> ".",
             fix =
               Just $
@@ -641,7 +641,7 @@ instance MeaningfulError CompileError where
                 <+> "as"
                 <+> pretty io
                 <> "s of type"
-                  <+> squotes (prettyFriendly (WithContext elementType emptyDBCtx))
+                  <+> squotes (prettyFriendlyEmptyCtx elementType)
                   <+> "are not currently supported.",
             fix =
               Just $
@@ -660,7 +660,7 @@ instance MeaningfulError CompileError where
                 <+> "as the size of the"
                 <+> pretty io
                 <+> "tensor"
-                <+> squotes (prettyFriendly (WithContext tDim emptyDBCtx))
+                <+> squotes (prettyFriendlyEmptyCtx tDim)
                 <+> "is not a constant.",
             fix =
               Just $
@@ -714,7 +714,7 @@ instance MeaningfulError CompileError where
               unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
                 <+> "as it has elements of an unsupported type:"
                 <> line
-                <> indent 2 (prettyFriendly (WithContext elementType emptyDBCtx))
+                <> indent 2 (prettyFriendlyEmptyCtx elementType)
                 <> line
                 <> "Only the following element types are allowed for"
                   <+> pretty Dataset
@@ -737,7 +737,7 @@ instance MeaningfulError CompileError where
               unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
                 <+> "as the dimension size"
                 <> line
-                <> indent 2 (prettyFriendly (WithContext variableDim emptyDBCtx))
+                <> indent 2 (prettyFriendlyEmptyCtx variableDim)
                 <> line
                 <> "is not a constant.",
             fix = Just "make sure the dimensions of the dataset are all constants."
@@ -837,9 +837,9 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "Expected elements of type"
-                  <+> squotes (prettyFriendly (WithContext expectedType emptyDBCtx))
+                  <+> squotes (prettyFriendlyEmptyCtx expectedType)
                   <+> "but found elements of type"
-                  <+> squotes (prettyFriendly (WithContext actualType emptyDBCtx))
+                  <+> squotes (prettyFriendlyEmptyCtx actualType)
                   <+> "when reading"
                   <+> quotePretty file
                 <> ".",
@@ -1106,7 +1106,7 @@ instance MeaningfulError CompileError where
                 <+> "contains a quantified variable"
                 <+> quotePretty name
                 <+> "of type"
-                <+> squotes (prettyFriendly (WithContext baseType emptyDBCtx))
+                <+> squotes (prettyFriendlyEmptyCtx baseType)
                 <+> "which is not currently supported"
                 <+> "by the"
                 <+> pretty queryFormat
@@ -1115,7 +1115,7 @@ instance MeaningfulError CompileError where
                        then ""
                        else
                          " In particular the element type"
-                           <+> squotes (prettyFriendly (WithContext problemType emptyDBCtx))
+                           <+> squotes (prettyFriendlyEmptyCtx problemType)
                            <+> "is not supported."
                    ),
             fix =
@@ -1228,14 +1228,14 @@ unsupportedAnnotationTypeDescription annotation ident resourceType =
     <+> quotePretty (nameOf ident :: Text)
     <> ":"
     <> line
-    <> indent 2 (prettyFriendly (WithContext unreducedResourceType emptyDBCtx))
+    <> indent 2 (prettyFriendlyEmptyCtx unreducedResourceType)
     <> line
     <> ( if reducedResourceType == unreducedResourceType
            then ""
            else
              "which reduces to:"
                <> line
-               <> indent 2 (prettyFriendly (WithContext reducedResourceType emptyDBCtx))
+               <> indent 2 (prettyFriendlyEmptyCtx reducedResourceType)
                <> line
        )
     <> "is not supported"

@@ -3,8 +3,26 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
+import Vehicle.Expr.Normalised
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
+
+--------------------------------------------------------------------------------
+-- HasType
+
+class HasType expr typ | expr -> typ where
+  typeOf :: expr -> typ
+
+instance HasType (Binder var builtin) (Type var builtin) where
+  typeOf = binderValue
+
+instance HasType (VBinder builtin) (VType builtin) where
+  typeOf = binderValue
+
+instance HasType (GenericDecl expr) expr where
+  typeOf = \case
+    DefAbstract _ _ _ t -> t
+    DefFunction _ _ _ t _ -> t
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -25,9 +43,9 @@ freeNamesIn = \case
   Meta {} -> []
   Builtin {} -> []
   App _ fun args -> freeNamesIn fun <> concatMap (freeNamesIn . argExpr) args
-  Pi _ binder result -> freeNamesIn (binderType binder) <> freeNamesIn result
-  Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (binderType binder) <> freeNamesIn body
-  Lam _ binder body -> freeNamesIn (binderType binder) <> freeNamesIn body
+  Pi _ binder result -> freeNamesIn (typeOf binder) <> freeNamesIn result
+  Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (typeOf binder) <> freeNamesIn body
+  Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
 
 --------------------------------------------------------------------------------
 -- Destruction functions

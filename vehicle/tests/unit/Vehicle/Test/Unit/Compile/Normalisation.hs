@@ -90,4 +90,4 @@ binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> Env builtin
-mkNoOpEnv boundCtxSize = [(Nothing, VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]
+mkNoOpEnv boundCtxSize = [mkDefaultBinder "_" (VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]

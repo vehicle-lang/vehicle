@@ -245,7 +245,7 @@ freshMeta ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
   Type Ix builtin ->
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   m (MetaID, GluedExpr builtin)
 freshMeta p metaType boundCtx = do
   -- Create a fresh id for the meta
@@ -264,7 +264,7 @@ freshMeta p metaType boundCtx = do
 
   logDebug MaxDetail $
     "fresh-meta"
-      <+> prettyFriendly (WithContext (unnormalised metaExpr) (boundContextOf boundCtx))
+      <+> prettyFriendly (WithContext (unnormalised metaExpr) boundCtx)
       <+> ":"
       <+> prettyVerbose metaType
   return (metaID, metaExpr)
@@ -303,7 +303,7 @@ getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
 getMetaType m = metaType <$> getMetaInfo m
 
 -- | Get the bound context the meta-variable was created in.
-getMetaCtx :: (MonadTypeChecker builtin m) => MetaID -> m (TypingBoundCtx builtin)
+getMetaCtx :: (MonadTypeChecker builtin m) => MetaID -> m (BoundCtx builtin)
 getMetaCtx m = metaCtx <$> getMetaInfo m
 
 extendBoundCtxOfMeta :: (MonadTypeChecker builtin m) => MetaID -> Binder Ix builtin -> m ()
@@ -362,7 +362,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
           then (constraint : nonRelatedConstraints, typeMetas)
           else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
 
-abstractOverCtx :: TypingBoundCtx builtin -> Expr Ix builtin -> Expr Ix builtin
+abstractOverCtx :: BoundCtx builtin -> Expr Ix builtin -> Expr Ix builtin
 abstractOverCtx ctx body = do
   let p = mempty
   let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
@@ -377,20 +377,20 @@ solveMeta ::
   (MonadTypeChecker builtin m) =>
   MetaID ->
   Expr Ix builtin ->
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   m ()
 solveMeta m solution solutionCtx = do
   MetaInfo p _ metaCtx <- getMetaInfo m
   let abstractedSolution = abstractOverCtx metaCtx solution
-  let env = typingBoundContextToEnv metaCtx
+  let env = boundContextToEnv metaCtx
   gluedSolution <- glueNBE env abstractedSolution
 
   logDebug MaxDetail $
     "solved"
       <+> pretty m
       <+> "as"
-      <+> prettyExternal (WithContext abstractedSolution (boundContextOf solutionCtx))
-  -- "as" <+> prettyFriendly (WithContext abstractedSolution (boundContextOf ctx))
+      <+> prettyExternal (WithContext abstractedSolution solutionCtx)
+  -- "as" <+> prettyFriendly (WithContext abstractedSolution solutionCtx)
 
   metaSubst <- getMetaSubstitution (Proxy @builtin)
   case MetaMap.lookup m metaSubst of
@@ -509,13 +509,13 @@ createFreshUnificationConstraint ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   Provenance ->
-  TypingBoundCtx builtin ->
+  BoundCtx builtin ->
   UnificationConstraintOrigin builtin ->
   Type Ix builtin ->
   Type Ix builtin ->
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
-  let env = typingBoundContextToEnv ctx
+  let env = boundContextToEnv ctx
   normExpectedType <- whnf env expectedType
   normActualType <- whnf env actualType
   cid <- generateFreshConstraintID (Proxy @builtin)
