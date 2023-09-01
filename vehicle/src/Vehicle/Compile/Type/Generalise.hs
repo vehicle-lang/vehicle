@@ -8,6 +8,7 @@ import Control.Monad (foldM, forM)
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty ((<|))
 import Data.Maybe (fromMaybe)
+import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -112,6 +113,7 @@ quantifyOverMeta ::
   MetaID ->
   m (Decl Ix builtin)
 quantifyOverMeta decl meta = do
+  metaCtx <- getMetaCtx (Proxy @builtin) meta
   metaType <- substMetas =<< getMetaType meta
   if isMeta metaType
     then
@@ -122,7 +124,7 @@ quantifyOverMeta decl meta = do
       metaDoc <- prettyMeta (Proxy @builtin) meta
       logCompilerPass MidDetail ("generalisation over" <+> metaDoc) $ do
         -- Prepend the implicit binders for the new generalised variable.
-        binderName <- getBinderNameOrFreshName Nothing metaType
+        binderName <- runBoundContextT metaCtx $ getBinderNameOrFreshName Nothing metaType
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
@@ -168,7 +170,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
   let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
 
   -- We now solve the meta as the newly bound variable
-  metaCtx <- getMetaCtx @builtin meta
+  metaCtx <- getMetaCtx (Proxy @builtin) meta
   let p = provenanceOf prependedDecl
   let solution = BoundVar p (Ix $ length metaCtx - 1)
   solveMeta meta solution metaCtx

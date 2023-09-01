@@ -3,9 +3,11 @@ module Vehicle.Test.Unit.Compile.Normalisation
   )
 where
 
+import Data.Data (Proxy (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile.Normalise.NBE (runEmptyNormT, whnf)
+import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -64,7 +66,9 @@ data NBETest = NBETest
 normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
-    normInput <- runEmptyNormT @Builtin $ whnf (mkNoOpEnv dbLevel) input
+    normInput <-
+      runFreshFreeContextT (Proxy @Builtin) $
+        eval defaultNBEOptions (mkNoOpEnv dbLevel) input
     actual <- quote mempty dbLevel normInput
 
     let errorMessage =

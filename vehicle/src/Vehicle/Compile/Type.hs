@@ -7,10 +7,10 @@ where
 
 import Control.Monad (forM, unless, when)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (ReaderT (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -30,28 +30,29 @@ import Vehicle.Expr.Normalised
 -- Algorithm
 
 typeCheckProg ::
+  forall builtin m.
   (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
-  TypingDeclCtx builtin ->
+  FreeCtx builtin ->
   Prog Ix Builtin ->
   m (Prog Ix builtin)
-typeCheckProg instanceCandidates declCtx (Main uncheckedProg) =
-  logCompilerPass MinDetail "type checking" $ do
-    runTypeChecker declCtx instanceCandidates $ do
-      gluedProg <- Main <$> typeCheckDecls uncheckedProg
-      return $ fmap unnormalised gluedProg
+typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
+  logCompilerPass MinDetail "type checking" $
+    runTypeCheckerTInitially freeCtx instanceCandidates $ do
+      xs <- typeCheckDecls uncheckedProg
+      return $ Main xs
 
 typeCheckExpr ::
   forall builtin m.
   (HasTypeSystem builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
-  TypingDeclCtx builtin ->
+  FreeCtx builtin ->
   Expr Ix Builtin ->
   m (Expr Ix builtin)
-typeCheckExpr instanceCandidates declCtx expr1 = do
-  runTypeChecker declCtx instanceCandidates $ do
+typeCheckExpr instanceCandidates freeCtx expr1 = do
+  runTypeCheckerTInitially freeCtx instanceCandidates $ do
     expr2 <- convertExprFromStandardTypes expr1
-    (expr3, _exprType) <- runReaderT (inferExpr expr2) mempty
+    (expr3, _exprType) <- runMonadBidirectional (Proxy @builtin) $ inferExpr expr2
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
     checkAllUnknownsSolved (Proxy @builtin)
@@ -60,26 +61,26 @@ typeCheckExpr instanceCandidates declCtx expr1 = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM builtin m) => [Decl Ix Builtin] -> m [GluedDecl builtin]
+typeCheckDecls :: (TCM builtin m) => [Decl Ix Builtin] -> m [Decl Ix builtin]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
     typedDecl <- typeCheckDecl d
-    checkedDecls <- addDeclContext typedDecl $ typeCheckDecls ds
+    checkedDecls <- addDeclToContext typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix Builtin -> m (GluedDecl builtin)
+typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix Builtin -> m (Decl Ix builtin)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
 
-    gluedDecl <- case convertedDecl of
+    decl <- case convertedDecl of
       DefAbstract p n r t -> typeCheckAbstractDef p n r t
       DefFunction p n b t e -> typeCheckFunction p n b t e
 
     checkAllUnknownsSolved (Proxy @builtin)
-    finalDecl <- substMetas gluedDecl
-    logCompilerPassOutput $ prettyFriendly (fmap unnormalised finalDecl)
+    finalDecl <- substMetas decl
+    logCompilerPassOutput $ prettyFriendly finalDecl
 
     return finalDecl
 
@@ -96,7 +97,7 @@ typeCheckAbstractDef ::
   Identifier ->
   DefAbstractSort ->
   Type Ix builtin ->
-  m (GluedDecl builtin)
+  m (Decl Ix builtin)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
   let checkedDecl = DefAbstract p ident defSort checkedType
@@ -117,25 +118,24 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   logUnsolvedUnknowns (Just substDecl) Nothing
 
   finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
-  gluedDecl <- traverse (glueNBE mempty) finalDecl
-
-  return gluedDecl
+  return finalDecl
 
 typeCheckFunction ::
+  forall builtin m.
   (TCM builtin m) =>
   Provenance ->
   Identifier ->
   [Annotation] ->
   Type Ix builtin ->
   Expr Ix builtin ->
-  m (GluedDecl builtin)
+  m (Decl Ix builtin)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
 
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident
   checkedBody <- logCompilerPass MidDetail pass $ do
-    runReaderT (checkExpr checkedType body) mempty
+    runMonadBidirectional (Proxy @builtin) $ checkExpr checkedType body
 
   -- Reconstruct the function.
   let checkedDecl = DefFunction p ident anns checkedType checkedBody
@@ -146,11 +146,11 @@ typeCheckFunction p ident anns typ body = do
 
   if isProperty anns
     then do
-      gluedDecl <- traverse (glueNBE mempty) substDecl
-      restrictPropertyType (ident, p) (typeOf gluedDecl)
+      gluedDeclType <- glueNBE mempty (typeOf substDecl)
+      restrictPropertyType (ident, p) gluedDeclType
       solveConstraints (Just substDecl)
-      substGluedDecl <- substMetas gluedDecl
-      return substGluedDecl
+      substAgainDecl <- substMetas substDecl
+      return substAgainDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-
@@ -161,14 +161,13 @@ typeCheckFunction p ident anns typ body = do
 
       checkedDecl2 <- generaliseOverUnsolvedConstraints checkedDecl1
       checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
-      gluedDecl <- traverse (glueNBE mempty) checkedDecl3
-      return gluedDecl
+      return checkedDecl3
 
-checkDeclType :: (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix builtin)
+checkDeclType :: forall builtin m. (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix builtin)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
-    runReaderT (checkExpr (TypeUniverse mempty 0) declType) mempty
+    runMonadBidirectional (Proxy @builtin) $ checkExpr (TypeUniverse mempty 0) declType
 
 restrictAbstractDefType ::
   (TCM builtin m) =>

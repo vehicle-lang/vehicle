@@ -6,11 +6,10 @@ import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Core
-import Vehicle.Compile.Error (MonadCompile, lookupInDeclCtx)
+import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Compile.Type.Core
 import Vehicle.Expr.Normalised
 
 --------------------------------------------------------------------------------
@@ -49,7 +48,7 @@ getDecl ::
   Identifier ->
   m (GluedDecl builtin)
 getDecl _ compilerPass ident =
-  lookupInDeclCtx compilerPass ident =<< getFreeCtx (Proxy @builtin)
+  lookupInFreeCtx compilerPass ident =<< getFreeCtx (Proxy @builtin)
 
 getDeclType ::
   (MonadFreeContext builtin m) =>
@@ -60,11 +59,3 @@ getDeclType ::
 getDeclType proxy compilerPass ident = do
   decl <- getDecl proxy compilerPass ident
   return $ unnormalised (typeOf decl)
-
-getNormDeclCtx ::
-  (MonadFreeContext builtin m) =>
-  Proxy builtin ->
-  m (NormDeclCtx builtin)
-getNormDeclCtx p = do
-  freeCtx <- getFreeCtx p
-  return $ fmap mkTypingDeclCtxEntry freeCtx

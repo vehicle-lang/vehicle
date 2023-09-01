@@ -1,16 +1,17 @@
 module Vehicle.Compile.Type.Bidirectional
   ( checkExpr,
     inferExpr,
-    MonadBidirectionalInternal,
-    checkExprTypesEqual,
+    runMonadBidirectional,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), asks)
-import Data.Bifunctor (Bifunctor (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
+import Vehicle.Compile.Context.Bound
+import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -28,26 +29,36 @@ import Prelude hiding (pi)
 -- Inserts meta-variables for missing implicit and instance arguments and
 -- gathers the constraints over those meta-variables.
 
-type MonadBidirectionalInternal builtin m =
-  ( MonadTypeChecker builtin m,
-    MonadReader (BoundCtx builtin, Relevance) m
-  )
-
 -- | Type checking monad with additional bound context for the bidirectional
 -- type-checking pass.
 type MonadBidirectional builtin m =
-  ( MonadBidirectionalInternal builtin m,
-    HasTypeSystem builtin
+  ( TCM builtin m,
+    MonadBoundContext builtin m,
+    MonadReader Relevance m
   )
+
+runMonadBidirectional ::
+  forall m builtin a.
+  (TCM builtin m) =>
+  Proxy builtin ->
+  BoundContextT builtin (ReaderT Relevance m) a ->
+  m a
+runMonadBidirectional p x =
+  runReaderT (runFreshBoundContextT p x) Relevant
 
 --------------------------------------------------------------------------------
 -- Checking
 
+-- | Checks that the given expression is of the provided type while
+-- generating the necessary constraints along the way, returning a well-typed
+-- version of the expression with the necessary implicit and instance arguments
+-- inserted.
 checkExpr ::
+  forall builtin m.
   (MonadBidirectional builtin m) =>
-  Type Ix builtin -> -- Type we're checking against
-  Expr Ix builtin -> -- Expression being type-checked
-  m (Expr Ix builtin) -- Checked expression
+  Type Ix builtin ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
@@ -67,7 +78,7 @@ checkExpr expectedType expr = do
 
           -- Add bound variable to context and check if the type of the expression
           -- matches the expected result type.
-          checkedBody <- extendBoundCtx finalLamBinder $ checkExpr resultType body
+          checkedBody <- addBinderToContext finalLamBinder $ checkExpr resultType body
           return $ Lam p finalLamBinder checkedBody
 
     -- In the case where we have an implicit or instance pi binder then insert a new
@@ -85,7 +96,7 @@ checkExpr expectedType expr = do
 
           -- Add the pi-bound variable to the context and check if the type
           -- of the expression matches the expected result type.
-          checkedExpr <- extendBoundCtx lamBinder $ checkExpr resultType (liftDBIndices 1 e)
+          checkedExpr <- addBinderToContext lamBinder $ checkExpr resultType (liftDBIndices 1 e)
 
           -- Prepend a new lambda to the expression with the implicit binder
           return $ Lam p lamBinder checkedExpr
@@ -93,7 +104,7 @@ checkExpr expectedType expr = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted as
       -- different meta-variables.
-      boundCtx <- getBoundCtx
+      boundCtx <- getBoundCtx (Proxy @builtin)
       unnormalised <$> freshMetaExpr p expectedType boundCtx
 
     -- Otherwise switch to inference mode
@@ -119,6 +130,7 @@ viaInfer expectedType expr = do
 -- | Takes in an unchecked expression and attempts to infer it's type.
 -- Returns the expression annotated with its type as well as the type itself.
 inferExpr ::
+  forall builtin m.
   (MonadBidirectional builtin m) =>
   Expr Ix builtin ->
   m (Expr Ix builtin, Type Ix builtin)
@@ -134,7 +146,7 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      boundCtx <- getBoundCtx
+      boundCtx <- getBoundCtx (Proxy @builtin)
       metaType <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- unnormalised <$> freshMetaExpr p metaType boundCtx
       checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
@@ -144,7 +156,7 @@ inferExpr e = do
       let checkedBinder = replaceBinderType checkedBinderType binder
 
       checkedResultType <-
-        extendBoundCtx checkedBinder $
+        addBinderToContext checkedBinder $
           checkExpr (TypeUniverse p 0) resultType
 
       return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
@@ -152,9 +164,9 @@ inferExpr e = do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp p checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
-      ctx <- getBoundCtx
+      ctx <- getBoundCtx (Proxy @builtin)
       binder <- lookupIxInBoundCtx currentPass i ctx
-      currentRelevance <- getCurrentRelevance
+      currentRelevance <- getCurrentRelevance (Proxy @builtin)
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
         then do
           let varName = fromMaybe "<unknown>" $ nameOf binder
@@ -163,7 +175,7 @@ inferExpr e = do
           let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) (typeOf binder)
           return (BoundVar p i, liftedCheckedType)
     FreeVar p ident -> do
-      originalType <- getDeclType ident
+      originalType <- getDeclType (Proxy @builtin) currentPass ident
       return (FreeVar p ident, originalType)
     Let p boundExpr binder body -> do
       -- Check that the type of the bound variable is a type
@@ -172,7 +184,7 @@ inferExpr e = do
       let checkedBinder = replaceBinderType typeOfBoundExpr binder
 
       -- Check the type of the body, with the bound variable added to the context.
-      (checkedBody, typeOfBody) <- extendBoundCtx checkedBinder $ inferExpr body
+      (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
 
       -- Pretend the let expression is really a lambda application and use
       -- the application machinary to infer the result type and the type of the bound expression.
@@ -199,7 +211,7 @@ inferExpr e = do
       let checkedBinder = replaceBinderType typeOfBinder binder
 
       -- Update the context with the bound variable
-      (checkedBody, typeOfBody) <- extendBoundCtx checkedBinder $ inferExpr body
+      (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
 
       let t' = Pi p checkedBinder typeOfBody
       return (Lam p checkedBinder checkedBody, t')
@@ -229,6 +241,7 @@ inferApp p fun funType args = do
 -- Returns the type of the function when applied to the full list of arguments
 -- (including inserted arguments) and that list of arguments.
 inferArgs ::
+  forall builtin m.
   (MonadBidirectional builtin m) =>
   (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) -> -- The original function and its arguments
   Type Ix builtin -> -- Type of the function
@@ -246,7 +259,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getBoundCtx
+              boundCtx <- getBoundCtx (Proxy @builtin)
               throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
@@ -256,11 +269,11 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         Just arg -> do
           let relevance = relevanceOf binder
           checkedArgExpr <-
-            setRelevance relevance $
+            setRelevance (Proxy @builtin) relevance $
               checkExpr (typeOf binder) (argExpr arg)
           return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
-          boundCtx <- getBoundCtx
+          boundCtx <- getBoundCtx (Proxy @builtin)
           newArg <- instantiateArgForNonExplicitBinder boundCtx p original binder
           return $ fmap unnormalised newArg
 
@@ -280,7 +293,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
   case (nonPiType, args) of
     (_, []) -> return (nonPiType, [])
     (Meta {}, a : _) -> do
-      ctx <- getBoundCtx
+      ctx <- getBoundCtx (Proxy @builtin)
       let p = provenanceOf nonPiType
       typeMeta <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) ctx
       let newBinder = Binder p (BinderDisplayForm OnlyType False) (visibilityOf a) (relevanceOf a) typeMeta
@@ -289,21 +302,22 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs origin newType args
     _ -> do
-      ctx <- getBoundCtx
+      ctx <- getBoundCtx (Proxy @builtin)
       throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
 -- Utility functions
 
 checkExprTypesEqual ::
-  (MonadBidirectionalInternal builtin m) =>
+  forall builtin m.
+  (MonadBidirectional builtin m) =>
   Provenance ->
   Expr Ix builtin ->
   Type Ix builtin ->
   Type Ix builtin ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
-  ctx <- getBoundCtx
+  ctx <- getBoundCtx (Proxy @builtin)
   let origin =
         CheckingExprType $
           CheckingExpr
@@ -314,6 +328,7 @@ checkExprTypesEqual p expr expectedType actualType = do
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
 checkBinderTypesEqual ::
+  forall builtin m.
   (MonadBidirectional builtin m) =>
   Provenance ->
   Maybe Name ->
@@ -321,7 +336,7 @@ checkBinderTypesEqual ::
   Type Ix builtin ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
-  ctx <- getBoundCtx
+  ctx <- getBoundCtx (Proxy @builtin)
   let origin =
         CheckingBinderType $
           CheckingBinder
@@ -331,25 +346,16 @@ checkBinderTypesEqual p binderName expectedType actualType = do
             }
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
-getBoundCtx :: (MonadBidirectionalInternal builtin m) => m (BoundCtx builtin)
-getBoundCtx = asks fst
-
-getCurrentRelevance :: (MonadBidirectionalInternal builtin m) => m Relevance
-getCurrentRelevance = asks snd
-
-extendBoundCtx ::
-  (MonadBidirectionalInternal builtin m) =>
-  Binder Ix builtin ->
-  m c ->
-  m c
-extendBoundCtx binder = local (first (binder :))
+getCurrentRelevance :: (MonadBidirectional builtin m) => Proxy builtin -> m Relevance
+getCurrentRelevance _ = ask
 
 setRelevance ::
-  (MonadBidirectionalInternal builtin m) =>
+  (MonadBidirectional builtin m) =>
+  Proxy builtin ->
   Relevance ->
   m c ->
   m c
-setRelevance relevance = local (second (relevance <>))
+setRelevance _ relevance = local (relevance <>)
 
 --------------------------------------------------------------------------------
 -- Debug functions

@@ -12,7 +12,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Data (Proxy (..))
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HashSet (fromList, intersection, null, singleton)
 import Data.Map qualified as Map (keysSet, lookup)
@@ -52,9 +51,9 @@ compileQueryStructure ::
   NetworkContext ->
   Value Builtin ->
   m (Either SeriousPropertyError (UserVariableCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
-compileQueryStructure declProv queryDeclCtx networkCtx expr =
+compileQueryStructure declProv queryFreeCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
-    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryDeclCtx, networkCtx)
+    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryFreeCtx, networkCtx)
     case result of
       Left (TemporaryError err) ->
         compilerDeveloperError $ "Something went wrong in query compilation:" <+> pretty err
@@ -153,9 +152,8 @@ evalWhilePreservingFiniteQuantifiers ::
   Expr Ix Builtin ->
   m (Value Builtin)
 evalWhilePreservingFiniteQuantifiers env body = do
-  declCtx <- getNormDeclCtx (Proxy @Builtin)
-  let evalOptions = EvalOptions {evalFiniteQuantifiers = False}
-  runNormT evalOptions declCtx (eval env body)
+  let evalOptions = NBEOptions {evalFiniteQuantifiers = False}
+  eval evalOptions env body
 
 compileBoolExpr ::
   forall m.
@@ -262,9 +260,8 @@ compileBoolExpr = go False
             Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
-              normDeclCtx <- getNormDeclCtx (Proxy @Builtin)
               let env = variableCtxToEnv quantifiedVariables
-              normExprWithoutIf <- runNormT defaultEvalOptions normDeclCtx $ reeval env exprWithoutIf
+              normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
               Just <$> go True quantifiedVariables normExprWithoutIf
           decrCallDepth
@@ -349,8 +346,6 @@ compileFiniteQuantifier ::
   Expr Ix Builtin ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
-  normCtx <- getNormDeclCtx (Proxy @Builtin)
-
   let foldedResult = do
         let foldedExpr = VFiniteQuantifier q quantSpine binder env body
         let unnormalisedAssertion = NonVectorEqualityAssertion foldedExpr
@@ -361,9 +356,9 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
   if canLeaveUnexpanded
     then foldedResult
     else do
-      normResult <- runNormT defaultEvalOptions normCtx $ do
-        quantImplementation <- lookupIdentValueInEnv (fromFiniteQuantifier q)
-        evalApp quantImplementation (VFiniteQuantifierSpine quantSpine binder env body)
+      quantImplementation <- lookupIdentValueInEnv defaultNBEOptions (fromFiniteQuantifier q)
+      let quantifierExpr = VFiniteQuantifierSpine quantSpine binder env body
+      normResult <- evalApp defaultNBEOptions quantImplementation quantifierExpr
       compileBoolExpr quantifiedVariables normResult
 
 -- | This is a sound, inexpensive, but incomplete, check for whether
@@ -485,42 +480,42 @@ getUsedFunctions ::
   GenericBoundCtx UsedFunctionsInfo ->
   Expr Ix Builtin ->
   UsedFunctionsInfo
-getUsedFunctions declCtx boundCtx expr = case expr of
+getUsedFunctions freeCtx boundCtx expr = case expr of
   Universe {} -> mempty
   Meta {} -> mempty
   Hole {} -> mempty
   Pi {} -> mempty
   BoundVar _ v -> getUsedVarsBoundVar boundCtx v
   Builtin _ b -> getUsedFunctionsBuiltin b
-  FreeVar _ ident -> getUsedFunctionsFreeVar declCtx ident
-  App _ fun args -> foldr (<>) (getUsedFunctions declCtx boundCtx fun) (fmap (getUsedFunctions declCtx boundCtx . argExpr) args)
-  Let _ e1 _binder e2 -> getUsedFunctions declCtx boundCtx e1 <> getUsedFunctions declCtx boundCtx e2
-  Lam _ _binder e -> getUsedFunctions declCtx (mempty : boundCtx) e
+  FreeVar _ ident -> getUsedFunctionsFreeVar freeCtx ident
+  App _ fun args -> foldr (<>) (getUsedFunctions freeCtx boundCtx fun) (fmap (getUsedFunctions freeCtx boundCtx . argExpr) args)
+  Let _ e1 _binder e2 -> getUsedFunctions freeCtx boundCtx e1 <> getUsedFunctions freeCtx boundCtx e2
+  Lam _ _binder e -> getUsedFunctions freeCtx (mempty : boundCtx) e
 
 getUsedNormFunctions ::
   GenericFreeCtx UsedFunctionsInfo ->
   GenericBoundCtx UsedFunctionsInfo ->
   Value Builtin ->
   UsedFunctionsInfo
-getUsedNormFunctions declCtx boundCtx expr = case expr of
+getUsedNormFunctions freeCtx boundCtx expr = case expr of
   VPi {} -> mempty
   VUniverse {} -> mempty
   VMeta {} -> mempty
   VLam _ env body -> do
-    let envInfo = getUsedFunctionsEnv declCtx boundCtx env
-    let bodyInfo = getUsedFunctions declCtx (mempty : boundCtx) body
+    let envInfo = getUsedFunctionsEnv freeCtx boundCtx env
+    let bodyInfo = getUsedFunctions freeCtx (mempty : boundCtx) body
     envInfo <> bodyInfo
   VBoundVar v spine -> do
     let varInfo = getUsedVarsBoundVar boundCtx (dbLevelToIndex (Lv (length boundCtx)) v)
-    let spineInfo = getUsedFunctionsSpine declCtx boundCtx spine
+    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
     varInfo <> spineInfo
   VFreeVar ident spine -> do
-    let identInfo = getUsedFunctionsFreeVar declCtx ident
-    let spineInfo = getUsedFunctionsSpine declCtx boundCtx spine
+    let identInfo = getUsedFunctionsFreeVar freeCtx ident
+    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
     identInfo <> spineInfo
   VBuiltin b spine -> do
     let builtinInfo = getUsedFunctionsBuiltin b
-    let spineInfo = getUsedFunctionsSpine declCtx boundCtx spine
+    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
     builtinInfo <> spineInfo
 
 getUsedFunctionsBuiltin ::
@@ -534,8 +529,8 @@ getUsedFunctionsFreeVar ::
   GenericFreeCtx UsedFunctionsInfo ->
   Identifier ->
   UsedFunctionsInfo
-getUsedFunctionsFreeVar declCtx ident =
-  (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident declCtx)
+getUsedFunctionsFreeVar freeCtx ident =
+  (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident freeCtx)
 
 getUsedVarsBoundVar ::
   GenericBoundCtx UsedFunctionsInfo ->
@@ -549,20 +544,20 @@ getUsedFunctionsSpine ::
   GenericBoundCtx UsedFunctionsInfo ->
   Spine Builtin ->
   UsedFunctionsInfo
-getUsedFunctionsSpine declCtx boundCtx =
-  foldMap (getUsedNormFunctions declCtx boundCtx . argExpr)
+getUsedFunctionsSpine freeCtx boundCtx =
+  foldMap (getUsedNormFunctions freeCtx boundCtx . argExpr)
 
 getUsedFunctionsEnv ::
   GenericFreeCtx UsedFunctionsInfo ->
   GenericBoundCtx UsedFunctionsInfo ->
   Env Builtin ->
   UsedFunctionsInfo
-getUsedFunctionsEnv declCtx boundCtx =
-  foldMap (getUsedNormFunctions declCtx boundCtx . binderValue)
+getUsedFunctionsEnv freeCtx boundCtx =
+  foldMap (getUsedNormFunctions freeCtx boundCtx . binderValue)
 
 getUsedFunctionsCtx ::
   GenericFreeCtx UsedFunctionsInfo ->
   Env Builtin ->
   GenericBoundCtx UsedFunctionsInfo
-getUsedFunctionsCtx declCtx =
-  foldr (\u v -> getUsedNormFunctions declCtx v (binderValue u) : v) mempty
+getUsedFunctionsCtx freeCtx =
+  foldr (\u v -> getUsedNormFunctions freeCtx v (binderValue u) : v) mempty

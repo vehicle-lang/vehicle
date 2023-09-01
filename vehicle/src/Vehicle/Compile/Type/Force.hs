@@ -1,8 +1,11 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use <|>" #-}
 module Vehicle.Compile.Type.Force where
 
 import Data.Maybe (fromMaybe, isJust)
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Normalise.Builtin
-import Vehicle.Compile.Normalise.Monad
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -19,7 +22,7 @@ import Vehicle.Expr.Normalised
 -- | Recursively forces the evaluation of any meta-variables at the head
 -- of the expresson.
 forceHead ::
-  (MonadNorm builtin m) =>
+  (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   ConstraintContext builtin ->
   Value builtin ->
@@ -38,7 +41,7 @@ forceHead subst ctx expr = do
 -- evaluation.
 forceExpr ::
   forall builtin m.
-  (MonadNorm builtin m) =>
+  (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   Value builtin ->
   m (Maybe (Value builtin), MetaSet)
@@ -54,14 +57,14 @@ forceExpr subst = go
     goMeta m spine = do
       case MetaMap.lookup m subst of
         Just solution -> do
-          normMetaExpr <- evalApp (normalised solution) spine
+          normMetaExpr <- evalApp defaultNBEOptions (normalised solution) spine
           (maybeForcedExpr, blockingMetas) <- go normMetaExpr
           let forcedExpr = maybe (Just normMetaExpr) Just maybeForcedExpr
           return (forcedExpr, blockingMetas)
         Nothing -> return (Nothing, MetaSet.singleton m)
 
 forceArg ::
-  (MonadNorm builtin m) =>
+  (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   VArg builtin ->
   m (VArg builtin, (Bool, MetaSet))
@@ -72,7 +75,7 @@ forceArg subst arg = do
   return (result, (reduced, blockingMetas))
 
 forceBuiltin ::
-  (MonadNorm builtin m) =>
+  (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   builtin ->
   Spine builtin ->
@@ -88,5 +91,5 @@ forceBuiltin subst b spine = case getBuiltinFunction b of
       if not anyArgsReduced
         then return Nothing
         else do
-          Just <$> evalBuiltin evalApp b argResults
+          Just <$> evalBuiltin (evalApp defaultNBEOptions) b argResults
     return (result, blockingMetas)

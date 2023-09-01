@@ -172,8 +172,8 @@ solveLam info@(ctx, origin) (binder1, env1, body1) (binder2, env2, body2) = do
   -- Evaluate the normalised bodies of the lambdas
   let lv = contextDBLevel ctx
   let var = VBoundVar lv []
-  nbody1 <- eval (extendEnv binder1 var env1) body1
-  nbody2 <- eval (extendEnv binder2 var env2) body2
+  nbody1 <- eval defaultNBEOptions (extendEnv binder1 var env1) body1
+  nbody2 <- eval defaultNBEOptions (extendEnv binder2 var env2) body2
 
   -- Update the context.
   -- NOTE: that we have to unnormalise here indicates something is wrong.
@@ -266,7 +266,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
         | otherwise -> do
             metaSubst <- getMetaSubstitution (Proxy @builtin)
             case MetaMap.lookup m metaSubst of
-              Just solution -> go =<< evalApp (normalised solution) spine
+              Just solution -> go =<< evalApp defaultNBEOptions (normalised solution) spine
               Nothing -> do
                 let (deps, _) = getNormMetaDependencies solvingMetaSpine
                 let (jDeps, _) = getNormMetaDependencies spine
@@ -322,7 +322,7 @@ type Renaming = IntMap Ix
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
 invert :: forall builtin m. (MonadUnify builtin m) => Lv -> (MetaID, Spine builtin) -> m (Maybe Renaming)
 invert ctxSize (metaID, spine) = do
-  metaCtxSize <- length <$> getMetaCtx @builtin metaID
+  metaCtxSize <- length <$> getMetaCtx (Proxy @builtin) metaID
   return $
     if metaCtxSize < length spine
       then Nothing

@@ -130,6 +130,9 @@ library
     Vehicle.Backend.Tensors.Clean
     Vehicle.CommandLine
     Vehicle.Compile
+    Vehicle.Compile.Context.Bound
+    Vehicle.Compile.Context.Free
+    Vehicle.Compile.Context.Var
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.Error.Message
@@ -191,21 +194,17 @@ library
     Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
     Vehicle.Backend.Queries.Error.Polarity.Type
     Vehicle.Compile.Arity
-    Vehicle.Compile.Context.Bound
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
     Vehicle.Compile.Context.Bound.Instance
-    Vehicle.Compile.Context.Free
     Vehicle.Compile.Context.Free.Class
     Vehicle.Compile.Context.Free.Core
     Vehicle.Compile.Context.Free.Instance
-    Vehicle.Compile.Context.Var
     Vehicle.Compile.Dependency
     Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.Normalise.Builtin
-    Vehicle.Compile.Normalise.Monad
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Type.Bidirectional

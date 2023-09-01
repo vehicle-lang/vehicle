@@ -7,6 +7,7 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer
 import Data.Bifunctor (Bifunctor (..))
+import Data.Data (Proxy)
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Error (MonadCompile)
@@ -30,8 +31,8 @@ runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn (ctx, 0)
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
-runFreshBoundContextT :: (Monad m) => BoundContextT builtin m a -> m a
-runFreshBoundContextT = runBoundContextT mempty
+runFreshBoundContextT :: (Monad m) => Proxy builtin -> BoundContextT builtin m a -> m a
+runFreshBoundContextT _ = runBoundContextT mempty
 
 instance MonadTrans (BoundContextT builtin) where
   lift = BoundContextT . lift

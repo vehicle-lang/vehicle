@@ -9,7 +9,6 @@ where
 import Data.Maybe (mapMaybe)
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Monad (MonadNorm)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -40,8 +39,7 @@ solveLinearityConstraint _ (WithContext constraint ctx) = do
 -- Constraint solving
 
 type MonadLinearitySolver m =
-  ( MonadTypeChecker LinearityBuiltin m,
-    MonadNorm LinearityBuiltin m
+  ( MonadTypeChecker LinearityBuiltin m
   )
 
 type LinearitySolver =

@@ -76,14 +76,14 @@ scopeDeclExpr ::
   Expr Name builtin ->
   m (Expr Ix builtin)
 scopeDeclExpr generalise expr = do
-  declCtx <- ask
+  freeCtx <- ask
 
   exprToScope <-
     if generalise
-      then generaliseExpr declCtx expr
+      then generaliseExpr freeCtx expr
       else return expr
 
-  runReaderT (scopeExpr exprToScope) (declCtx, mempty)
+  runReaderT (scopeExpr exprToScope) (freeCtx, mempty)
 
 bindDecl :: (MonadScope m) => Identifier -> m a -> m a
 bindDecl ident = local (Map.insert (nameOf ident) ident)
@@ -110,9 +110,9 @@ findGeneralisableVariables declContext expr =
       (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
       VarUpdate m Name Name
     registerUnusedVars p symbol = do
-      (declCtx, boundCtx) <- ask
+      (freeCtx, boundCtx) <- ask
 
-      when (Map.notMember symbol declCtx && notElem (Just symbol) boundCtx) $ do
+      when (Map.notMember symbol freeCtx && notElem (Just symbol) boundCtx) $ do
         tell [(p, symbol)]
 
       return $ BoundVar p symbol
@@ -157,11 +157,11 @@ scopeExpr = traverseExpr scopeVar scopeBinder
 -- | Find the index for a given name of a given sort.
 scopeVar :: (MonadScopeExpr m) => VarUpdate m Name Ix
 scopeVar p symbol = do
-  (declCtx, boundCtx) <- ask
+  (freeCtx, boundCtx) <- ask
 
   case elemIndex (Just symbol) boundCtx of
     Just i -> return $ BoundVar p $ Ix i
-    Nothing -> case Map.lookup symbol declCtx of
+    Nothing -> case Map.lookup symbol freeCtx of
       Just ident -> return $ FreeVar p ident
       Nothing -> do
         throwError $ UnboundName p symbol
@@ -173,8 +173,8 @@ scopeBinder ::
 scopeBinder binder = case nameOf binder of
   Nothing -> return ()
   Just name -> do
-    (declCtx, _boundCtx) <- ask
-    when (name `Map.member` declCtx) $
+    (freeCtx, _boundCtx) <- ask
+    when (name `Map.member` freeCtx) $
       -- This restriction is needed so that
       -- `Vehicle.Compile.ResourceFunctionalisation`
       -- doesn't accidentally capture variables.

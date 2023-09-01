@@ -365,7 +365,7 @@ isVectorEqualityAssertion = \case
 
 -- | Conjunctive linear satisfaction problem, parameterised by the type of
 -- variables it is over.
-data CLSTProblem = CLSTProblem (NetworkVariableCtx) [Assertion NetworkVariable]
+data CLSTProblem = CLSTProblem NetworkVariableCtx [Assertion NetworkVariable]
 
 instance Pretty CLSTProblem where
   pretty (CLSTProblem _varNames assertions) = pretty assertions

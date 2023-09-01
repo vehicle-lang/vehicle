@@ -35,14 +35,14 @@ expandResources ::
   m (Prog Ix Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialDeclCtx) <-
+    ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialFreeCtx) <-
       runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty)))
 
-    checkForUnusedResources resources partialDeclCtx
+    checkForUnusedResources resources partialFreeCtx
 
-    declCtx <- fillInInferableParameters partialDeclCtx inferableParameterCtx
+    freeCtx <- fillInInferableParameters partialFreeCtx inferableParameterCtx
     integrityInfo <- generateResourcesIntegrityInfo resources
-    return (progWithoutResources, networkCtx, declCtx, integrityInfo)
+    return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
 mkFunctionDefFromResource :: Provenance -> Identifier -> Value Builtin -> GluedDecl Builtin
 mkFunctionDefFromResource p ident value = do
@@ -112,18 +112,18 @@ checkForUnusedResources ::
   Resources ->
   FreeCtx Builtin ->
   m ()
-checkForUnusedResources Resources {..} declCtx = do
-  warnIfUnusedResources Parameter parameters declCtx
-  warnIfUnusedResources Dataset datasets declCtx
-  warnIfUnusedResources Network networks declCtx
+checkForUnusedResources Resources {..} freeCtx = do
+  warnIfUnusedResources Parameter parameters freeCtx
+  warnIfUnusedResources Dataset datasets freeCtx
+  warnIfUnusedResources Network networks freeCtx
 
 fillInInferableParameters ::
   (MonadCompile m) =>
   FreeCtx Builtin ->
   InferableParameterContext ->
   m (FreeCtx Builtin)
-fillInInferableParameters declCtx inferableCtx =
-  foldM insertInferableParameter declCtx (Map.assocs inferableCtx)
+fillInInferableParameters freeCtx inferableCtx =
+  foldM insertInferableParameter freeCtx (Map.assocs inferableCtx)
   where
     insertInferableParameter ::
       (MonadCompile m) =>

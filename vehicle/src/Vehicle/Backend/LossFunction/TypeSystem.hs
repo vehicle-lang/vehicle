@@ -9,6 +9,7 @@ import Control.Monad (when)
 import Vehicle.Backend.LossFunction.TypeSystem.Core as Core
 import Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults ()
 import Vehicle.Backend.LossFunction.TypeSystem.Type
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -49,7 +50,7 @@ solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _)
 
 convertToLossTypes ::
   forall m.
-  (MonadTypeChecker LossBuiltin m) =>
+  (MonadTypeChecker LossBuiltin m, MonadFreeContext LossBuiltin m) =>
   BuiltinUpdate m Ix S.Builtin LossBuiltin
 convertToLossTypes p1 p2 b args = case b of
   S.BuiltinType t -> case t of
