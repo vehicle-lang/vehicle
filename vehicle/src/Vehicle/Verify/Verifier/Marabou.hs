@@ -33,15 +33,21 @@ marabouVerifier =
 -- Invoking Marabou
 
 invokeMarabou :: VerifierInvocation
-invokeMarabou marabouExecutable networkLocations queryFile =
-  liftIO $ do
-    networkArg <- prepareNetworkArg networkLocations
-    let args = [networkArg, queryFile]
-    marabouOutput <- readProcessWithExitCode marabouExecutable args ""
-    let command = unwords (marabouExecutable : args)
-    parseMarabouOutput command marabouOutput
+invokeMarabou marabouExecutable networkLocations queryFile = do
+  -- Prepare arguments
+  networkArg <- prepareNetworkArg networkLocations
+  let args = [networkArg, queryFile]
+  let command = unwords (marabouExecutable : args)
 
-prepareNetworkArg :: MetaNetwork -> IO String
+  -- Run command
+  logDebug MaxDetail $ "Running verify command: " <> pretty command
+  (exitCode, out, err) <- liftIO $ readProcessWithExitCode marabouExecutable args ""
+
+  -- Parse result
+  logDebug MaxDetail $ "Output of verify command: " <> line <> indent 2 (pretty out)
+  parseMarabouOutput command (exitCode, out, err)
+
+prepareNetworkArg :: (MonadIO m) => MetaNetwork -> m String
 prepareNetworkArg [MetaNetworkEntry {..}] = return metaNetworkEntryFilePath
 prepareNetworkArg metaNetwork = do
   let duplicateNetworkNames = findDuplicates (fmap metaNetworkEntryName metaNetwork)
@@ -58,13 +64,15 @@ prepareNetworkArg metaNetwork = do
                 <> line
                 <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)
 
-  hPutStrLn stderr $ layoutAsText errorMsg
-  exitFailure
+  liftIO $ do
+    hPutStrLn stderr $ layoutAsText errorMsg
+    exitFailure
 
 parseMarabouOutput ::
+  (MonadIO m) =>
   String ->
   (ExitCode, String, String) ->
-  IO (Either Text (QueryResult NetworkVariableAssignment))
+  m (Either Text (QueryResult NetworkVariableAssignment))
 parseMarabouOutput command (exitCode, out, _err) = case exitCode of
   ExitFailure exitValue
     | exitValue < 0 -> do
@@ -87,8 +95,9 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
                 <> "when running the command:"
                 <> line
                 <> indent 2 (pretty command)
-        hPutStrLn stderr (layoutAsText errorDoc)
-        exitFailure
+        liftIO $ do
+          hPutStrLn stderr (layoutAsText errorDoc)
+          exitFailure
   ExitSuccess -> do
     let outputLines = fmap Text.pack (lines out)
     let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
@@ -102,7 +111,7 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
             ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
             return $ Right $ SAT $ Just ioVarAssignment
 
-parseSATAssignment :: [Text] -> IO NetworkVariableAssignment
+parseSATAssignment :: (MonadIO m) => [Text] -> m NetworkVariableAssignment
 parseSATAssignment output = do
   let mInputIndex = elemIndex "Input assignment:" output
   let mOutputIndex = elemIndex "Output:" output

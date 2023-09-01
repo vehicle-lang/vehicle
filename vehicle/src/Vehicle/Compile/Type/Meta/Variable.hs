@@ -19,7 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.

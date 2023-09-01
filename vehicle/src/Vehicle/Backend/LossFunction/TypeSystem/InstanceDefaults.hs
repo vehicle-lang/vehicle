@@ -8,7 +8,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
-import Vehicle.Expr.Normalised (Spine, Value (..), isNMeta)
+import Vehicle.Data.NormalisedExpr (Spine, Value (..), isNMeta)
 import Vehicle.Syntax.Builtin hiding (BuiltinType)
 
 instance HasInstanceDefaults LossBuiltin where

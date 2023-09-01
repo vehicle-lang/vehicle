@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
-module Vehicle.Expr.DSL
+module Vehicle.Data.DSL
   ( DSL (..),
     DSLExpr (..),
     fromDSL,
@@ -36,9 +36,9 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
-import Vehicle.Compile.Prelude
-import Vehicle.Expr.DeBruijn
-import Vehicle.Libraries.StandardLibrary (StdLibFunction)
+import Vehicle.Data.DeBruijn
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction)
+import Vehicle.Syntax.AST
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------

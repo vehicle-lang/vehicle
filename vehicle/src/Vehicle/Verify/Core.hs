@@ -3,7 +3,6 @@ module Vehicle.Verify.Core where
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Monoid (Any)
 import Data.Text (Text, unpack)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector (toList)
@@ -11,9 +10,9 @@ import GHC.Generics (Generic)
 import System.FilePath ((<.>))
 import Vehicle.Backend.Queries.LinearExpr (Assertion, SparseLinearExpr)
 import Vehicle.Backend.Queries.Variable
-import Vehicle.Compile.Prelude (Name)
 import Vehicle.Compile.Resource
 import Vehicle.Prelude
+import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Assignments to variables
@@ -234,6 +233,41 @@ instance Pretty VariableNormalisationStep where
 -- The steps are stored in the same order they occured during compilation.
 type VariableNormalisationSteps = [VariableNormalisationStep]
 
--- | Whether or a not a strict order has been converted to a non-strict order
--- due to issue https://github.com/vehicle-lang/vehicle/issues/74
-type UnsoundStrictOrderConversion = Any
+--------------------------------------------------------------------------------
+-- Variable status
+
+data UnderConstrainedVariableStatus
+  = Unconstrained
+  | BoundedAbove
+  | BoundedBelow
+  deriving (Eq)
+
+instance Semigroup UnderConstrainedVariableStatus where
+  Unconstrained <> r = r
+  r <> Unconstrained = r
+  BoundedAbove <> r = r
+  r <> BoundedAbove = r
+  BoundedBelow <> BoundedBelow = BoundedBelow
+
+-- | How the value of a particular value of a variable is constrained.
+data VariableConstraintStatus
+  = UnderConstrained UnderConstrainedVariableStatus
+  | Bounded
+  | Constant
+  deriving (Eq)
+
+instance Semigroup VariableConstraintStatus where
+  UnderConstrained r <> UnderConstrained s = case (r, s) of
+    (BoundedBelow, BoundedAbove) -> Bounded
+    (BoundedAbove, BoundedBelow) -> Bounded
+    _ -> UnderConstrained (r <> s)
+  UnderConstrained {} <> r = r
+  r <> UnderConstrained {} = r
+  Bounded <> r = r
+  r <> Bounded = r
+  Constant <> Constant = Constant
+
+toUnderConstrainedStatus :: VariableConstraintStatus -> Maybe UnderConstrainedVariableStatus
+toUnderConstrainedStatus = \case
+  UnderConstrained s -> Just s
+  _ -> Nothing

@@ -4,8 +4,8 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn (liftDBIndices, substDBInto)
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn (liftDBIndices, substDBInto)
 import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 

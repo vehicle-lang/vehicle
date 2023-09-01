@@ -1,7 +1,7 @@
 module Vehicle.Compile.Context.Free.Core where
 
 import Data.Map (Map)
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.AST
 
 -- | Stores information associated with the declarations that are currently in

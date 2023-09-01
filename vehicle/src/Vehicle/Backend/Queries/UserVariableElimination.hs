@@ -37,12 +37,12 @@ import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, reeval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Warning (CompileWarning (ResortingtoFMElimination))
-import Vehicle.Expr.Boolean
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (..), pattern TensorIdent)
+import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..), pattern TensorIdent)
+import Vehicle.Prelude.Warning (CompileWarning (ResortingtoFMElimination))
 import Vehicle.Verify.Core
 
 -- | Takes in a set of unreduced user and network variables and a boolean expression
@@ -454,7 +454,7 @@ solveForReducedUserVariables variables assertions =
       if null varsUnsolvedByGaussianElim
         then return (reducedInequalities, mempty)
         else do
-          logWarning $ pretty $ ResortingtoFMElimination (nameOf ident) varsUnsolvedByGaussianElim
+          logWarning $ ResortingtoFMElimination (nameOf ident) varsUnsolvedByGaussianElim
 
           -- Eliminate the remaining unsolved user vars using Fourier-Motzkin elimination
           (fourierMotzkinSolutions, fmElimOutputInequalities) <-

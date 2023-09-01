@@ -1,6 +1,6 @@
 module Vehicle.Prelude.Misc where
 
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
 import Data.Aeson (FromJSON, ToJSON)
@@ -17,6 +17,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
+import System.Console.ANSI
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -218,3 +219,8 @@ readFloatAsRational str =
   case readSigned readFloat (Text.unpack str) of
     ((n, []) : _) -> n
     _ -> error "Invalid number"
+
+setTextColour :: Color -> String -> String
+setTextColour c s =
+  join
+    [setSGRCode [SetColor Foreground Vivid c], s, setSGRCode []]

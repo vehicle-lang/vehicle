@@ -13,6 +13,7 @@ import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
+import Vehicle.Prelude.Logging
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier
 

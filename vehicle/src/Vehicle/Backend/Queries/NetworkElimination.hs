@@ -33,11 +33,11 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.Boolean (BooleanExpr (..), DisjunctAll (..))
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Hashing ()
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (StdLibFunction (..))
+import Vehicle.Data.BooleanExpr (BooleanExpr (..), DisjunctAll (..))
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.Hashing ()
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Verify.Core
 
 -- | Okay so this is a wild ride. The Marabou query format has special variable

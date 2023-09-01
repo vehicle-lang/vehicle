@@ -9,7 +9,7 @@ import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
-import Vehicle.Expr.DSL
+import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
 -- | Return the type of the provided builtin.

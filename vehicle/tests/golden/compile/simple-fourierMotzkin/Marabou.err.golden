@@ -1,4 +1,36 @@
-[93mWarning: In property 'unusedVar' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
-[93mWarning: In property 'underConstrainedVar1' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
-[93mWarning: In property 'underConstrainedVar2' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
-[93mWarning: In property 'underConstrainedVars' the quantified variables 'x_1', 'x_2', 'x_3' are not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.[m
+[93m
+Warning:  In property 'unusedVar' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+[m
+[93m
+Warning:  While compiling property 'unusedVar', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
+
+In particular, the following input variables are under-specified:
+  f₀[input]!0 - no constraints
+[m
+[93m
+Warning:  In property 'underConstrainedVar1' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+[m
+[93m
+Warning:  While compiling property 'underConstrainedVar1', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
+
+In particular, the following input variables are under-specified:
+  f₀[input]!0 - bounded below but not above
+[m
+[93m
+Warning:  In property 'underConstrainedVar2' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+[m
+[93m
+Warning:  While compiling property 'underConstrainedVar2', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
+
+In particular, the following input variables are under-specified:
+  f₀[input]!0 - bounded below but not above
+[m
+[93m
+Warning:  In property 'underConstrainedVars' the quantified variables 'x_1', 'x_2', 'x_3' are not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+[m
+[93m
+Warning:  While compiling property 'underConstrainedVars', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
+
+In particular, the following input variables are under-specified:
+  f₀[input]!0 - bounded below but not above
+[m

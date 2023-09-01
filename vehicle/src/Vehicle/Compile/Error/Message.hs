@@ -20,11 +20,11 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn (substDBInto)
-import Vehicle.Expr.Normalised
-import Vehicle.Libraries.StandardLibrary (pattern TensorIdent)
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL
+import Vehicle.Data.DeBruijn (substDBInto)
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
 

@@ -16,18 +16,11 @@ import Vehicle.Compile.Error.Message
   ( MeaningfulError (details),
     logCompileError,
   )
-import Vehicle.Compile.Prelude
-  ( LoggingLevel,
-  )
 import Vehicle.Prelude
-  ( DelayedLoggerT,
-    Pretty (pretty),
-    defaultLoggingLevel,
+  ( Pretty (pretty),
     developerError,
-    loggingLevelHelp,
-    runDelayedLoggerT,
-    showMessages,
   )
+import Vehicle.Prelude.Logging
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =

@@ -16,8 +16,8 @@ import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DeBruijn
 
 typeCheckWithSubsystem ::
   forall builtin m.

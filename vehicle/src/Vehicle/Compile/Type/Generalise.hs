@@ -17,7 +17,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.DeBruijn
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation

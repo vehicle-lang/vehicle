@@ -13,7 +13,7 @@ import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.BuiltinInterface
+import Vehicle.Data.BuiltinInterface
 
 cleanUpHigherOrderStuff ::
   forall m builtin.

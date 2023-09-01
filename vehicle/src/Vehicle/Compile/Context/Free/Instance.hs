@@ -14,7 +14,7 @@ import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation

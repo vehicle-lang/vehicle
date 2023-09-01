@@ -11,7 +11,7 @@ import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound as BoundCtx
 import Vehicle.Compile.Context.Free as FreeContext
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 type MonadVarContext builtin m =
   (MonadBoundContext builtin m, MonadFreeContext builtin m)

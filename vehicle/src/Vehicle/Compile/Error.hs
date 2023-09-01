@@ -14,9 +14,9 @@ import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface (HasStandardData, PrintableBuiltin)
-import Vehicle.Expr.DeBruijn
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin)
+import Vehicle.Data.DeBruijn
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 

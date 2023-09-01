@@ -9,7 +9,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Typing errors

@@ -13,7 +13,8 @@ import Data.Map (Map, assocs)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Vehicle.Prelude
+import Vehicle.Prelude.IO (fatalError)
+import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------

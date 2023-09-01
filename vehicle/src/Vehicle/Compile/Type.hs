@@ -24,7 +24,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 
 -------------------------------------------------------------------------------
 -- Algorithm

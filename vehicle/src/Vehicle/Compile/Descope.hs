@@ -6,9 +6,9 @@ where
 
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.Normalised (Spine, VBinder, Value (..))
-import Vehicle.Expr.Relevant (RelBinder, RelExpr, RelProg)
-import Vehicle.Expr.Relevant qualified as R
+import Vehicle.Data.NormalisedExpr (Spine, VBinder, Value (..))
+import Vehicle.Data.RelevantExpr (RelBinder, RelExpr, RelProg)
+import Vehicle.Data.RelevantExpr qualified as R
 
 -------------------------------------------------------------------------------
 -- Named descoping

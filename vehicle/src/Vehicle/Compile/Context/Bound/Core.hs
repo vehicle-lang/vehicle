@@ -1,7 +1,7 @@
 module Vehicle.Compile.Context.Bound.Core where
 
 import Data.Coerce (coerce)
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.DeBruijn
 import Vehicle.Prelude
 import Vehicle.Syntax.AST (Binder, Name)
 

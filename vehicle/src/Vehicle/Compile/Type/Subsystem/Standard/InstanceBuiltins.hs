@@ -10,9 +10,9 @@ import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL hiding (builtin)
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL hiding (builtin)
+import Vehicle.Libraries.StandardLibrary.Definitions
 
 standardBuiltinInstances :: InstanceCandidateDatabase StandardTypingBuiltin
 standardBuiltinInstances = do

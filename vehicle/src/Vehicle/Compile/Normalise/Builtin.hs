@@ -10,8 +10,8 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
 type EvalApp builtin m = Value builtin -> Spine builtin -> m (Value builtin)

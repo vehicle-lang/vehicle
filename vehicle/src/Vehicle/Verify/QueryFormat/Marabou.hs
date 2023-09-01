@@ -3,21 +3,19 @@ module Vehicle.Verify.QueryFormat.Marabou
   )
 where
 
--- Needs to be imported qualified as GHC 9.6 doesn't seem to import it via Prelude.
-
 import Control.Monad (forM)
-import Control.Monad.Writer (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Semigroup qualified as Semigroup
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
+import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.QueryFormat.Interface
 
 --------------------------------------------------------------------------------
 -- Marabou query format
@@ -41,22 +39,24 @@ marabouQueryFormat =
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
 compileMarabouQuery ::
-  (MonadLogger m, MonadWriter UnsoundStrictOrderConversion m) =>
+  (MonadLogger m) =>
+  Name ->
   CLSTProblem ->
   m QueryText
-compileMarabouQuery (CLSTProblem variables assertions) = do
+compileMarabouQuery propertyName (CLSTProblem variables assertions) = do
   let variableNames = sequentialNetworkVariableNaming "x" "y" variables
   let variableNamesMap = Map.fromList (zip variables variableNames)
-  assertionDocs <- forM assertions (compileAssertion variableNamesMap)
+  assertionDocs <- forM assertions (compileAssertion propertyName variableNamesMap)
   let assertionsDoc = vsep assertionDocs
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  (MonadLogger m, MonadWriter UnsoundStrictOrderConversion m) =>
+  (MonadLogger m) =>
+  Name ->
   Map NetworkVariable Name ->
   Assertion NetworkVariable ->
   m (Doc a)
-compileAssertion varNames assertion = do
+compileAssertion propertyName varNames assertion = do
   let (coeffVars, rel, constant) = convertToSparseFormat varNames assertion
   let (coeffVars', rel', constant', multipleVariables) =
         case coeffVars of
@@ -70,23 +70,22 @@ compileAssertion varNames assertion = do
           _ -> (coeffVars, rel, constant, True)
 
   let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
-  compiledRel <- compileRel rel'
+  compiledRel <- compileRel propertyName rel'
   let compiledRHS = prettyRationalAsFloat constant'
-
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: (MonadWriter UnsoundStrictOrderConversion m) => Either () OrderOp -> m (Doc a)
-compileRel = \case
+compileRel :: (MonadLogger m) => Name -> Either () OrderOp -> m (Doc a)
+compileRel propertyName = \case
   Left () -> return "="
   Right Le -> return "<="
   Right Ge -> return ">="
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
   Right Lt -> do
-    tell (Semigroup.Any True)
+    logWarning (UnsoundStrictOrderConversion propertyName MarabouQueries)
     return "<="
   Right Gt -> do
-    tell (Semigroup.Any True)
+    logWarning (UnsoundStrictOrderConversion propertyName MarabouQueries)
     return ">="
 
 compileVar :: Bool -> (Rational, Name) -> Doc a

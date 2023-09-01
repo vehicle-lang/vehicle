@@ -10,8 +10,8 @@ import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Expr.Boolean (MaybeTrivial (..))
-import Vehicle.Expr.BuiltinInterface
+import Vehicle.Data.BooleanExpr (MaybeTrivial (..))
+import Vehicle.Data.BuiltinInterface
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 

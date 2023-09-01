@@ -13,9 +13,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments, typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.BuiltinPatterns
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinPatterns
+import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------

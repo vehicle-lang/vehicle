@@ -1,9 +1,9 @@
-module Vehicle.Expr.Normalised where
+module Vehicle.Data.NormalisedExpr where
 
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.DeBruijn
 import Vehicle.Syntax.AST
 
 -----------------------------------------------------------------------------

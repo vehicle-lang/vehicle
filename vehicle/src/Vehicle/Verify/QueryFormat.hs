@@ -8,6 +8,7 @@ module Vehicle.Verify.QueryFormat
 where
 
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.QueryFormat.Interface
 import Vehicle.Verify.QueryFormat.Marabou (marabouQueryFormat)
 import Vehicle.Verify.QueryFormat.VNNLib (vnnlibQueryFormat)
 

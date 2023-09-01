@@ -6,8 +6,8 @@ where
 import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
-import Vehicle.Expr.DSL
-import Vehicle.Expr.DeBruijn
+import Vehicle.Data.DSL
+import Vehicle.Data.DeBruijn
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (..))

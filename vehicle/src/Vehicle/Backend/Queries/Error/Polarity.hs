@@ -15,8 +15,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 

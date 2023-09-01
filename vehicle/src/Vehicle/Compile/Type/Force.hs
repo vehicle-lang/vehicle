@@ -13,8 +13,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
-import Vehicle.Expr.BuiltinInterface (HasStandardData (getBuiltinFunction))
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface (HasStandardData (getBuiltinFunction))
+import Vehicle.Data.NormalisedExpr
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing

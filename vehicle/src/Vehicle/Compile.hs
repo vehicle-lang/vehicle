@@ -24,7 +24,8 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Expr.BuiltinInterface
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Prelude.Warning (CompileWarning (ResourcesUnnecessariyProvidedForBackend))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -89,7 +90,7 @@ compileToAgda ::
   (Imports, Prog Ix Builtin) ->
   m ()
 compileToAgda options@CompileOptions {..} (_, typedProg) = do
-  warnIfResourcesProvidedToITP Agda options
+  warnIfResourcesProvided options
   let agdaOptions = AgdaOptions verificationCache output moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile output agdaCode
@@ -143,25 +144,11 @@ compileToTensors prog outputFile outputAsJSON = do
         return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result
 
-warnIfResourcesProvided :: (MonadCompile m) => Target -> Doc a -> CompileOptions -> m ()
-warnIfResourcesProvided itp src CompileOptions {..} = do
+warnIfResourcesProvided :: (MonadCompile m) => CompileOptions -> m ()
+warnIfResourcesProvided CompileOptions {..} = do
   let parameters = fmap (Parameter,) (Map.keys parameterValues)
   let datasets = fmap (Dataset,) (Map.keys datasetLocations)
   let networks = fmap (Network,) (Map.keys networkLocations)
   let resources = parameters <> datasets <> networks
-  let resourceDocs = vsep (fmap (\(r, n) -> pretty r <+> pretty n) resources)
   unless (null resources) $ do
-    logWarning $
-      "The following provided resources:"
-        <> line
-        <> line
-        <> indent 2 resourceDocs
-        <> line
-        <> line
-        <> "will be ignored as when compiling to" <+> pretty itp <+> src
-
-warnIfResourcesProvidedToITP :: (MonadCompile m) => ITP -> CompileOptions -> m ()
-warnIfResourcesProvidedToITP itp =
-  warnIfResourcesProvided
-    (ITP itp)
-    "their values will be taken directly from the verification cache."
+    logWarning $ ResourcesUnnecessariyProvidedForBackend target resources

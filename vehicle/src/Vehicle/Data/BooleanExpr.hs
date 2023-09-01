@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Expr.Boolean where
+module Vehicle.Data.BooleanExpr where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)

@@ -3,7 +3,7 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Expr.Normalised
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 

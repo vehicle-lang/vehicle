@@ -6,9 +6,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Expr.BuiltinInterface (HasStandardData (..))
-import Vehicle.Expr.DSL
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface (HasStandardData (..))
+import Vehicle.Data.DSL
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 

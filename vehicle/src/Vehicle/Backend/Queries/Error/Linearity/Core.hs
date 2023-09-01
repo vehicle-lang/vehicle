@@ -7,9 +7,9 @@ import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
-import Vehicle.Expr.BuiltinInterface
-import Vehicle.Expr.DSL
-import Vehicle.Expr.Normalised
+import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.DSL
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 import Vehicle.Syntax.Builtin qualified as S
 
