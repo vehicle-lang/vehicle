@@ -100,12 +100,6 @@ checkExpr expectedType expr = do
 
           -- Prepend a new lambda to the expression with the implicit binder
           return $ Lam p lamBinder checkedExpr
-    (_, Hole p _name) -> do
-      -- Replace the hole with meta-variable.
-      -- NOTE, different uses of the same hole name will be interpreted as
-      -- different meta-variables.
-      boundCtx <- getBoundCtx (Proxy @builtin)
-      unnormalised <$> freshMetaExpr p expectedType boundCtx
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -113,7 +107,11 @@ checkExpr expectedType expr = do
   showCheckExit res
   return res
 
-viaInfer :: (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m (Expr Ix builtin)
+viaInfer ::
+  (MonadBidirectional builtin m) =>
+  Type Ix builtin ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -149,7 +147,6 @@ inferExpr e = do
       boundCtx <- getBoundCtx (Proxy @builtin)
       metaType <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- unnormalised <$> freshMetaExpr p metaType boundCtx
-      checkExprTypesEqual p metaExpr metaType (TypeUniverse p 0)
       return (metaExpr, metaType)
     Pi p binder resultType -> do
       checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
