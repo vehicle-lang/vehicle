@@ -46,7 +46,7 @@ type LinearitySolver =
   forall m.
   (MonadLinearitySolver m) =>
   InstanceConstraintInfo LinearityBuiltin ->
-  [VType LinearityBuiltin] ->
+  [WHNFType LinearityBuiltin] ->
   Maybe (m (ConstraintProgress LinearityBuiltin))
 
 solve :: LinearityRelation -> LinearitySolver
@@ -149,7 +149,7 @@ handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) 
     solveMeta m (UnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => Value LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
+getTypeClass :: (MonadCompile m) => WHNFValue LinearityBuiltin -> m (LinearityRelation, WHNFSpine LinearityBuiltin)
 getTypeClass = \case
   (VBuiltin (LinearityRelation tc) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

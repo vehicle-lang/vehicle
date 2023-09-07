@@ -152,11 +152,11 @@ compileMultiProperty ::
   Provenance ->
   Identifier ->
   Maybe FilePath ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (MultiProperty ())
 compileMultiProperty queryFormat networkCtx freeCtx p ident outputLocation = go []
   where
-    go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
+    go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
       VVecLiteral es -> do
         let es' = zip [0 :: QueryID ..] es
@@ -195,7 +195,7 @@ type MonadCompileProperty m =
 compileProperty ::
   (MonadCompileProperty m, MonadIO m) =>
   Maybe FilePath ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m ()
 compileProperty outputLocation expr = do
   property <- compilePropertyTopLevelStructure expr
@@ -222,11 +222,11 @@ compileProperty outputLocation expr = do
 compilePropertyTopLevelStructure ::
   forall m.
   (MonadCompileProperty m) =>
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (Property (QueryMetaData, QueryText))
 compilePropertyTopLevelStructure = go
   where
-    go :: Value Builtin -> m (Property (QueryMetaData, QueryText))
+    go :: WHNFValue Builtin -> m (Property (QueryMetaData, QueryText))
     go expr = case expr of
       VBoolLiteral {} ->
         fmap Query <$> compileQuerySet False expr
@@ -270,7 +270,7 @@ compilePropertyTopLevelStructure = go
 compileQuerySet ::
   (MonadCompileProperty m) =>
   Bool ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (MaybeTrivial (QuerySet (QueryMetaData, QueryText)))
 compileQuerySet isPropertyNegated expr = do
   PropertyState {..} <- ask

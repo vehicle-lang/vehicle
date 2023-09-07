@@ -61,15 +61,15 @@ data CompileError
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
   | NetworkTypeIsNotAFunction DeclProvenance (GluedType StandardTypingBuiltin)
-  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin) InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType StandardTypingBuiltin) (VBinder StandardTypingBuiltin)
-  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin) InputOrOutput
+  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin) InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType StandardTypingBuiltin) (WHNFBinder StandardTypingBuiltin)
+  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin) InputOrOutput
   | DatasetTypeUnsupportedContainer DeclProvenance (GluedType StandardTypingBuiltin)
-  | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (VType StandardTypingBuiltin)
-  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
+  | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin)
+  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorDimensions TensorDimensions
   | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorDimensions
-  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (VType Builtin) (VType Builtin)
+  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (WHNFType Builtin)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | ParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
@@ -83,14 +83,14 @@ data CompileError
   | InferableParameterUninferrable DeclProvenance
   | PropertyTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
   | -- Unsupported networks
-    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
+    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
   | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
   | -- Backend errors
     NoPropertiesFound
   | UnsupportedInequality QueryFormatID DeclProvenance
   | UnsupportedPolymorphicEquality ITP Provenance Name
   | NoNetworkUsedInProperty DeclProvenance
-  | UnsupportedVariableType QueryFormatID Identifier Provenance Name (VType Builtin) (VType Builtin) [Builtin]
+  | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
   | UnsupportedNegatedOperation DifferentiableLogicID Provenance

@@ -89,7 +89,7 @@ getMetaDependencies = \case
   (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [VArg builtin] -> ([Lv], Spine builtin)
+getNormMetaDependencies :: [WHNFArg builtin] -> ([Lv], WHNFSpine builtin)
 getNormMetaDependencies = \case
   (ExplicitArg _ _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
@@ -116,7 +116,7 @@ instance HasMetas (Expr Ix builtin) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App _ fun args -> do findMetas fun; findMetas args
 
-instance HasMetas (Value builtin) where
+instance HasMetas (WHNFValue builtin) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)
@@ -126,7 +126,7 @@ instance HasMetas (Value builtin) where
     VFreeVar _ spine -> findMetas spine
     VBoundVar _ spine -> findMetas spine
     VPi binder result -> do findMetas binder; findMetas result
-    VLam {} -> developerError "Finding metas in normalised lambda not yet supported"
+    VLam {} -> compilerDeveloperError "Finding metas in lambda not yet supported."
 
 instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas

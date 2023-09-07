@@ -93,5 +93,5 @@ p = mempty
 binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
-mkNoOpEnv :: Lv -> Env builtin
+mkNoOpEnv :: Lv -> WHNFEnv builtin
 mkNoOpEnv boundCtxSize = [mkDefaultBinder "_" (VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]

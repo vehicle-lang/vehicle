@@ -183,7 +183,7 @@ instance HasStandardData LinearityBuiltin where
 pattern LinearityExpr :: Provenance -> Linearity -> Expr var LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (Linearity lin)
 
-pattern VLinearityExpr :: Linearity -> Value LinearityBuiltin
+pattern VLinearityExpr :: Linearity -> WHNFValue LinearityBuiltin
 pattern VLinearityExpr l <- VBuiltin (Linearity l) []
   where
     VLinearityExpr l = VBuiltin (Linearity l) []

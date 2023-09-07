@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Data.NormalisedExpr (GluedExpr (..), Value (..))
+import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Substitution operation
@@ -75,7 +75,7 @@ substApp s p (fun@(Meta _ m), mArgs) = do
     Just value -> subst s $ substArgs p (unnormalised value) mArgs
 substApp s p (fun, args) = normAppList p <$> subst s fun <*> subst s args
 
-instance MetaSubstitutable m builtin (Value builtin) where
+instance MetaSubstitutable m builtin (WHNFValue builtin) where
   subst s expr = case expr of
     VMeta m args -> do
       case MetaMap.lookup m s of
@@ -95,8 +95,11 @@ instance MetaSubstitutable m builtin (Value builtin) where
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
-    VLam binder env body -> VLam <$> subst s binder <*> subst s env <*> subst s body
+    VLam binder body -> VLam <$> subst s binder <*> subst s body
     VPi binder body -> VPi <$> subst s binder <*> subst s body
+
+instance MetaSubstitutable m builtin (Body 'WHNF builtin) where
+  subst s (WHNFBody env body) = WHNFBody <$> subst s env <*> subst s body
 
 instance MetaSubstitutable m builtin (GluedExpr builtin) where
   subst s (Glued a b) = Glued <$> subst s a <*> subst s b

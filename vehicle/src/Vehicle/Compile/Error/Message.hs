@@ -763,7 +763,7 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: VType Builtin -> Int
+        dimensionsOf :: WHNFType Builtin -> Int
         dimensionsOf = \case
           VListType t -> 1 + dimensionsOf t
           VVectorType t _ -> 1 + dimensionsOf t

@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.DeBruijn (liftDBIndices)
-import Vehicle.Data.NormalisedExpr (VType, Value (..))
+import Vehicle.Data.NormalisedExpr
 
 etaExpandProg ::
   forall m builtin.
@@ -49,7 +49,7 @@ etaExpand declIdent originalType originalBody = do
   normType <- normaliseInEmptyEnv originalType
   go normType originalBody
   where
-    go :: VType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
+    go :: WHNFType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
     go typ body = case (typ, body) of
       (VPi _ piBody, Lam p lamBinder lamBody) ->
         Lam p lamBinder <$> addBinderToContext lamBinder (go piBody lamBody)

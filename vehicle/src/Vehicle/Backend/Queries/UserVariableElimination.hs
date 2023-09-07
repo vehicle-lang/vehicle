@@ -106,7 +106,7 @@ type LCSState =
 
 -- | Solutions for vector-level user variables. They are ordered so that
 -- earlier solutions may depend on solved variables later in the list.
-type UnreducedVariableSolutions = [(UserVariable, Value Builtin)]
+type UnreducedVariableSolutions = [(UserVariable, WHNFValue Builtin)]
 
 type SolvableAssertion = Assertion MixedVariable
 
@@ -196,7 +196,7 @@ solutionToExpr ::
   (MonadCompile m) =>
   MixedVariableCtx ->
   (UserVariable, SparseLinearExpr MixedVariable) ->
-  m (UserVariable, Value Builtin)
+  m (UserVariable, WHNFValue Builtin)
 solutionToExpr variables (var, Sparse {..}) = do
   let findVarIx v = Ix $ fromMaybe (developerError ("Variable" <+> pretty var <+> "not found")) (v `elemIndex` variables)
   let toExprVar v = VBoundVar (dbIndexToLevel (Lv $ length variables) (findVarIx v)) []
@@ -212,21 +212,21 @@ solutionToExpr variables (var, Sparse {..}) = do
   let varCoeffList = Map.toList coefficients
   return (var, foldr combFn constant varCoeffList)
   where
-    mkTensorType :: VType Builtin -> VType Builtin -> VType Builtin
+    mkTensorType :: WHNFType Builtin -> WHNFType Builtin -> WHNFType Builtin
     mkTensorType tElem dims = VFreeVar TensorIdent [Arg mempty Explicit Relevant tElem, Arg mempty Explicit Irrelevant dims]
 
-    mkRatVectorAdd :: [Value Builtin] -> [Value Builtin] -> Value Builtin
+    mkRatVectorAdd :: [WHNFValue Builtin] -> [WHNFValue Builtin] -> WHNFValue Builtin
     mkRatVectorAdd = mkVectorOp (Add AddRat) StdAddVector
 
-    mkRatVectorSub :: [Value Builtin] -> [Value Builtin] -> Value Builtin
+    mkRatVectorSub :: [WHNFValue Builtin] -> [WHNFValue Builtin] -> WHNFValue Builtin
     mkRatVectorSub = mkVectorOp (Sub SubRat) StdSubVector
 
     mkVectorOp ::
       BuiltinFunction ->
       StdLibFunction ->
-      [Value Builtin] ->
-      [Value Builtin] ->
-      Value Builtin
+      [WHNFValue Builtin] ->
+      [WHNFValue Builtin] ->
+      WHNFValue Builtin
     mkVectorOp baseOp libOp dims spine = case dims of
       [] -> VBuiltinFunction baseOp (Arg mempty Explicit Relevant <$> spine)
       (d : ds) ->
@@ -262,11 +262,11 @@ compilerVectorLinearExpr ::
   (MonadSMT m) =>
   MixedVariableCtx ->
   TensorDimensions ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (Maybe (SparseLinearExpr MixedVariable))
 compilerVectorLinearExpr variables dimensions = go
   where
-    go :: Value Builtin -> m (Maybe (SparseLinearExpr MixedVariable))
+    go :: WHNFValue Builtin -> m (Maybe (SparseLinearExpr MixedVariable))
     go e = case e of
       VBoundVar v [] ->
         Just <$> singletonVar v 1
@@ -289,19 +289,19 @@ compilerVectorLinearExpr variables dimensions = go
       let constant = Vector.replicate (product dimensions) 0
       return $ Sparse dimensions (Map.singleton var coef) constant
 
-    isAddVector :: Value Builtin -> Maybe (Value Builtin, Value Builtin)
+    isAddVector :: WHNFValue Builtin -> Maybe (WHNFValue Builtin, WHNFValue Builtin)
     isAddVector = \case
       VFreeVar ident [_, _, _, _, _, e1, e2]
         | ident == identifierOf StdAddVector -> Just (argExpr e1, argExpr e2)
       _ -> Nothing
 
-    isSubVector :: Value Builtin -> Maybe (Value Builtin, Value Builtin)
+    isSubVector :: WHNFValue Builtin -> Maybe (WHNFValue Builtin, WHNFValue Builtin)
     isSubVector = \case
       VFreeVar ident [_, _, _, _, _, e1, e2]
         | ident == identifierOf StdSubVector -> Just (argExpr e1, argExpr e2)
       _ -> Nothing
 
-    isConstant :: Value Builtin -> Maybe Constant
+    isConstant :: WHNFValue Builtin -> Maybe Constant
     isConstant = \case
       VVecLiteral xs -> mconcat <$> traverse (isConstant . argExpr) xs
       VRatLiteral r -> Just $ Vector.singleton (fromRational r)
@@ -348,7 +348,7 @@ reduceVariables ::
   (MonadCompile m) =>
   MixedVariables ->
   Set UserVariable ->
-  m (MixedVariables, VariableNormalisationSteps, Env Builtin, Map UserVariable Ix)
+  m (MixedVariables, VariableNormalisationSteps, WHNFEnv Builtin, Map UserVariable Ix)
 reduceVariables variables solvedUserVariables = do
   logDebug MidDetail $ "Reducing unsolved variables..." <> line
   (userVarLv, reducedUserVariables, userVarReconstructionSteps, reducedUserVarEnv, solvedUserVariableIndices) <-
@@ -365,8 +365,8 @@ reduceVariables variables solvedUserVariables = do
       (MonadCompile m, Variable variable) =>
       Set variable ->
       variable ->
-      (Lv, GenericBoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv) ->
-      m (Lv, GenericBoundCtx variable, VariableNormalisationSteps, Env Builtin, Map variable Lv)
+      (Lv, GenericBoundCtx variable, VariableNormalisationSteps, WHNFEnv Builtin, Map variable Lv) ->
+      m (Lv, GenericBoundCtx variable, VariableNormalisationSteps, WHNFEnv Builtin, Map variable Lv)
     possiblyReduceVariable solvedVariables var (currentLv, reducedVariables, steps, subst, solvedIndices)
       | var `Set.member` solvedVariables = do
           logDebug MaxDetail $
@@ -396,15 +396,15 @@ reduceVariables variables solvedUserVariables = do
 substituteReducedVariablesThroughSolutions ::
   forall m.
   (MonadSMT m) =>
-  Env Builtin ->
+  WHNFEnv Builtin ->
   UnreducedVariableSolutions ->
   Map UserVariable Ix ->
-  m (Env Builtin)
+  m (WHNFEnv Builtin)
 substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePositions = do
   logDebug MidDetail "Substituting reduced variables through variable solutions..."
   foldrM f partialEnv solutions
   where
-    f :: (UserVariable, Value Builtin) -> Env Builtin -> m (Env Builtin)
+    f :: (UserVariable, WHNFValue Builtin) -> WHNFEnv Builtin -> m (WHNFEnv Builtin)
     f (var, solution) env = do
       normalisedSolution <- reeval defaultNBEOptions env solution
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
@@ -484,7 +484,7 @@ mkGaussianReconstructionStep (v, e) =
 compileReducedAssertion ::
   (MonadSMT m) =>
   MixedVariables ->
-  Env Builtin ->
+  WHNFEnv Builtin ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
 compileReducedAssertion variables variableSubstEnv assertion = do
@@ -506,8 +506,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
     splitUpAssertions ::
       (MonadSMT m) =>
       Bool ->
-      Value Builtin ->
-      m (MaybeTrivial (BooleanExpr (Value Builtin, Relation, Value Builtin)))
+      WHNFValue Builtin ->
+      m (MaybeTrivial (BooleanExpr (WHNFValue Builtin, Relation, WHNFValue Builtin)))
     splitUpAssertions alreadyLiftedIfs expr = case expr of
       VBoolLiteral b -> return $ Trivial b
       VBuiltinFunction And [e1, e2] -> do
@@ -537,8 +537,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 
     liftIfs ::
       (MonadSMT m) =>
-      Value Builtin ->
-      m (MaybeTrivial (BooleanExpr (Value Builtin, Relation, Value Builtin)))
+      WHNFValue Builtin ->
+      m (MaybeTrivial (BooleanExpr (WHNFValue Builtin, Relation, WHNFValue Builtin)))
     liftIfs expr = do
       maybeExprWithoutIf <- eliminateIfs expr
       case maybeExprWithoutIf of
@@ -551,7 +551,7 @@ compileReducedAssertion variables variableSubstEnv assertion = do
 
     reduceAssertion ::
       (MonadSMT m) =>
-      (Value Builtin, Relation, Value Builtin) ->
+      (WHNFValue Builtin, Relation, WHNFValue Builtin) ->
       m SolvableAssertion
     reduceAssertion (lhs, rel, rhs) = do
       lhsLinExpr <- compileReducedLinearExpr variableCtx lhs
@@ -563,13 +563,13 @@ compileReducedLinearExpr ::
   forall m.
   (MonadSMT m) =>
   MixedVariableCtx ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (SparseLinearExpr MixedVariable)
 compileReducedLinearExpr variables expr = do
   lnfExpr <- convertToLNF expr
   go lnfExpr
   where
-    go :: Value Builtin -> m (SparseLinearExpr MixedVariable)
+    go :: WHNFValue Builtin -> m (SparseLinearExpr MixedVariable)
     go e = case e of
       VBoundVar v [] ->
         singletonVar v 1
@@ -601,10 +601,10 @@ compileReducedLinearExpr variables expr = do
 -- | Converts the provided expression to linear normal form,
 -- i.e. consisting of only additions and multiplications by constants.
 -- e.g. x + 3 * (x + y) ====> x + 3 * x + 3 * y
-convertToLNF :: (MonadCompile m) => Value Builtin -> m (Value Builtin)
+convertToLNF :: (MonadCompile m) => WHNFValue Builtin -> m (WHNFValue Builtin)
 convertToLNF = lnf
   where
-    lnf :: (MonadCompile m) => Value Builtin -> m (Value Builtin)
+    lnf :: (MonadCompile m) => WHNFValue Builtin -> m (WHNFValue Builtin)
     lnf expr = case expr of
       VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
       VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -622,7 +622,7 @@ convertToLNF = lnf
       VBuiltin {} -> return expr
       VBoundVar {} -> return expr
 
-    normMul :: MulDomain -> Value Builtin -> Value Builtin -> Value Builtin
+    normMul :: MulDomain -> WHNFValue Builtin -> WHNFValue Builtin -> WHNFValue Builtin
     normMul dom e1 e2 = case (e1, e2) of
       (_, VBuiltinFunction (Add addDom) [v1, v2]) -> do
         let r1 = normMul dom e1 (argExpr v1)
@@ -636,13 +636,13 @@ convertToLNF = lnf
         Nothing -> VBuiltinFunction (Mul dom) (Arg mempty Explicit Relevant <$> [e1, e2])
         Just r -> r
 
-    normSub :: SubDomain -> Value Builtin -> Value Builtin -> Value Builtin
+    normSub :: SubDomain -> WHNFValue Builtin -> WHNFValue Builtin -> WHNFValue Builtin
     normSub dom e1 e2 = do
       let negDom = subToNegDomain dom
       let addDom = subToAddDomain dom
       VBuiltinFunction (Add addDom) [Arg mempty Explicit Relevant e1, lowerNeg negDom e2]
 
-    normDiv :: DivDomain -> Value Builtin -> Value Builtin -> Value Builtin
+    normDiv :: DivDomain -> WHNFValue Builtin -> WHNFValue Builtin -> WHNFValue Builtin
     normDiv dom e1 e2 = case (e1, e2) of
       (_, VRatLiteral l) -> do
         let mulDom = divToMulDomain dom
@@ -650,7 +650,7 @@ convertToLNF = lnf
       _ -> do
         VBuiltinFunction (Div dom) (Arg mempty Explicit Relevant <$> [e1, e2])
 
-    lowerNeg :: NegDomain -> Value Builtin -> VArg Builtin
+    lowerNeg :: NegDomain -> WHNFValue Builtin -> WHNFArg Builtin
     lowerNeg dom expr = Arg mempty Explicit Relevant $ case expr of
       -- Base cases
       VBuiltinFunction (Neg _) [e] -> argExpr e

@@ -93,7 +93,7 @@ unification ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
   MetaSet ->
-  (Value builtin, Value builtin) ->
+  (WHNFValue builtin, WHNFValue builtin) ->
   m (UnificationResult builtin)
 unification info@(ctx, _) reductionBlockingMetas = \case
   -----------------------
@@ -109,8 +109,8 @@ unification info@(ctx, _) reductionBlockingMetas = \case
     | b1 == b2 -> solveSpine info spine1 spine2
   VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
-  VLam binder1 env1 body1 :~: VLam binder2 env2 body2 ->
-    solveLam info (binder1, env1, body1) (binder2, env2, body2)
+  VLam binder1 body1 :~: VLam binder2 body2 ->
+    solveLam info (binder1, body1) (binder2, body2)
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -138,7 +138,7 @@ solveTrivially = do
 solveArg ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (VArg builtin, VArg builtin) ->
+  (WHNFArg builtin, WHNFArg builtin) ->
   Maybe (m (UnificationResult builtin))
 solveArg info (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = Just $ return HardFailure
@@ -150,8 +150,8 @@ solveArg info (arg1, arg2)
 solveSpine ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  Spine builtin ->
-  Spine builtin ->
+  WHNFSpine builtin ->
+  WHNFSpine builtin ->
   m (UnificationResult builtin)
 solveSpine info args1 args2
   | length args1 /= length args2 = return HardFailure
@@ -162,10 +162,10 @@ solveSpine info args1 args2
 solveLam ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (VBinder builtin, Env builtin, Expr Ix builtin) ->
-  (VBinder builtin, Env builtin, Expr Ix builtin) ->
+  (WHNFBinder builtin, Body 'WHNF builtin) ->
+  (WHNFBinder builtin, Body 'WHNF builtin) ->
   m (UnificationResult builtin)
-solveLam info@(ctx, origin) (binder1, env1, body1) (binder2, env2, body2) = do
+solveLam info@(ctx, origin) (binder1, WHNFBody env1 body1) (binder2, WHNFBody env2 body2) = do
   -- Unify binder constraints
   binderConstraint <- unify info (typeOf binder1, typeOf binder2)
 
@@ -189,8 +189,8 @@ solveLam info@(ctx, origin) (binder1, env1, body1) (binder2, env2, body2) = do
 solvePi ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (VBinder builtin, Value builtin) ->
-  (VBinder builtin, Value builtin) ->
+  (WHNFBinder builtin, WHNFValue builtin) ->
+  (WHNFBinder builtin, WHNFValue builtin) ->
   m (UnificationResult builtin)
 solvePi info (binder1, body1) (binder2, body2) = do
   -- !!TODO!! Block until binders are solved
@@ -200,7 +200,7 @@ solvePi info (binder1, body1) (binder2, body2) = do
   bodyConstraint <- unify info (body1, body2)
   return $ Success [binderConstraint, bodyConstraint]
 
-solveFlexFlex :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, Spine builtin) -> (MetaID, Spine builtin) -> m (UnificationResult builtin)
+solveFlexFlex :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, WHNFSpine builtin) -> (MetaID, WHNFSpine builtin) -> m (UnificationResult builtin)
 solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
   -- It may be that only one of the two spines is invertible
   maybeRenaming <- invert (contextDBLevel ctx) (meta1, spine1)
@@ -208,7 +208,7 @@ solveFlexFlex ctx (meta1, spine1) (meta2, spine2) = do
     Nothing -> solveFlexRigid ctx (meta2, spine2) (VMeta meta1 spine1)
     Just renaming -> solveFlexRigidWithRenaming ctx (meta1, spine1) renaming (VMeta meta2 spine2)
 
-solveFlexRigid :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, Spine builtin) -> Value builtin -> m (UnificationResult builtin)
+solveFlexRigid :: (MonadUnify builtin m) => ConstraintContext builtin -> (MetaID, WHNFSpine builtin) -> WHNFValue builtin -> m (UnificationResult builtin)
 solveFlexRigid ctx (metaID, spine) solution = do
   -- Check that 'spine' is a pattern and try to calculate a substitution
   -- that renames the variables in `solution` to ones available to `meta`
@@ -224,9 +224,9 @@ solveFlexRigidWithRenaming ::
   forall builtin m.
   (MonadUnify builtin m) =>
   ConstraintContext builtin ->
-  (MetaID, Spine builtin) ->
+  (MetaID, WHNFSpine builtin) ->
   Renaming ->
-  Value builtin ->
+  WHNFValue builtin ->
   m (UnificationResult builtin)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   prunedSolution <-
@@ -243,16 +243,16 @@ pruneMetaDependencies ::
   forall builtin m.
   (MonadUnify builtin m) =>
   ConstraintContext builtin ->
-  (MetaID, Spine builtin) ->
-  Value builtin ->
-  m (Value builtin)
+  (MetaID, WHNFSpine builtin) ->
+  WHNFValue builtin ->
+  m (WHNFValue builtin)
 pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
   go attemptedSolution
   where
     go ::
       (MonadUnify builtin m) =>
-      Value builtin ->
-      m (Value builtin)
+      WHNFValue builtin ->
+      m (WHNFValue builtin)
     go expr = case expr of
       VMeta m spine
         | m == solvingMetaID ->
@@ -290,7 +290,7 @@ createMetaWithRestrictedDependencies ::
   ConstraintContext builtin ->
   MetaID ->
   [Lv] ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 createMetaWithRestrictedDependencies ctx meta newDependencies = do
   p <- getMetaProvenance (Proxy @builtin) meta
   metaType <- getMetaType meta
@@ -320,7 +320,7 @@ type Renaming = IntMap Ix
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: forall builtin m. (MonadUnify builtin m) => Lv -> (MetaID, Spine builtin) -> m (Maybe Renaming)
+invert :: forall builtin m. (MonadUnify builtin m) => Lv -> (MetaID, WHNFSpine builtin) -> m (Maybe Renaming)
 invert ctxSize (metaID, spine) = do
   metaCtxSize <- length <$> getMetaCtx (Proxy @builtin) metaID
   return $
@@ -328,7 +328,7 @@ invert ctxSize (metaID, spine) = do
       then Nothing
       else go (metaCtxSize - 1) IntMap.empty spine
   where
-    go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
+    go :: Int -> IntMap Ix -> WHNFSpine builtin -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
       (ExplicitArg _ _ (VBoundVar j []) : restArgs) -> do

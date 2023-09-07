@@ -11,7 +11,7 @@ import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr (Spine, Value (..), isNMeta)
+import Vehicle.Data.NormalisedExpr
 
 instance HasInstanceDefaults StandardTypingBuiltin where
   getCandidatesFromConstraint = getCandidates
@@ -114,8 +114,8 @@ getCandidates ctx (Resolve origin _ _ expr) = do
 getCandidatesFromArgs ::
   InstanceConstraintInfo StandardTypingBuiltin ->
   StandardTypingBuiltin ->
-  Value StandardTypingBuiltin ->
-  Spine StandardTypingBuiltin ->
+  WHNFValue StandardTypingBuiltin ->
+  WHNFSpine StandardTypingBuiltin ->
   [Candidate StandardTypingBuiltin]
 getCandidatesFromArgs info tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
   where

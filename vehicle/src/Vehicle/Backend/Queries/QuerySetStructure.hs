@@ -49,7 +49,7 @@ compileQueryStructure ::
   DeclProvenance ->
   UsedFunctionsCtx ->
   NetworkContext ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m (Either SeriousPropertyError (UserVariableCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
 compileQueryStructure declProv queryFreeCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
@@ -85,9 +85,9 @@ cumulativeVarsToCtx = variableCtxToBoundCtx
 -- we can't normalise the `map` and hence the `fold` until we normalise the quantified
 -- variable `xs` to two separate quantifiers.
 data TemporaryPropertyError
-  = CannotEliminateIfs (Value Builtin)
-  | CannotEliminateNot (Value Builtin)
-  | NonBooleanQueryStructure (Value Builtin)
+  = CannotEliminateIfs (WHNFValue Builtin)
+  | CannotEliminateNot (WHNFValue Builtin)
+  | NonBooleanQueryStructure (WHNFValue Builtin)
   deriving (Show)
 
 instance Pretty TemporaryPropertyError where
@@ -99,8 +99,8 @@ instance Pretty TemporaryPropertyError where
 -- | Serious errors that are fundemental problems with the specification
 data SeriousPropertyError
   = AlternatingQuantifiers
-  | NonLinearSpecification (Value Builtin)
-  | UnsupportedQuantifierType (VBinder Builtin) (VType Builtin)
+  | NonLinearSpecification (WHNFValue Builtin)
+  | UnsupportedQuantifierType (WHNFBinder Builtin) (WHNFType Builtin)
   | UnsupportedInequalityOp
 
 data PropertyError
@@ -112,8 +112,8 @@ type QueryStructureResult =
 
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
-  Value Builtin ->
-  Maybe (VArg Builtin, VArg Builtin, TensorDimensions, VArg Builtin -> VArg Builtin -> Value Builtin)
+  WHNFValue Builtin ->
+  Maybe (WHNFArg Builtin, WHNFArg Builtin, TensorDimensions, WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin)
 isVectorEquals = \case
   VFreeVar ident args
     | ident == identifierOf StdEqualsVector -> case args of
@@ -126,7 +126,7 @@ isVectorEquals = \case
         _ -> Nothing
   _ -> Nothing
 
-getTensorDimensions :: Value Builtin -> Maybe TensorDimensions
+getTensorDimensions :: WHNFValue Builtin -> Maybe TensorDimensions
 getTensorDimensions = \case
   VRatType -> Just []
   VVectorType tElem dim -> do
@@ -148,9 +148,9 @@ type MonadQueryStructure m =
 -- finite quantifiers
 evalWhilePreservingFiniteQuantifiers ::
   (MonadQueryStructure m) =>
-  Env Builtin ->
+  WHNFEnv Builtin ->
   Expr Ix Builtin ->
-  m (Value Builtin)
+  m (WHNFValue Builtin)
 evalWhilePreservingFiniteQuantifiers env body = do
   let evalOptions = NBEOptions {evalFiniteQuantifiers = False}
   eval evalOptions env body
@@ -159,12 +159,12 @@ compileBoolExpr ::
   forall m.
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   m QueryStructureResult
 compileBoolExpr = go False
   where
     -- \| Traverses an arbitrary expression of type `Bool`.
-    go :: Bool -> CumulativeCtx -> Value Builtin -> m QueryStructureResult
+    go :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
     go alreadyLiftedIfs quantifiedVariables expr =
       case expr of
         ----------------
@@ -214,11 +214,11 @@ compileBoolExpr = go False
     compileEquality ::
       CumulativeCtx ->
       Bool ->
-      VArg Builtin ->
+      WHNFArg Builtin ->
       EqualityOp ->
-      VArg Builtin ->
+      WHNFArg Builtin ->
       TensorDimensions ->
-      (VArg Builtin -> VArg Builtin -> Value Builtin) ->
+      (WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin) ->
       m QueryStructureResult
     compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
       let ctx = cumulativeVarsToCtx quantifiedVariables
@@ -237,7 +237,7 @@ compileBoolExpr = go False
           Neq ->
             return $ Left $ SeriousError UnsupportedInequalityOp
 
-    compileOrder :: Bool -> CumulativeCtx -> Value Builtin -> m QueryStructureResult
+    compileOrder :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
     compileOrder alreadyLiftedIfs quantifiedVariables expr = do
       -- Even though we're sticking the result in a `NonVectorEqualityAssertion` we still need
       -- to lift and eliminate `if`s as they may be inside network applications.
@@ -248,7 +248,7 @@ compileBoolExpr = go False
           let assertion = NonVectorEqualityAssertion expr
           return $ Right ([], NonTrivial $ Query assertion, [])
 
-    elimIfs :: Bool -> CumulativeCtx -> Value Builtin -> m (Maybe QueryStructureResult)
+    elimIfs :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m (Maybe QueryStructureResult)
     elimIfs alreadyLiftedIfs quantifiedVariables expr
       | alreadyLiftedIfs = return Nothing
       | otherwise = do
@@ -271,8 +271,8 @@ compileBoolExpr = go False
       (forall a. MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a)) ->
       Bool ->
       CumulativeCtx ->
-      Value Builtin ->
-      Value Builtin ->
+      WHNFValue Builtin ->
+      WHNFValue Builtin ->
       m QueryStructureResult
     compileOp2 op processingLiftedIfs quantifiedVariables e1 e2 = do
       let lhsVariables = quantifiedVariables
@@ -291,7 +291,7 @@ compileBoolExpr = go False
 --------------------------------------------------------------------------------
 -- Not elimination
 
-eliminateNot :: Value Builtin -> Maybe (Value Builtin)
+eliminateNot :: WHNFValue Builtin -> Maybe (WHNFValue Builtin)
 eliminateNot arg = case arg of
   -- Base cases
   VBoolLiteral b -> Just $ VBoolLiteral (not b)
@@ -340,9 +340,9 @@ compileFiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
   Quantifier ->
-  Spine Builtin ->
-  VBinder Builtin ->
-  Env Builtin ->
+  WHNFSpine Builtin ->
+  WHNFBinder Builtin ->
+  WHNFEnv Builtin ->
   Expr Ix Builtin ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
@@ -366,7 +366,7 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
 -- conjunctions.
 canLeaveFiniteQuantifierUnexpanded ::
   (MonadQueryStructure m) =>
-  Env Builtin ->
+  WHNFEnv Builtin ->
   Expr Ix Builtin ->
   m Bool
 canLeaveFiniteQuantifierUnexpanded env expr = do
@@ -390,8 +390,8 @@ canLeaveFiniteQuantifierUnexpanded env expr = do
 compileInfiniteQuantifier ::
   (MonadQueryStructure m) =>
   CumulativeCtx ->
-  VBinder Builtin ->
-  Env Builtin ->
+  WHNFBinder Builtin ->
+  WHNFEnv Builtin ->
   Expr Ix Builtin ->
   m QueryStructureResult
 compileInfiniteQuantifier quantifiedVariables binder env body = do
@@ -453,17 +453,17 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
                     let allQuantifiedVariables = newQuantifiedVariables <> subQuantifiedVariables
                     return $ Right (allQuantifiedVariables, substructure, normalisationStep : varReconstruction)
 
-calculateVariableDimensions :: VBinder Builtin -> Either PropertyError TensorDimensions
+calculateVariableDimensions :: WHNFBinder Builtin -> Either PropertyError TensorDimensions
 calculateVariableDimensions binder = go (typeOf binder)
   where
-    go :: VType Builtin -> Either PropertyError TensorDimensions
+    go :: WHNFType Builtin -> Either PropertyError TensorDimensions
     go = \case
       VVectorType tElem (VNatLiteral dim) -> do
         dims <- go tElem
         return $ dim : dims
       t -> goBase t
 
-    goBase :: VType Builtin -> Either PropertyError TensorDimensions
+    goBase :: WHNFType Builtin -> Either PropertyError TensorDimensions
     goBase = \case
       VRatType {} -> return []
       baseType -> Left $ SeriousError $ UnsupportedQuantifierType binder baseType
@@ -495,13 +495,13 @@ getUsedFunctions freeCtx boundCtx expr = case expr of
 getUsedNormFunctions ::
   GenericFreeCtx UsedFunctionsInfo ->
   GenericBoundCtx UsedFunctionsInfo ->
-  Value Builtin ->
+  WHNFValue Builtin ->
   UsedFunctionsInfo
 getUsedNormFunctions freeCtx boundCtx expr = case expr of
   VPi {} -> mempty
   VUniverse {} -> mempty
   VMeta {} -> mempty
-  VLam _ env body -> do
+  VLam _ (WHNFBody env body) -> do
     let envInfo = getUsedFunctionsEnv freeCtx boundCtx env
     let bodyInfo = getUsedFunctions freeCtx (mempty : boundCtx) body
     envInfo <> bodyInfo
@@ -542,7 +542,7 @@ getUsedVarsBoundVar boundCtx ix =
 getUsedFunctionsSpine ::
   GenericFreeCtx UsedFunctionsInfo ->
   GenericBoundCtx UsedFunctionsInfo ->
-  Spine Builtin ->
+  WHNFSpine Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsSpine freeCtx boundCtx =
   foldMap (getUsedNormFunctions freeCtx boundCtx . argExpr)
@@ -550,14 +550,14 @@ getUsedFunctionsSpine freeCtx boundCtx =
 getUsedFunctionsEnv ::
   GenericFreeCtx UsedFunctionsInfo ->
   GenericBoundCtx UsedFunctionsInfo ->
-  Env Builtin ->
+  WHNFEnv Builtin ->
   UsedFunctionsInfo
 getUsedFunctionsEnv freeCtx boundCtx =
   foldMap (getUsedNormFunctions freeCtx boundCtx . binderValue)
 
 getUsedFunctionsCtx ::
   GenericFreeCtx UsedFunctionsInfo ->
-  Env Builtin ->
+  WHNFEnv Builtin ->
   GenericBoundCtx UsedFunctionsInfo
 getUsedFunctionsCtx freeCtx =
   foldr (\u v -> getUsedNormFunctions freeCtx v (binderValue u) : v) mempty

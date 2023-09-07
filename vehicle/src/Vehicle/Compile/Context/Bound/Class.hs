@@ -65,7 +65,7 @@ getBoundVarByLv _ compilerPass lv =
 unnormalise ::
   forall builtin m.
   (MonadBoundContext builtin m) =>
-  Value builtin ->
+  WHNFValue builtin ->
   m (Expr Ix builtin)
 unnormalise e = do
   boundCtx <- getBoundCtx (Proxy @builtin)

@@ -45,7 +45,7 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> Value Builtin -> GluedDecl Builtin
+mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> GluedDecl Builtin
 mkFunctionDefFromResource p ident value = do
   -- This is a hack. The type is only every used for its arity, so this is okay.
   let unitType = BuiltinType Unit
@@ -54,7 +54,7 @@ mkFunctionDefFromResource p ident value = do
   let gluedExpr = Glued (Builtin mempty (BuiltinConstructor LUnit)) value
   DefFunction p ident mempty gluedType gluedExpr
 
-addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> Value Builtin -> m ()
+addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> WHNFValue Builtin -> m ()
 addFunctionDefFromResource p ident value = do
   let decl = mkFunctionDefFromResource p ident value
   tell (Map.singleton ident decl)
