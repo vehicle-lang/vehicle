@@ -28,7 +28,7 @@ data StdLibFunction
   | StdVectorToList
   | StdForeach
   | StdTensor
-  deriving (Eq, Enum, Bounded)
+  deriving (Eq, Ord, Enum, Bounded)
 
 instance Show StdLibFunction where
   show = \case

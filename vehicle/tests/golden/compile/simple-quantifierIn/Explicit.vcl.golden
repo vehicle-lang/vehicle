@@ -7,11 +7,9 @@ bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
 bigOr : Vector Bool -> Bool;
 bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
 
-@noinline;
 equalsVector : Vector Rat -> Vector Rat -> Bool;
 equalsVector xs ys = bigAnd__lam_A__Vector_A (zipWith (\ x -> \ y -> x == y) xs ys)
 
-@noinline;
 notEqualsVector : Vector Rat -> Vector Rat -> Bool;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
 

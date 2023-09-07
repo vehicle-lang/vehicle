@@ -1,11 +1,9 @@
 bigAnd : Vector Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> max x y) -100000.0 _x0
 
-@noinline;
 subVector--Rat--Rat--Rat : Vector Rat -> Vector Rat -> Vector Rat;
 subVector--Rat--Rat--Rat _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 
-@noinline;
 subVector--Vector-Rat--Vector-Rat--Vector-Rat : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 subVector--Vector-Rat--Vector-Rat--Vector-Rat _x0 _x1 = zipWith (\ x -> \ y -> subVector--Rat--Rat--Rat x y) _x0 _x1
 

@@ -31,19 +31,15 @@ vectorToVector xs = xs
 foreachVector : forallT n . (Index n -> A) -> Vector A n
 foreachVector n f = map f (indices n)
 
-@noinline
 addVector : forallT {@0 n} . {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n
 addVector = zipWith (\x y -> x + y)
 
-@noinline
 subVector : forallT {@0 n} . {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n
 subVector = zipWith (\x y -> x - y)
 
-@noinline
 equalsVector : forallT {@0 n} . {{HasEq A B}} -> Vector A n -> Vector B n -> Bool
 equalsVector xs ys = bigAnd (zipWith (\x y -> x == y) xs ys)
 
-@noinline
 notEqualsVector : forallT {@0 n} . {{HasNotEq A B}} -> Vector A n -> Vector B n -> Bool
 notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 
