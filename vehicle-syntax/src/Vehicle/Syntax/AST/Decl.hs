@@ -129,7 +129,6 @@ isExternalResourceSort = \case
 
 data Annotation
   = AnnProperty
-  | AnnNoInline
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
@@ -142,6 +141,3 @@ instance Pretty Annotation where
 
 isProperty :: [Annotation] -> Bool
 isProperty anns = AnnProperty `elem` anns
-
-isInlinable :: [Annotation] -> Bool
-isInlinable anns = AnnNoInline `notElem` anns

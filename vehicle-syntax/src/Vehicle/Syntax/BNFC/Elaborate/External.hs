@@ -194,7 +194,6 @@ parseAnnotation defName (name, opts) = case name of
   B.Parameter {} -> Left <$> elabParameterOptions opts
   B.Postulate {} -> do checkNoAnnotationOptions name opts; return $ Left V.PostulateDef
   B.Property {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnProperty
-  B.NoInline {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnNoInline
 
 elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.DefAbstractSort
 elabParameterOptions = \case

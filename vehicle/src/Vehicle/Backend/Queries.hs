@@ -126,7 +126,7 @@ compilePropertyDecl ::
   m (Name, MultiProperty ())
 compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-    normalisedExpr <- eval defaultNBEOptions mempty expr
+    normalisedExpr <- eval (mkNBEOptions vectorStructureOperations) mempty expr
 
     let computeProperty = compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
 

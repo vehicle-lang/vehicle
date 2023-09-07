@@ -3,7 +3,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Normalise.NBE
-  ( NBEOptions (..),
+  ( NBEOptions,
+    mkNBEOptions,
     defaultNBEOptions,
     eval,
     evalApp,
@@ -17,8 +18,8 @@ where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
-import Data.Maybe (isNothing)
-import Vehicle.Compile.Arity
+import Data.Set (Set)
+import Data.Set qualified as Set (map, member)
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getDecl)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
@@ -36,14 +37,17 @@ import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 -- Options during NBE
 
 newtype NBEOptions = NBEOptions
-  { evalFiniteQuantifiers :: Bool
+  { noInlineLibraryFunctions :: Set Identifier
   }
 
 defaultNBEOptions :: NBEOptions
 defaultNBEOptions =
   NBEOptions
-    { evalFiniteQuantifiers = True
+    { noInlineLibraryFunctions = mempty
     }
+
+mkNBEOptions :: Set StdLibFunction -> NBEOptions
+mkNBEOptions fns = NBEOptions (Set.map identifierOf fns)
 
 -----------------------------------------------------------------------------
 -- Evaluation
@@ -110,7 +114,7 @@ evalApp opts fun args@(a : as) = do
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
-    VFreeVar v spine -> evalFreeVarApp opts v (spine <> args)
+    VFreeVar v spine -> return $ VFreeVar v (spine <> args)
     VLam binder (WHNFBody env body)
       | not (visibilityMatches binder a) -> do
           compilerDeveloperError $
@@ -142,51 +146,19 @@ evalApp opts fun args@(a : as) = do
   showAppExit result
   return result
 
--- | This evaluates a free variable applied to an application.
-evalFreeVarApp ::
-  forall builtin m.
-  (MonadNorm builtin m) =>
-  NBEOptions ->
-  Identifier ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
-evalFreeVarApp opts ident spine = do
-  decl <- getDecl (Proxy @builtin) currentPass ident
-  case bodyOf decl of
-    -- If free variable was annotated with a `@noinline` annotation but all
-    -- it's explicit arguments are actually values then we should actually
-    -- substitute it through and evaluate.
-    Just expr | not (isInlinable (annotationsOf decl)) && length spine == arityFromVType (normalised (typeOf decl)) -> do
-      let allExplicitArgsAreValues = all (isFullyReduced . argExpr) $ filter isExplicit spine
-      if allExplicitArgsAreValues
-        then evalApp opts (normalised expr) spine
-        else return $ VFreeVar ident spine
-    _ -> return $ VFreeVar ident spine
-
-isFullyReduced :: (HasStandardData builtin) => WHNFValue builtin -> Bool
-isFullyReduced = \case
-  VUniverse {} -> True
-  VLam {} -> True
-  VPi {} -> True
-  VMeta {} -> False
-  VFreeVar {} -> False
-  VBoundVar {} -> False
-  VBuiltin b _ -> isNothing $ getBuiltinFunction b
-
 lookupIdentValueInEnv ::
   forall builtin m.
   (MonadNorm builtin m) =>
   NBEOptions ->
   Identifier ->
   m (WHNFValue builtin)
-lookupIdentValueInEnv opts ident = do
-  let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
-  if isFiniteQuantifier && not (evalFiniteQuantifiers opts)
-    then return $ VFreeVar ident []
-    else do
+lookupIdentValueInEnv NBEOptions {..} ident
+  | ident `Set.member` noInlineLibraryFunctions = do
+      return $ VFreeVar ident []
+  | otherwise = do
       decl <- getDecl (Proxy @builtin) currentPass ident
       case bodyOf decl of
-        Just expr | isInlinable (annotationsOf decl) -> return $ normalised expr
+        Just expr -> return $ normalised expr
         _ -> return $ VFreeVar ident []
 
 lookupIxValueInEnv ::

@@ -1,11 +1,9 @@
 bigAnd : Vector Bool -> Bool;
 bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
 
-@noinline;
 subVector__Rat__Rat__Rat : Vector Rat -> Vector Rat -> Vector Rat;
 subVector__Rat__Rat__Rat _x0 _x1 = zipWith (\ x -> \ y -> x - y) _x0 _x1
 
-@noinline;
 subVector__Vector_Rat__Vector_Rat__Vector_Rat : Vector (Vector Rat) -> Vector (Vector Rat) -> Vector (Vector Rat);
 subVector__Vector_Rat__Vector_Rat__Vector_Rat _x0 _x1 = zipWith (\ x -> \ y -> subVector__Rat__Rat__Rat x y) _x0 _x1
 

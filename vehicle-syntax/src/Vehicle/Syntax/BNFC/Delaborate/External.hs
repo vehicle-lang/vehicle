@@ -99,7 +99,6 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.BasicBinder where
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
-    V.AnnNoInline -> return $ delabAnn noInlineAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr

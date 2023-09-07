@@ -141,16 +141,6 @@ instance MeaningfulError CompileError where
                   problem = "missing definition for property" <+> quotePretty name <> ".",
                   fix = Just $ "add a definition for" <+> quotePretty name <+> "."
                 }
-          AnnNoInline ->
-            UError $
-              UserError
-                { provenance = p,
-                  problem =
-                    "the annotation"
-                      <+> pretty AnnNoInline
-                      <> "must be attached to a declaration with a definition.",
-                  fix = Just $ "add a definition for" <+> quotePretty name <+> "."
-                }
       NonAbstractDefWithAbstractAnnotation p name resource ->
         UError $
           UserError

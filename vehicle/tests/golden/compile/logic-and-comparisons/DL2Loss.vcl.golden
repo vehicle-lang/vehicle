@@ -1,7 +1,6 @@
 bigAnd : Vector Rat -> Rat;
 bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
 
-@noinline;
 equalsVector--Rat--Rat : Vector Rat -> Vector Rat -> Rat;
 equalsVector--Rat--Rat xs ys = bigAnd (zipWith (\ x -> \ y -> max 0.0 (x - y) + max 0.0 (y - x)) xs ys)
 

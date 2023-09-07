@@ -4,11 +4,9 @@ bigAnd _x0 = fold (\ x -> \ y -> 1.0 - min x y) 0.0 _x0
 bigOr : Vector Rat -> Rat;
 bigOr _x0 = fold (\ x -> \ y -> 1.0 - max x y) 1.0 _x0
 
-@noinline;
 equalsVector : Vector Rat -> Vector Rat -> Rat;
 equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> 1.0 - (if x == y then 1.0 else 0.0)) xs ys)
 
-@noinline;
 notEqualsVector : Vector Rat -> Vector Rat -> Rat;
 notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> if x == y then 1.0 else 0.0) xs ys)
 

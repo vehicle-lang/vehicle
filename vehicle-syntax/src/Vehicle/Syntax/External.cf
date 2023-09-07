@@ -15,7 +15,6 @@ position token TokDataset   {"@dataset"};
 position token TokParameter {"@parameter"};
 position token TokProperty  {"@property"};
 position token TokPostulate {"@postulate"};
-position token TokNoInline  {"@noinline"};
 
 position token TokArrow     {"->"};
 position token TokForallT   {"forallT"};
@@ -222,7 +221,6 @@ Dataset.   DeclAnnName ::= TokDataset;
 Parameter. DeclAnnName ::= TokParameter;
 Property.  DeclAnnName ::= TokProperty;
 Postulate. DeclAnnName ::= TokPostulate;
-NoInline.  DeclAnnName ::= TokNoInline;
 
 -- * Annotation options
 

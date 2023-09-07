@@ -7,6 +7,7 @@ module Vehicle.Backend.Queries.QuerySetStructure
     UsedFunctionsCtx,
     UsedFunctionsInfo,
     getUsedFunctions,
+    vectorStructureOperations,
   )
 where
 
@@ -17,7 +18,7 @@ import Data.HashSet qualified as HashSet (fromList, intersection, null, singleto
 import Data.Map qualified as Map (keysSet, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (intersection, map, null, singleton)
+import Data.Set qualified as Set (fromList, intersection, map, null, singleton)
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Backend.Queries.Variable
@@ -85,16 +86,16 @@ cumulativeVarsToCtx = variableCtxToBoundCtx
 -- we can't normalise the `map` and hence the `fold` until we normalise the quantified
 -- variable `xs` to two separate quantifiers.
 data TemporaryPropertyError
-  = CannotEliminateIfs (WHNFValue Builtin)
-  | CannotEliminateNot (WHNFValue Builtin)
-  | NonBooleanQueryStructure (WHNFValue Builtin)
+  = CannotEliminateIfs (BoundCtx Builtin) (WHNFValue Builtin)
+  | CannotEliminateNot (BoundCtx Builtin) (WHNFValue Builtin)
+  | NonBooleanQueryStructure (BoundCtx Builtin) (WHNFValue Builtin)
   deriving (Show)
 
 instance Pretty TemporaryPropertyError where
   pretty = \case
-    CannotEliminateIfs e -> "CannotEliminateIfs[" <+> prettyVerbose e <+> "]"
-    CannotEliminateNot e -> "CannotEliminateNot[" <+> prettyVerbose e <+> "]"
-    NonBooleanQueryStructure e -> "NonBooleanQueryStructure[" <+> prettyVerbose e <+> "]"
+    CannotEliminateIfs ctx e -> "CannotEliminateIfs[" <+> prettyFriendly (WithContext e ctx) <+> "]"
+    CannotEliminateNot ctx e -> "CannotEliminateNot[" <+> prettyFriendly (WithContext e ctx) <+> "]"
+    NonBooleanQueryStructure ctx e -> "NonBooleanQueryStructure[" <+> prettyFriendly (WithContext e ctx) <+> "]"
 
 -- | Serious errors that are fundemental problems with the specification
 data SeriousPropertyError
@@ -144,16 +145,28 @@ type MonadQueryStructure m =
     MonadFreeContext Builtin m
   )
 
--- | For efficiency reasons, we sometimes want to avoid expanding out
--- finite quantifiers
-evalWhilePreservingFiniteQuantifiers ::
-  (MonadQueryStructure m) =>
-  WHNFEnv Builtin ->
-  Expr Ix Builtin ->
-  m (WHNFValue Builtin)
-evalWhilePreservingFiniteQuantifiers env body = do
-  let evalOptions = NBEOptions {evalFiniteQuantifiers = False}
-  eval evalOptions env body
+-- | The set of vector operations that we sometimes want to avoid normalising
+-- out in the property for efficiency reasons.
+vectorStructureOperations :: Set StdLibFunction
+vectorStructureOperations =
+  Set.fromList
+    [ StdAddVector,
+      StdSubVector,
+      StdEqualsVector,
+      StdNotEqualsVector
+    ]
+
+-- | The set of finite quantifier operations that we sometimes want to avoid normalising
+-- out in the property for efficiency reasons.
+finiteQuantifierFunctions :: Set StdLibFunction
+finiteQuantifierFunctions =
+  Set.fromList
+    [ StdForallIndex,
+      StdExistsIndex
+    ]
+
+queryStructureNBEOptions :: NBEOptions
+queryStructureNBEOptions = mkNBEOptions (vectorStructureOperations <> finiteQuantifierFunctions)
 
 compileBoolExpr ::
   forall m.
@@ -193,8 +206,10 @@ compileBoolExpr = go False
           -- As the expression is of type `Not` we can try lowering the `not` down
           -- through the expression.
           case eliminateNot (argExpr e) of
-            Nothing -> return $ Left $ TemporaryError $ CannotEliminateNot expr
             Just result -> go alreadyLiftedIfs quantifiedVariables result
+            Nothing -> do
+              let err = CannotEliminateNot (cumulativeVarsToCtx quantifiedVariables) expr
+              return $ Left $ TemporaryError err
         VBuiltinFunction If [_, c, x, y] -> do
           -- As the expression is of type `Bool` we can immediately unfold the `if`.
           let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
@@ -209,7 +224,9 @@ compileBoolExpr = go False
         ------------
         -- Errors --
         ------------
-        _ -> return $ Left $ TemporaryError $ NonBooleanQueryStructure expr
+        _ -> do
+          let err = NonBooleanQueryStructure (cumulativeVarsToCtx quantifiedVariables) expr
+          return $ Left $ TemporaryError err
 
     compileEquality ::
       CumulativeCtx ->
@@ -257,7 +274,9 @@ compileBoolExpr = go False
           ifLessResult <- eliminateIfs expr
           result <- case ifLessResult of
             Nothing -> return Nothing
-            Just Nothing -> return $ Just $ Left $ TemporaryError $ CannotEliminateIfs expr
+            Just Nothing -> do
+              let err = CannotEliminateIfs ctx expr
+              return $ Just $ Left $ TemporaryError err
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
               let env = variableCtxToEnv quantifiedVariables
@@ -346,19 +365,18 @@ compileFiniteQuantifier ::
   Expr Ix Builtin ->
   m QueryStructureResult
 compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
-  let foldedResult = do
-        let foldedExpr = VFiniteQuantifier q quantSpine binder env body
-        let unnormalisedAssertion = NonVectorEqualityAssertion foldedExpr
-        logDebug MidDetail $ "Keeping folded:" <+> pretty q <+> prettyVerbose binder
-        return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
-
   canLeaveUnexpanded <- canLeaveFiniteQuantifierUnexpanded env body
   if canLeaveUnexpanded
-    then foldedResult
+    then do
+      logDebug MidDetail $ "Keeping folded finite quantifier:" <+> pretty q <+> prettyVerbose binder
+      let foldedExpr = VFiniteQuantifier q quantSpine binder env body
+      let unnormalisedAssertion = NonVectorEqualityAssertion foldedExpr
+      return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
     else do
+      logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
       quantImplementation <- lookupIdentValueInEnv defaultNBEOptions (fromFiniteQuantifier q)
       let quantifierExpr = VFiniteQuantifierSpine quantSpine binder env body
-      normResult <- evalApp defaultNBEOptions quantImplementation quantifierExpr
+      normResult <- evalApp queryStructureNBEOptions quantImplementation quantifierExpr
       compileBoolExpr quantifiedVariables normResult
 
 -- | This is a sound, inexpensive, but incomplete, check for whether
@@ -412,7 +430,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
 
             -- First of all optimistically try not to normalise the quantified variable.
             let optimisticEnv = extendEnv binder (VBoundVar currentLevel []) env
-            optimisiticBody <- evalWhilePreservingFiniteQuantifiers optimisticEnv body
+            optimisiticBody <- eval queryStructureNBEOptions optimisticEnv body
 
             let unreducedPassDoc = "Trying without reducing dimensions of" <+> variableDoc
             optimisticResult <-
@@ -439,7 +457,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
 
                 let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
 
-                normBody <- evalWhilePreservingFiniteQuantifiers newEnv body
+                normBody <- eval queryStructureNBEOptions newEnv body
 
                 let reducedPassDoc = "Compiling while reducing dimensions of" <+> quotePretty variableName
                 normalisedResult <-
