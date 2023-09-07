@@ -28,6 +28,10 @@ import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 
+-- NOTE: there is no evaluate to NF in this file. To do it
+-- efficiently you should just evaluate to WHNF and then recursively
+-- evaluate as required.
+
 -----------------------------------------------------------------------------
 -- Options during NBE
 
@@ -44,14 +48,16 @@ defaultNBEOptions =
 -----------------------------------------------------------------------------
 -- Evaluation
 
-type MonadNorm builtin m = MonadFreeContext builtin m
+type MonadNorm builtin m =
+  ( MonadFreeContext builtin m
+  )
 
 eval ::
   (MonadNorm builtin m) =>
   NBEOptions ->
-  Env builtin ->
+  WHNFEnv builtin ->
   Expr Ix builtin ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 eval opts env expr = do
   showEntry env expr
   result <- case expr of
@@ -61,7 +67,7 @@ eval opts env expr = do
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
       binder' <- evalBinder opts env binder
-      return $ VLam binder' env body
+      return $ VLam binder' (WHNFBody env body)
     Pi _ binder body -> do
       binder' <- evalBinder opts env binder
       let newEnv = extendEnvOverBinder binder' env
@@ -87,17 +93,17 @@ eval opts env expr = do
 evalBinder ::
   (MonadNorm builtin m) =>
   NBEOptions ->
-  Env builtin ->
+  WHNFEnv builtin ->
   Binder Ix builtin ->
-  m (VBinder builtin)
+  m (WHNFBinder builtin)
 evalBinder opts env = traverse (eval opts env)
 
 evalApp ::
   (MonadNorm builtin m) =>
   NBEOptions ->
-  Value builtin ->
-  Spine builtin ->
-  m (Value builtin)
+  WHNFValue builtin ->
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
 evalApp _opts fun [] = return fun
 evalApp opts fun args@(a : as) = do
   showApp fun args
@@ -105,7 +111,7 @@ evalApp opts fun args@(a : as) = do
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> evalFreeVarApp opts v (spine <> args)
-    VLam binder env body
+    VLam binder (WHNFBody env body)
       | not (visibilityMatches binder a) -> do
           compilerDeveloperError $
             "Visibility mismatch during normalisation:"
@@ -142,8 +148,8 @@ evalFreeVarApp ::
   (MonadNorm builtin m) =>
   NBEOptions ->
   Identifier ->
-  Spine builtin ->
-  m (Value builtin)
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
 evalFreeVarApp opts ident spine = do
   decl <- getDecl (Proxy @builtin) currentPass ident
   case bodyOf decl of
@@ -157,7 +163,7 @@ evalFreeVarApp opts ident spine = do
         else return $ VFreeVar ident spine
     _ -> return $ VFreeVar ident spine
 
-isFullyReduced :: (HasStandardData builtin) => Value builtin -> Bool
+isFullyReduced :: (HasStandardData builtin) => WHNFValue builtin -> Bool
 isFullyReduced = \case
   VUniverse {} -> True
   VLam {} -> True
@@ -172,7 +178,7 @@ lookupIdentValueInEnv ::
   (MonadNorm builtin m) =>
   NBEOptions ->
   Identifier ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 lookupIdentValueInEnv opts ident = do
   let isFiniteQuantifier = ident == identifierOf StdForallIndex || ident == identifierOf StdExistsIndex
   if isFiniteQuantifier && not (evalFiniteQuantifiers opts)
@@ -186,8 +192,8 @@ lookupIdentValueInEnv opts ident = do
 lookupIxValueInEnv ::
   (MonadNorm builtin m) =>
   Ix ->
-  Env builtin ->
-  m (Value builtin)
+  WHNFEnv builtin ->
+  m (WHNFValue builtin)
 lookupIxValueInEnv l env =
   binderValue <$> lookupIxInBoundCtx currentPass l env
 
@@ -197,16 +203,16 @@ lookupIxValueInEnv l env =
 reeval ::
   (MonadNorm builtin m) =>
   NBEOptions ->
-  Env builtin ->
-  Value builtin ->
-  m (Value builtin)
+  WHNFEnv builtin ->
+  WHNFValue builtin ->
+  m (WHNFValue builtin)
 reeval opts env expr = do
   showNormEntry env expr
   result <- case expr of
     VUniverse {} -> return expr
-    VLam binder lamEnv body -> do
+    VLam binder (WHNFBody lamEnv body) -> do
       lamEnv' <- traverse (traverse (reeval opts env)) lamEnv
-      return $ VLam binder lamEnv' body
+      return $ VLam binder (WHNFBody lamEnv' body)
     VPi {} -> return expr
     VMeta m spine -> VMeta m <$> reevalSpine opts env spine
     VFreeVar v spine -> do
@@ -225,16 +231,16 @@ reeval opts env expr = do
 reevalSpine ::
   (MonadNorm builtin m) =>
   NBEOptions ->
-  Env builtin ->
-  Spine builtin ->
-  m (Spine builtin)
+  WHNFEnv builtin ->
+  WHNFSpine builtin ->
+  m (WHNFSpine builtin)
 reevalSpine opts env = traverse (traverse (reeval opts env))
 
 lookupLvValueInEnv ::
   (MonadNorm builtin m) =>
   Lv ->
-  Env builtin ->
-  m (Value builtin)
+  WHNFEnv builtin ->
+  m (WHNFValue builtin)
 lookupLvValueInEnv l env =
   binderValue <$> lookupLvInBoundCtx currentPass l env
 
@@ -244,41 +250,41 @@ lookupLvValueInEnv l env =
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: (MonadNorm builtin m) => Env builtin -> Expr Ix builtin -> m ()
+showEntry :: (MonadNorm builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m ()
 showEntry _env _expr = do
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
   -- incrCallDepth
   return ()
 
-showExit :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
+showExit :: (MonadNorm builtin m) => WHNFEnv builtin -> WHNFValue builtin -> m ()
 showExit _env _result = do
   -- decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
-showNormEntry :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
+showNormEntry :: (MonadNorm builtin m) => WHNFEnv builtin -> WHNFValue builtin -> m ()
 showNormEntry _env _expr = do
   -- logDebug MidDetail $ "reeval-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "reeval-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) -- <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
   -- incrCallDepth
   return ()
 
-showNormExit :: (MonadNorm builtin m) => Env builtin -> Value builtin -> m ()
+showNormExit :: (MonadNorm builtin m) => WHNFEnv builtin -> WHNFValue builtin -> m ()
 showNormExit _env _result = do
   -- decrCallDepth
   -- logDebug MidDetail $ "reeval-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "reeval-exit" <+> prettyFriendly (WithContext result (fmap fst env))
   return ()
 
-showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
+showApp :: (MonadNorm builtin m) => WHNFValue builtin -> WHNFSpine builtin -> m ()
 showApp _fun _spine = do
   -- logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
   -- incrCallDepth
   return ()
 
-showAppExit :: (MonadNorm builtin m) => Value builtin -> m ()
+showAppExit :: (MonadNorm builtin m) => WHNFValue builtin -> m ()
 showAppExit _result = do
   -- decrCallDepth
   -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result

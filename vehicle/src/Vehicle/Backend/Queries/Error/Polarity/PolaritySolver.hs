@@ -41,7 +41,7 @@ type PolaritySolver =
   forall m.
   (MonadPolaritySolver m) =>
   InstanceConstraintInfo PolarityBuiltin ->
-  [VType PolarityBuiltin] ->
+  [WHNFType PolarityBuiltin] ->
   Maybe (m (ConstraintProgress PolarityBuiltin))
 
 solve :: PolarityRelation -> PolaritySolver
@@ -235,7 +235,7 @@ handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) 
     solveMeta m (UnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addConstraints newConstraints
 
-getTypeClass :: (MonadCompile m) => Value PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
+getTypeClass :: (MonadCompile m) => WHNFValue PolarityBuiltin -> m (PolarityRelation, WHNFSpine PolarityBuiltin)
 getTypeClass = \case
   (VBuiltin (PolarityRelation tc) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

@@ -25,8 +25,8 @@ forceHead ::
   (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   ConstraintContext builtin ->
-  Value builtin ->
-  m (Value builtin, MetaSet)
+  WHNFValue builtin ->
+  m (WHNFValue builtin, MetaSet)
 forceHead subst ctx expr = do
   (maybeForcedExpr, blockingMetas) <- forceExpr subst expr
   forcedExpr <- case maybeForcedExpr of
@@ -43,17 +43,17 @@ forceExpr ::
   forall builtin m.
   (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
-  Value builtin ->
-  m (Maybe (Value builtin), MetaSet)
+  WHNFValue builtin ->
+  m (Maybe (WHNFValue builtin), MetaSet)
 forceExpr subst = go
   where
-    go :: Value builtin -> m (Maybe (Value builtin), MetaSet)
+    go :: WHNFValue builtin -> m (Maybe (WHNFValue builtin), MetaSet)
     go = \case
       VMeta m spine -> goMeta m spine
       VBuiltin b spine -> forceBuiltin subst b spine
       _ -> return (Nothing, mempty)
 
-    goMeta :: MetaID -> Spine builtin -> m (Maybe (Value builtin), MetaSet)
+    goMeta :: MetaID -> WHNFSpine builtin -> m (Maybe (WHNFValue builtin), MetaSet)
     goMeta m spine = do
       case MetaMap.lookup m subst of
         Just solution -> do
@@ -66,8 +66,8 @@ forceExpr subst = go
 forceArg ::
   (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
-  VArg builtin ->
-  m (VArg builtin, (Bool, MetaSet))
+  WHNFArg builtin ->
+  m (WHNFArg builtin, (Bool, MetaSet))
 forceArg subst arg = do
   (maybeResult, blockingMetas) <- unpairArg <$> traverse (forceExpr subst) arg
   let result = fmap (fromMaybe (argExpr arg)) maybeResult
@@ -78,8 +78,8 @@ forceBuiltin ::
   (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
   builtin ->
-  Spine builtin ->
-  m (Maybe (Value builtin), MetaSet)
+  WHNFSpine builtin ->
+  m (Maybe (WHNFValue builtin), MetaSet)
 forceBuiltin subst b spine = case getBuiltinFunction b of
   Nothing -> return (Nothing, mempty)
   Just {} -> do

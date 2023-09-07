@@ -5,7 +5,7 @@ import Vehicle.Data.NormalisedExpr
 
 type Arity = Int
 
-arityFromVType :: VType builtin -> Arity
+arityFromVType :: Value strategy builtin -> Arity
 arityFromVType = \case
   VPi _ r -> 1 + arityFromVType r
   _ -> 0

@@ -6,7 +6,7 @@ where
 
 import Control.Monad.Reader (MonadReader (..), Reader, runReader)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.NormalisedExpr (Spine, VBinder, Value (..))
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.RelevantExpr (RelBinder, RelExpr, RelProg)
 import Vehicle.Data.RelevantExpr qualified as R
 
@@ -73,7 +73,7 @@ instance
   where
   descopeNaive = fmap descopeNaive
 
-instance DescopeNaive (Value builtin) (Expr Name builtin) where
+instance DescopeNaive (WHNFValue builtin) (Expr Name builtin) where
   descopeNaive = descopeNormExpr descopeDBLevelVarNaive
 
 --------------------------------------------------------------------------------
@@ -200,10 +200,10 @@ descopeRelBinders f = \case
 -- Values
 
 -- | This function is not meant to do anything sensible and is merely
--- used for printing `Value`s in a readable form.
+-- used for printing `WHNF`s in a readable form.
 descopeNormExpr ::
   (Provenance -> Lv -> Name) ->
-  Value builtin ->
+  WHNFValue builtin ->
   Expr Name builtin
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
@@ -218,7 +218,7 @@ descopeNormExpr f e = case e of
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
     Pi p binder' body'
-  VLam binder _env body -> do
+  VLam binder (WHNFBody _env body) -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNaive body
     -- let env' = fmap (descopeNormExpr f) env
@@ -230,13 +230,13 @@ descopeNormExpr f e = case e of
 
 descopeSpine ::
   (Provenance -> Lv -> Name) ->
-  Spine builtin ->
+  WHNFSpine builtin ->
   [Arg Name builtin]
 descopeSpine f = fmap (fmap (descopeNormExpr f))
 
 descopeNormBinder ::
   (Provenance -> Lv -> Name) ->
-  VBinder builtin ->
+  WHNFBinder builtin ->
   Binder Name builtin
 descopeNormBinder f = fmap (descopeNormExpr f)
 
@@ -269,13 +269,3 @@ indexOutOfBounds p index ctxSize =
       <+> "greater than current context size"
       <+> pretty ctxSize
       <+> parens (pretty p)
-
-{-
--- | Use of unnamed bound variable error using an arbitrary index.
-usingUnnamedBoundVariable :: MonadDescope m => Provenance -> Ix -> m a
-usingUnnamedBoundVariable p index =
-  developerError $
-    "During descoping found use of unnamed bound variable"
-      <+> pretty index
-      <+> parens (pretty p)
--}

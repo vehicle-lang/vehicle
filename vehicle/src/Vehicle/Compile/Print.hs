@@ -132,9 +132,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (Arg Ix builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
   StrategyFor ('Unnamed tags) (Binder Ix builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
   -- To print a normalised expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Value builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (VArg builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
-  StrategyFor ('Unnamed tags) (VBinder builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
+  StrategyFor ('Unnamed tags) (WHNFValue builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
+  StrategyFor ('Unnamed tags) (WHNFArg builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
+  StrategyFor ('Unnamed tags) (WHNFBinder builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
   -- To standardise builtins
   StrategyFor ('StandardiseBuiltin tags) (Prog Name builtin) = 'ConvertBuiltins (StrategyFor tags (Prog Name Builtin))
   StrategyFor ('StandardiseBuiltin tags) (Decl Name builtin) = 'ConvertBuiltins (StrategyFor tags (Decl Name Builtin))
@@ -156,21 +156,21 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
   StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
-  StrategyFor ('Named tags) (Contextualised (Value builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
+  StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
   -- To convert an assertion simply defer to normalised expressions
-  StrategyFor tags UnreducedAssertion = StrategyFor tags (Value Builtin)
-  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (Value Builtin) (BoundCtx builtin))
+  StrategyFor tags UnreducedAssertion = StrategyFor tags (WHNFValue Builtin)
+  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (WHNFValue Builtin) (BoundCtx builtin))
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value Builtin) (BoundCtx Builtin)))
-  StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
-  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
-  StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (Value Builtin))
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
+  StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
+  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
+  StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
   StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
   -- Simplification
   StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
@@ -320,13 +320,13 @@ instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively r
 instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (Value builtin) where
+instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFValue builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (VArg builtin) where
+instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFArg builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (VBinder builtin) where
+instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFBinder builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
@@ -434,23 +434,23 @@ instance
 
 instance
   (PrettyUsing rest (Contextualised (Expr Ix builtin) (BoundCtx builtin))) =>
-  PrettyUsing ('Denormalise rest) (Contextualised (Value builtin) (BoundCtx builtin))
+  PrettyUsing ('Denormalise rest) (Contextualised (WHNFValue builtin) (BoundCtx builtin))
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(Value builtin) @(Expr Ix builtin) (Lv $ length ctx) e
+    let e' = unnormalise @(WHNFValue builtin) @(Expr Ix builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (Value builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(Value builtin) @(Expr Ix builtin) 0 e)
+instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFValue builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(WHNFValue builtin) @(Expr Ix builtin) 0 e)
 
-instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (VArg builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(VArg builtin) @(Arg Ix builtin) 0 e)
+instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFArg builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(WHNFArg builtin) @(Arg Ix builtin) 0 e)
 
 --------------------------------------------------------------------------------
 -- Instances for unreduced assertions
 
 instance
-  (PrettyUsing rest (Value Builtin)) =>
+  (PrettyUsing rest (WHNFValue Builtin)) =>
   PrettyUsing rest UnreducedAssertion
   where
   prettyUsing = \case
@@ -461,7 +461,7 @@ instance
     NonVectorEqualityAssertion expr -> prettyUsing @rest expr
 
 instance
-  (PrettyUsing rest (Contextualised (Value Builtin) (BoundCtx builtin))) =>
+  (PrettyUsing rest (Contextualised (WHNFValue Builtin) (BoundCtx builtin))) =>
   PrettyUsing rest (Contextualised UnreducedAssertion (BoundCtx builtin))
   where
   prettyUsing (WithContext assertion ctx) = case assertion of
@@ -494,24 +494,24 @@ prettyConstraintContext constraint ctx =
   "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty (originalProvenance ctx)
 
 instance
-  (PrettyUsing rest (Value builtin)) =>
+  (PrettyUsing rest (WHNFValue builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
-    let e1' = prettyUsing @rest (e1 :: Value builtin)
-    let e2' = prettyUsing @rest (e2 :: Value builtin)
+    let e1' = prettyUsing @rest (e1 :: WHNFValue builtin)
+    let e2' = prettyUsing @rest (e2 :: WHNFValue builtin)
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (Value builtin)) =>
+  (PrettyUsing rest (WHNFValue builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
-    let expr' = prettyUsing @rest (expr :: Value builtin)
+    let expr' = prettyUsing @rest (expr :: WHNFValue builtin)
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (Value builtin) (BoundCtx builtin))) =>
+  (PrettyUsing rest (Contextualised (WHNFValue builtin) (BoundCtx builtin))) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
@@ -520,7 +520,7 @@ instance
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (Value builtin) (BoundCtx builtin))) =>
+  (PrettyUsing rest (Contextualised (WHNFValue builtin) (BoundCtx builtin))) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do

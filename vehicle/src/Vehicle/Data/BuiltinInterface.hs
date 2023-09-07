@@ -225,46 +225,46 @@ pattern VectorType p tElem tDim <-
 --------------------------------------------------------------------------------
 -- Type values
 
-pattern VBuiltinType :: (HasStandardTypes builtin) => BuiltinType -> Spine builtin -> VType builtin
+pattern VBuiltinType :: (HasStandardTypes builtin) => BuiltinType -> WHNFSpine builtin -> WHNFType builtin
 pattern VBuiltinType c args <- VBuiltin (getBuiltinType -> Just c) args
   where
     VBuiltinType c args = VBuiltin (mkBuiltinType c) args
 
-pattern VBoolType :: (HasStandardTypes builtin) => VType builtin
+pattern VBoolType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VBoolType <- VBuiltinType Bool []
   where
     VBoolType = VBuiltinType Bool []
 
-pattern VIndexType :: (HasStandardTypes builtin) => VType builtin -> VType builtin
+pattern VIndexType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFType builtin
 pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
 
-pattern VNatType :: (HasStandardTypes builtin) => VType builtin
+pattern VNatType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VNatType <- VBuiltinType Nat []
   where
     VNatType = VBuiltinType Nat []
 
-pattern VIntType :: (HasStandardTypes builtin) => VType builtin
+pattern VIntType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VIntType <- VBuiltinType Int []
   where
     VIntType = VBuiltinType Int []
 
-pattern VRatType :: (HasStandardTypes builtin) => VType builtin
+pattern VRatType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VRatType <- VBuiltinType Rat []
   where
     VRatType = VBuiltinType Rat []
 
-pattern VRawListType :: (HasStandardTypes builtin) => VType builtin
+pattern VRawListType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VRawListType <- VBuiltinType List []
   where
     VRawListType = VBuiltinType List []
 
-pattern VListType :: (HasStandardTypes builtin) => VType builtin -> VType builtin
+pattern VListType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFType builtin
 pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]
 
-pattern VVectorType :: (HasStandardTypes builtin) => VType builtin -> Value builtin -> VType builtin
+pattern VVectorType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFValue builtin -> WHNFType builtin
 pattern VVectorType tElem dim <- VBuiltinType Vector [RelevantExplicitArg _ tElem, IrrelevantExplicitArg _ dim]
 
-pattern VTensorType :: (HasStandardTypes builtin) => VType builtin -> Value builtin -> VType builtin
+pattern VTensorType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFValue builtin -> WHNFType builtin
 pattern VTensorType tElem dims <-
   VFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
 
@@ -371,62 +371,62 @@ mkList p elemType = foldr mkCons mkNil
         )
 
 --------------------------------------------------------------------------------
--- Value constructors patterns
+-- WHNFValue constructors patterns
 
-pattern VUnitLiteral :: (HasStandardData builtin) => Value builtin
+pattern VUnitLiteral :: (HasStandardData builtin) => Value strategy builtin
 pattern VUnitLiteral <- VBuiltin (getBuiltinConstructor -> Just LUnit) []
   where
     VUnitLiteral = VBuiltin (mkBuiltinConstructor LUnit) []
 
-pattern VBoolLiteral :: (HasStandardData builtin) => Bool -> Value builtin
+pattern VBoolLiteral :: (HasStandardData builtin) => Bool -> Value strategy builtin
 pattern VBoolLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LBool x)) []
   where
     VBoolLiteral x = VBuiltin (mkBuiltinConstructor (LBool x)) []
 
-pattern VIndexLiteral :: (HasStandardData builtin) => Int -> Value builtin
+pattern VIndexLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
 pattern VIndexLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LIndex x)) []
   where
     VIndexLiteral x = VBuiltin (mkBuiltinConstructor (LIndex x)) []
 
-pattern VNatLiteral :: (HasStandardData builtin) => Int -> Value builtin
+pattern VNatLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
 pattern VNatLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LNat x)) []
   where
     VNatLiteral x = VBuiltin (mkBuiltinConstructor (LNat x)) []
 
-pattern VIntLiteral :: (HasStandardData builtin) => Int -> Value builtin
+pattern VIntLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
 pattern VIntLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LInt x)) []
   where
     VIntLiteral x = VBuiltin (mkBuiltinConstructor (LInt x)) []
 
-pattern VRatLiteral :: (HasStandardData builtin) => Rational -> Value builtin
+pattern VRatLiteral :: (HasStandardData builtin) => Rational -> Value strategy builtin
 pattern VRatLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LRat x)) []
   where
     VRatLiteral x = VBuiltin (mkBuiltinConstructor (LRat x)) []
 
-pattern VNil :: (HasStandardData builtin) => Value builtin
+pattern VNil :: (HasStandardData builtin) => Value strategy builtin
 pattern VNil <- VBuiltin (getBuiltinConstructor -> Just Nil) _
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
-pattern VCons :: (HasStandardData builtin) => [VArg builtin] -> Value builtin
+pattern VCons :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin
 pattern VCons xs <- VBuiltin (getBuiltinConstructor -> Just Cons) (filter isExplicit -> xs)
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
-pattern VVecLiteral :: (HasStandardData builtin) => [VArg builtin] -> Value builtin
+pattern VVecLiteral :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin
 pattern VVecLiteral xs <- VBuiltin (getBuiltinConstructor -> Just (LVec _)) (filter isExplicit -> xs)
 
-mkVList :: (HasStandardData builtin) => [Value builtin] -> Value builtin
+mkVList :: (HasStandardData builtin) => [Value strategy builtin] -> Value strategy builtin
 mkVList = foldr mkCons mkNil
   where
     mkNil = VBuiltin (mkBuiltinConstructor Nil) []
     mkCons y ys = VBuiltin (mkBuiltinConstructor Cons) (Arg mempty Explicit Relevant <$> [y, ys])
 
-mkVLVec :: (HasStandardData builtin) => [Value builtin] -> Value builtin
+mkVLVec :: (HasStandardData builtin) => [Value strategy builtin] -> Value strategy builtin
 mkVLVec xs =
   VBuiltin
     (mkBuiltinConstructor (LVec (length xs)))
     (Arg mempty (Implicit True) Relevant VUnitLiteral : (Arg mempty Explicit Relevant <$> xs))
 
-getNatLiteral :: (HasStandardData builtin) => Value builtin -> Maybe Int
+getNatLiteral :: (HasStandardData builtin) => Value strategy builtin -> Maybe Int
 getNatLiteral = \case
   VNatLiteral d -> Just d
   _ -> Nothing
@@ -450,9 +450,9 @@ ite ::
 ite t c e1 e2 = builtinFunction If @@@ [t] @@ [c, e1, e2]
 
 --------------------------------------------------------------------------------
--- Value Function patterns
+-- WHNFValue Function patterns
 
-pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> Spine builtin -> Value builtin
+pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> WHNFSpine builtin -> WHNFValue builtin
 pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
   where
     VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args

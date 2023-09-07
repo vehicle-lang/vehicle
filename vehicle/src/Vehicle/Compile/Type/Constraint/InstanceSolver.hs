@@ -183,7 +183,7 @@ instantiateCandidateTelescope ::
   BoundCtx builtin ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Value builtin, Expr Ix builtin, [WithContext (Constraint builtin)])
+  m (WHNFValue builtin, Expr Ix builtin, [WithContext (Constraint builtin)])
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
@@ -223,7 +223,7 @@ prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate 
 prettyCandidate (WithContext candidate ctx) =
   prettyExternal (WithContext (candidateExpr candidate) ctx)
 
-goalExpr :: InstanceGoal builtin -> Value builtin
+goalExpr :: InstanceGoal builtin -> WHNFValue builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
 
 replaceProvenance :: Provenance -> Expr Ix builtin -> Expr Ix builtin

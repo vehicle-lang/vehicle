@@ -44,7 +44,7 @@ solveInDomain ::
   forall builtin m.
   (TCM builtin m, HasStandardTypes builtin) =>
   WithContext (InstanceConstraint builtin) ->
-  [VType builtin] ->
+  [WHNFType builtin] ->
   m (Maybe MetaSet)
 solveInDomain c [value, typ] = case typ of
   (getNMeta -> Just {}) -> return $ blockOnMetas [typ]
@@ -65,7 +65,7 @@ solveInDomain c [value, typ] = case typ of
     ctx = contextOf c
 solveInDomain c _ = malformedConstraintError c
 
-blockOnMetas :: [Value builtin] -> Maybe MetaSet
+blockOnMetas :: [WHNFValue builtin] -> Maybe MetaSet
 blockOnMetas args = do
   let metas = mapMaybe getNMeta args
   if null metas

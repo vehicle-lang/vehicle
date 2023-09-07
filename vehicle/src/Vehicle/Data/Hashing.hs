@@ -3,6 +3,7 @@
 module Vehicle.Data.Hashing () where
 
 import Data.Hashable (Hashable (..))
+import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.AST
@@ -11,11 +12,13 @@ import Vehicle.Syntax.AST
 -- but this proved to be unnecessary. It's still in the repo's history if
 -- need be though.
 
-instance (Hashable builtin) => Hashable (VArg builtin)
+instance (Hashable builtin, Generic builtin) => Hashable (Body 'WHNF builtin)
 
-instance (Hashable builtin) => Hashable (VBinder builtin)
+instance (Hashable builtin, Generic builtin) => Hashable (WHNFValue builtin)
 
-instance (Hashable builtin) => Hashable (Value builtin)
+instance (Hashable builtin, Generic builtin) => Hashable (WHNFBinder builtin)
+
+instance (Hashable builtin, Generic builtin) => Hashable (WHNFArg builtin)
 
 instance (Hashable builtin) => Hashable (Arg Ix builtin)
 

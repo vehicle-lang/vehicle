@@ -75,10 +75,10 @@ relationToOp = \case
   LessThanOrEqualTo -> Right Le
 
 ordToRelation ::
-  Value Builtin ->
+  WHNFValue Builtin ->
   OrderOp ->
-  Value Builtin ->
-  (Value Builtin, Relation, Value Builtin)
+  WHNFValue Builtin ->
+  (WHNFValue Builtin, Relation, WHNFValue Builtin)
 ordToRelation e1 op e2 = case op of
   Lt -> (e1, LessThan, e2)
   Le -> (e1, LessThanOrEqualTo, e2)
@@ -344,17 +344,17 @@ mapAssertionVariables f Assertion {..} =
 -- conjunctions.
 data UnreducedAssertion
   = VectorEqualityAssertion VectorEquality
-  | NonVectorEqualityAssertion (Value Builtin)
+  | NonVectorEqualityAssertion (WHNFValue Builtin)
 
 -- | An encoding of a vector equality.
 data VectorEquality = VectorEquality
-  { assertionLHS :: Value Builtin,
-    assertionRHS :: Value Builtin,
+  { assertionLHS :: WHNFValue Builtin,
+    assertionRHS :: WHNFValue Builtin,
     assertionDims :: TensorDimensions,
-    assertionOriginalRel :: VArg Builtin -> VArg Builtin -> Value Builtin
+    assertionOriginalRel :: WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin
   }
 
-originalVectorEqualityExpr :: VectorEquality -> Value Builtin
+originalVectorEqualityExpr :: VectorEquality -> WHNFValue Builtin
 originalVectorEqualityExpr VectorEquality {..} =
   assertionOriginalRel (Arg mempty Explicit Relevant assertionLHS) (Arg mempty Explicit Relevant assertionRHS)
 

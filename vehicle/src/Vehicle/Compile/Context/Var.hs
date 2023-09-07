@@ -28,7 +28,7 @@ normalise ::
   forall builtin m.
   (MonadVarContext builtin m) =>
   Expr Ix builtin ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 normalise e = do
   boundCtx <- getBoundCtx (Proxy @builtin)
   let env = boundContextToEnv boundCtx

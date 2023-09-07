@@ -16,7 +16,7 @@ class HasType expr typ | expr -> typ where
 instance HasType (Binder var builtin) (Type var builtin) where
   typeOf = binderValue
 
-instance HasType (VBinder builtin) (VType builtin) where
+instance HasType (VBinder strategy builtin) (Value strategy builtin) where
   typeOf = binderValue
 
 instance HasType (GenericDecl expr) expr where

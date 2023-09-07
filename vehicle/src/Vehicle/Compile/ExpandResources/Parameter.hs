@@ -24,7 +24,7 @@ parseParameterValue ::
   ParameterValues ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (Value Builtin)
+  m (WHNFValue Builtin)
 parseParameterValue parameterValues decl@(ident, _) parameterType = do
   implicitParams <- getInferableParameterContext
 
@@ -54,29 +54,29 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     Nothing -> throwError $ ResourceNotProvided decl Parameter
     Just value -> parser decl value
 
-parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
+parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
 parseBool decl value = case readMaybe value of
   Just v -> return $ VBoolLiteral v
   Nothing -> throwError $ ParameterValueUnparsable decl value Bool
 
-parseNat :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
+parseNat :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
 parseNat decl value = case readMaybe value of
   Just v
     | v >= 0 -> return $ VNatLiteral v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
-parseInt :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
+parseInt :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
 parseInt decl value = case readMaybe value of
   Just v -> return $ VIntLiteral v
   Nothing -> throwError $ ParameterValueUnparsable decl value Int
 
-parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
+parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
 parseRat decl value = case rational (pack value) of
   Left _err -> throwError $ ParameterValueUnparsable decl value Rat
   Right (v, _) -> return $ VRatLiteral v
 
-parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (Value Builtin)
+parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (WHNFValue Builtin)
 parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v ->

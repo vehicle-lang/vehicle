@@ -14,9 +14,9 @@ import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
-type EvalApp builtin m = Value builtin -> Spine builtin -> m (Value builtin)
+type EvalApp builtin m = WHNFValue builtin -> WHNFSpine builtin -> m (WHNFValue builtin)
 
-type ForceArg builtin m = VArg builtin -> m (VArg builtin, (Bool, MetaSet))
+type ForceArg builtin m = WHNFArg builtin -> m (WHNFArg builtin, (Bool, MetaSet))
 
 type NormalisableBuiltin builtin = HasStandardData builtin
 
@@ -27,8 +27,8 @@ evalBuiltin ::
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
   EvalApp builtin m ->
   builtin ->
-  Spine builtin ->
-  m (Value builtin)
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
 evalBuiltin evalApp b args = case getBuiltinFunction b of
   Just f -> do
     let result = evalBuiltinFunction evalApp f (mapMaybe getExplicitArg args)
@@ -39,8 +39,8 @@ evalBuiltinFunction ::
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
   EvalApp builtin m ->
   BuiltinFunction ->
-  [Value builtin] ->
-  Maybe (m (Value builtin))
+  [WHNFValue builtin] ->
+  Maybe (m (WHNFValue builtin))
 evalBuiltinFunction evalApp b args
   | isDerived b = evalImplies args
   | otherwise = case b of
@@ -78,13 +78,13 @@ isDerived = \case
 
 type EvalBuiltin builtin m =
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
-  [Value builtin] ->
-  Maybe (m (Value builtin))
+  [WHNFValue builtin] ->
+  Maybe (m (WHNFValue builtin))
 
 type EvalSimpleBuiltin builtin =
   (HasStandardData builtin) =>
-  [Value builtin] ->
-  Maybe (Value builtin)
+  [WHNFValue builtin] ->
+  Maybe (WHNFValue builtin)
 
 evalNot :: EvalSimpleBuiltin builtin
 evalNot e = case e of
@@ -402,8 +402,8 @@ type EvalDerived builtin m =
   ( MonadCompile m,
     HasStandardData builtin
   ) =>
-  [Value builtin] ->
-  Maybe (m (Value builtin))
+  [WHNFValue builtin] ->
+  Maybe (m (WHNFValue builtin))
 
 -- TODO define in terms of language. The problem is the polarity checking...
 evalImplies :: EvalDerived builtin m

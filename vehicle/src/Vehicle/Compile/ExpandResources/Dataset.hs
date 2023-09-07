@@ -22,7 +22,7 @@ parseDataset ::
   DatasetLocations ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (Value Builtin)
+  m (WHNFValue Builtin)
 parseDataset datasetLocations decl@(ident, _) expectedType =
   case Map.lookup (nameOf ident) datasetLocations of
     Just file -> do

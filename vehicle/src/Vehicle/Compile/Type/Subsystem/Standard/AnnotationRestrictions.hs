@@ -25,7 +25,7 @@ restrictStandardPropertyType ::
   m ()
 restrictStandardPropertyType decl parameterType = go (normalised parameterType)
   where
-    go :: VType StandardTypingBuiltin -> m ()
+    go :: WHNFType StandardTypingBuiltin -> m ()
     go = \case
       VBoolType {} -> return ()
       VVectorType tElem _ -> go tElem
@@ -83,7 +83,7 @@ restrictStandardDatasetType decl datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
   where
-    checkContainerType :: Bool -> VType StandardTypingBuiltin -> m ()
+    checkContainerType :: Bool -> WHNFType StandardTypingBuiltin -> m ()
     checkContainerType topLevel = \case
       VListType tElem -> checkContainerType False tElem
       VVectorType tElem _tDims -> checkContainerType False tElem
@@ -92,7 +92,7 @@ restrictStandardDatasetType decl datasetType = do
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
-    checkDatasetElemType :: VType StandardTypingBuiltin -> m ()
+    checkDatasetElemType :: WHNFType StandardTypingBuiltin -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
       VIntType {} -> return ()
@@ -123,10 +123,10 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
         return $ unnormalised networkType
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where
-    checkTensorType :: InputOrOutput -> VType StandardTypingBuiltin -> m ()
+    checkTensorType :: InputOrOutput -> WHNFType StandardTypingBuiltin -> m ()
     checkTensorType io = go True
       where
-        go :: Bool -> VType StandardTypingBuiltin -> m ()
+        go :: Bool -> WHNFType StandardTypingBuiltin -> m ()
         go topLevel = \case
           VTensorType tElem _ -> go False tElem
           VVectorType tElem _ -> go False tElem
@@ -135,7 +135,7 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
               else checkElementType io elemType
 
-    checkElementType :: InputOrOutput -> VType StandardTypingBuiltin -> m ()
+    checkElementType :: InputOrOutput -> WHNFType StandardTypingBuiltin -> m ()
     checkElementType io = \case
       VRatType {} -> return ()
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

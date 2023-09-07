@@ -98,9 +98,9 @@ data NetworkReaderCtx = NetworkReaderCtx
 --------------------------------------------------------------------------------
 -- Partioning
 
-type NetworkApplication = (Name, Spine Builtin)
+type NetworkApplication = (Name, WHNFSpine Builtin)
 
-applicationExpr :: NetworkApplication -> Value Builtin
+applicationExpr :: NetworkApplication -> WHNFValue Builtin
 applicationExpr (networkName, spine) = VFreeVar (Identifier User networkName) spine
 
 -- | A tree of network applications that are contained within one another. e.g.
@@ -117,7 +117,7 @@ data NetworkApplicationTree = Node
 type NetworkApplicationForest = HashSet NetworkApplicationTree
 
 -- | Compares two application trees. This could be done via implementing Ord
--- but it gets messy fast. In particular `Value` refers back to normal expressions
+-- but it gets messy fast. In particular `WHNFValue` refers back to normal expressions
 -- via lambda expressions and then you have to push it through *everywhere*
 -- even though lambdas will never appear. Better to just implement it locally
 -- here.
@@ -127,10 +127,10 @@ compareApplicationTree a b = do
   let (g, y) = nodeApp b
   compare f g <> compareSpine x y
   where
-    compareSpine :: Spine Builtin -> Spine Builtin -> Ordering
+    compareSpine :: WHNFSpine Builtin -> WHNFSpine Builtin -> Ordering
     compareSpine x y = liftCompare compareValue (mapMaybe getExplicitArg x) (mapMaybe getExplicitArg y)
 
-    compareValue :: Value Builtin -> Value Builtin -> Ordering
+    compareValue :: WHNFValue Builtin -> WHNFValue Builtin -> Ordering
     compareValue x y = case (x, y) of
       (VBoundVar v1 spine1, VBoundVar v2 spine2) -> compare v1 v2 <> compareSpine spine1 spine2
       (VBoundVar {}, _) -> LT
@@ -198,7 +198,7 @@ findApplicationsInAssertion = \case
 
 findApplicationsInExpr ::
   (MonadTraverseApplications m) =>
-  Value Builtin ->
+  WHNFValue Builtin ->
   m NetworkApplicationForest
 findApplicationsInExpr expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -219,7 +219,7 @@ findApplicationsInExpr expr = case expr of
 
 findApplicationsInSpine ::
   (MonadTraverseApplications m) =>
-  Spine Builtin ->
+  WHNFSpine Builtin ->
   m NetworkApplicationForest
 findApplicationsInSpine spine =
   HashSet.unions <$> traverse findApplicationsInExpr (fmap argExpr spine)
@@ -234,7 +234,7 @@ data MetaNetworkPartition = MetaNetworkPartition
     partitionExpr :: BooleanExpr UnreducedAssertion
   }
 
-type MetaNetworkVariableSubstitution = HashMap NetworkApplication (Value Builtin)
+type MetaNetworkVariableSubstitution = HashMap NetworkApplication (WHNFValue Builtin)
 
 replaceApplications ::
   (MonadTraverseApplications m) =>
@@ -275,7 +275,7 @@ replaceApplications (partitionID, (applications, expr)) = do
 
 type NetworkAppInfo =
   ( UnreducedAssertion,
-    Value Builtin,
+    WHNFValue Builtin,
     [NetworkVariable],
     MetaNetworkEntry
   )
@@ -380,7 +380,7 @@ getNetworkContext ::
   NetworkVariableCtx
 getNetworkContext = concatMap (\(_, (_, _, networkVars, _)) -> networkVars)
 
-getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m (Value Builtin)
+getNetworkApplicationArg :: (MonadCompile m) => NetworkApplication -> m (WHNFValue Builtin)
 getNetworkApplicationArg (networkName, spine) = case spine of
   [RelevantExplicitArg _ arg] -> return arg
   _ ->
@@ -397,15 +397,15 @@ getNetworkDetailsFromCtx networkCtx name = do
 
 mkInputVarEqualityExpr ::
   TensorDimensions ->
-  VArg Builtin ->
-  VArg Builtin ->
-  Value Builtin
+  WHNFArg Builtin ->
+  WHNFArg Builtin ->
+  WHNFValue Builtin
 mkInputVarEqualityExpr dimensions e1 e2 = do
   mkVectorEquality (fmap VNatLiteral dimensions) [e1, e2]
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinary here,
     -- but it seems incredibly complicated to setup...
-    mkVectorEquality :: [Value Builtin] -> Spine Builtin -> Value Builtin
+    mkVectorEquality :: [WHNFValue Builtin] -> WHNFSpine Builtin -> WHNFValue Builtin
     mkVectorEquality dims spine =
       let p = mempty
        in case dims of
@@ -443,8 +443,8 @@ replaceApplicationsInAssertion subst = \case
 replaceApplicationsInExpr ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
-  Value Builtin ->
-  m (Value Builtin)
+  WHNFValue Builtin ->
+  m (WHNFValue Builtin)
 replaceApplicationsInExpr subst expr = case expr of
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
@@ -465,8 +465,8 @@ replaceApplicationsInExpr subst expr = case expr of
 replaceApplicationsInSpine ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
-  Spine Builtin ->
-  m (Spine Builtin)
+  WHNFSpine Builtin ->
+  m (WHNFSpine Builtin)
 replaceApplicationsInSpine subst =
   traverse (traverse (replaceApplicationsInExpr subst))
 
@@ -475,7 +475,7 @@ replaceApplication ::
   (MonadTraverseApplications m) =>
   MetaNetworkVariableSubstitution ->
   NetworkApplication ->
-  m (Value Builtin)
+  m (WHNFValue Builtin)
 replaceApplication subst app = do
   let expr = applicationExpr app
   case HashMap.lookup app subst of

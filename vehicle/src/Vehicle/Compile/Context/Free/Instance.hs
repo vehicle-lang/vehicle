@@ -77,18 +77,18 @@ instance (MonadIO m) => MonadIO (FreeContextT builtin m) where
 normaliseInEnv ::
   forall builtin m.
   (MonadFreeContext builtin m) =>
-  Env builtin ->
+  WHNFEnv builtin ->
   Expr Ix builtin ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 normaliseInEnv = eval defaultNBEOptions
 
 normaliseInEmptyEnv ::
   (MonadFreeContext builtin m) =>
   Expr Ix builtin ->
-  m (Value builtin)
+  m (WHNFValue builtin)
 normaliseInEmptyEnv = normaliseInEnv mempty
 
-glue :: (MonadFreeContext builtin m) => Env builtin -> Expr Ix builtin -> m (GluedExpr builtin)
+glue :: (MonadFreeContext builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
 glue env e = Glued e <$> normaliseInEnv env e
 
 instance

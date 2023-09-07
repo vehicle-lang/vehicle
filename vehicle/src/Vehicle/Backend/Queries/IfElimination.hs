@@ -28,8 +28,8 @@ import Vehicle.Data.NormalisedExpr
 --     lifting and eliminating them
 eliminateIfs ::
   (MonadCompile m) =>
-  Value Builtin ->
-  m (Maybe (Maybe (Value Builtin)))
+  WHNFValue Builtin ->
+  m (Maybe (Maybe (WHNFValue Builtin)))
 eliminateIfs e = do
   ifLiftedExpr <- recLiftIf e
   case ifLiftedExpr of
@@ -44,7 +44,7 @@ currentPass = "if elimination"
 --------------------------------------------------------------------------------
 -- If operations
 
-liftIf :: (Value Builtin -> Value Builtin) -> Value Builtin -> Value Builtin
+liftIf :: (WHNFValue Builtin -> WHNFValue Builtin) -> WHNFValue Builtin -> WHNFValue Builtin
 liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
   VBuiltinFunction
     If
@@ -55,7 +55,7 @@ liftIf f (VBuiltinFunction If [t, cond, e1, e2]) =
     ]
 liftIf f e = f e
 
-recLiftIf :: (MonadCompile m) => Value Builtin -> m (Maybe (Value Builtin))
+recLiftIf :: (MonadCompile m) => WHNFValue Builtin -> m (Maybe (WHNFValue Builtin))
 recLiftIf expr = case expr of
   VPi {} -> unexpectedTypeInExprError currentPass "Pi"
   VUniverse {} -> unexpectedTypeInExprError currentPass "Universe"
@@ -74,14 +74,14 @@ recLiftIf expr = case expr of
       Nothing -> return Nothing
       Just xs -> return $ Just $ liftSpine (VBuiltin b) xs
 
-liftArg :: (VArg Builtin -> Value Builtin) -> VArg Builtin -> Value Builtin
+liftArg :: (WHNFArg Builtin -> WHNFValue Builtin) -> WHNFArg Builtin -> WHNFValue Builtin
 liftArg f (Arg p v r e) = liftIf (f . Arg p v r) e
 
 -- I feel this should be definable in terms of `liftIfs`, but I can't find it.
 liftSpine ::
-  (Spine Builtin -> Value Builtin) ->
-  Spine Builtin ->
-  Value Builtin
+  (WHNFSpine Builtin -> WHNFValue Builtin) ->
+  WHNFSpine Builtin ->
+  WHNFValue Builtin
 liftSpine f [] = f []
 liftSpine f (x : xs) =
   if visibilityOf x == Explicit
@@ -90,11 +90,11 @@ liftSpine f (x : xs) =
 
 -- | Recursively removes all top-level `if` statements in the current
 -- provided expression.
-elimIf :: Value Builtin -> Value Builtin
+elimIf :: WHNFValue Builtin -> WHNFValue Builtin
 elimIf (VBuiltinFunction If [_, cond, e1, e2]) = unfoldIf cond (elimIf (argExpr e1)) (elimIf (argExpr e2))
 elimIf e = e
 
-unfoldIf :: VArg Builtin -> Value Builtin -> Value Builtin -> Value Builtin
+unfoldIf :: WHNFArg Builtin -> WHNFValue Builtin -> WHNFValue Builtin -> WHNFValue Builtin
 unfoldIf c x y =
   VBuiltinFunction
     Or

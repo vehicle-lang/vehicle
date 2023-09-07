@@ -21,7 +21,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr (GluedExpr (..), GluedType, VType, Value (..), isNMeta)
+import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 instance TypableBuiltin LossBuiltin where
@@ -128,7 +128,7 @@ checkPropertyType (ident, p) parameterType = go (normalised parameterType)
     -- from the standard typing system to meta-variables. Therefore if we simply constrain
     -- the overall type, the instance solver can't reject unifying that meta-variable
     -- with a `Vector` type.
-    go :: VType LossBuiltin -> m ()
+    go :: WHNFType LossBuiltin -> m ()
     go = \case
       VBuiltinType Vector [tElem] -> go (argExpr tElem)
       typ -> do

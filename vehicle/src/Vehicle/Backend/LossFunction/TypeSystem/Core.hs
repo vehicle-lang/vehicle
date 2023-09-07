@@ -117,18 +117,16 @@ type LossConstraintContext = ConstraintContext LossBuiltin
 
 type LossConstraint = Constraint LossBuiltin
 
--- Value
-type LossNormExpr = Value LossBuiltin
+-- WHNFValue
+type LossNormExpr = WHNFValue LossBuiltin
 
-type LossNormBinder = VBinder LossBuiltin
+type LossNormBinder = WHNFBinder LossBuiltin
 
-type LossNormArg = VArg LossBuiltin
+type LossNormArg = WHNFArg LossBuiltin
 
-type LossNormType = VType LossBuiltin
+type LossNormType = WHNFType LossBuiltin
 
-type LossSpine = Spine LossBuiltin
-
-type LossEnv = Env LossBuiltin
+type LossSpine = WHNFSpine LossBuiltin
 
 --------------------------------------------------------------------------------
 -- DSL
