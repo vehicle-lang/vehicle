@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Get source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'

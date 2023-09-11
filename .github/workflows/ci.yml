@@ -27,7 +27,7 @@ jobs:
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: pipx run bumpver update --patch --dry
 
   # NOTE: This job is disabled because Marabou reliably runs out of memory.
@@ -38,7 +38,7 @@ jobs:
   test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: mrkkrp/ormolu-action@v14
         with:
           version: "0.7.1.0"
