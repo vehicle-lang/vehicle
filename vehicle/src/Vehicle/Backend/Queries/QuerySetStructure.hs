@@ -374,7 +374,7 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
       return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
     else do
       logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
-      quantImplementation <- lookupIdentValueInEnv defaultNBEOptions (fromFiniteQuantifier q)
+      quantImplementation <- lookupIdentValueInEnv defaultNBEOptions env (fromFiniteQuantifier q)
       let quantifierExpr = VFiniteQuantifierSpine quantSpine binder env body
       normResult <- evalApp queryStructureNBEOptions quantImplementation quantifierExpr
       compileBoolExpr quantifiedVariables normResult

@@ -8,6 +8,7 @@ import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface

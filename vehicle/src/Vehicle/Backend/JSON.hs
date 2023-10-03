@@ -25,12 +25,12 @@ import Vehicle.Compile.Arity (Arity, arityFromVType, explicitArityFromType)
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
+import Vehicle.Compile.Normalise.NBE (normalise, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
 import Vehicle.Data.BuiltinInterface qualified as V
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr (GluedExpr (..), normalised)
 import Vehicle.Data.RelevantExpr
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
 import Vehicle.Syntax.AST qualified as V
@@ -549,8 +549,9 @@ functionArity = go
         V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
         V.FreeVar _p ident -> do
           decl <- getDecl (Proxy @builtin) currentPass ident
-          logDebug MaxDetail $ prettyVerbose $ normalised $ typeOf decl
-          return $ arityFromVType $ normalised (typeOf decl)
+          normType <- normaliseInEmptyEnv $ typeOf decl
+          logDebug MaxDetail $ prettyVerbose normType
+          return $ arityFromVType normType
         V.BoundVar _ ix -> do
           binder <- getBoundVarByIx (Proxy @builtin) currentPass ix
           arityFromVType <$> normalise (typeOf binder)
