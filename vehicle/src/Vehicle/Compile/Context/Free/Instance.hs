@@ -11,10 +11,8 @@ import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
-import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation
@@ -74,31 +72,12 @@ instance (MonadIO m) => MonadIO (FreeContextT builtin m) where
 --------------------------------------------------------------------------------
 -- Context monad preservation
 
-normaliseInEnv ::
-  forall builtin m.
-  (MonadFreeContext builtin m) =>
-  WHNFEnv builtin ->
-  Expr Ix builtin ->
-  m (WHNFValue builtin)
-normaliseInEnv = eval defaultNBEOptions
-
-normaliseInEmptyEnv ::
-  (MonadFreeContext builtin m) =>
-  Expr Ix builtin ->
-  m (WHNFValue builtin)
-normaliseInEmptyEnv = normaliseInEnv mempty
-
-glue :: (MonadFreeContext builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
-glue env e = Glued e <$> normaliseInEnv env e
-
 instance
   (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
-  addDeclToContext decl cont = do
-    gluedDecl <- traverse (\e -> Glued e <$> normaliseInEmptyEnv e) decl
-    FreeContextT $ do
-      let updateCtx = Map.insert (identifierOf decl) gluedDecl
-      local updateCtx (unFreeContextT cont)
+  addDeclToContext decl cont = FreeContextT $ do
+    let updateCtx = Map.insert (identifierOf decl) decl
+    local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask

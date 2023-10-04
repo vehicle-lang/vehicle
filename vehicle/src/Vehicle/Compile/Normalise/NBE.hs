@@ -4,6 +4,9 @@
 
 module Vehicle.Compile.Normalise.NBE
   ( NBEOptions,
+    normalise,
+    normaliseInEnv,
+    normaliseInEmptyEnv,
     mkNBEOptions,
     defaultNBEOptions,
     eval,
@@ -21,6 +24,7 @@ import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Set (Set)
 import Data.Set qualified as Set (map, member)
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getDecl)
+import Vehicle.Compile.Context.Var (MonadVarContext, getBoundCtx)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
 import Vehicle.Compile.Prelude
@@ -32,6 +36,30 @@ import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 -- NOTE: there is no evaluate to NF in this file. To do it
 -- efficiently you should just evaluate to WHNF and then recursively
 -- evaluate as required.
+
+normalise ::
+  forall builtin m.
+  (MonadVarContext builtin m) =>
+  Expr Ix builtin ->
+  m (WHNFValue builtin)
+normalise e = do
+  boundCtx <- getBoundCtx (Proxy @builtin)
+  let env = boundContextToEnv boundCtx
+  normaliseInEnv env e
+
+normaliseInEnv ::
+  forall builtin m.
+  (MonadFreeContext builtin m) =>
+  WHNFEnv builtin ->
+  Expr Ix builtin ->
+  m (WHNFValue builtin)
+normaliseInEnv = eval defaultNBEOptions
+
+normaliseInEmptyEnv ::
+  (MonadFreeContext builtin m) =>
+  Expr Ix builtin ->
+  m (WHNFValue builtin)
+normaliseInEmptyEnv = normaliseInEnv mempty
 
 -----------------------------------------------------------------------------
 -- Options during NBE
@@ -80,7 +108,7 @@ eval opts env expr = do
     BoundVar _ i ->
       lookupIxValueInEnv i env
     FreeVar _ ident ->
-      lookupIdentValueInEnv opts ident
+      lookupIdentValueInEnv opts env ident
     Let _ bound binder body -> do
       binder' <- evalBinder opts env binder
       boundNormExpr <- eval opts env bound
@@ -150,15 +178,16 @@ lookupIdentValueInEnv ::
   forall builtin m.
   (MonadNorm builtin m) =>
   NBEOptions ->
+  WHNFEnv builtin ->
   Identifier ->
   m (WHNFValue builtin)
-lookupIdentValueInEnv NBEOptions {..} ident
+lookupIdentValueInEnv opts@NBEOptions {..} env ident
   | ident `Set.member` noInlineLibraryFunctions = do
       return $ VFreeVar ident []
   | otherwise = do
       decl <- getDecl (Proxy @builtin) currentPass ident
       case bodyOf decl of
-        Just expr -> return $ normalised expr
+        Just expr -> eval opts env expr
         _ -> return $ VFreeVar ident []
 
 lookupIxValueInEnv ::
@@ -188,7 +217,7 @@ reeval opts env expr = do
     VPi {} -> return expr
     VMeta m spine -> VMeta m <$> reevalSpine opts env spine
     VFreeVar v spine -> do
-      value <- lookupIdentValueInEnv opts v
+      value <- lookupIdentValueInEnv opts env v
       spine' <- reevalSpine opts env spine
       evalApp opts value spine'
     VBoundVar v spine -> do

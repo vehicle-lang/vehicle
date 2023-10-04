@@ -12,6 +12,7 @@ import Data.Maybe (maybeToList)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.BuiltinInterface
 

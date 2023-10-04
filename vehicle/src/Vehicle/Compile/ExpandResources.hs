@@ -8,7 +8,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer (MonadWriter, WriterT (..), tell)
-import Data.Data (Proxy (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
@@ -19,6 +18,8 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
+import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -45,13 +46,13 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> GluedDecl Builtin
+mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> Decl Ix Builtin
 mkFunctionDefFromResource p ident value = do
-  -- This is a hack. The type is only every used for its arity, so this is okay.
-  let unitType = BuiltinType Unit
-  -- We're doing something wrong here as we only really need the value
-  let gluedType = Glued (Builtin mempty unitType) (VBuiltin unitType [])
-  let gluedExpr = Glued (Builtin mempty (BuiltinConstructor LUnit)) value
+  -- We're doing something wrong here as we only really need the value.
+  -- We should really be storing the parameter values in their own environment,
+  -- as values rather than as declarations in the free var context.
+  let gluedType = Builtin mempty (BuiltinType Unit)
+  let gluedExpr = unnormalise 0 value
   DefFunction p ident mempty gluedType gluedExpr
 
 addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> WHNFValue Builtin -> m ()
@@ -72,15 +73,14 @@ type MonadReadResources m =
 readResourcesInProg :: (MonadReadResources m) => Prog Ix Builtin -> m (Prog Ix Builtin)
 readResourcesInProg (Main ds) = Main <$> readResourcesInDecls ds
 
-readResourcesInDecls :: forall m. (MonadReadResources m) => [Decl Ix Builtin] -> m [Decl Ix Builtin]
+readResourcesInDecls :: (MonadReadResources m) => [Decl Ix Builtin] -> m [Decl Ix Builtin]
 readResourcesInDecls = \case
   [] -> return []
   decl : decls -> addDeclToContext decl $ do
     maybeDecl <- case decl of
       DefFunction {} -> return $ Just decl
-      DefAbstract p ident defType _declType -> do
-        gluedDecl <- getDecl @Builtin @m (Proxy @Builtin) "expandResources" (identifierOf decl)
-        let gluedType = typeOf gluedDecl
+      DefAbstract p ident defType declType -> do
+        gluedType <- Glued declType <$> normaliseInEmptyEnv declType
         case defType of
           ParameterDef sort -> case sort of
             Inferable -> do
@@ -100,7 +100,7 @@ readResourcesInDecls = \case
             networkLocations <- asks networks
             networkDetails <- checkNetwork networkLocations (ident, p) gluedType
             addNetworkType ident networkDetails
-            tell (Map.singleton ident (DefAbstract p ident NetworkDef gluedType))
+            tell (Map.singleton ident decl)
             return Nothing
           PostulateDef ->
             return (Just decl)

@@ -7,17 +7,16 @@ import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.BuiltinInterface (HasStandardData)
 
 --------------------------------------------------------------------------------
 -- Context monad class
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin m where
+class (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadFreeContext builtin m where
   addDeclToContext :: Decl Ix builtin -> m a -> m a
   getFreeCtx :: Proxy builtin -> m (FreeCtx builtin)
 
@@ -46,7 +45,7 @@ getDecl ::
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
-  m (GluedDecl builtin)
+  m (Decl Ix builtin)
 getDecl _ compilerPass ident =
   lookupInFreeCtx compilerPass ident =<< getFreeCtx (Proxy @builtin)
 
@@ -58,4 +57,4 @@ getDeclType ::
   m (Type Ix builtin)
 getDeclType proxy compilerPass ident = do
   decl <- getDecl proxy compilerPass ident
-  return $ unnormalised (typeOf decl)
+  return $ typeOf decl

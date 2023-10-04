@@ -14,6 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
+import Vehicle.Data.BuiltinInterface (HasStandardData)
 import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ class MetaSubstitutable m builtin a | a -> builtin where
   -- | Substitutes meta-variables through the provided object, returning the
   -- updated object and the set of meta-variables within the object for which
   -- no subsitution was provided.
-  subst :: (MonadCompile m, MonadFreeContext builtin m) => MetaSubstitution builtin -> a -> m a
+  subst :: (MonadCompile m, MonadFreeContext builtin m, HasStandardData builtin) => MetaSubstitution builtin -> a -> m a
 
 instance (MetaSubstitutable m builtin b) => MetaSubstitutable m builtin (a, b) where
   subst s (x, y) = do
