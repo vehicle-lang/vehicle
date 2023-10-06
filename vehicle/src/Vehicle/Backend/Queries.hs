@@ -19,6 +19,7 @@ import Vehicle.Backend.Queries.IfElimination (unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.NetworkElimination
 import Vehicle.Backend.Queries.QuerySetStructure
+import Vehicle.Backend.Queries.UsedFunctions
 import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
 import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), NetworkVariable (..), UserVariableCtx, pattern VInfiniteQuantifier)
 import Vehicle.Compile.Context.Free
@@ -126,7 +127,7 @@ compilePropertyDecl ::
   m (Name, MultiProperty ())
 compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-    normalisedExpr <- eval (mkNBEOptions vectorStructureOperations) mempty expr
+    normalisedExpr <- eval (mkNBEOptions vectorStructureOperations) emptyEnv expr
 
     let computeProperty = compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
 

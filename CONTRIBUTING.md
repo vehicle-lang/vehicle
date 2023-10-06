@@ -401,6 +401,16 @@ The compiler tests test the output of a successful run of the Vehicle compiler. 
 cabal run exe:vehicle -- --logging=MaxDetail ...
 ```
 
+##### Extra logging
+
+There is various useful debugging information that can be logged, but is not available even when the max logging
+level is set because its simply too verbose. This includes:
+
+1. If you want to see normalisation behaviour, in `Vehicle.Compile.Normalise.NBE`, there are various disabled logging functions (e.g. `showEntry`) that can be enabled.
+
+2. If you want to see the current contexts attached lambda `Value` constructors, in
+   `Vehicle.Compile.Descope.descopeNormExpr` there is some disabled code that attaches that information to `prettyVerbose`.
+
 #### Installing from source
 
 Ensure that [you have the source code](#getting-the-source) and that you have installed [GHC and Cabal](#installing-ghc-and-cabal).

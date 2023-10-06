@@ -76,17 +76,14 @@ class
 isRationalVariable :: (Variable variable) => variable -> Bool
 isRationalVariable v = null (variableDimensions v)
 
-variableToEnvEntry :: (Variable variable) => Lv -> variable -> GenericBinder (Value strategy body)
-variableToEnvEntry lv var = mkDefaultBinder (layoutAsText $ pretty var) (VBoundVar lv [])
-
-variableCtxToEnv :: (Variable variable) => [variable] -> Env strategy body
-variableCtxToEnv ctx = zipWith variableToEnvEntry (reverse [0 .. Lv (length ctx - 1)]) ctx
-
 variableCtxToBoundCtxEntry :: (Variable variable) => Ix -> variable -> Binder Ix Builtin
 variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)
 
 variableCtxToBoundCtx :: (Variable variable) => [variable] -> BoundCtx Builtin
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
+
+variableCtxToEnv :: (Variable variable) => [variable] -> Env strategy Builtin
+variableCtxToEnv ctx = boundContextToEnv (variableCtxToBoundCtx ctx)
 
 --------------------------------------------------------------------------------
 -- User variables

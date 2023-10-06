@@ -69,7 +69,7 @@ normalisationTest NBETest {..} =
     normInput <-
       runFreshFreeContextT (Proxy @Builtin) $
         eval defaultNBEOptions (mkNoOpEnv dbLevel) input
-    actual <- quote mempty dbLevel normInput
+    let actual = quote mempty dbLevel normInput
 
     let errorMessage =
           layoutAsString $
@@ -94,4 +94,4 @@ binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> WHNFEnv builtin
-mkNoOpEnv boundCtxSize = [mkDefaultBinder "_" (VBoundVar i []) | i <- reverse [0 .. boundCtxSize - 1]]
+mkNoOpEnv boundCtxSize = [mkDefaultEnvEntry "_" Bound | _ <- [0 .. boundCtxSize - 1]]

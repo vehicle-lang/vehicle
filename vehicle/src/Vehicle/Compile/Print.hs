@@ -135,6 +135,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (WHNFValue builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
   StrategyFor ('Unnamed tags) (WHNFArg builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
   StrategyFor ('Unnamed tags) (WHNFBinder builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
+  StrategyFor tags (EnvValue 'WHNF builtin) = StrategyFor tags (WHNFValue builtin)
+  StrategyFor tags (GenericBinder ()) = 'Pretty
   -- To standardise builtins
   StrategyFor ('StandardiseBuiltin tags) (Prog Name builtin) = 'ConvertBuiltins (StrategyFor tags (Prog Name Builtin))
   StrategyFor ('StandardiseBuiltin tags) (Decl Name builtin) = 'ConvertBuiltins (StrategyFor tags (Decl Name Builtin))
@@ -446,6 +448,14 @@ instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest)
 instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFArg builtin) where
   prettyUsing e = prettyUsing @rest (unnormalise @(WHNFArg builtin) @(Arg Ix builtin) 0 e)
 
+instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (EnvValue 'WHNF builtin) where
+  prettyUsing = \case
+    Bound {} -> ""
+    Defined v -> prettyUsing @rest v
+
+instance PrettyUsing rest (GenericBinder ()) where
+  prettyUsing b = maybe "_" pretty (nameOf b)
+
 --------------------------------------------------------------------------------
 -- Instances for unreduced assertions
 
@@ -491,7 +501,7 @@ prettyTypeClass m expr = pretty m <+> "<=" <+> expr
 
 prettyConstraintContext :: Doc a -> ConstraintContext builtin -> Doc a
 prettyConstraintContext constraint ctx =
-  "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty (originalProvenance ctx)
+  "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty ctx
 
 instance
   (PrettyUsing rest (WHNFValue builtin)) =>
