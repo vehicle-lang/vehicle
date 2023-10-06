@@ -221,7 +221,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
 -- TODO move this to Print
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
-  prettyExternal (WithContext (candidateExpr candidate) ctx)
+  prettyExternal (WithContext (candidateExpr candidate) (toNamedBoundCtx ctx))
 
 goalExpr :: InstanceGoal builtin -> WHNFValue builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine

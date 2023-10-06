@@ -655,7 +655,7 @@ elabForeach ::
   m (V.Expr V.Name V.Builtin)
 elabForeach tk binder body = do
   p <- mkProvenance tk
-  let builtin = V.FreeVar p (V.Identifier V.StdLib "foreachVector")
+  let builtin = V.FreeVar p (V.Identifier V.StdLib "foreachIndex")
 
   binder' <- elabNameBinder False binder
   body' <- elabExpr body

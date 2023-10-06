@@ -1,23 +1,11 @@
-bigAnd : Vector Bool -> Bool;
-bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-bigOr : Vector Bool -> Bool;
-bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
-
-equalsVector : Vector Rat -> Vector Rat -> Bool;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> x == y) xs ys)
-
-notEqualsVector : Vector Rat -> Vector Rat -> Bool;
-notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
+@property;
+test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test1 f = exists a . a <= 0.0 or ReduceAnd (f [a + 2.0] == [0.0])
 
 @property;
-test1 : forallT (f : Vector Rat -> Vector Rat) . Bool;
-test1 f = exists a . a <= 0.0 or equalsVector (f [a + 2.0]) [0.0]
+test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test2 g = exists a . exists b . a >= 1.0 and not (b > a) and ReduceAnd (g [a + b, a + 2.0 * b] == [0.0])
 
 @property;
-test2 : forallT (g : Vector Rat -> Vector Rat) . Bool;
-test2 g = exists a . exists b . a >= 1.0 and not (b > a) and equalsVector (g [a + b, a + 2.0 * b]) [0.0]
-
-@property;
-test3 : forallT (g : Vector Rat -> Vector Rat) . Bool;
-test3 g = forall a . forall b . not ((a < 0.0 and b != 0.0) or notEqualsVector (g [a, b]) [0.0])
+test3 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test3 g = forall a . forall b . not ((a < 0.0 and b != 0.0) or ReduceOr (g [a, b] != [0.0]))

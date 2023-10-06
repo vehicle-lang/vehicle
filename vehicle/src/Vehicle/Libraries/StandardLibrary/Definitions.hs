@@ -30,7 +30,7 @@ data StdLibFunction
   | StdAddVector
   | StdSubVector
   | StdVectorToList
-  | StdForeach
+  | StdForeachIndex
   | StdTensor
   deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -52,7 +52,7 @@ instance Show StdLibFunction where
     StdNotEqualsVector -> "notEqualsVector"
     StdVectorToVector -> "vectorToVector"
     StdVectorToList -> "vectorToList"
-    StdForeach -> "foreachVector"
+    StdForeachIndex -> "foreachIndex"
     StdTensor -> "Tensor"
 
 instance Pretty StdLibFunction where

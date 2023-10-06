@@ -1,23 +1,11 @@
-bigAnd : Vector Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> 1.0 - min x y) 0.0 _x0
-
-bigOr : Vector Rat -> Rat;
-bigOr _x0 = fold (\ x -> \ y -> 1.0 - max x y) 1.0 _x0
-
-equalsVector : Vector Rat -> Vector Rat -> Rat;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> 1.0 - (if x == y then 1.0 else 0.0)) xs ys)
-
-notEqualsVector : Vector Rat -> Vector Rat -> Rat;
-notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> if x == y then 1.0 else 0.0) xs ys)
+@property;
+test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test1 f = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> 1.0 - max (max 0.0 (a - 0.0)) (fold (\ x -> \ y -> 1.0 - min x y) 0.0 (f [a + 2.0] == [0.0])))
 
 @property;
-test1 : forallT (f : Vector Rat -> Vector Rat) . Rat;
-test1 f = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> 1.0 - max (max 0.0 (a - 0.0)) (equalsVector (f [a + 2.0]) [0.0]))
+test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test2 g = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ b -> 1.0 - min (max 0.0 (1.0 - a)) (1.0 - min (1.0 - max 0.0 (a - b)) (fold (\ x -> \ y -> 1.0 - min x y) 0.0 (g [a + b, a + 2.0 * b] == [0.0])))))
 
 @property;
-test2 : forallT (g : Vector Rat -> Vector Rat) . Rat;
-test2 g = Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - max x y) (\ b -> 1.0 - min (max 0.0 (1.0 - a)) (1.0 - min (1.0 - max 0.0 (a - b)) (equalsVector (g [a + b, a + 2.0 * b]) [0.0]))))
-
-@property;
-test3 : forallT (g : Vector Rat -> Vector Rat) . Rat;
-test3 g = Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ b -> 1.0 - (1.0 - max (1.0 - min (max 0.0 (a - 0.0)) (if b == 0.0 then 1.0 else 0.0)) (notEqualsVector (g [a, b]) [0.0]))))
+test3 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test3 g = Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ a -> Optimise[min] (\ x -> \ y -> 1.0 - min x y) (\ b -> 1.0 - (1.0 - max (1.0 - min (max 0.0 (a - 0.0)) (b != 0.0)) (fold (\ x -> \ y -> 1.0 - max x y) 1.0 (g [a, b] != [0.0])))))

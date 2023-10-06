@@ -147,10 +147,10 @@ candidates =
           -- HasFold --
           ------------
           ( hasFold tListRaw,
-            builtin (Fold FoldList)
+            builtin FoldList
           ),
           ( forAllIrrelevantNat "n" $ \n -> hasFold (tVectorFunctor n),
-            irrelImplNatLam "n" $ \n -> builtin (Fold FoldVector) .@@@ [n]
+            irrelImplNatLam "n" $ \n -> builtin FoldVector .@@@ [n]
           )
         ]
       <> orderCandidates Le

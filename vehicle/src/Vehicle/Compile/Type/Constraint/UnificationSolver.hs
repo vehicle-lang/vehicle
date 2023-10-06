@@ -171,8 +171,8 @@ solveLam info@(ctx, origin) (binder1, WHNFBody env1 body1) (binder2, WHNFBody en
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = contextDBLevel ctx
-  nbody1 <- normaliseInEnv (extendEnvWithBound binder1 env1) body1
-  nbody2 <- normaliseInEnv (extendEnvWithBound binder2 env2) body2
+  nbody1 <- normaliseInEnv (extendEnvWithBound lv binder1 env1) body1
+  nbody2 <- normaliseInEnv (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
   -- NOTE: that we have to unnormalise here indicates something is wrong.
@@ -297,7 +297,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let constraintLevel = contextDBLevel ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
   let boundCtx = boundContextOf ctx
-  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix builtin) boundCtx)) dbIndices
+  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix builtin) (toNamedBoundCtx boundCtx))) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
     let levelSet = IntSet.fromList $ fmap unLv newDependencies

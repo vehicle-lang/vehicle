@@ -44,7 +44,8 @@ typeOfBuiltinFunction = \case
   FromNat {} -> constant ~> constant
   FromRat {} -> constant ~> constant
   -- Container functions
-  Fold {} -> typeOfFold
+  FoldList -> typeOfFold
+  FoldVector -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap
   ZipWithVector -> typeOfZipWith

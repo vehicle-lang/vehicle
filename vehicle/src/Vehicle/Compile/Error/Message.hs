@@ -347,7 +347,7 @@ instance MeaningfulError CompileError where
           }
       where
         WithContext (Unify origin e1 e2) ctx = NonEmpty.head cs
-        boundCtx = boundContextOf ctx
+        boundCtx = namedBoundCtxOf ctx
 
         constraintOriginMessage = case origin of
           CheckingExprType CheckingExpr {..} ->
@@ -380,7 +380,7 @@ instance MeaningfulError CompileError where
           }
       where
         WithContext constraint ctx = NonEmpty.head cs
-        nameCtx = boundContextOf ctx
+        nameCtx = namedBoundCtxOf ctx
 
         constraintOriginMessage = case constraint of
           UnificationConstraint (Unify origin _ _) -> case origin of
@@ -453,14 +453,14 @@ instance MeaningfulError CompileError where
       where
         InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
 
-        deducedType = calculateOpType (boundContextOf ctx) $ case tc of
+        deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
           App _ _ as -> NonEmpty.toList as
           _ -> []
 
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        calculateOpType :: BoundCtx builtin -> [Arg Ix builtin] -> Doc a
+        calculateOpType :: NamedBoundCtx -> [Arg Ix builtin] -> Doc a
         calculateOpType dbCtx args = do
           let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
@@ -473,7 +473,7 @@ instance MeaningfulError CompileError where
             go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
             go dbCtx = \case
               App _ (Builtin _ _tc) args ->
-                calculateOpType dbCtx (NonEmpty.toList args)
+                calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
               Pi _ binder result ->
                 go (binder : dbCtx) result
               _ -> "UNSUPPORTED PRINTING"
@@ -504,9 +504,9 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "unable to determine if"
-                <+> squotes (prettyFriendly (WithContext v (boundContextOf ctx)))
+                <+> squotes (prettyFriendly (WithContext v (namedBoundCtxOf ctx)))
                 <+> "is a valid index of size"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                <+> squotes (prettyFriendly (WithContext t (namedBoundCtxOf ctx)))
                 <> ".",
             fix = Nothing
           }
@@ -1182,18 +1182,18 @@ instance MeaningfulError CompileError where
                 <+> "does not contain any neural networks.",
             fix = Just "choose a different compilation target than VNNLib"
           }
-    UnsupportedNegatedOperation logic notProv ->
+    UnsupportedNegatedOperation logic ctx expr ->
       UError $
         UserError
-          { provenance = notProv,
+          { provenance = mempty,
             problem =
               "The differential logic"
                 <+> quotePretty logic
                 <+> "does not support"
-                <+> "the"
+                <+> "pushing the"
                 <+> quotePretty Not
-                <+> "at"
-                <+> pretty notProv
+                <+> "through"
+                <+> prettyFriendly (WithContext expr ctx)
                 <+> "because it cannot be eliminated by pushing it inwards.",
             fix = Just "choose a different differential logic"
           }
@@ -1218,6 +1218,20 @@ instance MeaningfulError CompileError where
                 <+> quotePretty name
                 <> ".",
             fix = Just "change the specification so that all quantified variables have unique names"
+          }
+    HigherOrderVectors (ident, p) ctx typ ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "The property"
+                <+> quotePretty (nameOf ident)
+                <+> "cannot be compiled to tensors as it contains unnormalisable"
+                <+> "higher-order vectors of type:"
+                <> line
+                  <+> indent 2 (prettyFriendly (WithContext typ ctx))
+                <> ".",
+            fix = Nothing
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
@@ -1395,7 +1409,7 @@ prettyTypeClassConstraintOriginExpr ctx fun args = do
         -- oblivious to them. Instead we want to print out what they are applied to.
         Builtin _ b | isCoercion b -> argExpr $ last args
         _ -> fun
-  prettyFriendly $ WithContext expr (boundContextOf ctx)
+  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
 prettyUnificationConstraintOriginExpr ::
   (PrintableBuiltin builtin) =>
@@ -1403,7 +1417,7 @@ prettyUnificationConstraintOriginExpr ::
   Expr Ix builtin ->
   Doc a
 prettyUnificationConstraintOriginExpr ctx expr =
-  prettyFriendly $ WithContext expr (boundContextOf ctx)
+  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
 prettyIdentName :: Identifier -> Doc a
 prettyIdentName ident = quotePretty (nameOf ident :: Name)

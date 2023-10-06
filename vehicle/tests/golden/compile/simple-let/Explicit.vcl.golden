@@ -1,33 +1,27 @@
-bigAnd : List Bool -> Bool;
-bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
+@property;
+e1 : Tensor Bool;
+e1 = False
 
 @property;
-e1 : Bool;
-e1 = let x = True in let y = False in x and y
+e2 : Tensor Bool;
+e2 = False
 
 @property;
-e2 : Bool;
-e2 = let y = 1 in y >= 2
+forallLet : Tensor Bool;
+forallLet = forall (x : Tensor Rat) . x == 1.0
 
 @property;
-forallLet : Bool;
-forallLet = forall (x : Rat) . let y = x in y == 1.0
+letForall : Tensor Bool;
+letForall = forall (x : Tensor Rat) . 1.0 == x
 
 @property;
-letForall : Bool;
-letForall = let y = 1.0 in forall (x : Rat) . y == x
+forallInLet : Tensor Bool;
+forallInLet = True
 
 @property;
-forallInLet : Bool;
-forallInLet = bigAnd (map (\ x -> let y = x in y == 1) (1 :: nil))
+letForallIn : Tensor Bool;
+letForallIn = True
 
 @property;
-letForallIn : Bool;
-letForallIn = let y = 1 in bigAnd (map (\ x -> y == x) (1 :: nil))
-
-falsey : Rat -> Bool;
-falsey x = x <= 0.5
-
-@property;
-correctOutput : Bool;
-correctOutput = let y = 0.0 in falsey y
+correctOutput : Tensor Bool;
+correctOutput = True

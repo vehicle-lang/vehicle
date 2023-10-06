@@ -1,24 +1,3 @@
-bigAnd : Vector Bool -> Bool;
-bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-currentSensor : Index;
-currentSensor = 0
-
-previousSensor : Index;
-previousSensor = 1
-
-velocity : Index;
-velocity = 0
-
-normalise : Vector Rat -> Vector Rat;
-normalise x = map (\ i -> (x ! i + 4.0) / 8.0) (indices 2)
-
-safeInput : Vector Rat -> Bool;
-safeInput x = bigAnd (map (\ i -> - 3.25 <= x ! i and x ! i <= 3.25) (indices 2))
-
-safeOutput : forallT (controller : Vector Rat -> Vector Rat) . Vector Rat -> Bool;
-safeOutput controller x = let y = controller (normalise x) ! velocity in - 1.25 < y + 2.0 * x ! currentSensor - x ! previousSensor and y + 2.0 * x ! currentSensor - x ! previousSensor < 1.25
-
 @property;
-safe : forallT (controller : Vector Rat -> Vector Rat) . Bool;
-safe controller = forall x . safeInput x => safeOutput controller x
+safe : forallT (controller : Tensor Rat -> Tensor Rat) . Tensor Bool;
+safe controller = forall x . not ReduceAnd (Const[ -3.25 ] <= x and x <= Const[ 3.25 ]) or -1.25 < controller ((x + Const[ 4.0 ]) / Const[ 8.0 ]) ! 0 + 2.0 * x ! 0 - x ! 1 and controller ((x + Const[ 4.0 ]) / Const[ 8.0 ]) ! 0 + 2.0 * x ! 0 - x ! 1 < 1.25

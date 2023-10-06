@@ -1,6 +1,6 @@
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
-import Control.Monad.Reader (MonadReader (..), asks)
+import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Control.Monad.Writer (MonadWriter)
 import Data.Aeson (FromJSON, ToJSON)
@@ -19,16 +19,15 @@ import GHC.Generics
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
@@ -66,7 +65,6 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
 data PropertyMetaData = PropertyMetaData
   { queryFormat :: QueryFormat,
     networkCtx :: NetworkContext,
-    unalteredFreeContext :: FreeCtx QueryBuiltin,
     propertyProvenance :: DeclProvenance,
     propertyAddress :: PropertyAddress
   }
@@ -503,7 +501,7 @@ getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toLi
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
 prettyFriendlyInCtx e = do
-  ctx <- getGlobalBoundCtx
+  ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
 
 lookupVarByLevel :: (MonadQueryStructure m) => Lv -> m Variable
@@ -570,21 +568,13 @@ getReducedVariablesFor var = do
       Just (vars, _) -> return $ fmap UserRationalVar vars
       Nothing -> compilerDeveloperError $ "User variable" <+> pretty var <+> "has no reductions"
 
-appStdlibDef :: (MonadPropertyStructure m) => StdLibFunction -> WHNFSpine QueryBuiltin -> m (WHNFValue QueryBuiltin)
-appStdlibDef fn spine = do
-  freeCtx <- asks unalteredFreeContext
-  (fnDef, _) <- lookupInFreeCtx "lookupStdlibDef" (identifierOf fn) freeCtx
-  case bodyOf fnDef of
-    Just fnBody -> normaliseApp fnBody spine
-    Nothing -> compilerDeveloperError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
-
 reduceTensorExpr ::
   (MonadQueryStructure m) =>
   LinearExpr TensorVariable RationalTensor ->
   m [LinearExpr RationalVariable Rational]
 reduceTensorExpr (Sparse coeff constant) = do
-  let constValues = Vector.toList $ tensorValues constant
-  let numRatEqs = product (tensorDims constant)
+  let constValues = Vector.toList $ tensorValue constant
+  let numRatEqs = product (tensorShape constant)
   coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
   let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
   return asserts
@@ -606,35 +596,6 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 
 --------------------------------------------------------------------------------
 -- Vector operation patterns
-
-pattern VInfiniteQuantifier ::
-  Quantifier ->
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VInfiniteQuantifier q args binder env body <-
-  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder (WHNFBody env body)) : args)
-  where
-    VInfiniteQuantifier q args binder env body =
-      VBuiltinFunction (Quantifier q) (reverse (Arg mempty Explicit Relevant (VLam binder (WHNFBody env body)) : args))
-
-pattern VForall ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VForall args binder env body = VInfiniteQuantifier Forall args binder env body
-
-pattern VExists ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VExists args binder env body = VInfiniteQuantifier Exists args binder env body
 
 pattern VVecEqSpine ::
   WHNFArg QueryBuiltin ->
@@ -691,7 +652,7 @@ pattern VFoldVector ::
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
-pattern VFoldVector f e xs <- VBuiltinFunction (Fold FoldVector) [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
+pattern VFoldVector f e xs <- VBuiltinFunction FoldVector [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
 
 pattern VMapVector ::
   WHNFValue QueryBuiltin ->
@@ -700,7 +661,7 @@ pattern VMapVector ::
 pattern VMapVector f xs <- VBuiltinFunction MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
 
 mkVVectorEquality ::
-  TensorDimensions ->
+  TensorShape ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
@@ -724,17 +685,13 @@ mkVVectorEquality dimensions e1 e2 = do
                     Arg p (Instance True) Relevant (mkVectorEquality ds [])
                   ]
 
-negExpr :: Expr Ix QueryBuiltin -> Expr Ix QueryBuiltin
-negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
-
 -- | The set of vector operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.
-vectorOperations :: Set Identifier
+vectorOperations :: Set StdLibFunction
 vectorOperations =
-  Set.fromList $
-    identifierOf
-      <$> [ StdAddVector,
-            StdSubVector,
-            StdEqualsVector,
-            StdNotEqualsVector
-          ]
+  Set.fromList
+    [ StdAddVector,
+      StdSubVector,
+      StdEqualsVector,
+      StdNotEqualsVector
+    ]

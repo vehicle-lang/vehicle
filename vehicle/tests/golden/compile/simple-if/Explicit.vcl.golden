@@ -1,11 +1,11 @@
 @property;
-prop1 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+prop1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 prop1 f = forall x . if x > 0.0 then f [x] ! 0 > 0.0 else f [x] ! 0 <= 0.0
 
 @property;
-prop2 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+prop2 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 prop2 f = exists x . f [if x > 0.0 then x else 0.2] ! 0 >= 0.0
 
 @property;
-prop3 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+prop3 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 prop3 f = exists x . if f [x] ! 0 > 0.0 then x >= 0.0 else x < 0.0

@@ -1,13 +1,7 @@
-bigAnd : Vector Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
-equalsVector : Vector Rat -> Vector Rat -> Rat;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> max 0.0 (x - y) + max 0.0 (y - x)) xs ys)
+@property;
+test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test1 f = Optimise[min] (*) (\ a -> max 0.0 (0.0 - a) + (if 0.0 == a then 1.0 else 0.0) + ReduceSum (f [a + 2.0] == [0.0]))
 
 @property;
-test1 : forallT (f : Vector Rat -> Vector Rat) . Rat;
-test1 f = Optimise[min] (*) (\ a -> max 0.0 (0.0 - a) + (if 0.0 == a then 1.0 else 0.0) + equalsVector (f [a + 2.0]) [0.0])
-
-@property;
-test2 : forallT (g : Vector Rat -> Vector Rat) . Rat;
-test2 g = Optimise[min] (*) (\ a -> Optimise[min] (*) (\ b -> max 0.0 (1.0 - a) + (if 1.0 == a then 1.0 else 0.0) + (max 0.0 (a - b) + (if a == b then 1.0 else 0.0) + equalsVector (g [a + b, a + 2.0 * b]) [0.0])))
+test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
+test2 g = Optimise[min] (*) (\ a -> Optimise[min] (*) (\ b -> max 0.0 (1.0 - a) + (if 1.0 == a then 1.0 else 0.0) + (max 0.0 (a - b) + (if a == b then 1.0 else 0.0) + ReduceSum (g [a + b, a + 2.0 * b] == [0.0]))))

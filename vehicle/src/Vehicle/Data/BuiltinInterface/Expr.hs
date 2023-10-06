@@ -2,6 +2,8 @@ module Vehicle.Data.BuiltinInterface.Expr where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.Tensor
+import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
@@ -98,7 +100,7 @@ pattern RatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LRat n))
 pattern VecLiteral ::
   (HasStandardData builtin) =>
   Provenance ->
-  Expr var builtin ->
+  Type var builtin ->
   [Arg var builtin] ->
   Expr var builtin
 pattern VecLiteral p tElem xs <-
@@ -255,3 +257,14 @@ pattern IfExpr p tRes args <-
         ( Arg p (Implicit True) Relevant tRes
             :| args
         )
+
+negExpr :: Expr var Builtin -> Expr var Builtin
+negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
+
+pattern StandardLib :: StdLibFunction -> NonEmpty (Arg var builtin) -> Expr var builtin
+pattern StandardLib fn spine <- App _ (FreeVar _ (findStdLibFunction -> Just fn)) spine
+  where
+    StandardLib fn spine = App mempty (FreeVar mempty (identifierOf fn)) spine
+
+tensorToExpr :: (a -> Expr var Builtin) -> Tensor a -> Expr var Builtin
+tensorToExpr mkElem = foldMapTensor mkElem (\xs -> BuiltinExpr mempty (BuiltinConstructor (LVec (length xs))) (Arg mempty (Implicit True) Relevant (mkHole mempty "_t") :| fmap (Arg mempty Explicit Relevant) xs))

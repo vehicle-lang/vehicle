@@ -191,8 +191,8 @@ delabBuiltinFunction fun args = case fun of
   V.Quantifier q -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
-  V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.Fold V.FoldVector -> delabTypeClassOp V.FoldTC args
+  V.FoldList -> delabTypeClassOp V.FoldTC args
+  V.FoldVector -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
   V.MapVector -> delabTypeClassOp V.MapTC args
   V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
