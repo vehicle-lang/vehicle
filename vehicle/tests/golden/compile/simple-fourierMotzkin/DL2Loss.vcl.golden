@@ -1,13 +1,13 @@
 @property;
-unusedVar : forallT (f : Vector Rat -> Vector Rat) . Rat;
-unusedVar f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ (y : Rat) -> max 0.0 (0.0 - f [x] ! 0) + (if 0.0 == f [x] ! 0 then 1.0 else 0.0)))
+unusedVar : forallT (f : Tensor -> Tensor) . Tensor;
+unusedVar f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ (y : Tensor) -> max 0.0 (0.0 - f [x] ! 0) + (if 0.0 == f [x] ! 0 then 1.0 else 0.0)))
 
 @property;
-underConstrainedVar1 : forallT (f : Vector Rat -> Vector Rat) . Rat;
+underConstrainedVar1 : forallT (f : Tensor -> Tensor) . Tensor;
 underConstrainedVar1 f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ y -> max 0.0 (1.0 - x) + (if 1.0 == x then 1.0 else 0.0) + (max 0.0 (2.0 - y) + (if 2.0 == y then 1.0 else 0.0) + (max 0.0 (0.0 - f [x + y] ! 0) + (if 0.0 == f [x + y] ! 0 then 1.0 else 0.0)))))
 
 @property;
-underConstrainedVar2 : forallT (f : Vector Rat -> Vector Rat) . Rat;
+underConstrainedVar2 : forallT (f : Tensor -> Tensor) . Tensor;
 underConstrainedVar2 f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ y -> max 0.0 (1.0 - x) + (if 1.0 == x then 1.0 else 0.0) + (max 0.0 (2.0 - 2.0 * y) + (if 2.0 == 2.0 * y then 1.0 else 0.0) + (max 0.0 (0.0 - f [2.0 * x + y] ! 0) + (if 0.0 == f [2.0 * x + y] ! 0 then 1.0 else 0.0)))))
 
 @property;

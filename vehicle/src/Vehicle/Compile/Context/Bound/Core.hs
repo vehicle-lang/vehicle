@@ -22,6 +22,9 @@ lookupIx ctx i = ctx !!? coerce i
 lookupLv :: GenericBoundCtx b -> Lv -> Maybe b
 lookupLv ctx l = lookupIx ctx (dbLevelToIndex (Lv $ length ctx) l)
 
+boundCtxLv :: GenericBoundCtx b -> Lv
+boundCtxLv = Lv . length
+
 -- | The binders of the variables that are in currently in scope, indexed into
 -- via De Bruijn expressions.
 -- Therefore the variables at the start of the list are the most

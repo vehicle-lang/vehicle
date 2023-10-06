@@ -63,9 +63,9 @@ getBoundVarByLv _ compilerPass lv =
   lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @builtin)
 
 unnormalise ::
-  forall builtin m.
+  forall strategy builtin m.
   (MonadBoundContext builtin m) =>
-  WHNFValue builtin ->
+  Value strategy builtin ->
   m (Expr Ix builtin)
 unnormalise e = do
   boundCtx <- getBoundCtx (Proxy @builtin)

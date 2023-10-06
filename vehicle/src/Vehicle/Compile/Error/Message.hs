@@ -1197,6 +1197,20 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Just "change the specification so that all quantified variables have unique names"
           }
+    HigherOrderVectors (ident, p) ctx typ ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "The property"
+                <+> quotePretty (nameOf ident)
+                <+> "cannot be compiled to loss functions as it contains unnormalisable"
+                <+> "higher-order vectors of type:"
+                <> line
+                  <+> indent 2 (prettyFriendly (WithContext typ ctx))
+                <> ".",
+            fix = Nothing
+          }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

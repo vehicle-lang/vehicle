@@ -5,17 +5,21 @@ module Vehicle.Compile
 where
 
 import Control.Monad (unless)
+<<<<<<< HEAD
 import Data.Hashable (Hashable)
+=======
+import Control.Monad.IO.Class (MonadIO (..))
+>>>>>>> 859ac937 (Proper conversion to tensor-based code)
 import Data.Map qualified as Map
 import Vehicle.Backend.Agda
-import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
 import Vehicle.Backend.Tensors.Clean (cleanUpHigherOrderStuff)
+import Vehicle.Backend.Tensors.Convert (convertToTensors)
+import Vehicle.Backend.Tensors.JSON (compileProgToJSON)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
-import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Prelude as CompilePrelude
@@ -23,8 +27,12 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
+<<<<<<< HEAD
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Prelude.Warning (CompileWarning (..))
+=======
+import Vehicle.Prelude.Warning (CompileWarning (ResourcesUnnecessariyProvidedForBackend))
+>>>>>>> 859ac937 (Proper conversion to tensor-based code)
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -119,9 +127,15 @@ compileDirect (imports, typedProg) outputFile outputAsJSON = do
   compileToTensors resolvedProg outputFile outputAsJSON
 
 compileToTensors ::
+<<<<<<< HEAD
   forall builtin m.
   (MonadCompile m, MonadStdIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
+=======
+  forall m.
+  (MonadCompile m, MonadIO m) =>
+  Prog Ix Builtin ->
+>>>>>>> 859ac937 (Proper conversion to tensor-based code)
   Maybe FilePath ->
   Bool ->
   m ()
@@ -134,13 +148,13 @@ compileToTensors prog outputFile outputAsJSON = do
 
   hoistedProg <- hoistInferableParameters cleanedProg
   functionalisedProg <- functionaliseResources hoistedProg
-  etaExpandedProg <- etaExpandProg functionalisedProg
+  tensorProg <- convertToTensors return functionalisedProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON etaExpandedProg
+        compileProgToJSON tensorProg
       else do
-        return $ prettyFriendly etaExpandedProg
+        return $ prettyFriendly tensorProg
   writeResultToFile Nothing outputFile result
 
 warnIfResourcesProvided :: (MonadCompile m) => CompileOptions -> m ()

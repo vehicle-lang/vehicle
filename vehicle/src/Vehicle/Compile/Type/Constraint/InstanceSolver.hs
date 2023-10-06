@@ -13,7 +13,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
@@ -162,6 +162,9 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
         -- then we wouldn't need to do this manually).
         solveMeta meta finalCandidateSolution extendedGoalCtx
 
+        logDebug MaxDetail (prettyVerbose extendedGoalCtx)
+        logDebug MaxDetail (prettyVerbose substCandidateExpr)
+        logDebug MaxDetail (prettyFriendly (WithContext substCandidateExpr extendedGoalCtx))
         addConstraints (unificationConstraint : recInstanceConstraints)
 
       runUnificationSolver (Proxy @builtin) mempty

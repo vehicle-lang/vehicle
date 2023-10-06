@@ -1,13 +1,13 @@
 @property;
-unusedVar : forallT (f : Vector Rat -> Vector Rat) . Bool;
-unusedVar f = exists x . exists (y : Rat) . f [x] ! 0 >= 0.0
+unusedVar : forallT (f : Tensor -> Tensor) . Tensor;
+unusedVar f = exists x . exists (y : Tensor) . f [x] ! 0 >= 0.0
 
 @property;
-underConstrainedVar1 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+underConstrainedVar1 : forallT (f : Tensor -> Tensor) . Tensor;
 underConstrainedVar1 f = exists x . exists y . x >= 1.0 and y >= 2.0 and f [x + y] ! 0 >= 0.0
 
 @property;
-underConstrainedVar2 : forallT (f : Vector Rat -> Vector Rat) . Bool;
+underConstrainedVar2 : forallT (f : Tensor -> Tensor) . Tensor;
 underConstrainedVar2 f = exists x . exists y . x >= 1.0 and 2.0 * y >= 2.0 and f [2.0 * x + y] ! 0 >= 0.0
 
 @property;

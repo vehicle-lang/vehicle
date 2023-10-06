@@ -118,23 +118,14 @@ evalApp ::
 evalApp fun [] = return fun
 evalApp fun args@(a : as) = do
   showApp fun args
+  logDebug MaxDetail $ prettyVerbose fun
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
     VLam binder (WHNFBody env body)
-      | not (visibilityMatches binder a) -> do
-          compilerDeveloperError $
-            "Visibility mismatch during normalisation:"
-              <> line
-              <> indent
-                2
-                ( "fun:"
-                    <+> prettyVerbose fun
-                    <> line
-                    <> "args:"
-                      <+> prettyVerbose args
-                )
+      | not (visibilityMatches binder a) ->
+          visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
       | otherwise -> do
           let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval newEnv body
@@ -198,7 +189,7 @@ showEntry :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> Expr Ix builtin ->
 showEntry _env _expr = do
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
-  -- incrCallDepth
+  incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> WHNFValue builtin -> m ()
@@ -214,10 +205,10 @@ showApp _fun _spine = do
   -- incrCallDepth
   return ()
 
-showAppExit :: (MonadNorm builtin m) => WHNFValue builtin -> m ()
-showAppExit _result = do
-  -- decrCallDepth
-  -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
+showAppExit :: (MonadNorm builtin m) => Value nf builtin -> m ()
+showAppExit result = do
+  decrCallDepth
+  logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 
 findInstanceArg :: (MonadCompile m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])

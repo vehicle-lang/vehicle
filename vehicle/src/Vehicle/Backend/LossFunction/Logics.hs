@@ -5,7 +5,6 @@ module Vehicle.Backend.LossFunction.Logics
   )
 where
 
-import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
 import Vehicle.Data.BuiltinInterface.DSL
@@ -17,7 +16,7 @@ import Vehicle.Syntax.Builtin
 --------------------------------------------------------------------------------
 
 -- | A partial expression which requires provenance to construct.
-type PLExpr = LossDSLExpr
+type PLExpr = DSLExpr Builtin
 
 mkOp1 :: PLExpr -> (PLExpr -> PLExpr) -> PLExpr
 mkOp1 t f = explLam "x" t (\x -> f x)
@@ -85,9 +84,9 @@ data NotTranslation
   | UnaryNot PLExpr -- (LExpr -> LExpr)
 
 --  | Template for different avilable differentiable logics
---  | part of the syntax translation that differ depending on chosen DL are:
---  | logical lconnectives (not, and, or, implies)
---  | comparisons (<, <=, >, >=, =, !=)
+--  part of the syntax translation that differ depending on chosen DL are:
+--  logical lconnectives (not, and, or, implies)
+--  comparisons (<, <=, >, >=, =, !=)
 data DifferentialLogicImplementation = DifferentialLogicImplementation
   { logicID :: DifferentiableLogicID,
     compileBool :: PLExpr,

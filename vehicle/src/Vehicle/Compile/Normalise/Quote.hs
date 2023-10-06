@@ -23,15 +23,17 @@ instance Quote (Value strategy builtin) (Expr Ix builtin) where
     VUniverse u -> Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine
     VFreeVar v spine -> quoteApp level p (FreeVar p v) spine
-    VBoundVar v spine -> quoteApp level p (BoundVar p (dbLevelToIndex level v)) spine
+    VBoundVar v spine -> do
+      let var = BoundVar p (dbLevelToIndex level v)
+      quoteApp level p var spine
     VBuiltin b spine -> quoteApp level p (Builtin p b) spine
     VPi binder body -> do
       let quotedBinder = quote p level binder
-      let quotedBody = quote p level body
+      let quotedBody = quote p (level + 1) body
       Pi p quotedBinder quotedBody
     VLam binder body -> do
       let quotedBinder = quote p level binder
-      let quotedBody = quote p level (binder, body)
+      let quotedBody = quote p (level + 1) (binder, body)
       Lam mempty quotedBinder quotedBody
 
 instance Quote (VBinder strategy builtin, Body strategy builtin) (Expr Ix builtin) where
@@ -54,7 +56,7 @@ instance Quote (VArg strategy builtin) (Arg Ix builtin) where
   quote p level = fmap (quote p level)
 
 quoteApp :: Lv -> Provenance -> Expr Ix builtin -> Spine strategy builtin -> Expr Ix builtin
-quoteApp l p fn spine = normAppList p fn (fmap (quote p l) spine)
+quoteApp l p fn spine = normAppList p fn $ fmap (quote p l) spine
 
 envSubst :: Provenance -> Lv -> WHNFBoundEnv builtin -> Substitution (Expr Ix builtin)
 envSubst p level env i = case lookupIx env i of

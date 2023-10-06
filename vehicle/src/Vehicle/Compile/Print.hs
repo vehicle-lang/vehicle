@@ -131,9 +131,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (Arg Ix builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
   StrategyFor ('Unnamed tags) (Binder Ix builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
   -- To print a normalised expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (WHNFValue builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (WHNFArg builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
-  StrategyFor ('Unnamed tags) (WHNFBinder builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
+  StrategyFor ('Unnamed tags) (Value strategy builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
+  StrategyFor ('Unnamed tags) (VArg strategy builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
+  StrategyFor ('Unnamed tags) (VBinder strategy builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
   StrategyFor tags (BoundEnvValue 'WHNF builtin) = StrategyFor tags (WHNFValue builtin)
   StrategyFor tags (GenericBinder ()) = 'Pretty
   -- To standardise builtins
@@ -157,7 +157,14 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
   StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
+<<<<<<< HEAD
   StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
+=======
+  StrategyFor ('Named tags) (Contextualised (Value strategy builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
+  -- To convert an assertion simply defer to normalised expressions
+  StrategyFor tags UnreducedAssertion = StrategyFor tags (WHNFValue Builtin)
+  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (WHNFValue Builtin) (BoundCtx builtin))
+>>>>>>> 859ac937 (Proper conversion to tensor-based code)
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
@@ -315,13 +322,13 @@ instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively r
 instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFValue builtin) where
+instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (Value strategy builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFArg builtin) where
+instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (VArg strategy builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
-instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (WHNFBinder builtin) where
+instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (VBinder strategy builtin) where
   prettyUsing = prettyUsing @rest . descopeNaive
 
 --------------------------------------------------------------------------------
@@ -429,17 +436,17 @@ instance
 
 instance
   (PrettyUsing rest (Contextualised (Expr Ix builtin) (BoundCtx builtin))) =>
-  PrettyUsing ('Denormalise rest) (Contextualised (WHNFValue builtin) (BoundCtx builtin))
+  PrettyUsing ('Denormalise rest) (Contextualised (Value strategy builtin) (BoundCtx builtin))
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(WHNFValue builtin) @(Expr Ix builtin) (Lv $ length ctx) e
+    let e' = unnormalise @(Value strategy builtin) @(Expr Ix builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFValue builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(WHNFValue builtin) @(Expr Ix builtin) 0 e)
+instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (Value strategy builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(Value strategy builtin) @(Expr Ix builtin) 0 e)
 
-instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFArg builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(WHNFArg builtin) @(Arg Ix builtin) 0 e)
+instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (VArg strategy builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(VArg strategy builtin) @(Arg Ix builtin) 0 e)
 
 instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (BoundEnvValue 'WHNF builtin) where
   prettyUsing = \case

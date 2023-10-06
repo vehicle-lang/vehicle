@@ -462,7 +462,7 @@ evalFoldList evalApp = \case
     Just $ return e
   [f, e, VCons x xs] ->
     Just $ do
-      let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
+      let defaultFold = return $ VBuiltin (mkBuiltinFunction FoldList) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
       r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
       evalApp f [x, Arg mempty Explicit Relevant r]
   _ -> Nothing
@@ -542,9 +542,9 @@ evalAnn = \case
 evalImplies :: EvalSimpleBuiltin builtin
 evalImplies = \case
   [e1, e2] -> Just $ do
-    let defaultNot = VBuiltin (mkBuiltinFunction Not) [Arg mempty Explicit Relevant e1]
+    let defaultNot = VBuiltinFunction Not [Arg mempty Explicit Relevant e1]
     let ne1 = fromMaybe defaultNot (evalNot [e1])
-    let defaultOr = VBuiltin (mkBuiltinFunction Or) [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
+    let defaultOr = VBuiltinFunction Or [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
     let maybeRes = evalOr [ne1, e2]
     fromMaybe defaultOr maybeRes
   _ -> Nothing

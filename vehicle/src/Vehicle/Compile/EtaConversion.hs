@@ -1,8 +1,10 @@
 module Vehicle.Compile.EtaConversion
   ( etaExpandProg,
+    etaExpand,
   )
 where
 
+import Control.Monad.Except (MonadError (..), runExcept)
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Free
@@ -41,44 +43,52 @@ etaExpandDecls = \case
 
 etaExpand ::
   forall m builtin.
-  (MonadVarContext builtin m, PrintableBuiltin builtin) =>
+  (MonadFreeContext builtin m) =>
   Identifier ->
   Type Ix builtin ->
   Expr Ix builtin ->
   m (Expr Ix builtin)
 etaExpand declIdent originalType originalBody = do
   normType <- normaliseInEmptyEnv originalType
-  go normType originalBody
-  where
-    go :: WHNFType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
-    go typ body = case (typ, body) of
-      (VPi _ piBody, Lam p lamBinder lamBody) ->
-        Lam p lamBinder <$> addBinderToContext lamBinder (go piBody lamBody)
-      (VPi piBinder piBody, _) -> do
-        unnormPiBinder <- traverse unnormalise piBinder
-        lamBinder <- piBinderToLamBinder unnormPiBinder
-        let liftedBody = liftDBIndices 1 body
-        let p = provenanceOf body
-        let appliedBody = normAppList p liftedBody [argFromBinder lamBinder (BoundVar p 0)]
-        recBody <- addBinderToContext lamBinder $ go piBody appliedBody
-        return $ Lam p lamBinder recBody
-      (_, Lam {}) ->
-        compilerDeveloperError $
-          "More lambdas found than pis during" <+> currentPass
-            <> "of" <+> quotePretty declIdent
-            <> ":"
-            <> line
-            <> indent
-              2
-              ( "type:" <+> prettyVerbose originalType
-                  <> line
-                  <> "body:" <+> prettyVerbose originalBody
-                  <> line
-                  <> "problematic-type:" <+> prettyVerbose typ
-                  <> line
-                  <> "problematic-body" <+> prettyVerbose body
-              )
-      (_, _) -> return body
+  let errOrResult = (runExcept @(WHNFType builtin, Expr Ix builtin) $ runFreshBoundContextT (Proxy @builtin) $ go normType originalBody) :: (Either (WHNFType builtin, Expr Ix builtin) (Expr Ix builtin))
+  case errOrResult of
+    Right result -> return result
+    Left (typ, body) ->
+      compilerDeveloperError $
+        "More lambdas found than pis during" <+> currentPass
+          <> "of" <+> quotePretty declIdent
+          <> ":"
+          <> line
+          <> indent
+            2
+            ( "type:" <+> prettyVerbose originalType
+                <> line
+                <> "body:" <+> prettyVerbose originalBody
+                <> line
+                <> "problematic-type:" <+> prettyVerbose typ
+                <> line
+                <> "problematic-body" <+> prettyVerbose body
+            )
+
+go ::
+  (MonadBoundContext builtin m, MonadError (WHNFType builtin, Expr Ix builtin) m) =>
+  WHNFType builtin ->
+  Expr Ix builtin ->
+  m (Expr Ix builtin)
+go typ body = case (typ, body) of
+  (VPi _ piBody, Lam p lamBinder lamBody) -> do
+    body' <- addBinderToContext lamBinder (go piBody lamBody)
+    return $ Lam p lamBinder body'
+  (VPi piBinder piBody, _) -> do
+    unnormPiBinder <- traverse unnormalise piBinder
+    lamBinder <- piBinderToLamBinder unnormPiBinder
+    let liftedBody = liftDBIndices 1 body
+    let p = provenanceOf body
+    let appliedBody = normAppList p liftedBody [argFromBinder lamBinder (BoundVar p 0)]
+    recBody <- addBinderToContext lamBinder $ go piBody appliedBody
+    return $ Lam p lamBinder recBody
+  (_, Lam {}) -> throwError (typ, body)
+  (_, _) -> return body
 
 currentPass :: CompilerPass
 currentPass = "eta-expansion"

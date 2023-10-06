@@ -6,11 +6,13 @@ where
 import Control.Monad.Except (MonadError (..))
 import Data.Maybe (fromMaybe)
 import Vehicle.Backend.LossFunction.Logics
-import Vehicle.Backend.LossFunction.TypeSystem
+import Vehicle.Backend.LossFunction.TypeSystem (LossBuiltin)
+import Vehicle.Backend.LossFunction.TypeSystem.Core qualified as L
 import Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins (lossBuiltinInstances)
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments, typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
 import Vehicle.Data.BuiltinInterface.Expr
@@ -25,7 +27,7 @@ compile ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   Prog Ix Builtin ->
-  m (Prog Ix LossBuiltin)
+  m (Prog Ix Builtin)
 compile logic typedProg =
   logCompilerPass MinDetail currentPass $ do
     let logicImplementation = implementationOf logic
@@ -45,8 +47,8 @@ compile logic typedProg =
     lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates throwError reformattedProg
 
     lossProg <- resolveInstanceArguments lossProgWithInstances
-
-    return lossProg
+    logDebug MaxDetail $ prettyVerbose lossProg
+    convertFromLoss lossProg
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -102,3 +104,14 @@ preprocessLogicalOperators logic = traverse (traverseBuiltinsM builtinUpdateFunc
         | ident == identifierOf StdNotEqualsVector -> return $ App p1 (FreeVar p2 (identifierOf StdEqualsVector)) args
       -- Errors
       _ -> throwError $ UnsupportedNegatedOperation (logicID logic) notProv
+
+convertFromLoss :: (MonadCompile m) => Prog Ix LossBuiltin -> m (Prog Ix Builtin)
+convertFromLoss = traverse (traverseBuiltinsM update)
+  where
+    update p1 p2 b args = case b of
+      L.BuiltinConstructor c -> return $ normAppList p1 (Builtin p2 (S.BuiltinConstructor c)) args
+      L.BuiltinFunction f -> return $ normAppList p1 (Builtin p2 (S.BuiltinFunction f)) args
+      L.BuiltinType t -> return $ normAppList p1 (Builtin p2 (S.BuiltinType t)) args
+      L.NatInDomainConstraint -> return $ normAppList p1 (Builtin p2 S.NatInDomainConstraint) args
+      L.LossTC {} -> compilerDeveloperError $ "LossTC should have been resolved" <+> quotePretty b
+      L.LossTCOp {} -> compilerDeveloperError $ "LossTCOp should have been resolved" <+> quotePretty b

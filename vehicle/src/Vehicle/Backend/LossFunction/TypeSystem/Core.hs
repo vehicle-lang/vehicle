@@ -99,7 +99,7 @@ instance PrintableBuiltin LossBuiltin where
     BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
     BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
     BuiltinType f -> Builtin p (S.BuiltinType f)
-    b -> cheatConvertBuiltin p b
+    b -> cheatConvertBuiltin p (pretty b)
 
   isCoercion = const False
 

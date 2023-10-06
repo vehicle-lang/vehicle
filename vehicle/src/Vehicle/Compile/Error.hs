@@ -10,12 +10,14 @@ import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Backend.Queries.Error.Polarity.Core
+import Vehicle.Backend.Tensors.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -85,10 +87,11 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
-  | UnsupportedNegatedOperation DifferentiableLogicID Provenance
+  | UnsupportedNegatedOperation DifferentiableLogicID (NFValue Builtin)
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
+  | HigherOrderVectors DeclProvenance (BoundCtx TensorBuiltin) (NFType TensorBuiltin)
 
 deriving instance Show CompileError
 
@@ -126,10 +129,10 @@ illTypedError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
-visibilityError pass name =
+visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> Doc () -> m b
+visibilityError pass fun args =
   compilerDeveloperError $
-    unexpectedExpr pass name <+> "Should not be present as explicit arguments"
+    unexpectedExpr pass args <+> "Does not match function's visibility:" <+> fun
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
