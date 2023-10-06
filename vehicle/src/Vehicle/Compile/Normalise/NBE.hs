@@ -11,8 +11,6 @@ module Vehicle.Compile.Normalise.NBE
     defaultNBEOptions,
     eval,
     evalApp,
-    extendEnv,
-    extendEnvOverBinder,
     lookupIdentValueInEnv,
     reeval,
     findInstanceArg,
@@ -102,7 +100,7 @@ eval opts env expr = do
       return $ VLam binder' (WHNFBody env body)
     Pi _ binder body -> do
       binder' <- evalBinder opts env binder
-      let newEnv = extendEnvOverBinder binder' env
+      let newEnv = extendEnvWithBound binder' env
       body' <- eval opts newEnv body
       return $ VPi binder' body'
     BoundVar _ i ->
@@ -112,7 +110,7 @@ eval opts env expr = do
     Let _ bound binder body -> do
       binder' <- evalBinder opts env binder
       boundNormExpr <- eval opts env bound
-      let newEnv = extendEnv binder' boundNormExpr env
+      let newEnv = extendEnvWithDefined boundNormExpr binder' env
       eval opts newEnv body
     App _ fun args -> do
       fun' <- eval opts env fun
@@ -157,7 +155,7 @@ evalApp opts fun args@(a : as) = do
                       <+> prettyVerbose args
                 )
       | otherwise -> do
-          let newEnv = extendEnv binder (argExpr a) env
+          let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval opts newEnv body
           case as of
             [] -> return body'
@@ -195,8 +193,17 @@ lookupIxValueInEnv ::
   Ix ->
   WHNFEnv builtin ->
   m (WHNFValue builtin)
-lookupIxValueInEnv l env =
-  binderValue <$> lookupIxInBoundCtx currentPass l env
+lookupIxValueInEnv ix env = do
+  (_binder, value) <- lookupIxInBoundCtx currentPass ix env
+  case value of
+    Defined v -> return v
+    Bound -> do
+      -- We need to calculate the level in the final scope. Note this
+      -- step could probably be optimised by storing the required level
+      -- on the `Bound` contructor.
+      let inScopeEnv = drop (unIx ix) env
+      let lv = Lv $ length (filter isBoundEntry inScopeEnv) - 1
+      return $ VBoundVar lv []
 
 -----------------------------------------------------------------------------
 -- Reevaluation
@@ -212,7 +219,7 @@ reeval opts env expr = do
   result <- case expr of
     VUniverse {} -> return expr
     VLam binder (WHNFBody lamEnv body) -> do
-      lamEnv' <- traverse (traverse (reeval opts env)) lamEnv
+      lamEnv' <- traverse (reevalEnvEntry opts env) lamEnv
       return $ VLam binder (WHNFBody lamEnv' body)
     VPi {} -> return expr
     VMeta m spine -> VMeta m <$> reevalSpine opts env spine
@@ -229,6 +236,17 @@ reeval opts env expr = do
   showNormExit env result
   return result
 
+reevalEnvEntry ::
+  (MonadNorm builtin m) =>
+  NBEOptions ->
+  WHNFEnv builtin ->
+  EnvEntry 'WHNF builtin ->
+  m (EnvEntry 'WHNF builtin)
+reevalEnvEntry opts env (binder, value) =
+  (binder,) <$> case value of
+    Bound -> return Bound
+    Defined v -> Defined <$> reeval opts env v
+
 reevalSpine ::
   (MonadNorm builtin m) =>
   NBEOptions ->
@@ -242,8 +260,11 @@ lookupLvValueInEnv ::
   Lv ->
   WHNFEnv builtin ->
   m (WHNFValue builtin)
-lookupLvValueInEnv l env =
-  binderValue <$> lookupLvInBoundCtx currentPass l env
+lookupLvValueInEnv l env = do
+  (_binder, value) <- lookupLvInBoundCtx currentPass l env
+  case value of
+    Defined v -> return v
+    Bound -> return $ VBoundVar l []
 
 -----------------------------------------------------------------------------
 -- Other
@@ -253,7 +274,7 @@ currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m ()
 showEntry _env _expr = do
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { env=" <+> prettyVerbose env <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
   -- incrCallDepth
   return ()

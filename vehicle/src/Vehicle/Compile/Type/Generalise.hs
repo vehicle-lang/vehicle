@@ -70,7 +70,7 @@ prependConstraint ::
   m (Decl Ix builtin)
 prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) = do
   let p = originalProvenance ctx
-  typeClass <- quote p 0 expr
+  let typeClass = quote p 0 expr
 
   substTypeClass <- substMetas typeClass
   logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $

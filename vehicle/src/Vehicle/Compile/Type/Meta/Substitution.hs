@@ -102,6 +102,17 @@ instance MetaSubstitutable m builtin (WHNFValue builtin) where
 instance MetaSubstitutable m builtin (Body 'WHNF builtin) where
   subst s (WHNFBody env body) = WHNFBody <$> subst s env <*> subst s body
 
+{-
+instance MetaSubstitutable m builtin (Env 'WHNF builtin) where
+  subst s Env{..} = do
+    newEnvEntries <- subst s envEntries
+    return $ Env { envEntries = newEnvEntries, .. }
+-}
+instance MetaSubstitutable m builtin (EnvValue 'WHNF builtin) where
+  subst s = \case
+    Bound -> return Bound
+    Defined value -> Defined <$> subst s value
+
 instance MetaSubstitutable m builtin (GluedExpr builtin) where
   subst s (Glued a b) = Glued <$> subst s a <*> subst s b
 

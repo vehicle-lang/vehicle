@@ -390,7 +390,6 @@ solveMeta m solution solutionCtx = do
       <+> pretty m
       <+> "as"
       <+> prettyExternal (WithContext abstractedSolution solutionCtx)
-  -- "as" <+> prettyFriendly (WithContext abstractedSolution solutionCtx)
 
   metaSubst <- getMetaSubstitution (Proxy @builtin)
   case MetaMap.lookup m metaSubst of

@@ -1,8 +1,11 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Data.NormalisedExpr where
 
+import Control.Monad (void)
 import Data.Kind qualified as Kind (Type)
+import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.DeBruijn
@@ -32,8 +35,6 @@ instance (Generic builtin) => Generic (Body 'WHNF builtin) where
   to (u :*: v) = WHNFBody (to u) (to v)
   from (WHNFBody env expr) = from env :*: from expr
 
--- instance Eq (Body 'NF builtin) where
-
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
 data Value (strategy :: NFStrategy) builtin
@@ -56,28 +57,64 @@ type Spine strategy builtin = [VArg strategy builtin]
 -----------------------------------------------------------------------------
 -- Environments
 
-type Env strategy builtin = GenericBoundCtx (VBinder strategy builtin)
+-- | Represents a variable's value in the environment.
+data EnvValue strategy builtin
+  = -- | The variable has no known concrete value.
+    Bound
+  | -- | The variable has a known value.
+    Defined (Value strategy builtin)
+  deriving (Show, Eq, Generic)
 
-extendEnv ::
-  VBinder strategy builtin ->
+-- | The information stored for each variable in the environment. We choose
+-- to store the binder as it's a convenient mechanism for passing through
+-- name, relevance for pretty printing and debugging.
+type EnvEntry strategy builtin = (GenericBinder (), EnvValue strategy builtin)
+
+isBoundEntry :: EnvEntry strategy builtin -> Bool
+isBoundEntry (_binder, value) = case value of
+  Bound {} -> True
+  Defined {} -> False
+
+type Env strategy builtin = GenericBoundCtx (EnvEntry strategy builtin)
+
+emptyEnv :: Env strategy builtin
+emptyEnv = mempty
+
+mkDefaultEnvEntry :: Name -> EnvValue strategy builtin -> EnvEntry strategy builtin
+mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
+  where
+    displayForm = BinderDisplayForm (OnlyName name) True
+
+extendEnvWithBound ::
+  GenericBinder expr ->
+  Env strategy builtin ->
+  Env strategy builtin
+extendEnvWithBound binder env = (void binder, Bound) : env
+
+extendEnvWithDefined ::
   Value strategy builtin ->
+  GenericBinder expr ->
   Env strategy builtin ->
   Env strategy builtin
-extendEnv binder value = (fmap (const value) binder :)
-
-extendEnvOverBinder ::
-  VBinder strategy builtin ->
-  Env strategy builtin ->
-  Env strategy builtin
-extendEnvOverBinder binder env =
-  extendEnv binder (VBoundVar (Lv $ length env) []) env
+extendEnvWithDefined value binder env = (void binder, Defined value) : env
 
 boundContextToEnv ::
   BoundCtx builtin ->
   Env strategy builtin
-boundContextToEnv ctx = do
-  let levels = reverse (fmap Lv [0 .. length ctx - 1])
-  zipWith (\level binder -> fmap (const $ VBoundVar level []) binder) levels ctx
+boundContextToEnv = fmap (\binder -> (void binder, Bound))
+
+-- | Converts an environment to set of values suitable for printing
+cheatEnvToValues :: Env strategy builtin -> GenericBoundCtx (Value strategy builtin)
+cheatEnvToValues = fmap envEntryToValue
+  where
+    envEntryToValue :: EnvEntry strategy builtin -> Value strategy builtin
+    envEntryToValue (binder, value) = do
+      let name = VFreeVar (Identifier StdLib (fromMaybe "_" (nameOf binder) <> " ="))
+      name
+        [ Arg mempty Explicit Relevant $ case value of
+            Bound -> VFreeVar (Identifier StdLib "_") mempty
+            Defined x -> x
+        ]
 
 -----------------------------------------------------------------------------
 -- WHNF

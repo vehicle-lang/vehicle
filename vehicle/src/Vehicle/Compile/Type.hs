@@ -108,7 +108,7 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   -- solve constraints beforehand in order to allow for normalisation,
   -- but really only need to have solved type-class constraints.
   logDebug MaxDetail $ prettyVerbose substCheckedType
-  gluedType <- glueNBE mempty substCheckedType
+  gluedType <- glueNBE emptyEnv substCheckedType
   updatedCheckedType <- restrictAbstractDefType defSort (ident, p) gluedType
   let updatedCheckedDecl = DefAbstract p ident defSort updatedCheckedType
 
@@ -146,7 +146,7 @@ typeCheckFunction p ident anns typ body = do
 
   if isProperty anns
     then do
-      gluedDeclType <- glueNBE mempty (typeOf substDecl)
+      gluedDeclType <- glueNBE emptyEnv (typeOf substDecl)
       restrictPropertyType (ident, p) gluedDeclType
       solveConstraints (Just substDecl)
       substAgainDecl <- substMetas substDecl

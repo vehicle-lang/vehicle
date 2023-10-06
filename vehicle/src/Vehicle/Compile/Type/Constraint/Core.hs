@@ -103,7 +103,7 @@ createSubInstance (ctx, origin) r t = do
   let p = provenanceOf ctx
   newCtx <- copyContext ctx
   let dbLevel = contextDBLevel ctx
-  newTypeClassExpr <- quote p dbLevel t
+  let newTypeClassExpr = quote p dbLevel t
   (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext ctx)
   let newConstraint = InstanceConstraint (Resolve origin meta r t)
   return (unnormalised metaExpr, WithContext newConstraint newCtx)

@@ -4,23 +4,19 @@ module Vehicle.Backend.Queries.QuerySetStructure
     UnreducedAssertion (..),
     compileQueryStructure,
     eliminateNot,
-    UsedFunctionsCtx,
-    UsedFunctionsInfo,
-    getUsedFunctions,
     vectorStructureOperations,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.HashSet (HashSet)
-import Data.HashSet qualified as HashSet (fromList, intersection, null, singleton)
-import Data.Map qualified as Map (keysSet, lookup)
-import Data.Maybe (fromMaybe)
+import Data.HashSet qualified as HashSet (fromList, intersection, null)
+import Data.Map qualified as Map (keysSet)
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, intersection, map, null, singleton)
+import Data.Set qualified as Set (fromList, intersection, map, null)
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
+import Vehicle.Backend.Queries.UsedFunctions
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
@@ -32,7 +28,6 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.BuiltinPatterns
-import Vehicle.Data.DeBruijn (dbLevelToIndex)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
@@ -429,7 +424,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
             let unnormalisedVar = UserVariable variableName tensorDimensions variableName
 
             -- First of all optimistically try not to normalise the quantified variable.
-            let optimisticEnv = extendEnv binder (VBoundVar currentLevel []) env
+            let optimisticEnv = extendEnvWithBound binder env
             optimisiticBody <- eval queryStructureNBEOptions optimisticEnv body
 
             let unreducedPassDoc = "Trying without reducing dimensions of" <+> variableDoc
@@ -453,7 +448,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
                 logDebug MidDetail $ "Failed to compile without reducing dimensions of" <+> variableDoc
                 logDebug MidDetail $ indent 2 ("Reason:" <+> pretty e) <> line
                 let (newQuantifiedVariables, envEntry) = reduceVariable currentLevel unnormalisedVar
-                let newEnv = extendEnv binder envEntry env
+                let newEnv = extendEnvWithDefined envEntry binder env
 
                 let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
 
@@ -485,97 +480,3 @@ calculateVariableDimensions binder = go (typeOf binder)
     goBase = \case
       VRatType {} -> return []
       baseType -> Left $ SeriousError $ UnsupportedQuantifierType binder baseType
-
---------------------------------------------------------------------------------
--- Builtin and free variable tracking
-
-type UsedFunctionsCtx = GenericFreeCtx UsedFunctionsInfo
-
-type UsedFunctionsInfo = (HashSet BuiltinFunction, Set Identifier)
-
-getUsedFunctions ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  GenericBoundCtx UsedFunctionsInfo ->
-  Expr Ix Builtin ->
-  UsedFunctionsInfo
-getUsedFunctions freeCtx boundCtx expr = case expr of
-  Universe {} -> mempty
-  Meta {} -> mempty
-  Hole {} -> mempty
-  Pi {} -> mempty
-  BoundVar _ v -> getUsedVarsBoundVar boundCtx v
-  Builtin _ b -> getUsedFunctionsBuiltin b
-  FreeVar _ ident -> getUsedFunctionsFreeVar freeCtx ident
-  App _ fun args -> foldr (<>) (getUsedFunctions freeCtx boundCtx fun) (fmap (getUsedFunctions freeCtx boundCtx . argExpr) args)
-  Let _ e1 _binder e2 -> getUsedFunctions freeCtx boundCtx e1 <> getUsedFunctions freeCtx boundCtx e2
-  Lam _ _binder e -> getUsedFunctions freeCtx (mempty : boundCtx) e
-
-getUsedNormFunctions ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  GenericBoundCtx UsedFunctionsInfo ->
-  WHNFValue Builtin ->
-  UsedFunctionsInfo
-getUsedNormFunctions freeCtx boundCtx expr = case expr of
-  VPi {} -> mempty
-  VUniverse {} -> mempty
-  VMeta {} -> mempty
-  VLam _ (WHNFBody env body) -> do
-    let envInfo = getUsedFunctionsEnv freeCtx boundCtx env
-    let bodyInfo = getUsedFunctions freeCtx (mempty : boundCtx) body
-    envInfo <> bodyInfo
-  VBoundVar v spine -> do
-    let varInfo = getUsedVarsBoundVar boundCtx (dbLevelToIndex (Lv (length boundCtx)) v)
-    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
-    varInfo <> spineInfo
-  VFreeVar ident spine -> do
-    let identInfo = getUsedFunctionsFreeVar freeCtx ident
-    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
-    identInfo <> spineInfo
-  VBuiltin b spine -> do
-    let builtinInfo = getUsedFunctionsBuiltin b
-    let spineInfo = getUsedFunctionsSpine freeCtx boundCtx spine
-    builtinInfo <> spineInfo
-
-getUsedFunctionsBuiltin ::
-  Builtin ->
-  UsedFunctionsInfo
-getUsedFunctionsBuiltin = \case
-  BuiltinFunction f -> (HashSet.singleton f, mempty)
-  _ -> mempty
-
-getUsedFunctionsFreeVar ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  Identifier ->
-  UsedFunctionsInfo
-getUsedFunctionsFreeVar freeCtx ident =
-  (mempty, Set.singleton ident) <> fromMaybe mempty (Map.lookup ident freeCtx)
-
-getUsedVarsBoundVar ::
-  GenericBoundCtx UsedFunctionsInfo ->
-  Ix ->
-  UsedFunctionsInfo
-getUsedVarsBoundVar boundCtx ix =
-  fromMaybe mempty (lookupIx boundCtx ix)
-
-getUsedFunctionsSpine ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  GenericBoundCtx UsedFunctionsInfo ->
-  WHNFSpine Builtin ->
-  UsedFunctionsInfo
-getUsedFunctionsSpine freeCtx boundCtx =
-  foldMap (getUsedNormFunctions freeCtx boundCtx . argExpr)
-
-getUsedFunctionsEnv ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  GenericBoundCtx UsedFunctionsInfo ->
-  WHNFEnv Builtin ->
-  UsedFunctionsInfo
-getUsedFunctionsEnv freeCtx boundCtx =
-  foldMap (getUsedNormFunctions freeCtx boundCtx . binderValue)
-
-getUsedFunctionsCtx ::
-  GenericFreeCtx UsedFunctionsInfo ->
-  WHNFEnv Builtin ->
-  GenericBoundCtx UsedFunctionsInfo
-getUsedFunctionsCtx freeCtx =
-  foldr (\u v -> getUsedNormFunctions freeCtx v (binderValue u) : v) mempty

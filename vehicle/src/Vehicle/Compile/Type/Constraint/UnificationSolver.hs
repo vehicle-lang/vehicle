@@ -171,9 +171,8 @@ solveLam info@(ctx, origin) (binder1, WHNFBody env1 body1) (binder2, WHNFBody en
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = contextDBLevel ctx
-  let var = VBoundVar lv []
-  nbody1 <- eval defaultNBEOptions (extendEnv binder1 var env1) body1
-  nbody2 <- eval defaultNBEOptions (extendEnv binder2 var env2) body2
+  nbody1 <- eval defaultNBEOptions (extendEnvWithBound binder1 env1) body1
+  nbody2 <- eval defaultNBEOptions (extendEnvWithBound binder2 env2) body2
 
   -- Update the context.
   -- NOTE: that we have to unnormalise here indicates something is wrong.
@@ -234,7 +233,7 @@ solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
       then pruneMetaDependencies ctx meta solution
       else return solution
 
-  unnormSolution <- quote mempty (contextDBLevel ctx) prunedSolution
+  let unnormSolution = quote mempty (contextDBLevel ctx) prunedSolution
   let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
   solveMeta metaID substSolution (boundContext ctx)
   return $ Success mempty

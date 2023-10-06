@@ -196,6 +196,7 @@ library
     Vehicle.Backend.Queries.Error.Polarity.Core
     Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
     Vehicle.Backend.Queries.Error.Polarity.Type
+    Vehicle.Backend.Queries.UsedFunctions
     Vehicle.Compile.Arity
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core

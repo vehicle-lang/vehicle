@@ -222,7 +222,7 @@ findApplicationsInSpine ::
   WHNFSpine Builtin ->
   m NetworkApplicationForest
 findApplicationsInSpine spine =
-  HashSet.unions <$> traverse findApplicationsInExpr (fmap argExpr spine)
+  HashSet.unions <$> traverse (findApplicationsInExpr . argExpr) spine
 
 --------------------------------------------------------------------------------
 -- Replace network applications.

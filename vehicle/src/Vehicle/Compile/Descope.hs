@@ -221,9 +221,9 @@ descopeNormExpr f e = case e of
   VLam binder (WHNFBody _env body) -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNaive body
-    -- let env' = fmap (descopeNormExpr f) env
-    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (ExplicitArg p) env'
-    -- Lam p binder' (App p envExpr [ExplicitArg p body'])
+    -- let env' = fmap (descopeNormExpr f) (cheatEnvToValues env)
+    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (Arg p Explicit Relevant) env'
+    -- Lam p binder' (App p envExpr [Arg p Explicit Relevant body'])
     Lam p binder' body'
   where
     p = mempty

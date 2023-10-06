@@ -23,8 +23,8 @@ checkNetworkType (ident, p) networkType = case normalised networkType of
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
   VPi binder result -> do
-    inputLin <- quote mempty 0 (typeOf binder)
-    outputLin <- quote mempty 0 result
+    let inputLin = quote mempty 0 (typeOf binder)
+    let outputLin = quote mempty 0 result
 
     -- The linearity of the output of a network is the max of 1) Linear (as outputs
     -- are also variables) and 2) the linearity of its input. So prepend this
