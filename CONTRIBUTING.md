@@ -684,9 +684,11 @@ pipx run tox -- tests/test_loss_function*.py
 
 The pygments tests test the integration with [the Pygments syntax highlighter].
 
-These tests are in [test_pygments.sh](./vehicle-python/tests/test_pygments.sh), do not use pytest and as such are always run when running tox.
+Run the following command:
 
-This is a known bug, and PR [#561](https://github.com/vehicle-lang/vehicle/pull/561) is meant to address this.
+```sh
+pipx run tox -- tests/test_pygments.py
+```
 
 #### Installing from source
 
