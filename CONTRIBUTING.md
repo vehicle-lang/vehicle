@@ -677,7 +677,7 @@ The loss function tests test the translation and use of properties from Vehicle 
 Run the following command:
 
 ```sh
-pipx run tox -- tests/test_loss_function*.py
+pipx run tox -- tests/test_loss*.py
 ```
 
 ##### The pygments tests
