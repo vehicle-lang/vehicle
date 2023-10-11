@@ -327,7 +327,7 @@ Optionally, each test case can specify the following fields:
 
 The logging level can be changed by changing the command in the `test.json` file. Changing the logging level changes the output of the command, which breaks the golden test.
 
-Some golden tests require external tools, such as the MarabouVerify test above. To run these tests, add `--test-option="--external=<external>"` to the test command, where `<external>` is the name of the external dependency, such as `Marabou`.
+Some golden tests require external tools, such as the MarabouVerify test above. To run these tests, add `--test-option="--allowlist-externals=<external>"` to the test command, where `<external>` is the name of the external dependency, such as `Marabou`.
 
 ##### Adding golden tests
 
