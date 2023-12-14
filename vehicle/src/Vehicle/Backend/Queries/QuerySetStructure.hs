@@ -97,7 +97,6 @@ data SeriousPropertyError
   = AlternatingQuantifiers
   | NonLinearSpecification (WHNFValue Builtin)
   | UnsupportedQuantifierType (WHNFBinder Builtin) (WHNFType Builtin)
-  | UnsupportedInequalityOp
 
 data PropertyError
   = TemporaryError TemporaryPropertyError
@@ -233,21 +232,19 @@ compileBoolExpr = go False
       (WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin) ->
       m QueryStructureResult
     compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
-      let ctx = cumulativeVarsToCtx quantifiedVariables
       let expr = mkRel lhs rhs
+      let ctx = cumulativeVarsToCtx quantifiedVariables
       logDebug MaxDetail $ "Identified (in)equality:" <+> prettyFriendly (WithContext expr ctx)
 
       maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
       case maybeResult of
         Just result -> return result
-        Nothing -> case eq of
-          Eq -> do
-            let assertion
-                  | null dims = VectorEqualityAssertion $ VectorEquality (argExpr lhs) (argExpr rhs) dims mkRel
-                  | otherwise = NonVectorEqualityAssertion expr
-            return $ Right ([], NonTrivial $ Query assertion, [])
-          Neq ->
-            return $ Left $ SeriousError UnsupportedInequalityOp
+        Nothing -> do
+          let assertion =
+                if eq == Eq && null dims
+                  then VectorEqualityAssertion $ VectorEquality (argExpr lhs) (argExpr rhs) dims mkRel
+                  else NonVectorEqualityAssertion expr
+          return $ Right ([], NonTrivial $ Query assertion, [])
 
     compileOrder :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
     compileOrder alreadyLiftedIfs quantifiedVariables expr = do

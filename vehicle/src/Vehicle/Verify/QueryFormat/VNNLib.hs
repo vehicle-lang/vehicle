@@ -33,7 +33,7 @@ vnnlibQueryFormat =
 -- | Compiles an expression representing a single Marabou query. The expression
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
-compileVNNLibQuery :: (MonadLogger m) => Name -> CLSTProblem -> m QueryText
+compileVNNLibQuery :: (MonadLogger m) => DeclProvenance -> CLSTProblem -> m QueryText
 compileVNNLibQuery _propertyName (CLSTProblem variables assertions) = do
   let variableNames = sequentialNetworkVariableNaming "X_" "Y_" variables
   let variableNamesMap = Map.fromList (zip variables variableNames)
@@ -58,9 +58,10 @@ compileAssertion varNames assertion = do
   let compiledRHS = prettyRationalAsFloat constant
   return $ parens "assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS)
 
-compileRel :: Either () OrderOp -> Doc a
+compileRel :: Either EqualityOp OrderOp -> Doc a
 compileRel = \case
-  Left () -> "=="
+  Left Eq -> "=="
+  Left Neq -> "=="
   Right Le -> "<="
   Right Ge -> ">="
   Right Lt -> "<"

@@ -525,8 +525,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         -- As the expression is of type `Bool` we can immediately unfold the `if`.
         let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
         splitUpAssertions alreadyLiftedIfs unfoldedExpr
-      VBuiltinFunction (Equals _ Eq) [e1, e2]
-        | alreadyLiftedIfs -> return $ NonTrivial $ Query (argExpr e1, Equal, argExpr e2)
+      VBuiltinFunction (Equals _ op) [e1, e2]
+        | alreadyLiftedIfs -> return $ NonTrivial $ Query $ eqToRelation (argExpr e1) op (argExpr e2)
         | otherwise -> liftIfs expr
       VBuiltinFunction (Order _ op) [e1, e2]
         | alreadyLiftedIfs -> return $ NonTrivial $ Query $ ordToRelation (argExpr e1) op (argExpr e2)

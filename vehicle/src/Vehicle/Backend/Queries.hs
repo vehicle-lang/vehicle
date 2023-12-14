@@ -283,8 +283,6 @@ compileQuerySet isPropertyNegated expr = do
           let baseType = typeOf binder
           let declIdent = fst declProvenance
           throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
-        UnsupportedInequalityOp -> do
-          throwError $ UnsupportedInequality (queryFormatID queryFormat) declProvenance
       Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
         case maybeTrivialBoolExpr of
           Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
@@ -333,7 +331,7 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
                 put (queryID + 1)
 
                 checkIfInputsWellSpecificied conjunctions
-                queryText <- compileQuery queryFormat (propertyName propertyAddress) conjunctions
+                queryText <- compileQuery queryFormat declProvenance conjunctions
                 let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
                 let queryAddress = (propertyAddress, queryID)
                 let queryData = QueryData metaNetwork allVariableSteps
