@@ -268,6 +268,14 @@ pattern VTensorType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFVal
 pattern VTensorType tElem dims <-
   VFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
 
+mkVVectorType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFValue builtin -> WHNFType builtin
+mkVVectorType tElem dim =
+  VBuiltinType
+    Vector
+    [ Arg mempty Explicit Relevant tElem,
+      Arg mempty Explicit Irrelevant dim
+    ]
+
 --------------------------------------------------------------------------------
 -- Constructors DSL
 

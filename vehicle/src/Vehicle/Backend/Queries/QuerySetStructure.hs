@@ -1,10 +1,11 @@
 module Vehicle.Backend.Queries.QuerySetStructure
   ( SeriousPropertyError (..),
     PropertyError (..),
-    UnreducedAssertion (..),
+    UnreducedAssertion,
     compileQueryStructure,
     eliminateNot,
     vectorStructureOperations,
+    isVectorEquals,
   )
 where
 
@@ -15,7 +16,7 @@ import Data.Map qualified as Map (keysSet)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, intersection, map, null)
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
+import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion)
 import Vehicle.Backend.Queries.UsedFunctions
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Context.Free
@@ -108,16 +109,15 @@ type QueryStructureResult =
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
   WHNFValue Builtin ->
-  Maybe (WHNFArg Builtin, WHNFArg Builtin, TensorDimensions, WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin)
+  Maybe (WHNFArg Builtin, WHNFArg Builtin, TensorDimensions)
 isVectorEquals = \case
   VFreeVar ident args
     | ident == identifierOf StdEqualsVector -> case args of
-        [t1, t2, dim, sol, e1, e2] -> do
+        [t1, _t2, dim, _sol, e1, e2] -> do
           d <- getNatLiteral $ argExpr dim
           ds <- getTensorDimensions $ argExpr t1
           let dims = d : ds
-          let mkOp e1' e2' = VFreeVar ident [t1, t2, dim, sol, e1', e2']
-          Just (e1, e2, dims, mkOp)
+          Just (e1, e2, dims)
         _ -> Nothing
   _ -> Nothing
 
@@ -179,16 +179,12 @@ compileBoolExpr = go False
         ----------------
         VBoolLiteral b ->
           return $ Right ([], Trivial b, [])
-        VBuiltinFunction op@(Equals _ eq) (reverse -> e2 : e1 : args) -> do
-          -- `reverse` pattern match above is needed as EqIndex has implicit arguments.
-          -- and not matching them causes issue #712.
-          let mkOp e1' e2' = VBuiltinFunction op (args <> [e1', e2'])
-          compileEquality quantifiedVariables alreadyLiftedIfs e1 eq e2 [] mkOp
-        VBuiltinFunction Order {} _ -> do
-          compileOrder alreadyLiftedIfs quantifiedVariables expr
-        (isVectorEquals -> Just (e1, e2, dims, mkOp)) -> do
-          compileEquality quantifiedVariables alreadyLiftedIfs e1 Eq e2 dims mkOp
-
+        VBuiltinFunction Equals {} _ ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
+        VBuiltinFunction Order {} _ ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
+        (isVectorEquals -> Just {}) ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
         ---------------------
         -- Recursive cases --
         ---------------------
@@ -222,59 +218,25 @@ compileBoolExpr = go False
           let err = NonBooleanQueryStructure (cumulativeVarsToCtx quantifiedVariables) expr
           return $ Left $ TemporaryError err
 
-    compileEquality ::
-      CumulativeCtx ->
-      Bool ->
-      WHNFArg Builtin ->
-      EqualityOp ->
-      WHNFArg Builtin ->
-      TensorDimensions ->
-      (WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin) ->
-      m QueryStructureResult
-    compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
-      let expr = mkRel lhs rhs
-      let ctx = cumulativeVarsToCtx quantifiedVariables
-      logDebug MaxDetail $ "Identified (in)equality:" <+> prettyFriendly (WithContext expr ctx)
-
-      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
-      case maybeResult of
-        Just result -> return result
-        Nothing -> do
-          let assertion =
-                if eq == Eq && null dims
-                  then VectorEqualityAssertion $ VectorEquality (argExpr lhs) (argExpr rhs) dims mkRel
-                  else NonVectorEqualityAssertion expr
-          return $ Right ([], NonTrivial $ Query assertion, [])
-
-    compileOrder :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
-    compileOrder alreadyLiftedIfs quantifiedVariables expr = do
-      -- Even though we're sticking the result in a `NonVectorEqualityAssertion` we still need
-      -- to lift and eliminate `if`s as they may be inside network applications.
-      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
-      case maybeResult of
-        Just result -> return result
-        Nothing -> do
-          let assertion = NonVectorEqualityAssertion expr
-          return $ Right ([], NonTrivial $ Query assertion, [])
-
-    elimIfs :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m (Maybe QueryStructureResult)
-    elimIfs alreadyLiftedIfs quantifiedVariables expr
-      | alreadyLiftedIfs = return Nothing
+    compileAssertion :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
+    compileAssertion alreadyLiftedIfs quantifiedVariables expr
+      | alreadyLiftedIfs = return $ Right ([], NonTrivial $ Query expr, [])
       | otherwise = do
           let ctx = cumulativeVarsToCtx quantifiedVariables
           incrCallDepth
           ifLessResult <- eliminateIfs expr
           result <- case ifLessResult of
-            Nothing -> return Nothing
+            Nothing ->
+              return $ Right ([], NonTrivial $ Query expr, [])
             Just Nothing -> do
               let err = CannotEliminateIfs ctx expr
-              return $ Just $ Left $ TemporaryError err
+              return $ Left $ TemporaryError err
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
               let env = variableCtxToEnv quantifiedVariables
               normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
-              Just <$> go True quantifiedVariables normExprWithoutIf
+              go True quantifiedVariables normExprWithoutIf
           decrCallDepth
           return result
 
@@ -362,8 +324,7 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
     then do
       logDebug MidDetail $ "Keeping folded finite quantifier:" <+> pretty q <+> prettyVerbose binder
       let foldedExpr = VFiniteQuantifier q quantSpine binder env body
-      let unnormalisedAssertion = NonVectorEqualityAssertion foldedExpr
-      return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
+      return $ Right (mempty, NonTrivial $ Query foldedExpr, mempty)
     else do
       logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
       quantImplementation <- lookupIdentValueInEnv defaultNBEOptions env (fromFiniteQuantifier q)

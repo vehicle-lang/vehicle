@@ -1,11 +1,8 @@
 module Vehicle.Backend.Queries.LinearExpr
   ( Relation (..),
     Assertion (..),
-    UnreducedAssertion (..),
+    UnreducedAssertion,
     VectorEquality (..),
-    originalVectorEqualityExpr,
-    isVectorEqualityAssertion,
-    assertionToVectorEquality,
     CLSTProblem (..),
     SparseLinearExpr (..),
     lookupCoefficient,
@@ -356,31 +353,14 @@ mapAssertionVariables f Assertion {..} =
 
 -- | A not fully reduced assertion, but none the less only represents
 -- conjunctions.
-data UnreducedAssertion
-  = VectorEqualityAssertion VectorEquality
-  | NonVectorEqualityAssertion (WHNFValue Builtin)
+type UnreducedAssertion = WHNFValue Builtin
 
 -- | An encoding of a vector equality.
 data VectorEquality = VectorEquality
   { assertionLHS :: WHNFValue Builtin,
     assertionRHS :: WHNFValue Builtin,
-    assertionDims :: TensorDimensions,
-    assertionOriginalRel :: WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin
+    assertionDims :: TensorDimensions
   }
-
-originalVectorEqualityExpr :: VectorEquality -> WHNFValue Builtin
-originalVectorEqualityExpr VectorEquality {..} =
-  assertionOriginalRel (Arg mempty Explicit Relevant assertionLHS) (Arg mempty Explicit Relevant assertionRHS)
-
-assertionToVectorEquality :: UnreducedAssertion -> Maybe VectorEquality
-assertionToVectorEquality = \case
-  VectorEqualityAssertion eq -> Just eq
-  NonVectorEqualityAssertion {} -> Nothing
-
-isVectorEqualityAssertion :: UnreducedAssertion -> Bool
-isVectorEqualityAssertion = \case
-  VectorEqualityAssertion {} -> True
-  NonVectorEqualityAssertion {} -> False
 
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem

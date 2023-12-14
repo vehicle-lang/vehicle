@@ -274,6 +274,10 @@ data MixedVariables = MixedVariables
     networkVariableCtx :: NetworkVariableCtx
   }
 
+instance Pretty MixedVariables where
+  pretty (MixedVariables userVars networkVars) =
+    "U" <> pretty userVars <> " N" <> pretty networkVars
+
 mixedVariableCtx :: MixedVariables -> MixedVariableCtx
 mixedVariableCtx MixedVariables {..} =
   fmap NetworkVar networkVariableCtx <> fmap UserVar userVariableCtx
