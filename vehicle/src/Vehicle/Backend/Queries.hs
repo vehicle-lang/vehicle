@@ -20,7 +20,7 @@ import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.NetworkElimination
 import Vehicle.Backend.Queries.QuerySetStructure
 import Vehicle.Backend.Queries.UsedFunctions
-import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
+import Vehicle.Backend.Queries.UserVariableElimination (eliminateUserVariables)
 import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), NetworkVariable (..), UserVariableCtx, pattern VInfiniteQuantifier)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
@@ -266,40 +266,20 @@ compileQuerySet isPropertyNegated expr = do
   let subsectionDoc = "compilation of set of queries:" <+> prettyFriendlyEmptyCtx expr
   logCompilerPass MaxDetail subsectionDoc $ do
     PropertyState {..} <- ask
+    let target = queryFormatID queryFormat
     -- First we attempt to recursively compile down the remaining boolean structure,
     -- stopping at the level of individual propositions (e.g. equality or ordering assertions)
-    queryStructureResult <- compileQueryStructure declProvenance usedFunctionsCtx networkCtx expr
-    case queryStructureResult of
-      Left err -> case err of
-        AlternatingQuantifiers ->
-          throwError catchableUnsupportedAlternatingQuantifiersError
-        NonLinearSpecification e -> do
-          logDebug MinDetail $ "Found non-linear expression: " <+> prettyVerbose e <> line
-          throwError catchableUnsupportedNonLinearConstraint
-        UnsupportedQuantifierType binder variableType -> do
-          let target = queryFormatID queryFormat
-          let p = provenanceOf binder
-          let baseName = getBinderName binder
-          let baseType = typeOf binder
-          let declIdent = fst declProvenance
-          throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
-      Right (quantifiedVariables, boolExpr, userVariableReductionInfo) -> do
-        metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
-        let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
-        let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
-        queries <- traverse compilePartition numberedMetaNetworkPartitions
-        let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
-        case maybeFlattenedQueries of
-          Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
-          NonTrivial flattenedQueries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated flattenedQueries
+    (quantifiedVariables, boolExpr, userVariableReductionInfo) <-
+      compileSetQueryStructure target declProvenance usedFunctionsCtx networkCtx expr
 
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-catchableUnsupportedAlternatingQuantifiersError :: CompileError
-catchableUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
+    metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
+    let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
+    let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
+    queries <- traverse compilePartition numberedMetaNetworkPartitions
+    let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
+    case maybeFlattenedQueries of
+      Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
+      NonTrivial flattenedQueries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated flattenedQueries
 
 compileMetaNetworkPartition ::
   (MonadCompileProperty m) =>
