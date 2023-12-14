@@ -94,11 +94,15 @@ evalNot e = case e of
 evalAnd :: EvalSimpleBuiltin builtin
 evalAnd = \case
   [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x && y)
+  [VBoolLiteral b, y] -> Just $ if b then y else VBoolLiteral b
+  [x, VBoolLiteral b] -> Just $ if b then x else VBoolLiteral b
   _ -> Nothing
 
 evalOr :: EvalSimpleBuiltin builtin
 evalOr = \case
   [VBoolLiteral x, VBoolLiteral y] -> Just $ VBoolLiteral (x || y)
+  [VBoolLiteral b, y] -> Just $ if b then VBoolLiteral b else y
+  [x, VBoolLiteral b] -> Just $ if b then VBoolLiteral b else x
   _ -> Nothing
 
 evalNeg :: NegDomain -> EvalSimpleBuiltin builtin

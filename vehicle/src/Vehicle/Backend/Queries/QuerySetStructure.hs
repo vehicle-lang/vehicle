@@ -47,7 +47,7 @@ compileQueryStructure ::
   UsedFunctionsCtx ->
   NetworkContext ->
   WHNFValue Builtin ->
-  m (Either SeriousPropertyError (UserVariableCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
+  m (Either SeriousPropertyError (UserVariableCtx, BooleanExpr UnreducedAssertion, VariableNormalisationSteps))
 compileQueryStructure declProv queryFreeCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
     result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryFreeCtx, networkCtx)
@@ -104,7 +104,7 @@ data PropertyError
   | SeriousError SeriousPropertyError
 
 type QueryStructureResult =
-  Either PropertyError (RevGlobalCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps)
+  Either PropertyError (RevGlobalCtx, BooleanExpr UnreducedAssertion, VariableNormalisationSteps)
 
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
@@ -177,8 +177,8 @@ compileBoolExpr = go False
         ----------------
         -- Base cases --
         ----------------
-        VBoolLiteral b ->
-          return $ Right ([], Trivial b, [])
+        VBoolLiteral {} ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
         VBuiltinFunction Equals {} _ ->
           compileAssertion alreadyLiftedIfs quantifiedVariables expr
         VBuiltinFunction Order {} _ ->
@@ -189,9 +189,9 @@ compileBoolExpr = go False
         -- Recursive cases --
         ---------------------
         VBuiltinFunction And [e1, e2] ->
-          compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+          compileOp2 Conjunct alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
         VBuiltinFunction Or [e1, e2] ->
-          compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+          compileOp2 Disjunct alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
         VBuiltinFunction Not [e] ->
           -- As the expression is of type `Bool` we can try lowering the `not` down
           -- through the expression.
@@ -220,14 +220,14 @@ compileBoolExpr = go False
 
     compileAssertion :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
     compileAssertion alreadyLiftedIfs quantifiedVariables expr
-      | alreadyLiftedIfs = return $ Right ([], NonTrivial $ Query expr, [])
+      | alreadyLiftedIfs = return $ Right ([], Query expr, [])
       | otherwise = do
           let ctx = cumulativeVarsToCtx quantifiedVariables
           incrCallDepth
           ifLessResult <- eliminateIfs expr
           result <- case ifLessResult of
             Nothing ->
-              return $ Right ([], NonTrivial $ Query expr, [])
+              return $ Right ([], Query expr, [])
             Just Nothing -> do
               let err = CannotEliminateIfs ctx expr
               return $ Left $ TemporaryError err
@@ -241,7 +241,7 @@ compileBoolExpr = go False
           return result
 
     compileOp2 ::
-      (forall a. MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a)) ->
+      (forall a. BooleanExpr a -> BooleanExpr a -> BooleanExpr a) ->
       Bool ->
       CumulativeCtx ->
       WHNFValue Builtin ->
@@ -324,7 +324,7 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
     then do
       logDebug MidDetail $ "Keeping folded finite quantifier:" <+> pretty q <+> prettyVerbose binder
       let foldedExpr = VFiniteQuantifier q quantSpine binder env body
-      return $ Right (mempty, NonTrivial $ Query foldedExpr, mempty)
+      return $ Right (mempty, Query foldedExpr, mempty)
     else do
       logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
       quantImplementation <- lookupIdentValueInEnv defaultNBEOptions env (fromFiniteQuantifier q)

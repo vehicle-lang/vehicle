@@ -1,10 +1,4 @@
 [93m
-Warning:  While compiling property 'p', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
-
-In particular, the following input variables are under-specified:
-  f₀[input]!0 - no constraints
-[m
-[93m
 Warning:  The property 'p' was found to evalute to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 [m
 [93m

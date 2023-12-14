@@ -283,18 +283,15 @@ compileQuerySet isPropertyNegated expr = do
           let baseType = typeOf binder
           let declIdent = fst declProvenance
           throwError $ UnsupportedVariableType target declIdent p baseName variableType baseType [BuiltinType Rat]
-      Right (quantifiedVariables, maybeTrivialBoolExpr, userVariableReductionInfo) -> do
-        case maybeTrivialBoolExpr of
+      Right (quantifiedVariables, boolExpr, userVariableReductionInfo) -> do
+        metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
+        let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
+        let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
+        queries <- traverse compilePartition numberedMetaNetworkPartitions
+        let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
+        case maybeFlattenedQueries of
           Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
-          NonTrivial boolExpr -> do
-            metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
-            let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
-            let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
-            queries <- traverse compilePartition numberedMetaNetworkPartitions
-            let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
-            case maybeFlattenedQueries of
-              Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
-              NonTrivial flattenedQueries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated flattenedQueries
+          NonTrivial flattenedQueries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated flattenedQueries
 
 -- | Constructs a temporary error with no real fields. This should be recaught
 -- and populated higher up the query compilation process.
