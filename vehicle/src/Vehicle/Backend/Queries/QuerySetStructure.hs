@@ -198,7 +198,7 @@ compileBoolExpr = go False
         VBuiltinFunction Or [e1, e2] ->
           compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
         VBuiltinFunction Not [e] ->
-          -- As the expression is of type `Not` we can try lowering the `not` down
+          -- As the expression is of type `Bool` we can try lowering the `not` down
           -- through the expression.
           case eliminateNot (argExpr e) of
             Just result -> go alreadyLiftedIfs quantifiedVariables result
