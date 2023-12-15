@@ -35,7 +35,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalMul)
 import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, reeval)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface
@@ -56,7 +56,6 @@ eliminateUserVariables ::
   BooleanExpr UnreducedAssertion ->
   m (MaybeTrivial (DisjunctAll (CLSTProblem, VariableNormalisationSteps)))
 eliminateUserVariables declProvenance metaNetwork variables expr = do
-  logDebug MaxDetail $ prettyFriendly (WithContext expr (mixedVariableDBCtx variables))
   flip runReaderT (declProvenance, metaNetwork) $ do
     -- The first step is to try to solve for as many user variables as possible
     -- without performing any reduction of any vector variables.
@@ -126,7 +125,6 @@ tryToSolveForUnreducedUserVariables variables expr =
     -- Split out the equalities from the inequalities.
     (solvableEqualities, remainingExpr) <- extractSolvableVectorEqualities (mixedVariableCtx variables) expr
 
-    logDebug MaxDetail $ pretty (fmap snd solvableEqualities)
     logDebug MidDetail $
       "... of which"
         <+> pretty (length solvableEqualities)
