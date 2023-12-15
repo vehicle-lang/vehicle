@@ -28,7 +28,7 @@ import Vehicle.Backend.Queries.GaussianElimination
   )
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
 import Vehicle.Backend.Queries.LinearExpr
-import Vehicle.Backend.Queries.QuerySetStructure (eliminateNot)
+import Vehicle.Backend.Queries.QuerySetStructure (eliminateNot, isVectorEquals)
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
@@ -55,7 +55,7 @@ eliminateUserVariables ::
   MixedVariables ->
   BooleanExpr UnreducedAssertion ->
   m (MaybeTrivial (DisjunctAll (CLSTProblem, VariableNormalisationSteps)))
-eliminateUserVariables declProvenance metaNetwork variables expr =
+eliminateUserVariables declProvenance metaNetwork variables expr = do
   flip runReaderT (declProvenance, metaNetwork) $ do
     -- The first step is to try to solve for as many user variables as possible
     -- without performing any reduction of any vector variables.
@@ -173,12 +173,13 @@ extractSolvableVectorEqualities mixedVariables = go
     go expr = case expr of
       -- When we hit a query we need to check if it's actually a solvable vector equality
       Query assertion -> case assertion of
-        NonVectorEqualityAssertion {} -> return ([], Just (Query assertion))
-        VectorEqualityAssertion vecEquality -> do
-          maybeSolvableAssertion <- compileVectorEquality mixedVariables vecEquality
+        (isVectorEquals -> Just (e1, e2, dims)) -> do
+          maybeSolvableAssertion <- compileVectorEquality mixedVariables dims (argExpr e1) (argExpr e2)
           case maybeSolvableAssertion of
             Nothing -> return ([], Just (Query assertion))
             Just solvableVectorEquality -> return ([(assertion, solvableVectorEquality)], Nothing)
+        _ -> do
+          return ([], Just (Query assertion))
       -- When we hit a conjunction we just recurse into it's branches
       Conjunct e1 e2 -> do
         (cs1, e1') <- go e1
@@ -210,7 +211,8 @@ solutionToExpr variables (var, Sparse {..}) = do
         | otherwise = developerError "Vector equality coefficients should currently all be magnitude 1.0"
   let constant = constantExpr dimensions (Vector.map (* (-1)) constantValue)
   let varCoeffList = Map.toList coefficients
-  return (var, foldr combFn constant varCoeffList)
+  let expr = foldr combFn constant varCoeffList
+  return (var, expr)
   where
     mkTensorType :: WHNFType Builtin -> WHNFType Builtin -> WHNFType Builtin
     mkTensorType tElem dims = VFreeVar TensorIdent [Arg mempty Explicit Relevant tElem, Arg mempty Explicit Irrelevant dims]
@@ -246,9 +248,11 @@ solutionToExpr variables (var, Sparse {..}) = do
 compileVectorEquality ::
   (MonadSMT m) =>
   MixedVariableCtx ->
-  VectorEquality ->
+  TensorDimensions ->
+  WHNFValue Builtin ->
+  WHNFValue Builtin ->
   m (Maybe SolvableAssertion)
-compileVectorEquality variables VectorEquality {..} = do
+compileVectorEquality variables assertionDims assertionLHS assertionRHS = do
   lhsLinExpr <- compilerVectorLinearExpr variables assertionDims assertionLHS
   rhsLinExpr <- compilerVectorLinearExpr variables assertionDims assertionRHS
   case (lhsLinExpr, rhsLinExpr) of
@@ -333,7 +337,7 @@ reduceRemainingVariables variables userVariableSolutions assertions =
 
     -- Then reduce the assertions
     logDebug MidDetail "Substituting reduced variables through assertions..."
-    let reduceAssertion = compileReducedAssertion reducedVariables reducedVarEnv
+    let reduceAssertion = compileReducedAssertion variables reducedVariables reducedVarEnv
     compiledAssertions <- traverse reduceAssertion assertions
 
     case eliminateTrivialAtoms compiledAssertions of
@@ -483,16 +487,13 @@ mkGaussianReconstructionStep (v, e) =
 compileReducedAssertion ::
   (MonadSMT m) =>
   MixedVariables ->
+  MixedVariables ->
   WHNFEnv Builtin ->
   UnreducedAssertion ->
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
-compileReducedAssertion variables variableSubstEnv assertion = do
-  let assertionExpr = case assertion of
-        VectorEqualityAssertion vectorEquality -> originalVectorEqualityExpr vectorEquality
-        NonVectorEqualityAssertion expr -> expr
-
+compileReducedAssertion _originalVariables variables variableSubstEnv assertion = do
   -- First normalise the expression under the new environment of reduced variables
-  normExpr <- reeval defaultNBEOptions variableSubstEnv assertionExpr
+  normExpr <- reeval defaultNBEOptions variableSubstEnv assertion
 
   -- Then extract the relation and arguments
   splitAssertions <- splitUpAssertions False normExpr
@@ -525,8 +526,8 @@ compileReducedAssertion variables variableSubstEnv assertion = do
         -- As the expression is of type `Bool` we can immediately unfold the `if`.
         let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
         splitUpAssertions alreadyLiftedIfs unfoldedExpr
-      VBuiltinFunction (Equals _ Eq) [e1, e2]
-        | alreadyLiftedIfs -> return $ NonTrivial $ Query (argExpr e1, Equal, argExpr e2)
+      VBuiltinFunction (Equals _ op) [e1, e2]
+        | alreadyLiftedIfs -> return $ NonTrivial $ Query $ eqToRelation (argExpr e1) op (argExpr e2)
         | otherwise -> liftIfs expr
       VBuiltinFunction (Order _ op) [e1, e2]
         | alreadyLiftedIfs -> return $ NonTrivial $ Query $ ordToRelation (argExpr e1) op (argExpr e2)

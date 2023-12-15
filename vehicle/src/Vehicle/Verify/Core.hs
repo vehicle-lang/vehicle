@@ -240,7 +240,7 @@ data UnderConstrainedVariableStatus
   = Unconstrained
   | BoundedAbove
   | BoundedBelow
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Semigroup UnderConstrainedVariableStatus where
   Unconstrained <> r = r
@@ -254,7 +254,7 @@ data VariableConstraintStatus
   = UnderConstrained UnderConstrainedVariableStatus
   | Bounded
   | Constant
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Semigroup VariableConstraintStatus where
   UnderConstrained r <> UnderConstrained s = case (r, s) of

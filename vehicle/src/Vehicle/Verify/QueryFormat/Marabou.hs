@@ -4,12 +4,14 @@ module Vehicle.Verify.QueryFormat.Marabou
 where
 
 import Control.Monad (forM)
+import Control.Monad.Except (MonadError (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.LinearExpr
 import Vehicle.Backend.Queries.Variable
+import Vehicle.Compile.Error (CompileError (UnsupportedInequality))
 import Vehicle.Compile.Prelude
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
@@ -39,8 +41,8 @@ marabouQueryFormat =
 -- passed should only have conjunctions and existential quantifiers at the boolean
 -- level.
 compileMarabouQuery ::
-  (MonadLogger m) =>
-  Name ->
+  (MonadLogger m, MonadError CompileError m) =>
+  DeclProvenance ->
   CLSTProblem ->
   m QueryText
 compileMarabouQuery propertyName (CLSTProblem variables assertions) = do
@@ -51,8 +53,8 @@ compileMarabouQuery propertyName (CLSTProblem variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  (MonadLogger m) =>
-  Name ->
+  (MonadLogger m, MonadError CompileError m) =>
+  DeclProvenance ->
   Map NetworkVariable Name ->
   Assertion NetworkVariable ->
   m (Doc a)
@@ -74,18 +76,19 @@ compileAssertion propertyName varNames assertion = do
   let compiledRHS = prettyRationalAsFloat constant'
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: (MonadLogger m) => Name -> Either () OrderOp -> m (Doc a)
-compileRel propertyName = \case
-  Left () -> return "="
+compileRel :: (MonadLogger m, MonadError CompileError m) => DeclProvenance -> Either EqualityOp OrderOp -> m (Doc a)
+compileRel declProv@(ident, _) = \case
+  Left Eq -> return "="
+  Left Neq -> throwError $ UnsupportedInequality MarabouQueries declProv
   Right Le -> return "<="
   Right Ge -> return ">="
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
   Right Lt -> do
-    logWarning (UnsoundStrictOrderConversion propertyName MarabouQueries)
+    logWarning (UnsoundStrictOrderConversion (nameOf ident) MarabouQueries)
     return "<="
   Right Gt -> do
-    logWarning (UnsoundStrictOrderConversion propertyName MarabouQueries)
+    logWarning (UnsoundStrictOrderConversion (nameOf ident) MarabouQueries)
     return ">="
 
 compileVar :: Bool -> (Rational, Name) -> Doc a

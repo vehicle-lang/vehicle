@@ -1,10 +1,9 @@
 module Vehicle.Backend.Queries.QuerySetStructure
-  ( SeriousPropertyError (..),
-    PropertyError (..),
-    UnreducedAssertion (..),
-    compileQueryStructure,
+  ( UnreducedAssertion,
+    compileSetQueryStructure,
     eliminateNot,
     vectorStructureOperations,
+    isVectorEquals,
   )
 where
 
@@ -15,7 +14,7 @@ import Data.Map qualified as Map (keysSet)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, intersection, map, null)
 import Vehicle.Backend.Queries.IfElimination (eliminateIfs, unfoldIf)
-import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
+import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion)
 import Vehicle.Backend.Queries.UsedFunctions
 import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Context.Free
@@ -31,6 +30,7 @@ import Vehicle.Data.BuiltinPatterns
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..), findStdLibFunction, fromFiniteQuantifier)
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat (QueryFormatID)
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -40,23 +40,20 @@ import Vehicle.Verify.Core
 -- disjunctive normal form which are guaranteed to not contain if-statements.
 -- Only reduces quantified variables of `Vector` type as much as is required
 -- in order to be able to reach DNF.
-compileQueryStructure ::
+compileSetQueryStructure ::
   (MonadCompile m, MonadFreeContext Builtin m) =>
+  QueryFormatID ->
   DeclProvenance ->
   UsedFunctionsCtx ->
   NetworkContext ->
   WHNFValue Builtin ->
-  m (Either SeriousPropertyError (UserVariableCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps))
-compileQueryStructure declProv queryFreeCtx networkCtx expr =
+  m (UserVariableCtx, BooleanExpr UnreducedAssertion, VariableNormalisationSteps)
+compileSetQueryStructure queryFormatID declProv queryFreeCtx networkCtx expr =
   logCompilerPass MinDetail "compilation of boolean structure" $ do
-    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryFreeCtx, networkCtx)
+    result <- runReaderT (compileBoolExpr mempty expr) (declProv, queryFreeCtx, networkCtx, queryFormatID)
     case result of
-      Left (TemporaryError err) ->
-        compilerDeveloperError $ "Something went wrong in query compilation:" <+> pretty err
-      Left (SeriousError err) ->
-        return $ Left err
-      Right (ctx, boolExpr, steps) ->
-        return $ Right (reverse ctx, boolExpr, steps)
+      Left err -> compilerDeveloperError $ "Something went wrong in query compilation:" <+> pretty err
+      Right (ctx, boolExpr, steps) -> return (reverse ctx, boolExpr, steps)
 
 --------------------------------------------------------------------------------
 -- Data
@@ -92,33 +89,21 @@ instance Pretty TemporaryPropertyError where
     CannotEliminateNot ctx e -> "CannotEliminateNot[" <+> prettyFriendly (WithContext e ctx) <+> "]"
     NonBooleanQueryStructure ctx e -> "NonBooleanQueryStructure[" <+> prettyFriendly (WithContext e ctx) <+> "]"
 
--- | Serious errors that are fundemental problems with the specification
-data SeriousPropertyError
-  = AlternatingQuantifiers
-  | NonLinearSpecification (WHNFValue Builtin)
-  | UnsupportedQuantifierType (WHNFBinder Builtin) (WHNFType Builtin)
-  | UnsupportedInequalityOp
-
-data PropertyError
-  = TemporaryError TemporaryPropertyError
-  | SeriousError SeriousPropertyError
-
 type QueryStructureResult =
-  Either PropertyError (RevGlobalCtx, MaybeTrivial (BooleanExpr UnreducedAssertion), VariableNormalisationSteps)
+  Either TemporaryPropertyError (RevGlobalCtx, BooleanExpr UnreducedAssertion, VariableNormalisationSteps)
 
 -- | Pattern matches on a vector equality in the standard library.
 isVectorEquals ::
   WHNFValue Builtin ->
-  Maybe (WHNFArg Builtin, WHNFArg Builtin, TensorDimensions, WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin)
+  Maybe (WHNFArg Builtin, WHNFArg Builtin, TensorDimensions)
 isVectorEquals = \case
   VFreeVar ident args
     | ident == identifierOf StdEqualsVector -> case args of
-        [t1, t2, dim, sol, e1, e2] -> do
+        [t1, _t2, dim, _sol, e1, e2] -> do
           d <- getNatLiteral $ argExpr dim
           ds <- getTensorDimensions $ argExpr t1
           let dims = d : ds
-          let mkOp e1' e2' = VFreeVar ident [t1, t2, dim, sol, e1', e2']
-          Just (e1, e2, dims, mkOp)
+          Just (e1, e2, dims)
         _ -> Nothing
   _ -> Nothing
 
@@ -136,7 +121,7 @@ getTensorDimensions = \case
 
 type MonadQueryStructure m =
   ( MonadCompile m,
-    MonadReader (DeclProvenance, UsedFunctionsCtx, NetworkContext) m,
+    MonadReader (DeclProvenance, UsedFunctionsCtx, NetworkContext, QueryFormatID) m,
     MonadFreeContext Builtin m
   )
 
@@ -178,40 +163,36 @@ compileBoolExpr = go False
         ----------------
         -- Base cases --
         ----------------
-        VBoolLiteral b ->
-          return $ Right ([], Trivial b, [])
-        VBuiltinFunction op@(Equals _ eq) (reverse -> e2 : e1 : args) -> do
-          -- `reverse` pattern match above is needed as EqIndex has implicit arguments.
-          -- and not matching them causes issue #712.
-          let mkOp e1' e2' = VBuiltinFunction op (args <> [e1', e2'])
-          compileEquality quantifiedVariables alreadyLiftedIfs e1 eq e2 [] mkOp
-        VBuiltinFunction Order {} _ -> do
-          compileOrder alreadyLiftedIfs quantifiedVariables expr
-        (isVectorEquals -> Just (e1, e2, dims, mkOp)) -> do
-          compileEquality quantifiedVariables alreadyLiftedIfs e1 Eq e2 dims mkOp
-
+        VBoolLiteral {} ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
+        VBuiltinFunction Equals {} _ ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
+        VBuiltinFunction Order {} _ ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
+        (isVectorEquals -> Just {}) ->
+          compileAssertion alreadyLiftedIfs quantifiedVariables expr
         ---------------------
         -- Recursive cases --
         ---------------------
         VBuiltinFunction And [e1, e2] ->
-          compileOp2 (andTrivial Conjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+          compileOp2 Conjunct alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
         VBuiltinFunction Or [e1, e2] ->
-          compileOp2 (orTrivial Disjunct) alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
+          compileOp2 Disjunct alreadyLiftedIfs quantifiedVariables (argExpr e1) (argExpr e2)
         VBuiltinFunction Not [e] ->
-          -- As the expression is of type `Not` we can try lowering the `not` down
+          -- As the expression is of type `Bool` we can try lowering the `not` down
           -- through the expression.
           case eliminateNot (argExpr e) of
             Just result -> go alreadyLiftedIfs quantifiedVariables result
             Nothing -> do
               let err = CannotEliminateNot (cumulativeVarsToCtx quantifiedVariables) expr
-              return $ Left $ TemporaryError err
+              return $ Left err
         VBuiltinFunction If [_, c, x, y] -> do
           -- As the expression is of type `Bool` we can immediately unfold the `if`.
           let unfoldedExpr = unfoldIf c (argExpr x) (argExpr y)
           go alreadyLiftedIfs quantifiedVariables unfoldedExpr
         VInfiniteQuantifier q _ binder env body -> case q of
           -- If we're at a `Forall` we know we must have alternating quantifiers.
-          Forall -> return $ Left $ SeriousError AlternatingQuantifiers
+          Forall -> throwError catchableUnsupportedAlternatingQuantifiersError
           -- Otherwise try to compile away the quantifier.
           Exists -> compileInfiniteQuantifier quantifiedVariables binder env body
         VFiniteQuantifier q args binder env body ->
@@ -221,68 +202,32 @@ compileBoolExpr = go False
         ------------
         _ -> do
           let err = NonBooleanQueryStructure (cumulativeVarsToCtx quantifiedVariables) expr
-          return $ Left $ TemporaryError err
+          return $ Left err
 
-    compileEquality ::
-      CumulativeCtx ->
-      Bool ->
-      WHNFArg Builtin ->
-      EqualityOp ->
-      WHNFArg Builtin ->
-      TensorDimensions ->
-      (WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin) ->
-      m QueryStructureResult
-    compileEquality quantifiedVariables alreadyLiftedIfs lhs eq rhs dims mkRel = do
-      let ctx = cumulativeVarsToCtx quantifiedVariables
-      let expr = mkRel lhs rhs
-      logDebug MaxDetail $ "Identified (in)equality:" <+> prettyFriendly (WithContext expr ctx)
-
-      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
-      case maybeResult of
-        Just result -> return result
-        Nothing -> case eq of
-          Eq -> do
-            let assertion
-                  | null dims = VectorEqualityAssertion $ VectorEquality (argExpr lhs) (argExpr rhs) dims mkRel
-                  | otherwise = NonVectorEqualityAssertion expr
-            return $ Right ([], NonTrivial $ Query assertion, [])
-          Neq ->
-            return $ Left $ SeriousError UnsupportedInequalityOp
-
-    compileOrder :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
-    compileOrder alreadyLiftedIfs quantifiedVariables expr = do
-      -- Even though we're sticking the result in a `NonVectorEqualityAssertion` we still need
-      -- to lift and eliminate `if`s as they may be inside network applications.
-      maybeResult <- elimIfs alreadyLiftedIfs quantifiedVariables expr
-      case maybeResult of
-        Just result -> return result
-        Nothing -> do
-          let assertion = NonVectorEqualityAssertion expr
-          return $ Right ([], NonTrivial $ Query assertion, [])
-
-    elimIfs :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m (Maybe QueryStructureResult)
-    elimIfs alreadyLiftedIfs quantifiedVariables expr
-      | alreadyLiftedIfs = return Nothing
+    compileAssertion :: Bool -> CumulativeCtx -> WHNFValue Builtin -> m QueryStructureResult
+    compileAssertion alreadyLiftedIfs quantifiedVariables expr
+      | alreadyLiftedIfs = return $ Right ([], Query expr, [])
       | otherwise = do
           let ctx = cumulativeVarsToCtx quantifiedVariables
           incrCallDepth
           ifLessResult <- eliminateIfs expr
           result <- case ifLessResult of
-            Nothing -> return Nothing
+            Nothing ->
+              return $ Right ([], Query expr, [])
             Just Nothing -> do
               let err = CannotEliminateIfs ctx expr
-              return $ Just $ Left $ TemporaryError err
+              return $ Left err
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
               let env = variableCtxToEnv quantifiedVariables
               normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
-              Just <$> go True quantifiedVariables normExprWithoutIf
+              go True quantifiedVariables normExprWithoutIf
           decrCallDepth
           return result
 
     compileOp2 ::
-      (forall a. MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a) -> MaybeTrivial (BooleanExpr a)) ->
+      (forall a. BooleanExpr a -> BooleanExpr a -> BooleanExpr a) ->
       Bool ->
       CumulativeCtx ->
       WHNFValue Builtin ->
@@ -301,6 +246,14 @@ compileBoolExpr = go False
             Right (rhsUserVars, e2', rhsReconstruction) -> do
               let userVars = lhsUserVars <> rhsUserVars
               return $ Right (userVars, op e1' e2', lhsReconstruction <> rhsReconstruction)
+
+-- | Constructs a temporary error with no real fields. This should be recaught
+-- and populated higher up the query compilation process.
+catchableUnsupportedAlternatingQuantifiersError :: CompileError
+catchableUnsupportedAlternatingQuantifiersError =
+  UnsupportedAlternatingQuantifiers x x x
+  where
+    x = developerError "Evaluating temporary quantifier error"
 
 --------------------------------------------------------------------------------
 -- Not elimination
@@ -365,8 +318,7 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
     then do
       logDebug MidDetail $ "Keeping folded finite quantifier:" <+> pretty q <+> prettyVerbose binder
       let foldedExpr = VFiniteQuantifier q quantSpine binder env body
-      let unnormalisedAssertion = NonVectorEqualityAssertion foldedExpr
-      return $ Right (mempty, NonTrivial $ Query unnormalisedAssertion, mempty)
+      return $ Right (mempty, Query foldedExpr, mempty)
     else do
       logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
       quantImplementation <- lookupIdentValueInEnv defaultNBEOptions env (fromFiniteQuantifier q)
@@ -383,7 +335,7 @@ canLeaveFiniteQuantifierUnexpanded ::
   Expr Ix Builtin ->
   m Bool
 canLeaveFiniteQuantifierUnexpanded env expr = do
-  (_, usedFunctionsCtx, networkCtx) <- ask
+  (_, usedFunctionsCtx, networkCtx, _) <- ask
 
   let (usedFunctions, usedFreeVars) = getUsedFunctions usedFunctionsCtx (getUsedFunctionsCtx usedFunctionsCtx env) expr
   let forbiddenFunctions =
@@ -414,69 +366,68 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
     let isDuplicateName = any (\v -> userVarName v == variableName) quantifiedVariables
     if isDuplicateName
       then do
-        (declProv, _, _) <- ask
+        (declProv, _, _, _) <- ask
         throwError $ DuplicateQuantifierNames declProv variableName
       else do
         let currentLevel = Lv $ length quantifiedVariables
-        case calculateVariableDimensions binder of
-          Left err -> return $ Left err
-          Right tensorDimensions -> do
-            let unnormalisedVar = UserVariable variableName tensorDimensions variableName
+        tensorDimensions <- calculateVariableDimensions binder
+        let unnormalisedVar = UserVariable variableName tensorDimensions variableName
 
-            -- First of all optimistically try not to normalise the quantified variable.
-            let optimisticEnv = extendEnvWithBound binder env
-            optimisiticBody <- eval queryStructureNBEOptions optimisticEnv body
+        -- First of all optimistically try not to normalise the quantified variable.
+        let optimisticEnv = extendEnvWithBound binder env
+        optimisiticBody <- eval queryStructureNBEOptions optimisticEnv body
 
-            let unreducedPassDoc = "Trying without reducing dimensions of" <+> variableDoc
-            optimisticResult <-
-              logCompilerSection MidDetail unreducedPassDoc $
-                compileBoolExpr (unnormalisedVar : quantifiedVariables) optimisiticBody
+        let unreducedPassDoc = "Trying without reducing dimensions of" <+> variableDoc
+        optimisticResult <-
+          logCompilerSection MidDetail unreducedPassDoc $
+            compileBoolExpr (unnormalisedVar : quantifiedVariables) optimisiticBody
 
-            case optimisticResult of
-              -- If we can compile the structure without normalising then great!
-              Right (allQuantifiedVariables, substructure, variableReconstruction) -> do
-                logDebug MidDetail $ "Succeeded without reducing dimensions of" <+> variableDoc
-                return $ Right (unnormalisedVar : allQuantifiedVariables, substructure, variableReconstruction)
+        case optimisticResult of
+          -- If we can compile the structure without normalising then great!
+          Right (allQuantifiedVariables, substructure, variableReconstruction) -> do
+            logDebug MidDetail $ "Succeeded without reducing dimensions of" <+> variableDoc
+            return $ Right (unnormalisedVar : allQuantifiedVariables, substructure, variableReconstruction)
 
-              -- If we hit a serious error then immediately return as further normalisation of
-              -- the quantified variable won't help.
-              Left err@SeriousError {} ->
-                return $ Left err
-              -- Otherwise we only a hit a temporary error so we try again normalising the
-              -- user variable more aggressively.
-              Left (TemporaryError e) -> do
-                logDebug MidDetail $ "Failed to compile without reducing dimensions of" <+> variableDoc
-                logDebug MidDetail $ indent 2 ("Reason:" <+> pretty e) <> line
-                let (newQuantifiedVariables, envEntry) = reduceVariable currentLevel unnormalisedVar
-                let newEnv = extendEnvWithDefined envEntry binder env
+          -- Otherwise we only a hit a temporary error so we try again normalising the
+          -- user variable more aggressively.
+          Left e -> do
+            logDebug MidDetail $ "Failed to compile without reducing dimensions of" <+> variableDoc
+            logDebug MidDetail $ indent 2 ("Reason:" <+> pretty e) <> line
+            let (newQuantifiedVariables, envEntry) = reduceVariable currentLevel unnormalisedVar
+            let newEnv = extendEnvWithDefined envEntry binder env
 
-                let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
+            let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
 
-                normBody <- eval queryStructureNBEOptions newEnv body
+            normBody <- eval queryStructureNBEOptions newEnv body
 
-                let reducedPassDoc = "Compiling while reducing dimensions of" <+> quotePretty variableName
-                normalisedResult <-
-                  logCompilerSection MidDetail reducedPassDoc $
-                    compileBoolExpr updatedQuantifiedVars normBody
+            let reducedPassDoc = "Compiling while reducing dimensions of" <+> quotePretty variableName
+            normalisedResult <-
+              logCompilerSection MidDetail reducedPassDoc $
+                compileBoolExpr updatedQuantifiedVars normBody
 
-                case normalisedResult of
-                  Left err -> return $ Left err
-                  Right (subQuantifiedVariables, substructure, varReconstruction) -> do
-                    let normalisationStep = Reduce (UserVar unnormalisedVar)
-                    let allQuantifiedVariables = newQuantifiedVariables <> subQuantifiedVariables
-                    return $ Right (allQuantifiedVariables, substructure, normalisationStep : varReconstruction)
+            case normalisedResult of
+              Left err -> return $ Left err
+              Right (subQuantifiedVariables, substructure, varReconstruction) -> do
+                let normalisationStep = Reduce (UserVar unnormalisedVar)
+                let allQuantifiedVariables = newQuantifiedVariables <> subQuantifiedVariables
+                return $ Right (allQuantifiedVariables, substructure, normalisationStep : varReconstruction)
 
-calculateVariableDimensions :: WHNFBinder Builtin -> Either PropertyError TensorDimensions
+calculateVariableDimensions :: forall m. (MonadQueryStructure m) => WHNFBinder Builtin -> m TensorDimensions
 calculateVariableDimensions binder = go (typeOf binder)
   where
-    go :: WHNFType Builtin -> Either PropertyError TensorDimensions
+    go :: WHNFType Builtin -> m TensorDimensions
     go = \case
       VVectorType tElem (VNatLiteral dim) -> do
         dims <- go tElem
         return $ dim : dims
       t -> goBase t
 
-    goBase :: WHNFType Builtin -> Either PropertyError TensorDimensions
+    goBase :: WHNFType Builtin -> m TensorDimensions
     goBase = \case
       VRatType {} -> return []
-      baseType -> Left $ SeriousError $ UnsupportedQuantifierType binder baseType
+      baseType -> do
+        (declProv, _, _, queryFormatID) <- ask
+        let p = provenanceOf binder
+        let baseName = getBinderName binder
+        let declIdent = fst declProv
+        throwError $ UnsupportedVariableType queryFormatID declIdent p baseName baseType (typeOf binder) [BuiltinType Rat]

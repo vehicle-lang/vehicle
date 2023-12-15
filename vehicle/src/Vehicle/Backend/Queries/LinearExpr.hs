@@ -1,11 +1,8 @@
 module Vehicle.Backend.Queries.LinearExpr
   ( Relation (..),
     Assertion (..),
-    UnreducedAssertion (..),
+    UnreducedAssertion,
     VectorEquality (..),
-    originalVectorEqualityExpr,
-    isVectorEqualityAssertion,
-    assertionToVectorEquality,
     CLSTProblem (..),
     SparseLinearExpr (..),
     lookupCoefficient,
@@ -22,6 +19,7 @@ module Vehicle.Backend.Queries.LinearExpr
     eliminateVar,
     convertToSparseFormat,
     mapAssertionVariables,
+    eqToRelation,
     ordToRelation,
     coefficientsList,
     assertionVariables,
@@ -52,6 +50,7 @@ import Vehicle.Syntax.AST
 
 data Relation
   = Equal
+  | NotEqual
   | LessThan
   | LessThanOrEqualTo
   deriving (Show, Eq, Generic)
@@ -65,14 +64,25 @@ instance FromJSON Relation
 instance Pretty Relation where
   pretty = \case
     Equal -> "=="
+    NotEqual -> "!="
     LessThan -> "<"
     LessThanOrEqualTo -> "<="
 
-relationToOp :: Relation -> Either () OrderOp
+relationToOp :: Relation -> Either EqualityOp OrderOp
 relationToOp = \case
-  Equal -> Left ()
+  Equal -> Left Eq
+  NotEqual -> Left Neq
   LessThan -> Right Lt
   LessThanOrEqualTo -> Right Le
+
+eqToRelation ::
+  WHNFValue Builtin ->
+  EqualityOp ->
+  WHNFValue Builtin ->
+  (WHNFValue Builtin, Relation, WHNFValue Builtin)
+eqToRelation e1 op e2 = case op of
+  Eq -> (e1, Equal, e2)
+  Neq -> (e1, LessThan, e2)
 
 ordToRelation ::
   WHNFValue Builtin ->
@@ -269,6 +279,7 @@ checkTriviality (Assertion rel linexp) =
     Nothing -> Nothing
     Just c -> Just $ case rel of
       Equal -> Vector.all (== 0.0) c
+      NotEqual -> Vector.all (/= 0.0) c
       LessThan -> Vector.all (< 0.0) c
       LessThanOrEqualTo -> Vector.all (<= 0.0) c
 
@@ -294,7 +305,7 @@ filterTrivialAssertions = go
 convertToSparseFormat ::
   Map NetworkVariable Name ->
   Assertion NetworkVariable ->
-  (NonEmpty (Coefficient, Name), Either () OrderOp, Rational)
+  (NonEmpty (Coefficient, Name), Either EqualityOp OrderOp, Rational)
 convertToSparseFormat nameMap (Assertion rel linearExpr) = do
   let Sparse _ coeffs vectConstant = linearExpr
   let varCoeff = sortVarCoeffs coeffs
@@ -342,31 +353,14 @@ mapAssertionVariables f Assertion {..} =
 
 -- | A not fully reduced assertion, but none the less only represents
 -- conjunctions.
-data UnreducedAssertion
-  = VectorEqualityAssertion VectorEquality
-  | NonVectorEqualityAssertion (WHNFValue Builtin)
+type UnreducedAssertion = WHNFValue Builtin
 
 -- | An encoding of a vector equality.
 data VectorEquality = VectorEquality
   { assertionLHS :: WHNFValue Builtin,
     assertionRHS :: WHNFValue Builtin,
-    assertionDims :: TensorDimensions,
-    assertionOriginalRel :: WHNFArg Builtin -> WHNFArg Builtin -> WHNFValue Builtin
+    assertionDims :: TensorDimensions
   }
-
-originalVectorEqualityExpr :: VectorEquality -> WHNFValue Builtin
-originalVectorEqualityExpr VectorEquality {..} =
-  assertionOriginalRel (Arg mempty Explicit Relevant assertionLHS) (Arg mempty Explicit Relevant assertionRHS)
-
-assertionToVectorEquality :: UnreducedAssertion -> Maybe VectorEquality
-assertionToVectorEquality = \case
-  VectorEqualityAssertion eq -> Just eq
-  NonVectorEqualityAssertion {} -> Nothing
-
-isVectorEqualityAssertion :: UnreducedAssertion -> Bool
-isVectorEqualityAssertion = \case
-  VectorEqualityAssertion {} -> True
-  NonVectorEqualityAssertion {} -> False
 
 --------------------------------------------------------------------------------
 -- Linear satisfaction problem

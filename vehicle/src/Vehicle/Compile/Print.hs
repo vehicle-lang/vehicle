@@ -25,7 +25,6 @@ import Data.IntMap qualified as IntMap (assocs)
 import Data.Text (Text)
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
-import Vehicle.Backend.Queries.LinearExpr (UnreducedAssertion (..), VectorEquality (..))
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -159,9 +158,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
   StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
-  -- To convert an assertion simply defer to normalised expressions
-  StrategyFor tags UnreducedAssertion = StrategyFor tags (WHNFValue Builtin)
-  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (WHNFValue Builtin) (BoundCtx builtin))
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
@@ -455,40 +451,6 @@ instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (EnvValue 'W
 
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)
-
---------------------------------------------------------------------------------
--- Instances for unreduced assertions
-
-instance
-  (PrettyUsing rest (WHNFValue Builtin)) =>
-  PrettyUsing rest UnreducedAssertion
-  where
-  prettyUsing = \case
-    VectorEqualityAssertion VectorEquality {..} -> do
-      let lhs = prettyUsing @rest assertionLHS
-      let rhs = prettyUsing @rest assertionRHS
-      prettyVectorEquality lhs rhs assertionDims
-    NonVectorEqualityAssertion expr -> prettyUsing @rest expr
-
-instance
-  (PrettyUsing rest (Contextualised (WHNFValue Builtin) (BoundCtx builtin))) =>
-  PrettyUsing rest (Contextualised UnreducedAssertion (BoundCtx builtin))
-  where
-  prettyUsing (WithContext assertion ctx) = case assertion of
-    VectorEqualityAssertion VectorEquality {..} -> do
-      let lhs = prettyUsing @rest (WithContext assertionLHS ctx)
-      let rhs = prettyUsing @rest (WithContext assertionRHS ctx)
-      prettyVectorEquality lhs rhs assertionDims
-    NonVectorEqualityAssertion expr -> prettyUsing @rest (WithContext expr ctx)
-
-prettyVectorEquality ::
-  Doc a ->
-  Doc a ->
-  TensorDimensions ->
-  Doc a
-prettyVectorEquality lhs rhs _dims = do
-  -- let dimsDoc = if null dims then "Rat" else "Tensor Rat" <+> pretty dims
-  lhs <+> pretty Eq <+> rhs -- <> "     " <> parens dimsDoc
 
 --------------------------------------------------------------------------------
 -- Instances for constraints

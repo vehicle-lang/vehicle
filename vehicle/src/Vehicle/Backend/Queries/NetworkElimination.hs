@@ -24,8 +24,7 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Traversable (for)
 import GHC.Generics (Generic)
-import Vehicle.Backend.Queries.LinearExpr (VectorEquality (..))
-import Vehicle.Backend.Queries.QuerySetStructure (UnreducedAssertion (..))
+import Vehicle.Backend.Queries.QuerySetStructure (UnreducedAssertion)
 import Vehicle.Backend.Queries.Variable (MixedVariable (..), MixedVariables (..), NetworkVariable (..), NetworkVariableCtx, UserVariableCtx, mixedVariableDBCtx, pattern VFiniteQuantifier)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -168,7 +167,7 @@ partitionApplications = go
       m (HashMap NetworkApplicationForest (BooleanExpr UnreducedAssertion))
     go = \case
       Query assertion -> do
-        forest <- findApplicationsInAssertion assertion
+        forest <- findApplicationsInExpr assertion
         return $ HashMap.singleton forest (Query assertion)
       Conjunct e1 e2 -> do
         -- Cartesian product r1 and r2, unioning the two states, then we need find duplicate
@@ -183,18 +182,6 @@ partitionApplications = go
         r1 <- go e1
         r2 <- go e2
         return $ HashMap.unionWith Disjunct r1 r2
-
-findApplicationsInAssertion ::
-  (MonadTraverseApplications m) =>
-  UnreducedAssertion ->
-  m NetworkApplicationForest
-findApplicationsInAssertion = \case
-  VectorEqualityAssertion VectorEquality {..} -> do
-    lhs <- findApplicationsInExpr assertionLHS
-    rhs <- findApplicationsInExpr assertionRHS
-    return $ HashSet.union lhs rhs
-  NonVectorEqualityAssertion expr -> do
-    findApplicationsInExpr expr
 
 findApplicationsInExpr ::
   (MonadTraverseApplications m) =>
@@ -253,7 +240,7 @@ replaceApplications (partitionID, (applications, expr)) = do
 
     -- Substitute the applications in the original expression for the output variables
     let outputVariableMap = getOutputVarSubsitution appInfo
-    networkFreeExpr <- traverse (replaceApplicationsInAssertion outputVariableMap) expr
+    networkFreeExpr <- traverse (replaceApplicationsInExpr outputVariableMap) expr
 
     -- Add the set of input equalities to the boolean expression
     let inputEqualities = fmap (\(_, (inputEquality, _, _, _)) -> inputEquality) appInfo
@@ -336,14 +323,7 @@ getNetworkApplicationInfo originalApp@(networkName, originalSpine) subAppInfo = 
     let networkVariables = [outputNetworkVariable, inputNetworkVariable]
 
     -- Create the input equality
-    let inputEquality =
-          VectorEqualityAssertion $
-            VectorEquality
-              { assertionLHS = inputVar,
-                assertionRHS = arg,
-                assertionDims = inputDimensions,
-                assertionOriginalRel = mkInputVarEqualityExpr inputDimensions
-              }
+    let inputEquality = mkInputVarEqualityExpr inputDimensions (Arg mempty Explicit Relevant inputVar) (Arg mempty Explicit Relevant arg)
 
     -- Create the meta network entry
     let metaNetworkEntry =
@@ -412,33 +392,13 @@ mkInputVarEqualityExpr dimensions e1 e2 = do
             [] -> VBuiltinFunction (Equals EqRat Eq) spine
             d : ds -> VFreeVar (identifierOf StdEqualsVector) (nonExplicitArgs <> spine)
               where
-                tensorType = VUnitLiteral
+                tensorType = foldr (\dim t -> mkVVectorType t dim) VRatType ds
                 nonExplicitArgs =
                   [ Arg p (Implicit True) Relevant tensorType,
                     Arg p (Implicit True) Relevant tensorType,
                     Arg p (Implicit True) Irrelevant d,
                     Arg p (Instance True) Relevant (mkVectorEquality ds [])
                   ]
-
-replaceApplicationsInAssertion ::
-  (MonadTraverseApplications m) =>
-  MetaNetworkVariableSubstitution ->
-  UnreducedAssertion ->
-  m UnreducedAssertion
-replaceApplicationsInAssertion subst = \case
-  VectorEqualityAssertion VectorEquality {..} -> do
-    updatedLHS <- replaceApplicationsInExpr subst assertionLHS
-    updatedRHS <- replaceApplicationsInExpr subst assertionRHS
-    return $
-      VectorEqualityAssertion $
-        VectorEquality
-          { assertionLHS = updatedLHS,
-            assertionRHS = updatedRHS,
-            ..
-          }
-  NonVectorEqualityAssertion expr -> do
-    updatedExpr <- replaceApplicationsInExpr subst expr
-    return $ NonVectorEqualityAssertion updatedExpr
 
 replaceApplicationsInExpr ::
   (MonadTraverseApplications m) =>
