@@ -24,7 +24,7 @@ import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Prelude.Warning (CompileWarning (ResourcesUnnecessariyProvidedForBackend))
+import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -150,4 +150,4 @@ warnIfResourcesProvided CompileOptions {..} = do
   let networks = fmap (Network,) (Map.keys networkLocations)
   let resources = parameters <> datasets <> networks
   unless (null resources) $ do
-    logWarning $ ResourcesUnnecessariyProvidedForBackend target resources
+    logWarning $ UnnecessaryResourcesProvided target resources

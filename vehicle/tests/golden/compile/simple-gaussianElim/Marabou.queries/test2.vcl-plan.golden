@@ -6,213 +6,247 @@
       "contents": {
         "queries": {
           "unDisjunctAll": [
-            [
-              [
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "a",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "a",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "g",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -2,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  1
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "g",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "b",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "a",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "b",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "g",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "test2",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 1
                 },
                 1
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "g",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "g",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "g",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "g",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "g",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "g",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "g",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "b",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "b"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": -1,
-                                "denominator": 1
-                              }
-                            ],
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 1,
-                                  "networkVarDimensions": [],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "a",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "a"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "UserVar",
-                                "contents": {
-                                  "userVarName": "b",
-                                  "userVarDimensions": [],
-                                  "unreducedUserVarName": "b"
-                                }
-                              },
-                              {
-                                "numerator": -1,
-                                "denominator": 1
-                              }
-                            ],
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "g",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ]
+            }
           ]
         },
         "negated": false

@@ -14,7 +14,7 @@ data NetworkType = NetworkType
   { inputTensor :: NetworkTensorType,
     outputTensor :: NetworkTensorType
   }
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON NetworkType
 
@@ -31,7 +31,7 @@ data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
     dimensions :: TensorDimensions
   }
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON NetworkTensorType
 
@@ -48,7 +48,7 @@ instance Pretty NetworkTensorType where
 
 data NetworkBaseType
   = NetworkRatType
-  deriving (Enum, Show, Generic)
+  deriving (Eq, Ord, Enum, Show, Generic)
 
 instance ToJSON NetworkBaseType
 

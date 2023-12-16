@@ -14,7 +14,9 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
@@ -139,11 +141,21 @@ type BlockingArgs = [Int]
 traverseBuiltinBlockingArgs ::
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
   (WHNFValue builtin -> m (WHNFValue builtin)) ->
+  builtin ->
+  WHNFSpine builtin ->
+  m (WHNFSpine builtin)
+traverseBuiltinBlockingArgs f b args = case getBuiltinFunction b of
+  Just func -> traverseBuiltinFunctionBlockingArgs f func args
+  Nothing -> return args
+
+traverseBuiltinFunctionBlockingArgs ::
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  (WHNFValue builtin -> m (WHNFValue builtin)) ->
   BuiltinFunction ->
   WHNFSpine builtin ->
   m (WHNFSpine builtin)
-traverseBuiltinBlockingArgs f b args =
-  traverseBlockingArgs f args $ case b of
+traverseBuiltinFunctionBlockingArgs f b args =
+  traverseBlockingArgs f b args $ case b of
     Quantifier {} -> []
     Optimise {} -> []
     Not -> [0]
@@ -173,12 +185,13 @@ traverseBuiltinBlockingArgs f b args =
 
 traverseBlockingArgs ::
   forall m builtin.
-  (MonadCompile m) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   (WHNFValue builtin -> m (WHNFValue builtin)) ->
+  BuiltinFunction ->
   WHNFSpine builtin ->
   BlockingArgs ->
   m (WHNFSpine builtin)
-traverseBlockingArgs f = go 0
+traverseBlockingArgs f b originalSpine originalBlockingArgs = go 0 originalSpine originalBlockingArgs
   where
     go ::
       Int ->
@@ -187,11 +200,17 @@ traverseBlockingArgs f = go 0
       m (WHNFSpine builtin)
     go _ spine [] = return spine
     go _ [] _ =
-      compilerDeveloperError "run out of args when traversing blocked arguments in spine"
+      compilerDeveloperError $
+        "run out of args when traversing blocked arguments"
+          <+> pretty originalBlockingArgs
+          <+> "in spine"
+          <+> prettyVerbose originalSpine
+          <+> "for"
+          <+> quotePretty b
     go argNo (arg : args) (blockedArg : blockedArgs)
       | isRuntimeRelevant arg && argNo == blockedArg = (:) <$> traverse f arg <*> go (argNo + 1) args blockedArgs
-      | isRuntimeRelevant arg = (:) arg <$> go (argNo + 1) args (blockedArg : blockedArgs)
-      | otherwise = (:) arg <$> go argNo args (blockedArg : blockedArgs)
+      | isRuntimeRelevant arg = (arg :) <$> go (argNo + 1) args (blockedArg : blockedArgs)
+      | otherwise = (arg :) <$> go argNo args (blockedArg : blockedArgs)
 
 -----------------------------------------------------------------------------
 -- Individual builtin evaluation

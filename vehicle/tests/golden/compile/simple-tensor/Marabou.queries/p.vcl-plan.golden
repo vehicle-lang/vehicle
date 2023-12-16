@@ -3,93 +3,159 @@
     "tag": "NonTrivial",
     "contents": {
       "tag": "Conjunct",
-      "contents": [
-        {
-          "tag": "Conjunct",
-          "contents": [
-            {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "unDisjunctAll": [
-                    [
-                      [
-                        {
-                          "propertyName": "p",
-                          "propertyIndices": []
-                        },
-                        1
-                      ],
+      "contents": {
+        "unConjunctAll": [
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableReconstruction": [],
+                    "queryAddress": [
                       {
-                        "variableReconstruction": [
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
+                        "propertyName": "p",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      1
+                    ],
+                    "metaNetwork": {
+                      "variables": [
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
                           }
-                        ],
-                        "metaNetwork": [
-                          {
-                            "metaNetworkEntryType": {
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      ],
+                      "networkEntries": [
+                        {
+                          "metaNetworkEntryName": "f",
+                          "metaNetworkEntryInfo": {
+                            "networkType": {
                               "outputTensor": {
                                 "dimensions": [
                                   2,
@@ -105,214 +171,168 @@
                                 "baseType": []
                               }
                             },
-                            "metaNetworkEntryName": "f",
-                            "metaNetworkEntryFilePath": "fake.onnx"
+                            "networkFilepath": "fake.onnx"
                           }
-                        ]
-                      }
-                    ]
-                  ]
-                },
-                "negated": false
-              }
-            },
-            {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "unDisjunctAll": [
-                    [
-                      [
-                        {
-                          "propertyName": "p",
-                          "propertyIndices": []
-                        },
-                        2
-                      ],
-                      {
-                        "variableReconstruction": [
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          }
-                        ],
-                        "metaNetwork": [
-                          {
-                            "metaNetworkEntryType": {
-                              "outputTensor": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
-                              },
-                              "inputTensor": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
-                              }
-                            },
-                            "metaNetworkEntryName": "f",
-                            "metaNetworkEntryFilePath": "fake.onnx"
-                          }
-                        ]
-                      }
-                    ]
-                  ]
-                },
-                "negated": false
-              }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "negated": false
             }
-          ]
-        },
-        {
-          "tag": "Conjunct",
-          "contents": [
-            {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "unDisjunctAll": [
-                    [
-                      [
-                        {
-                          "propertyName": "p",
-                          "propertyIndices": []
-                        },
-                        3
-                      ],
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableReconstruction": [],
+                    "queryAddress": [
                       {
-                        "variableReconstruction": [
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
+                        "propertyName": "p",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      2
+                    ],
+                    "metaNetwork": {
+                      "variables": [
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
                           }
-                        ],
-                        "metaNetwork": [
-                          {
-                            "metaNetworkEntryType": {
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      ],
+                      "networkEntries": [
+                        {
+                          "metaNetworkEntryName": "f",
+                          "metaNetworkEntryInfo": {
+                            "networkType": {
                               "outputTensor": {
                                 "dimensions": [
                                   2,
@@ -328,129 +348,373 @@
                                 "baseType": []
                               }
                             },
-                            "metaNetworkEntryName": "f",
-                            "metaNetworkEntryFilePath": "fake.onnx"
+                            "networkFilepath": "fake.onnx"
                           }
-                        ]
-                      }
-                    ]
-                  ]
-                },
-                "negated": false
-              }
-            },
-            {
-              "tag": "Query",
-              "contents": {
-                "queries": {
-                  "unDisjunctAll": [
-                    [
-                      [
-                        {
-                          "propertyName": "p",
-                          "propertyIndices": []
-                        },
-                        4
-                      ],
-                      {
-                        "variableReconstruction": [
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Introduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "tag": "Reduce",
-                            "contents": {
-                              "tag": "NetworkVar",
-                              "contents": {
-                                "networkVarIndices": null,
-                                "networkVarDimensions": [
-                                  2,
-                                  2
-                                ],
-                                "networkName": "f",
-                                "inputOrOutput": "Output",
-                                "application": 0
-                              }
-                            }
-                          }
-                        ],
-                        "metaNetwork": [
-                          {
-                            "metaNetworkEntryType": {
-                              "outputTensor": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
-                              },
-                              "inputTensor": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
-                              }
-                            },
-                            "metaNetworkEntryName": "f",
-                            "metaNetworkEntryFilePath": "fake.onnx"
-                          }
-                        ]
-                      }
-                    ]
-                  ]
-                },
-                "negated": false
-              }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "negated": false
             }
-          ]
-        }
-      ]
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableReconstruction": [],
+                    "queryAddress": [
+                      {
+                        "propertyName": "p",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      3
+                    ],
+                    "metaNetwork": {
+                      "variables": [
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      ],
+                      "networkEntries": [
+                        {
+                          "metaNetworkEntryName": "f",
+                          "metaNetworkEntryInfo": {
+                            "networkType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  2,
+                                  2
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2,
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "networkFilepath": "fake.onnx"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableReconstruction": [],
+                    "queryAddress": [
+                      {
+                        "propertyName": "p",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      4
+                    ],
+                    "metaNetwork": {
+                      "variables": [
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            1,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        },
+                        {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2,
+                              2
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      ],
+                      "networkEntries": [
+                        {
+                          "metaNetworkEntryName": "f",
+                          "metaNetworkEntryInfo": {
+                            "networkType": {
+                              "outputTensor": {
+                                "dimensions": [
+                                  2,
+                                  2
+                                ],
+                                "baseType": []
+                              },
+                              "inputTensor": {
+                                "dimensions": [
+                                  2,
+                                  2
+                                ],
+                                "baseType": []
+                              }
+                            },
+                            "networkFilepath": "fake.onnx"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "negated": false
+            }
+          }
+        ]
+      }
     }
   }
 }

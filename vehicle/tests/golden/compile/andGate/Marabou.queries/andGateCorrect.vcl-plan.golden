@@ -6,714 +6,814 @@
       "contents": {
         "queries": {
           "unDisjunctAll": [
-            [
-              [
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x1",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x1",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x2",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x2",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  1
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 1
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x2",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x2"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 1,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x1",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x1"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "andGate",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ],
-            [
-              [
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x1",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x1",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x2",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x2",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  1
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 2
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x2",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x2"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 1,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x1",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x1"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "andGate",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ],
-            [
-              [
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x1",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x1",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x2",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x2",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  1
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 3
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x2",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x2"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 1,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x1",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x1"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "andGate",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ],
-            [
-              [
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x1",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x1",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  0
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [],
+                      "originalVar": {
+                        "userTensorVarName": "x2",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    {
+                      "rationalEqExpr": {
+                        "constantValue": {
+                          "numerator": 0,
+                          "denominator": 1
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserRationalVar",
+                              "contents": {
+                                "tensorIndices": [],
+                                "originalVar": {
+                                  "userTensorVarName": "x2",
+                                  "userTensorVarDimensions": []
+                                }
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkRationalVar",
+                              "contents": {
+                                "tensorIndices": [
+                                  1
+                                ],
+                                "originalVar": {
+                                  "startingIndex": 0,
+                                  "networkTensorVarDimensions": [
+                                    2
+                                  ],
+                                  "networkName": "andGate",
+                                  "inputOrOutput": "Input",
+                                  "application": 0
+                                }
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 4
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "andGate",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x2",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x2"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 1,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x1",
-                          "userVarDimensions": [],
-                          "unreducedUserVarName": "x1"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": 0,
-                                  "networkVarDimensions": [],
-                                  "networkName": "andGate",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "andGate",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ]
+            }
           ]
         },
         "negated": true

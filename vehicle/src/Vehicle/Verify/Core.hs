@@ -1,100 +1,40 @@
 module Vehicle.Verify.Core where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text, unpack)
-import Data.Vector (Vector)
-import Data.Vector qualified as Vector (toList)
 import GHC.Generics (Generic)
 import System.FilePath ((<.>))
-import Vehicle.Backend.Queries.LinearExpr (Assertion, SparseLinearExpr)
-import Vehicle.Backend.Queries.Variable
+import Vehicle.Compile.Context.Bound.Core (GenericBoundCtx)
 import Vehicle.Compile.Resource
+import Vehicle.Data.BooleanExpr
+import Vehicle.Data.LinearExpr
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
-
---------------------------------------------------------------------------------
--- Assignments to variables
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Vector Rational)
-
-instance Pretty NetworkVariableAssignment where
-  pretty :: NetworkVariableAssignment -> Doc a
-  pretty (NetworkVariableAssignment assignment) = do
-    vsep (prettyVariable <$> zip [0 ..] (Vector.toList assignment))
-    where
-      prettyVariable :: (Int, Rational) -> Doc a
-      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
-
--- | A (satisfying) assignment to a set of user-level variables.
-newtype UserVariableAssignment
-  = UserVariableAssignment [(UserVariable, VariableValue)]
-  deriving (Generic)
-
-instance ToJSON UserVariableAssignment
-
-instance FromJSON UserVariableAssignment
-
-instance Pretty UserVariableAssignment where
-  pretty :: UserVariableAssignment -> Doc a
-  pretty (UserVariableAssignment assignment) = do
-    vsep (fmap prettyVariable assignment)
-    where
-      prettyVariable :: (UserVariable, VariableValue) -> Doc a
-      prettyVariable (var, value) = do
-        let name = pretty $ userVarName var
-        let valueDoc = prettyConstant True (userVarDimensions var) value
-        name <> ":" <+> valueDoc
-
---------------------------------------------------------------------------------
--- Addresses
-
--- | The number of an individual query within a `Property` when traversed
--- depth-first.
-type QueryID = Int
-
-type QueryAddress = (PropertyAddress, QueryID)
-
-calculateQueryFileName :: QueryAddress -> FilePath
-calculateQueryFileName (PropertyAddress propertyName propertyIndices, queryID) = do
-  let propertyStr
-        | null propertyIndices = ""
-        | otherwise = showTensorIndices propertyIndices
-
-  unpack propertyName
-    <> propertyStr
-    <> "-query"
-    <> show queryID <.> "txt"
-
--- | A unique identifier for every individual property that needs to be verified.
--- Not simply an identifier, as we need to identifier sub-properties in tensors of
--- properties.
-data PropertyAddress = PropertyAddress
-  { propertyName :: Name,
-    propertyIndices :: TensorIndices
-  }
-  deriving (Show, Generic)
-
-instance ToJSON PropertyAddress
-
-instance FromJSON PropertyAddress
-
-instance Pretty PropertyAddress where
-  pretty (PropertyAddress name indices) =
-    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
+import Vehicle.Syntax.Builtin.BasicOperations
+import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Meta-network
 
+data NetworkContextInfo = NetworkContextInfo
+  { networkFilepath :: FilePath,
+    networkType :: NetworkType
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON NetworkContextInfo
+
+instance FromJSON NetworkContextInfo
+
 data MetaNetworkEntry = MetaNetworkEntry
   { metaNetworkEntryName :: Name,
-    metaNetworkEntryType :: NetworkType,
-    metaNetworkEntryFilePath :: FilePath
+    metaNetworkEntryInfo :: NetworkContextInfo
   }
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON MetaNetworkEntry
 
@@ -105,12 +45,20 @@ instance Pretty MetaNetworkEntry where
     pretty metaNetworkEntryName
       <> ":"
       <> softline
-      <> pretty metaNetworkEntryType
+      <> pretty (networkType metaNetworkEntryInfo)
 
 -- <> softline <> parens (pretty metaNetworkEntryFilePath)
 
 -- | A list of neural networks used in a given query.
-type MetaNetwork = [MetaNetworkEntry]
+data MetaNetwork = MetaNetwork
+  { networkEntries :: [MetaNetworkEntry],
+    variables :: [NetworkRationalVariable]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MetaNetwork
+
+instance FromJSON MetaNetwork
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -125,37 +73,6 @@ type QueryText = Text
 -- or not the property is negated, but recall a property can have multiple
 -- query sets. e.g. prop = (forall x . P x) and (exists x . Q y).
 type QuerySetNegationStatus = Bool
-
-metaNetworkEntryVariables ::
-  Bool ->
-  MetaNetworkEntry ->
-  (Map Name Int, [[NetworkVariable]]) ->
-  (Map Name Int, [[NetworkVariable]])
-metaNetworkEntryVariables reduced MetaNetworkEntry {..} (applications, vars) = do
-  let applicationNumber = Map.findWithDefault 0 metaNetworkEntryName applications
-  let newApplications = Map.insert metaNetworkEntryName (applicationNumber + 1) applications
-
-  let (inputIndices, outputIndices, inputDimensions, outputDimensions)
-        | not reduced = do
-            let inputDims = dimensions $ inputTensor metaNetworkEntryType
-            let outputDims = dimensions $ outputTensor metaNetworkEntryType
-            ([Nothing], [Nothing], inputDims, outputDims)
-        | otherwise = do
-            let inputs = Just <$> [0 .. tensorSize (inputTensor metaNetworkEntryType) - 1]
-            let outputs = Just <$> [0 .. tensorSize (outputTensor metaNetworkEntryType) - 1]
-            (inputs, outputs, [], [])
-  let mkVariable = NetworkVariable metaNetworkEntryName applicationNumber
-  let mkInputVariable = mkVariable inputDimensions Input
-  let mkOutputVariable = mkVariable outputDimensions Output
-  let inputVariables = [mkInputVariable i | i <- inputIndices]
-  let outputVariables = [mkOutputVariable i | i <- outputIndices]
-
-  (newApplications, (inputVariables <> outputVariables) : vars)
-
-metaNetworkVariables :: Bool -> MetaNetwork -> [NetworkVariable]
-metaNetworkVariables reduced metaNetwork = do
-  let (_, result) = foldr (metaNetworkEntryVariables reduced) (mempty, mempty) metaNetwork
-  concat (reverse result)
 
 --------------------------------------------------------------------------------
 -- Query results
@@ -175,63 +92,54 @@ instance (Pretty witness) => Pretty (QueryResult witness) where
     UnSAT -> "UNSAT"
 
 --------------------------------------------------------------------------------
--- Variable reconstruction
+-- Property addresses
 
--- | A solution for a normalised user variable that is an equation
--- where the coefficient for that variable is 1.
-newtype GaussianVariableSolution = GaussianVariableSolution
-  { solutionEquality :: SparseLinearExpr MixedVariable
+-- | The number of an individual property within a specification.
+type PropertyID = Int
+
+-- | A name of a property in the specification.
+type PropertyName = Name
+
+-- | A set of properties in the specification.
+type PropertyNames = [PropertyName]
+
+-- | A unique identifier for every individual property that needs to be verified.
+-- Not simply an identifier, as we need to identifier sub-properties in tensors of
+-- properties.
+data PropertyAddress = PropertyAddress
+  { propertyID :: PropertyID,
+    propertyName :: PropertyName,
+    propertyIndices :: TensorIndices
   }
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON GaussianVariableSolution
+instance ToJSON PropertyAddress
 
-instance FromJSON GaussianVariableSolution
+instance FromJSON PropertyAddress
 
-instance Pretty GaussianVariableSolution where
-  pretty = pretty . solutionEquality
+instance Pretty PropertyAddress where
+  pretty (PropertyAddress _ name indices) =
+    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
 
--- | A FM solution for an normalised user variable is two lists of constraints.
--- The variable value must be greater than the first set of assertions, and less than
--- the second set of assertions.
-data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [Assertion MixedVariable],
-    upperBounds :: [Assertion MixedVariable]
-  }
-  deriving (Show, Generic)
+calculatePropertyFilePrefix :: PropertyAddress -> FilePath
+calculatePropertyFilePrefix (PropertyAddress _ propertyName propertyIndices) = do
+  let indexStr
+        | null propertyIndices = ""
+        | otherwise = showTensorIndices propertyIndices
+  unpack propertyName <> indexStr
 
-instance ToJSON FourierMotzkinVariableSolution
+--------------------------------------------------------------------------------
+-- Addresses
 
-instance FromJSON FourierMotzkinVariableSolution
+-- | The number of an individual query within a `Property` when traversed
+-- depth-first.
+type QueryID = Int
 
--- | One step in the process for transforming unreduced user variables into
--- reduced network input and output variables.
-data VariableNormalisationStep
-  = EliminateViaGaussian MixedVariable GaussianVariableSolution
-  | EliminateViaFourierMotzkin MixedVariable FourierMotzkinVariableSolution
-  | Reduce MixedVariable
-  | Introduce MixedVariable
-  deriving (Show, Generic)
+type QueryAddress = (PropertyAddress, QueryID)
 
-instance ToJSON VariableNormalisationStep
-
-instance FromJSON VariableNormalisationStep
-
-instance Pretty VariableNormalisationStep where
-  pretty = \case
-    EliminateViaGaussian v s -> "EliminateGaussian[" <+> pretty v <+> "=" <+> pretty s <+> "]"
-    EliminateViaFourierMotzkin v _ -> "EliminateFourierMotzkin[" <+> pretty v <+> "]"
-    Reduce v -> "Reduce[" <+> pretty v <+> "]"
-    Introduce v -> "Introduce[" <+> pretty v <+> "]"
-
--- | The steps for transforming unreduced user variables into reduced network
--- input and output varibles.
--- These are used to recreate a satisfying assignment for the user variables
--- from the satisfying assignment for the network variables spat out by the
--- verifier.
---
--- The steps are stored in the same order they occured during compilation.
-type VariableNormalisationSteps = [VariableNormalisationStep]
+calculateQueryFileName :: QueryAddress -> FilePath
+calculateQueryFileName (propertyAddress, queryID) = do
+  calculatePropertyFilePrefix propertyAddress <> "-query" <> show queryID <.> "txt"
 
 --------------------------------------------------------------------------------
 -- Variable status
@@ -240,7 +148,13 @@ data UnderConstrainedVariableStatus
   = Unconstrained
   | BoundedAbove
   | BoundedBelow
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
+
+instance Pretty UnderConstrainedVariableStatus where
+  pretty = \case
+    Unconstrained -> "Unconstrained"
+    BoundedAbove -> "BoundedAbove"
+    BoundedBelow -> "BoundedBelow"
 
 instance Semigroup UnderConstrainedVariableStatus where
   Unconstrained <> r = r
@@ -249,25 +163,44 @@ instance Semigroup UnderConstrainedVariableStatus where
   r <> BoundedAbove = r
   BoundedBelow <> BoundedBelow = BoundedBelow
 
--- | How the value of a particular value of a variable is constrained.
-data VariableConstraintStatus
-  = UnderConstrained UnderConstrainedVariableStatus
-  | Bounded
-  | Constant
-  deriving (Show, Eq)
+--------------------------------------------------------------------------------
+-- Queries
 
-instance Semigroup VariableConstraintStatus where
-  UnderConstrained r <> UnderConstrained s = case (r, s) of
-    (BoundedBelow, BoundedAbove) -> Bounded
-    (BoundedAbove, BoundedBelow) -> Bounded
-    _ -> UnderConstrained (r <> s)
-  UnderConstrained {} <> r = r
-  r <> UnderConstrained {} = r
-  Bounded <> r = r
-  r <> Bounded = r
-  Constant <> Constant = Constant
+data QueryRelation
+  = EqualRel
+  | OrderRel OrderOp
+  deriving (Show, Eq, Ord)
 
-toUnderConstrainedStatus :: VariableConstraintStatus -> Maybe UnderConstrainedVariableStatus
-toUnderConstrainedStatus = \case
-  UnderConstrained s -> Just s
-  _ -> Nothing
+instance Pretty QueryRelation where
+  pretty = \case
+    EqualRel -> "="
+    OrderRel op -> pretty op
+
+flipQueryRel :: QueryRelation -> QueryRelation
+flipQueryRel = \case
+  EqualRel -> EqualRel
+  OrderRel op -> OrderRel (flipOrder op)
+
+-- A single assertion for a query.
+data QueryAssertion = QueryAssertion
+  { lhs :: NonEmpty (Coefficient, NetworkRationalVariable),
+    rel :: QueryRelation,
+    rhs :: Rational
+  }
+
+instance Pretty QueryAssertion where
+  pretty (QueryAssertion lhs rel rhs) = pretty lhs <> pretty rel <> pretty rhs
+
+queryAssertionVariables :: QueryAssertion -> Set NetworkRationalVariable
+queryAssertionVariables = Set.fromList . fmap snd . NonEmpty.toList . lhs
+
+-- | The contents of a single query for a verifier.
+data QueryContents = QueryContents
+  { queryVariables :: GenericBoundCtx NetworkRationalVariable,
+    queryAssertions :: ConjunctAll QueryAssertion
+  }
+
+{-
+instance Pretty QueryContents where
+  pretty (QueryContents _varNames assertions) = pretty assertions
+-}

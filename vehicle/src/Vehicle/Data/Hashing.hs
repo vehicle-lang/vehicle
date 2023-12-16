@@ -12,7 +12,7 @@ import Vehicle.Syntax.AST
 -- but this proved to be unnecessary. It's still in the repo's history if
 -- need be though.
 
-instance (Hashable builtin, Generic builtin) => Hashable (EnvValue 'WHNF builtin)
+instance (Hashable builtin, Generic builtin) => Hashable (BoundEnvValue 'WHNF builtin)
 
 instance (Hashable builtin, Generic builtin) => Hashable (Body 'WHNF builtin)
 

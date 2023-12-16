@@ -10,7 +10,7 @@ import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.DSL
 import Vehicle.Data.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Definitions
 

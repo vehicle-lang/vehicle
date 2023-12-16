@@ -34,15 +34,16 @@ import System.FilePath (takeExtension, (<.>), (</>))
 import System.IO (stderr, stdout)
 import System.ProgressBar
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
-import Vehicle.Backend.Queries.Variable (UserVariable (..))
-import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
+import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.BooleanExpr
+import Vehicle.Data.LinearExpr (RationalTensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
+import Vehicle.Verify.Variable (OriginalUserVariable (..), UserVariableAssignment (..))
 import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------
@@ -173,11 +174,11 @@ writeVerificationQuery ::
   (MonadLogger m, MonadIO m, MonadStdIO m) =>
   QueryFormat ->
   FilePath ->
-  (QueryAddress, QueryText) ->
+  (QueryMetaData, QueryText) ->
   m ()
-writeVerificationQuery queryFormat folder (queryAddress, queryText) = do
+writeVerificationQuery queryFormat folder (queryMetaData, queryText) = do
   let queryOutputForm = queryOutputFormat queryFormat
-  let queryFilePath = folder </> calculateQueryFileName queryAddress
+  let queryFilePath = folder </> calculateQueryFileName (queryAddress queryMetaData)
   writeResultToFile (Just queryOutputForm) (Just queryFilePath) (pretty queryText)
 
 writePropertyResult ::
@@ -300,16 +301,24 @@ verifyPropertyBooleanStructure = \case
       m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
     go = \case
       Query qs -> verifyQuerySet qs
-      Disjunct x y -> do
-        result@(negated, status) <- go x
-        if evaluateQuery negated status
-          then return result
-          else go y
-      Conjunct x y -> do
-        result@(negated, status) <- go x
-        if not (evaluateQuery negated status)
-          then return result
-          else go y
+      Disjunct (DisjunctAll xs) -> goDisjunct xs
+      Conjunct (ConjunctAll xs) -> goConjunct xs
+
+    goConjunct :: NonEmpty (BooleanExpr (QuerySet QueryMetaData)) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
+    goConjunct (x :| []) = go x
+    goConjunct (x :| y : ys) = do
+      result@(negated, status) <- go x
+      if not (evaluateQuery negated status)
+        then return result
+        else goConjunct (y :| ys)
+
+    goDisjunct :: NonEmpty (BooleanExpr (QuerySet QueryMetaData)) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
+    goDisjunct (x :| []) = go x
+    goDisjunct (x :| y : ys) = do
+      result@(negated, status) <- go x
+      if evaluateQuery negated status
+        then return result
+        else goDisjunct (y :| ys)
 
 verifyQuerySet ::
   (MonadVerifyProperty m) =>
@@ -322,12 +331,12 @@ verifyQuerySet (QuerySet negated disjuncts) = do
 verifyDisjunctAll ::
   forall m.
   (MonadVerifyProperty m) =>
-  DisjunctAll (QueryAddress, QueryMetaData) ->
+  DisjunctAll QueryMetaData ->
   m (QueryResult UserVariableAssignment)
 verifyDisjunctAll (DisjunctAll ys) = go ys
   where
     go ::
-      NonEmpty (QueryAddress, QueryMetaData) ->
+      NonEmpty QueryMetaData ->
       m (QueryResult UserVariableAssignment)
     go (x :| []) = verifyQuery x
     go (x :| y : xs) = do
@@ -338,9 +347,9 @@ verifyDisjunctAll (DisjunctAll ys) = go ys
 
 verifyQuery ::
   (MonadVerifyProperty m) =>
-  (QueryAddress, QueryMetaData) ->
+  QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
+verifyQuery (QueryMetaData queryAddress metaNetwork userVar) = do
   tell (Sum 1)
   (verifier, verifierExecutable, folder, progressBar) <- ask
   let queryFile = folder </> calculateQueryFileName queryAddress
@@ -351,7 +360,7 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
       exitFailure
     Right result -> do
       liftIO $ incProgress progressBar 1
-      traverse (reconstructUserVars metaNetwork userVar) result
+      traverse (reconstructUserVars userVar) result
 
 --------------------------------------------------------------------------------
 -- Assignments
@@ -375,9 +384,9 @@ outputPropertyResult verificationCache address result@(PropertyStatus status) = 
       -- Output assignments to file
       let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
       liftIO $ createDirectoryIfMissing True witnessFolder
-      forM_ assignments $ \(UserVariable {..}, value) -> do
-        let file = witnessFolder </> unpack userVarName
-        let dims = Vector.fromList userVarDimensions
+      forM_ assignments $ \(var, RationalTensor varDims value) -> do
+        let file = witnessFolder </> unpack (userTensorVarName var)
+        let dims = Vector.fromList varDims
         -- TODO got to be a better way to do this conversion...
         let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)
         let idxData = IDXDoubles IDXDouble dims unboxedVector
@@ -390,7 +399,7 @@ outputPropertyResult verificationCache address result@(PropertyStatus status) = 
 type PropertyProgressBar = ProgressBar ()
 
 createPropertyProgressBar :: (MonadIO m) => PropertyAddress -> Int -> m PropertyProgressBar
-createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
+createPropertyProgressBar (PropertyAddress _ name indices) numberOfQueries = do
   let propertyName = LazyText.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
   let style =
         defStyle

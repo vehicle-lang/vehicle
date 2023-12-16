@@ -13,8 +13,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments, typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinPatterns
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin (Builtin)
 
@@ -31,9 +30,16 @@ compile logic typedProg =
   logCompilerPass MinDetail currentPass $ do
     let logicImplementation = implementationOf logic
 
+    -- MASSIVE HACK. The standard library function `StdNotBoolOp2` is used by
+    -- the verifier backend but not anything else. However it contains a `Not`
+    -- that cannot be pushed in and therefore causes DL2 to error. To avoid
+    -- this we simply remove it from the program here. The better approach
+    -- would be only to compile things as we need them in loss functions.
+    let filteredProg = filterDecls (\d -> identifierOf d /= identifierOf StdNotBoolOp2) typedProg
+
     -- Some logics require some preprocessing (e.g. DL2 requires that negation
     -- is pushed all the way in.)
-    reformattedProg <- preprocessLogicalOperators logicImplementation typedProg
+    reformattedProg <- preprocessLogicalOperators logicImplementation filteredProg
 
     let instanceCandidates = lossBuiltinInstances logicImplementation
     lossProgWithInstances <- typeCheckWithSubsystem instanceCandidates throwError reformattedProg

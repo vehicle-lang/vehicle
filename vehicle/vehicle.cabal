@@ -120,15 +120,6 @@ library
     Vehicle.Backend.LossFunction
     Vehicle.Backend.Prelude
     Vehicle.Backend.Queries.Error
-    Vehicle.Backend.Queries.FourierMotzkinElimination
-    Vehicle.Backend.Queries.GaussianElimination
-    Vehicle.Backend.Queries.IfElimination
-    Vehicle.Backend.Queries.LinearExpr
-    Vehicle.Backend.Queries.NetworkElimination
-    Vehicle.Backend.Queries.QuerySetStructure
-    Vehicle.Backend.Queries.UserVariableElimination
-    Vehicle.Backend.Queries.Variable
-    Vehicle.Backend.Queries.VariableReconstruction
     Vehicle.Backend.Tensors.Clean
     Vehicle.CommandLine
     Vehicle.Compile
@@ -155,10 +146,13 @@ library
     Vehicle.Compile.Type.Subsystem.Standard
     Vehicle.Data.BooleanExpr
     Vehicle.Data.BuiltinInterface
-    Vehicle.Data.BuiltinPatterns
+    Vehicle.Data.BuiltinInterface.DSL
+    Vehicle.Data.BuiltinInterface.Expr
+    Vehicle.Data.BuiltinInterface.Value
     Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
+    Vehicle.Data.LinearExpr
     Vehicle.Data.NormalisedExpr
     Vehicle.Export
     Vehicle.Libraries
@@ -188,6 +182,7 @@ library
     Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults
     Vehicle.Backend.LossFunction.TypeSystem.Type
     Vehicle.Backend.Queries
+    Vehicle.Backend.Queries.ConstraintSearch
     Vehicle.Backend.Queries.Error.Linearity
     Vehicle.Backend.Queries.Error.Linearity.AnnotationRestrictions
     Vehicle.Backend.Queries.Error.Linearity.Core
@@ -198,7 +193,14 @@ library
     Vehicle.Backend.Queries.Error.Polarity.Core
     Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
     Vehicle.Backend.Queries.Error.Polarity.Type
-    Vehicle.Backend.Queries.UsedFunctions
+    Vehicle.Backend.Queries.PostProcessing
+    Vehicle.Backend.Queries.UserVariableElimination
+    Vehicle.Backend.Queries.UserVariableElimination.Core
+    Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Queries.UserVariableElimination.EliminateNot
+    Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
+    Vehicle.Backend.Queries.UserVariableElimination.Unblocking
+    Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
@@ -258,6 +260,7 @@ library
     Vehicle.Verify.Specification
     Vehicle.Verify.Specification.IO
     Vehicle.Verify.Specification.Status
+    Vehicle.Verify.Variable
     Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
 

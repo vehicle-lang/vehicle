@@ -12,6 +12,7 @@ where
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.DSL
 import Vehicle.Data.DSL
 import Prelude hiding (pi)
 

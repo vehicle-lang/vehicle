@@ -54,6 +54,7 @@ instance (MonadLogger m) => MonadLogger (FreeContextT builtin m) where
   decrCallDepth = FreeContextT decrCallDepth
   getDebugLevel = FreeContextT getDebugLevel
   logMessage = FreeContextT . logMessage
+  logWarning = FreeContextT . logWarning
 
 instance (MonadError e m) => MonadError e (FreeContextT builtin m) where
   throwError = lift . throwError
@@ -83,8 +84,8 @@ instance
   (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
-  addDeclToContext decl cont = FreeContextT $ do
-    let updateCtx = Map.insert (identifierOf decl) decl
+  addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do
+    let updateCtx = Map.insert (identifierOf decl) entry
     local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask

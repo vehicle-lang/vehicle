@@ -77,14 +77,14 @@ unpairArg (Arg p v r (x, y)) = (Arg p v r x, y)
 replaceArgExpr :: expr1 -> GenericArg expr2 -> GenericArg expr1
 replaceArgExpr e = fmap (const e)
 
-traverseNonInstanceArgExpr ::
+traverseExplicitArgExpr ::
   (Monad m) =>
   (expr -> m expr) ->
   GenericArg expr ->
   m (GenericArg expr)
-traverseNonInstanceArgExpr f arg
-  | isInstance arg = return arg
-  | otherwise = traverse f arg
+traverseExplicitArgExpr f arg
+  | isExplicit arg = traverse f arg
+  | otherwise = return arg
 
 argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
 argFromBinder (Binder p i v r _) = Arg p v r

@@ -19,18 +19,16 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
-import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
+import Vehicle.Prelude.Prettyprinter (Pretty (pretty), (<+>))
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
+import Vehicle.Syntax.Prelude (developerError)
 
 data VehicleLang = External | Internal
   deriving (Show)
 
 -- | A textual representation of a Vehicle specification.
 type SpecificationText = Text
-
--- | A set of properties in the specification.
-type PropertyNames = [Name]
 
 -- | A set of declarations in the specification.
 type DeclarationNames = [Name]
@@ -215,6 +213,14 @@ type TensorDimensions = [Int]
 
 type TensorIndices = [Int]
 
+computeFlatIndex :: TensorDimensions -> TensorIndices -> Int
+computeFlatIndex = go
+  where
+    go :: TensorDimensions -> TensorIndices -> Int
+    go [] [] = 0
+    go (d : ds) (i : is) | i < d = i * product ds + go ds is
+    go ds is = developerError $ "Invalid flat tensor arguments" <+> pretty ds <+> pretty is
+
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
@@ -228,3 +234,10 @@ setTextColour :: Color -> String -> String
 setTextColour c s =
   join
     [setSGRCode [SetColor Foreground Vivid c], s, setSGRCode []]
+
+cartesianProduct :: (a -> b -> c) -> [a] -> [b] -> [c]
+cartesianProduct f xs ys = [f x y | x <- xs, y <- ys]
+
+thenCmp :: Ordering -> Ordering -> Ordering
+thenCmp EQ o2 = o2
+thenCmp o1 _ = o1

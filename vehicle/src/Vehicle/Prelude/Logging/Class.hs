@@ -1,10 +1,9 @@
 module Vehicle.Prelude.Logging.Class
   ( CompilerPass,
     LoggingLevel (..),
-    Message (..),
+    DebugMessage,
     MonadLogger (..),
     defaultLoggingLevel,
-    logWarning,
     logDebug,
     logDebugM,
     allLoggingLevels,
@@ -17,12 +16,15 @@ where
 
 import Control.Monad (when)
 import Control.Monad.Except (ExceptT (..))
+import Control.Monad.Identity (IdentityT)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Writer (WriterT (..))
 import Data.Text (Text)
-import Vehicle.Prelude.Misc (enumerate, supportedOptions)
+import Data.Text qualified as Text (unpack)
+import System.Console.ANSI (Color (..))
+import Vehicle.Prelude.Misc (enumerate, setTextColour, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 import Vehicle.Prelude.Warning
@@ -57,9 +59,10 @@ loggingLevelHelp =
 --------------------------------------------------------------------------------
 -- Messages
 
-data Message
-  = DebugMessage Text
-  | WarningMessage CompileWarning
+newtype DebugMessage = DebugMessage Text
+
+instance Show DebugMessage where
+  show (DebugMessage t) = setTextColour Green $ Text.unpack t
 
 type CallDepth = Int
 
@@ -72,7 +75,8 @@ class (Monad m) => MonadLogger m where
   incrCallDepth :: m ()
   decrCallDepth :: m ()
   getDebugLevel :: m LoggingLevel
-  logMessage :: Message -> m ()
+  logMessage :: DebugMessage -> m ()
+  logWarning :: CompileWarning -> m ()
 
 instance (MonadLogger m) => MonadLogger (StateT s m) where
   setCallDepth = lift . setCallDepth
@@ -81,6 +85,7 @@ instance (MonadLogger m) => MonadLogger (StateT s m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   setCallDepth = lift . setCallDepth
@@ -89,6 +94,7 @@ instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   setCallDepth = lift . setCallDepth
@@ -97,6 +103,7 @@ instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   setCallDepth = lift . setCallDepth
@@ -105,6 +112,7 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   setCallDepth = lift . setCallDepth
@@ -113,9 +121,16 @@ instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
-logWarning :: (MonadLogger m) => CompileWarning -> m ()
-logWarning warning = logMessage $ WarningMessage warning
+instance (MonadLogger m) => MonadLogger (IdentityT m) where
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 logDebugM :: (MonadLogger m) => LoggingLevel -> m (Doc a) -> m ()
 logDebugM level getText = do
