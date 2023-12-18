@@ -23,6 +23,7 @@ module Vehicle.Backend.Queries.LinearExpr
     ordToRelation,
     coefficientsList,
     assertionVariables,
+    sortCLSTProblem,
   )
 where
 
@@ -30,7 +31,7 @@ import Control.Monad (foldM)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Hashable (Hashable)
-import Data.List (sortOn)
+import Data.List (sortBy, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -53,7 +54,7 @@ data Relation
   | NotEqual
   | LessThan
   | LessThanOrEqualTo
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Hashable Relation
 
@@ -371,3 +372,23 @@ data CLSTProblem = CLSTProblem NetworkVariableCtx [Assertion NetworkVariable]
 
 instance Pretty CLSTProblem where
   pretty (CLSTProblem _varNames assertions) = pretty assertions
+
+-- | Sorts the assertions in the CLST problem in order to avoid getting massive
+-- changes to output files every time our compilation algorithm changes
+-- (see #591).
+sortCLSTProblem :: CLSTProblem -> CLSTProblem
+sortCLSTProblem (CLSTProblem vars assertions) = do
+  let sortedAssertions = sortBy compareAssertion assertions
+  CLSTProblem vars sortedAssertions
+  where
+    compareAssertion :: Assertion NetworkVariable -> Assertion NetworkVariable -> Ordering
+    compareAssertion (Assertion rel1 expr1) (Assertion rel2 expr2) =
+      compareExpression expr1 expr2 `thenCmp` compare rel1 rel2
+
+    compareExpression :: SparseLinearExpr NetworkVariable -> SparseLinearExpr NetworkVariable -> Ordering
+    compareExpression (Sparse _dims1 coefs1 const1) (Sparse _dims2 coefs2 const2) =
+      compare coefs1 coefs2 `thenCmp` compare const1 const2
+
+    thenCmp :: Ordering -> Ordering -> Ordering
+    thenCmp EQ o2 = o2
+    thenCmp o1 _ = o1

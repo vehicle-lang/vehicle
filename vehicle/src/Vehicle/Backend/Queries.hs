@@ -255,6 +255,13 @@ compilePropertyTopLevelStructure = go
         let negBody = BuiltinFunctionExpr mempty Not [Arg mempty Explicit Relevant body]
         let negExpr = VInfiniteQuantifier Exists args binder env negBody
         compileQuerySet True negExpr
+      -- This case only happens because we can't yet evaluate neural networks
+      -- when applied to real inputs. For example
+      -- `fold (\x r -> x > 0 and r) True (f [0])` won't evaluate because we
+      -- don't evaluate `f [0]`. If we fix that problem this case should disappear
+      -- because we can't have any abstract variables in the empty context so we
+      -- can't block the evaluation of `fold`.
+      VBuiltinFunction (Fold FoldVector) _ -> compileQuerySet False expr
       _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
 
 compileQuerySet ::
@@ -308,7 +315,8 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
                 put (queryID + 1)
 
                 checkIfInputsWellSpecificied conjunctions
-                queryText <- compileQuery queryFormat declProvenance conjunctions
+                let sortedConjunctions = sortCLSTProblem conjunctions
+                queryText <- compileQuery queryFormat declProvenance sortedConjunctions
                 let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
                 let queryAddress = (propertyAddress, queryID)
                 let queryData = QueryData metaNetwork allVariableSteps
@@ -319,7 +327,7 @@ compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionI
                 return (queryAddress, (queryData, queryText))
             )
 
--- | Checks for presence of
+-- | Checks for presence of under-constrained input variables.
 checkIfInputsWellSpecificied ::
   (MonadCompileProperty m) =>
   CLSTProblem ->
