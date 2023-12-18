@@ -3,26 +3,8 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Data.NormalisedExpr
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
-
---------------------------------------------------------------------------------
--- HasType
-
-class HasType expr typ | expr -> typ where
-  typeOf :: expr -> typ
-
-instance HasType (Binder var builtin) (Type var builtin) where
-  typeOf = binderValue
-
-instance HasType (VBinder strategy builtin) (Value strategy builtin) where
-  typeOf = binderValue
-
-instance HasType (GenericDecl expr) expr where
-  typeOf = \case
-    DefAbstract _ _ _ t -> t
-    DefFunction _ _ _ t _ -> t
 
 --------------------------------------------------------------------------------
 -- Utility functions

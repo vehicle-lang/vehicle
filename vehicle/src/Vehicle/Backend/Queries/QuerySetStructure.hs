@@ -2,13 +2,15 @@ module Vehicle.Backend.Queries.QuerySetStructure
   ( UnreducedAssertion,
     compileSetQueryStructure,
     eliminateNot,
-    vectorStructureOperations,
+    whilePreservingOperations,
     isVectorEquals,
+    vectorOperations,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Data (Proxy (..))
 import Data.HashSet qualified as HashSet (fromList, intersection, null)
 import Data.Map qualified as Map (keysSet)
 import Data.Set (Set)
@@ -127,8 +129,8 @@ type MonadQueryStructure m =
 
 -- | The set of vector operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.
-vectorStructureOperations :: Set StdLibFunction
-vectorStructureOperations =
+vectorOperations :: Set StdLibFunction
+vectorOperations =
   Set.fromList
     [ StdAddVector,
       StdSubVector,
@@ -138,15 +140,22 @@ vectorStructureOperations =
 
 -- | The set of finite quantifier operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.
-finiteQuantifierFunctions :: Set StdLibFunction
-finiteQuantifierFunctions =
+finiteQuantifierOperations :: Set StdLibFunction
+finiteQuantifierOperations =
   Set.fromList
     [ StdForallIndex,
       StdExistsIndex
     ]
 
-queryStructureNBEOptions :: NBEOptions
-queryStructureNBEOptions = mkNBEOptions (vectorStructureOperations <> finiteQuantifierFunctions)
+vectorLikeOperations :: Set StdLibFunction
+vectorLikeOperations = vectorOperations <> finiteQuantifierOperations
+
+-- | Alter the normalisation monads so that builtin vector operations are
+-- temporarily converted to postulates and therefore do not evaluate.
+whilePreservingOperations :: (MonadNorm Builtin m) => Set StdLibFunction -> m a -> m a
+whilePreservingOperations funcs = do
+  let operations = Set.map identifierOf funcs
+  locallyAdjustCtx (Proxy @Builtin) (alterKeys operations convertToPostulate)
 
 compileBoolExpr ::
   forall m.
@@ -220,7 +229,7 @@ compileBoolExpr = go False
             Just (Just exprWithoutIf) -> do
               logDebug MaxDetail $ "If-lifted to:" <+> prettyFriendly (WithContext exprWithoutIf ctx)
               let env = variableCtxToEnv quantifiedVariables
-              normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
+              normExprWithoutIf <- renormalise env exprWithoutIf
               logDebug MaxDetail $ "Normalised to:" <+> prettyFriendly (WithContext normExprWithoutIf ctx)
               go True quantifiedVariables normExprWithoutIf
           decrCallDepth
@@ -321,9 +330,11 @@ compileFiniteQuantifier quantifiedVariables q quantSpine binder env body = do
       return $ Right (mempty, Query foldedExpr, mempty)
     else do
       logDebug MaxDetail $ "Unfolding finite quantifier:" <+> pretty q <+> prettyVerbose binder
-      quantImplementation <- lookupIdentValueInEnv defaultNBEOptions env (fromFiniteQuantifier q)
+      quantImplementation <- lookupIdentValueInEnv noAbstractFreeVarInterpretation env (fromFiniteQuantifier q)
       let quantifierExpr = VFiniteQuantifierSpine quantSpine binder env body
-      normResult <- evalApp queryStructureNBEOptions quantImplementation quantifierExpr
+      normResult <-
+        whilePreservingOperations vectorLikeOperations $
+          normaliseApp quantImplementation quantifierExpr
       compileBoolExpr quantifiedVariables normResult
 
 -- | This is a sound, inexpensive, but incomplete, check for whether
@@ -375,7 +386,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
 
         -- First of all optimistically try not to normalise the quantified variable.
         let optimisticEnv = extendEnvWithBound binder env
-        optimisiticBody <- eval queryStructureNBEOptions optimisticEnv body
+        optimisiticBody <- whilePreservingOperations vectorLikeOperations $ normaliseInEnv optimisticEnv body
 
         let unreducedPassDoc = "Trying without reducing dimensions of" <+> variableDoc
         optimisticResult <-
@@ -398,7 +409,7 @@ compileInfiniteQuantifier quantifiedVariables binder env body = do
 
             let updatedQuantifiedVars = newQuantifiedVariables <> quantifiedVariables
 
-            normBody <- eval queryStructureNBEOptions newEnv body
+            normBody <- whilePreservingOperations vectorLikeOperations $ normaliseInEnv newEnv body
 
             let reducedPassDoc = "Compiling while reducing dimensions of" <+> quotePretty variableName
             normalisedResult <-

@@ -1,7 +1,7 @@
 module Vehicle.Compile.Context.Free.Class where
 
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
-import Control.Monad.State (StateT, mapStateT)
+import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound
@@ -19,22 +19,27 @@ import Vehicle.Data.BuiltinInterface (HasStandardData)
 class (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadFreeContext builtin m where
   addDeclToContext :: Decl Ix builtin -> m a -> m a
   getFreeCtx :: Proxy builtin -> m (FreeCtx builtin)
+  locallyAdjustCtx :: Proxy builtin -> (FreeCtx builtin -> FreeCtx builtin) -> m a -> m a
 
 instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (WriterT w m) where
   addDeclToContext = mapWriterT . addDeclToContext
   getFreeCtx = lift . getFreeCtx
+  locallyAdjustCtx p = mapWriterT . locallyAdjustCtx p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ReaderT w m) where
   addDeclToContext = mapReaderT . addDeclToContext
   getFreeCtx = lift . getFreeCtx
+  locallyAdjustCtx p = mapReaderT . locallyAdjustCtx p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (StateT w m) where
   addDeclToContext = mapStateT . addDeclToContext
   getFreeCtx = lift . getFreeCtx
+  locallyAdjustCtx p = mapStateT . locallyAdjustCtx p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin m) where
   addDeclToContext = mapBoundContextT . addDeclToContext
   getFreeCtx = lift . getFreeCtx
+  locallyAdjustCtx p = mapBoundContextT . locallyAdjustCtx p
 
 --------------------------------------------------------------------------------
 -- Operations

@@ -13,4 +13,5 @@ import Vehicle.Syntax.AST.Name as X
 import Vehicle.Syntax.AST.Prog as X
 import Vehicle.Syntax.AST.Provenance as X
 import Vehicle.Syntax.AST.Relevance as X
+import Vehicle.Syntax.AST.Type as X
 import Vehicle.Syntax.AST.Visibility as X

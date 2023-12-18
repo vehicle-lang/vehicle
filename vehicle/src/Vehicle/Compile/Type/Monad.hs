@@ -140,7 +140,7 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
   let originProvenance = provenanceOf tcExpr
   cid <- generateFreshConstraintID (Proxy @builtin)
   let context = ConstraintContext cid originProvenance p unknownBlockingStatus boundCtx
-  nTCExpr <- eval defaultNBEOptions env tcExpr
+  nTCExpr <- normaliseInEnv env tcExpr
   let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 
   addInstanceConstraints [constraint]

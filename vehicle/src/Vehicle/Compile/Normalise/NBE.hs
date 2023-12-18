@@ -3,24 +3,22 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Normalise.NBE
-  ( NBEOptions,
+  ( AbstractFreeVarInterpretation,
+    noAbstractFreeVarInterpretation,
+    MonadNorm,
     normalise,
     normaliseInEnv,
     normaliseInEmptyEnv,
-    mkNBEOptions,
-    defaultNBEOptions,
+    normaliseApp,
+    renormalise,
     eval,
-    evalApp,
     lookupIdentValueInEnv,
-    reeval,
     findInstanceArg,
   )
 where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
-import Data.Set (Set)
-import Data.Set qualified as Set (map, member)
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getDecl)
 import Vehicle.Compile.Context.Var (MonadVarContext, getBoundCtx)
 import Vehicle.Compile.Error
@@ -29,7 +27,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.NormalisedExpr
-import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 
 -- NOTE: there is no evaluate to NF in this file. To do it
 -- efficiently you should just evaluate to WHNF and then recursively
@@ -51,7 +48,7 @@ normaliseInEnv ::
   WHNFEnv builtin ->
   Expr Ix builtin ->
   m (WHNFValue builtin)
-normaliseInEnv = eval defaultNBEOptions
+normaliseInEnv = eval (\ident args -> return $ VFreeVar ident args)
 
 normaliseInEmptyEnv ::
   (MonadFreeContext builtin m) =>
@@ -59,21 +56,31 @@ normaliseInEmptyEnv ::
   m (WHNFValue builtin)
 normaliseInEmptyEnv = normaliseInEnv mempty
 
+normaliseApp ::
+  (MonadNorm builtin m) =>
+  WHNFValue builtin ->
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
+normaliseApp = evalApp noAbstractFreeVarInterpretation
+
+renormalise ::
+  (MonadNorm builtin m) =>
+  WHNFEnv builtin ->
+  WHNFValue builtin ->
+  m (WHNFValue builtin)
+renormalise = reeval noAbstractFreeVarInterpretation
+
 -----------------------------------------------------------------------------
 -- Options during NBE
 
-newtype NBEOptions = NBEOptions
-  { noInlineLibraryFunctions :: Set Identifier
-  }
+type AbstractFreeVarInterpretation builtin m =
+  (MonadNorm builtin m) =>
+  Identifier ->
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
 
-defaultNBEOptions :: NBEOptions
-defaultNBEOptions =
-  NBEOptions
-    { noInlineLibraryFunctions = mempty
-    }
-
-mkNBEOptions :: Set StdLibFunction -> NBEOptions
-mkNBEOptions fns = NBEOptions (Set.map identifierOf fns)
+noAbstractFreeVarInterpretation :: AbstractFreeVarInterpretation builtin m
+noAbstractFreeVarInterpretation ident args = return $ VFreeVar ident args
 
 -----------------------------------------------------------------------------
 -- Evaluation
@@ -84,11 +91,11 @@ type MonadNorm builtin m =
 
 eval ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   Expr Ix builtin ->
   m (WHNFValue builtin)
-eval opts env expr = do
+eval interp env expr = do
   showEntry env expr
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
@@ -96,51 +103,51 @@ eval opts env expr = do
     Universe _ u -> return $ VUniverse u
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
-      binder' <- evalBinder opts env binder
+      binder' <- evalBinder interp env binder
       return $ VLam binder' (WHNFBody env body)
     Pi _ binder body -> do
-      binder' <- evalBinder opts env binder
+      binder' <- evalBinder interp env binder
       let newEnv = extendEnvWithBound binder' env
-      body' <- eval opts newEnv body
+      body' <- eval interp newEnv body
       return $ VPi binder' body'
     BoundVar _ i ->
       lookupIxValueInEnv i env
     FreeVar _ ident ->
-      lookupIdentValueInEnv opts env ident
+      lookupIdentValueInEnv interp env ident
     Let _ bound binder body -> do
-      binder' <- evalBinder opts env binder
-      boundNormExpr <- eval opts env bound
+      binder' <- evalBinder interp env binder
+      boundNormExpr <- eval interp env bound
       let newEnv = extendEnvWithDefined boundNormExpr binder' env
-      eval opts newEnv body
+      eval interp newEnv body
     App _ fun args -> do
-      fun' <- eval opts env fun
-      args' <- traverse (traverse (eval opts env)) (NonEmpty.toList args)
-      evalApp opts fun' args'
+      fun' <- eval interp env fun
+      args' <- traverse (traverse (eval interp env)) (NonEmpty.toList args)
+      evalApp interp fun' args'
 
   showExit env result
   return result
 
 evalBinder ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   Binder Ix builtin ->
   m (WHNFBinder builtin)
-evalBinder opts env = traverse (eval opts env)
+evalBinder interp env = traverse (eval interp env)
 
 evalApp ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFValue builtin ->
   WHNFSpine builtin ->
   m (WHNFValue builtin)
-evalApp _opts fun [] = return fun
-evalApp opts fun args@(a : as) = do
+evalApp _interp fun [] = return fun
+evalApp interp fun args@(a : as) = do
   showApp fun args
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
-    VFreeVar v spine -> return $ VFreeVar v (spine <> args)
+    VFreeVar v spine -> interp v (spine <> args)
     VLam binder (WHNFBody env body)
       | not (visibilityMatches binder a) -> do
           compilerDeveloperError $
@@ -156,16 +163,16 @@ evalApp opts fun args@(a : as) = do
                 )
       | otherwise -> do
           let newEnv = extendEnvWithDefined (argExpr a) binder env
-          body' <- eval opts newEnv body
+          body' <- eval interp newEnv body
           case as of
             [] -> return body'
-            (b : bs) -> evalApp opts body' (b : bs)
+            (b : bs) -> evalApp interp body' (b : bs)
     VBuiltin b spine
       | not (isTypeClassOp b) -> do
-          evalBuiltin (evalApp opts) b (spine <> args)
+          evalBuiltin (evalApp interp) b (spine <> args)
       | otherwise -> do
           (inst, remainingArgs) <- findInstanceArg b args
-          evalApp opts inst remainingArgs
+          evalApp interp inst remainingArgs
     VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
     VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
 
@@ -175,18 +182,15 @@ evalApp opts fun args@(a : as) = do
 lookupIdentValueInEnv ::
   forall builtin m.
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   Identifier ->
   m (WHNFValue builtin)
-lookupIdentValueInEnv opts@NBEOptions {..} env ident
-  | ident `Set.member` noInlineLibraryFunctions = do
-      return $ VFreeVar ident []
-  | otherwise = do
-      decl <- getDecl (Proxy @builtin) currentPass ident
-      case bodyOf decl of
-        Just expr -> eval opts env expr
-        _ -> return $ VFreeVar ident []
+lookupIdentValueInEnv interp env ident = do
+  decl <- getDecl (Proxy @builtin) currentPass ident
+  case bodyOf decl of
+    Just expr -> eval interp env expr
+    _ -> return $ VFreeVar ident []
 
 lookupIxValueInEnv ::
   (MonadNorm builtin m) =>
@@ -210,50 +214,50 @@ lookupIxValueInEnv ix env = do
 
 reeval ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   WHNFValue builtin ->
   m (WHNFValue builtin)
-reeval opts env expr = do
+reeval interp env expr = do
   showNormEntry env expr
   result <- case expr of
     VUniverse {} -> return expr
     VLam binder (WHNFBody lamEnv body) -> do
-      lamEnv' <- traverse (reevalEnvEntry opts env) lamEnv
+      lamEnv' <- traverse (reevalEnvEntry interp env) lamEnv
       return $ VLam binder (WHNFBody lamEnv' body)
     VPi {} -> return expr
-    VMeta m spine -> VMeta m <$> reevalSpine opts env spine
+    VMeta m spine -> VMeta m <$> reevalSpine interp env spine
     VFreeVar v spine -> do
-      value <- lookupIdentValueInEnv opts env v
-      spine' <- reevalSpine opts env spine
-      evalApp opts value spine'
+      value <- lookupIdentValueInEnv interp env v
+      spine' <- reevalSpine interp env spine
+      evalApp interp value spine'
     VBoundVar v spine -> do
       value <- lookupLvValueInEnv v env
-      spine' <- reevalSpine opts env spine
-      evalApp opts value spine'
+      spine' <- reevalSpine interp env spine
+      evalApp interp value spine'
     VBuiltin b spine ->
-      evalBuiltin (evalApp opts) b =<< reevalSpine opts env spine
+      evalBuiltin (evalApp interp) b =<< reevalSpine interp env spine
   showNormExit env result
   return result
 
 reevalEnvEntry ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   EnvEntry 'WHNF builtin ->
   m (EnvEntry 'WHNF builtin)
-reevalEnvEntry opts env (binder, value) =
+reevalEnvEntry interp env (binder, value) =
   (binder,) <$> case value of
     Bound -> return Bound
-    Defined v -> Defined <$> reeval opts env v
+    Defined v -> Defined <$> reeval interp env v
 
 reevalSpine ::
   (MonadNorm builtin m) =>
-  NBEOptions ->
+  AbstractFreeVarInterpretation builtin m ->
   WHNFEnv builtin ->
   WHNFSpine builtin ->
   m (WHNFSpine builtin)
-reevalSpine opts env = traverse (traverse (reeval opts env))
+reevalSpine interp env = traverse (traverse (reeval interp env))
 
 lookupLvValueInEnv ::
   (MonadNorm builtin m) =>

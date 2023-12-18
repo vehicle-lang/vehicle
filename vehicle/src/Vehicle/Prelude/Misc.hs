@@ -13,6 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
@@ -121,6 +122,9 @@ prependList :: [a] -> NonEmpty a -> NonEmpty a
 prependList ls ne = case ls of
   [] -> ne
   (x : xs) -> x :| xs <> NonEmpty.toList ne
+
+alterKeys :: (Ord k) => Set k -> (a -> a) -> Map k a -> Map k a
+alterKeys keys f xs = foldr (Map.alter (fmap f)) xs keys
 
 partialSort :: forall a. (a -> a -> Maybe Ordering) -> [a] -> [a]
 partialSort partialCompare xs = sortedNodes

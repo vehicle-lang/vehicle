@@ -86,13 +86,13 @@ instance MetaSubstitutable m builtin (WHNFValue builtin) where
           substValue <- subst s $ normalised value
           case args of
             [] -> return substValue
-            (a : as) -> evalApp defaultNBEOptions substValue (a : as)
+            (a : as) -> normaliseApp substValue (a : as)
     VUniverse {} -> return expr
     VFreeVar v spine -> VFreeVar v <$> traverse (subst s) spine
     VBoundVar v spine -> VBoundVar v <$> traverse (subst s) spine
     VBuiltin b spine -> do
       spine' <- traverse (subst s) spine
-      evalBuiltin (evalApp defaultNBEOptions) b spine'
+      evalBuiltin normaliseApp b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
