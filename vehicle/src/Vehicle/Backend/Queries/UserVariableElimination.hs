@@ -33,7 +33,7 @@ import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalMul)
-import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, reeval)
+import Vehicle.Compile.Normalise.NBE (renormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
@@ -408,7 +408,7 @@ substituteReducedVariablesThroughSolutions partialEnv solutions solvedVariablePo
   where
     f :: (UserVariable, WHNFValue Builtin) -> WHNFEnv Builtin -> m (WHNFEnv Builtin)
     f (var, solution) env = do
-      normalisedSolution <- reeval defaultNBEOptions env solution
+      normalisedSolution <- renormalise env solution
       let errorMsg = developerError $ "Environment index missing for solved variable" <+> quotePretty var
       let index = unIx $ fromMaybe errorMsg $ Map.lookup var solvedVariablePositions
       let newEntry = mkDefaultEnvEntry (layoutAsText $ pretty var) (Defined normalisedSolution)
@@ -493,7 +493,7 @@ compileReducedAssertion ::
   m (MaybeTrivial (BooleanExpr SolvableAssertion))
 compileReducedAssertion _originalVariables variables variableSubstEnv assertion = do
   -- First normalise the expression under the new environment of reduced variables
-  normExpr <- reeval defaultNBEOptions variableSubstEnv assertion
+  normExpr <- renormalise variableSubstEnv assertion
 
   -- Then extract the relation and arguments
   splitAssertions <- splitUpAssertions False normExpr
@@ -546,7 +546,7 @@ compileReducedAssertion _originalVariables variables variableSubstEnv assertion 
         Just Nothing -> compilerDeveloperError $ "Cannot lift 'if' over" <+> prettyVerbose expr
         Just (Just exprWithoutIf) -> do
           let env = variableCtxToEnv variableCtx
-          normExprWithoutIf <- reeval defaultNBEOptions env exprWithoutIf
+          normExprWithoutIf <- renormalise env exprWithoutIf
           splitUpAssertions True normExprWithoutIf
 
     reduceAssertion ::

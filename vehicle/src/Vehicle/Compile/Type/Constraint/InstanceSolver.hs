@@ -11,7 +11,7 @@ import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message (MeaningfulError (..))
-import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
 import Vehicle.Compile.Type (runUnificationSolver)
@@ -190,7 +190,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
     let initialCtx = goalCtxExtension ++ candidateCtx
     (candidateBody, candidateSol, newInstanceConstraints, finalCtx) <-
       go (candidateExpr, candidateSolution, [], initialCtx)
-    normCandidateBody <- eval defaultNBEOptions (boundContextToEnv finalCtx) candidateBody
+    normCandidateBody <- normaliseInEnv (boundContextToEnv finalCtx) candidateBody
     return (normCandidateBody, candidateSol, newInstanceConstraints)
   where
     go ::
@@ -210,7 +210,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
           Instance {} -> do
             let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
-            normBinderType <- eval defaultNBEOptions (boundContextToEnv boundCtx) binderType
+            normBinderType <- normaliseInEnv (boundContextToEnv boundCtx) binderType
             (expr, constraint) <- createSubInstance newInfo (relevanceOf exprBinder) normBinderType
             return (expr, [constraint])
         let exprBodyResult = newArg `substDBInto` exprBody

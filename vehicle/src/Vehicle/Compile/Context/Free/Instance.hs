@@ -81,3 +81,7 @@ instance
     local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask
+
+  locallyAdjustCtx _ f x =
+    FreeContextT $
+      local f (unFreeContextT x)

@@ -7,6 +7,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Type
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -44,6 +45,11 @@ instance HasIdentifier (GenericDecl expr) where
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
+
+instance HasType (GenericDecl expr) expr where
+  typeOf = \case
+    DefAbstract _ _ _ t -> t
+    DefFunction _ _ _ t _ -> t
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
@@ -123,6 +129,10 @@ isExternalResourceSort = \case
   DatasetDef -> True
   ParameterDef {} -> True
   PostulateDef -> False
+
+convertToPostulate :: GenericDecl expr -> GenericDecl expr
+convertToPostulate d =
+  DefAbstract (provenanceOf d) (identifierOf d) PostulateDef (typeOf d)
 
 --------------------------------------------------------------------------------
 -- Annotations options

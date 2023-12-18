@@ -10,7 +10,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Bound.Instance
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
-import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -509,8 +509,8 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  normExpectedType <- eval defaultNBEOptions env expectedType
-  normActualType <- eval defaultNBEOptions env actualType
+  normExpectedType <- normaliseInEnv env expectedType
+  normActualType <- normaliseInEnv env actualType
   cid <- generateFreshConstraintID (Proxy @builtin)
   let context = ConstraintContext cid p p unknownBlockingStatus ctx
   let unification = Unify origin normExpectedType normActualType
@@ -529,4 +529,4 @@ copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx)
 --------------------------------------------------------------------------------
 
 glueNBE :: (MonadFreeContext builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
-glueNBE env e = Glued e <$> eval defaultNBEOptions env e
+glueNBE env e = Glued e <$> normaliseInEnv env e

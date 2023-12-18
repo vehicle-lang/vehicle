@@ -57,7 +57,7 @@ forceExpr subst = go
     goMeta m spine = do
       case MetaMap.lookup m subst of
         Just solution -> do
-          normMetaExpr <- evalApp defaultNBEOptions (normalised solution) spine
+          normMetaExpr <- normaliseApp (normalised solution) spine
           (maybeForcedExpr, blockingMetas) <- go normMetaExpr
           let forcedExpr = maybe (Just normMetaExpr) Just maybeForcedExpr
           return (forcedExpr, blockingMetas)
@@ -91,5 +91,5 @@ forceBuiltin subst b spine = case getBuiltinFunction b of
       if not anyArgsReduced
         then return Nothing
         else do
-          Just <$> evalBuiltin (evalApp defaultNBEOptions) b argResults
+          Just <$> evalBuiltin normaliseApp b argResults
     return (result, blockingMetas)

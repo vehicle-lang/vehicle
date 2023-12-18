@@ -113,6 +113,7 @@ library
     Vehicle.Syntax.AST.Prog
     Vehicle.Syntax.AST.Provenance
     Vehicle.Syntax.AST.Relevance
+    Vehicle.Syntax.AST.Type
     Vehicle.Syntax.AST.Visibility
     Vehicle.Syntax.BNFC.Delaborate.External
     Vehicle.Syntax.BNFC.Delaborate.Internal

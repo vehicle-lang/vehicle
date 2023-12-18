@@ -10,6 +10,7 @@ import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
+import Vehicle.Syntax.AST.Type
 import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
 
 --------------------------------------------------------------------------------
@@ -110,6 +111,9 @@ instance HasRelevance (GenericBinder expr) where
 
 instance HasName (GenericBinder expr) (Maybe Name) where
   nameOf = nameOf . binderNamingForm
+
+instance HasType (GenericBinder expr) expr where
+  typeOf = binderValue
 
 --------------------------------------------------------------------------------
 -- Binders

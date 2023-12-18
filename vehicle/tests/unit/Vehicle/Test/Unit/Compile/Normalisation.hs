@@ -7,7 +7,7 @@ import Data.Data (Proxy (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Context.Free
-import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -68,7 +68,7 @@ normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
     normInput <-
       runFreshFreeContextT (Proxy @Builtin) $
-        eval defaultNBEOptions (mkNoOpEnv dbLevel) input
+        normaliseInEnv (mkNoOpEnv dbLevel) input
     let actual = quote mempty dbLevel normInput
 
     let errorMessage =
