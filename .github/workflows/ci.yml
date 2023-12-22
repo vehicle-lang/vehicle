@@ -65,8 +65,8 @@ jobs:
       - name: Download wheelhouse
         uses: actions/download-artifact@v4
         with:
-          name: wheelhouse
-          path: wheelhouse
+          pattern: "wheelhouse-*-*"
+          path: "wheelhouse"
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v1
