@@ -67,7 +67,7 @@ jobs:
           CIBW_ARCHS: "${{ matrix.os.arch }}"
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
-            
+
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
