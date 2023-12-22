@@ -6,9 +6,9 @@ import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundCtx)
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Data.BuiltinInterface (HasStandardData)
 import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ import Vehicle.Data.NormalisedExpr
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (Monad m, NormalisableBuiltin builtin) => MonadBoundContext builtin m where
+class (Monad m, HasStandardData builtin) => MonadBoundContext builtin m where
   addBinderToContext :: Binder Ix builtin -> m a -> m a
   getBoundCtx :: Proxy builtin -> m (BoundCtx builtin)
 
