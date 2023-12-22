@@ -881,9 +881,9 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
-                <> "as the size of the"
-                  <+> pretty Index
-                  <+> "type is not a known constant.",
+                <+> "as the size of the"
+                <+> pretty Index
+                <+> "type is not a known constant.",
             fix = Just "make sure the dimensions of the indices are all constants."
           }
     ParameterValueInvalidIndex (ident, p) value n ->

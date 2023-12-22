@@ -415,8 +415,8 @@ pattern VNil :: (HasStandardData builtin) => Value strategy builtin
 pattern VNil <- VBuiltin (getBuiltinConstructor -> Just Nil) _
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
-pattern VCons :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin
-pattern VCons xs <- VBuiltin (getBuiltinConstructor -> Just Cons) (filter isExplicit -> xs)
+pattern VCons :: (HasStandardData builtin) => VArg strategy builtin -> VArg strategy builtin -> Value strategy builtin
+pattern VCons x xs <- VBuiltin (getBuiltinConstructor -> Just Cons) (filter isExplicit -> [x, xs])
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
 pattern VVecLiteral :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin

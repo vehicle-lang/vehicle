@@ -2,26 +2,35 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Compile.Normalise.Builtin where
+module Vehicle.Compile.Normalise.Builtin
+  ( evalBuiltin,
+    evalMul,
+    traverseBuiltinBlockingArgs,
+  )
+where
 
 import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
-type EvalApp builtin m = WHNFValue builtin -> WHNFSpine builtin -> m (WHNFValue builtin)
+-- Okay so the important thing to remember about this module is that we have
+-- a variety of different typing schemes for builtins (standard, polarity,
+-- linearity etc.). Normalisation needs to work for all of these, and
+-- therefore we can't guarantee what the implicit and instance arguments are
+-- going to be for a given builtin. However, explicit arguments are always
+-- the same in every type system.
 
-type ForceArg builtin m = WHNFArg builtin -> m (WHNFArg builtin, (Bool, MetaSet))
-
-type NormalisableBuiltin builtin = HasStandardData builtin
+-- Therefore this can be viewed as a type of runtime irrelevance, where only
+-- the explicit arguments are runtime relevant. This notion isn't made
+-- explicit in the code below. Maybe there's a nice way of doing so?
 
 -----------------------------------------------------------------------------
--- Indvidual builtins
+-- Main method
 
 evalBuiltin ::
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
@@ -29,53 +38,38 @@ evalBuiltin ::
   builtin ->
   WHNFSpine builtin ->
   m (WHNFValue builtin)
-evalBuiltin evalApp b args = case getBuiltinFunction b of
-  Just f -> do
-    let result = evalBuiltinFunction evalApp f (mapMaybe getExplicitArg args)
-    fromMaybe (return $ VBuiltin b args) result
-  Nothing -> return $ VBuiltin b args
+evalBuiltin evalApp b args = do
+  let runtimeRelevantArgs = filterRuntimeRelevantArgs args
+  case tryToEvaluateOnRuntimeRelevantArgs evalApp b runtimeRelevantArgs of
+    Just result -> result
+    _ -> return $ VBuiltin b args
 
-evalBuiltinFunction ::
-  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
-  EvalApp builtin m ->
-  BuiltinFunction ->
-  [WHNFValue builtin] ->
-  Maybe (m (WHNFValue builtin))
-evalBuiltinFunction evalApp b args
-  | isDerived b = evalImplies args
-  | otherwise = case b of
-      Quantifier {} -> Nothing
-      Not -> return <$> evalNot args
-      And -> return <$> evalAnd args
-      Or -> return <$> evalOr args
-      Neg dom -> return <$> evalNeg dom args
-      Add dom -> return <$> evalAdd dom args
-      Sub dom -> return <$> evalSub dom args
-      Mul dom -> return <$> evalMul dom args
-      Div dom -> return <$> evalDiv dom args
-      PowRat -> return <$> evalPowRat args
-      MinRat -> return <$> evalMinRat args
-      MaxRat -> return <$> evalMaxRat args
-      Equals dom op -> return <$> evalEquals dom op args
-      Order dom op -> return <$> evalOrder dom op args
-      If -> return <$> evalIf args
-      At -> return <$> evalAt args
-      Fold dom -> evalFold dom evalApp args
-      ZipWithVector -> evalZipWith evalApp args
-      MapList -> evalMapList evalApp args
-      MapVector -> evalMapVector evalApp args
-      FromNat dom -> return <$> evalFromNat dom args
-      FromRat dom -> return <$> evalFromRat dom args
-      Indices -> return <$> evalIndices args
-      Implies -> Just $ compilerDeveloperError $ "Found derived builtin" <+> pretty b
-      Optimise {} -> Nothing
-      Ann -> return <$> evalAnn args
+-----------------------------------------------------------------------------
+-- Runtime relevance
 
-isDerived :: BuiltinFunction -> Bool
-isDerived = \case
-  Implies {} -> True
-  _ -> False
+isRuntimeRelevant :: WHNFArg builtin -> Bool
+isRuntimeRelevant = isExplicit
 
+filterRuntimeRelevantArgs :: WHNFSpine builtin -> [WHNFValue builtin]
+filterRuntimeRelevantArgs = mapMaybe getExplicitArg
+
+-----------------------------------------------------------------------------
+-- Builtin evaluation
+
+-- | A method for evaluating an application.
+-- Although there is only one implementation of this type, it needs to be
+-- passed around as an argument to avoid dependency cycles between
+-- this module and the module in which the general NBE algorithm lives in.
+type EvalApp builtin m =
+  WHNFValue builtin ->
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
+
+-- | A method for evaluating builtins that takes in an argument allowing the
+-- recursive evaluation of applications. that takes in an argument allowing
+-- the subsequent further evaluation of applications.
+-- Such recursive evaluation is necessary when evaluating higher order
+-- functions such as fold, map etc.
 type EvalBuiltin builtin m =
   (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
   [WHNFValue builtin] ->
@@ -85,6 +79,123 @@ type EvalSimpleBuiltin builtin =
   (HasStandardData builtin) =>
   [WHNFValue builtin] ->
   Maybe (WHNFValue builtin)
+
+tryToEvaluateOnRuntimeRelevantArgs ::
+  (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
+  EvalApp builtin m ->
+  builtin ->
+  [WHNFValue builtin] ->
+  Maybe (m (WHNFValue builtin))
+tryToEvaluateOnRuntimeRelevantArgs evalApp b runtimeRelevantArgs =
+  case getBuiltinFunction b of
+    Just f -> evalBuiltinFunction evalApp f runtimeRelevantArgs
+    Nothing -> Nothing
+
+evalBuiltinFunction ::
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  EvalApp builtin m ->
+  BuiltinFunction ->
+  [WHNFValue builtin] ->
+  Maybe (m (WHNFValue builtin))
+evalBuiltinFunction evalApp b args = case b of
+  Quantifier {} -> Nothing
+  Optimise {} -> Nothing
+  Not -> return <$> evalNot args
+  And -> return <$> evalAnd args
+  Or -> return <$> evalOr args
+  Neg dom -> return <$> evalNeg dom args
+  Add dom -> return <$> evalAdd dom args
+  Sub dom -> return <$> evalSub dom args
+  Mul dom -> return <$> evalMul dom args
+  Div dom -> return <$> evalDiv dom args
+  PowRat -> return <$> evalPowRat args
+  MinRat -> return <$> evalMinRat args
+  MaxRat -> return <$> evalMaxRat args
+  Equals dom op -> return <$> evalEquals dom op args
+  Order dom op -> return <$> evalOrder dom op args
+  If -> return <$> evalIf args
+  At -> return <$> evalAt args
+  Fold dom -> evalFold dom evalApp args
+  ZipWithVector -> evalZipWith evalApp args
+  MapList -> evalMapList evalApp args
+  MapVector -> evalMapVector evalApp args
+  FromNat dom -> return <$> evalFromNat dom args
+  FromRat dom -> return <$> evalFromRat dom args
+  Indices -> return <$> evalIndices args
+  Implies -> return <$> evalImplies args
+  Ann -> return <$> evalAnn args
+
+-----------------------------------------------------------------------------
+-- Blocking
+-----------------------------------------------------------------------------
+
+-- | Indices into the the list of runtime-relevant arguments, indicating which
+-- arguments are blocking the evaluation of the builtin.
+-- Numbering starts from 0 at the front the list.
+-- NOTE: a difference list would better preserve the invariant that this should
+-- always be monotonically ascending.
+type BlockingArgs = [Int]
+
+traverseBuiltinBlockingArgs ::
+  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  (WHNFValue builtin -> m (WHNFValue builtin)) ->
+  BuiltinFunction ->
+  WHNFSpine builtin ->
+  m (WHNFSpine builtin)
+traverseBuiltinBlockingArgs f b args =
+  traverseBlockingArgs f args $ case b of
+    Quantifier {} -> []
+    Optimise {} -> []
+    Not -> [0]
+    And -> [0, 1]
+    Or -> [0, 1]
+    Neg {} -> [0]
+    Add {} -> [0, 1]
+    Sub {} -> [0, 1]
+    Mul {} -> [0, 1]
+    Div {} -> [0, 1]
+    PowRat -> [0, 1]
+    MinRat -> [0, 1]
+    MaxRat -> [0, 1]
+    Equals {} -> [0, 1]
+    Order {} -> [0, 1]
+    If -> [0]
+    At -> [0, 1]
+    Fold {} -> [2]
+    ZipWithVector -> [1, 2]
+    MapList -> [1]
+    MapVector -> [1]
+    FromNat {} -> [0]
+    FromRat {} -> [0]
+    Indices -> [0]
+    Implies -> [0, 1]
+    Ann -> []
+
+traverseBlockingArgs ::
+  forall m builtin.
+  (MonadCompile m) =>
+  (WHNFValue builtin -> m (WHNFValue builtin)) ->
+  WHNFSpine builtin ->
+  BlockingArgs ->
+  m (WHNFSpine builtin)
+traverseBlockingArgs f = go 0
+  where
+    go ::
+      Int ->
+      WHNFSpine builtin ->
+      BlockingArgs ->
+      m (WHNFSpine builtin)
+    go _ spine [] = return spine
+    go _ [] _ =
+      compilerDeveloperError "run out of args when traversing blocked arguments in spine"
+    go argNo (arg : args) (blockedArg : blockedArgs)
+      | isRuntimeRelevant arg && argNo == blockedArg = (:) <$> traverse f arg <*> go (argNo + 1) args blockedArgs
+      | isRuntimeRelevant arg = (:) <$> (return arg) <*> go (argNo + 1) args (blockedArg : blockedArgs)
+      | otherwise = (:) <$> (return arg) <*> go argNo args (blockedArg : blockedArgs)
+
+-----------------------------------------------------------------------------
+-- Individual builtin evaluation
+-----------------------------------------------------------------------------
 
 evalNot :: EvalSimpleBuiltin builtin
 evalNot e = case e of
@@ -304,11 +415,6 @@ evalAt = \case
     Just xsi -> argExpr xsi
   _ -> Nothing
 
-evalConsVector :: EvalSimpleBuiltin builtin
-evalConsVector = \case
-  [x, VVecLiteral xs] -> Just $ mkVLVec (x : fmap argExpr xs)
-  _ -> Nothing
-
 evalFold ::
   (MonadCompile m, PrintableBuiltin builtin) =>
   FoldDomain ->
@@ -324,7 +430,7 @@ evalFoldList ::
 evalFoldList evalApp = \case
   [_f, e, VNil] ->
     Just $ return e
-  [f, e, VCons [x, xs]] ->
+  [f, e, VCons x xs] ->
     Just $ do
       let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
       r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
@@ -370,7 +476,7 @@ evalMapList ::
 evalMapList evalApp = \case
   [_f, e@VNil] ->
     Just $ return e
-  [f, VCons [x, xs]] -> Just $ do
+  [f, VCons x xs] -> Just $ do
     fx <- evalApp f [x]
     fxs <- case evalMapList evalApp [f, argExpr xs] of
       Nothing -> return $ VBuiltin (mkBuiltinFunction MapList) [Arg mempty Explicit Relevant f, xs]
@@ -402,20 +508,13 @@ evalAnn = \case
 -----------------------------------------------------------------------------
 -- Derived
 
-type EvalDerived builtin m =
-  ( MonadCompile m,
-    HasStandardData builtin
-  ) =>
-  [WHNFValue builtin] ->
-  Maybe (m (WHNFValue builtin))
-
 -- TODO define in terms of language. The problem is the polarity checking...
-evalImplies :: EvalDerived builtin m
+evalImplies :: EvalSimpleBuiltin builtin
 evalImplies = \case
   [e1, e2] -> Just $ do
     let defaultNot = VBuiltin (mkBuiltinFunction Not) [Arg mempty Explicit Relevant e1]
     let ne1 = fromMaybe defaultNot (evalNot [e1])
     let defaultOr = VBuiltin (mkBuiltinFunction Or) [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
     let maybeRes = evalOr [ne1, e2]
-    return $ fromMaybe defaultOr maybeRes
+    fromMaybe defaultOr maybeRes
   _ -> Nothing

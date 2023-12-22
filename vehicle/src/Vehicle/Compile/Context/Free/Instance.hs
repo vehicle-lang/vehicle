@@ -10,9 +10,9 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
+import Vehicle.Data.BuiltinInterface (HasStandardData)
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation
@@ -73,7 +73,7 @@ instance (MonadIO m) => MonadIO (FreeContextT builtin m) where
 -- Context monad preservation
 
 instance
-  (PrintableBuiltin builtin, NormalisableBuiltin builtin, MonadCompile m) =>
+  (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
   addDeclToContext decl cont = FreeContextT $ do
