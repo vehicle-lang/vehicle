@@ -65,7 +65,7 @@ jobs:
       - name: Download wheelhouse
         uses: actions/download-artifact@v4
         with:
-          name: wheelhouse
+          pattern: "vehicle-lang-*-*"
           path: wheelhouse
 
       - name: Publish to GitHub Releases
