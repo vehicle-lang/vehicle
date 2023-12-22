@@ -69,7 +69,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheelhouse
           path: ./vehicle-python/wheelhouse/*.whl
