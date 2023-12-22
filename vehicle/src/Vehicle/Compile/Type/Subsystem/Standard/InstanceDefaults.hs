@@ -2,9 +2,7 @@
 
 module Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults where
 
-import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
@@ -98,10 +96,9 @@ getCandidates ctx (Resolve origin _ _ expr) = do
         (StandardBuiltin (TypeClass HasFold), [t]) -> Just (VRawListType, [t])
         (StandardBuiltin NatInDomainConstraint, [n, t]) -> case argExpr t of
           VIndexType size -> do
-            succN <- do
-              let maybeNormResult = evalAddNat [argExpr n, VNatLiteral 1]
-              let defaultExpr = VBuiltin (StandardBuiltin (BuiltinFunction (Add AddNat))) [n, Arg mempty Explicit Relevant (VNatLiteral 1)]
-              return $ fromMaybe defaultExpr maybeNormResult
+            let succN = case argExpr n of
+                  VNatLiteral x -> VNatLiteral (x + 1)
+                  _ -> VBuiltinFunction (Add AddNat) [n, Arg mempty Explicit Relevant (VNatLiteral 1)]
             Just (succN, [Arg mempty (Implicit False) Irrelevant size])
           _ -> Nothing
         _ -> Nothing
