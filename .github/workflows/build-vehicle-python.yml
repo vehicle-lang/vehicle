@@ -71,5 +71,5 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: "vehicle-lang-${{ matrix.os.plat }}-${{ matrix.os.arch }}"
+          name: "wheelhouse-${{ matrix.os.plat }}-${{ matrix.os.arch }}"
           path: ./vehicle-python/wheelhouse/*.whl
