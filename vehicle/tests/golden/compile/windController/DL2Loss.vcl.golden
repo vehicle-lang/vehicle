@@ -7,11 +7,17 @@ currentSensor = 0
 previousSensor : Index;
 previousSensor = 1
 
+velocity : Index;
+velocity = 0
+
+normalise : Vector Rat -> Vector Rat;
+normalise x = map (\ i -> (x ! i + 4.0) / 8.0) (indices 2)
+
 safeInput : Vector Rat -> Rat;
 safeInput x = bigAnd (map (\ i -> max 0.0 (- 3.25 - x ! i) + (if - 3.25 == x ! i then 1.0 else 0.0) + (max 0.0 (x ! i - 3.25) + (if x ! i == 3.25 then 1.0 else 0.0))) (indices 2))
 
 safeOutput : forallT (controller : Vector Rat -> Vector Rat) . Vector Rat -> Rat;
-safeOutput controller x = max 0.0 (- 1.25 - (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor)) + max 0.0 (controller x ! 0 + 2.0 * x ! currentSensor - x ! previousSensor - 1.25)
+safeOutput controller x = let y = controller (normalise x) ! velocity in max 0.0 (- 1.25 - (y + 2.0 * x ! currentSensor - x ! previousSensor)) + max 0.0 (y + 2.0 * x ! currentSensor - x ! previousSensor - 1.25)
 
 @property;
 safe : forallT (controller : Vector Rat -> Vector Rat) . Rat;
