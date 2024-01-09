@@ -15,12 +15,12 @@ open import Data.Unit.Base using (⊤; tt)
 open import Relation.Nullary using (does)
 open import Relation.Binary.Core using (Rel)
 
-open import Reflection.Argument
-open import Reflection.Term
+open import Reflection.AST.Argument
+open import Reflection.AST.Term
+open import Reflection.AST.Show using (showTerm)
 open import Reflection.External
-open import Reflection.TypeChecking.Monad
-open import Reflection.TypeChecking.Monad.Syntax
-open import Reflection.Show using (showTerm)
+open import Reflection.TCM
+open import Reflection.TCM.Syntax
 
 open import Vehicle.Utils
 

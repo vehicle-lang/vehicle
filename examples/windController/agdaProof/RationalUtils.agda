@@ -4,10 +4,10 @@ module RationalUtils where
 
 open import Algebra
 import Algebra.Morphism.RingMonomorphism as RingMonomorphisms
-open import Data.Rational
+open import Data.Rational as ℚ
 open import Data.Rational.Properties
 open import Data.Nat using (z≤n; s≤s)
-open import Data.Integer using (+≤+; +<+; +_; -[1+_])
+open import Data.Integer using (+≤+; +<+; +_; -[1+_]; +[1+_]; +0)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum
 open import Function.Base using (_∘_; _∘′_)
@@ -18,6 +18,10 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Nullary.Negation using (contradiction)
 
 open import Vehicle.Data.Tensor
+
+open import Data.Maybe.Base using (just; nothing; decToMaybe)
+open import Tactic.RingSolver.Core.AlmostCommutativeRing
+open import Tactic.RingSolver.NonReflective (fromCommutativeRing +-*-commutativeRing (λ x → decToMaybe (0ℚ ℚ.≟ x)))
 
 open ≤-Reasoning
 
@@ -121,3 +125,16 @@ p+q-q≡p p q = begin-equality
   (1ℚ + 1ℚ) * p   ≡⟨ *-distribʳ-+ p 1ℚ 1ℚ ⟩
   1ℚ * p + 1ℚ * p ≡⟨ cong₂ _+_ (*-identityˡ p) (*-identityˡ p) ⟩
   p + p           ∎
+
+2p+p≡3p : ∀ p → 2ℚ * p + p ≡ 3ℚ * p
+2p+p≡3p p = begin-equality
+  2ℚ * p + p      ≡⟨ cong ((2ℚ * p) ℚ.+_) (sym (*-identityˡ p)) ⟩
+  2ℚ * p + 1ℚ * p ≡⟨ sym (*-distribʳ-+ p 2ℚ 1ℚ) ⟩
+  (2ℚ + 1ℚ) * p   ∎
+  where open ≤-Reasoning
+
+
+lem1 : ∀ a b c d e f g → a + (b + c) + d + (e + f + f - g) - (e + f + f - g) ≡
+                         c + (a + f + (e + b + d + f)) - g - (f + f + (e - g))
+lem1 = solve 7 (λ a b c d e f g → (a ⊕ (b ⊕ c) ⊕ d ⊕ (e ⊕ f ⊕ f ⊕ (⊝ g)) ⊕ (⊝ (e ⊕ f ⊕ f ⊕ (⊝ g))) ,
+                                  c ⊕ (a ⊕ f ⊕ (e ⊕ b ⊕ d ⊕ f)) ⊕ (⊝ g) ⊕ (⊝ (f ⊕ f ⊕ (e ⊕ (⊝ g)))))) refl

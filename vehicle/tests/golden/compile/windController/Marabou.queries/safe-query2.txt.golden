@@ -3,8 +3,8 @@
 // Metadata:
 //  - Marabou query format version: unknown
 //  - Vehicle version: 0.11.0+dev
--2.0x0 +x1 -y0 <= -1.25
-x0 >= -3.25
-x0 <= 3.25
-x1 >= -3.25
-x1 <= 3.25
+-16.0x0 8.0x1 -y0 <= -5.25
+x0 >= 0.09375
+x0 <= 0.90625
+x1 >= 0.09375
+x1 <= 0.90625

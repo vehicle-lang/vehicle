@@ -9,6 +9,8 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Fin.Patterns using (0F; 1F)
 open import Data.Nat using (z≤n; s≤s)
 open import Data.Integer using (+≤+; +<+; +_)
+open import Data.Rational
+open import Data.Rational.Properties
 open import Data.Vec using (_∷_)
 import Data.Vec.Functional as Vector
 open import Data.Product using (_×_; _,_; uncurry)
@@ -18,7 +20,7 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (yes; no)
 
 open import Vehicle.Data.Tensor
-open import AbstractRationals
+open import RationalUtils
 import WindControllerSpec as Vehicle
 
 open ≤-Reasoning
@@ -80,7 +82,7 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = Vehicle.controller (toTensor x y) 0F
+controller x y = Vehicle.controller (Vehicle.normalise (toTensor x y)) 0F
 
 nextState : Observation → State → State
 nextState o s = record
@@ -145,7 +147,7 @@ initialState-onRoad : OnRoad initialState
 initialState-onRoad = roadWidth≥0
 
 initialState-safe : SafeState initialState
-initialState-safe rewrite +-eq | *-eq | neg-eq =
+initialState-safe =
   *<* (+<+ (s≤s z≤n)) ,
   *≤* (+≤+ z≤n) ,
   *≤* (+≤+ z≤n)
@@ -156,7 +158,7 @@ controller-lem : ∀ x y →
                  ∣ x ∣ ≤ roadWidth + maxSensorError →
                  ∣ y ∣ ≤ roadWidth + maxSensorError →
                  ∣ controller x y + 2ℚ * x - y ∣ < roadWidth - maxWindShift - 3ℚ * maxSensorError
-controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ rewrite +-eq | *-eq | neg-eq =
+controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ =
   uncurry -p<q<p⇒∣q∣<p (Vehicle.safe (toTensor x y) (λ
     { 0F → ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
     ; 1F → ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
@@ -175,7 +177,7 @@ valid+safe⇒nextState-onRoad : ∀ o → ValidObservation o →
                               OnRoad (nextState o s)
 valid+safe⇒nextState-onRoad o (_ , δw≤δwₘₐₓ) s (safeDist , _ , _) = begin
   ∣ position s + velocity s + (windSpeed s + windShift o) ∣ ≡˘⟨ cong ∣_∣ (+-assoc (position s + velocity s) (windSpeed s) (windShift o)) ⟩
-  ∣ position s + velocity s + windSpeed s + windShift o   ∣ ≤⟨ ∣p+q∣≤∣p∣+∣q∣ _ (windShift o) ⟩
+  ∣ position s + velocity s + windSpeed s + windShift o   ∣ ≤⟨ ∣p+q∣≤∣p∣+∣q∣ (position s + velocity s + windSpeed s) (windShift o) ⟩
   ∣ nextPosition-windShift s ∣ + ∣ windShift o ∣            ≤⟨ +-mono-≤ (<⇒≤ safeDist) δw≤δwₘₐₓ ⟩
   roadWidth - maxWindShift + maxWindShift                   ≡⟨ p-q+q≡p roadWidth maxWindShift ⟩
   roadWidth                                                 ∎
@@ -202,14 +204,14 @@ valid+safe⇒nextState-safeDistanceFromEdge o valid@(ε-accurate , _) s safe@(sa
     ∣dv+2p'-p∣ = ∣ dv + 2ℚ * p' - p ∣
     s'-notOffRoad = valid+safe⇒nextState-sensorReadingNotOffRoad s safe o valid
   in begin-strict
-  ∣ y' + v' + w' ∣                                                  ≡⟨ cong ∣_∣ (sym (p+q-q≡p (y' + v' + w') _)) ⟩
+  ∣ y' + v' + w' ∣                                                  ≡⟨ cong ∣_∣ (p+q-q≡p (y' + v' + w') _) ⟨
   ∣ y' + (v + dv) + w' + (y + ε' + ε' - p) - (y + ε' + ε' - p) ∣    ≡⟨ cong ∣_∣ (lem1 y' v dv w' y ε' p) ⟩
   ∣ dv + (y' + ε' + (y + v + w' + ε')) - p - (ε' + ε' + (y - p)) ∣  ≡⟨⟩
-  ∣ dv + (p' + p') - p - (ε' + ε' + (y - p)) ∣                      ≡⟨ cong ∣_∣ (cong₂ (λ a b → dv + a - p - (b + (y - p))) (sym (2*p≡p+p p')) (sym (2*p≡p+p ε'))) ⟩
+  ∣ dv + (p' + p') - p - (ε' + ε' + (y - p)) ∣                      ≡⟨ cong ∣_∣ (cong₂ (λ a b → dv + a - p - (b + (y - p))) (2*p≡p+p p') (2*p≡p+p ε')) ⟨
   ∣ dv + 2ℚ * p' - p - (2ℚ * ε' + (y - p)) ∣                        ≤⟨ ∣p-q∣≤∣p∣+∣q∣ (dv + 2ℚ * p' - p) (2ℚ * ε' + (y - p)) ⟩
-  ∣ dv + 2ℚ * p' - p ∣ + ∣ 2ℚ * ε' + (y - p) ∣                      ≤⟨ +-monoʳ-≤ _ (∣p+q∣≤∣p∣+∣q∣ (2ℚ * ε') (y - p)) ⟩
+  ∣ dv + 2ℚ * p' - p ∣ + ∣ 2ℚ * ε' + (y - p) ∣                      ≤⟨ +-monoʳ-≤ (∣ dv + 2ℚ * p' - p ∣) (∣p+q∣≤∣p∣+∣q∣ (2ℚ * ε') (y - p)) ⟩
   ∣ dv + 2ℚ * p' - p ∣ + (∣ 2ℚ * ε' ∣ + ∣ y - p ∣)                  ≡⟨ cong (λ v → ∣dv+2p'-p∣ + v) (cong (_+ _) (∣p*q∣≡∣p∣*∣q∣ 2ℚ ε')) ⟩
-  ∣ dv + 2ℚ * p' - p ∣ + (2ℚ * ∣ ε' ∣ + ∣ ε ∣)                      ≤⟨ +-monoʳ-≤ _ (+-mono-≤ (*-monoʳ-≤ 2ℚ _ ε-accurate) ε'-accurate) ⟩
+  ∣ dv + 2ℚ * p' - p ∣ + (2ℚ * ∣ ε' ∣ + ∣ ε ∣)                      ≤⟨ +-monoʳ-≤ (∣ dv + 2ℚ * p' - p ∣) (+-mono-≤ (*-monoʳ-≤ 2ℚ _ ε-accurate) ε'-accurate) ⟩
   ∣ dv + 2ℚ * p' - p ∣ + (2ℚ * maxSensorError + maxSensorError)     ≡⟨ cong (λ v → ∣dv+2p'-p∣ + v) (2p+p≡3p maxSensorError) ⟩
   ∣ dv + 2ℚ * p' - p ∣ + 3ℚ * maxSensorError                        <⟨ p<r-q⇒p+q<r _ _ _ (controller-lem p' p s'-notOffRoad s-notOffRoad) ⟩
   roadWidth - maxWindShift                                          ∎
