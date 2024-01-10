@@ -13,6 +13,14 @@ void _unsafe_vehicle_free()
 {
   void hs_exit();
 }
+
+void _unsafe_python_write_stdout(const char * str) {
+  PySys_FormatStdout("%s", str);
+}
+
+void _unsafe_python_write_stderr(const char * str) {
+  PySys_FormatStderr("%s", str);
+}
 %}
 
 %typemap(in) (int argc, char **argv) {

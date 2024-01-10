@@ -28,6 +28,14 @@ import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 
 --------------------------------------------------------------------------------
+-- Streams
+
+class (MonadIO m) => HasStdIO str m where
+  putOut :: str -> m ()
+  putErr :: str -> m ()
+  putLog :: str -> m ()
+
+--------------------------------------------------------------------------------
 -- Files
 
 baseFileExtension :: String

@@ -31,6 +31,10 @@ foreign-library _binding
   import:             warnings
   type:               native-shared
 
+  -- 10-01-2024:
+  -- Add RTS options for compilation to dynamic library.
+  -- ghc-options: -with-rtsopts="--install-signal-handlers=no --install-seh-handlers=no -V0"
+
   -- 01-04-2023:
   -- Standalone builds appear to work with macOS builds of GHC
   if os(osx)

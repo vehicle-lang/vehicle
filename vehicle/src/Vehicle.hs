@@ -15,9 +15,12 @@ import System.Environment (getArgs)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import System.FilePath (takeDirectory)
 import System.IO
-  ( Handle,
-    IOMode (AppendMode),
+  ( BufferMode (NoBuffering),
+    Handle,
+    IOMode (WriteMode),
+    hFlush,
     hPutStrLn,
+    hSetBuffering,
     stderr,
     stdout,
     utf8,
@@ -85,16 +88,18 @@ redirectStdout :: GlobalOptions -> IO a -> IO a
 redirectStdout GlobalOptions {outFile} action =
   flip (maybe action) outFile $ \fp -> do
     createDirectoryIfMissing True (takeDirectory fp)
-    result <- withFile fp AppendMode $ \fh -> do
-      bracket (redirectHandleTo stdout fh) (restoreHandleFrom stdout) (const action)
+    result <- withFile fp WriteMode $ \outHandle -> do
+      hSetBuffering outHandle NoBuffering
+      bracket (redirectHandleTo stdout outHandle) (restoreHandleFrom stdout) (const action)
     return result
 
 redirectStderr :: GlobalOptions -> IO a -> IO a
 redirectStderr GlobalOptions {errFile} action =
   flip (maybe action) errFile $ \fp -> do
     createDirectoryIfMissing True (takeDirectory fp)
-    withFile fp AppendMode $ \fh -> do
-      bracket (redirectHandleTo stderr fh) (restoreHandleFrom stderr) (const action)
+    withFile fp WriteMode $ \errHandle -> do
+      hSetBuffering errHandle NoBuffering
+      bracket (redirectHandleTo stderr errHandle) (restoreHandleFrom stderr) (const action)
 
 withLogger :: GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingLevel} action =
@@ -102,7 +107,8 @@ withLogger GlobalOptions {logFile, loggingLevel} action =
     Nothing -> action LoggingSettings {logHandle = stderr, loggingLevel}
     Just fp -> do
       createDirectoryIfMissing True (takeDirectory fp)
-      withFile fp AppendMode $ \logHandle -> do
+      withFile fp WriteMode $ \logHandle -> do
+        hSetBuffering logHandle NoBuffering
         action LoggingSettings {logHandle, loggingLevel}
 
 redirectHandleTo :: Handle -> Handle -> IO Handle
@@ -113,6 +119,7 @@ redirectHandleTo source target = do
 
 restoreHandleFrom :: Handle -> Handle -> IO ()
 restoreHandleFrom source backup = do
+  hFlush source
   hDuplicateTo backup source
 
 toExitCode :: Int -> ExitCode
