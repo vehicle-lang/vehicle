@@ -33,6 +33,6 @@ if impl(ghc < 9.4)
       -eventlog
 
 -- 03-04-2023:
--- The package ghc-debug-stub has not yet been updated for GHC 9.4.4.
+-- The package ghc-debug-stub has not yet been updated for GHC 9.4.8.
 if impl(ghc >= 9.4)
   allow-newer: ghc-debug-stub-0.4.0.0:ghc-prim

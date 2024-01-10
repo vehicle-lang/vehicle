@@ -20,33 +20,33 @@ jobs:
             type: "windows-latest"
         haskell:
           - ghc:
-              version: "9.4.4"
+              version: "9.4.8"
             cabal:
-              version: "3.8.1.0"
-              project-file: "cabal.project.ghc-9.4.4"
+              version: "3.10.2.1"
+              project-file: "cabal.project.ghc-9.4.8"
               extra-args: ""
         include:
-          # Build with GHC 9.6.1
+          # Build with GHC 9.6.4
           - os:
               name: Linux
               type: ubuntu-latest
             haskell:
               ghc:
-                version: "9.6.1"
+                version: "9.6.4"
               cabal:
-                version: "3.10.1.0"
-                project-file: "cabal.project.ghc-9.6.1"
+                version: "3.10.2.1"
+                project-file: "cabal.project.ghc-9.6.4"
                 extra-args: ""
-          # Build with GHC 9.2.7
+          # Build with GHC 9.2.8
           - os:
               name: Linux
               type: ubuntu-latest
             haskell:
               ghc:
-                version: "9.2.7"
+                version: "9.2.8"
               cabal:
                 version: "3.8.1.0"
-                project-file: "cabal.project.ghc-9.2.7"
+                project-file: "cabal.project.ghc-9.2.8"
                 extra-args: ""
           # Build with GHC 9.0.2
           - os:
@@ -76,10 +76,10 @@ jobs:
               type: ubuntu-latest
             haskell:
               ghc:
-                version: "9.4.4"
+                version: "9.4.8"
               cabal:
-                version: "3.8.1.0"
-                project-file: "cabal.project.nothunks.ghc-9.4.4"
+                version: "3.10.2.1"
+                project-file: "cabal.project.nothunks.ghc-9.4.8"
                 extra-args: "-fnothunks"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
@@ -89,10 +89,10 @@ jobs:
           #     type: ubuntu-latest
           #   haskell:
           #     ghc:
-          #       version: "9.4.4"
+          #       version: "9.4.8"
           #     cabal:
-          #       version: "3.8.1.0"
-          #       project-file: "cabal.project.ghc-debug.ghc-9.4.4"
+          #       version: "3.10.2.1"
+          #       project-file: "cabal.project.ghc-debug.ghc-9.4.8"
           #       extra-args: "-fghc-debug"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
@@ -102,10 +102,10 @@ jobs:
           #     type: ubuntu-latest
           #   haskell:
           #     ghc:
-          #       version: "9.4.4"
+          #       version: "9.4.8"
           #     cabal:
-          #       version: "3.8.1.0"
-          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.4"
+          #       version: "3.10.2.1"
+          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.8"
           #       extra-args: "-fghc-debug -fnothunks"
 
     name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}

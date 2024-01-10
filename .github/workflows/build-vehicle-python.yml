@@ -13,8 +13,8 @@ defaults:
 env:
   # NOTE: cibuildwheel builds manylinux wheels in a container, and the versions
   #       of GHC and Cabal are hardcoded in the `before-all-$ID.sh` scripts.
-  DEFAULT_GHC_VERSION: "9.4.4"
-  DEFAULT_CABAL_VERSION: "3.10.1.0"
+  DEFAULT_GHC_VERSION: "9.4.8"
+  DEFAULT_CABAL_VERSION: "3.10.2.1"
 
 jobs:
   build-vehicle-python:

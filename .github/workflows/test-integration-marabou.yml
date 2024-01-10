@@ -20,10 +20,10 @@ jobs:
             plat: "macosx_10_9_x86_64"
         haskell:
           - ghc:
-              version: "9.4.4"
+              version: "9.4.8"
             cabal:
-              version: "3.8.1.0"
-              project-file: "cabal.project.ghc-9.4.4"
+              version: "3.10.2.1"
+              project-file: "cabal.project.ghc-9.4.8"
               extra-args: ""
         python:
           - version: "3.11"
