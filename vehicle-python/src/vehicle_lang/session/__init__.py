@@ -77,11 +77,9 @@ class Session(SessionContextManager):
         self,
         args: Sequence[str],
     ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
-        with temporary_files("out", "err", "log", prefix="vehicle") as (out, err, log):
+        with temporary_files("log", prefix="vehicle") as (out, err, log):
             exitCode = self.check_call(
                 [
-                    f"--redirect-stdout={out}",
-                    f"--redirect-stderr={err}",
                     f"--redirect-logs={log}",
                     *args,
                 ]
