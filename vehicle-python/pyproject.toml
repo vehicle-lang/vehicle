@@ -14,7 +14,7 @@ description = 'A high-level functional language for writing mathematically-preci
 readme = 'README.md'
 license = { file = 'LICENSE' }
 dynamic = ["version"]
-requires-python = ">=3.7.1,<3.12"
+requires-python = ">=3.7.1,<3.13"
 dependencies = [
   "typing_extensions >=4.6,<5",
   "astunparse; python_version<'3.9'",
@@ -95,9 +95,9 @@ version = { attr = "vehicle_lang._version.VERSION" }
 legacy_tox_ini = """
 [tox]
 min_version = 4
-env_list = py{37,38,39,310,311}-{lin,mac,win}
+env_list = py{37,38,39,310,311,312}-{lin,mac,win}
 
-[testenv:py{37,38,39,310,311}-{lin,mac,win}]
+[testenv:py{37,38,39,310,311,312}-{lin,mac,win}]
 package = external
 package_env = build-{env_name}
 platform =
@@ -109,11 +109,11 @@ allowlist_externals =
 extras =
   test
   pygments
-  py38,py39,py310,py311: tensorflow
+  py38,py39,py310,py311,py312: tensorflow
 commands =
   {env_python} -m pytest {posargs}
 
-[testenv:build-py{37,38,39,310,311}-{lin,mac,win}]
+[testenv:build-py{37,38,39,310,311,312}-{lin,mac,win}]
 deps =
   build
   auditwheel; sys_platform == 'linux'
@@ -129,16 +129,19 @@ package_glob =
   py39-lin: {env:dist_dir}{/}*cp39*manylinux*.whl
   py310-lin: {env:dist_dir}{/}*cp310*manylinux*.whl
   py311-lin: {env:dist_dir}{/}*cp311*manylinux*.whl
+  py312-lin: {env:dist_dir}{/}*cp312*manylinux*.whl
   py37-mac: {env:dist_dir}{/}*cp37*macosx*.whl
   py38-mac: {env:dist_dir}{/}*cp38*macosx*.whl
   py39-mac: {env:dist_dir}{/}*cp39*macosx*.whl
   py310-mac: {env:dist_dir}{/}*cp310*macosx*.whl
   py311-mac: {env:dist_dir}{/}*cp311*macosx*.whl
+  py312-mac: {env:dist_dir}{/}*cp312*macosx*.whl
   py37-win: {env:dist_dir}{/}*cp37*win*.whl
   py38-win: {env:dist_dir}{/}*cp38*win*.whl
   py39-win: {env:dist_dir}{/}*cp39*win*.whl
   py310-win: {env:dist_dir}{/}*cp310*win*.whl
   py311-win: {env:dist_dir}{/}*cp311*win*.whl
+  py312-win: {env:dist_dir}{/}*cp312*win*.whl
 allowlist_externals =
   sh
 commands =
