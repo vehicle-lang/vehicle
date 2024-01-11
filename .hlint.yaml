@@ -10,5 +10,3 @@
 - ignore: { name: Redundant return }
 - ignore: { name: Avoid lambda }
 - ignore: { name: Redundant <&> }
-# To generate a suitable file for HLint do:
-# $ hlint --default > .hlint.yaml

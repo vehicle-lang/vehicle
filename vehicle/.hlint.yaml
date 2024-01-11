@@ -10,5 +10,31 @@
 - ignore: { name: Redundant return }
 - ignore: { name: Avoid lambda }
 - ignore: { name: Redundant <&> }
-# To generate a suitable file for HLint do:
-# $ hlint --default > .hlint.yaml
+
+# Exclude standard IO functions
+- functions:
+    - {
+        name:
+          [
+            Data.Text.IO.putStrLn,
+            Prelude.putStrLn,
+            Prelude.stderr,
+            Prelude.stdout,
+            System.IO.IO,
+            System.IO.putStrLn,
+            System.IO.stderr,
+            System.IO.stdout,
+          ],
+        within:
+          [
+            Main,
+            Vehicle.Debug,
+            Vehicle.Prelude.IO,
+            Vehicle.Syntax.Internal.Test,
+            Vehicle.Syntax.Internal.ErrM,
+            Vehicle.Syntax.Internal.Abs,
+            Vehicle.Syntax.External.Test,
+            Vehicle.Syntax.External.ErrM,
+            Vehicle.Syntax.External.Abs,
+          ],
+      }

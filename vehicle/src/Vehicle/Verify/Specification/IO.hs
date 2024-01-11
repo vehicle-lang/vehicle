@@ -38,6 +38,7 @@ import Vehicle.Backend.Queries.Variable (UserVariable (..))
 import Vehicle.Backend.Queries.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.BooleanExpr
+import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -169,7 +170,7 @@ readPropertyVerificationPlan planFile = do
       Just plan -> return plan
 
 writeVerificationQuery ::
-  (MonadLogger m, MonadIO m) =>
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
   QueryFormat ->
   FilePath ->
   (QueryAddress, QueryText) ->
@@ -225,7 +226,8 @@ propertyResultFileName folder propertyAddress =
 
 type MonadVerify m =
   ( MonadLogger m,
-    MonadIO m
+    MonadIO m,
+    MonadStdIO m
   )
 
 type MonadVerifyProperty m =
@@ -355,13 +357,13 @@ verifyQuery (queryAddress, QueryData metaNetwork userVar) = do
 -- Assignments
 
 outputPropertyResult ::
-  (MonadIO m) =>
+  (MonadIO m, MonadStdIO m) =>
   FilePath ->
   PropertyAddress ->
   PropertyStatus ->
   m ()
 outputPropertyResult verificationCache address result@(PropertyStatus status) = do
-  liftIO $ TIO.putStrLn (layoutAsText $ "    result: " <> pretty result)
+  VIO.writeStdoutLn (layoutAsText $ "    result: " <> pretty result)
   writePropertyResult verificationCache address (isVerified result)
   case status of
     NonTrivial (_, SAT (Just (UserVariableAssignment assignments))) -> do
@@ -399,5 +401,5 @@ createPropertyProgressBar (PropertyAddress name indices) numberOfQueries = do
   let initialProgress = Progress 0 numberOfQueries ()
   liftIO $ hNewProgressBar stdout style 10 initialProgress
 
-closePropertyProgressBar :: (MonadIO m) => PropertyProgressBar -> m ()
-closePropertyProgressBar _progressBar = liftIO $ putStrLn ""
+closePropertyProgressBar :: (MonadIO m, MonadStdIO m) => PropertyProgressBar -> m ()
+closePropertyProgressBar _progressBar = VIO.writeStdoutLn ""
