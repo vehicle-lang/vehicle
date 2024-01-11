@@ -1,6 +1,7 @@
 import atexit
+import io
 import sys
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, redirect_stderr, redirect_stdout
 from types import TracebackType
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Sequence, Tuple, Type
 
@@ -77,14 +78,16 @@ class Session(SessionContextManager):
         self,
         args: Sequence[str],
     ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
-        with temporary_files("log", prefix="vehicle") as (out, err, log):
-            exitCode = self.check_call(
-                [
-                    f"--redirect-logs={log}",
-                    *args,
-                ]
-            )
-            return (exitCode, out.read_text(), err.read_text(), log.read_text())
+        with redirect_stdout(io.StringIO()) as out:
+            with redirect_stderr(io.StringIO()) as err:
+                with temporary_files("log", prefix="vehicle") as (log,):
+                    exitCode = self.check_call(
+                        [
+                            f"--redirect-logs={log}",
+                            *args,
+                        ]
+                    )
+                    return (exitCode, out.getvalue(), err.getvalue(), log.read_text())
 
     def close(self) -> None:
         if not self.closed:
