@@ -87,7 +87,12 @@ class Session(SessionContextManager):
                             *args,
                         ]
                     )
-                    return (exitCode, out.getvalue(), err.getvalue(), log.read_text())
+                    return (
+                        exitCode,
+                        out.getvalue() or None,
+                        err.getvalue() or None,
+                        log.read_text(),
+                    )
 
     def close(self) -> None:
         if not self.closed:
