@@ -52,7 +52,7 @@ currentPass = "compilation of properties"
 -- verifier and outputs them. We need to output them as they are generated as
 -- otherwise storing all the queries can result in an out-of-memory errors.
 compileToQueries ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   QueryFormat ->
   Prog Ix Builtin ->
   Resources ->
@@ -88,7 +88,7 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 -- Getting properties
 
 compileDecls ::
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
@@ -115,7 +115,7 @@ compileDecls prog queryFormat networkCtx usedFunctionCtx (d : ds) outputLocation
     return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
@@ -146,7 +146,7 @@ compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr output
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   QueryFormat ->
   NetworkContext ->
   UsedFunctionsCtx ->
@@ -194,7 +194,7 @@ type MonadCompileProperty m =
 
 -- Compiles an individual property
 compileProperty ::
-  (MonadCompileProperty m, MonadIO m) =>
+  (MonadCompileProperty m, MonadStdIO m) =>
   Maybe FilePath ->
   WHNFValue Builtin ->
   m ()

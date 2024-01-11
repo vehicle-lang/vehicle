@@ -13,6 +13,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Data.BuiltinInterface (HasStandardData)
+import Vehicle.Prelude.IO qualified as VIO
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation
@@ -68,6 +69,12 @@ instance (MonadReader s m) => MonadReader s (FreeContextT builtin m) where
 
 instance (MonadIO m) => MonadIO (FreeContextT builtin m) where
   liftIO = lift . liftIO
+
+instance (MonadStdIO m) => MonadStdIO (FreeContextT builtin m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
 
 --------------------------------------------------------------------------------
 -- Context monad preservation

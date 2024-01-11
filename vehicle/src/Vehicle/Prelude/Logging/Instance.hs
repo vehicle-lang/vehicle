@@ -23,7 +23,8 @@ import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (ReaderT (..), ask)
 import Control.Monad.State (MonadState (..), StateT (..), evalStateT, modify)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
-import System.IO (Handle)
+import Data.Text (Text)
+import Vehicle.Prelude.IO as VIO (MonadStdIO (..))
 import Vehicle.Prelude.Logging.Backend
 import Vehicle.Prelude.Logging.Class
 
@@ -31,7 +32,7 @@ import Vehicle.Prelude.Logging.Class
 -- Settings
 
 data LoggingSettings = LoggingSettings
-  { logHandle :: Handle,
+  { putLogLn :: Text -> IO (),
     loggingLevel :: LoggingLevel
   }
 
@@ -65,6 +66,12 @@ instance (MonadError e m) => MonadError e (LoggerT m) where
 instance (MonadIO m) => MonadIO (LoggerT m) where
   liftIO = lift . liftIO
 
+instance (MonadStdIO m) => MonadStdIO (LoggerT m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
+
 --------------------------------------------------------------------------------
 -- Immediate logging
 
@@ -75,11 +82,11 @@ type ImmediateLogger = ImmediateLoggerT IO
 
 runImmediateLoggerT :: (MonadIO m) => LoggingSettings -> ImmediateLoggerT m a -> m a
 runImmediateLoggerT LoggingSettings {..} value =
-  runImmediateBackendT logHandle (runLoggerT loggingLevel value)
+  runImmediateBackendT putLogLn (runLoggerT loggingLevel value)
 
 runImmediateLogger :: (MonadIO m) => LoggingSettings -> ImmediateLoggerT m a -> m a
 runImmediateLogger LoggingSettings {..} value =
-  runImmediateBackendT logHandle (runLoggerT loggingLevel value)
+  runImmediateBackendT putLogLn (runLoggerT loggingLevel value)
 
 --------------------------------------------------------------------------------
 -- Silent logging

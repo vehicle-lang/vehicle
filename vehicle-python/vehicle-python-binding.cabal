@@ -31,6 +31,12 @@ foreign-library _binding
   import:             warnings
   type:               native-shared
 
+  -- 10-01-2024:
+  -- Add RTS options for compilation to dynamic library.
+  ghc-options:
+    -with-rtsopts="--install-signal-handlers=no"
+    -with-rtsopts="--install-seh-handlers=no" -with-rtsopts="-V0"
+
   -- 01-04-2023:
   -- Standalone builds appear to work with macOS builds of GHC
   if os(osx)
@@ -44,8 +50,10 @@ foreign-library _binding
   hs-source-dirs:     src
   other-modules:      VehiclePythonBinding
   build-depends:
-    , base                  >=4.7  && <5
-    , optparse-applicative  >=0.16 && <1
+    , base
+    , bytestring
+    , optparse-applicative
+    , text
     , vehicle
 
   default-language:   Haskell2010

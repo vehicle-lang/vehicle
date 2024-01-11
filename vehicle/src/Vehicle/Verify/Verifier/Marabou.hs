@@ -102,7 +102,7 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
     let outputLines = fmap Text.pack (lines out)
     let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
     case resultIndex of
-      Nothing -> malformedOutputError "cannot find 'sat' or 'unsat'"
+      Nothing -> malformedOutwriteStderror "cannot find 'sat' or 'unsat'"
       Just i
         | outputLines !! i == "unsat" ->
             return $ Right UnSAT
@@ -122,7 +122,7 @@ parseSATAssignment output = do
       let inputValues = parseSATAssignmentLine Input <$> inputVarLines
       let outputValues = parseSATAssignmentLine Output <$> outputVarLines
       return $ NetworkVariableAssignment $ Vector.fromList (inputValues <> outputValues)
-    _ -> malformedOutputError "could not find strings 'Input assignment:' and 'Output:'"
+    _ -> malformedOutwriteStderror "could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine :: InputOrOutput -> Text -> Rational
 parseSATAssignmentLine _ txt =
@@ -130,9 +130,9 @@ parseSATAssignmentLine _ txt =
    in case parts of
         [_namePart, valuePart] -> readFloatAsRational valuePart
         _ ->
-          malformedOutputError $
+          malformedOutwriteStderror $
             "could not split assignment line" <+> squotes (pretty txt) <+> "on '=' sign"
 
-malformedOutputError :: Doc a -> b
-malformedOutputError x =
+malformedOutwriteStderror :: Doc a -> b
+malformedOutwriteStderror x =
   error $ layoutAsString ("Unexpected output from Marabou..." <+> x)

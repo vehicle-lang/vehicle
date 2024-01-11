@@ -20,11 +20,12 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
-import Data.Text qualified as Text (unpack)
+import Data.Text (Text)
+import Data.Text qualified as Text (pack, unpack)
 import Prettyprinter (Pretty (..), line, (<+>))
 import System.Console.ANSI
-import System.IO (Handle, hPutStrLn)
 import Vehicle.Compile.Print.Warning ()
+import Vehicle.Prelude.IO as VIO (MonadStdIO (..))
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Prelude.Misc (setTextColour)
 import Vehicle.Prelude.Warning
@@ -45,17 +46,19 @@ instance (MonadLoggingBackend m) => MonadLoggingBackend (ReaderT s m) where
 --------------------------------------------------------------------------------
 -- Immediate backend
 
+type LogAction = Text -> IO ()
+
 newtype ImmediateBackendT m a = ImmediateBackendT
-  { unImmediateBackendT :: StateT IntSet (ReaderT Handle m) a
+  { unImmediateBackendT :: StateT IntSet (ReaderT LogAction m) a
   }
   deriving (Functor, Applicative, Monad)
 
 instance (MonadIO m) => MonadLoggingBackend (ImmediateBackendT m) where
   output message = ImmediateBackendT $ do
-    handle <- ask
+    logAction <- ask
     isDuplicateWarning <- isAlreadySeenWarning message
     unless isDuplicateWarning $ do
-      lift $ liftIO $ hPutStrLn handle (showMessage message)
+      lift $ liftIO $ logAction (Text.pack $ showMessage message)
 
 instance MonadTrans ImmediateBackendT where
   lift = ImmediateBackendT . lift . lift
@@ -63,9 +66,15 @@ instance MonadTrans ImmediateBackendT where
 instance (MonadIO m) => MonadIO (ImmediateBackendT m) where
   liftIO = lift . liftIO
 
-runImmediateBackendT :: (MonadIO m) => Handle -> ImmediateBackendT m a -> m a
-runImmediateBackendT logHandle v =
-  runReaderT (evalStateT (unImmediateBackendT v) mempty) logHandle
+instance (MonadStdIO m) => MonadStdIO (ImmediateBackendT m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
+
+runImmediateBackendT :: (MonadIO m) => (Text -> IO ()) -> ImmediateBackendT m a -> m a
+runImmediateBackendT putLogLn v =
+  runReaderT (evalStateT (unImmediateBackendT v) mempty) putLogLn
 
 --------------------------------------------------------------------------------
 -- Silent backend
@@ -83,6 +92,12 @@ instance MonadTrans SilentBackendT where
 
 instance (MonadIO m) => MonadIO (SilentBackendT m) where
   liftIO = lift . liftIO
+
+instance (MonadStdIO m) => MonadStdIO (SilentBackendT m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
 
 instance (MonadError e m) => MonadError e (SilentBackendT m) where
   throwError = lift . throwError
@@ -110,6 +125,12 @@ instance MonadTrans DelayedBackendT where
 
 instance (MonadIO m) => MonadIO (DelayedBackendT m) where
   liftIO = lift . liftIO
+
+instance (MonadStdIO m) => MonadStdIO (DelayedBackendT m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
 
 runDelayedBackendT :: (Monad m) => DelayedBackendT m a -> m (a, [Message])
 runDelayedBackendT v = runWriterT (evalStateT (unDelayedBackendT v) mempty)

@@ -298,8 +298,9 @@ executable vehicle
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
-    , base                  >=4.13 && <5
-    , optparse-applicative  >=0.16 && <1
+    , base
+    , optparse-applicative
+    , text
     , vehicle
 
 -----------------

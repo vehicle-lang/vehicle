@@ -190,8 +190,8 @@ traverseBlockingArgs f = go 0
       compilerDeveloperError "run out of args when traversing blocked arguments in spine"
     go argNo (arg : args) (blockedArg : blockedArgs)
       | isRuntimeRelevant arg && argNo == blockedArg = (:) <$> traverse f arg <*> go (argNo + 1) args blockedArgs
-      | isRuntimeRelevant arg = (:) <$> (return arg) <*> go (argNo + 1) args (blockedArg : blockedArgs)
-      | otherwise = (:) <$> (return arg) <*> go argNo args (blockedArg : blockedArgs)
+      | isRuntimeRelevant arg = (:) arg <$> go (argNo + 1) args (blockedArg : blockedArgs)
+      | otherwise = (:) arg <$> go argNo args (blockedArg : blockedArgs)
 
 -----------------------------------------------------------------------------
 -- Individual builtin evaluation
