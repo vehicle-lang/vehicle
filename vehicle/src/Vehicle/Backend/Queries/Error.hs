@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-x-partial #-}
-
 module Vehicle.Backend.Queries.Error
   ( diagnoseNonLinearity,
     diagnoseAlternatingQuantifiers,
