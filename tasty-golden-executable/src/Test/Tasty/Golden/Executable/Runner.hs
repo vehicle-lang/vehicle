@@ -8,7 +8,7 @@
 
 module Test.Tasty.Golden.Executable.Runner where
 
-import Control.Exception (assert, throw)
+import Control.Exception (throw)
 import Control.Monad (unless, when)
 import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
 import Control.Monad.IO.Class (MonadIO)
@@ -341,7 +341,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   let testSpecsList = toList testSpecs
   let thisTestIndices = List.findIndices ((== testName) . testSpecName) testSpecsList
   -- There should be EXACTLY ONE test named testSpecName:
-  thisTestIndex <- assert (length thisTestIndices == 1) (return $ head thisTestIndices)
+  thisTestIndex <- maybe (error $ "No unique test named '" <> testName <> "'") (return . fst) (List.uncons thisTestIndices)
   let (otherTestSpecsBefore, thisTestSpecAndOtherTestSpecsAfter) = List.splitAt thisTestIndex testSpecsList
   let (thisTestSpec, otherTestSpecsAfter) =
         fromMaybe (error $ printf "Could not find test named '%s'" testName) $
