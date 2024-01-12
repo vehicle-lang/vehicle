@@ -26,6 +26,17 @@ jobs:
               project-file: "cabal.project.ghc-9.4.8"
               extra-args: ""
         include:
+          # Build with GHC 9.8.1
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.8.1"
+              cabal:
+                version: "3.10.2.1"
+                project-file: "cabal.project.ghc-9.8.1"
+                extra-args: ""
           # Build with GHC 9.6.4
           - os:
               name: Linux
