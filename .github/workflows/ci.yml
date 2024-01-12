@@ -100,7 +100,7 @@ jobs:
       - name: Download wheelhouse
         uses: actions/download-artifact@v4
         with:
-          name: wheelhouse
+          name: wheelhouse-*-*
           path: wheelhouse
 
       - name: Publish to PyPI
