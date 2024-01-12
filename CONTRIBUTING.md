@@ -81,14 +81,14 @@ We recommend you install GHC and Cabal using [GHCup].
 
 1. Install GHCup following the instruction on the website: <https://www.haskell.org/ghcup/>
 
-2. Instal GHC 9.4.4 and the latest version of Cabal.
+2. Instal GHC 9.4.8 and the latest version of Cabal.
 
    Run the following commands:
 
    ```sh
    ghcup upgrade
-   ghcup install ghc 9.4.4
-   ghcup set ghc 9.4.4
+   ghcup install ghc 9.4.8
+   ghcup set ghc 9.4.8
    ghcup install cabal latest
    ghcup set cabal latest
    ```
@@ -104,7 +104,7 @@ We recommend you install GHC and Cabal using [GHCup].
    This should print:
 
    ```
-   The Glorious Glasgow Haskell Compilation System, version 9.4.4
+   The Glorious Glasgow Haskell Compilation System, version 9.4.8
    ```
 
    Run the following command:
@@ -116,15 +116,15 @@ We recommend you install GHC and Cabal using [GHCup].
    This should print:
 
    ```
-   cabal-install version 3.10.1.0
-   compiled using version 3.10.1.0 of the Cabal library
+   cabal-install version 3.10.2.1
+   compiled using version 3.10.2.1 of the Cabal library
    ```
 
 If you'd like to use a different version of GHC, you can find the list of versions that we test with in [build-vehicle.yml]. However, be aware that building the Python bindings _requires_ [our preferred version](#the-preferred-version-of-ghc).
 
 ##### The preferred version of GHC
 
-The preferred version of GHC is currently _GHC 9.4.4_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
+The preferred version of GHC is currently _GHC 9.4.8_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
 
 #### Building
 

@@ -8,7 +8,7 @@ maintainer:      wenkokke@users.noreply.github.com
 copyright:       © Wen Kokke
 category:        Testing
 build-type:      Simple
-tested-with:     GHC ==8.10.7 || ==9.0.2 || ==9.2.7 || ==9.4.4 || ==9.6.1
+tested-with:     GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.4
 extra-doc-files: CHANGELOG.md
 
 common common-language

@@ -44,13 +44,13 @@ build = [
   "*-macosx_x86_64",
   # Using a GitHub runner
   "*-win_amd64",
-  # Using wenkokke/manylinux2014_ghc944_x86_64
+  # Using wenkokke/manylinux2014_ghc948_x86_64
   "*-manylinux_x86_64",
-  # Using wenkokke/manylinux2014_ghc944_i686
+  # Using wenkokke/manylinux2014_ghc948_i686
   "*-manylinux_i686",
-  # Using wenkokke/manylinux_2_28_ghc944_aarch64
+  # Using wenkokke/manylinux_2_28_ghc948_aarch64
   "*-manylinux_aarch64",
-  # Using wenkokke/musllinux_1_1_ghc944_x86_64
+  # Using wenkokke/musllinux_1_1_ghc948_x86_64
   "*-musllinux_x86_64",
 ]
 skip = [
@@ -61,11 +61,11 @@ skip = [
 test-command = "pytest {package}/tests"
 test-extras = "test"
 # 19-06-2023:
-# Use custom manylinux and musllinux images with GHC 9.4.4 preinstalled.
-manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc944_aarch64"
-manylinux-i686-image = "wenkokke/manylinux2014_ghc944_i686"
-manylinux-x86_64-image = "wenkokke/manylinux2014_ghc944_x86_64"
-musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc944_x86_64"
+# Use custom manylinux and musllinux images with GHC 9.4.8 preinstalled.
+manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc948_aarch64"
+manylinux-i686-image = "wenkokke/manylinux2014_ghc948_i686"
+manylinux-x86_64-image = "wenkokke/manylinux2014_ghc948_x86_64"
+musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc948_x86_64"
 
 [tool.mypy]
 mypy_path = "src"
