@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Vehicle.Test.Unit.Compile.CommandLine
   ( commandLineParserTests,
   )

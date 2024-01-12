@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Vehicle.Backend.LossFunction.Compile
   ( compile,
   )

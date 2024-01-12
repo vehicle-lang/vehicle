@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-x-partial #-}
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 {-# HLINT ignore "Eta reduce" #-}

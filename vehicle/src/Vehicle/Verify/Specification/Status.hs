@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Vehicle.Verify.Specification.Status where
 
 import Data.Aeson
