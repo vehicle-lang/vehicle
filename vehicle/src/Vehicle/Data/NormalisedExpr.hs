@@ -18,7 +18,7 @@ data NFStrategy = NF | WHNF
 
 data Body :: NFStrategy -> Kind.Type -> Kind.Type where
   NFBody :: Value 'NF builtin -> Body 'NF builtin
-  WHNFBody :: Env 'WHNF builtin -> Expr Ix builtin -> Body 'WHNF builtin
+  WHNFBody :: BoundEnv 'WHNF builtin -> Expr Ix builtin -> Body 'WHNF builtin
 
 deriving instance (Eq builtin) => Eq (Body stategy builtin)
 
@@ -29,7 +29,7 @@ deriving instance (Show builtin) => Show (Body stategy builtin)
 instance (Generic builtin) => Generic (Body 'WHNF builtin) where
   type
     Rep (Body 'WHNF builtin) =
-      Rep (Env 'WHNF builtin)
+      Rep (BoundEnv 'WHNF builtin)
         :*: Rep (Expr Ix builtin)
 
   to (u :*: v) = WHNFBody (to u) (to v)
@@ -55,10 +55,10 @@ type VBinder strategy builtin = GenericBinder (Value strategy builtin)
 type Spine strategy builtin = [VArg strategy builtin]
 
 -----------------------------------------------------------------------------
--- Environments
+-- Bound environments
 
 -- | Represents a variable's value in the environment.
-data EnvValue strategy builtin
+data BoundEnvValue strategy builtin
   = -- | The variable has no known concrete value.
     Bound
   | -- | The variable has a known value.
@@ -68,43 +68,43 @@ data EnvValue strategy builtin
 -- | The information stored for each variable in the environment. We choose
 -- to store the binder as it's a convenient mechanism for passing through
 -- name, relevance for pretty printing and debugging.
-type EnvEntry strategy builtin = (GenericBinder (), EnvValue strategy builtin)
+type EnvEntry strategy builtin = (GenericBinder (), BoundEnvValue strategy builtin)
 
 isBoundEntry :: EnvEntry strategy builtin -> Bool
 isBoundEntry (_binder, value) = case value of
   Bound {} -> True
   Defined {} -> False
 
-type Env strategy builtin = GenericBoundCtx (EnvEntry strategy builtin)
+type BoundEnv strategy builtin = GenericBoundCtx (EnvEntry strategy builtin)
 
-emptyEnv :: Env strategy builtin
-emptyEnv = mempty
+emptyBoundEnv :: BoundEnv strategy builtin
+emptyBoundEnv = mempty
 
-mkDefaultEnvEntry :: Name -> EnvValue strategy builtin -> EnvEntry strategy builtin
+mkDefaultEnvEntry :: Name -> BoundEnvValue strategy builtin -> EnvEntry strategy builtin
 mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
   where
     displayForm = BinderDisplayForm (OnlyName name) True
 
 extendEnvWithBound ::
   GenericBinder expr ->
-  Env strategy builtin ->
-  Env strategy builtin
+  BoundEnv strategy builtin ->
+  BoundEnv strategy builtin
 extendEnvWithBound binder env = (void binder, Bound) : env
 
 extendEnvWithDefined ::
   Value strategy builtin ->
   GenericBinder expr ->
-  Env strategy builtin ->
-  Env strategy builtin
+  BoundEnv strategy builtin ->
+  BoundEnv strategy builtin
 extendEnvWithDefined value binder env = (void binder, Defined value) : env
 
 boundContextToEnv ::
   BoundCtx builtin ->
-  Env strategy builtin
+  BoundEnv strategy builtin
 boundContextToEnv = fmap (\binder -> (void binder, Bound))
 
 -- | Converts an environment to set of values suitable for printing
-cheatEnvToValues :: Env strategy builtin -> GenericBoundCtx (Value strategy builtin)
+cheatEnvToValues :: BoundEnv strategy builtin -> GenericBoundCtx (Value strategy builtin)
 cheatEnvToValues = fmap envEntryToValue
   where
     envEntryToValue :: EnvEntry strategy builtin -> Value strategy builtin
@@ -121,8 +121,6 @@ cheatEnvToValues = fmap envEntryToValue
 
 type WHNFValue builtin = Value 'WHNF builtin
 
-type WHNFEnv builtin = Env 'WHNF builtin
-
 type WHNFType builtin = WHNFValue builtin
 
 type WHNFArg builtin = VArg 'WHNF builtin
@@ -131,12 +129,16 @@ type WHNFBinder builtin = VBinder 'WHNF builtin
 
 type WHNFSpine builtin = Spine 'WHNF builtin
 
+type WHNFDecl builtin = GenericDecl (WHNFValue builtin)
+
+type WHNFBoundEnv builtin = BoundEnv 'WHNF builtin
+
 -----------------------------------------------------------------------------
 -- NF
 
 type NFValue builtin = Value 'NF builtin
 
-type NFEnv builtin = Env 'NF builtin
+type NFEnv builtin = BoundEnv 'NF builtin
 
 type NFType builtin = NFValue builtin
 

@@ -3,17 +3,16 @@ module Vehicle.Verify.Specification.Status where
 import Data.Aeson
 import Data.List.Split (chunksOf)
 import Data.Text (Text, pack)
-import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
-import Vehicle.Backend.Queries.Variable
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.LinearExpr (RationalTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
+import Vehicle.Verify.Variable
 
 class IsVerified a where
   isVerified :: a -> Bool
@@ -61,7 +60,7 @@ type MultiPropertyStatus = MultiProperty PropertyStatus
 
 instance IsVerified MultiPropertyStatus where
   isVerified = \case
-    MultiProperty ps -> and (fmap isVerified ps)
+    MultiProperty ps -> all isVerified ps
     SingleProperty _ status -> isVerified status
 
 nameSubProperties :: Name -> [MultiPropertyStatus] -> [(Name, MultiPropertyStatus)]
@@ -88,12 +87,9 @@ prettyNameAndStatus :: Text -> Bool -> Doc a
 prettyNameAndStatus name verified = do
   pretty (statusSymbol verified) <+> pretty name
 
-prettyUserVariableAssignment :: (UserVariable, VariableValue) -> Doc a
-prettyUserVariableAssignment (UserVariable {..}, variableValue) = do
-  let name = pretty userVarName
-  let valueExpr = assignmentToExpr userVarDimensions (Vector.toList variableValue)
-  let value = prettyFriendlyEmptyCtx valueExpr
-  name <> ":" <+> value
+prettyUserVariableAssignment :: (OriginalUserVariable, RationalTensor) -> Doc a
+prettyUserVariableAssignment (OriginalUserVariable {..}, variableValue) =
+  pretty userTensorVarName <> ":" <+> pretty variableValue
 
 assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix Builtin
 assignmentToExpr [] xs = RatLiteral mempty (toRational (head xs))
@@ -110,7 +106,7 @@ type SpecificationStatus = Specification PropertyStatus
 
 instance IsVerified SpecificationStatus where
   isVerified (Specification properties) =
-    and (fmap (isVerified . snd) properties)
+    all (isVerified . snd) properties
 
 instance Pretty SpecificationStatus where
   pretty spec@(Specification properties) = do

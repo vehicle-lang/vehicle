@@ -134,7 +134,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (WHNFValue builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
   StrategyFor ('Unnamed tags) (WHNFArg builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
   StrategyFor ('Unnamed tags) (WHNFBinder builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
-  StrategyFor tags (EnvValue 'WHNF builtin) = StrategyFor tags (WHNFValue builtin)
+  StrategyFor tags (BoundEnvValue 'WHNF builtin) = StrategyFor tags (WHNFValue builtin)
   StrategyFor tags (GenericBinder ()) = 'Pretty
   -- To standardise builtins
   StrategyFor ('StandardiseBuiltin tags) (Prog Name builtin) = 'ConvertBuiltins (StrategyFor tags (Prog Name Builtin))
@@ -179,7 +179,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (IntMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags [a] = 'Opaque (StrategyFor tags a)
   StrategyFor tags (Maybe a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (BooleanExpr a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (ConjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (DisjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (MaybeTrivial a) = 'Opaque (StrategyFor tags a)
@@ -187,8 +186,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     'MapTuple2 (StrategyFor tags (Contextualised a ctx)) (StrategyFor tags (Contextualised b ctx))
   StrategyFor tags (Contextualised [a] ctx) =
     StrategyFor tags [Contextualised a ctx]
-  StrategyFor tags (Contextualised (BooleanExpr a) ctx) =
-    StrategyFor tags (BooleanExpr (Contextualised a ctx))
   StrategyFor tags (Contextualised (Maybe a) ctx) =
     StrategyFor tags (Maybe (Contextualised a ctx))
   StrategyFor tags (Contextualised (ConjunctAll a) ctx) =
@@ -444,7 +441,7 @@ instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest)
 instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (WHNFArg builtin) where
   prettyUsing e = prettyUsing @rest (unnormalise @(WHNFArg builtin) @(Arg Ix builtin) 0 e)
 
-instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (EnvValue 'WHNF builtin) where
+instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (BoundEnvValue 'WHNF builtin) where
   prettyUsing = \case
     Bound {} -> ""
     Defined v -> prettyUsing @rest v
@@ -532,12 +529,6 @@ instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MaybeTrivial a) whe
     Trivial True -> "True"
     Trivial False -> "False"
     NonTrivial x -> prettyUsing @rest x
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (BooleanExpr a) where
-  prettyUsing = \case
-    Query x -> prettyUsing @rest x
-    Disjunct x y -> prettyUsing @('Opaque rest) x <+> "or" <+> prettyUsing @('Opaque rest) y
-    Conjunct x y -> prettyUsing @('Opaque rest) x <+> "and" <+> prettyUsing @('Opaque rest) y
 
 instance
   (Functor f, PrettyUsing ('Opaque rest) (f (Contextualised a ctx))) =>

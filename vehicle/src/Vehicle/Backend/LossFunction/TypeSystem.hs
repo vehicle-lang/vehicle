@@ -21,6 +21,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core qualified as S
 import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 

@@ -14,6 +14,7 @@ import Vehicle.Compile (CompileOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
+import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier
 
@@ -70,7 +71,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
 
 verifyQueries :: (MonadStdIO IO) => LoggingSettings -> FilePath -> Verifier -> VerifierExecutable -> IO ()
 verifyQueries loggingSettings queryFolder verifier verifierExecutable = do
-  runImmediateLogger loggingSettings $ do
+  runImmediateLoggerT loggingSettings $ do
     verifySpecification queryFolder verifier verifierExecutable
 
 -- | Tries to locate the executable for the verifier at the provided

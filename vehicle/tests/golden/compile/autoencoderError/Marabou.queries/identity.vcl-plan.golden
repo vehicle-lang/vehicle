@@ -6,95 +6,352 @@
       "contents": {
         "queries": {
           "unDisjunctAll": [
-            [
-              [
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tensorDims": [
+                            5
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 1
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -116,220 +373,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 2
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -351,220 +704,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 3
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -586,220 +1035,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 4
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -821,220 +1366,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 5
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -1056,220 +1697,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 6
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -1291,220 +2028,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 7
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -1526,220 +2359,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 8
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -1761,220 +2690,316 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 9
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
                           ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
+                          "baseType": []
+                        },
+                        "inputTensor": {
                           "dimensions": [
                             5
                           ],
-                          "constantValue": [
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  },
+                  {
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "variableReconstruction": [
+                {
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "x",
+                      "userTensorVarDimensions": [
+                        5
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -1996,366 +3021,301 @@
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
+                          "tensorDims": [
+                            5
                           ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "x",
+                                "userTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            },
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  5
+                                ],
+                                "networkName": "encode",
+                                "inputOrOutput": "Input",
+                                "application": 0
+                              }
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     }
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  }
-                ],
-                "metaNetwork": [
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  },
-                  {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
-                  }
-                ]
-              }
-            ],
-            [
-              [
+                  ]
+                }
+              ],
+              "queryAddress": [
                 {
                   "propertyName": "identity",
-                  "propertyIndices": []
+                  "propertyIndices": [],
+                  "propertyID": 0
                 },
                 10
               ],
-              {
-                "variableReconstruction": [
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "x",
-                          "userVarDimensions": [
-                            5
-                          ],
-                          "unreducedUserVarName": "x"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [
-                            5
-                          ],
-                          "constantValue": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            },
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            },
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            },
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            },
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    5
-                                  ],
-                                  "networkName": "encode",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": 1,
-                                "denominator": 1
-                              }
-                            ]
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "encode",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          5
-                        ],
-                        "networkName": "decode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 5,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 2,
+                      "networkTensorVarDimensions": [
+                        5
+                      ],
+                      "networkName": "decode",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                    "metaNetworkEntryName": "encode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "decode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                      "networkFilepath": "fake.onnx"
+                    }
                   },
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                    "metaNetworkEntryName": "decode",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "metaNetworkEntryName": "encode",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ]
+            }
           ]
         },
         "negated": true

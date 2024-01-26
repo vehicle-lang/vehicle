@@ -20,7 +20,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr (pattern UnitLiteral)
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.NormalisedExpr
@@ -90,7 +91,7 @@ instance MeaningfulError CompileError where
     -- Parsing --
     -------------
 
-    ParseError parseError -> case parseError of
+    ParseError _module parseError -> case parseError of
       RawParseError text ->
         EError $
           ExternalError

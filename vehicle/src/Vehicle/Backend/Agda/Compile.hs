@@ -28,7 +28,7 @@ import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Sugar
 

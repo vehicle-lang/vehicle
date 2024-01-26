@@ -1,9 +1,11 @@
 module Vehicle.Libraries.StandardLibrary.Definitions where
 
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
 import Data.Text (pack)
+import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -12,7 +14,8 @@ pattern TensorIdent :: Identifier
 pattern TensorIdent = Identifier StdLib "Tensor"
 
 data StdLibFunction
-  = StdBigAnd
+  = StdNotBoolOp2
+  | StdBigAnd
   | StdBigOr
   | StdExistsIndex
   | StdForallIndex
@@ -28,10 +31,11 @@ data StdLibFunction
   | StdVectorToList
   | StdForeach
   | StdTensor
-  deriving (Eq, Ord, Enum, Bounded)
+  deriving (Eq, Ord, Enum, Bounded, Generic)
 
 instance Show StdLibFunction where
   show = \case
+    StdNotBoolOp2 -> "notBoolOp2"
     StdBigAnd -> "bigAnd"
     StdBigOr -> "bigOr"
     StdExistsIndex -> "existsIndex"
@@ -51,6 +55,8 @@ instance Show StdLibFunction where
 
 instance Pretty StdLibFunction where
   pretty = pretty . show
+
+instance Hashable StdLibFunction
 
 instance HasIdentifier StdLibFunction where
   identifierOf f = Identifier StdLib $ pack $ show f

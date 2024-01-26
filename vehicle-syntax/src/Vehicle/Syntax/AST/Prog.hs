@@ -25,3 +25,9 @@ traverseDecls ::
   GenericProg expr1 ->
   m (GenericProg expr2)
 traverseDecls f (Main ds) = Main <$> traverse f ds
+
+filterDecls ::
+  (GenericDecl expr -> Bool) ->
+  GenericProg expr ->
+  GenericProg expr
+filterDecls pred (Main ds) = Main (filter pred ds)

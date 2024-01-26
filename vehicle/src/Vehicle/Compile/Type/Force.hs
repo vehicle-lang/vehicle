@@ -5,7 +5,6 @@ module Vehicle.Compile.Type.Force where
 
 import Data.Maybe (fromMaybe, isJust)
 import Vehicle.Compile.Context.Free
-import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -33,7 +32,11 @@ forceHead subst ctx expr = do
     Nothing -> return expr
     Just forcedExpr -> do
       let dbCtx = boundContextOf ctx
-      logDebug MaxDetail $ "forced" <+> prettyFriendly (WithContext expr dbCtx) <+> "to" <+> prettyFriendly (WithContext forcedExpr dbCtx)
+      logDebug MaxDetail $
+        "forced"
+          <+> prettyFriendly (WithContext expr dbCtx)
+          <+> "to"
+          <+> prettyFriendly (WithContext forcedExpr dbCtx)
       return forcedExpr
   return (forcedExpr, blockingMetas)
 
@@ -90,6 +93,5 @@ forceBuiltin subst b spine = case getBuiltinFunction b of
     result <-
       if not anyArgsReduced
         then return Nothing
-        else do
-          Just <$> evalBuiltin normaliseApp b argResults
+        else Just <$> evalBuiltin b argResults
     return (result, blockingMetas)

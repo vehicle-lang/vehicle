@@ -528,5 +528,5 @@ copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx)
 -- Constraints
 --------------------------------------------------------------------------------
 
-glueNBE :: (MonadFreeContext builtin m) => WHNFEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
+glueNBE :: (MonadFreeContext builtin m) => WHNFBoundEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
 glueNBE env e = Glued e <$> normaliseInEnv env e

@@ -53,6 +53,7 @@ instance (MonadLogger m) => MonadLogger (BoundContextT builtin m) where
   decrCallDepth = BoundContextT decrCallDepth
   getDebugLevel = BoundContextT getDebugLevel
   logMessage = BoundContextT . logMessage
+  logWarning = BoundContextT . logWarning
 
 instance (MonadError e m) => MonadError e (BoundContextT builtin m) where
   throwError = lift . throwError

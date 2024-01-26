@@ -22,6 +22,7 @@ module Vehicle.Syntax.AST.Expr
 
     -- * Utilities
     isTypeSynonym,
+    isPi,
     mkHole,
     normAppList,
     pattern TypeUniverse,
@@ -192,6 +193,10 @@ isTypeSynonym = \case
   Universe {} -> True
   Pi _ _ res -> isTypeSynonym res
   _ -> False
+
+isPi :: Type var builtin -> Bool
+isPi Pi {} = True
+isPi _ = False
 
 pattern TypeUniverse :: Provenance -> Int -> Expr var builtin
 pattern TypeUniverse p l = Universe p (UniverseLevel l)

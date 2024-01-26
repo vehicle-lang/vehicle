@@ -19,3 +19,6 @@ prop3 = exists x . if f [x] ! 0 > 0 then x >= 0 else x < 0
 -- @property
 -- prop4 : Bool
 -- prop4 = exists x . (map (\v -> if v > 0 then 1 else 2) (g x)) ! 0 > 0
+
+
+-- exists a . (x2 == 0.2 and x1 > 0 and y1 >= 0) or (x2 == 0.2 and x1 <= 0 and y2 >= 0)

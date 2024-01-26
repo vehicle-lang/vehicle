@@ -25,7 +25,7 @@ import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), 
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
 import Vehicle.Prelude
-import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn, writeStdoutLn))
+import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn))
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (typeCheck)
 import Vehicle.Validate (validate)
@@ -59,7 +59,7 @@ runVehicle Options {..} = do
     flip catches [Handler rethrowExitCode, Handler uncaughtException] $ do
       -- Handle --version
       if version globalOptions
-        then VIO.writeStdoutLn (Text.pack preciseVehicleVersion)
+        then writeStdoutLn (Text.pack preciseVehicleVersion)
         else case modeOptions of
           Nothing ->
             fatalError

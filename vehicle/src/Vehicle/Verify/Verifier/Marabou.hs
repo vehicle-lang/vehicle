@@ -5,16 +5,19 @@ where
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.List (elemIndex, findIndex)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
 import Data.Text.IO (hPutStrLn)
-import Data.Vector qualified as Vector
 import System.Exit (ExitCode (..), exitFailure)
 import System.IO (stderr)
 import System.Process (readProcessWithExitCode)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.QueryFormat.Marabou (compileVar)
+import Vehicle.Verify.Variable
 import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
@@ -33,9 +36,9 @@ marabouVerifier =
 -- Invoking Marabou
 
 invokeMarabou :: VerifierInvocation
-invokeMarabou marabouExecutable networkLocations queryFile = do
+invokeMarabou marabouExecutable metaNetwork queryFile = do
   -- Prepare arguments
-  networkArg <- prepareNetworkArg networkLocations
+  networkArg <- prepareNetworkArg (networkEntries metaNetwork)
   let args = [networkArg, queryFile]
   let command = unwords (marabouExecutable : args)
 
@@ -45,10 +48,10 @@ invokeMarabou marabouExecutable networkLocations queryFile = do
 
   -- Parse result
   logDebug MaxDetail $ "Output of verify command: " <> line <> indent 2 (pretty out)
-  parseMarabouOutput command (exitCode, out, err)
+  parseMarabouOutput metaNetwork command (exitCode, out, err)
 
-prepareNetworkArg :: (MonadIO m) => MetaNetwork -> m String
-prepareNetworkArg [MetaNetworkEntry {..}] = return metaNetworkEntryFilePath
+prepareNetworkArg :: (MonadIO m) => [MetaNetworkEntry] -> m String
+prepareNetworkArg [MetaNetworkEntry {..}] = return (networkFilepath metaNetworkEntryInfo)
 prepareNetworkArg metaNetwork = do
   let duplicateNetworkNames = findDuplicates (fmap metaNetworkEntryName metaNetwork)
 
@@ -70,10 +73,11 @@ prepareNetworkArg metaNetwork = do
 
 parseMarabouOutput ::
   (MonadIO m) =>
+  MetaNetwork ->
   String ->
   (ExitCode, String, String) ->
   m (Either Text (QueryResult NetworkVariableAssignment))
-parseMarabouOutput command (exitCode, out, _err) = case exitCode of
+parseMarabouOutput metaNetwork command (exitCode, out, _err) = case exitCode of
   ExitFailure exitValue
     | exitValue < 0 -> do
         -- Marabou was killed by the system.
@@ -108,30 +112,38 @@ parseMarabouOutput command (exitCode, out, _err) = case exitCode of
             return $ Right UnSAT
         | otherwise -> do
             let assignmentOutput = drop (i + 1) outputLines
-            ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
+            ioVarAssignment <- parseSATAssignment metaNetwork (filter (/= "") assignmentOutput)
             return $ Right $ SAT $ Just ioVarAssignment
 
-parseSATAssignment :: (MonadIO m) => [Text] -> m NetworkVariableAssignment
-parseSATAssignment output = do
+parseSATAssignment :: (MonadIO m) => MetaNetwork -> [Text] -> m NetworkVariableAssignment
+parseSATAssignment metaNetwork output = do
+  let variableMap = Map.fromList $ fmap (\var -> (layoutAsText $ compileVar var, var)) (variables metaNetwork)
   let mInputIndex = elemIndex "Input assignment:" output
   let mOutputIndex = elemIndex "Output:" output
   case (mInputIndex, mOutputIndex) of
     (Just inputIndex, Just outputIndex) -> do
       let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
       let outputVarLines = drop (outputIndex + 1) output
-      let inputValues = parseSATAssignmentLine Input <$> inputVarLines
-      let outputValues = parseSATAssignmentLine Output <$> outputVarLines
-      return $ NetworkVariableAssignment $ Vector.fromList (inputValues <> outputValues)
+      let values = parseSATAssignmentLine variableMap <$> (inputVarLines <> outputVarLines)
+      return $ NetworkVariableAssignment $ Map.fromList values
     _ -> malformedOutwriteStderror "could not find strings 'Input assignment:' and 'Output:'"
 
-parseSATAssignmentLine :: InputOrOutput -> Text -> Rational
-parseSATAssignmentLine _ txt =
+parseSATAssignmentLine ::
+  Map Text NetworkRationalVariable ->
+  Text ->
+  (NetworkRationalVariable, Rational)
+parseSATAssignmentLine varsByName txt =
   let parts = Text.strip <$> Text.splitOn "=" txt
    in case parts of
-        [_namePart, valuePart] -> readFloatAsRational valuePart
+        [namePart, valuePart] -> do
+          let var = case Map.lookup namePart varsByName of
+                Just v -> v
+                Nothing -> malformedOutwriteStderror $ "could not parse variable" <+> quotePretty namePart
+          let value = readFloatAsRational valuePart
+          (var, value)
         _ ->
           malformedOutwriteStderror $
-            "could not split assignment line" <+> squotes (pretty txt) <+> "on '=' sign"
+            "could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
 
 malformedOutwriteStderror :: Doc a -> b
 malformedOutwriteStderror x =

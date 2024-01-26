@@ -12,7 +12,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 

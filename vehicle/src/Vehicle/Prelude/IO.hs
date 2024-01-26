@@ -19,6 +19,7 @@ import Control.Exception (catch, throwIO)
 
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Identity (IdentityT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
@@ -72,6 +73,12 @@ instance (Monoid w, MonadStdIO m) => MonadStdIO (WriterT w m) where
   writeStdout = lift . writeStdout
   writeStderr :: (Monoid w, MonadStdIO m) => Text -> WriterT w m ()
   writeStderr = lift . writeStderr
+
+instance (MonadStdIO m) => MonadStdIO (IdentityT m) where
+  writeStdout = lift . writeStdout
+  writeStderr = lift . writeStderr
+  writeStdoutLn = lift . writeStdoutLn
+  writeStderrLn = lift . writeStderrLn
 
 instance (MonadStdIO m) => MonadStdIO (ExceptT e m) where
   writeStdout :: (MonadStdIO m) => Text -> ExceptT e m ()

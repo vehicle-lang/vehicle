@@ -7,7 +7,6 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (evalBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
@@ -92,7 +91,7 @@ instance MetaSubstitutable m builtin (WHNFValue builtin) where
     VBoundVar v spine -> VBoundVar v <$> traverse (subst s) spine
     VBuiltin b spine -> do
       spine' <- traverse (subst s) spine
-      evalBuiltin normaliseApp b spine'
+      evalBuiltin b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
@@ -108,7 +107,7 @@ instance MetaSubstitutable m builtin (Env 'WHNF builtin) where
     newEnvEntries <- subst s envEntries
     return $ Env { envEntries = newEnvEntries, .. }
 -}
-instance MetaSubstitutable m builtin (EnvValue 'WHNF builtin) where
+instance MetaSubstitutable m builtin (BoundEnvValue 'WHNF builtin) where
   subst s = \case
     Bound -> return Bound
     Defined value -> Defined <$> subst s value

@@ -37,8 +37,8 @@ import Data.Traversable (for)
 import General.Extra.Diff (isBoth, mapDiff)
 import General.Extra.File (createDirectoryRecursive, listFilesRecursive, writeFileChanged)
 import General.Extra.NonEmpty qualified as NonEmpty (appendList, prependList, singleton)
-import System.Directory (copyFile, doesFileExist, removeFile)
-import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeExtension, (<.>), (</>))
+import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, removeFile)
+import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeDirectory, takeExtension, (<.>), (</>))
 import System.IO (IOMode (..), hFileSize, withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
@@ -283,7 +283,7 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
     let expectedFilesNotProduced = Set.toAscList $ Set.difference goldenFileSet actualFileSet
     for_ expectedFilesNotProduced $ tell . Just . expectedFileNotProduced
     -- Test for files which were produced but not expected:
-    let producedFilesNotExpected = Set.toAscList $ Set.difference goldenFileSet actualFileSet
+    let producedFilesNotExpected = Set.toAscList $ Set.difference actualFileSet goldenFileSet
     for_ producedFilesNotExpected $ tell . Just . producedFileNotExpected
     -- Diff the files which were produced and expected:
     for_ (Set.toAscList $ Set.intersection goldenFileSet actualFileSet) $ \file -> do
@@ -414,7 +414,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
       when goldenFileExists $
         removeFile (testDirectory </> goldenFile)
   -- Copy the new .golden files:
-  lift $
+  lift $ do
     for_ actualFilesToCopy $ \actualFile -> do
       let goldenFile = actualFile <.> ".golden"
       goldenFileExists <- doesFileExist (testDirectory </> goldenFile)
@@ -422,7 +422,9 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
         then do
           actualFileContents <- TextIO.readFile (tempDirectory </> actualFile)
           writeFileChanged (testDirectory </> goldenFile) actualFileContents
-        else do copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
+        else do
+          createDirectoryIfMissing True (takeDirectory (testDirectory </> actualFile))
+          copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
   return ()
 
 -- | Find the actual files produced by the test command.

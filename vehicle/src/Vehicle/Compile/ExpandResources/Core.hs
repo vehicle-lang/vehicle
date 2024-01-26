@@ -8,14 +8,14 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin (Builtin)
+import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Context
 
-type NetworkContext = Map Name (FilePath, NetworkType)
+type NetworkContext = Map Name NetworkContextInfo
 
 --------------------------------------------------------------------------------
 -- Resource contexts
@@ -86,7 +86,7 @@ addPossibleInferableParameterSolution ident entry =
 addNetworkType ::
   (MonadExpandResources m) =>
   Identifier ->
-  (FilePath, NetworkType) ->
+  NetworkContextInfo ->
   m ()
 addNetworkType ident details =
   modify (\(u, v, w) -> (Map.insert (nameOf ident) details u, v, w))

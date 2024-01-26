@@ -11,6 +11,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.

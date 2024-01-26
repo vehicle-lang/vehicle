@@ -9,6 +9,7 @@ import Vehicle.Backend.Queries.Error.Linearity
 import Vehicle.Backend.Queries.Error.Polarity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
@@ -63,7 +64,7 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier
   case propertyType of
     PolarityExpr _ (MixedSequential q p pp2) -> do
       throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Right (q, p, pp2))
-    _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier
+    _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier <> ":" <+> prettyVerbose propertyType
   where
     handleUnexpectedError :: (MonadCompile m) => CompileError -> m a
     handleUnexpectedError err =
