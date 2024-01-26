@@ -7,7 +7,7 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Writer (MonadWriter, WriterT (..), tell)
+import Control.Monad.Writer (WriterT (..), tell)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
@@ -36,8 +36,8 @@ expandResources ::
   m (Prog Ix Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialFreeCtx) <-
-      runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty)))
+    ((progWithoutResources, (networkCtx, inferableParameterCtx, _explicitParameterCtx)), partialFreeCtx) <-
+      runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty, mempty)))
 
     checkForUnusedResources resources partialFreeCtx
 
@@ -55,15 +55,9 @@ mkFunctionDefFromResource p ident value = do
 
 addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> WHNFValue Builtin -> m ()
 addFunctionDefFromResource p ident value = do
+  noteExplicitParameter ident value
   let decl = mkFunctionDefFromResource p ident value
   tell (Map.singleton ident decl)
-
-type MonadReadResources m =
-  ( MonadIO m,
-    MonadExpandResources m,
-    MonadFreeContext Builtin m,
-    MonadWriter (FreeCtx Builtin) m
-  )
 
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making

@@ -1,0 +1,94 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableReconstruction": [],
+              "queryAddress": [
+                {
+                  "propertyName": "p",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": {
+                "variables": [
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "f",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "f",
+                      "inputOrOutput": "Input",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1
+                      ],
+                      "networkName": "f",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  }
+                ],
+                "networkEntries": [
+                  {
+                    "metaNetworkEntryName": "f",
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            1
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "negated": false
+      }
+    }
+  }
+}
