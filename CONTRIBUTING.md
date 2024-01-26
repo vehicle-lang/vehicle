@@ -329,6 +329,9 @@ The logging level can be changed by changing the command in the `test.json` file
 
 Some golden tests require external tools, such as the MarabouVerify test above. To run these tests, add `--test-option="--allowlist-externals=<external>"` to the test command, where `<external>` is the name of the external dependency, such as `Marabou`.
 
+Some golden tests diff extremely large files such as `.vcl-plan`s, for which the diff isn't very meaningful.
+In order to only display the change in size for a given file type, add `--test-option="--sizeOnly=<extension>"` to the test command, where `<extension>` is the extension of the chosen file type.
+
 ##### Adding golden tests
 
 To create a new golden test, you can use the `new-golden-test` command.
