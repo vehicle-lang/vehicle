@@ -2,6 +2,10 @@
 
 ## Version 0.12.0
 
+* Allow `@parameter`s to be used as network sizes.
+
+## Version 0.11.1
+
 * Fixed bug properties involving the comparison of abstract `Index` values would throw
   a `Something went wrong in query compilation` error.
 
