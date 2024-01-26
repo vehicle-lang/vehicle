@@ -5,6 +5,7 @@ module Vehicle.Backend.Queries.UserVariableElimination
   )
 where
 
+-- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
 import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..))
@@ -32,6 +33,7 @@ import Vehicle.Verify.Core (MetaNetwork, QueryContents)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Variable
+import Prelude hiding (Applicative (..))
 
 --------------------------------------------------------------------------------
 -- Algorithm

@@ -58,16 +58,18 @@ runVehicle Options {..} = do
     -- Catch uncaught exceptions
     flip catches [Handler rethrowExitCode, Handler uncaughtException] $ do
       -- Handle --version
-      case modeOptions of
-        Nothing ->
-          fatalError
-            "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
-        Just mode -> case mode of
-          Check options -> typeCheck logSettings options
-          Compile options -> compile logSettings options
-          Verify options -> verify logSettings options
-          Validate options -> validate logSettings options
-          Export options -> export logSettings options
+      if version globalOptions
+        then writeStdoutLn (Text.pack preciseVehicleVersion)
+        else case modeOptions of
+          Nothing ->
+            fatalError
+              "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
+          Just mode -> case mode of
+            Check options -> typeCheck logSettings options
+            Compile options -> compile logSettings options
+            Verify options -> verify logSettings options
+            Validate options -> validate logSettings options
+            Export options -> export logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingLevel} action =
