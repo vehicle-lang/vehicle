@@ -15,26 +15,32 @@ pattern VBuiltinType c args <- VBuiltin (getBuiltinType -> Just c) args
   where
     VBuiltinType c args = VBuiltin (mkBuiltinType c) args
 
+-- Can't use `[]` in a bidrectional pattern synonym until GHC 9.4.3??
+pattern VRawBuiltinType :: (HasStandardTypes builtin) => BuiltinType -> WHNFType builtin
+pattern VRawBuiltinType t <- VBuiltinType t []
+  where
+    VRawBuiltinType t = VBuiltinType t []
+
 pattern VUnitType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VUnitType = VBuiltinType Unit []
+pattern VUnitType = VRawBuiltinType Unit
 
 pattern VBoolType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VBoolType = VBuiltinType Bool []
+pattern VBoolType = VRawBuiltinType Bool
 
 pattern VIndexType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFType builtin
 pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
 
 pattern VNatType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VNatType = VBuiltinType Nat []
+pattern VNatType = VRawBuiltinType Nat
 
 pattern VIntType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VIntType = VBuiltinType Int []
+pattern VIntType = VRawBuiltinType Int
 
 pattern VRatType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VRatType = VBuiltinType Rat []
+pattern VRatType = VRawBuiltinType Rat
 
 pattern VRawListType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VRawListType = VBuiltinType List []
+pattern VRawListType = VRawBuiltinType List
 
 pattern VListType :: (HasStandardTypes builtin) => WHNFType builtin -> WHNFType builtin
 pattern VListType tElem <- VBuiltinType List [RelevantExplicitArg _ tElem]
