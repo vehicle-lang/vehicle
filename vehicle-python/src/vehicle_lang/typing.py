@@ -49,8 +49,7 @@ class Target(Protocol):
     """
 
     @property
-    def _vehicle_option_name(self) -> str:
-        ...
+    def _vehicle_option_name(self) -> str: ...
 
 
 class Explicit(Enum):

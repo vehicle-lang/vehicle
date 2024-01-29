@@ -497,8 +497,7 @@ class Declaration(AST, metaclass=ABCMeta):
         raise TypeError("Cannot instantiate abstract class Declaration")
 
     @abstractmethod
-    def get_name(self) -> Name:
-        ...
+    def get_name(self) -> Name: ...
 
 
 @dataclass(frozen=True)
