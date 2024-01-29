@@ -3,51 +3,43 @@ from typing_extensions import Protocol, Self, runtime_checkable
 
 @runtime_checkable
 class SupportsDunderLT(Protocol):
-    def __lt__(self, other: Self) -> bool:
-        ...
+    def __lt__(self, other: Self) -> bool: ...
 
 
 @runtime_checkable
 class SupportsDunderGT(Protocol):
-    def __gt__(self, other: Self) -> bool:
-        ...
+    def __gt__(self, other: Self) -> bool: ...
 
 
 @runtime_checkable
 class SupportsDunderLE(Protocol):
-    def __le__(self, other: Self) -> bool:
-        ...
+    def __le__(self, other: Self) -> bool: ...
 
 
 @runtime_checkable
 class SupportsDunderGE(Protocol):
-    def __ge__(self, other: Self) -> bool:
-        ...
+    def __ge__(self, other: Self) -> bool: ...
 
 
 @runtime_checkable
 class SupportsRichComparison(
     SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol
-):
-    ...
+): ...
 
 
 @runtime_checkable
 class SupportsAbs(Protocol):
-    def __abs__(self: Self) -> Self:
-        ...
+    def __abs__(self: Self) -> Self: ...
 
 
 @runtime_checkable
 class SupportsAdd(Protocol):
-    def __add__(self: Self, other: Self) -> Self:
-        ...
+    def __add__(self: Self, other: Self) -> Self: ...
 
 
 @runtime_checkable
 class SupportsMul(Protocol):
-    def __mul__(self: Self, other: Self) -> Self:
-        ...
+    def __mul__(self: Self, other: Self) -> Self: ...
 
 
 @runtime_checkable
@@ -58,20 +50,17 @@ class SupportsNat(
     SupportsMul,
     Protocol,
 ):
-    def __int__(self: Self) -> int:
-        ...
+    def __int__(self: Self) -> int: ...
 
 
 @runtime_checkable
 class SupportsNeg(Protocol):
-    def __neg__(self: Self) -> Self:
-        ...
+    def __neg__(self: Self) -> Self: ...
 
 
 @runtime_checkable
 class SupportsSub(Protocol):
-    def __sub__(self: Self, other: Self) -> Self:
-        ...
+    def __sub__(self: Self, other: Self) -> Self: ...
 
 
 @runtime_checkable
@@ -80,20 +69,17 @@ class SupportsInt(
     SupportsNeg,
     SupportsSub,
     Protocol,
-):
-    ...
+): ...
 
 
 @runtime_checkable
 class SupportsDiv(Protocol):
-    def __truediv__(self: Self, other: Self) -> Self:
-        ...
+    def __truediv__(self: Self, other: Self) -> Self: ...
 
 
 @runtime_checkable
 class SupportsPow2(Protocol):
-    def __pow__(self: Self, other: int) -> Self:
-        ...
+    def __pow__(self: Self, other: int) -> Self: ...
 
 
 @runtime_checkable
@@ -103,5 +89,4 @@ class SupportsRat(
     SupportsPow2,
     Protocol,
 ):
-    def __float__(self: Self) -> float:
-        ...
+    def __float__(self: Self) -> float: ...
