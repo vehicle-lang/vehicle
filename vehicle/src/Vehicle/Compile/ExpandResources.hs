@@ -53,12 +53,6 @@ mkFunctionDefFromResource p ident value = do
   let unnormType = Builtin mempty (BuiltinType Unit)
   (DefFunction p ident mempty VUnitType value, unnormType)
 
-addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> WHNFValue Builtin -> m ()
-addFunctionDefFromResource p ident value = do
-  noteExplicitParameter ident value
-  let decl = mkFunctionDefFromResource p ident value
-  tell (Map.singleton ident decl)
-
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
 -- note of the values for implicit parameters.
@@ -68,38 +62,48 @@ readResourcesInProg (Main ds) = Main <$> readResourcesInDecls ds
 readResourcesInDecls :: (MonadReadResources m) => [Decl Ix Builtin] -> m [Decl Ix Builtin]
 readResourcesInDecls = \case
   [] -> return []
-  decl : decls -> addDeclToContext decl $ do
-    maybeDecl <- case decl of
-      DefFunction {} -> return $ Just decl
+  decl : decls -> do
+    (newDecl, newDeclEntry) <- case decl of
+      DefFunction {} -> do
+        entry <- mkDeclCtxEntry decl
+        return (Just decl, entry)
       DefAbstract p ident defType declType -> do
         normalisedType <- normaliseInEmptyEnv declType
         let gluedType = Glued declType normalisedType
         case defType of
+          PostulateDef -> do
+            entry <- mkDeclCtxEntry decl
+            return (Just decl, entry)
           ParameterDef sort -> case sort of
             Inferable -> do
+              entry <- mkDeclCtxEntry decl
               noteInferableParameter p ident
-              return Nothing
+              return (Nothing, entry)
             NonInferable -> do
               parameterValues <- asks parameters
               parameterExpr <- parseParameterValue parameterValues (ident, p) gluedType
-              addFunctionDefFromResource p ident parameterExpr
-              return Nothing
+              let newDeclEntry = mkFunctionDefFromResource p ident parameterExpr
+              tell (Map.singleton ident newDeclEntry)
+              return (Nothing, newDeclEntry)
           DatasetDef -> do
             datasetLocations <- asks datasets
             datasetExpr <- parseDataset datasetLocations (ident, p) gluedType
-            addFunctionDefFromResource p ident datasetExpr
-            return Nothing
+            let newDeclEntry = mkFunctionDefFromResource p ident datasetExpr
+            tell (Map.singleton ident newDeclEntry)
+            return (Nothing, newDeclEntry)
           NetworkDef -> do
             networkLocations <- asks networks
             networkDetails <- checkNetwork networkLocations (ident, p) gluedType
             addNetworkType ident networkDetails
             tell (Map.singleton ident (DefAbstract p ident defType normalisedType, declType))
-            return Nothing
-          PostulateDef ->
-            return (Just decl)
+            entry <- mkDeclCtxEntry decl
+            return (Nothing, entry)
 
-    decls' <- readResourcesInDecls decls
-    return $ maybeToList maybeDecl <> decls'
+    decls' <-
+      addDeclEntryToContext newDeclEntry $
+        readResourcesInDecls decls
+
+    return $ maybeToList newDecl <> decls'
 
 checkForUnusedResources ::
   (MonadLogger m) =>
