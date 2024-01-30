@@ -266,7 +266,7 @@ library
 
   autogen-modules: Paths_vehicle
   build-depends:
-    , aeson                  >=2.1.1    && <2.2
+    , aeson                  >=2.1.1    && <2.3
     , aeson-pretty           >=0.8.9    && <0.9
     , ansi-terminal          >=0.6      && <1
     , base                   >=4.13     && <5

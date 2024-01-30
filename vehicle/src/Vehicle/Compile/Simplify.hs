@@ -48,18 +48,29 @@ instance Simplify (Expr Name Builtin) where
 
   shortenVec = mapBuiltins $ \p1 p2 b args ->
     case b of
-      BuiltinConstructor (LVec n)
-        | length args > 5 ->
-            normAppList
-              p1
-              (Builtin p2 (BuiltinConstructor (LVec n)))
-              [ head args,
-                Arg p2 Explicit Relevant (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
-                last args
-              ]
-        where
-          n2 = Text.pack $ show $ length args - 2
+      BuiltinConstructor (LVec n) -> case getHeadMidTail args of
+        Just (firstArg, numberOfMiddleAgs, lastArg)
+          | numberOfMiddleAgs > 3 ->
+              normAppList
+                p1
+                (Builtin p2 (BuiltinConstructor (LVec n)))
+                [ firstArg,
+                  Arg p2 Explicit Relevant (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
+                  lastArg
+                ]
+          where
+            n2 = Text.pack $ show $ length args - 2
+        _ -> normAppList p1 (Builtin p2 b) args
       _ -> normAppList p1 (Builtin p2 b) args
+    where
+      getHeadMidTail :: forall a. [a] -> Maybe (a, Int, a)
+      getHeadMidTail [] = Nothing
+      getHeadMidTail (x : xs) = go 0 xs
+        where
+          go :: Int -> [a] -> Maybe (a, Int, a)
+          go _ [] = Nothing
+          go l [e] = Just (x, l, e)
+          go l (_ : ys) = go (l + 1) ys
 
 instance Simplify (Binder Name Builtin) where
   uninsert = fmap uninsert

@@ -28,11 +28,10 @@ diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
       <+> quotePretty propertyIdentifier
       <> line
 
-  Main typedDecls <- typeCheckWithSubsystem mempty handleUnexpectedError prog
+  subTypedProg <- typeCheckWithSubsystem mempty handleUnexpectedError prog
 
   -- Extract and diagnose the type.
-  let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
-  let propertyType = typeOf property
+  propertyType <- findDeclType propertyIdentifier subTypedProg
   case propertyType of
     LinearityExpr _ (NonLinear source) -> do
       throwError $ UnsupportedNonLinearConstraint queryFormat propertyProv (Right source)
@@ -56,11 +55,10 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier
       <+> quotePretty propertyIdentifier
       <> line
 
-  Main typedDecls <- typeCheckWithSubsystem mempty handleUnexpectedError prog
+  subTypedProg <- typeCheckWithSubsystem mempty handleUnexpectedError prog
 
   -- Extract and diagnose the type.
-  let property = head $ filter (\decl -> identifierOf decl == propertyIdentifier) typedDecls
-  let propertyType = typeOf property
+  propertyType <- findDeclType propertyIdentifier subTypedProg
   case propertyType of
     PolarityExpr _ (MixedSequential q p pp2) -> do
       throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Right (q, p, pp2))
@@ -69,3 +67,10 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier
     handleUnexpectedError :: (MonadCompile m) => CompileError -> m a
     handleUnexpectedError err =
       throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Left err)
+
+findDeclType :: (MonadCompile m) => Identifier -> Prog Ix builtin -> m (Expr Ix builtin)
+findDeclType ident (Main decls) = do
+  let candidates = filter (\decl -> identifierOf decl == ident) decls
+  case candidates of
+    [property] -> return $ typeOf property
+    _ -> compilerDeveloperError $ "Could not find property" <+> quotePretty ident <+> "in program after subtyping."

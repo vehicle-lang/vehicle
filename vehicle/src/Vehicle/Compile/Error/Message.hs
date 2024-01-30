@@ -204,9 +204,9 @@ instance MeaningfulError CompileError where
                   <+> quotePretty annotationName
                   <+> "annotation.",
               fix =
-                if null suggestions
-                  then Nothing
-                  else Just $ "did you mean" <+> quotePretty (head suggestions) <> "?"
+                case suggestions of
+                  [] -> Nothing
+                  (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
             }
       InvalidAnnotationOptionValue p parameterName parameterValue ->
         UError $
@@ -421,7 +421,9 @@ instance MeaningfulError CompileError where
                 <> line
                 <> indent 2 deducedType
                 <> line
-                <> "but" <+> originExpr <+> "has only the following valid types:"
+                <> "but"
+                  <+> originExpr
+                  <+> "has only the following valid types:"
                 <> line
                 <> indent 2 (vsep (fmap calculateCandidateType candidates)),
             fix = Nothing
@@ -1245,13 +1247,15 @@ supportedNetworkTypeDescription =
 errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
 errorInSubsystemMessage task err =
   line
-    <> "Unfortunately while trying to" <+> task
+    <> "Unfortunately while trying to"
+      <+> task
     <> ","
       <+> "the following error was encountered:"
     <> line
     <> indent 2 (pretty (details err))
     <> line
-    <> "Please report this as an issue on Github" <+> parens githubIssues
+    <> "Please report this as an issue on Github"
+      <+> parens githubIssues
     <> line
 
 githubIssues :: Doc a
