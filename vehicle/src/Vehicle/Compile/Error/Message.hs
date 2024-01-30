@@ -204,9 +204,9 @@ instance MeaningfulError CompileError where
                   <+> quotePretty annotationName
                   <+> "annotation.",
               fix =
-                if null suggestions
-                  then Nothing
-                  else Just $ "did you mean" <+> quotePretty (head suggestions) <> "?"
+                case suggestions of
+                  [] -> Nothing
+                  (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
             }
       InvalidAnnotationOptionValue p parameterName parameterValue ->
         UError $

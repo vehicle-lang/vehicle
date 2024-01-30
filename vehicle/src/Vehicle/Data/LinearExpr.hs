@@ -83,7 +83,8 @@ foldTensor :: forall a. (Rational -> a) -> ([a] -> a) -> RationalTensor -> a
 foldTensor mkValue mkVec (RationalTensor dims value) = go dims (Vector.toList value)
   where
     go :: TensorDimensions -> [Rational] -> a
-    go [] xs = mkValue (head xs)
+    go [] [x] = mkValue x
+    go [] _xs = developerError "Mis-sized tensor. Expected a single element."
     go (_d : ds) xs = do
       let inputVarIndicesChunks = chunksOf (product ds) xs
       let elems = fmap (go ds) inputVarIndicesChunks

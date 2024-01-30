@@ -69,7 +69,9 @@ preprocessLogicalOperators logic = traverse (traverseBuiltinsM builtinUpdateFunc
     builtinUpdateFunction p1 p2 b args = do
       maybeUpdatedExpr <- case b of
         S.BuiltinFunction S.Not -> case compileNot logic of
-          TryToEliminate -> Just <$> lowerNot p2 (argExpr $ head args)
+          TryToEliminate -> case args of
+            [arg] -> Just <$> lowerNot p2 (argExpr arg)
+            _ -> compilerDeveloperError "Found partially applied Not"
           UnaryNot {} -> return Nothing
         _ -> return Nothing
 
