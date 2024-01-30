@@ -67,8 +67,7 @@ class Decoder(Generic[_T], metaclass=ABCMeta):
         cls_origin: Any,
         cls_args: Tuple[Any, ...],
         value: JsonValue,
-    ) -> _T:
-        ...
+    ) -> _T: ...
 
 
 class TaggedObjectDecoder(Decoder[_T]):

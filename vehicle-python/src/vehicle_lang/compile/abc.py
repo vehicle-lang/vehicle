@@ -57,8 +57,7 @@ class ABCBuiltins(
         return x and y
 
     @abstractmethod
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        ...
+    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T: ...
 
     def Bool(self, value: bool) -> bool:
         assert isinstance(value, bool), f"Expected bool, found {value}"
@@ -108,8 +107,7 @@ class ABCBuiltins(
     @abstractmethod
     def FoldVector(
         self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
-    ) -> _T:
-        ...
+    ) -> _T: ...
 
     def Forall(
         self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
@@ -171,8 +169,7 @@ class ABCBuiltins(
         return self.Vector(*range(0, upto))
 
     @abstractmethod
-    def Int(self, value: SupportsInt) -> _SupportsInt:
-        ...
+    def Int(self, value: SupportsInt) -> _SupportsInt: ...
 
     def LeIndex(self, x: int, y: int) -> bool:
         assert isinstance(x, int), f"Expected int, found {x}"
@@ -224,8 +221,7 @@ class ABCBuiltins(
     @abstractmethod
     def MapVector(
         self, function: Callable[[_S], _T], vector: SupportsVector[_S]
-    ) -> SupportsVector[_T]:
-        ...
+    ) -> SupportsVector[_T]: ...
 
     def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
         assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
@@ -253,8 +249,7 @@ class ABCBuiltins(
         return x * y
 
     @abstractmethod
-    def Nat(self, value: SupportsInt) -> _SupportsNat:
-        ...
+    def Nat(self, value: SupportsInt) -> _SupportsNat: ...
 
     def NeIndex(self, x: int, y: int) -> bool:
         return self.Not(self.EqIndex(x, y))
@@ -307,8 +302,7 @@ class ABCBuiltins(
         return x ** y.__int__()
 
     @abstractmethod
-    def Rat(self, value: SupportsFloat) -> _SupportsRat:
-        ...
+    def Rat(self, value: SupportsFloat) -> _SupportsRat: ...
 
     def SubInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
         assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
@@ -324,8 +318,7 @@ class ABCBuiltins(
         return ()
 
     @abstractmethod
-    def Vector(self, *values: _T) -> SupportsVector[_T]:
-        ...
+    def Vector(self, *values: _T) -> SupportsVector[_T]: ...
 
     @abstractmethod
     def ZipWithVector(
@@ -333,8 +326,7 @@ class ABCBuiltins(
         function: Callable[[_S, _T], _U],
         vector1: SupportsVector[_S],
         vector2: SupportsVector[_T],
-    ) -> SupportsVector[_U]:
-        ...
+    ) -> SupportsVector[_U]: ...
 
 
 AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]
@@ -351,16 +343,13 @@ _Expression = TypeVar("_Expression")
 
 class Translation(Generic[_Program, _Declaration, _Expression], metaclass=ABCMeta):
     @abstractmethod
-    def translate_program(self, program: vcl.Program) -> _Program:
-        ...
+    def translate_program(self, program: vcl.Program) -> _Program: ...
 
     @abstractmethod
-    def translate_declaration(self, declaration: vcl.Declaration) -> _Declaration:
-        ...
+    def translate_declaration(self, declaration: vcl.Declaration) -> _Declaration: ...
 
     @abstractmethod
-    def translate_expression(self, expression: vcl.Expression) -> _Expression:
-        ...
+    def translate_expression(self, expression: vcl.Expression) -> _Expression: ...
 
 
 class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
@@ -371,8 +360,7 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         raise NotImplementedError(type(program).__name__)
 
     @abstractmethod
-    def translate_Main(self, program: vcl.Main) -> _Program:
-        ...
+    def translate_Main(self, program: vcl.Main) -> _Program: ...
 
     @override
     def translate_declaration(self, declaration: vcl.Declaration) -> _Declaration:
@@ -383,12 +371,10 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         raise NotImplementedError(type(declaration).__name__)
 
     @abstractmethod
-    def translate_DefFunction(self, declaration: vcl.DefFunction) -> _Declaration:
-        ...
+    def translate_DefFunction(self, declaration: vcl.DefFunction) -> _Declaration: ...
 
     @abstractmethod
-    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> _Declaration:
-        ...
+    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> _Declaration: ...
 
     @override
     def translate_expression(self, expression: vcl.Expression) -> _Expression:
@@ -413,24 +399,19 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         raise NotImplementedError(type(expression).__name__)
 
     @abstractmethod
-    def translate_App(self, expression: vcl.App) -> _Expression:
-        ...
+    def translate_App(self, expression: vcl.App) -> _Expression: ...
 
     @abstractmethod
-    def translate_BoundVar(self, expression: vcl.BoundVar) -> _Expression:
-        ...
+    def translate_BoundVar(self, expression: vcl.BoundVar) -> _Expression: ...
 
     @abstractmethod
-    def translate_Builtin(self, expression: vcl.Builtin) -> _Expression:
-        ...
+    def translate_Builtin(self, expression: vcl.Builtin) -> _Expression: ...
 
     @abstractmethod
-    def translate_FreeVar(self, expression: vcl.FreeVar) -> _Expression:
-        ...
+    def translate_FreeVar(self, expression: vcl.FreeVar) -> _Expression: ...
 
     @abstractmethod
-    def translate_Lam(self, expression: vcl.Lam) -> _Expression:
-        ...
+    def translate_Lam(self, expression: vcl.Lam) -> _Expression: ...
 
     def translate_Let(self, expression: vcl.Let) -> _Expression:
         return self.translate_expression(
@@ -446,13 +427,10 @@ class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
         )
 
     @abstractmethod
-    def translate_PartialApp(self, expression: vcl.PartialApp) -> _Expression:
-        ...
+    def translate_PartialApp(self, expression: vcl.PartialApp) -> _Expression: ...
 
     @abstractmethod
-    def translate_Pi(self, expression: vcl.Pi) -> _Expression:
-        ...
+    def translate_Pi(self, expression: vcl.Pi) -> _Expression: ...
 
     @abstractmethod
-    def translate_Universe(self, expression: vcl.Universe) -> _Expression:
-        ...
+    def translate_Universe(self, expression: vcl.Universe) -> _Expression: ...

@@ -12,8 +12,7 @@ class SupportsList(Iterable[_T_co], Protocol[_T_co]):
 
 @runtime_checkable
 class Subscriptable(Protocol[_T_co]):
-    def __getitem__(self, index: int) -> _T_co:
-        ...
+    def __getitem__(self, index: int) -> _T_co: ...
 
 
 @runtime_checkable

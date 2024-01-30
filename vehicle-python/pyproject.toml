@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest >=7.1,<8", "packaging >=23", "pygments >=2.14, <3"]
+test = ["pytest >=7.1,<9", "packaging >=23", "pygments >=2.14, <3"]
 mypy = ["types_setuptools >=45", "types_pygments >=2.14,<3"]
 pygments = ["pygments >=2.14,<3"]
 tensorflow = [
