@@ -4,6 +4,8 @@
 
 * Allow `@parameter`s to be used as network sizes.
 
+* More powerful index solver: `i` is now a valid index for vectors of size `n + 1 + i`.
+
 ## Version 0.11.1
 
 * Fixed bug properties involving the comparison of abstract `Index` values would throw

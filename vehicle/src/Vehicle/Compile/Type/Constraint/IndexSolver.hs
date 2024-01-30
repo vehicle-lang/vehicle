@@ -14,6 +14,7 @@ import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Syntax.Builtin
 
 solveIndexConstraint ::
   forall builtin m.
@@ -53,15 +54,17 @@ solveInDomain c [value, typ] = case typ of
   VNatType {} -> return Nothing
   VIntType {} -> return Nothing
   VRatType {} -> return Nothing
-  VIndexType size -> case size of
-    (getNMeta -> Just {}) -> return $ blockOnMetas [size]
-    VNatLiteral m -> case value of
-      (getNMeta -> Just {}) -> return $ blockOnMetas [value]
-      VNatLiteral n
-        | m > n -> return Nothing
-        | otherwise -> throwError $ TypingError $ FailedIndexConstraintTooBig ctx n m
-      _ -> malformedConstraintError c
-    _ -> throwError $ TypingError $ FailedIndexConstraintUnknown ctx value size
+  VIndexType size -> case value of
+    VMeta {} -> return $ blockOnMetas [value]
+    VNatLiteral n -> do
+      (sizeBlockingMetas, sizeLowerBound) <- findLowerBound ctx value size
+      if n < sizeLowerBound
+        then return Nothing
+        else
+          if not (MetaSet.null sizeBlockingMetas)
+            then return $ Just sizeBlockingMetas
+            else throwError $ TypingError $ FailedIndexConstraintTooBig ctx n sizeLowerBound
+    _ -> malformedConstraintError c
   _ -> malformedConstraintError c
   where
     ctx = contextOf c
@@ -73,3 +76,26 @@ blockOnMetas args = do
   if null metas
     then Nothing
     else Just (MetaSet.fromList metas)
+
+findLowerBound ::
+  forall m builtin.
+  (TCM builtin m, HasStandardData builtin) =>
+  ConstraintContext builtin ->
+  WHNFType builtin ->
+  WHNFType builtin ->
+  m (MetaSet, Int)
+findLowerBound ctx value indexSize = go indexSize
+  where
+    go :: WHNFType builtin -> m (MetaSet, Int)
+    go = \case
+      VMeta m _ ->
+        return (MetaSet.singleton m, 0)
+      VNatLiteral n ->
+        return (mempty, n)
+      VFreeVar {} ->
+        return (mempty, 0)
+      VAdd AddNat e1 e2 -> do
+        (m1, b1) <- go e1
+        (m2, b2) <- go e2
+        return (m1 <> m2, b1 + b2)
+      _ -> throwError $ TypingError $ FailedIndexConstraintUnknown ctx value indexSize
