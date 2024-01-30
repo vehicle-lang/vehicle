@@ -17,6 +17,7 @@ import Vehicle.CommandLine
   )
 import Vehicle.Prelude
   ( Pretty (pretty),
+    developerError,
     indent,
     layoutAsString,
     line,
@@ -181,7 +182,9 @@ verifyTests =
 
 parserTest :: String -> String -> Options -> TestTree
 parserTest name command expected = testCase name $ do
-  let args = tail $ words command
+  let args = case words command of
+        (_ : as) -> as
+        _ -> developerError "Malformed command. Commands must start with 'vehicle'"
   let result = execParserPure defaultPrefs commandLineOptionsParserInfo args
 
   case result of
