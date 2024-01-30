@@ -1,23 +1,21 @@
 module Vehicle.Verify.QueryFormat.Marabou
   ( marabouQueryFormat,
+    compileVar,
   )
 where
 
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
-import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Vehicle.Backend.Queries.LinearExpr
-import Vehicle.Backend.Queries.Variable
-import Vehicle.Compile.Error (CompileError (UnsupportedInequality))
+import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Data.LinearExpr
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
+import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Marabou query format
@@ -27,7 +25,8 @@ marabouQueryFormat :: QueryFormat
 marabouQueryFormat =
   QueryFormat
     { queryFormatID = MarabouQueries,
-      compileQuery = compileMarabouQuery,
+      formatQuery = compileMarabouQuery,
+      supportsStrictInequalities = False,
       queryOutputFormat =
         ExternalOutputFormat
           { formatName = pretty MarabouQueries,
@@ -42,57 +41,56 @@ marabouQueryFormat =
 -- level.
 compileMarabouQuery ::
   (MonadLogger m, MonadError CompileError m) =>
-  DeclProvenance ->
-  CLSTProblem ->
+  QueryAddress ->
+  QueryContents ->
   m QueryText
-compileMarabouQuery propertyName (CLSTProblem variables assertions) = do
-  let variableNames = sequentialNetworkVariableNaming "x" "y" variables
-  let variableNamesMap = Map.fromList (zip variables variableNames)
-  assertionDocs <- forM assertions (compileAssertion propertyName variableNamesMap)
+compileMarabouQuery address (QueryContents _variables assertions) = do
+  assertionDocs <- forM assertions (compileAssertion address)
   let assertionsDoc = vsep assertionDocs
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
   (MonadLogger m, MonadError CompileError m) =>
-  DeclProvenance ->
-  Map NetworkVariable Name ->
-  Assertion NetworkVariable ->
+  QueryAddress ->
+  QueryAssertion ->
   m (Doc a)
-compileAssertion propertyName varNames assertion = do
-  let (coeffVars, rel, constant) = convertToSparseFormat varNames assertion
-  let (coeffVars', rel', constant', multipleVariables) =
-        case coeffVars of
-          (coeff, var) :| [] -> do
-            -- Workaround for bug
-            -- https://github.com/NeuralNetworkVerification/Marabou/issues/625
-            let newCoeffVars = (1, var) :| []
-            let newRel = if coeff < 0 then second flipOrder rel else rel
-            let newConstant = constant / coeff
-            (newCoeffVars, newRel, newConstant, False)
-          _ -> (coeffVars, rel, constant, True)
+compileAssertion address QueryAssertion {..} = do
+  let (coeffVars', rel', constant', multipleVariables) = case lhs of
+        (coeff, var) :| [] -> do
+          -- Workaround for bug https://github.com/NeuralNetworkVerification/Marabou/issues/625
+          let newCoeffVars = (1, var) :| []
+          let newRel = if coeff < 0 then flipQueryRel rel else rel
+          let newConstant = rhs / coeff
+          (newCoeffVars, newRel, newConstant, False)
+        _ -> (lhs, rel, rhs, True)
 
-  let compiledLHS = hsep (fmap (compileVar multipleVariables) coeffVars')
-  compiledRel <- compileRel propertyName rel'
+  compiledRel <- compileRel address rel'
+  let compiledLHS = hsep (fmap (compileCoefVar multipleVariables) coeffVars')
   let compiledRHS = prettyRationalAsFloat constant'
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: (MonadLogger m, MonadError CompileError m) => DeclProvenance -> Either EqualityOp OrderOp -> m (Doc a)
-compileRel declProv@(ident, _) = \case
-  Left Eq -> return "="
-  Left Neq -> throwError $ UnsupportedInequality MarabouQueries declProv
-  Right Le -> return "<="
-  Right Ge -> return ">="
+compileRel :: (MonadLogger m, MonadError CompileError m) => QueryAddress -> QueryRelation -> m (Doc a)
+compileRel address = \case
+  EqualRel -> return "="
+  OrderRel Le -> return "<="
+  OrderRel Ge -> return ">="
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-  Right Lt -> do
-    logWarning (UnsoundStrictOrderConversion (nameOf ident) MarabouQueries)
+  OrderRel Lt -> do
+    logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return "<="
-  Right Gt -> do
-    logWarning (UnsoundStrictOrderConversion (nameOf ident) MarabouQueries)
+  OrderRel Gt -> do
+    logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return ">="
 
-compileVar :: Bool -> (Rational, Name) -> Doc a
-compileVar False (1, var) = pretty var
-compileVar True (1, var) = "+" <> pretty var
-compileVar _ (-1, var) = "-" <> pretty var
-compileVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> pretty var
+compileCoefVar :: Bool -> (Coefficient, NetworkRationalVariable) -> Doc a
+compileCoefVar False (1, var) = compileVar var
+compileCoefVar True (1, var) = "+" <> compileVar var
+compileCoefVar _ (-1, var) = "-" <> compileVar var
+compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> compileVar var
+
+compileVar :: NetworkRationalVariable -> Doc a
+compileVar var = do
+  let name = if inputOrOutput (originalVar var) == Input then "x" else "y"
+  let index = computeAbsoluteIndex var
+  name <> pretty index

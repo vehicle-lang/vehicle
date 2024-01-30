@@ -3,6 +3,7 @@ module Vehicle.Export where
 import Control.Monad.IO.Class (MonadIO (..))
 import Vehicle.Backend.Prelude
 import Vehicle.Compile
+import Vehicle.Prelude.IO (MonadStdIO)
 import Vehicle.Prelude.Logging
 import Vehicle.Resource
 import Vehicle.Verify.Specification (SpecificationCacheIndex (..))
@@ -16,7 +17,7 @@ data ExportOptions = ExportOptions
   }
   deriving (Eq, Show)
 
-export :: LoggingSettings -> ExportOptions -> IO ()
+export :: (MonadStdIO IO) => LoggingSettings -> ExportOptions -> IO ()
 export loggingSettings ExportOptions {..} = do
   let cacheIndexFile = specificationCacheIndexFileName verificationCache
   SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex cacheIndexFile

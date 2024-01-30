@@ -3,39 +3,29 @@ module Vehicle.Backend.Queries
   )
 where
 
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.State (MonadState (..), evalStateT)
-import Data.List.NonEmpty as NonEmpty (unzip)
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
-import Data.Traversable (for)
+import Data.Bifunctor (Bifunctor (..))
+import Data.Maybe (isNothing, maybeToList)
+import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
-import Vehicle.Backend.Queries.IfElimination (unfoldIf)
-import Vehicle.Backend.Queries.LinearExpr
-import Vehicle.Backend.Queries.NetworkElimination
-import Vehicle.Backend.Queries.QuerySetStructure
-import Vehicle.Backend.Queries.UsedFunctions
+import Vehicle.Backend.Queries.PostProcessing (compileQueryToFormat)
 import Vehicle.Backend.Queries.UserVariableElimination (eliminateUserVariables)
-import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), NetworkVariable (..), UserVariableCtx, pattern VInfiniteQuantifier)
+import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinPatterns
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
-import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector))
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -52,7 +42,7 @@ currentPass = "compilation of properties"
 -- verifier and outputs them. We need to output them as they are generated as
 -- otherwise storing all the queries can result in an out-of-memory errors.
 compileToQueries ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   QueryFormat ->
   Prog Ix Builtin ->
   Resources ->
@@ -66,13 +56,13 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
       Just folder -> liftIO $ createDirectoryIfMissing True folder
 
     -- Expand out the external resources in the specification (datasets, networks etc.)
-    (Main resourceFreeDecls, networkCtx, freeCtx, integrityInfo) <- expandResources resources typedProg
+    (Main resourceFreeDecls, networkCtx, freeCtx, integrityInfo) <-
+      expandResources resources typedProg
 
     -- Perform the actual compilation to queries
     properties <-
-      runFreeContextT
-        freeCtx
-        (compileDecls typedProg queryFormat networkCtx mempty resourceFreeDecls maybeVerificationFolder)
+      runFreeContextT freeCtx $
+        compileDecls typedProg queryFormat networkCtx 0 resourceFreeDecls maybeVerificationFolder
 
     -- Check that there were actually properties in the specification.
     when (null properties) $ do
@@ -88,74 +78,80 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 -- Getting properties
 
 compileDecls ::
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
   QueryFormat ->
   NetworkContext ->
-  UsedFunctionsCtx ->
+  PropertyID ->
   [Decl Ix Builtin] ->
   Maybe FilePath ->
   m [(Name, MultiProperty ())]
 compileDecls _ _ _ _ [] _ = return []
-compileDecls prog queryFormat networkCtx usedFunctionCtx (d : ds) outputLocation = do
+compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
   property <- case d of
     DefFunction p ident anns _ body
-      | isProperty anns ->
-          Just
-            <$> compilePropertyDecl prog queryFormat networkCtx usedFunctionCtx p ident body outputLocation
+      | isProperty anns -> do
+          unalteredFreeContext <- getFreeCtx (Proxy @Builtin)
+          let propertyData = (queryFormat, unalteredFreeContext, networkCtx, (ident, p), propertyID)
+          locallyAdjustCtx (Proxy @Builtin) convertVectorOpsToPostulates $ do
+            Just <$> compilePropertyDecl prog propertyData body outputLocation
     _ -> return Nothing
 
-  let maybeUsedFunctionsInfo = getUsedFunctions usedFunctionCtx mempty <$> bodyOf d
-  let usedFunctionsInfo = fromMaybe mempty maybeUsedFunctionsInfo
-  -- We use `insertWith` to choose the old value here because expanded resources already exist in the map.
-  let newUsedFunctionCtx = Map.insertWith (const id) (identifierOf d) usedFunctionsInfo usedFunctionCtx
-
   addDeclToContext d $ do
-    properties <- compileDecls prog queryFormat networkCtx newUsedFunctionCtx ds outputLocation
+    let newPropertyID = if isNothing property then propertyID else propertyID + 1
+    properties <- compileDecls prog queryFormat networkCtx newPropertyID ds outputLocation
     return $ maybeToList property ++ properties
 
+type MultiPropertyMetaData =
+  ( QueryFormat,
+    FreeCtx Builtin,
+    NetworkContext,
+    DeclProvenance,
+    Int
+  )
+
+updateMetaData :: MultiPropertyMetaData -> TensorIndices -> PropertyMetaData
+updateMetaData (queryFormat, unalteredFreeCtx, networkCtx, declProvenance, propertyID) indices =
+  PropertyMetaData
+    { networkCtx = networkCtx,
+      queryFormat = queryFormat,
+      unalteredFreeContext = unalteredFreeCtx,
+      propertyProvenance = declProvenance,
+      propertyAddress = PropertyAddress propertyID (nameOf $ fst declProvenance) indices
+    }
+
 compilePropertyDecl ::
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   Prog Ix Builtin ->
-  QueryFormat ->
-  NetworkContext ->
-  UsedFunctionsCtx ->
-  Provenance ->
-  Identifier ->
+  MultiPropertyMetaData ->
   Expr Ix Builtin ->
   Maybe FilePath ->
   m (Name, MultiProperty ())
-compilePropertyDecl prog queryFormat networkCtx queryFreeCtx p ident expr outputLocation = do
+compilePropertyDecl prog propertyData@(_, _, _, declProv@(ident, _), _) expr outputLocation = do
   logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
-    normalisedExpr <- whilePreservingOperations vectorOperations $ normaliseInEmptyEnv expr
+    normalisedExpr <- normaliseInEmptyEnv expr
+    multiProperty <-
+      compileMultiProperty propertyData outputLocation normalisedExpr
+        `catchError` handlePropertyCompileError prog propertyData
+    return (nameOf (fst declProv), multiProperty)
 
-    let computeProperty = compileMultiProperty queryFormat networkCtx queryFreeCtx p ident outputLocation normalisedExpr
-
-    property <-
-      computeProperty `catchError` \e -> do
-        let formatID = queryFormatID queryFormat
-        case e of
-          UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog (ident, p)
-          UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog (ident, p)
-          _ -> throwError e
-
-    return (nameOf ident, property)
+handlePropertyCompileError :: (MonadCompile m) => Prog Ix Builtin -> MultiPropertyMetaData -> CompileError -> m a
+handlePropertyCompileError prog (queryFormat, _, _, declProv, _) e = case e of
+  UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity (queryFormatID queryFormat) prog declProv
+  UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers (queryFormatID queryFormat) prog declProv
+  _ -> throwError e
 
 -- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
 -- by recursing through the levels of vectors until it reaches something of
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadIO m, MonadCompile m, MonadFreeContext Builtin m) =>
-  QueryFormat ->
-  NetworkContext ->
-  UsedFunctionsCtx ->
-  Provenance ->
-  Identifier ->
+  (MonadStdIO m, MonadFreeContext QueryBuiltin m) =>
+  MultiPropertyMetaData ->
   Maybe FilePath ->
   WHNFValue Builtin ->
   m (MultiProperty ())
-compileMultiProperty queryFormat networkCtx freeCtx p ident outputLocation = go []
+compileMultiProperty multiPropertyMetaData outputLocation = go []
   where
     go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
@@ -163,205 +159,40 @@ compileMultiProperty queryFormat networkCtx freeCtx p ident outputLocation = go 
         let es' = zip [0 :: QueryID ..] es
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
       _ -> do
+        let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
         let logFunction =
               if null indices
                 then id
-                else logCompilerPass MinDetail ("property" <+> squotes (pretty ident <> pretty (showTensorIndices indices)))
-
-        logFunction $ do
-          let propertyAddress = PropertyAddress (nameOf ident) indices
-          let propertyState = PropertyState queryFormat freeCtx networkCtx (ident, p) propertyAddress
-          evalStateT (runReaderT (compileProperty outputLocation expr) propertyState) 1
-          return $ SingleProperty propertyAddress ()
-
---------------------------------------------------------------------------------
--- Compilation
-
-data PropertyState = PropertyState
-  { queryFormat :: QueryFormat,
-    usedFunctionsCtx :: UsedFunctionsCtx,
-    networkCtx :: NetworkContext,
-    declProvenance :: DeclProvenance,
-    propertyAddress :: PropertyAddress
-  }
-
-type MonadCompileProperty m =
-  ( MonadCompile m,
-    MonadReader PropertyState m,
-    MonadState QueryID m,
-    MonadFreeContext Builtin m
-  )
+                else logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress)
+        flip runReaderT propertyMetaData $ do
+          logFunction $ do
+            compileSingleProperty outputLocation expr
+            return $ SingleProperty propertyAddress ()
 
 -- Compiles an individual property
-compileProperty ::
-  (MonadCompileProperty m, MonadIO m) =>
+compileSingleProperty ::
+  (MonadPropertyStructure m, MonadStdIO m) =>
   Maybe FilePath ->
   WHNFValue Builtin ->
   m ()
-compileProperty outputLocation expr = do
-  property <- compilePropertyTopLevelStructure expr
+compileSingleProperty outputLocation expr = do
+  queries <- eliminateUserVariables expr
 
-  PropertyState {..} <- ask
-  (propertyMetaData, propertyQueries) <- case property of
-    NonTrivial b -> do
-      let (metaData, queries) = (NonEmpty.unzip . fmap NonEmpty.unzip) b
-      return (NonTrivial metaData, NonTrivial queries)
-    Trivial status -> do
-      logWarning (TrivialProperty propertyAddress status)
-      return (Trivial status, Trivial status)
+  PropertyMetaData {..} <- ask
+  -- Warn if trivial.
+  case queries of
+    Trivial status -> logWarning (TrivialProperty propertyAddress status)
+    _ -> return ()
 
+  formattedQueries <- runSupplyT (traverseProperty compileQueryToFormat queries) [1 :: QueryID ..]
   case outputLocation of
     Nothing -> do
-      forQueryInProperty propertyQueries $ \(queryAddress, queryText) ->
-        programOutput $ line <> line <> pretty queryAddress <> line <> pretty queryText
+      forQueryInProperty formattedQueries $ \(queryMetaData, queryText) ->
+        programOutput $ line <> line <> pretty (queryAddress queryMetaData) <> line <> pretty queryText
     Just folder -> do
-      writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan propertyMetaData)
-      forQueryInProperty propertyQueries $ writeVerificationQuery queryFormat folder
+      let queryMetaTree = fmap (fmap (fmap fst)) formattedQueries
+      writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queryMetaTree)
+      forQueryInProperty formattedQueries $ writeVerificationQuery queryFormat folder
 
--- | Compiles the top-level structure of a property until it hits the first quantifier.
--- Assumptions - expression is well-typed in the empty context and of type Bool.
-compilePropertyTopLevelStructure ::
-  forall m.
-  (MonadCompileProperty m) =>
-  WHNFValue Builtin ->
-  m (Property (QueryMetaData, QueryText))
-compilePropertyTopLevelStructure = go
-  where
-    go :: WHNFValue Builtin -> m (Property (QueryMetaData, QueryText))
-    go expr = case expr of
-      VBoolLiteral {} -> compileQuerySet False expr
-      VBuiltinFunction Equals {} _ -> compileQuerySet False expr
-      VBuiltinFunction Order {} _ -> compileQuerySet False expr
-      VFreeVar ident _
-        | ident == identifierOf StdEqualsVector -> compileQuerySet False expr
-      VBuiltinFunction And [e1, e2] ->
-        andTrivial Conjunct <$> go (argExpr e1) <*> go (argExpr e2)
-      VBuiltinFunction Or [e1, e2] ->
-        orTrivial Disjunct <$> go (argExpr e1) <*> go (argExpr e2)
-      VBuiltinFunction Not [e] ->
-        case eliminateNot (argExpr e) of
-          Nothing -> compilerDeveloperError $ "Unable to push not through:" <+> prettyVerbose e
-          Just r -> go r
-      VBuiltinFunction If [_, c, x, y] -> do
-        let unfoldedIf = unfoldIf c (argExpr x) (argExpr y)
-        logDebug MaxDetail $ "Unfolded `if` to" <+> prettyFriendlyEmptyCtx unfoldedIf
-        go unfoldedIf
-      VInfiniteQuantifier Exists _ _ _ _ -> compileQuerySet False expr
-      VInfiniteQuantifier Forall args binder env body -> do
-        -- Have to check whether to negate the quantifier here, rather than at the top
-        -- of the property, as we may have parallel quantifiers of different polarities
-        -- e.g. (forall x . P x) and (exists y . Q y).
-        logDebug MinDetail ("Negating property..." <> line)
-        let negBody = BuiltinFunctionExpr mempty Not [Arg mempty Explicit Relevant body]
-        let negExpr = VInfiniteQuantifier Exists args binder env negBody
-        compileQuerySet True negExpr
-      -- This case only happens because we can't yet evaluate neural networks
-      -- when applied to real inputs. For example
-      -- `fold (\x r -> x > 0 and r) True (f [0])` won't evaluate because we
-      -- don't evaluate `f [0]`. If we fix that problem this case should disappear
-      -- because we can't have any abstract variables in the empty context so we
-      -- can't block the evaluation of `fold`.
-      VBuiltinFunction (Fold FoldVector) _ -> compileQuerySet False expr
-      _ -> unexpectedExprError "compilation of top-level property structure" (prettyVerbose expr)
-
-compileQuerySet ::
-  (MonadCompileProperty m) =>
-  Bool ->
-  WHNFValue Builtin ->
-  m (MaybeTrivial (BooleanExpr (QuerySet (QueryMetaData, QueryText))))
-compileQuerySet isPropertyNegated expr = do
-  let subsectionDoc = "compilation of set of queries:" <+> prettyFriendlyEmptyCtx expr
-  logCompilerPass MaxDetail subsectionDoc $ do
-    PropertyState {..} <- ask
-    let target = queryFormatID queryFormat
-    -- First we attempt to recursively compile down the remaining boolean structure,
-    -- stopping at the level of individual propositions (e.g. equality or ordering assertions)
-    (quantifiedVariables, boolExpr, userVariableReductionInfo) <-
-      compileSetQueryStructure target declProvenance usedFunctionsCtx networkCtx expr
-
-    metaNetworkPartitions <- replaceNetworkApplications declProvenance networkCtx quantifiedVariables boolExpr
-    let numberedMetaNetworkPartitions = zipDisjuncts [1 ..] metaNetworkPartitions
-    let compilePartition = compileMetaNetworkPartition userVariableReductionInfo quantifiedVariables
-    queries <- traverse compilePartition numberedMetaNetworkPartitions
-    let maybeFlattenedQueries = fmap concatDisjuncts (eliminateTrivialDisjunctions queries)
-    case maybeFlattenedQueries of
-      Trivial b -> return $ Trivial (isPropertyNegated `xor` b)
-      NonTrivial flattenedQueries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated flattenedQueries
-
-compileMetaNetworkPartition ::
-  (MonadCompileProperty m) =>
-  VariableNormalisationSteps ->
-  UserVariableCtx ->
-  (Int, MetaNetworkPartition) ->
-  m (MaybeTrivial (DisjunctAll (QueryAddress, (QueryMetaData, QueryText))))
-compileMetaNetworkPartition userVariableReductionSteps userVariables (partitionID, MetaNetworkPartition {..}) = do
-  PropertyState {..} <- ask
-  logCompilerPass MinDetail ("compilation of meta-network partition" <+> pretty partitionID) $ do
-    -- Convert it into linear satisfaction problems in the network variables
-    let mixedVariables = MixedVariables userVariables networkVars
-    clstQueries <- eliminateUserVariables declProvenance metaNetwork mixedVariables partitionExpr
-
-    -- Compile the query to the specific verifiers.
-    case clstQueries of
-      Trivial b -> do
-        logDebug MinDetail $ "Meta-network partition found to be trivially" <+> pretty b
-        return $ Trivial b
-      NonTrivial queries ->
-        NonTrivial
-          <$> for
-            queries
-            ( \(conjunctions, userVariableEliminationSteps) -> do
-                queryID <- get
-                put (queryID + 1)
-
-                checkIfInputsWellSpecificied conjunctions
-                let sortedConjunctions = sortCLSTProblem conjunctions
-                queryText <- compileQuery queryFormat declProvenance sortedConjunctions
-                let allVariableSteps = userVariableReductionSteps <> networkNormSteps <> userVariableEliminationSteps
-                let queryAddress = (propertyAddress, queryID)
-                let queryData = QueryData metaNetwork allVariableSteps
-
-                logDebug MaxDetail $ "Final query:" <> line <> indent 2 (pretty queryText) <> line
-                logDebug MaxDetail $ "Variable sequence:" <> line <> indent 2 (pretty allVariableSteps)
-
-                return (queryAddress, (queryData, queryText))
-            )
-
--- | Checks for presence of under-constrained input variables.
-checkIfInputsWellSpecificied ::
-  (MonadCompileProperty m) =>
-  CLSTProblem ->
-  m ()
-checkIfInputsWellSpecificied (CLSTProblem variables assertions) = do
-  PropertyState {..} <- ask
-  let property = propertyName propertyAddress
-  let format = queryFormatID queryFormat
-  let inputVariables = filter (\v -> inputOrOutput v == Input) variables
-  let initialStatuses = Map.fromList (fmap (,UnderConstrained Unconstrained) inputVariables)
-  let finalStatuses = foldr updateStatuses initialStatuses assertions
-
-  -- If Marabou, then warn if all inputs are constant.
-  -- See https://github.com/NeuralNetworkVerification/Marabou/issues/670
-  when (format == MarabouQueries && all (== Constant) finalStatuses) $
-    logWarning $
-      AllConstantInputsMarabouBug property
-
-  -- Check if all inputs are well-specified.
-  let underSpecified = mapMaybe (\(v, s) -> (v,) <$> toUnderConstrainedStatus s) $ Map.toList finalStatuses
-  unless (null underSpecified) $
-    logWarning $
-      UnderSpecifiedNetworkInputs property format underSpecified
-  where
-    updateStatuses ::
-      Assertion NetworkVariable ->
-      Map NetworkVariable VariableConstraintStatus ->
-      Map NetworkVariable VariableConstraintStatus
-    updateStatuses assertion statuses = case coefficientsList assertion of
-      [(v, c)] | inputOrOutput v == Input -> do
-        let status = case assertionRel assertion of
-              Equal -> Constant
-              _
-                | c >= 0 -> UnderConstrained BoundedAbove
-                | otherwise -> UnderConstrained BoundedBelow
-        Map.insertWith (<>) v status statuses
-      _ -> statuses
+convertVectorOpsToPostulates :: FreeCtx Builtin -> FreeCtx Builtin
+convertVectorOpsToPostulates = alterKeys vectorOperations (first convertToPostulate)

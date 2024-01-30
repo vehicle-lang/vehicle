@@ -10,7 +10,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free.Class
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -108,7 +108,7 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   -- solve constraints beforehand in order to allow for normalisation,
   -- but really only need to have solved type-class constraints.
   logDebug MaxDetail $ prettyVerbose substCheckedType
-  gluedType <- glueNBE emptyEnv substCheckedType
+  gluedType <- glueNBE emptyBoundEnv substCheckedType
   updatedCheckedType <- restrictAbstractDefType defSort (ident, p) gluedType
   let updatedCheckedDecl = DefAbstract p ident defSort updatedCheckedType
 
@@ -146,7 +146,7 @@ typeCheckFunction p ident anns typ body = do
 
   if isProperty anns
     then do
-      gluedDeclType <- glueNBE emptyEnv (typeOf substDecl)
+      gluedDeclType <- glueNBE emptyBoundEnv (typeOf substDecl)
       restrictPropertyType (ident, p) gluedDeclType
       solveConstraints (Just substDecl)
       substAgainDecl <- substMetas substDecl

@@ -1,3 +1,3 @@
 [93m
-Warning:  The property 'p' was found to evalute to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
+Warning:  The property 'p' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 [m

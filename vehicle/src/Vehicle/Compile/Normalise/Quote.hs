@@ -56,7 +56,7 @@ instance Quote (VArg strategy builtin) (Arg Ix builtin) where
 quoteApp :: Lv -> Provenance -> Expr Ix builtin -> Spine strategy builtin -> Expr Ix builtin
 quoteApp l p fn spine = normAppList p fn (fmap (quote p l) spine)
 
-envSubst :: Provenance -> Lv -> WHNFEnv builtin -> Substitution (Expr Ix builtin)
+envSubst :: Provenance -> Lv -> WHNFBoundEnv builtin -> Substitution (Expr Ix builtin)
 envSubst p level env i = case lookupIx env i of
   Nothing ->
     developerError $

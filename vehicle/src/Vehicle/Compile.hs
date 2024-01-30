@@ -5,7 +5,6 @@ module Vehicle.Compile
 where
 
 import Control.Monad (unless)
-import Control.Monad.IO.Class (MonadIO (..))
 import Data.Hashable (Hashable)
 import Data.Map qualified as Map
 import Vehicle.Backend.Agda
@@ -25,7 +24,7 @@ import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Prelude.Warning (CompileWarning (ResourcesUnnecessariyProvidedForBackend))
+import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -46,7 +45,7 @@ data CompileOptions = CompileOptions
   }
   deriving (Eq, Show)
 
-compile :: LoggingSettings -> CompileOptions -> IO ()
+compile :: (MonadStdIO IO) => LoggingSettings -> CompileOptions -> IO ()
 compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSettings $ do
   (imports, prog) <-
     typeCheckUserProg $
@@ -73,7 +72,7 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
 -- Backend-specific compilation functions
 
 compileToQueryFormat ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   (Imports, Prog Ix Builtin) ->
   Resources ->
   QueryFormatID ->
@@ -85,7 +84,7 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID output = do
   compileToQueries verifier mergedProg resources output
 
 compileToAgda ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   CompileOptions ->
   (Imports, Prog Ix Builtin) ->
   m ()
@@ -96,7 +95,7 @@ compileToAgda options@CompileOptions {..} (_, typedProg) = do
   writeAgdaFile output agdaCode
 
 compileToLossFunction ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   (Imports, Prog Ix Builtin) ->
   DifferentiableLogicID ->
   Maybe FilePath ->
@@ -109,7 +108,7 @@ compileToLossFunction (imports, typedProg) differentiableLogic output outputAsJS
   compileToTensors lossProg output outputAsJSON
 
 compileDirect ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
@@ -121,7 +120,7 @@ compileDirect (imports, typedProg) outputFile outputAsJSON = do
 
 compileToTensors ::
   forall builtin m.
-  (MonadCompile m, MonadIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
+  (MonadCompile m, MonadStdIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
   Prog Ix builtin ->
   Maybe FilePath ->
   Bool ->
@@ -151,4 +150,4 @@ warnIfResourcesProvided CompileOptions {..} = do
   let networks = fmap (Network,) (Map.keys networkLocations)
   let resources = parameters <> datasets <> networks
   unless (null resources) $ do
-    logWarning $ ResourcesUnnecessariyProvidedForBackend target resources
+    logWarning $ UnnecessaryResourcesProvided target resources

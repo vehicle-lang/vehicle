@@ -19,8 +19,8 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
+import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Data.BooleanExpr
-import Vehicle.Prelude
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
@@ -28,9 +28,10 @@ import Vehicle.Verify.Core
 --------------------------------------------------------------------------------
 -- Query meta data
 
-data QueryMetaData = QueryData
-  { metaNetwork :: MetaNetwork,
-    variableReconstruction :: VariableNormalisationSteps
+data QueryMetaData = QueryMetaData
+  { queryAddress :: QueryAddress,
+    metaNetwork :: MetaNetwork,
+    variableReconstruction :: UserVariableReconstruction
   }
   deriving (Show, Generic)
 
@@ -38,16 +39,17 @@ instance ToJSON QueryMetaData
 
 instance FromJSON QueryMetaData
 
+{-
 instance Pretty QueryMetaData where
-  pretty (QueryData metaNetwork _userVar) =
+  pretty (QueryMetaData _ metaNetwork _userVar) =
     "Meta-network:" <+> pretty metaNetwork
-
+-}
 --------------------------------------------------------------------------------
 -- Query set
 
 data QuerySet a = QuerySet
   { negated :: QuerySetNegationStatus,
-    queries :: DisjunctAll (QueryAddress, a)
+    queries :: DisjunctAll a
   }
   deriving (Show, Generic, Functor, Foldable, Traversable)
 
@@ -57,11 +59,11 @@ instance (FromJSON a) => FromJSON (QuerySet a)
 
 traverseQuerySet ::
   (Monad m) =>
-  ((QueryAddress, a) -> m b) ->
+  (a -> m b) ->
   QuerySet a ->
   m (QuerySet b)
 traverseQuerySet f QuerySet {..} = do
-  queries' <- traverse (\(address, query) -> (address,) <$> f (address, query)) queries
+  queries' <- traverse f queries
   return $ QuerySet negated queries'
 
 querySetSize :: QuerySet a -> Int
@@ -81,25 +83,15 @@ type Property a = MaybeTrivial (BooleanExpr (QuerySet a))
 traverseProperty ::
   forall m a b.
   (Monad m) =>
-  ((QueryAddress, a) -> m b) ->
+  (a -> m b) ->
   Property a ->
   m (Property b)
-traverseProperty f = \case
-  Trivial b -> return $ Trivial b
-  NonTrivial b -> NonTrivial <$> traverseBoolExpr b
-  where
-    traverseBoolExpr ::
-      BooleanExpr (QuerySet a) ->
-      m (BooleanExpr (QuerySet b))
-    traverseBoolExpr = \case
-      Query qs -> Query <$> traverseQuerySet f qs
-      Disjunct x y -> Disjunct <$> traverseBoolExpr x <*> traverseBoolExpr y
-      Conjunct x y -> Conjunct <$> traverseBoolExpr x <*> traverseBoolExpr y
+traverseProperty f = traverse (traverse (traverseQuerySet f))
 
 forQueryInProperty ::
   (Monad m) =>
   Property a ->
-  ((QueryAddress, a) -> m ()) ->
+  (a -> m ()) ->
   m ()
 forQueryInProperty p f = do
   _ <- traverseProperty f p

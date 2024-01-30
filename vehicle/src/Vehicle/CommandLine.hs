@@ -72,8 +72,6 @@ data Options = Options
 
 data GlobalOptions = GlobalOptions
   { version :: Bool,
-    outFile :: Maybe FilePath,
-    errFile :: Maybe FilePath,
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel
   }
@@ -83,8 +81,6 @@ defaultGlobalOptions :: GlobalOptions
 defaultGlobalOptions =
   GlobalOptions
     { version = False,
-      outFile = Nothing,
-      errFile = Nothing,
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel
     }
@@ -152,8 +148,6 @@ globalOptionsParser :: Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> showVersionParser
-    <*> redirectStdoutParser
-    <*> redirectStderrParser
     <*> redirectLogsParser
     <*> loggingLevelParser
 
@@ -318,28 +312,6 @@ showVersionParser =
     long "version"
       <> short 'v'
       <> help "Show version information."
-
-redirectStdoutParser :: Parser (Maybe FilePath)
-redirectStdoutParser =
-  optional $
-    strOption $
-      long "redirect-stdout"
-        <> internal
-        <> metavar "FILE"
-        <> help
-          "Redirects the standard output to the provided file. \
-          \ If no argument is provided will default to stdout."
-
-redirectStderrParser :: Parser (Maybe FilePath)
-redirectStderrParser =
-  optional $
-    strOption $
-      long "redirect-stderr"
-        <> internal
-        <> metavar "FILE"
-        <> help
-          "Redirects the standard error to the provided file. \
-          \ If no argument is provided will default to stderr."
 
 redirectLogsParser :: Parser (Maybe FilePath)
 redirectLogsParser =

@@ -49,8 +49,11 @@ unitTestCase testName errorOrAssertionWithLogs =
     traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
     traceLogs logLevel e = do
       let e' = logCompileError e
-      (v, logs) <- runDelayedLoggerT logLevel e'
-      let result = if null logs then v else trace (showMessages logs) v
+      (v, logs, warnings) <- runDelayedLoggerT logLevel e'
+      let result =
+            if null logs && null warnings
+              then v
+              else trace (show logs <> showCompileWarnings warnings) v
       case result of
         Left x -> developerError $ pretty $ details x
         Right y -> y

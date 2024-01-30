@@ -5,6 +5,7 @@ import Data.Text (Text)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Verifiers

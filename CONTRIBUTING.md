@@ -329,6 +329,9 @@ The logging level can be changed by changing the command in the `test.json` file
 
 Some golden tests require external tools, such as the MarabouVerify test above. To run these tests, add `--test-option="--allowlist-externals=<external>"` to the test command, where `<external>` is the name of the external dependency, such as `Marabou`.
 
+Some golden tests diff extremely large files such as `.vcl-plan`s, for which the diff isn't very meaningful.
+In order to only display the change in size for a given file type, add `--test-option="--sizeOnly=<extension>"` to the test command, where `<extension>` is the extension of the chosen file type.
+
 ##### Adding golden tests
 
 To create a new golden test, you can use the `new-golden-test` command.
@@ -447,7 +450,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.11.0`.
+   This should print `0.11.1`.
 
 ### Building the Vehicle Python bindings
 
@@ -570,14 +573,14 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    pipx run tox
    ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.11.0-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.11.0-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -722,7 +725,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.11.0`.
+   This should print `0.11.1`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -917,11 +920,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.11.0-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.0-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.0-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.0-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.0-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.11.1-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.11.1-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.11.1-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.11.1-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -942,7 +945,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.11.0>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.11.1>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

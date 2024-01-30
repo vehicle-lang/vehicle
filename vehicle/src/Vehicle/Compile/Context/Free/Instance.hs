@@ -13,6 +13,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Data.BuiltinInterface (HasStandardData)
+import Vehicle.Prelude.IO qualified as VIO
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation
@@ -53,6 +54,7 @@ instance (MonadLogger m) => MonadLogger (FreeContextT builtin m) where
   decrCallDepth = FreeContextT decrCallDepth
   getDebugLevel = FreeContextT getDebugLevel
   logMessage = FreeContextT . logMessage
+  logWarning = FreeContextT . logWarning
 
 instance (MonadError e m) => MonadError e (FreeContextT builtin m) where
   throwError = lift . throwError
@@ -69,6 +71,12 @@ instance (MonadReader s m) => MonadReader s (FreeContextT builtin m) where
 instance (MonadIO m) => MonadIO (FreeContextT builtin m) where
   liftIO = lift . liftIO
 
+instance (MonadStdIO m) => MonadStdIO (FreeContextT builtin m) where
+  writeStdout = lift . VIO.writeStdout
+  writeStderr = lift . VIO.writeStderr
+  writeStdoutLn = lift . VIO.writeStdoutLn
+  writeStderrLn = lift . VIO.writeStderrLn
+
 --------------------------------------------------------------------------------
 -- Context monad preservation
 
@@ -76,8 +84,8 @@ instance
   (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
-  addDeclToContext decl cont = FreeContextT $ do
-    let updateCtx = Map.insert (identifierOf decl) decl
+  addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do
+    let updateCtx = Map.insert (identifierOf decl) entry
     local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask

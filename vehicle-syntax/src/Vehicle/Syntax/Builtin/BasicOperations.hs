@@ -7,6 +7,7 @@ module Vehicle.Syntax.Builtin.BasicOperations
     OrderOp (..),
     orderOp,
     orderOpName,
+    Strictness (..),
     isStrict,
     flipStrictness,
     flipOrder,
@@ -16,7 +17,7 @@ module Vehicle.Syntax.Builtin.BasicOperations
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
@@ -128,6 +129,18 @@ flipOrder = \case
 
 chainable :: OrderOp -> OrderOp -> Bool
 chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
+
+--------------------------------------------------------------------------------
+-- Strictness
+
+data Strictness
+  = Strict
+  | NonStrict
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON Strictness
+
+instance FromJSON Strictness
 
 --------------------------------------------------------------------------------
 -- Quantifiers

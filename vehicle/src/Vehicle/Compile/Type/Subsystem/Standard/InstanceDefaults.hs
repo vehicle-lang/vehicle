@@ -8,7 +8,7 @@ import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 
 instance HasInstanceDefaults StandardTypingBuiltin where

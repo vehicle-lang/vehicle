@@ -11,10 +11,11 @@ import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 import Vehicle.Backend.Prelude
 import Vehicle.Prelude
+import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Prelude.Logging
 
 writeAgdaFile ::
-  (MonadLogger m, MonadIO m) =>
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
   Maybe FilePath ->
   Doc a ->
   m ()
@@ -31,7 +32,7 @@ agdaOutputFormat =
 
 -- TODO This really needs to move.
 writeResultToFile ::
-  (MonadIO m, MonadLogger m) =>
+  (MonadIO m, MonadStdIO m, MonadLogger m) =>
   Maybe ExternalOutputFormat ->
   Maybe FilePath ->
   Doc a ->
@@ -39,7 +40,7 @@ writeResultToFile ::
 writeResultToFile target filepath doc = do
   let text = layoutAsText $ prependfileHeader doc target
   case filepath of
-    Nothing -> liftIO $ TIO.putStrLn text
+    Nothing -> VIO.writeStdoutLn text
     Just outputFilePath -> do
       logDebug MaxDetail $ "Creating file:" <+> pretty filepath
       liftIO $ do

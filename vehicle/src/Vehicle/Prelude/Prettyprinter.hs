@@ -10,12 +10,15 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
+-- This stuff we re-export
+
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Version (Version, showVersion)
--- This stuff we re-export
 import Data.Void (Void)
 import Prettyprinter (group, line', surround, unAnnotate)
 import Prettyprinter as CommonPrettyprinter
@@ -68,6 +71,11 @@ numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1 :: Int) .
 
 prettyFlatList :: [Doc ann] -> Doc ann
 prettyFlatList xs = "[" <+> commaSep xs <+> "]"
+
+prettyNonEmptyList :: NonEmpty (Doc ann) -> Doc ann
+prettyNonEmptyList xs = case NonEmpty.init xs of
+  [] -> NonEmpty.last xs
+  ys -> commaSep ys <+> "and" <+> NonEmpty.last xs
 
 --------------------------------------------------------------------------------
 -- Useful utility functions

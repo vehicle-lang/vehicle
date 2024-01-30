@@ -9,7 +9,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Semigroup (..))
 import GHC.Generics (Generic)
-import Vehicle.Prelude (Doc, Pretty (..), indent, line, prependList)
+import Vehicle.Prelude (Pretty (..), cartesianProduct, indent, line, prependList)
 
 --------------------------------------------------------------------------------
 -- Triviality
@@ -35,6 +35,13 @@ instance (Pretty a) => Pretty (MaybeTrivial a) where
     Trivial True -> "TriviallyTrue"
     Trivial False -> "TriviallyFalse"
     NonTrivial a -> pretty a
+
+bindMaybeTrivial :: MaybeTrivial a -> (a -> MaybeTrivial b) -> MaybeTrivial b
+bindMaybeTrivial (NonTrivial x) f = f x
+bindMaybeTrivial (Trivial b) _ = Trivial b
+
+flattenTrivial :: MaybeTrivial (MaybeTrivial a) -> MaybeTrivial a
+flattenTrivial x = bindMaybeTrivial x id
 
 maybeTrivialToEither :: MaybeTrivial a -> Either Bool a
 maybeTrivialToEither = \case
@@ -66,8 +73,8 @@ andTrivial f x y = case (x, y) of
 -- BooleanExpr
 
 data BooleanExpr a
-  = Conjunct (BooleanExpr a) (BooleanExpr a)
-  | Disjunct (BooleanExpr a) (BooleanExpr a)
+  = Conjunct (ConjunctAll (BooleanExpr a))
+  | Disjunct (DisjunctAll (BooleanExpr a))
   | Query a
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
@@ -76,38 +83,42 @@ instance (ToJSON a) => ToJSON (BooleanExpr a)
 instance (FromJSON a) => FromJSON (BooleanExpr a)
 
 instance (Pretty a) => Pretty (BooleanExpr a) where
-  pretty = prettyBoolExpr pretty
-
-prettyBoolExpr :: (a -> Doc b) -> (BooleanExpr a -> Doc b)
-prettyBoolExpr f = \case
-  Query x -> f x
-  Disjunct x y -> "Or" <> line <> indent 2 (prettyBoolExpr f x <> line <> prettyBoolExpr f y)
-  Conjunct x y -> "And" <> line <> indent 2 (prettyBoolExpr f x <> line <> prettyBoolExpr f y)
-
-flatten :: BooleanExpr a -> [a]
-flatten = \case
-  Query a -> [a]
-  Disjunct e1 e2 -> flatten e1 <> flatten e2
-  Conjunct e1 e2 -> flatten e1 <> flatten e2
+  pretty = \case
+    Query x -> pretty x
+    Disjunct xs -> pretty xs
+    Conjunct xs -> pretty xs
 
 evaluate :: (a -> Bool) -> BooleanExpr a -> Bool
 evaluate f = \case
   Query v -> f v
-  Disjunct x y -> evaluate f x || evaluate f y
-  Conjunct x y -> evaluate f x && evaluate f y
+  Disjunct xs -> any (evaluate f) xs
+  Conjunct xs -> all (evaluate f) xs
 
 eliminateTrivialAtoms :: BooleanExpr (MaybeTrivial a) -> MaybeTrivial (BooleanExpr a)
 eliminateTrivialAtoms = \case
   Query (NonTrivial a) -> NonTrivial (Query a)
   Query (Trivial b) -> Trivial b
-  Conjunct a b -> andTrivial Conjunct (eliminateTrivialAtoms a) (eliminateTrivialAtoms b)
-  Disjunct a b -> orTrivial Disjunct (eliminateTrivialAtoms a) (eliminateTrivialAtoms b)
+  Conjunct xs -> Conjunct <$> eliminateTrivialConjunctions (fmap eliminateTrivialAtoms xs)
+  Disjunct xs -> Disjunct <$> eliminateTrivialDisjunctions (fmap eliminateTrivialAtoms xs)
 
-concatBooleanExpr :: BooleanExpr (BooleanExpr a) -> BooleanExpr a
-concatBooleanExpr = \case
-  Query a -> a
-  Conjunct a b -> Conjunct (concatBooleanExpr a) (concatBooleanExpr b)
-  Disjunct a b -> Disjunct (concatBooleanExpr a) (concatBooleanExpr b)
+filterTrivialAtoms :: MaybeTrivial (BooleanExpr (MaybeTrivial a)) -> MaybeTrivial (BooleanExpr a)
+filterTrivialAtoms = flattenTrivial . fmap eliminateTrivialAtoms
+
+conjunct :: [a] -> MaybeTrivial (BooleanExpr a)
+conjunct [] = Trivial True
+conjunct (x : xs) = NonTrivial $ Conjunct (ConjunctAll (fmap Query (x :| xs)))
+
+andBoolExpr :: BooleanExpr a -> BooleanExpr a -> BooleanExpr a
+andBoolExpr (Conjunct (ConjunctAll xs)) (Conjunct (ConjunctAll ys)) = Conjunct (ConjunctAll (xs <> ys))
+andBoolExpr (Conjunct (ConjunctAll xs)) y = Conjunct (ConjunctAll ([y] <> xs))
+andBoolExpr x (Conjunct (ConjunctAll ys)) = Conjunct (ConjunctAll ([x] <> ys))
+andBoolExpr x y = Conjunct $ ConjunctAll [x, y]
+
+orBoolExpr :: BooleanExpr a -> BooleanExpr a -> BooleanExpr a
+orBoolExpr (Disjunct (DisjunctAll xs)) (Disjunct (DisjunctAll ys)) = Disjunct (DisjunctAll (xs <> ys))
+orBoolExpr (Disjunct (DisjunctAll xs)) y = Disjunct (DisjunctAll (xs <> [y]))
+orBoolExpr x (Disjunct (DisjunctAll ys)) = Disjunct (DisjunctAll ([x] <> ys))
+orBoolExpr x y = Disjunct $ DisjunctAll [x, y]
 
 --------------------------------------------------------------------------------
 -- Disjunctions
@@ -122,7 +133,7 @@ instance (ToJSON a) => ToJSON (DisjunctAll a)
 instance (FromJSON a) => FromJSON (DisjunctAll a)
 
 instance (Pretty a) => Pretty (DisjunctAll a) where
-  pretty x = "Or" <> pretty (unDisjunctAll x)
+  pretty x = "Or" <> line <> indent 2 (pretty (unDisjunctAll x))
 
 eliminateTrivialDisjunctions :: DisjunctAll (MaybeTrivial a) -> MaybeTrivial (DisjunctAll a)
 eliminateTrivialDisjunctions disjunction = do
@@ -135,8 +146,8 @@ eliminateTrivialDisjunctions disjunction = do
       [] -> Trivial False
       x : xs -> NonTrivial $ DisjunctAll (x :| xs)
 
-concatDisjuncts :: DisjunctAll (DisjunctAll a) -> DisjunctAll a
-concatDisjuncts xs = DisjunctAll $ sconcat (coerce xs)
+disjunctDisjuncts :: DisjunctAll (DisjunctAll a) -> DisjunctAll a
+disjunctDisjuncts xs = DisjunctAll $ sconcat (coerce xs)
 
 zipDisjuncts :: NonEmpty a -> DisjunctAll b -> DisjunctAll (a, b)
 zipDisjuncts xs ys = DisjunctAll $ NonEmpty.zip xs (unDisjunctAll ys)
@@ -144,16 +155,27 @@ zipDisjuncts xs ys = DisjunctAll $ NonEmpty.zip xs (unDisjunctAll ys)
 singletonDisjunct :: a -> DisjunctAll a
 singletonDisjunct a = DisjunctAll [a]
 
+disjunctsToList :: DisjunctAll a -> [a]
+disjunctsToList = NonEmpty.toList . unDisjunctAll
+
+conjunctDisjuncts :: (a -> b -> c) -> DisjunctAll a -> DisjunctAll b -> DisjunctAll c
+conjunctDisjuncts f xs ys =
+  DisjunctAll $ NonEmpty.fromList (cartesianProduct f (disjunctsToList xs) (disjunctsToList ys))
+
 --------------------------------------------------------------------------------
 -- Conjunctions
 
 newtype ConjunctAll a = ConjunctAll
   { unConjunctAll :: NonEmpty a
   }
-  deriving (Show, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
+  deriving (Show, Semigroup, Functor, Applicative, Monad, Foldable, Traversable, Generic)
 
 instance (Pretty a) => Pretty (ConjunctAll a) where
-  pretty x = "And" <> pretty (unConjunctAll x)
+  pretty x = "And" <> line <> indent 2 (pretty (unConjunctAll x))
+
+instance (ToJSON a) => ToJSON (ConjunctAll a)
+
+instance (FromJSON a) => FromJSON (ConjunctAll a)
 
 conjunctsToList :: ConjunctAll a -> [a]
 conjunctsToList = NonEmpty.toList . unConjunctAll
@@ -179,22 +201,19 @@ eliminateTrivialConjunctions conjunction = do
 -- DNF
 
 -- | A tree of expressions in disjunctive normal form.
-type DNFTree a = MaybeTrivial (DisjunctAll (ConjunctAll a))
+type DNFTree a = DisjunctAll (ConjunctAll a)
 
 orDNF :: DNFTree a -> DNFTree a -> DNFTree a
-orDNF = orTrivial (<>)
+orDNF = (<>)
 
 andDNF :: DNFTree a -> DNFTree a -> DNFTree a
-andDNF = andTrivial $ \(DisjunctAll cs) (DisjunctAll ds) -> createAllConjunctions cs ds
-  where
-    createAllConjunctions cs ds =
-      DisjunctAll $ NonEmpty.fromList [as <> bs | as <- NonEmpty.toList cs, bs <- NonEmpty.toList ds]
+andDNF = conjunctDisjuncts (<>)
 
 singletonDNF :: a -> DNFTree a
-singletonDNF a = NonTrivial $ DisjunctAll [ConjunctAll [a]]
+singletonDNF a = DisjunctAll [ConjunctAll [a]]
 
 exprToDNF :: BooleanExpr a -> DNFTree a
 exprToDNF = \case
   Query a -> singletonDNF a
-  Conjunct a b -> andDNF (exprToDNF a) (exprToDNF b)
-  Disjunct a b -> orDNF (exprToDNF a) (exprToDNF b)
+  Conjunct xs -> foldr1 andDNF (fmap exprToDNF xs)
+  Disjunct xs -> foldr1 orDNF (fmap exprToDNF xs)

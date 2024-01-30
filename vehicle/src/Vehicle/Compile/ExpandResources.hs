@@ -7,7 +7,7 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Writer (MonadWriter, WriterT (..), tell)
+import Control.Monad.Writer (WriterT (..), tell)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
@@ -19,11 +19,10 @@ import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
@@ -37,8 +36,8 @@ expandResources ::
   m (Prog Ix Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
-    ((progWithoutResources, (networkCtx, inferableParameterCtx)), partialFreeCtx) <-
-      runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty)))
+    ((progWithoutResources, (networkCtx, inferableParameterCtx, _explicitParameterCtx)), partialFreeCtx) <-
+      runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty, mempty)))
 
     checkForUnusedResources resources partialFreeCtx
 
@@ -46,26 +45,19 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> Decl Ix Builtin
+mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> (WHNFDecl Builtin, Type Ix Builtin)
 mkFunctionDefFromResource p ident value = do
   -- We're doing something wrong here as we only really need the value.
   -- We should really be storing the parameter values in their own environment,
   -- as values rather than as declarations in the free var context.
-  let gluedType = Builtin mempty (BuiltinType Unit)
-  let gluedExpr = unnormalise 0 value
-  DefFunction p ident mempty gluedType gluedExpr
+  let unnormType = Builtin mempty (BuiltinType Unit)
+  (DefFunction p ident mempty VUnitType value, unnormType)
 
 addFunctionDefFromResource :: (MonadReadResources m) => Provenance -> Identifier -> WHNFValue Builtin -> m ()
 addFunctionDefFromResource p ident value = do
+  noteExplicitParameter ident value
   let decl = mkFunctionDefFromResource p ident value
   tell (Map.singleton ident decl)
-
-type MonadReadResources m =
-  ( MonadIO m,
-    MonadExpandResources m,
-    MonadFreeContext Builtin m,
-    MonadWriter (FreeCtx Builtin) m
-  )
 
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
@@ -80,7 +72,8 @@ readResourcesInDecls = \case
     maybeDecl <- case decl of
       DefFunction {} -> return $ Just decl
       DefAbstract p ident defType declType -> do
-        gluedType <- Glued declType <$> normaliseInEmptyEnv declType
+        normalisedType <- normaliseInEmptyEnv declType
+        let gluedType = Glued declType normalisedType
         case defType of
           ParameterDef sort -> case sort of
             Inferable -> do
@@ -100,7 +93,7 @@ readResourcesInDecls = \case
             networkLocations <- asks networks
             networkDetails <- checkNetwork networkLocations (ident, p) gluedType
             addNetworkType ident networkDetails
-            tell (Map.singleton ident decl)
+            tell (Map.singleton ident (DefAbstract p ident defType normalisedType, declType))
             return Nothing
           PostulateDef ->
             return (Just decl)
@@ -154,4 +147,4 @@ warnIfUnusedResources resourceType given found = do
   let unusedParams = givenNames `Set.difference` foundNames
   when (Set.size unusedParams > 0) $
     logWarning $
-      UnusedResource resourceType unusedParams
+      UnusedResources resourceType unusedParams

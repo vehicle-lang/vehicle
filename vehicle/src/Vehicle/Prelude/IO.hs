@@ -10,13 +10,21 @@ module Vehicle.Prelude.IO
     programOutput,
     getVehiclePath,
     ExternalOutputFormat (..),
+    MonadStdIO (..),
   )
 where
 
 import Control.Exception (catch, throwIO)
 -- import Control.Monad (forM_)
 
+import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Identity (IdentityT)
+import Control.Monad.Reader (ReaderT)
+import Control.Monad.State (StateT)
+import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Writer (WriterT)
+import Data.Text (Text)
 import Data.Version (Version)
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
@@ -26,6 +34,57 @@ import System.FilePath ((</>))
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
+
+--------------------------------------------------------------------------------
+-- Streams
+
+class (MonadIO m) => MonadStdIO m where
+  writeStdout :: Text -> m ()
+  writeStderr :: Text -> m ()
+
+  writeStdoutLn :: Text -> m ()
+  writeStdoutLn = writeStdout . (<> "\n")
+
+  writeStderrLn :: Text -> m ()
+  writeStderrLn = writeStderr . (<> "\n")
+
+{-# SPECIALIZE writeStdout :: Text -> IO () #-}
+
+{-# SPECIALIZE writeStdoutLn :: Text -> IO () #-}
+
+{-# SPECIALIZE writeStderr :: Text -> IO () #-}
+
+{-# SPECIALIZE writeStderrLn :: Text -> IO () #-}
+
+instance (MonadStdIO m) => MonadStdIO (StateT s m) where
+  writeStdout :: (MonadStdIO m) => Text -> StateT s m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (MonadStdIO m) => Text -> StateT s m ()
+  writeStderr = lift . writeStderr
+
+instance (MonadStdIO m) => MonadStdIO (ReaderT s m) where
+  writeStdout :: (MonadStdIO m) => Text -> ReaderT s m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (MonadStdIO m) => Text -> ReaderT s m ()
+  writeStderr = lift . writeStderr
+
+instance (Monoid w, MonadStdIO m) => MonadStdIO (WriterT w m) where
+  writeStdout :: (Monoid w, MonadStdIO m) => Text -> WriterT w m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (Monoid w, MonadStdIO m) => Text -> WriterT w m ()
+  writeStderr = lift . writeStderr
+
+instance (MonadStdIO m) => MonadStdIO (IdentityT m) where
+  writeStdout = lift . writeStdout
+  writeStderr = lift . writeStderr
+  writeStdoutLn = lift . writeStdoutLn
+  writeStderrLn = lift . writeStderrLn
+
+instance (MonadStdIO m) => MonadStdIO (ExceptT e m) where
+  writeStdout :: (MonadStdIO m) => Text -> ExceptT e m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (MonadStdIO m) => Text -> ExceptT e m ()
+  writeStderr = lift . writeStderr
 
 --------------------------------------------------------------------------------
 -- Files

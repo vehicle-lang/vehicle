@@ -11,31 +11,32 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------
 -- Network typing
 
 checkNetwork ::
   forall m.
-  (MonadExpandResources m) =>
+  (MonadReadResources m) =>
   NetworkLocations ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (FilePath, NetworkType)
+  m NetworkContextInfo
 checkNetwork networkLocations decl@(ident, _) networkType = do
   case Map.lookup (identifierName ident) networkLocations of
     Nothing -> throwError $ ResourceNotProvided decl Network
     Just location -> do
       typ <- getNetworkType decl networkType
-      return (location, typ)
+      return $ NetworkContextInfo location typ
 
 -- | Decomposes the Pi types in a network type signature, checking that the
 --  binders are explicit and their types are equal.
 getNetworkType ::
   forall m.
-  (MonadExpandResources m) =>
+  (MonadReadResources m) =>
   DeclProvenance ->
   GluedType Builtin ->
   m NetworkType
@@ -70,17 +71,19 @@ getNetworkType decl networkType = case normalised networkType of
                 return (elemType, [])
 
     getTensorDimension :: InputOrOutput -> WHNFType Builtin -> m Int
-    getTensorDimension io dim =
-      case dim of
-        VNatLiteral n -> return n
-        VFreeVar varIdent _ -> do
-          implicitParameters <- getInferableParameterContext
-          case Map.lookup varIdent implicitParameters of
-            Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
-            Just Left {} -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
-            Just (Right (_, _, d)) -> return d
-        dims ->
-          throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+    getTensorDimension io dim = case dim of
+      VNatLiteral n -> return n
+      VFreeVar varIdent _ -> do
+        implicitParameters <- getInferableParameterContext
+        case Map.lookup varIdent implicitParameters of
+          Just Left {} -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
+          Just (Right (_, _, d)) -> return d
+          Nothing -> do
+            explicitParameters <- getExplicitParameterContext
+            case Map.lookup varIdent explicitParameters of
+              Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
+              Just value -> getTensorDimension io value
+      _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
 
     getElementType :: WHNFType Builtin -> m NetworkBaseType
     getElementType = \case

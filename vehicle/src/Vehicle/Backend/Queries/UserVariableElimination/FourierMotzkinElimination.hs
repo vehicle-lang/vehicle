@@ -1,4 +1,4 @@
-module Vehicle.Backend.Queries.FourierMotzkinElimination
+module Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
   ( FourierMotzkinVariableSolution,
     fourierMotzkinElimination,
     reconstructFourierMotzkinVariableValue,
@@ -6,14 +6,13 @@ module Vehicle.Backend.Queries.FourierMotzkinElimination
 where
 
 import Control.Monad (foldM)
-import Data.Set (Set)
-import Data.Set qualified as Set (toList)
-import Data.Vector qualified as Vector
-import Vehicle.Backend.Queries.LinearExpr
-import Vehicle.Backend.Queries.Variable
+import Data.Map (Map)
+import Vehicle.Backend.Queries.UserVariableElimination.Core (FourierMotzkinVariableSolution (..), RationalInequality (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Verify.Core
+import Vehicle.Data.LinearExpr
+import Vehicle.Syntax.Builtin (Strictness (..))
+import Vehicle.Verify.Variable
 
 -- | TODO If performance proves unnacceptably poor look into
 -- Imbert's acceleration theorems:
@@ -23,61 +22,44 @@ import Vehicle.Verify.Core
 -- Artificial Intelligence IV: Methodology, Systems, Applications, 1990
 fourierMotzkinElimination ::
   (MonadCompile m) =>
-  Set MixedVariable ->
-  [FMAssertion] ->
-  m ([Solution], [FMAssertion])
-fourierMotzkinElimination varsToSolve assertions =
-  logCompilerPass MidDetail currentPass $ do
-    logDebug MaxDetail $ prettyAssertions assertions
-    let numberedVars = zip [1 ..] (Set.toList varsToSolve)
-    foldM solveVar ([], assertions) numberedVars
-
-type FMAssertion = Assertion MixedVariable
-
-type Solution = (MixedVariable, FourierMotzkinVariableSolution)
-
-solveVar ::
-  (MonadCompile m) =>
-  ([Solution], [FMAssertion]) ->
-  (Int, MixedVariable) ->
-  m ([Solution], [FMAssertion])
-solveVar (solutions, inequalities) (iteration, var) = do
-  let (less, greater, unusedInequalities) = partition var inequalities
-  let solution = (var, FMSolution less greater)
+  UserRationalVariable ->
+  [RationalInequality] ->
+  m (FourierMotzkinVariableSolution, [RationalInequality])
+fourierMotzkinElimination var inequalities = do
+  let (less, greater, unusedInequalities) = partition (UserRationalVar var) inequalities
+  let solution = FMSolution less greater
 
   let newInequalities = fmap combineInequalities [(x, y) | x <- less, y <- greater]
 
   logDebug MaxDetail $
     line
-      <> "After iteration"
-        <+> pretty iteration
-        <+> "solving for"
+      <> "After FM solving for"
         <+> pretty var
       <> ":"
       <> line
       <> indent
         2
         ( "LHS inequalities:"
-            <> prettyAssertions less
+            <> pretty less
             <> line
             <> "RHS inequalities:"
-            <> prettyAssertions greater
+            <> pretty greater
             <> line
             <> "New inequalities:"
-            <> prettyAssertions newInequalities
+            <> pretty newInequalities
         )
 
-  return (solution : solutions, newInequalities <> unusedInequalities)
+  return (solution, newInequalities <> unusedInequalities)
 
-combineInequalities :: (FMAssertion, FMAssertion) -> FMAssertion
-combineInequalities (Assertion rel1 expr1, Assertion rel2 expr2) =
+combineInequalities :: (RationalInequality, RationalInequality) -> RationalInequality
+combineInequalities (RationalInequality rel1 expr1, RationalInequality rel2 expr2) =
   let rel = case (rel1, rel2) of
-        (LessThan, _) -> LessThan
-        (_, LessThan) -> LessThan
-        (_, _) -> LessThanOrEqualTo
-   in Assertion
-        { assertionExpr = addExprs 1 expr1 1 expr2,
-          assertionRel = rel
+        (Strict, _) -> Strict
+        (_, Strict) -> Strict
+        (_, _) -> NonStrict
+   in RationalInequality
+        { rationalIneqExpr = addExprs 1 1 expr1 expr2,
+          strictness = rel
         }
 
 -- | Partitions the inequalities into three sets:
@@ -85,28 +67,28 @@ combineInequalities (Assertion rel1 expr1, Assertion rel2 expr2) =
 --  2. Those where the rest of the expression is greater than the variable
 --  3. Those which don't mention the variable at all.
 partition ::
-  MixedVariable ->
-  [FMAssertion] ->
-  ([FMAssertion], [FMAssertion], [FMAssertion])
+  RationalVariable ->
+  [RationalInequality] ->
+  ([RationalInequality], [RationalInequality], [RationalInequality])
 partition var = foldr categorise ([], [], [])
   where
     categorise ::
-      FMAssertion ->
-      ([FMAssertion], [FMAssertion], [FMAssertion]) ->
-      ([FMAssertion], [FMAssertion], [FMAssertion])
-    categorise a@(Assertion rel expr) (less, greater, unused) = do
+      RationalInequality ->
+      ([RationalInequality], [RationalInequality], [RationalInequality]) ->
+      ([RationalInequality], [RationalInequality], [RationalInequality])
+    categorise a@(RationalInequality rel expr) (less, greater, unused) = do
       let coeff = lookupCoefficient expr var
       if coeff < 0
         then do
           let coeff' = -coeff
           let expr' = scaleExpr (1 / coeff') expr
-          let a' = Assertion rel expr'
+          let a' = RationalInequality rel expr'
           (a' : less, greater, unused)
         else
           if coeff > 0
             then do
               let expr' = scaleExpr (1 / coeff) expr
-              let a' = Assertion rel expr'
+              let a' = RationalInequality rel expr'
               (less, a' : greater, unused)
             else (less, greater, a : unused)
 
@@ -118,46 +100,42 @@ partition var = foldr categorise ([], [], [])
 -- required variable that is missing from the assignment or the reconstructed
 -- value.
 reconstructFourierMotzkinVariableValue ::
-  VariableAssignment MixedVariable ->
+  Map RationalVariable Rational ->
   FourierMotzkinVariableSolution ->
-  Either MixedVariable VariableValue
+  Either RationalVariable Rational
 reconstructFourierMotzkinVariableValue assignment solution = do
-  let size = 1
   let inf = 1 / 0
   let negInf = -1 / 0
-  let initialMax = (Vector.replicate size negInf, LessThanOrEqualTo)
-  let initialMin = (Vector.replicate size inf, LessThanOrEqualTo)
+  let initialMax = (negInf, NonStrict)
+  let initialMin = (inf, NonStrict)
   (lowerBound, minRel) <- foldM evaluateMaxValue initialMax (lowerBounds solution)
   (upperBound, maxRel) <- foldM evaluateMinValue initialMin (upperBounds solution)
 
-  if lowerBound < upperBound || minRel == LessThanOrEqualTo && maxRel == LessThanOrEqualTo
-    then return $ addConstants 0.5 lowerBound 0.5 upperBound
+  if lowerBound < upperBound || minRel == NonStrict && maxRel == NonStrict
+    then return $ addConstants 0.5 0.5 lowerBound upperBound
     else -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
     -- algorithm. Closest to referencing this impossibility is:
     -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
       developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
   where
     evaluateMinValue ::
-      (Constant, Relation) ->
-      FMAssertion ->
-      Either MixedVariable (Constant, Relation)
-    evaluateMinValue current@(currentMin, _) (Assertion rel expr) = do
+      (Rational, Strictness) ->
+      RationalInequality ->
+      Either RationalVariable (Rational, Strictness)
+    evaluateMinValue current@(currentMin, _) (RationalInequality rel expr) = do
       value <- evaluateExpr expr assignment
       return $
-        if (value < currentMin) || (value == currentMin && rel == LessThan)
+        if (value < currentMin) || (value == currentMin && rel == Strict)
           then (value, rel)
           else current
 
     evaluateMaxValue ::
-      (Constant, Relation) ->
-      FMAssertion ->
-      Either MixedVariable (Constant, Relation)
-    evaluateMaxValue current@(currentMax, _) (Assertion rel expr) = do
+      (Rational, Strictness) ->
+      RationalInequality ->
+      Either RationalVariable (Rational, Strictness)
+    evaluateMaxValue current@(currentMax, _) (RationalInequality rel expr) = do
       value <- evaluateExpr expr assignment
       return $
-        if (value > currentMax) || (value == currentMax && rel == LessThan)
+        if (value > currentMax) || (value == currentMax && rel == Strict)
           then (value, rel)
           else current
-
-currentPass :: Doc a
-currentPass = "Fourier-Motzkin elimination"

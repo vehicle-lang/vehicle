@@ -3,8 +3,7 @@
 module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
-import Control.Monad.Except (MonadError, runExceptT, throwError)
-import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Except (MonadError, throwError)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Prettyprinter (list)
@@ -28,20 +27,13 @@ type MonadCompile m =
     MonadError CompileError m
   )
 
-runCompileMonadSilently :: Doc x -> ExceptT CompileError SilentLogger a -> a
-runCompileMonadSilently action v = do
-  let r = runSilentLogger $ runExceptT v
-  case r of
-    Left err -> developerError $ "Error thrown while" <+> action <> ":" <+> pretty (show err)
-    Right s -> s
-
 --------------------------------------------------------------------------------
 -- Compilation errors
 
 data CompileError
   = DevError (Doc ())
   | -- Parse errors
-    ParseError ParseError
+    ParseError Module ParseError
   | -- Command line option errors
     InvalidPrunedName Name
   | -- Errors thrown by scope checking.

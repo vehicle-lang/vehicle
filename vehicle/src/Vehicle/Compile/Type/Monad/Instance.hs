@@ -74,7 +74,7 @@ mapTypeCheckerT f m = TypeCheckerT (mapFreeContextT (mapReaderT (mapStateT f)) (
 -- Instances that TypeCheckerT satisfies
 
 instance (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
-  addDeclToContext decl = TypeCheckerT . addDeclToContext decl . unTypeCheckerT
+  addDeclEntryToContext entry = TypeCheckerT . addDeclEntryToContext entry . unTypeCheckerT
   getFreeCtx = TypeCheckerT . getFreeCtx
   locallyAdjustCtx p f = TypeCheckerT . locallyAdjustCtx p f . unTypeCheckerT
 
@@ -102,6 +102,7 @@ instance (MonadLogger m) => MonadLogger (TypeCheckerT builtin m) where
   decrCallDepth = lift decrCallDepth
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
+  logWarning = lift . logWarning
 
 instance (MonadReader r m) => MonadReader r (TypeCheckerT builtin m) where
   ask = lift ask

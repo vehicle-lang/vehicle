@@ -62,7 +62,7 @@ parseAndTypeCheckExpr expr = do
 parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
 parseExprText txt =
   case runExcept (parseExpr User =<< readExpr txt) of
-    Left err -> throwError $ ParseError err
+    Left err -> throwError $ ParseError User err
     Right expr -> return expr
 
 typeCheckUserProg ::
@@ -110,9 +110,9 @@ typeCheckOrLoadProg modul imports specificationFile = do
 parseProgText :: (MonadCompile m) => Module -> Text -> m (Prog Name Builtin)
 parseProgText modul txt = do
   case runExcept (readAndParseProg modul txt) of
-    Left err -> throwError $ ParseError err
+    Left err -> throwError $ ParseError modul err
     Right prog -> case traverseDecls (parseDecl modul) prog of
-      Left err -> throwError $ ParseError err
+      Left err -> throwError $ ParseError modul err
       Right prog' -> return prog'
 
 loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m (Prog Ix Builtin)
@@ -141,7 +141,8 @@ runCompileMonad ::
   ExceptT CompileError (ImmediateLoggerT m) a ->
   m a
 runCompileMonad loggingSettings x = do
-  errorOrResult <- runImmediateLogger loggingSettings (logCompileError x)
+  errorOrResult <- runImmediateLoggerT loggingSettings (logCompileError x)
+  -- errorOrResult <- runSilentLoggerT (logCompileError x)
   case errorOrResult of
     Left err -> fatalError $ pretty $ details err
     Right val -> return val

@@ -6,7 +6,7 @@
     "fake.onnx"
   ],
   "produces": [
-    "Marabou.queries/isMalcious-query1.txt",
-    "Marabou.queries/isMalcious.vcl-plan"
+    "Marabou.queries/isMalicious-query1.txt",
+    "Marabou.queries/isMalicious.vcl-plan"
   ]
 }

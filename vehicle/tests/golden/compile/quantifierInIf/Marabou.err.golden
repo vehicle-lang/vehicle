@@ -1,6 +1,5 @@
 [93m
-Warning:  While compiling property 'p', in at least one of the generated SAT problems not all network input variables have both a lower and a upper bound. Such queries are not currently supported by the Marabou query format.
-
-In particular, the following input variables are under-specified:
-  f₀[input]!0 - no constraints
+Warning:  In property 'p', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+  In query 1:
+    f₀[input]!0 - no lower or upper bound
 [m

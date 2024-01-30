@@ -65,8 +65,9 @@ jobs:
       - name: Download wheelhouse
         uses: actions/download-artifact@v4
         with:
-          pattern: "wheelhouse-*-*"
-          path: "wheelhouse"
+          pattern: wheelhouse-*-*
+          path: wheelhouse
+          merge-multiple: true
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v1
@@ -100,8 +101,9 @@ jobs:
       - name: Download wheelhouse
         uses: actions/download-artifact@v4
         with:
-          name: wheelhouse
+          name: wheelhouse-*-*
           path: wheelhouse
+          merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

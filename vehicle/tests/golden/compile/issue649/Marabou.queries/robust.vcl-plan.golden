@@ -6,153 +6,154 @@
       "contents": {
         "queries": {
           "unDisjunctAll": [
-            [
-              [
+            {
+              "variableReconstruction": [
                 {
-                  "propertyName": "robust",
-                  "propertyIndices": []
-                },
-                1
-              ],
-              {
-                "variableReconstruction": [
-                  {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "Introduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1,
-                          1
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    }
-                  },
-                  {
-                    "tag": "EliminateViaGaussian",
-                    "contents": [
-                      {
-                        "tag": "UserVar",
-                        "contents": {
-                          "userVarName": "perturbation",
-                          "userVarDimensions": [
+                  "tag": "SolveTensorEquality",
+                  "contents": [
+                    {
+                      "userTensorVarName": "perturbation",
+                      "userTensorVarDimensions": [
+                        1,
+                        1
+                      ]
+                    },
+                    {
+                      "tensorEqExpr": {
+                        "constantValue": {
+                          "tensorValues": [
+                            {
+                              "numerator": -1,
+                              "denominator": 1
+                            }
+                          ],
+                          "tensorDims": [
                             1,
                             1
-                          ],
-                          "unreducedUserVarName": "perturbation"
-                        }
-                      },
-                      {
-                        "solutionEquality": {
-                          "dimensions": [
-                            1,
-                            1
-                          ],
-                          "constantValue": [
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            {
+                              "tag": "UserTensorVar",
+                              "contents": {
+                                "userTensorVarName": "perturbation",
+                                "userTensorVarDimensions": [
+                                  1,
+                                  1
+                                ]
+                              }
+                            },
                             {
                               "numerator": 1,
                               "denominator": 1
                             }
                           ],
-                          "coefficients": [
-                            [
-                              {
-                                "tag": "NetworkVar",
-                                "contents": {
-                                  "networkVarIndices": null,
-                                  "networkVarDimensions": [
-                                    1,
-                                    1
-                                  ],
-                                  "networkName": "classifier",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              },
-                              {
-                                "numerator": -1,
-                                "denominator": 1
+                          [
+                            {
+                              "tag": "NetworkTensorVar",
+                              "contents": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  1,
+                                  1
+                                ],
+                                "networkName": "classifier",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            ]
+                            },
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
                           ]
-                        }
+                        ]
                       }
-                    ]
-                  },
+                    }
+                  ]
+                }
+              ],
+              "queryAddress": [
+                {
+                  "propertyName": "robust",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": {
+                "variables": [
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          1,
-                          1
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      0,
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        1,
+                        1
+                      ],
+                      "networkName": "classifier",
+                      "inputOrOutput": "Input",
+                      "application": 0
                     }
                   },
                   {
-                    "tag": "Reduce",
-                    "contents": {
-                      "tag": "NetworkVar",
-                      "contents": {
-                        "networkVarIndices": null,
-                        "networkVarDimensions": [
-                          2
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "classifier",
+                      "inputOrOutput": "Output",
+                      "application": 0
+                    }
+                  },
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "startingIndex": 0,
+                      "networkTensorVarDimensions": [
+                        2
+                      ],
+                      "networkName": "classifier",
+                      "inputOrOutput": "Output",
+                      "application": 0
                     }
                   }
                 ],
-                "metaNetwork": [
+                "networkEntries": [
                   {
-                    "metaNetworkEntryType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          1,
-                          1
-                        ],
-                        "baseType": []
-                      }
-                    },
                     "metaNetworkEntryName": "classifier",
-                    "metaNetworkEntryFilePath": "fake.onnx"
+                    "metaNetworkEntryInfo": {
+                      "networkType": {
+                        "outputTensor": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        },
+                        "inputTensor": {
+                          "dimensions": [
+                            1,
+                            1
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkFilepath": "fake.onnx"
+                    }
                   }
                 ]
               }
-            ]
+            }
           ]
         },
         "negated": true

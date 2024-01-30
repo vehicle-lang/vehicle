@@ -12,7 +12,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Test.Unit.Common (unitTestCase)
 
@@ -93,5 +93,5 @@ p = mempty
 binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
-mkNoOpEnv :: Lv -> WHNFEnv builtin
+mkNoOpEnv :: Lv -> WHNFBoundEnv builtin
 mkNoOpEnv boundCtxSize = [mkDefaultEnvEntry "_" Bound | _ <- [0 .. boundCtxSize - 1]]

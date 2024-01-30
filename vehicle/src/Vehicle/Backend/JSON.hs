@@ -25,11 +25,12 @@ import Vehicle.Compile.Arity (Arity, arityFromVType, explicitArityFromType)
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError, illTypedError, resolutionError)
-import Vehicle.Compile.Normalise.NBE (normalise, normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (normalise)
 import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), LoggingLevel (..), getExplicitArg, indent, layoutAsText, line, logCompilerPass, logDebug, pretty, prettyJSONConfig, quotePretty, squotes, (<+>))
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
 import Vehicle.Data.BuiltinInterface qualified as V
+import Vehicle.Data.BuiltinInterface.Expr (pattern AnnExpr, pattern UnitLiteral)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.RelevantExpr
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
@@ -457,6 +458,8 @@ toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
+  -- Strip out type-annotations
+  AnnExpr _ _t e -> toJExpr e
   V.Builtin p b -> do
     boundCtx <- getBoundCtx (Proxy @builtin)
     let boundCtxNames = fmap (fromMaybe "<missing-name>" . V.nameOf) boundCtx
@@ -464,8 +467,6 @@ toJExpr expr = case expr of
     return $ Builtin p jBuiltin
   V.BoundVar p v -> return $ BoundVar p v
   V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
-  -- Strip out type-annotations
-  V.AnnExpr _ _t e -> toJExpr e
   -- Otherwise, calculate whether function is partial or not.
   V.App p fun args -> do
     fun' <- toJExpr fun
@@ -508,7 +509,7 @@ foldLamBinders = \case
     -- TODO this check is a massive hack. Should go once we get irrelevance up
     -- and running.
     | V.isExplicit binder -> first (binder :) (foldLamBinders body)
-    | otherwise -> foldLamBinders (V.UnitLiteral mempty `substDBInto` body)
+    | otherwise -> foldLamBinders (UnitLiteral mempty `substDBInto` body)
   expr -> ([], expr)
 
 toJBinder :: (MonadJSON builtin m) => V.Binder Ix builtin -> m (JBinder Ix)
@@ -549,7 +550,7 @@ functionArity = go
         V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
         V.FreeVar _p ident -> do
           decl <- getDecl (Proxy @builtin) currentPass ident
-          normType <- normaliseInEmptyEnv $ typeOf decl
+          let normType = typeOf decl
           logDebug MaxDetail $ prettyVerbose normType
           return $ arityFromVType normType
         V.BoundVar _ ix -> do

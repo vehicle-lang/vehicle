@@ -10,7 +10,7 @@ import Vehicle.Backend.LossFunction.TypeSystem.Core
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.DSL
 import Vehicle.Data.DSL
 
 lossBuiltinInstances ::
@@ -129,13 +129,11 @@ mkCandidates DifferentialLogicImplementation {..} =
     quantifierCandidates =
       [ ( forAllTypes $ \t ->
             hasQuant Forall (t ~> tLoss) tLoss,
-          explLam "t" type0 $ \_t ->
-            compileForall
+          explLam "t" type0 $ const compileForall
         ),
         ( forAllTypes $ \t ->
             hasQuant Exists (t ~> tLoss) tLoss,
-          explLam "t" type0 $ \_t ->
-            compileExists
+          explLam "t" type0 $ const compileExists
         )
       ]
 
