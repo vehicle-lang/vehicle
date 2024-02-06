@@ -71,7 +71,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
 
 verifyQueries :: (MonadStdIO IO) => LoggingSettings -> FilePath -> Verifier -> VerifierExecutable -> IO ()
 verifyQueries loggingSettings queryFolder verifier verifierExecutable = do
-  runImmediateLoggerT loggingSettings $ do
+  runLoggerT loggingSettings $ do
     verifySpecification queryFolder verifier verifierExecutable
 
 -- | Tries to locate the executable for the verifier at the provided

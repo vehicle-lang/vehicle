@@ -4,7 +4,6 @@ module Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
 where
 
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..))
 import Data.Foldable (foldlM)
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.ConstraintSearch
@@ -81,8 +80,7 @@ solveTensorVariable userTensorVar solutions = \case
         <> indent 2 (pretty remainingTree)
 
     -- Generate accompanying rational solutions
-    globalCtx <- get
-    rationalEqualties <- reduceTensorEquality globalCtx tensorEq
+    rationalEqualties <- reduceTensorEquality tensorEq
     userRationalVars <- getReducedUserVariablesFor userTensorVar
     let solutionMap = Map.fromList $ zip (fmap UserRationalVar userRationalVars) rationalEqualties
     -- Update tree

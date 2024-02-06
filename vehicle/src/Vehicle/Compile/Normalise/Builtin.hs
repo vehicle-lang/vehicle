@@ -4,8 +4,20 @@
 
 module Vehicle.Compile.Normalise.Builtin
   ( evalBuiltin,
-    evalMul,
-    traverseBuiltinBlockingArgs,
+    evalMulRat,
+    evalAddRat,
+    evalSubRat,
+    evalDivRat,
+    evalNegRat,
+    evalEqualityRat,
+    evalEquals,
+    evalOrderRat,
+    evalOrder,
+    evalAt,
+    evalFoldVector,
+    evalMapVector,
+    evalZipWith,
+    evalIndices,
   )
 where
 
@@ -14,7 +26,6 @@ import Data.Foldable (foldrM)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
@@ -48,10 +59,10 @@ evalBuiltin evalApp b args = do
 
 -----------------------------------------------------------------------------
 -- Runtime relevance
-
+{-
 isRuntimeRelevant :: WHNFArg builtin -> Bool
 isRuntimeRelevant = isExplicit
-
+-}
 filterRuntimeRelevantArgs :: WHNFSpine builtin -> [WHNFValue builtin]
 filterRuntimeRelevantArgs = mapMaybe getExplicitArg
 
@@ -130,7 +141,7 @@ evalBuiltinFunction evalApp b args = case b of
 -----------------------------------------------------------------------------
 -- Blocking
 -----------------------------------------------------------------------------
-
+{-
 -- | Indices into the the list of runtime-relevant arguments, indicating which
 -- arguments are blocking the evaluation of the builtin.
 -- Numbering starts from 0 at the front the list.
@@ -211,7 +222,7 @@ traverseBlockingArgs f b originalSpine originalBlockingArgs = go 0 originalSpine
       | isRuntimeRelevant arg && argNo == blockedArg = (:) <$> traverse f arg <*> go (argNo + 1) args blockedArgs
       | isRuntimeRelevant arg = (arg :) <$> go (argNo + 1) args (blockedArg : blockedArgs)
       | otherwise = (arg :) <$> go argNo args (blockedArg : blockedArgs)
-
+-}
 -----------------------------------------------------------------------------
 -- Individual builtin evaluation
 -----------------------------------------------------------------------------

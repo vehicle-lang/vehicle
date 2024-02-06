@@ -49,13 +49,13 @@
                                   0
                                 ],
                                 "originalVar": {
-                                  "startingIndex": 1,
+                                  "startingIndex": 0,
                                   "networkTensorVarDimensions": [
                                     1
                                   ],
                                   "networkName": "f",
                                   "inputOrOutput": "Input",
-                                  "application": 1
+                                  "application": 0
                                 }
                               }
                             },

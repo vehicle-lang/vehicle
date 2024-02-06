@@ -164,7 +164,7 @@ There are three test suites for the Vehicle compiler:
 The standard command to test the Vehicle compiler runs the unit and the compiler tests:
 
 ```sh
-cabal test unit-tests golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
 ```
 
 This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see [build-vehicle.yml](./.github/workflows/build-vehicle.yml).
@@ -198,7 +198,7 @@ All 155 tests passed (12.33s)
 Test suite golden-tests: PASS
 ```
 
-The option `--test-show-details=always` asks the testing framework to print some details about the tests it is running, and `--test-option=--color=always` asks it to use colour. If you omit these options, the output is much less verbose, and looks like:
+The option `--test-show-details=streaming` asks the testing framework to print some live details about the tests it is running, and `--test-option=--color=always` asks it to use colour. If you omit these options, the output is much less verbose, and looks like:
 
 ```
 Running 1 test suites...
@@ -254,7 +254,7 @@ The unit tests test properties of the internals of Vehicle, _e.g._, of the Vehic
 Run the following command:
 
 ```sh
-cabal test unit-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
 ```
 
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
@@ -268,7 +268,7 @@ The golden tests test properties of the compiler as a whole, by running it with 
 Run the following command:
 
 ```sh
-cabal test golden-tests --test-show-details=always --test-option=--color=always --test-option=--num-threads=1
+cabal test golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
 ```
 
 These tests are specified in `test.json` files in [tests/golden](./vehicle/tests/golden/), _e.g._, [windController/test.json](./vehicle/tests/golden/compile/windController/test.json):

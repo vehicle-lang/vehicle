@@ -6,7 +6,7 @@ import Control.Monad.Except (ExceptT)
 import Data.Data (Proxy (..))
 import Data.Tagged (Tagged (Tagged))
 import Debug.Trace (trace)
-import Test.Tasty (TestTree, askOption, includingOptions)
+import Test.Tasty (TestTree, includingOptions)
 import Test.Tasty.HUnit (Assertion, testCase)
 import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
@@ -21,6 +21,7 @@ import Vehicle.Prelude
     developerError,
   )
 import Vehicle.Prelude.Logging
+import Vehicle.Prelude.Warning (groupWarnings)
 
 vehicleLoggingIngredient :: Ingredient
 vehicleLoggingIngredient =
@@ -42,18 +43,18 @@ instance IsOption LoggingLevel where
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> TestTree
+unitTestCase :: String -> ExceptT CompileError (SilentLoggerT IO) Assertion -> TestTree
 unitTestCase testName errorOrAssertionWithLogs =
-  askOption $ \logLevel -> testCase testName (traceLogs logLevel errorOrAssertionWithLogs)
+  testCase testName (traceLogs errorOrAssertionWithLogs)
   where
-    traceLogs :: LoggingLevel -> ExceptT CompileError (DelayedLoggerT IO) Assertion -> Assertion
-    traceLogs logLevel e = do
+    traceLogs :: ExceptT CompileError (SilentLoggerT IO) Assertion -> Assertion
+    traceLogs e = do
       let e' = logCompileError e
-      (v, logs, warnings) <- runDelayedLoggerT logLevel e'
+      (v, warnings) <- runSilentLoggerT e'
       let result =
-            if null logs && null warnings
+            if null warnings
               then v
-              else trace (show logs <> showCompileWarnings warnings) v
+              else trace (showCompileWarnings $ groupWarnings warnings) v
       case result of
         Left x -> developerError $ pretty $ details x
         Right y -> y

@@ -7,10 +7,10 @@ where
 
 -- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), StateT (..))
+import Control.Monad.State (MonadState (..), evalStateT)
 import Control.Monad.Writer (MonadWriter, WriterT (..))
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
@@ -18,7 +18,7 @@ import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateExists)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateNot (eliminateNot)
-import Vehicle.Backend.Queries.UserVariableElimination.Unblocking (tryUnblockBool)
+import Vehicle.Backend.Queries.UserVariableElimination.Unblocking
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -94,12 +94,13 @@ compileQuantifiedQuerySet ::
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
   let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder env body)
   logCompilerPass MaxDetail subsectionDoc $ do
-    (maybePartitions, globalCtx) <- runStateT (compileExists binder env body) emptyGlobalCtx
-    case maybePartitions of
-      Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
-      NonTrivial partitions -> do
-        queries <- convertPartitionsToQueries globalCtx partitions
-        return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+    flip evalStateT emptyGlobalCtx $ do
+      maybePartitions <- compileExists binder env body
+      case maybePartitions of
+        Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
+        NonTrivial partitions -> do
+          queries <- convertPartitionsToQueries partitions
+          return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -109,14 +110,15 @@ compileUnquantifiedQuerySet ::
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
   logCompilerPass MaxDetail subsectionDoc $ do
-    ((maybePartitions, globalCtx), equalities) <- runWriterT (runStateT (compileBoolExpr value) emptyGlobalCtx)
-    (networkEqPartitions, _) <- runStateT (networkEqualitiesToPartition equalities) globalCtx
-    let equalitiesPartition = andTrivial andPartitions maybePartitions networkEqPartitions
-    case equalitiesPartition of
-      Trivial b -> return $ Trivial b
-      NonTrivial partitions -> do
-        queries <- convertPartitionsToQueries globalCtx partitions
-        return $ NonTrivial $ Query $ QuerySet False queries
+    flip evalStateT emptyGlobalCtx $ do
+      (maybePartitions, equalities) <- runWriterT $ do (compileBoolExpr value)
+      networkEqPartitions <- networkEqualitiesToPartition equalities
+      let equalitiesPartition = andTrivial andPartitions maybePartitions networkEqPartitions
+      case equalitiesPartition of
+        Trivial b -> return $ Trivial b
+        NonTrivial partitions -> do
+          queries <- convertPartitionsToQueries partitions
+          return $ NonTrivial $ Query $ QuerySet False queries
 
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
 -- of assertions implicitly existentially quantified by a set of network
@@ -130,9 +132,9 @@ compileBoolExpr expr = case expr of
   -- Base cases --
   ----------------
   VBoolLiteral b -> return $ Trivial b
-  VOrder OrderRat op e1 e2 -> tryUnblockBool expr compileBoolExpr (compileRationalAssertion (ordToAssertion op) e1 e2)
-  VEqual EqRat e1 e2 -> tryUnblockBool expr compileBoolExpr (compileRationalAssertion eqToAssertion e1 e2)
-  VVectorEqualFull spine@(VVecEqArgs e1 e2) -> tryUnblockBool expr compileBoolExpr (compileTensorAssertion spine e1 e2)
+  VOrder OrderRat op _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion (ordToAssertion op))
+  VEqual EqRat _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion eqToAssertion)
+  VVectorEqualFull (VVecEqSpine t1 t2 n s _ _) -> tryPurifyAssertion expr compileBoolExpr (compileTensorAssertion [t1, t2, n, s])
   VForall {} -> throwError catchableUnsupportedAlternatingQuantifiersError
   ---------------------
   -- Recursive cases --
@@ -144,7 +146,7 @@ compileBoolExpr expr = case expr of
   VAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   VOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   VExists _ binder env body -> compileExists binder env body
-  _ -> tryUnblockBool expr compileBoolExpr (compilerDeveloperError "Could not unblock bool expr")
+  _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateIf :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
 eliminateIf c x y = VOr (VAnd c x) (VAnd (VNot c) y)
@@ -157,7 +159,7 @@ eliminateNotEqualRat ::
 eliminateNotEqualRat x y = do
   PropertyMetaData {..} <- ask
   if supportsStrictInequalities queryFormat
-    then return $ VOr (VOrder OrderRat Le x y) (VOrder OrderRat Le y x)
+    then return $ VOr (VOrderRat Le x y) (VOrderRat Le y x)
     else throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
 
 eliminateNotVectorEqual ::
@@ -221,13 +223,13 @@ compileTensorAssertion ::
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (MaybeTrivial Partitions)
-compileTensorAssertion spine x y = do
+compileTensorAssertion spinePrefix x y = do
   x' <- compileTensorLinearExpr x
   y' <- compileTensorLinearExpr y
   let maybeAssertion = liftA2 tensorEqToAssertion x' y'
   case maybeAssertion of
     Just assertion -> return $ mkTrivialPartition assertion
-    Nothing -> compileBoolExpr =<< appStdlibDef StdEqualsVector spine
+    Nothing -> compileBoolExpr =<< appStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
 
 compileTensorLinearExpr ::
   forall m.
@@ -299,7 +301,6 @@ compileExists binder env body = do
     -- performance as the search for constraints will find them first.)
     networkEqPartitions <- networkEqualitiesToPartition networkInputEqualities
     let finalPartitions = andTrivial andPartitions partitions networkEqPartitions
-    logDebug MaxDetail $ pretty finalPartitions
 
     -- Solve for the user variable.
     eliminateExists finalPartitions userVar
@@ -351,10 +352,14 @@ checkUserVariableType binder = go (typeOf binder)
 
 networkEqualitiesToPartition :: (MonadQueryStructure m) => [WHNFValue Builtin] -> m (MaybeTrivial Partitions)
 networkEqualitiesToPartition networkEqualities = do
+  logDebugM MaxDetail $ do
+    networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
+    return $ line <> "Generated network equalities:" <> line <> indent 2 (vsep networkEqDocs)
+
   (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr (foldr VAnd (VBoolLiteral True) networkEqualities))
-  unless (null newNetworkEqualities) $
-    compilerDeveloperError "New network equalities generated when compiling network equalities."
-  return partitions
+  if (null newNetworkEqualities)
+    then return partitions
+    else andTrivial andPartitions partitions <$> networkEqualitiesToPartition newNetworkEqualities
 
 -- (mkSinglePartition (mempty, conjunct equalities))
 --------------------------------------------------------------------------------

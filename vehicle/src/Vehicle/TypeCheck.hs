@@ -38,7 +38,7 @@ data TypeCheckOptions = TypeCheckOptions
   }
   deriving (Eq, Show)
 
-typeCheck :: LoggingSettings -> TypeCheckOptions -> IO ()
+typeCheck :: (MonadStdIO IO) => LoggingSettings -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggingSettings $ do
   (imports, typedProg) <- typeCheckUserProg options
   let mergedProg = mergeImports imports typedProg
@@ -136,13 +136,13 @@ printPropertyTypes (Main decls) = do
       propertyName <+> ":" <+> propertyType
 
 runCompileMonad ::
-  (MonadIO m) =>
+  forall m a.
+  (MonadStdIO m) =>
   LoggingSettings ->
-  ExceptT CompileError (ImmediateLoggerT m) a ->
+  (forall n. (MonadStdIO n, MonadLogger n) => ExceptT CompileError n a) ->
   m a
 runCompileMonad loggingSettings x = do
-  errorOrResult <- runImmediateLoggerT loggingSettings (logCompileError x)
-  -- errorOrResult <- runSilentLoggerT (logCompileError x)
+  errorOrResult <- runLoggerT loggingSettings (logCompileError x)
   case errorOrResult of
     Left err -> fatalError $ pretty $ details err
     Right val -> return val

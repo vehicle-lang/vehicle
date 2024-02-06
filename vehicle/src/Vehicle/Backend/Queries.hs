@@ -128,7 +128,7 @@ compilePropertyDecl ::
   Maybe FilePath ->
   m (Name, MultiProperty ())
 compilePropertyDecl prog propertyData@(_, _, _, declProv@(ident, _), _) expr outputLocation = do
-  logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
+  logCompilerPass MinDetail ("found property" <+> quotePretty ident) $ do
     normalisedExpr <- normaliseInEmptyEnv expr
     multiProperty <-
       compileMultiProperty propertyData outputLocation normalisedExpr
@@ -156,16 +156,12 @@ compileMultiProperty multiPropertyMetaData outputLocation = go []
     go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
       VVecLiteral es -> do
-        let es' = zip [0 :: QueryID ..] es
+        let es' = zip [0 :: Int ..] es
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
       _ -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
-        let logFunction =
-              if null indices
-                then id
-                else logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress)
         flip runReaderT propertyMetaData $ do
-          logFunction $ do
+          logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress) $ do
             compileSingleProperty outputLocation expr
             return $ SingleProperty propertyAddress ()
 

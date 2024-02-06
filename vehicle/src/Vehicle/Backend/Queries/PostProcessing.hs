@@ -6,6 +6,7 @@ where
 
 import Control.Monad (foldM, forM, unless, when)
 import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.State (get)
 import Data.Either (partitionEithers)
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List.NonEmpty (NonEmpty (..))
@@ -31,17 +32,16 @@ import Vehicle.Verify.Variable
 -- Main entry point
 
 convertPartitionsToQueries ::
-  (MonadPropertyStructure m) =>
-  GlobalCtx ->
+  (MonadQueryStructure m) =>
   Partitions ->
   m (DisjunctAll (MetaNetwork, UserVariableReconstruction, QueryContents))
-convertPartitionsToQueries globalCtx partitions = do
+convertPartitionsToQueries partitions = do
   allQueries <- forM (partitionsToDisjuncts partitions) $ \(userVarSol, assertionTree) -> do
-    networkVarAssertions <- convertToNetworkRatVarAssertions globalCtx assertionTree
+    networkVarAssertions <- convertToNetworkRatVarAssertions assertionTree
     let dnfTree = exprToDNF networkVarAssertions
     forM dnfTree $ \conjuncts -> do
       -- Calculate meta network
-      (metaNetwork, newConjuncts) <- calculateMetaNetwork globalCtx conjuncts
+      (metaNetwork, newConjuncts) <- calculateMetaNetwork conjuncts
       -- Compile queries to particular format
       let contents = prettifyQueryContents (variables metaNetwork) newConjuncts
       -- Return the result
@@ -70,11 +70,10 @@ compileQueryToFormat (metaNetwork, userVars, contents@QueryContents {..}) = do
 
 convertToNetworkRatVarAssertions ::
   forall m.
-  (MonadCompile m) =>
-  GlobalCtx ->
+  (MonadQueryStructure m) =>
   AssertionTree ->
   m (BooleanExpr QueryAssertion)
-convertToNetworkRatVarAssertions globalCtx = go
+convertToNetworkRatVarAssertions = go
   where
     go :: BooleanExpr Assertion -> m (BooleanExpr QueryAssertion)
     go = \case
@@ -85,7 +84,7 @@ convertToNetworkRatVarAssertions globalCtx = go
     convert :: Assertion -> m (BooleanExpr QueryAssertion)
     convert = \case
       TensorEq tensorEquality -> do
-        rationalEqualities <- reduceTensorEquality globalCtx tensorEquality
+        rationalEqualities <- reduceTensorEquality tensorEquality
         let assertions = fmap (Query . RationalEq) rationalEqualities
         go $ Conjunct $ ConjunctAll (NonEmpty.fromList assertions)
       RationalEq (RationalEquality expr) ->
@@ -143,11 +142,11 @@ data ReindexingState = ReindexingState
 
 calculateMetaNetwork ::
   forall m f.
-  (MonadCompile m, Traversable f) =>
-  GlobalCtx ->
+  (MonadQueryStructure m, Traversable f) =>
   f QueryAssertion ->
   m (MetaNetwork, f QueryAssertion)
-calculateMetaNetwork ctx queries = do
+calculateMetaNetwork queries = do
+  ctx <- get
   -- First calculate the set of network applications actually used in the query
   let referencedVars = foldMap queryAssertionVariables queries
   let networkApps = snd <$> LinkedHashMap.toList (networkApplications ctx)

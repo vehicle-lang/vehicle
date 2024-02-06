@@ -63,48 +63,39 @@ mkVVectorType tElem dim =
 --------------------------------------------------------------------------------
 -- WHNFValue constructors patterns
 
-pattern VUnitLiteral :: (HasStandardData builtin) => Value strategy builtin
-pattern VUnitLiteral <- VBuiltin (getBuiltinConstructor -> Just LUnit) []
+pattern VConstructor :: (HasStandardData builtin) => BuiltinConstructor -> Spine strategy builtin -> Value strategy builtin
+pattern VConstructor c spine <- VBuiltin (getBuiltinConstructor -> Just c) spine
   where
-    VUnitLiteral = VBuiltin (mkBuiltinConstructor LUnit) []
+    VConstructor c spine = VBuiltin (mkBuiltinConstructor c) spine
+
+pattern VUnitLiteral :: (HasStandardData builtin) => Value strategy builtin
+pattern VUnitLiteral = VConstructor LUnit []
 
 pattern VBoolLiteral :: (HasStandardData builtin) => Bool -> Value strategy builtin
-pattern VBoolLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LBool x)) []
-  where
-    VBoolLiteral x = VBuiltin (mkBuiltinConstructor (LBool x)) []
+pattern VBoolLiteral x = VConstructor (LBool x) []
 
 pattern VIndexLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VIndexLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LIndex x)) []
-  where
-    VIndexLiteral x = VBuiltin (mkBuiltinConstructor (LIndex x)) []
+pattern VIndexLiteral x = VConstructor (LIndex x) []
 
 pattern VNatLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VNatLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LNat x)) []
-  where
-    VNatLiteral x = VBuiltin (mkBuiltinConstructor (LNat x)) []
+pattern VNatLiteral x = VConstructor (LNat x) []
 
 pattern VIntLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VIntLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LInt x)) []
-  where
-    VIntLiteral x = VBuiltin (mkBuiltinConstructor (LInt x)) []
+pattern VIntLiteral x = VConstructor (LInt x) []
 
 pattern VRatLiteral :: (HasStandardData builtin) => Rational -> Value strategy builtin
-pattern VRatLiteral x <- VBuiltin (getBuiltinConstructor -> Just (LRat x)) []
-  where
-    VRatLiteral x = VBuiltin (mkBuiltinConstructor (LRat x)) []
+pattern VRatLiteral x = VConstructor (LRat x) []
 
 pattern VNil :: (HasStandardData builtin) => Value strategy builtin
-pattern VNil <- VBuiltin (getBuiltinConstructor -> Just Nil) _
-  where
-    VNil = VBuiltin (mkBuiltinConstructor Nil) []
+pattern VNil <- VConstructor Nil _
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
 pattern VCons :: (HasStandardData builtin) => VArg strategy builtin -> VArg strategy builtin -> Value strategy builtin
-pattern VCons x xs <- VBuiltin (getBuiltinConstructor -> Just Cons) (filter isExplicit -> [x, xs])
+pattern VCons x xs <- VConstructor Cons (filter isExplicit -> [x, xs])
 
 -- TODO should definitely be `isRelevant` not `isExplicit`
 pattern VVecLiteral :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin
-pattern VVecLiteral xs <- VBuiltin (getBuiltinConstructor -> Just (LVec _)) (filter isExplicit -> xs)
+pattern VVecLiteral xs <- VConstructor (LVec _) (filter isExplicit -> xs)
 
 mkVList :: (HasStandardData builtin) => [Value strategy builtin] -> Value strategy builtin
 mkVList = foldr mkCons mkNil
@@ -164,16 +155,22 @@ pattern VIf t c x y <- VBuiltinFunction If [RelevantImplicitArg _ t, RelevantExp
     VIf t c x y = VBuiltinFunction If [Arg mempty (Implicit True) Relevant t, Arg mempty Explicit Relevant c, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
 
 pattern VOrder :: (HasStandardData builtin) => OrderDomain -> OrderOp -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
-pattern VOrder dom op x y = VOp2 (Order dom op) x y
+pattern VOrder dom op x y <- VBuiltinFunction (Order dom op) (reverse -> (argExpr -> y) : (argExpr -> x) : _)
+
+pattern VOrderRat :: (HasStandardData builtin) => OrderOp -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
+pattern VOrderRat op x y = VOp2 (Order OrderRat op) x y
 
 pattern VEqualOp :: (HasStandardData builtin) => EqualityDomain -> EqualityOp -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
-pattern VEqualOp dom op x y = VOp2 (Equals dom op) x y
+pattern VEqualOp dom op x y <- VBuiltinFunction (Equals dom op) (reverse -> (argExpr -> y) : (argExpr -> x) : _)
 
 pattern VEqual :: (HasStandardData builtin) => EqualityDomain -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
-pattern VEqual dom x y = VEqualOp dom Eq x y
+pattern VEqual dom x y <- VEqualOp dom Eq x y
+
+pattern VEqualRat :: (HasStandardData builtin) => WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
+pattern VEqualRat x y = VOp2 (Equals EqRat Eq) x y
 
 pattern VNotEqual :: (HasStandardData builtin) => EqualityDomain -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
-pattern VNotEqual dom x y = VEqualOp dom Neq x y
+pattern VNotEqual dom x y <- VEqualOp dom Neq x y
 
 pattern VNeg :: (HasStandardData builtin) => NegDomain -> WHNFValue builtin -> WHNFValue builtin
 pattern VNeg dom x = VOp1 (Neg dom) x

@@ -20,8 +20,8 @@ newtype ValidateOptions = ValidateOptions
   }
   deriving (Eq, Show)
 
-validate :: LoggingSettings -> ValidateOptions -> IO ()
-validate loggingSettings checkOptions = runImmediateLoggerT loggingSettings $ do
+validate :: (MonadStdIO IO) => LoggingSettings -> ValidateOptions -> IO ()
+validate loggingSettings checkOptions = runLoggerT loggingSettings $ do
   -- If the user has specified no logging target for check mode then
   -- default to command-line.
   status <- checkSpecificationStatus checkOptions
