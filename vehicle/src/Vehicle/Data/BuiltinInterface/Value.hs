@@ -68,32 +68,36 @@ pattern VConstructor c spine <- VBuiltin (getBuiltinConstructor -> Just c) spine
   where
     VConstructor c spine = VBuiltin (mkBuiltinConstructor c) spine
 
+pattern VBasicLiteral :: (HasStandardData builtin) => BuiltinConstructor -> Value strategy builtin
+pattern VBasicLiteral c <- VConstructor c []
+  where
+    -- Can't be bidirectional as Haskell 8.10.7 doesn't support the empty list literal being bidirectional.
+    VBasicLiteral c = VConstructor c []
+
 pattern VUnitLiteral :: (HasStandardData builtin) => Value strategy builtin
-pattern VUnitLiteral = VConstructor LUnit []
+pattern VUnitLiteral = VBasicLiteral LUnit
 
 pattern VBoolLiteral :: (HasStandardData builtin) => Bool -> Value strategy builtin
-pattern VBoolLiteral x = VConstructor (LBool x) []
+pattern VBoolLiteral x = VBasicLiteral (LBool x)
 
 pattern VIndexLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VIndexLiteral x = VConstructor (LIndex x) []
+pattern VIndexLiteral x = VBasicLiteral (LIndex x)
 
 pattern VNatLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VNatLiteral x = VConstructor (LNat x) []
+pattern VNatLiteral x = VBasicLiteral (LNat x)
 
 pattern VIntLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VIntLiteral x = VConstructor (LInt x) []
+pattern VIntLiteral x = VBasicLiteral (LInt x)
 
 pattern VRatLiteral :: (HasStandardData builtin) => Rational -> Value strategy builtin
-pattern VRatLiteral x = VConstructor (LRat x) []
+pattern VRatLiteral x = VBasicLiteral (LRat x)
 
 pattern VNil :: (HasStandardData builtin) => Value strategy builtin
 pattern VNil <- VConstructor Nil _
 
--- TODO should definitely be `isRelevant` not `isExplicit`
 pattern VCons :: (HasStandardData builtin) => VArg strategy builtin -> VArg strategy builtin -> Value strategy builtin
 pattern VCons x xs <- VConstructor Cons (filter isExplicit -> [x, xs])
 
--- TODO should definitely be `isRelevant` not `isExplicit`
 pattern VVecLiteral :: (HasStandardData builtin) => [VArg strategy builtin] -> Value strategy builtin
 pattern VVecLiteral xs <- VConstructor (LVec _) (filter isExplicit -> xs)
 
