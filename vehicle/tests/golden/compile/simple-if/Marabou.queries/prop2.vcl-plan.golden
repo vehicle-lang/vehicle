@@ -107,57 +107,9 @@
                       "inputOrOutput": "Output",
                       "application": 0
                     }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 1,
-                      "networkTensorVarDimensions": [
-                        1
-                      ],
-                      "networkName": "f",
-                      "inputOrOutput": "Input",
-                      "application": 1
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 1,
-                      "networkTensorVarDimensions": [
-                        1
-                      ],
-                      "networkName": "f",
-                      "inputOrOutput": "Output",
-                      "application": 1
-                    }
                   }
                 ],
                 "networkEntries": [
-                  {
-                    "metaNetworkEntryName": "f",
-                    "metaNetworkEntryInfo": {
-                      "networkType": {
-                        "outputTensor": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
-                        },
-                        "inputTensor": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
-                        }
-                      },
-                      "networkFilepath": "fake.onnx"
-                    }
-                  },
                   {
                     "metaNetworkEntryName": "f",
                     "metaNetworkEntryInfo": {
@@ -184,7 +136,7 @@
             {
               "variableReconstruction": [
                 {
-                  "tag": "SolveRationalEquality",
+                  "tag": "SolveRationalInequalities",
                   "contents": [
                     {
                       "tensorIndices": [],
@@ -194,53 +146,36 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": 0,
-                          "denominator": 1
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [],
-                                "originalVar": {
-                                  "userTensorVarName": "x",
-                                  "userTensorVarDimensions": []
-                                }
-                              }
-                            },
-                            {
-                              "numerator": -1,
+                      "upperBounds": [
+                        {
+                          "strictness": "NonStrict",
+                          "rationalIneqExpr": {
+                            "constantValue": {
+                              "numerator": 0,
                               "denominator": 1
-                            }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
-                                ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    1
-                                  ],
-                                  "networkName": "f",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              }
                             },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
+                            "coefficients": [
+                              [
+                                {
+                                  "tag": "UserRationalVar",
+                                  "contents": {
+                                    "tensorIndices": [],
+                                    "originalVar": {
+                                      "userTensorVarName": "x",
+                                      "userTensorVarDimensions": []
+                                    }
+                                  }
+                                },
+                                {
+                                  "numerator": 1,
+                                  "denominator": 1
+                                }
+                              ]
+                            ]
+                          }
+                        }
+                      ],
+                      "lowerBounds": []
                     }
                   ]
                 }
@@ -282,57 +217,9 @@
                       "inputOrOutput": "Output",
                       "application": 0
                     }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 1,
-                      "networkTensorVarDimensions": [
-                        1
-                      ],
-                      "networkName": "f",
-                      "inputOrOutput": "Input",
-                      "application": 1
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 1,
-                      "networkTensorVarDimensions": [
-                        1
-                      ],
-                      "networkName": "f",
-                      "inputOrOutput": "Output",
-                      "application": 1
-                    }
                   }
                 ],
                 "networkEntries": [
-                  {
-                    "metaNetworkEntryName": "f",
-                    "metaNetworkEntryInfo": {
-                      "networkType": {
-                        "outputTensor": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
-                        },
-                        "inputTensor": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
-                        }
-                      },
-                      "networkFilepath": "fake.onnx"
-                    }
-                  },
                   {
                     "metaNetworkEntryName": "f",
                     "metaNetworkEntryInfo": {

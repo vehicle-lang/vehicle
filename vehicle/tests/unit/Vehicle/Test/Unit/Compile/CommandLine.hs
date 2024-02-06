@@ -3,6 +3,7 @@ module Vehicle.Test.Unit.Compile.CommandLine
   )
 where
 
+import Control.Concurrent (threadDelay)
 import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
@@ -186,6 +187,8 @@ parserTest name command expected = testCase name $ do
         (_ : as) -> as
         _ -> developerError "Malformed command. Commands must start with 'vehicle'"
   let result = execParserPure defaultPrefs commandLineOptionsParserInfo args
+
+  threadDelay 10000000
 
   case result of
     Failure failure -> assertFailure (show failure)

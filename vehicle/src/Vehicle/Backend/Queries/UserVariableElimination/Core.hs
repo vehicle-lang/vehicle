@@ -2,6 +2,7 @@ module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..), gets)
+import Control.Monad.Writer (MonadWriter)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
@@ -20,6 +21,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE (normaliseApp)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface.Expr
@@ -498,8 +500,18 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
+type MonadUnblock m =
+  ( MonadQueryStructure m,
+    MonadWriter [WHNFValue QueryBuiltin] m
+  )
+
 getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx QueryBuiltin)
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
+
+prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
+prettyFriendlyInCtx e = do
+  ctx <- getGlobalBoundCtx
+  return $ prettyFriendly (WithContext e ctx)
 
 lookupVarByLevel :: (MonadQueryStructure m) => Lv -> m Variable
 lookupVarByLevel lv = do
@@ -528,8 +540,14 @@ getRationalVariable :: (MonadQueryStructure m) => Lv -> m RationalVariable
 getRationalVariable lv = do
   var <- lookupVarByLevel lv
   case var of
-    RationalVar v -> return v
-    _ -> compilerDeveloperError "Expected rational variable but found tensor variable"
+    RationalVar rv -> return rv
+    TensorVar tv
+      | not (null (tensorVariableDims tv)) -> compilerDeveloperError $ "Expected rational variable but found tensor variable" <+> pretty var
+      | otherwise -> do
+          rvs <- getReducedVariablesFor tv
+          case rvs of
+            [rv] -> return rv
+            _ -> compilerDeveloperError "Mismatched tensor dimensions!"
 
 getReducedUserVariablesFor :: (MonadQueryStructure m) => OriginalUserVariable -> m [UserRationalVariable]
 getReducedUserVariablesFor var = do
@@ -548,8 +566,9 @@ getReducedNetworkVariablesFor GlobalCtx {..} var = do
       compilerDeveloperError $
         "Network variable" <+> pretty var <+> "has no reductions"
 
-getReducedVariablesFor :: (MonadCompile m) => GlobalCtx -> TensorVariable -> m [RationalVariable]
-getReducedVariablesFor GlobalCtx {..} var = do
+getReducedVariablesFor :: (MonadQueryStructure m) => TensorVariable -> m [RationalVariable]
+getReducedVariablesFor var = do
+  GlobalCtx {..} <- get
   case var of
     NetworkTensorVar v -> case HashMap.lookup v networkVariableReductions of
       Just (vars, _) -> return $ fmap NetworkRationalVar vars
@@ -567,14 +586,13 @@ appStdlibDef fn spine = do
     Nothing -> compilerDeveloperError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
 
 reduceTensorEquality ::
-  (MonadCompile m) =>
-  GlobalCtx ->
+  (MonadQueryStructure m) =>
   TensorEquality ->
   m [RationalEquality]
-reduceTensorEquality globalCtx (TensorEquality (Sparse coeff constant)) = do
+reduceTensorEquality (TensorEquality (Sparse coeff constant)) = do
   let constValues = Vector.toList $ tensorValues constant
   let numRatEqs = product (tensorDims constant)
-  coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor globalCtx v) (Map.toList coeff)
+  coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
   let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
   return asserts
   where
@@ -631,24 +649,24 @@ pattern VVecEqSpine ::
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
+  WHNFArg QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFSpine QueryBuiltin
-pattern VVecEqSpine t1 t2 dim sol x y <- [t1, t2, dim, argExpr -> sol, argExpr -> x, argExpr -> y]
+pattern VVecEqSpine t1 t2 dim sol x y <- [t1, t2, dim, sol, argExpr -> x, argExpr -> y]
   where
-    VVecEqSpine t1 t2 dim sol x y = [t1, t2, dim, Arg mempty (Instance True) Relevant sol, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
+    VVecEqSpine t1 t2 dim sol x y = [t1, t2, dim, sol, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
 
 pattern VVecOp2Spine ::
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
+  WHNFArg QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFSpine QueryBuiltin
-pattern VVecOp2Spine t1 t2 t3 dim sol x y <- [t1, t2, t3, dim, argExpr -> sol, argExpr -> x, argExpr -> y]
+pattern VVecOp2Spine t1 t2 t3 dim sol x y <- [t1, t2, t3, dim, sol, argExpr -> x, argExpr -> y]
 
 pattern VVecEqArgs ::
   WHNFValue QueryBuiltin ->
@@ -674,10 +692,21 @@ pattern VVectorAdd x y <- VStandardLib StdAddVector [_, _, _, _, _, argExpr -> x
 pattern VVectorSub :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
 pattern VVectorSub x y <- VStandardLib StdSubVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
 
-pattern VAt :: WHNFArg QueryBuiltin -> WHNFArg QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VAt t n x y <- VBuiltinFunction At [t, n, argExpr -> x, argExpr -> y]
-  where
-    VAt t n x y = VBuiltinFunction At [t, n, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
+pattern VAt :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
+pattern VAt xs i <- VBuiltinFunction At [_t, _n, argExpr -> xs, argExpr -> i]
+
+pattern VFoldVector ::
+  WHNFValue QueryBuiltin ->
+  WHNFValue QueryBuiltin ->
+  WHNFValue QueryBuiltin ->
+  WHNFValue QueryBuiltin
+pattern VFoldVector f e xs <- VBuiltinFunction (Fold FoldVector) [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
+
+pattern VMapVector ::
+  WHNFValue QueryBuiltin ->
+  WHNFValue QueryBuiltin ->
+  WHNFValue QueryBuiltin
+pattern VMapVector f xs <- VBuiltinFunction MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
 
 mkVVectorEquality ::
   TensorDimensions ->

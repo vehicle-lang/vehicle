@@ -12,6 +12,9 @@ See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
 
 
 Warning:  In property 'p3', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
-  In queries 1 and 2:
+  In query 1:
+    f₀[input]!0 - no lower or upper bound
+    f₁[input]!0 - no lower or upper bound
+  In query 2:
     f₁[input]!0 - no lower or upper bound
 [m

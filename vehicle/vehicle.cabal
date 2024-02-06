@@ -161,6 +161,7 @@ library
     Vehicle.Libraries.StandardLibrary.Definitions
     Vehicle.Prelude
     Vehicle.Prelude.Logging
+    Vehicle.Prelude.Warning
     Vehicle.Resource
     Vehicle.TypeCheck
     Vehicle.Validate
@@ -244,14 +245,12 @@ library
     Vehicle.Data.RelevantExpr
     Vehicle.Debug
     Vehicle.Prelude.IO
-    Vehicle.Prelude.Logging.Backend
     Vehicle.Prelude.Logging.Class
     Vehicle.Prelude.Logging.Instance
     Vehicle.Prelude.Misc
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
-    Vehicle.Prelude.Warning
     Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
     Vehicle.Verify.QueryFormat.Interface

@@ -159,6 +159,11 @@ isNMeta :: Value strategy builtin -> Bool
 isNMeta VMeta {} = True
 isNMeta _ = False
 
+isVBoundVar :: Value strategy builtin -> Bool
+isVBoundVar = \case
+  VBoundVar {} -> True
+  _ -> False
+
 getNMeta :: Value strategy builtin -> Maybe MetaID
 getNMeta (VMeta m _) = Just m
 getNMeta _ = Nothing

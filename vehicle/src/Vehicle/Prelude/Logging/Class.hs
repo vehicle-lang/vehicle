@@ -16,7 +16,7 @@ where
 
 import Control.Monad (when)
 import Control.Monad.Except (ExceptT (..))
-import Control.Monad.Identity (IdentityT)
+import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans (MonadTrans (..))
