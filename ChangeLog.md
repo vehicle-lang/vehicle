@@ -6,6 +6,13 @@
 
 * More powerful index solver: `i` is now a valid index for vectors of size `n + 1 + i`.
 
+* Fixed compilation bugs when using network outputs as inputs to higher order functions.
+
+* More accurate error messages when the verifier is killed during verification.
+
+* If during verification the verifier throws an error, Vehicle will now create a reproducer
+  automatically.
+
 ## Version 0.11.1
 
 * Fixed bug properties involving the comparison of abstract `Index` values would throw
