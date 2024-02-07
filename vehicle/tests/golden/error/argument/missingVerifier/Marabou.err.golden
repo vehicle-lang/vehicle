@@ -1,1 +1,13 @@
+[93m
+Warning:  In property 'trivial', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
+
+In order to provide support, Vehicle has automatically converted the strict inequalities to non-strict inequalites. This is not sound, but errors will be at most the floating point epsilon used by the verifier, which is usually very small (e.g. 1e-9). However, this may lead to unexpected behaviour (e.g. loss of the law of excluded middle).
+
+See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
+
+
+Warning:  In property 'trivial', in query 1 all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of queries.
+
+See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details.
+[m
 No Marabou executable found at the provided location 'missing.exe'.

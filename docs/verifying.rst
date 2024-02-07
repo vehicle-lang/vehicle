@@ -37,7 +37,8 @@ the value of the ``specification`` argument.
     --dataset trainingImages:my/project/mnist-trainingImages.idx \
     --dataset trainingLabels:my/project/mnist-trainingLabels.idx \
     --parameter epsilon:0.1 \
-    --verifier Marabou
+    --verifier Marabou \
+    --verifier-args "--seed=1"
 
 The table below contains the full list of command line arguments available
 for the ``verify`` command when ``specification`` is a ``.vcl`` file.
@@ -99,6 +100,10 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
 
     Location of the executable for the verifier. If not provided, then Vehicle
     will search for the name of the executable in the ``PATH`` environment variable.
+
+.. option:: --verifier-args, -l
+
+    Allows extra arguments to be passed directly to the verifier.
 
 .. option:: --cache, -c
 
