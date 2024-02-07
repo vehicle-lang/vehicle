@@ -299,6 +299,7 @@ library
     , vehicle-syntax
 
   if (os(linux) || os(osx))
+    -- For Verifier exit code analysis
     build-depends: unix >=2.7
 
 executable vehicle
