@@ -126,7 +126,8 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
-                      verificationCache = Just "local/outputFolder"
+                      verificationCache = Just "local/outputFolder",
+                      verifierExtraArgs = Nothing
                     }
           },
       parserTest
@@ -148,7 +149,8 @@ verifyTests =
                       parameterValues = mempty,
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      verificationCache = Nothing
+                      verificationCache = Nothing,
+                      verifierExtraArgs = Nothing
                     }
           },
       parserTest
@@ -161,7 +163,8 @@ verifyTests =
         \--network f1:test/myNetwork1.onnx \
         \--parameter p:7.3 \
         \--network f2:test/myNetwork2.onnx \
-        \--verifier Marabou"
+        \--verifier Marabou \
+        \--verifier-args --verbose=True"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -175,7 +178,8 @@ verifyTests =
                       parameterValues = Map.fromList [("p", "7.3")],
                       verifierID = Marabou,
                       verifierLocation = Nothing,
-                      verificationCache = Nothing
+                      verificationCache = Nothing,
+                      verifierExtraArgs = Just "--verbose=True"
                     }
           }
     ]

@@ -13,6 +13,9 @@
 * If during verification the verifier throws an error, Vehicle will now create a reproducer
   automatically.
 
+* Added new command-line option `--verifier-args` to `verify` mode that allows extra
+  arguments to be passed directly to the verifier.
+
 ## Version 0.11.1
 
 * Fixed bug properties involving the comparison of abstract `Index` values would throw

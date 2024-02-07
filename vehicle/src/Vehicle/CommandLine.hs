@@ -97,7 +97,7 @@ data ModeOptions
 -- List of all options
 --------------------------------------------------------------------------------
 {-
---  - a
+args        = Opt "a"
 --  - b
 cache       = Opt "c" "cache"
 dataset     = Opt "d" "dataset"
@@ -230,6 +230,7 @@ verifyParser =
     <*> verifyCacheParser
     <*> verifierParser
     <*> verifierLocationParser
+    <*> verifierExtraArgsParser
 
 verifyParserInfo :: ParserInfo ModeOptions
 verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
@@ -489,6 +490,16 @@ verifierLocationParser =
           "Location of the executable for the verifier. \
           \If not provided then Vehicle will search for it in the PATH \
           \environment variable."
+
+verifierExtraArgsParser :: Parser (Maybe String)
+verifierExtraArgsParser =
+  optional $
+    strOption $
+      long "verifier-args"
+        <> short 'a'
+        <> metavar "STRING"
+        <> help
+          "Extra arguments to pass through to the verifier when verifying each query."
 
 exportTargetParser :: Parser ITP
 exportTargetParser =

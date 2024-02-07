@@ -1,5 +1,6 @@
 module Vehicle.Verify.Specification.IO
-  ( readSpecification,
+  ( VerifierSettings (..),
+    readSpecification,
     writeSpecificationCache,
     readSpecificationCacheIndex,
     writeVerificationQuery,
@@ -228,6 +229,12 @@ propertyResultFileName folder propertyAddress =
 --------------------------------------------------------------------------------
 -- Verification
 
+data VerifierSettings = VerifierSettings
+  { verifier :: Verifier,
+    verifierExecutable :: VerifierExecutable,
+    verifierExtraArgs :: [String]
+  }
+
 type MonadVerify m =
   ( MonadLogger m,
     MonadIO m,
@@ -236,7 +243,7 @@ type MonadVerify m =
 
 type MonadVerifyProperty m =
   ( MonadVerify m,
-    MonadReader (Verifier, VerifierExecutable, FilePath, PropertyProgressBar) m,
+    MonadReader (VerifierSettings, FilePath, PropertyProgressBar) m,
     MonadWriter (Sum Int) m
   )
 
@@ -244,11 +251,10 @@ type MonadVerifyProperty m =
 -- not prevent the verification of the other properties.
 verifySpecification ::
   (MonadVerify m) =>
+  VerifierSettings ->
   FilePath ->
-  Verifier ->
-  VerifierExecutable ->
   m ()
-verifySpecification queryFolder verifier verifierExecutable = do
+verifySpecification verifierSettings queryFolder = do
   programOutput "Verifying properties:"
   let verificationPlanFile = specificationCacheIndexFileName queryFolder
   SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
@@ -258,17 +264,16 @@ verifySpecification queryFolder verifier verifierExecutable = do
     Nothing -> do
       let propertyAddresses = concatMap (multiPropertyAddresses . snd) properties
       forM_ propertyAddresses $
-        verifyProperty verifier verifierExecutable queryFolder
+        verifyProperty verifierSettings queryFolder
 
 verifyProperty ::
   forall m.
   (MonadVerify m) =>
-  Verifier ->
-  VerifierExecutable ->
+  VerifierSettings ->
   FilePath ->
   PropertyAddress ->
   m ()
-verifyProperty verifier verifierExecutable verificationCache address = do
+verifyProperty verifierSettings verificationCache address = do
   -- Read the verification plan for the property
   let propertyPlanFile = propertyPlanFileName verificationCache address
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
@@ -276,7 +281,7 @@ verifyProperty verifier verifierExecutable verificationCache address = do
   -- Perform the verification
   let numberOfQueries = propertySize queryMetaData
   progressBar <- createPropertyProgressBar address numberOfQueries
-  let readerState = (verifier, verifierExecutable, verificationCache, progressBar)
+  let readerState = (verifierSettings, verificationCache, progressBar)
   (result, Sum numberOfQueriesExecuted) <- runWriterT (runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState)
 
   -- Tidy up and output results
@@ -354,29 +359,28 @@ verifyQuery ::
   m (QueryResult UserVariableAssignment)
 verifyQuery (QueryMetaData queryAddress metaNetwork userVars) = do
   tell (Sum 1)
-  (verifier, verifierExecutable, folder, progressBar) <- ask
-  result <- invokeVerifier verifier verifierExecutable metaNetwork folder queryAddress
+  (verifierSettings, folder, progressBar) <- ask
+  result <- invokeVerifier verifierSettings metaNetwork folder queryAddress
   liftIO $ incProgress progressBar 1
   traverse (reconstructUserVars userVars) result
 
 invokeVerifier ::
   (MonadVerifyProperty m) =>
-  Verifier ->
-  VerifierExecutable ->
+  VerifierSettings ->
   MetaNetwork ->
   FilePath ->
   QueryAddress ->
   m (QueryResult NetworkVariableAssignment)
-invokeVerifier verifier@Verifier {..} verifierExecutable metaNetwork folder queryAddress = do
+invokeVerifier VerifierSettings {..} metaNetwork folder queryAddress = do
   let queryFile = folder </> calculateQueryFileName queryAddress
   errorOrResult <- runExceptT $ do
     -- Check query supported
-    when (supportsMultipleNetworkApplications && length (networkEntries metaNetwork) > 1) $
+    when (supportsMultipleNetworkApplications verifier && length (networkEntries metaNetwork) > 1) $
       throwError $
         UnsupportedMultipleNetworks metaNetwork
 
     -- Prepare the command
-    let args = prepareArgs metaNetwork queryFile
+    let args = prepareArgs verifier metaNetwork queryFile <> verifierExtraArgs
     let command = unwords (verifierExecutable : args)
 
     -- Run the verification command
@@ -393,7 +397,7 @@ invokeVerifier verifier@Verifier {..} verifierExecutable metaNetwork folder quer
 
     -- Parse result
     logDebug MaxDetail $ "Output of verification command: " <> line <> indent 2 (pretty out)
-    parseOutput metaNetwork out
+    parseOutput verifier metaNetwork out
 
   case errorOrResult of
     Left err -> handleVerificationError verifier verifierExecutable metaNetwork queryAddress queryFile err
