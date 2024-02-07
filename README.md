@@ -67,5 +67,6 @@ to discuss it with us.
 
 ## Related papers
 
-- [Workshop paper (FOMLAS'22) motivating the Vehicle design](https://www.macs.hw.ac.uk/~ek19/vehicle.pdf)
-- [Vehicle's Type Checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
+- [Vehicle tool paper](https://arxiv.org/abs/2401.06379)
+- [Vehicle's type checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
+- [Vehicle's compilation to verifier queries](https://arxiv.org/abs/2402.01353)
