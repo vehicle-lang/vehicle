@@ -12,7 +12,8 @@ module Vehicle.Verify.Specification.IO
 where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM_, when)
+import Control.Monad (forM, forM_, when)
+import Control.Monad.Except (runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
@@ -28,11 +29,13 @@ import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
 import Data.Vector qualified as BoxedVector
 import Data.Vector.Unboxed qualified as Vector (fromList)
-import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.Exit (exitFailure)
-import System.FilePath (takeExtension, (<.>), (</>))
-import System.IO (stderr, stdout)
+import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist)
+import System.Exit (ExitCode (..), exitFailure)
+import System.FilePath (takeExtension, takeFileName, (<.>), (</>))
+import System.IO (stdout)
+import System.Process (readProcessWithExitCode)
 import System.ProgressBar
+import System.Random
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
@@ -43,7 +46,7 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Variable (OriginalUserVariable (..), UserVariableAssignment (..))
+import Vehicle.Verify.Variable (NetworkVariableAssignment (..), OriginalUserVariable (..), UserVariableAssignment (..))
 import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------
@@ -349,18 +352,121 @@ verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery (QueryMetaData queryAddress metaNetwork userVar) = do
+verifyQuery (QueryMetaData queryAddress metaNetwork userVars) = do
   tell (Sum 1)
   (verifier, verifierExecutable, folder, progressBar) <- ask
+  result <- invokeVerifier verifier verifierExecutable metaNetwork folder queryAddress
+  liftIO $ incProgress progressBar 1
+  traverse (reconstructUserVars userVars) result
+
+invokeVerifier ::
+  (MonadVerifyProperty m) =>
+  Verifier ->
+  VerifierExecutable ->
+  MetaNetwork ->
+  FilePath ->
+  QueryAddress ->
+  m (QueryResult NetworkVariableAssignment)
+invokeVerifier verifier@Verifier {..} verifierExecutable metaNetwork folder queryAddress = do
   let queryFile = folder </> calculateQueryFileName queryAddress
-  errorOrResult <- invokeVerifier verifier verifierExecutable metaNetwork queryFile
+  errorOrResult <- runExceptT $ do
+    -- Check query supported
+    when (supportsMultipleNetworkApplications && length (networkEntries metaNetwork) > 1) $
+      throwError $
+        UnsupportedMultipleNetworks metaNetwork
+
+    -- Prepare the command
+    let args = prepareArgs metaNetwork queryFile
+    let command = unwords (verifierExecutable : args)
+
+    -- Run the verification command
+    logDebug MaxDetail $ "Running verification command: " <> pretty command
+    (exitCode, out, err) <- liftIO $ readProcessWithExitCode verifierExecutable args ""
+
+    case exitCode of
+      ExitFailure exitValue
+        -- Killed by the system.
+        -- See System.Process.html#waitForProcess documentation
+        | exitValue < 0 -> throwError $ VerifierTerminatedByOS (-exitValue)
+        | otherwise -> throwError $ VerifierError (if null err then out else err)
+      _ -> return ()
+
+    -- Parse result
+    logDebug MaxDetail $ "Output of verification command: " <> line <> indent 2 (pretty out)
+    parseOutput metaNetwork out
+
   case errorOrResult of
-    Left errMsg -> liftIO $ do
-      TIO.hPutStrLn stderr ("\nError: " <> errMsg)
-      exitFailure
-    Right result -> do
-      liftIO $ incProgress progressBar 1
-      traverse (reconstructUserVars userVar) result
+    Left err -> handleVerificationError verifier verifierExecutable metaNetwork queryAddress queryFile err
+    Right result -> return result
+
+handleVerificationError ::
+  (MonadVerifyProperty m) =>
+  Verifier ->
+  VerifierExecutable ->
+  MetaNetwork ->
+  QueryAddress ->
+  QueryFile ->
+  VerificationError ->
+  m a
+handleVerificationError verifier verifierExecutable metaNetwork queryAddress queryFile err = do
+  let VerificationErrorAction {..} = convertVerificationError verifier queryAddress err
+
+  reproducerMessage <-
+    if reproducerIsUseful
+      then createReproducer verifier verifierExecutable metaNetwork queryFile
+      else return ""
+
+  let finalMessage = "\n\nError: " <> verificationErrorMessage <> reproducerMessage
+  writeStderrLn (layoutAsText finalMessage)
+  liftIO $ exitFailure
+
+createReproducer ::
+  (MonadIO m) =>
+  Verifier ->
+  VerifierExecutable ->
+  MetaNetwork ->
+  QueryFile ->
+  m (Doc a)
+createReproducer verifier verifierExecutable metaNetwork queryFile = do
+  -- Create the reproducer directory
+  vehiclePath <- getVehiclePath
+  randomNumber <- liftIO $ (randomIO :: IO Int)
+  let reproducerDir = vehiclePath </> "reproducer" <> show (abs randomNumber)
+  liftIO $ createDirectoryIfMissing True reproducerDir
+
+  -- Function to copy a file over
+  let copyOverFile file = do
+        let fileName = takeFileName file
+        let resultName = reproducerDir </> fileName
+        copyFile file resultName
+        return resultName
+
+  -- Copy the query file over
+  copiedQueryFile <- liftIO $ copyOverFile queryFile
+
+  -- Copy the network files over
+  copiedMetaNetwork <- liftIO $ do
+    let MetaNetwork {..} = metaNetwork
+    newNetworkEntries <- forM networkEntries $ \MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {..}, ..} -> do
+      newNetworkFilePath <- copyOverFile networkFilepath
+      return $ MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {networkFilepath = newNetworkFilePath, ..}, ..}
+    return $ MetaNetwork {networkEntries = newNetworkEntries, ..}
+
+  command <- return $ unwords (verifierExecutable : prepareArgs verifier copiedMetaNetwork copiedQueryFile)
+
+  -- Return the explanatory text
+  return $
+    line
+      <> "A reproducer has been created at:"
+      <> line
+      <> line
+      <> indent 2 (pretty reproducerDir)
+      <> line
+      <> line
+      <> "which can be run using:"
+      <> line
+      <> line
+      <> indent 2 (pretty command)
 
 --------------------------------------------------------------------------------
 -- Assignments
