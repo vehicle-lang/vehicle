@@ -76,19 +76,22 @@ instance IsTest TestSpec where
           -- Check if --accept was passed, and act accordingly:
           if unAccept (lookupOption options)
             then do
-              -- Update .golden file for stdout
-              acceptStdout stdout
               -- Update .golden file for stderr
               acceptStderr stderr
-              -- Update .golden file for stderr
+              -- Update .golden file for stdout
+              acceptStdout stdout
+              -- Update produced .golden files
               acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
             else do
-              -- Diff stdout
-              diffStdout maybeLooseEq stdout
-              -- Diff stderr
-              diffStderr maybeLooseEq stderr
-              -- Diff produced files
-              diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options) (lookupOption options)
+              maybeError <- execWriterT $ do
+                -- Diff stderr
+                diffStderr maybeLooseEq stderr
+                -- Diff stdout
+                diffStdout maybeLooseEq stdout
+                -- Diff produced files
+                diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options) (lookupOption options)
+
+              maybe (return ()) throw maybeError
 
   testOptions :: Tagged TestSpec [OptionDescription]
   testOptions =
@@ -137,6 +140,8 @@ instance (MonadWriter w m) => MonadWriter w (TestT m) where
 -- | Alias for @'TestT' 'IO' a@.
 type TestIO a = TestT IO a
 
+type DiffTestIO a = WriterT (Maybe ProducedFilesError) (TestT IO) a
+
 getTestEnvironment :: (Monad m) => TestT m TestEnvironment
 getTestEnvironment = TestT get
 
@@ -159,25 +164,27 @@ runTestIO testDirectory testName (TestT testIO) = do
 copyTestNeeds :: [FilePath] -> TestIO ()
 copyTestNeeds neededFiles = do
   TestEnvironment {..} <- getTestEnvironment
+
+  neededFileTargets <- lift $ do
+    for neededFiles $ \neededFile -> do
+      let neededFileTarget = removeParent neededFile
+      let neededFileTargetAbsolute = tempDirectory </> removeParent neededFile
+      -- Try to find the needed file in the test directory
+      let neededFileSource = testDirectory </> neededFile
+      neededFileExists <- doesFileExist (testDirectory </> neededFile)
+      -- Try to find the needed file in the test directory as a golden file
+      let neededFileSourceAsGolden = neededFileSource <.> "golden"
+      neededFileExistsAsGolden <- doesFileExist neededFileSourceAsGolden
+      -- If either is successful, copy the file. Otherwise, throw an error.
+      if
+        | neededFileExists -> copyFile neededFileSource neededFileTargetAbsolute
+        | neededFileExistsAsGolden -> copyFile neededFileSourceAsGolden neededFileTargetAbsolute
+        | otherwise -> throw $ neededFileNotFound neededFile
+
+      return neededFileTarget
+
   -- Register the 'neededFiles' with the environment.
-  putTestEnvironment TestEnvironment {testNeeds = neededFiles <> testNeeds, ..}
-  lift $ do
-    maybeError <- execWriterT $ do
-      for_ neededFiles $ \neededFile -> do
-        let neededFileTarget = tempDirectory </> neededFile
-        -- Try to find the needed file in the test directory
-        let neededFileSource = testDirectory </> neededFile
-        neededFileExists <- lift $ doesFileExist (testDirectory </> neededFile)
-        -- Try to find the needed file in the test directory as a golden file
-        let neededFileSourceAsGolden = neededFileSource <.> "golden"
-        neededFileExistsAsGolden <- lift $ doesFileExist neededFileSourceAsGolden
-        -- If either is successful, copy the file. Otherwise, throw an error.
-        if
-          | neededFileExists -> lift $ copyFile neededFileSource neededFileTarget
-          | neededFileExistsAsGolden -> lift $ copyFile neededFileSourceAsGolden neededFileTarget
-          | otherwise -> tell $ Just $ neededFileNotFound neededFile
-    -- If errors were raised, throw them.
-    maybe (return ()) throw maybeError
+  putTestEnvironment TestEnvironment {testNeeds = neededFileTargets <> testNeeds, ..}
 
 -- | Run the test command in the temporary directory.
 runTestRun :: String -> TestIO (Lazy.Text, Lazy.Text)
@@ -196,10 +203,11 @@ runTestRun cmd = TestT $ do
 -- | Compare the standard output to the golden file.
 --
 -- NOTE: The loose equality must extend equality.
-diffStdout :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> TestIO ()
+diffStdout :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> DiffTestIO ()
 diffStdout maybeLooseEq actual = do
-  golden <- readGoldenStdout
-  lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual
+  golden <- lift readGoldenStdout
+  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual) $ \diff ->
+    tell $ Just $ stdoutDiffer diff
 
 -- | Update the standard output golden file.
 acceptStdout :: Lazy.Text -> TestIO ()
@@ -229,10 +237,11 @@ writeGoldenStdout contents = TestT $ do
 -- | Compare the standard output to the golden file.
 --
 -- NOTE: The loose equality must extend equality.
-diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> TestIO ()
+diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> DiffTestIO ()
 diffStderr maybeLooseEq actual = do
-  golden <- readGoldenStderr
-  lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual
+  golden <- lift $ readGoldenStderr
+  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual) $ \diff ->
+    tell $ Just $ stderrDiffer diff
 
 -- | Update the standard error golden file.
 acceptStderr :: Lazy.Text -> TestIO ()
@@ -262,38 +271,35 @@ writeGoldenStderr contents = TestT $ do
 -- | Compare the files produced by the test.
 --
 -- NOTE: The loose equality must extend equality.
-diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> SizeOnlyExtensions -> TestIO ()
+diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> SizeOnlyExtensions -> DiffTestIO ()
 diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExtensions = do
-  TestEnvironment {testDirectory, tempDirectory} <- getTestEnvironment
+  TestEnvironment {testDirectory, tempDirectory} <- lift $ getTestEnvironment
   let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   let sizeOnlyExtensionsSet = toSizeOnlyExtensionsSet sizeOnlyExtensions
   -- Find the golden and actual files:
-  goldenFiles <- findTestProducesGolden testProduces
-  actualFiles <- findTestProducesActual testIgnores
-  maybeError <- execWriterT $ do
-    -- Assert that all golden files end with .golden:
-    for_ goldenFiles $ \goldenFile ->
-      unless ("golden" `isExtensionOf` goldenFile) $
-        fail $
-          printf "found golden file without .golden extension: %s" goldenFile
-    -- Compute sets of files:
-    let goldenFileSet = Set.fromList (mapMaybe (stripExtension "golden") goldenFiles)
-    let actualFileSet = Set.fromList actualFiles
-    -- Test for files which were expected but not produced:
-    let expectedFilesNotProduced = Set.toAscList $ Set.difference goldenFileSet actualFileSet
-    for_ expectedFilesNotProduced $ tell . Just . expectedFileNotProduced
-    -- Test for files which were produced but not expected:
-    let producedFilesNotExpected = Set.toAscList $ Set.difference actualFileSet goldenFileSet
-    for_ producedFilesNotExpected $ tell . Just . producedFileNotExpected
-    -- Diff the files which were produced and expected:
-    for_ (Set.toAscList $ Set.intersection goldenFileSet actualFileSet) $ \file -> do
-      let goldenFile = testDirectory </> file <.> "golden"
-      let actualFile = tempDirectory </> file
-      catch (lift $ lift $ diffFile shortCircuitLooseEq sizeOnlyExtensionsSet goldenFile actualFile) $ \diff ->
-        tell $ Just $ producedAndExpectedDiffer actualFile diff
+  goldenFiles <- lift $ findTestProducesGolden testProduces
+  actualFiles <- lift $ findTestProducesActual testIgnores
 
-  -- If errors were raised, throw them.
-  maybe (return ()) throw maybeError
+  -- Assert that all golden files end with .golden:
+  for_ goldenFiles $ \goldenFile ->
+    unless ("golden" `isExtensionOf` goldenFile) $
+      fail $
+        printf "found golden file without .golden extension: %s" goldenFile
+  -- Compute sets of files:
+  let goldenFileSet = Set.fromList (mapMaybe (stripExtension "golden") goldenFiles)
+  let actualFileSet = Set.fromList actualFiles
+  -- Test for files which were expected but not produced:
+  let expectedFilesNotProduced = Set.toAscList $ Set.difference goldenFileSet actualFileSet
+  for_ expectedFilesNotProduced $ tell . Just . expectedFileNotProduced
+  -- Test for files which were produced but not expected:
+  let producedFilesNotExpected = Set.toAscList $ Set.difference actualFileSet goldenFileSet
+  for_ producedFilesNotExpected $ tell . Just . producedFileNotExpected
+  -- Diff the files which were produced and expected:
+  for_ (Set.toAscList $ Set.intersection goldenFileSet actualFileSet) $ \file -> do
+    let goldenFile = testDirectory </> file <.> "golden"
+    let actualFile = tempDirectory </> file
+    catch (lift $ lift $ diffFile shortCircuitLooseEq sizeOnlyExtensionsSet goldenFile actualFile) $ \diff ->
+      tell $ Just $ producedAndExpectedDiffer actualFile diff
 
 -- | Assert a golden file is not captured by another test's produces patterns.
 assertFileNotCapturedByOtherTest ::
@@ -544,3 +550,8 @@ makeSizeOnlyDiff goldenSize actualSize =
     <> "> produced "
     <> show actualSize
     <> " bytes"
+
+removeParent :: FilePath -> FilePath
+removeParent path = case path of
+  '.' : '.' : '/' : remainder -> removeParent remainder
+  _ -> path

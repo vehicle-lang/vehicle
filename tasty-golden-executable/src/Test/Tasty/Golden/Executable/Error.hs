@@ -49,7 +49,9 @@ handleGoldenFilesNotFoundError GoldenFilesNotFoundError {..} = do
 --   expect a produced file, or when the produced file differs from the
 --   expected file.
 data ProducedFilesError = ProducedFilesError
-  { expectedFilesNotProduced :: [FilePath],
+  { stdoutDiff :: Maybe Diff,
+    stderrDiff :: Maybe Diff,
+    expectedFilesNotProduced :: [FilePath],
     producedFilesNotExpected :: [FilePath],
     producedAndExpectedDiffs :: Map FilePath Diff
   }
@@ -59,19 +61,27 @@ instance Semigroup ProducedFilesError where
   (<>) :: ProducedFilesError -> ProducedFilesError -> ProducedFilesError
   e1 <> e2 =
     ProducedFilesError
-      { expectedFilesNotProduced = expectedFilesNotProduced e1 <> expectedFilesNotProduced e2,
+      { stdoutDiff = maybe (stdoutDiff e2) Just (stdoutDiff e1),
+        stderrDiff = maybe (stderrDiff e2) Just (stderrDiff e1),
+        expectedFilesNotProduced = expectedFilesNotProduced e1 <> expectedFilesNotProduced e2,
         producedFilesNotExpected = producedFilesNotExpected e1 <> producedFilesNotExpected e2,
         producedAndExpectedDiffs = producedAndExpectedDiffs e1 <> producedAndExpectedDiffs e2
       }
 
 expectedFileNotProduced :: FilePath -> ProducedFilesError
-expectedFileNotProduced file = ProducedFilesError [file] [] Map.empty
+expectedFileNotProduced file = ProducedFilesError Nothing Nothing [file] [] Map.empty
 
 producedFileNotExpected :: FilePath -> ProducedFilesError
-producedFileNotExpected file = ProducedFilesError [] [file] Map.empty
+producedFileNotExpected file = ProducedFilesError Nothing Nothing [] [file] Map.empty
 
 producedAndExpectedDiffer :: FilePath -> Diff -> ProducedFilesError
-producedAndExpectedDiffer file diff = ProducedFilesError [] [] (Map.singleton file diff)
+producedAndExpectedDiffer file diff = ProducedFilesError Nothing Nothing [] [] (Map.singleton file diff)
+
+stdoutDiffer :: Diff -> ProducedFilesError
+stdoutDiffer diff = ProducedFilesError (Just diff) Nothing [] [] mempty
+
+stderrDiffer :: Diff -> ProducedFilesError
+stderrDiffer diff = ProducedFilesError Nothing (Just diff) [] [] mempty
 
 instance Exception ProducedFilesError
 
@@ -79,7 +89,13 @@ handleProducedFilesError :: ProducedFilesError -> IO Result
 handleProducedFilesError ProducedFilesError {..} = do
   let message =
         unlines . catMaybes $
-          [ boolToMaybe (not $ null expectedFilesNotProduced) $
+          [ case stderrDiff of
+              Nothing -> Nothing
+              Just diff -> Just $ printf "The contents of stderr differ: \n%s" $ show diff,
+            case stdoutDiff of
+              Nothing -> Nothing
+              Just diff -> Just $ printf "The contents of stdout differ: \n%s" $ show diff,
+            boolToMaybe (not $ null expectedFilesNotProduced) $
               printf "Did not produce expected files: %s" $
                 List.intercalate ", " (show <$> expectedFilesNotProduced),
             boolToMaybe (not $ null expectedFilesNotProduced) $
