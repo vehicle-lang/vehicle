@@ -7,7 +7,8 @@ where
 
 import Control.Monad (foldM)
 import Data.Map (Map)
-import Vehicle.Backend.Queries.UserVariableElimination.Core (FourierMotzkinVariableSolution (..), RationalInequality (..))
+import GHC.Real (infinity)
+import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.LinearExpr
@@ -28,39 +29,18 @@ fourierMotzkinElimination ::
 fourierMotzkinElimination var inequalities = do
   let (less, greater, unusedInequalities) = partition (UserRationalVar var) inequalities
   let solution = FMSolution less greater
-
   let newInequalities = fmap combineInequalities [(x, y) | x <- less, y <- greater]
-
-  logDebug MaxDetail $
-    line
-      <> "After FM solving for"
-        <+> pretty var
-      <> ":"
-      <> line
-      <> indent
-        2
-        ( "LHS inequalities:"
-            <> pretty less
-            <> line
-            <> "RHS inequalities:"
-            <> pretty greater
-            <> line
-            <> "New inequalities:"
-            <> pretty newInequalities
-        )
-
   return (solution, newInequalities <> unusedInequalities)
 
-combineInequalities :: (RationalInequality, RationalInequality) -> RationalInequality
-combineInequalities (RationalInequality rel1 expr1, RationalInequality rel2 expr2) =
-  let rel = case (rel1, rel2) of
+combineInequalities :: (FMBound, FMBound) -> RationalInequality
+combineInequalities (FMBound rel1 lowerBound, FMBound rel2 upperBound) =
+  RationalInequality
+    { rationalIneqExpr = addExprs 1 (-1) lowerBound upperBound,
+      strictness = case (rel1, rel2) of
         (Strict, _) -> Strict
         (_, Strict) -> Strict
         (_, _) -> NonStrict
-   in RationalInequality
-        { rationalIneqExpr = addExprs 1 1 expr1 expr2,
-          strictness = rel
-        }
+    }
 
 -- | Partitions the inequalities into three sets:
 --  1. Those where the rest of the expression is less than the variable
@@ -69,28 +49,22 @@ combineInequalities (RationalInequality rel1 expr1, RationalInequality rel2 expr
 partition ::
   RationalVariable ->
   [RationalInequality] ->
-  ([RationalInequality], [RationalInequality], [RationalInequality])
+  ([FMBound], [FMBound], [RationalInequality])
 partition var = foldr categorise ([], [], [])
   where
     categorise ::
       RationalInequality ->
-      ([RationalInequality], [RationalInequality], [RationalInequality]) ->
-      ([RationalInequality], [RationalInequality], [RationalInequality])
-    categorise a@(RationalInequality rel expr) (less, greater, unused) = do
-      let coeff = lookupCoefficient expr var
+      ([FMBound], [FMBound], [RationalInequality]) ->
+      ([FMBound], [FMBound], [RationalInequality])
+    categorise ineq@(RationalInequality rel expr) (lowerBounds, upperBounds, unused) = do
+      let (coeff, valueExpr) = rearrangeExprToSolveFor var expr
+      let bound = FMBound rel valueExpr
       if coeff < 0
-        then do
-          let coeff' = -coeff
-          let expr' = scaleExpr (1 / coeff') expr
-          let a' = RationalInequality rel expr'
-          (a' : less, greater, unused)
+        then (bound : lowerBounds, upperBounds, unused)
         else
           if coeff > 0
-            then do
-              let expr' = scaleExpr (1 / coeff) expr
-              let a' = RationalInequality rel expr'
-              (less, a' : greater, unused)
-            else (less, greater, a : unused)
+            then (lowerBounds, bound : upperBounds, unused)
+            else (lowerBounds, upperBounds, ineq : unused)
 
 --------------------------------------------------------------------------------
 -- Solutions
@@ -104,25 +78,30 @@ reconstructFourierMotzkinVariableValue ::
   FourierMotzkinVariableSolution ->
   Either RationalVariable Rational
 reconstructFourierMotzkinVariableValue assignment solution = do
-  let inf = 1 / 0
-  let negInf = -1 / 0
-  let initialMax = (negInf, NonStrict)
-  let initialMin = (inf, NonStrict)
+  let initialMax = (-infinity, NonStrict)
+  let initialMin = (infinity, NonStrict)
   (lowerBound, minRel) <- foldM evaluateMaxValue initialMax (lowerBounds solution)
   (upperBound, maxRel) <- foldM evaluateMinValue initialMin (upperBounds solution)
 
-  if lowerBound < upperBound || minRel == NonStrict && maxRel == NonStrict
-    then return $ addConstants 0.5 0.5 lowerBound upperBound
-    else -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
-    -- algorithm. Closest to referencing this impossibility is:
-    -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
+  let validBound =
+        lowerBound < upperBound
+          -- Turns out `-infinity < infinity` returns `False`
+          || lowerBound == -infinity && upperBound == infinity
+          || (lowerBound == upperBound && minRel == NonStrict && maxRel == NonStrict)
+
+  if validBound
+    then return $ pickValue lowerBound upperBound
+    else do
+      -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
+      -- algorithm. Closest to referencing this impossibility is:
+      -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
       developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
   where
     evaluateMinValue ::
       (Rational, Strictness) ->
-      RationalInequality ->
+      FMBound ->
       Either RationalVariable (Rational, Strictness)
-    evaluateMinValue current@(currentMin, _) (RationalInequality rel expr) = do
+    evaluateMinValue current@(currentMin, _) (FMBound rel expr) = do
       value <- evaluateExpr expr assignment
       return $
         if (value < currentMin) || (value == currentMin && rel == Strict)
@@ -131,11 +110,18 @@ reconstructFourierMotzkinVariableValue assignment solution = do
 
     evaluateMaxValue ::
       (Rational, Strictness) ->
-      RationalInequality ->
+      FMBound ->
       Either RationalVariable (Rational, Strictness)
-    evaluateMaxValue current@(currentMax, _) (RationalInequality rel expr) = do
+    evaluateMaxValue current@(currentMax, _) (FMBound rel expr) = do
       value <- evaluateExpr expr assignment
       return $
         if (value > currentMax) || (value == currentMax && rel == Strict)
           then (value, rel)
           else current
+
+    pickValue :: Rational -> Rational -> Rational
+    pickValue lowerBound upperBound
+      | lowerBound == -infinity && upperBound == infinity = 0
+      | lowerBound == -infinity = upperBound - 1.0
+      | upperBound == infinity = lowerBound + 1.0
+      | otherwise = 0.5 * (lowerBound + upperBound)

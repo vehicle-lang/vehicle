@@ -13,8 +13,8 @@ module Vehicle.Verify.Specification.IO
 where
 
 import Control.Exception (IOException, catch)
-import Control.Monad (forM, forM_, when)
-import Control.Monad.Except (runExceptT, throwError)
+import Control.Monad (forM, forM_, unless, when)
+import Control.Monad.Except (MonadError (..), runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
@@ -24,7 +24,9 @@ import Data.ByteString.Lazy qualified as BIO
 import Data.IDX (encodeIDXFile)
 import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map qualified as Map
 import Data.Monoid (Sum (..))
+import Data.Set qualified as Set (difference, fromList, map, null)
 import Data.Text (intercalate, pack, unpack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
@@ -273,23 +275,24 @@ verifyProperty ::
   FilePath ->
   PropertyAddress ->
   m ()
-verifyProperty verifierSettings verificationCache address = do
-  -- Read the verification plan for the property
-  let propertyPlanFile = propertyPlanFileName verificationCache address
-  PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
+verifyProperty verifierSettings verificationCache address =
+  logCompilerSection MinDetail ("Verifying property" <+> quotePretty address) $ do
+    -- Read the verification plan for the property
+    let propertyPlanFile = propertyPlanFileName verificationCache address
+    PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
 
-  -- Perform the verification
-  let numberOfQueries = propertySize queryMetaData
-  progressBar <- createPropertyProgressBar address numberOfQueries
-  let readerState = (verifierSettings, verificationCache, progressBar)
-  (result, Sum numberOfQueriesExecuted) <- runWriterT (runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState)
+    -- Perform the verification
+    let numberOfQueries = propertySize queryMetaData
+    progressBar <- createPropertyProgressBar address numberOfQueries
+    let readerState = (verifierSettings, verificationCache, progressBar)
+    (result, Sum numberOfQueriesExecuted) <- runWriterT (runReaderT (verifyPropertyBooleanStructure queryMetaData) readerState)
 
-  -- Tidy up and output results
-  when (numberOfQueriesExecuted < numberOfQueries) $ do
-    -- The progress bar is only closed when all queries are run so in this
-    -- case we have to close it manually.
-    closePropertyProgressBar progressBar
-  outputPropertyResult verificationCache address result
+    -- Tidy up and output results
+    when (numberOfQueriesExecuted < numberOfQueries) $ do
+      -- The progress bar is only closed when all queries are run so in this
+      -- case we have to close it manually.
+      closePropertyProgressBar progressBar
+    outputPropertyResult verificationCache address result
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
@@ -358,50 +361,76 @@ verifyQuery ::
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
 verifyQuery (QueryMetaData queryAddress metaNetwork userVars) = do
-  tell (Sum 1)
-  (verifierSettings, folder, progressBar) <- ask
-  result <- invokeVerifier verifierSettings metaNetwork folder queryAddress
-  liftIO $ incProgress progressBar 1
-  traverse (reconstructUserVars userVars) result
+  logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
+    (verifierSettings@VerifierSettings {..}, folder, progressBar) <- ask
+    let queryFile = folder </> calculateQueryFileName queryAddress
+    errorOrResult <- runExceptT $ do
+      tell (Sum 1)
+      result <- invokeVerifier verifierSettings metaNetwork queryFile
+      liftIO $ incProgress progressBar 1
+
+      case result of
+        SAT Nothing -> do
+          logDebug MidDetail $ "Query is SAT (no witness)" <> line
+          return $ SAT Nothing
+        SAT (Just witness) -> do
+          logDebug MidDetail $ "Query is SAT (witness provided)" <> line
+          checkWitness metaNetwork witness
+          problemSpaceWitness <- reconstructUserVars userVars witness
+          return $ SAT $ Just problemSpaceWitness
+        UnSAT -> do
+          logDebug MidDetail $ "Query is UnSAT" <> line
+          return UnSAT
+
+    case errorOrResult of
+      Right result -> return result
+      Left err -> do
+        handleVerificationError verifier verifierExecutable metaNetwork queryAddress queryFile err
 
 invokeVerifier ::
-  (MonadVerifyProperty m) =>
+  (MonadVerifyProperty m, MonadError VerificationError m) =>
   VerifierSettings ->
   MetaNetwork ->
-  FilePath ->
-  QueryAddress ->
+  QueryFile ->
   m (QueryResult NetworkVariableAssignment)
-invokeVerifier VerifierSettings {..} metaNetwork folder queryAddress = do
-  let queryFile = folder </> calculateQueryFileName queryAddress
-  errorOrResult <- runExceptT $ do
-    -- Check query supported
-    when (supportsMultipleNetworkApplications verifier && length (networkEntries metaNetwork) > 1) $
-      throwError $
-        UnsupportedMultipleNetworks metaNetwork
+invokeVerifier VerifierSettings {..} metaNetwork queryFile = do
+  -- Check query supported
+  when (supportsMultipleNetworkApplications verifier && length (networkEntries metaNetwork) > 1) $
+    throwError $
+      UnsupportedMultipleNetworks metaNetwork
 
-    -- Prepare the command
-    let args = prepareArgs verifier metaNetwork queryFile <> verifierExtraArgs
-    let command = unwords (verifierExecutable : args)
+  -- Prepare the command
+  let args = prepareArgs verifier metaNetwork queryFile <> verifierExtraArgs
+  let command = unwords (verifierExecutable : args)
 
-    -- Run the verification command
-    logDebug MaxDetail $ "Running verification command: " <> pretty command
-    (exitCode, out, err) <- liftIO $ readProcessWithExitCode verifierExecutable args ""
+  -- Run the verification command
+  logDebug MidDetail $ "Running verification command: " <> line <> indent 2 (pretty command) <> line
+  (exitCode, out, err) <- liftIO $ readProcessWithExitCode verifierExecutable args ""
+  logDebug MinDetail $ "Command status:" <+> pretty (show exitCode) <> line
+  logDebug MinDetail $ "Command stdout:" <> line <> indent 2 (pretty out) <> line
+  logDebug MinDetail $ "Command stderr:" <> line <> indent 2 (pretty err) <> line
 
-    case exitCode of
-      ExitFailure exitValue
-        -- Killed by the system.
-        -- See System.Process.html#waitForProcess documentation
-        | exitValue < 0 -> throwError $ VerifierTerminatedByOS (-exitValue)
-        | otherwise -> throwError $ VerifierError (if null err then out else err)
-      _ -> return ()
+  -- Check for errors
+  case exitCode of
+    ExitFailure exitValue
+      -- Killed by the system.
+      -- See System.Process.html#waitForProcess documentation
+      | exitValue < 0 -> throwError $ VerifierTerminatedByOS (-exitValue)
+      | otherwise -> throwError $ VerifierError (if null err then out else err)
+    _ -> return ()
 
-    -- Parse result
-    logDebug MaxDetail $ "Output of verification command: " <> line <> indent 2 (pretty out)
-    parseOutput verifier metaNetwork out
+  -- Parse the result
+  parseOutput verifier metaNetwork out
 
-  case errorOrResult of
-    Left err -> handleVerificationError verifier verifierExecutable metaNetwork queryAddress queryFile err
-    Right result -> return result
+checkWitness :: (MonadVerifyProperty m, MonadError VerificationError m) => MetaNetwork -> NetworkVariableAssignment -> m ()
+checkWitness MetaNetwork {..} (NetworkVariableAssignment witness) = do
+  let allVariables = Set.fromList variables
+  let providedVariables = Map.keysSet witness
+  let missingVariables = Set.difference allVariables providedVariables
+  unless (Set.null missingVariables) $ do
+    (VerifierSettings {..}, _, _) <- ask
+    let queryFormat = queryFormats $ verifierQueryFormatID verifier
+    throwError $ VerifierIncompleteWitness (Set.map (layoutAsString . compileVar queryFormat) missingVariables)
 
 handleVerificationError ::
   (MonadVerifyProperty m) =>
@@ -435,7 +464,7 @@ createReproducer verifier verifierExecutable metaNetwork queryFile = do
   -- Create the reproducer directory
   vehiclePath <- getVehiclePath
   randomNumber <- liftIO $ (randomIO :: IO Int)
-  let reproducerDir = vehiclePath </> "reproducer" <> show (abs randomNumber)
+  let reproducerDir = vehiclePath </> "reproducers" </> show (abs randomNumber)
   liftIO $ createDirectoryIfMissing True reproducerDir
 
   -- Function to copy a file over

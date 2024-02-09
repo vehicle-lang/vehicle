@@ -16,6 +16,8 @@
 * Added new command-line option `--verifier-args` to `verify` mode that allows extra
   arguments to be passed directly to the verifier.
 
+* Fixed bug when reconstructing witnesses using Fourier-Motzkin elimination.
+
 ## Version 0.11.1
 
 * Fixed bug properties involving the comparison of abstract `Index` values would throw

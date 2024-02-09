@@ -12,7 +12,7 @@ import Data.Text qualified as Text (pack, splitOn, strip)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.QueryFormat.Marabou (compileVar)
+import Vehicle.Verify.QueryFormat.Marabou (compileMarabouVar)
 import Vehicle.Verify.Variable
 import Vehicle.Verify.Verifier.Core
 
@@ -22,13 +22,11 @@ import Vehicle.Verify.Verifier.Core
 marabouVerifier :: Verifier
 marabouVerifier =
   Verifier
-    { verifierIdentifier = Marabou,
+    { verifierID = Marabou,
+      verifierQueryFormatID = MarabouQueries,
       verifierExecutableName = "Marabou",
-      verifierQueryFormat = MarabouQueries,
       prepareArgs = prepareMarabouArgs,
       parseOutput = parseMarabouOutput,
-      -- Marabou seems to output its error messages to stdout rather than stderr...
-      -- https://github.com/NeuralNetworkVerification/Marabou/issues/714
       supportsMultipleNetworkApplications = False
     }
 
@@ -42,7 +40,7 @@ parseMarabouOutput metaNetwork out = do
   let outputLines = fmap Text.pack (lines out)
   let resultIndex = findIndex (\v -> v == "sat" || v == "unsat") outputLines
   case resultIndex of
-    Nothing -> throwError $ VerifierOutputMalformed "cannot find 'sat' or 'unsat'"
+    Nothing -> throwError $ VerifierOutputMalformed "Cannot find 'sat' or 'unsat'"
     Just i
       | outputLines !! i == "unsat" -> return $ UnSAT
       | otherwise -> do
@@ -56,7 +54,7 @@ parseSATAssignment ::
   [Text] ->
   m NetworkVariableAssignment
 parseSATAssignment metaNetwork output = do
-  let variableMap = Map.fromList $ fmap (\var -> (layoutAsText $ compileVar var, var)) (variables metaNetwork)
+  let variableMap = Map.fromList $ fmap (\var -> (layoutAsText $ compileMarabouVar var, var)) (variables metaNetwork)
   let mInputIndex = elemIndex "Input assignment:" output
   let mOutputIndex = elemIndex "Output:" output
   case (mInputIndex, mOutputIndex) of
@@ -65,7 +63,7 @@ parseSATAssignment metaNetwork output = do
       let outputVarLines = drop (outputIndex + 1) output
       values <- traverse (parseSATAssignmentLine variableMap) (inputVarLines <> outputVarLines)
       return $ NetworkVariableAssignment $ Map.fromList values
-    _ -> throwError $ VerifierOutputMalformed "could not find strings 'Input assignment:' and 'Output:'"
+    _ -> throwError $ VerifierOutputMalformed "Could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine ::
   (MonadError VerificationError m) =>
@@ -78,5 +76,5 @@ parseSATAssignmentLine varsByName txt = do
     [namePart, valuePart] -> do
       case Map.lookup namePart varsByName of
         Just var -> return (var, readFloatAsRational valuePart)
-        Nothing -> throwError $ VerifierOutputMalformed $ "could not parse variable" <+> quotePretty namePart
-    _ -> throwError $ VerifierOutputMalformed $ "could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
+        Nothing -> throwError $ VerifierOutputMalformed $ "Could not parse variable" <+> quotePretty namePart
+    _ -> throwError $ VerifierOutputMalformed $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"

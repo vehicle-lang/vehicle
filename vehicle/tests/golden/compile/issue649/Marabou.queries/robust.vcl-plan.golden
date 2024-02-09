@@ -9,6 +9,98 @@
             {
               "variableReconstruction": [
                 {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1,
+                          1
+                        ],
+                        "networkName": "classifier",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0,
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1,
+                              1
+                            ],
+                            "networkName": "classifier",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "classifier",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "classifier",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "classifier",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
@@ -19,57 +111,39 @@
                       ]
                     },
                     {
-                      "tensorEqExpr": {
-                        "constantValue": {
-                          "tensorValues": [
-                            {
-                              "numerator": -1,
-                              "denominator": 1
-                            }
-                          ],
-                          "tensorDims": [
-                            1,
-                            1
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserTensorVar",
-                              "contents": {
-                                "userTensorVarName": "perturbation",
-                                "userTensorVarDimensions": [
-                                  1,
-                                  1
-                                ]
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkTensorVar",
-                              "contents": {
-                                "startingIndex": 0,
-                                "networkTensorVarDimensions": [
-                                  1,
-                                  1
-                                ],
-                                "networkName": "classifier",
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                      "constantValue": {
+                        "tensorValues": [
+                          {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        ],
+                        "tensorDims": [
+                          1,
+                          1
                         ]
-                      }
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkTensorVar",
+                            "contents": {
+                              "startingIndex": 0,
+                              "networkTensorVarDimensions": [
+                                1,
+                                1
+                              ],
+                              "networkName": "classifier",
+                              "inputOrOutput": "Input",
+                              "application": 0
+                            }
+                          },
+                          {
+                            "numerator": -1,
+                            "denominator": 1
+                          }
+                        ]
+                      ]
                     }
                   ]
                 }

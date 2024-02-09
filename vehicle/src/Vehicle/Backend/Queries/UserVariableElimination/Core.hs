@@ -352,13 +352,13 @@ mapAssertionExprs ft fr ass = checkTriviality $ case ass of
   RationalIneq RationalInequality {..} -> RationalIneq $ RationalInequality strictness (fr rationalIneqExpr)
 
 substituteTensorEq ::
-  (OriginalUserVariable, TensorEquality) ->
-  Map RationalVariable RationalEquality ->
+  (OriginalUserVariable, LinearExpr TensorVariable RationalTensor) ->
+  Map RationalVariable (LinearExpr RationalVariable Rational) ->
   Assertion ->
   MaybeTrivial Assertion
 substituteTensorEq (var, solution) ratSolutions =
   mapAssertionExprs
-    (eliminateVar (UserTensorVar var) (tensorEqExpr solution))
+    (eliminateVar (UserTensorVar var) solution)
     eliminateRatVars
   where
     -- Usually the expression being substituted into is much smaller than the number of tensor
@@ -374,11 +374,11 @@ substituteTensorEq (var, solution) ratSolutions =
       let vc = Sparse (Map.singleton v c) 0
       case Map.lookup v ratSolutions of
         Nothing -> vc
-        Just sol -> eliminateVar v (rationalEqExpr sol) vc
+        Just sol -> eliminateVar v sol vc
 
-substituteRationalEq :: UserRationalVariable -> RationalEquality -> Assertion -> MaybeTrivial Assertion
+substituteRationalEq :: UserRationalVariable -> LinearExpr RationalVariable Rational -> Assertion -> MaybeTrivial Assertion
 substituteRationalEq var solution =
-  mapAssertionExprs id (eliminateVar (UserRationalVar var) (rationalEqExpr solution))
+  mapAssertionExprs id (eliminateVar (UserRationalVar var) solution)
 
 --------------------------------------------------------------------------------
 -- Partitions
@@ -388,10 +388,10 @@ type AssertionTree = BooleanExpr Assertion
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data UserVariableReconstructionStep
-  = SolveTensorEquality OriginalUserVariable TensorEquality
-  | SolveRationalEquality UserRationalVariable RationalEquality
+  = SolveTensorEquality OriginalUserVariable (LinearExpr TensorVariable RationalTensor)
+  | SolveRationalEquality UserRationalVariable (LinearExpr RationalVariable Rational)
   | SolveRationalInequalities UserRationalVariable FourierMotzkinVariableSolution
-  | ReconstructTensor OriginalUserVariable [UserRationalVariable]
+  | ReconstructTensor TensorVariable [RationalVariable]
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON UserVariableReconstructionStep
@@ -400,10 +400,10 @@ instance FromJSON UserVariableReconstructionStep
 
 instance Pretty UserVariableReconstructionStep where
   pretty = \case
-    SolveTensorEquality v _s -> "SolveTensorEquality[" <+> pretty v <+> "]" -- "=" <+> pretty s <+> "]"
-    SolveRationalEquality v _s -> "SolveRationalEquality[" <+> pretty v <+> "]" -- "=" <+> pretty s <+> "]"
-    SolveRationalInequalities v _ -> "SolveRationalInequalities[" <+> pretty v <+> "]"
-    ReconstructTensor v _vs -> "ReconstructTensor[" <+> pretty v <+> "]"
+    SolveTensorEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
+    SolveRationalEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
+    SolveRationalInequalities v s -> "Inequalities:" <+> pretty v <+> "bounded" <+> pretty s
+    ReconstructTensor v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.
@@ -414,38 +414,9 @@ instance Pretty UserVariableReconstructionStep where
 -- The steps are stored in the same order they occured during compilation.
 type UserVariableReconstruction = [UserVariableReconstructionStep]
 
-type UserVarSolutions = UserVariableReconstruction
+type Partition = (UserVariableReconstruction, AssertionTree)
 
-addRationalEqualitySolution ::
-  UserRationalVariable ->
-  RationalEquality ->
-  UserVarSolutions ->
-  UserVarSolutions
-addRationalEqualitySolution var eq solutions =
-  SolveRationalEquality var eq : solutions
-
-addRationalInequalitySolution ::
-  UserRationalVariable ->
-  FourierMotzkinVariableSolution ->
-  UserVarSolutions ->
-  UserVarSolutions
-addRationalInequalitySolution var eq solutions =
-  SolveRationalInequalities var eq : solutions
-
-addTensorEqualitySolution ::
-  OriginalUserVariable ->
-  TensorEquality ->
-  UserVarSolutions ->
-  UserVarSolutions
-addTensorEqualitySolution var eq solutions =
-  SolveTensorEquality var eq : solutions
-
-unionSolutions :: UserVarSolutions -> UserVarSolutions -> UserVarSolutions
-unionSolutions = (<>)
-
-type Partition = (UserVarSolutions, AssertionTree)
-
-newtype Partitions = Partitions (Map UserVarSolutions AssertionTree)
+newtype Partitions = Partitions (Map UserVariableReconstruction AssertionTree)
 
 partitionsToDisjuncts :: Partitions -> DisjunctAll Partition
 partitionsToDisjuncts (Partitions ps) = DisjunctAll $ NonEmpty.fromList $ Map.toList ps
@@ -464,7 +435,7 @@ orPartitions :: Partitions -> Partitions -> Partitions
 orPartitions (Partitions p1) (Partitions p2) =
   Partitions $ Map.unionWith orBoolExpr p1 p2
 
-mkSinglePartition :: (UserVarSolutions, MaybeTrivial AssertionTree) -> MaybeTrivial Partitions
+mkSinglePartition :: (UserVariableReconstruction, MaybeTrivial AssertionTree) -> MaybeTrivial Partitions
 mkSinglePartition (solutions, maybeAssertion) =
   fmap (Partitions . Map.singleton solutions) maybeAssertion
 
@@ -474,18 +445,40 @@ mkTrivialPartition assertion = mkSinglePartition (mempty, NonTrivial $ Query ass
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
+data FMBound = FMBound
+  { boundStrictness :: Strictness,
+    boundValue :: LinearExpr RationalVariable Rational
+  }
+  deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON FMBound
+
+instance FromJSON FMBound
+
+instance Pretty FMBound where
+  pretty FMBound {..} =
+    pretty boundValue <> (if boundStrictness == Strict then " (strictly)" else "")
+
 -- | A FM solution for an normalised user variable is two lists of constraints.
 -- The variable value must be greater than the first set of assertions, and less than
 -- the second set of assertions.
 data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [RationalInequality],
-    upperBounds :: [RationalInequality]
+  { lowerBounds :: [FMBound],
+    upperBounds :: [FMBound]
   }
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON FourierMotzkinVariableSolution
 
 instance FromJSON FourierMotzkinVariableSolution
+
+instance Pretty FourierMotzkinVariableSolution where
+  pretty FMSolution {..} =
+    "below by max"
+      <+> pretty lowerBounds
+      <+> "and"
+      <+> "above by min"
+      <+> pretty upperBounds
 
 --------------------------------------------------------------------------------
 -- Monads
@@ -585,11 +578,11 @@ appStdlibDef fn spine = do
     Just fnBody -> normaliseApp fnBody spine
     Nothing -> compilerDeveloperError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
 
-reduceTensorEquality ::
+reduceTensorExpr ::
   (MonadQueryStructure m) =>
-  TensorEquality ->
-  m [RationalEquality]
-reduceTensorEquality (TensorEquality (Sparse coeff constant)) = do
+  LinearExpr TensorVariable RationalTensor ->
+  m [LinearExpr RationalVariable Rational]
+reduceTensorExpr (Sparse coeff constant) = do
   let constValues = Vector.toList $ tensorValues constant
   let numRatEqs = product (tensorDims constant)
   coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
@@ -600,10 +593,8 @@ reduceTensorEquality (TensorEquality (Sparse coeff constant)) = do
       [([RationalVariable], Coefficient)] ->
       [Rational] ->
       Int ->
-      RationalEquality
-    mkRatEquality coeffs consts i = do
-      let expr = Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (consts !! i)
-      RationalEquality expr
+      LinearExpr RationalVariable Rational
+    mkRatEquality coeffs consts i = Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (consts !! i)
 
 --------------------------------------------------------------------------------
 -- Context operations

@@ -8,6 +8,7 @@ module Vehicle.CommandLine
 where
 
 import Control.Applicative (Alternative (many), (<**>))
+import Data.List (delete)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
@@ -57,7 +58,7 @@ import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
-import Vehicle.Verify (VerifierID, VerifyOptions (..))
+import Vehicle.Verify (VerifierID (..), VerifyOptions (..))
 import Vehicle.Verify.QueryFormat
 
 --------------------------------------------------------------------------------
@@ -282,7 +283,7 @@ allITPs :: [String]
 allITPs = map show (enumerate @ITP)
 
 allVerifiers :: [String]
-allVerifiers = map show (enumerate @VerifierID)
+allVerifiers = map show (delete TestVerifier (enumerate @VerifierID))
 
 allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)

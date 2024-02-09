@@ -25,6 +25,7 @@ jobs:
               version: "3.10.2.1"
               project-file: "cabal.project.ghc-9.4.8"
               extra-args: ""
+              golden-test-args: ""
         include:
           # Build with GHC 9.8.1
           - os:
@@ -37,6 +38,8 @@ jobs:
                 version: "3.10.2.1"
                 project-file: "cabal.project.ghc-9.8.1"
                 extra-args: ""
+                # The TestVerifier uses bash so only test on a single Linux version.
+                golden-test-args: "--test-option='--allowlist-externals=TestVerifier'"
           # Build with GHC 9.6.4
           - os:
               name: Linux
@@ -48,6 +51,7 @@ jobs:
                 version: "3.10.2.1"
                 project-file: "cabal.project.ghc-9.6.4"
                 extra-args: ""
+                golden-test-args: ""
           # Build with GHC 9.2.8
           - os:
               name: Linux
@@ -59,6 +63,7 @@ jobs:
                 version: "3.8.1.0"
                 project-file: "cabal.project.ghc-9.2.8"
                 extra-args: ""
+                golden-test-args: ""
           # Build with GHC 9.0.2
           - os:
               name: Linux
@@ -70,6 +75,7 @@ jobs:
                 version: "3.8.1.0"
                 project-file: "cabal.project.ghc-9.0.2"
                 extra-args: ""
+                golden-test-args: ""
           # Build with GHC 8.10.7
           - os:
               name: Linux
@@ -81,6 +87,7 @@ jobs:
                 version: "3.8.1.0"
                 project-file: "cabal.project.ghc-8.10.7"
                 extra-args: ""
+                golden-test-args: ""
           # Build with -fnothunks:
           - os:
               name: Linux
@@ -92,6 +99,7 @@ jobs:
                 version: "3.10.2.1"
                 project-file: "cabal.project.nothunks.ghc-9.4.8"
                 extra-args: "-fnothunks"
+                golden-test-args: ""
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
@@ -134,11 +142,10 @@ jobs:
           cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
           cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
-      - name: Test Vehicle
+      - name: Run Vehicle unit tests
         run: |
           cabal test                                                \
             vehicle:test:unit-tests                                 \
-            vehicle:test:golden-tests                               \
             --test-show-details=always                              \
             --test-option=--color=always                            \
             --test-option=--num-threads=1                           \
@@ -146,10 +153,23 @@ jobs:
             ${{ matrix.haskell.cabal.extra-args }}
         shell: sh
 
+      - name: Run Vehicle golden tests
+        run: |
+          cabal test                                                \
+            vehicle:test:golden-tests                               \
+            --test-show-details=always                              \
+            --test-option=--color=always                            \
+            --test-option=--num-threads=1                           \
+            ${{ matrix.haskell.cabal.golden-test-args }}            \
+            --project-file=${{ matrix.haskell.cabal.project-file }} \
+            ${{ matrix.haskell.cabal.extra-args }}                  \
+        shell: sh
+
       - name: Build Vehicle
         run: |
           mkdir -p bin
-          cabal install vehicle:exe:vehicle                         \
+          cabal install                                             \
+            vehicle:exe:vehicle                                     \
             --overwrite-policy=always                               \
             --install-method=copy                                   \
             --installdir=bin                                        \

@@ -262,6 +262,7 @@ library
     Vehicle.Verify.Variable
     Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
+    Vehicle.Verify.Verifier.Test
 
   autogen-modules: Paths_vehicle
   build-depends:

@@ -9,6 +9,95 @@
             {
               "variableReconstruction": [
                 {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "g",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "g",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "g",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "g",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "g",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
@@ -19,77 +108,83 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": 0,
-                          "denominator": 1
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [],
-                                "originalVar": {
-                                  "userTensorVarName": "a",
-                                  "userTensorVarDimensions": []
-                                }
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
+                      "constantValue": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                0
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
+                                "networkName": "g",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": -2,
-                              "denominator": 1
                             }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  1
+                          },
+                          {
+                            "numerator": 2,
+                            "denominator": 1
+                          }
+                        ],
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                1
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
+                                "networkName": "g",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
                             }
-                          ]
+                          },
+                          {
+                            "numerator": -1,
+                            "denominator": 1
+                          }
                         ]
-                      }
+                      ]
                     }
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "UserTensorVar",
+                      "contents": {
+                        "userTensorVarName": "a",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    [
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [],
+                          "originalVar": {
+                            "userTensorVarName": "a",
+                            "userTensorVarDimensions": []
+                          }
+                        }
+                      }
+                    ]
                   ]
                 },
                 {
@@ -103,70 +198,76 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": 0,
-                          "denominator": 1
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [],
-                                "originalVar": {
-                                  "userTensorVarName": "a",
-                                  "userTensorVarDimensions": []
-                                }
+                      "constantValue": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "UserRationalVar",
+                            "contents": {
+                              "tensorIndices": [],
+                              "originalVar": {
+                                "userTensorVarName": "a",
+                                "userTensorVarDimensions": []
                               }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 1
                             }
-                          ],
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [],
-                                "originalVar": {
-                                  "userTensorVarName": "b",
-                                  "userTensorVarDimensions": []
-                                }
-                              }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 1
-                            }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
+                          },
+                          {
+                            "numerator": -1,
+                            "denominator": 1
+                          }
+                        ],
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                0
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "g",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
+                                "networkName": "g",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
                             }
-                          ]
+                          },
+                          {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
                         ]
-                      }
+                      ]
                     }
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "UserTensorVar",
+                      "contents": {
+                        "userTensorVarName": "b",
+                        "userTensorVarDimensions": []
+                      }
+                    },
+                    [
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [],
+                          "originalVar": {
+                            "userTensorVarName": "b",
+                            "userTensorVarDimensions": []
+                          }
+                        }
+                      }
+                    ]
                   ]
                 }
               ],

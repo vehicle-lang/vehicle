@@ -22,11 +22,12 @@ reconstructUserVars ::
   NetworkVariableAssignment ->
   m UserVariableAssignment
 reconstructUserVars steps networkVariableAssignment =
-  logCompilerPass MidDetail "recreation of user variables" $ do
+  logCompilerPass MidDetail "calculation of problem space witness" $ do
+    logDebug MidDetail $ pretty steps
     let assignment = createInitialAssignment networkVariableAssignment
-    logDebug MaxDetail $ "Network variables:" <+> pretty networkVariableAssignment
-    alteredAssignment <- foldlM applyReconstructionStep assignment (reverse steps)
+    alteredAssignment <- foldlM applyReconstructionStep assignment steps
     let finalAssignment = createFinalAssignment alteredAssignment
+    logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
     return finalAssignment
 
 --------------------------------------------------------------------------------
@@ -37,30 +38,36 @@ data MixedVariableAssignment = VariableAssignment
     rationalVariables :: Map RationalVariable Rational
   }
 
--- | Lookup the value of the variable in an assignment and remove it from the
--- assignment.
-lookupAndRemoveRationalVariable ::
+instance Pretty MixedVariableAssignment where
+  pretty VariableAssignment {..} =
+    "Tensor variables:" <+> prettyMap tensorVariables
+      <> line
+      <> "Rational variables:" <+> prettyMap rationalVariables
+      <> line
+
+-- | Lookup the value of the variable in an assignment.
+lookupRationalVariable ::
   MixedVariableAssignment ->
   RationalVariable ->
-  Maybe (Rational, MixedVariableAssignment)
-lookupAndRemoveRationalVariable VariableAssignment {..} var = do
-  let (maybeValue, newRationalVariables) = Map.updateLookupWithKey (\_ _ -> Nothing) var rationalVariables
+  Maybe Rational
+lookupRationalVariable VariableAssignment {..} var = do
+  let maybeValue = Map.lookup var rationalVariables
   case maybeValue of
     Nothing -> Nothing
-    Just value -> Just (value, VariableAssignment {rationalVariables = newRationalVariables, ..})
+    Just value -> Just value
 
 -- | Lookups the values in the variable assignment and removes them from the
 -- assignment. Returns either the first missing variable or the list of values
 -- and the resulting assignment.
-lookupAndRemoveAll ::
+lookupRationalVariables ::
   MixedVariableAssignment ->
   [RationalVariable] ->
-  Either RationalVariable ([Rational], MixedVariableAssignment)
-lookupAndRemoveAll assignment = foldM op ([], assignment)
+  Either RationalVariable [Rational]
+lookupRationalVariables assignment = foldM op []
   where
-    op (values, ass) var = case lookupAndRemoveRationalVariable ass var of
+    op values var = case lookupRationalVariable assignment var of
       Nothing -> Left var
-      Just (value, ass') -> Right (value : values, ass')
+      Just value -> Right (value : values)
 
 createInitialAssignment ::
   NetworkVariableAssignment ->
@@ -76,43 +83,48 @@ applyReconstructionStep ::
   MixedVariableAssignment ->
   UserVariableReconstructionStep ->
   m MixedVariableAssignment
-applyReconstructionStep assignment@VariableAssignment {..} step =
+applyReconstructionStep assignment@VariableAssignment {..} step = do
+  logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (pretty assignment)
   case step of
     ReconstructTensor var individualVars ->
-      unreduceVariable (UserTensorVar var) (fmap UserRationalVar individualVars) assignment
+      unreduceVariable var individualVars assignment
     SolveRationalEquality var eq -> do
-      logDebug MaxDetail $ "Reintroducing Gaussian solved variable" <+> quotePretty var
-      let errorOrValue = evaluateExpr (rationalEqExpr eq) rationalVariables
-      case errorOrValue of
-        Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> quotePretty missingVar
-        Right value ->
-          return $
-            VariableAssignment
-              { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
-                ..
-              }
+      logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
+        logDebug MidDetail $ "Using" <+> pretty step
+        let errorOrValue = evaluateExpr eq rationalVariables
+        case errorOrValue of
+          Left missingVar -> developerError $ "Missing variable" <+> quotePretty missingVar <+> "required in Gaussian elimination of" <+> quotePretty var
+          Right value -> do
+            logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
+            return $
+              VariableAssignment
+                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                  ..
+                }
     SolveTensorEquality var eq -> do
-      logDebug MaxDetail $ "Reintroducing Gaussian solved variable" <+> quotePretty var
-      let errorOrValue = evaluateExpr (tensorEqExpr eq) tensorVariables
-      case errorOrValue of
-        Left missingVar -> developerError $ "Missing variable required in Gaussian elimination" <+> quotePretty missingVar
-        Right value ->
-          return $
-            VariableAssignment
-              { tensorVariables = Map.insert (UserTensorVar var) value tensorVariables,
-                ..
-              }
+      logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
+        logDebug MidDetail $ "Using" <+> pretty step
+        let errorOrValue = evaluateExpr eq tensorVariables
+        case errorOrValue of
+          Left missingVar -> developerError $ "Missing variable" <+> quotePretty missingVar <+> "required in Gaussian elimination of" <+> quotePretty var
+          Right value -> do
+            logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
+            return $
+              VariableAssignment
+                { tensorVariables = Map.insert (UserTensorVar var) value tensorVariables,
+                  ..
+                }
     SolveRationalInequalities var solution -> do
-      logDebug MaxDetail $ "Reintroducing Fourier-Motzkin solved variable" <+> pretty var
-      let errorOrValue = reconstructFourierMotzkinVariableValue rationalVariables solution
-      case errorOrValue of
-        Left missingVar -> developerError $ "Missing variable required in Fourier-Motzkin elimination" <+> quotePretty missingVar
-        Right value ->
-          return $
-            VariableAssignment
-              { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
-                ..
-              }
+      logCompilerSection MidDetail ("Reintroducing Fourier-Motzkin-eliminated variable" <+> quotePretty var) $ do
+        let errorOrValue = reconstructFourierMotzkinVariableValue rationalVariables solution
+        case errorOrValue of
+          Left missingVar -> developerError $ "Missing variable" <+> quotePretty missingVar <+> "required in Fourier-Motzkin elimination of" <+> quotePretty var
+          Right value ->
+            return $
+              VariableAssignment
+                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                  ..
+                }
 
 -- | Unreduces a previously reduced variable, removing the normalised
 -- values from the assignment and adding the unreduced value back to the
@@ -124,7 +136,7 @@ unreduceVariable ::
   MixedVariableAssignment ->
   m MixedVariableAssignment
 unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = do
-  let variableResults = lookupAndRemoveAll assignment reducedVariables
+  let variableResults = lookupRationalVariables assignment reducedVariables
   case variableResults of
     Left missingVar ->
       developerError $
@@ -133,12 +145,12 @@ unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = 
           <+> "in counter-example,"
           <+> "unable to find variable"
           <+> pretty missingVar
-    Right (values, newAssignment) -> do
+    Right values -> do
       logDebug MaxDetail $
         "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
       let unreducedValue = RationalTensor (tensorVariableDims variable) (Vector.fromList values)
       return $
-        newAssignment
+        assignment
           { tensorVariables = Map.insert variable unreducedValue tensorVariables
           }
 
