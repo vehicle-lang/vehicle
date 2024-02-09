@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Next release
+
+* Fixed spurious "Unnecessary resources provided" warning when exporting to ITPs.
+
 ## Version 0.12.0
 
 * Allow `@parameter`s to be used as network sizes.
