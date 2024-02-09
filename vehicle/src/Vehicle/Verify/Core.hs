@@ -199,8 +199,3 @@ data QueryContents = QueryContents
   { queryVariables :: GenericBoundCtx NetworkRationalVariable,
     queryAssertions :: ConjunctAll QueryAssertion
   }
-
-{-
-instance Pretty QueryContents where
-  pretty (QueryContents _varNames assertions) = pretty assertions
--}

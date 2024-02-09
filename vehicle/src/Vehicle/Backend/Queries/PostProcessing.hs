@@ -8,6 +8,7 @@ import Control.Monad (foldM, forM, unless, when)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (get)
 import Data.Either (partitionEithers)
+import Data.HashMap.Strict qualified as HashMap (toList)
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -36,7 +37,8 @@ convertPartitionsToQueries ::
   Partitions ->
   m (DisjunctAll (MetaNetwork, UserVariableReconstruction, QueryContents))
 convertPartitionsToQueries partitions = do
-  allQueries <- forM (partitionsToDisjuncts partitions) $ \(userVarSol, assertionTree) -> do
+  allQueries <- forM (partitionsToDisjuncts partitions) $ \(reconstruction, assertionTree) -> do
+    fullReconstruction <- reconstructNetworkTensorVars reconstruction
     networkVarAssertions <- convertToNetworkRatVarAssertions assertionTree
     let dnfTree = exprToDNF networkVarAssertions
     forM dnfTree $ \conjuncts -> do
@@ -45,7 +47,7 @@ convertPartitionsToQueries partitions = do
       -- Compile queries to particular format
       let contents = prettifyQueryContents (variables metaNetwork) newConjuncts
       -- Return the result
-      return (metaNetwork, userVarSol, contents)
+      return (metaNetwork, fullReconstruction, contents)
   return $ disjunctDisjuncts allQueries
 
 -- This is separated from `convertPartitionsToQueries` above because for
@@ -63,6 +65,19 @@ compileQueryToFormat (metaNetwork, userVars, contents@QueryContents {..}) = do
   let queryMetaData = QueryMetaData queryAddress metaNetwork userVars
   queryText <- formatQuery queryFormat queryAddress contents
   return (queryMetaData, queryText)
+
+--------------------------------------------------------------------------------
+-- Step 0: Add reconstruction steps for network tensor variables.
+
+reconstructNetworkTensorVars ::
+  (MonadQueryStructure m) =>
+  UserVariableReconstruction ->
+  m UserVariableReconstruction
+reconstructNetworkTensorVars solutions = do
+  GlobalCtx {..} <- get
+  let networkTensorVars = HashMap.toList $ networkVariableReductions
+  let mkStep (var, (ratVars, _)) = ReconstructTensor (NetworkTensorVar var) (fmap NetworkRationalVar ratVars)
+  return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
 --------------------------------------------------------------------------------
 -- Step 1: Reduce tensor equalities to a series of rational equalities and
@@ -83,9 +98,9 @@ convertToNetworkRatVarAssertions = go
 
     convert :: Assertion -> m (BooleanExpr QueryAssertion)
     convert = \case
-      TensorEq tensorEquality -> do
-        rationalEqualities <- reduceTensorEquality tensorEquality
-        let assertions = fmap (Query . RationalEq) rationalEqualities
+      TensorEq (TensorEquality tensorEquality) -> do
+        rationalEqualities <- reduceTensorExpr tensorEquality
+        let assertions = fmap (Query . RationalEq . RationalEquality) rationalEqualities
         go $ Conjunct $ ConjunctAll (NonEmpty.fromList assertions)
       RationalEq (RationalEquality expr) ->
         Query <$> makeQueryAssertion Equal expr

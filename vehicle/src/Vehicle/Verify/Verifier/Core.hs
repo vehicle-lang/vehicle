@@ -3,6 +3,7 @@
 module Vehicle.Verify.Verifier.Core where
 
 import Control.Monad.Error.Class (MonadError (..))
+import Data.Set (Set)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -18,7 +19,13 @@ import System.Posix.Signals
 
 data VerifierID
   = Marabou
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+  | TestVerifier
+  deriving (Eq, Ord, Read, Bounded, Enum)
+
+instance Show VerifierID where
+  show = \case
+    Marabou -> "Marabou"
+    TestVerifier -> "Test"
 
 instance Pretty VerifierID where
   pretty = pretty . show
@@ -32,14 +39,14 @@ type PrepareVerifierArgs =
 
 -- | The type of methods that parse the output of the verifier.
 type ParseVerifierOutput =
-  forall m. (MonadError VerificationError m) => MetaNetwork -> String -> m (QueryResult NetworkVariableAssignment)
+  forall m. (MonadError VerificationError m, MonadLogger m) => MetaNetwork -> String -> m (QueryResult NetworkVariableAssignment)
 
 -- | A complete verifier implementation
 data Verifier = Verifier
   { -- | The identifier for the verifier within Vehicle itself
-    verifierIdentifier :: VerifierID,
+    verifierID :: VerifierID,
     -- | The query format that the verifier accepts
-    verifierQueryFormat :: QueryFormatID,
+    verifierQueryFormatID :: QueryFormatID,
     -- | The name of the executable for the verifier
     verifierExecutableName :: String,
     -- | Prepare the command line arguments for the verifier.
@@ -55,13 +62,14 @@ data VerificationError
   | VerifierTerminatedByOS Int
   | VerifierError String
   | VerifierOutputMalformed (forall a. Doc a)
+  | VerifierIncompleteWitness (Set String)
 
 --------------------------------------------------------------------------------
 -- Error messages
 
 data VerificationErrorAction = VerificationErrorAction
   { reproducerIsUseful :: Bool,
-    verificationErrorMessage :: forall a. Doc a
+    verificationErrorMessage :: Doc ()
   }
 
 convertVerificationError :: Verifier -> QueryAddress -> VerificationError -> VerificationErrorAction
@@ -72,7 +80,9 @@ convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
         verificationErrorMessage = do
           let networkNames = fmap metaNetworkEntryName (networkEntries metaNetwork)
           let duplicateNetworkNames = findDuplicates networkNames
-          "Marabou currently doesn't support properties that involve"
+          "The"
+            <+> verifierDoc
+            <+> "currently doesn't support properties that involve"
             <+> if null duplicateNetworkNames
               then
                 "multiple networks. This property involves:"
@@ -92,45 +102,58 @@ convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
             <+> "of property"
             <+> quotePretty propertyAddress
             <+> "the"
-            <+> pretty verifierIdentifier
-            <+> "verifier threw the error:"
+            <+> verifierDoc
+            <+> "threw the error:"
             <> line
             <> line
             <> indent 2 (pretty errorMessage)
       }
   VerifierTerminatedByOS signal ->
-    exitFailureReason verifierIdentifier signal
+    exitFailureReason signal
   VerifierOutputMalformed message ->
     VerificationErrorAction
-      { reproducerIsUseful = False,
-        verificationErrorMessage = "Unexpected output from Marabou..." <+> message
+      { reproducerIsUseful = True,
+        verificationErrorMessage = "Unexpected output from the" <+> verifierDoc <> "." <+> message
       }
+  VerifierIncompleteWitness missingVariables ->
+    VerificationErrorAction
+      { reproducerIsUseful = True,
+        verificationErrorMessage =
+          "The witness provided from the"
+            <+> verifierDoc
+            <+> "was incomplete."
+            <+> "In particular, values for the following variables were not provided:"
+            <> line
+            <> indent 2 (prettySet missingVariables)
+      }
+  where
+    verifierDoc = pretty verifierID <+> "verifier"
 
-exitFailureReason :: VerifierID -> Int -> VerificationErrorAction
+    exitFailureReason :: Int -> VerificationErrorAction
 # ifdef mingw32_HOST_OS
-exitFailureReason verifierID exitValue = VerificationErrorAction
-    { reproducerIsUseful = True
-    , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
-        "Vehicle is unable to interpret this error code on Windows but the most common reasons" <+>
-        "are Marabou either ran out of memory or performed an illegal instruction."
-    }
+    exitFailureReason exitValue = VerificationErrorAction
+        { reproducerIsUseful = True
+        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+            "Vehicle is unable to interpret this error code on Windows but the most common reasons" <+>
+            "are the" <+> verifierDoc <+> "either ran out of memory or performed an illegal instruction."
+        }
 # else
-exitFailureReason verifierID exitValue
-  | toEnum exitValue == illegalInstruction = VerificationErrorAction
-    { reproducerIsUseful = True
-    , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
-        "This is an `Illegal Instruction` error and indicates a bug in Marabou itself"
-    }
-  | toEnum exitValue == killProcess = VerificationErrorAction
-    { reproducerIsUseful = True
-    , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
-        "This is often (but not always) a result of Marabou running out of memory."
-    }
-  | otherwise = VerificationErrorAction
-    { reproducerIsUseful = True
-    , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
-        "Please consult the manual on Unix signals to work out what this means."
-    }
+    exitFailureReason exitValue
+      | toEnum exitValue == illegalInstruction = VerificationErrorAction
+        { reproducerIsUseful = True
+        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+            "This is an `Illegal Instruction` error and indicates a bug in the" <+> verifierDoc <+> "itself"
+        }
+      | toEnum exitValue == killProcess = VerificationErrorAction
+        { reproducerIsUseful = True
+        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+            "This is often (but not always) a result of the" <+> verifierDoc <+> "running out of memory."
+        }
+      | otherwise = VerificationErrorAction
+        { reproducerIsUseful = True
+        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+            "Please consult the manual on Unix signals to work out what this means."
+        }
 # endif
 
 basicExitFailureMessage :: VerifierID -> Int -> Doc a

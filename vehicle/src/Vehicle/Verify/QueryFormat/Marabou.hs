@@ -1,6 +1,6 @@
 module Vehicle.Verify.QueryFormat.Marabou
   ( marabouQueryFormat,
-    compileVar,
+    compileMarabouVar,
   )
 where
 
@@ -27,6 +27,7 @@ marabouQueryFormat =
     { queryFormatID = MarabouQueries,
       formatQuery = compileMarabouQuery,
       supportsStrictInequalities = False,
+      compileVar = compileMarabouVar,
       queryOutputFormat =
         ExternalOutputFormat
           { formatName = pretty MarabouQueries,
@@ -84,13 +85,13 @@ compileRel address = \case
     return ">="
 
 compileCoefVar :: Bool -> (Coefficient, NetworkRationalVariable) -> Doc a
-compileCoefVar False (1, var) = compileVar var
-compileCoefVar True (1, var) = "+" <> compileVar var
-compileCoefVar _ (-1, var) = "-" <> compileVar var
-compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> compileVar var
+compileCoefVar False (1, var) = compileMarabouVar var
+compileCoefVar True (1, var) = "+" <> compileMarabouVar var
+compileCoefVar _ (-1, var) = "-" <> compileMarabouVar var
+compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> compileMarabouVar var
 
-compileVar :: NetworkRationalVariable -> Doc a
-compileVar var = do
+compileMarabouVar :: NetworkRationalVariable -> Doc a
+compileMarabouVar var = do
   let name = if inputOrOutput (originalVar var) == Input then "x" else "y"
   let index = computeAbsoluteIndex var
   name <> pretty index

@@ -20,6 +20,7 @@ vnnlibQueryFormat =
     { queryFormatID = VNNLibQueries,
       formatQuery = compileVNNLibQuery,
       supportsStrictInequalities = True,
+      compileVar = compileVNNLibVar,
       queryOutputFormat =
         ExternalOutputFormat
           { formatName = pretty VNNLibQueries,
@@ -40,7 +41,7 @@ compileVNNLibQuery _address (QueryContents variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileVariableDecl :: (MonadLogger m) => NetworkRationalVariable -> m (Doc a)
-compileVariableDecl var = return $ parens ("declare-fun" <+> compileVar var <+> "() Real")
+compileVariableDecl var = return $ parens ("declare-fun" <+> compileVNNLibVar var <+> "() Real")
 
 compileAssertion :: (MonadLogger m) => QueryAssertion -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
@@ -59,13 +60,13 @@ compileRel = \case
 
 compileCoefVar :: Doc a -> (Coefficient, NetworkRationalVariable) -> Doc a
 compileCoefVar r (coef, var)
-  | coef == 1 = "+" <+> parens r <+> pretty var
-  | coef == -1 = "-" <+> parens r <+> pretty var
-  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
-  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> pretty var)
+  | coef == 1 = "+" <+> parens r <+> compileVNNLibVar var
+  | coef == -1 = "-" <+> parens r <+> compileVNNLibVar var
+  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> compileVNNLibVar var)
+  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> compileVNNLibVar var)
 
-compileVar :: NetworkRationalVariable -> Doc a
-compileVar var = do
+compileVNNLibVar :: NetworkRationalVariable -> Doc a
+compileVNNLibVar var = do
   let name = if inputOrOutput (originalVar var) == Input then "X" else "Y"
   let index = computeAbsoluteIndex var
   name <> "_" <> pretty index

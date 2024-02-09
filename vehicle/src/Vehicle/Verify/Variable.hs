@@ -236,5 +236,5 @@ instance ToJSON UserVariableAssignment
 instance FromJSON UserVariableAssignment
 
 instance Pretty UserVariableAssignment where
-  pretty :: UserVariableAssignment -> Doc a
-  pretty (UserVariableAssignment assignment) = vsep (fmap pretty assignment)
+  pretty (UserVariableAssignment assignment) =
+    vsep (fmap pretty assignment)

@@ -12,4 +12,4 @@ underConstrainedVar2 f = exists x . exists y . x >= 1.0 and 2.0 * y >= 2.0 and f
 
 @property;
 underConstrainedVars : forallT (f : Vector Rat -> Vector Rat) . Bool;
-underConstrainedVars f = exists (x : fold (\ d -> \ t -> Vector t) Rat (4 :: nil)) . x ! 3 >= 2.0 and x ! 2 + x ! 3 >= 1.0 and x ! 1 + x ! 0 >= 2.5 and f [x ! 0 + x ! 1] ! 0 >= 2.0
+underConstrainedVars f = exists (x : fold (\ d -> \ t -> Vector t) Rat (5 :: nil)) . x ! 3 >= 2.0 and x ! 2 + x ! 3 >= 1.0 and x ! 1 - 2.0 * x ! 3 >= 2.5 and f [x ! 0 + x ! 1] ! 0 >= 2.0

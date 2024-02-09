@@ -1,0 +1,8 @@
+[93m
+Warning:  In property 'underConstrainedVars' the quantified variables 'x!0', 'x!2', 'x!3', 'x!4' are not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+
+
+Warning:  In property 'underConstrainedVars', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the VNNLib query format.
+  In query 1:
+    f₀[input]!0 - no lower or upper bound
+[m

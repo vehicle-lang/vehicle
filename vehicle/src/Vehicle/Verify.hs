@@ -1,12 +1,12 @@
 module Vehicle.Verify
   ( VerifyOptions (..),
-    VerifierID,
+    VerifierID (..),
     verify,
   )
 where
 
 import Control.Monad.Trans (MonadIO, liftIO)
-import System.Directory (doesFileExist, findExecutable)
+import System.Directory (doesFileExist, findExecutable, makeAbsolute)
 import System.FilePath (takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
 import Vehicle.Backend.Prelude (Target (..))
@@ -47,7 +47,7 @@ verify loggingSettings options@VerifyOptions {..} = do
 -- | Compiles the specification to a temporary directory and then tries to verify it.
 compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
 compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
-  let queryFormat = VerifierQueries $ verifierQueryFormat $ verifiers verifierID
+  let queryFormat = VerifierQueries $ verifierQueryFormatID $ verifiers verifierID
 
   let inFolder = case verificationCache of
         Nothing -> withSystemTempDirectory "specification"
@@ -88,10 +88,11 @@ locateVerifierExecutable ::
   m VerifierExecutable
 locateVerifierExecutable Verifier {..} = \case
   Just providedLocation -> liftIO $ do
+    absolutePath <- makeAbsolute providedLocation
     exists <- doesFileExist providedLocation
     if exists
-      then return providedLocation
-      else fatalError (missingVerifierExecutableError verifierIdentifier providedLocation)
+      then return absolutePath
+      else fatalError (missingVerifierExecutableError verifierID providedLocation)
   Nothing -> do
     maybeLocationOnPath <- liftIO $ findExecutable verifierExecutableName
     case maybeLocationOnPath of

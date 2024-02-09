@@ -12,4 +12,4 @@ underConstrainedVar2 f = Optimise[min] (*) (\ x -> Optimise[min] (*) (\ y -> max
 
 @property;
 underConstrainedVars : forallT (f : Vector Rat -> Vector Rat) . Rat;
-underConstrainedVars f = Optimise[min] (*) (\ (x : Vector Rat) -> max 0.0 (2.0 - x ! 3) + (if 2.0 == x ! 3 then 1.0 else 0.0) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (if 1.0 == x ! 2 + x ! 3 then 1.0 else 0.0) + (max 0.0 (2.5 - (x ! 1 + x ! 0)) + (if 2.5 == x ! 1 + x ! 0 then 1.0 else 0.0) + (max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0) + (if 2.0 == f [x ! 0 + x ! 1] ! 0 then 1.0 else 0.0)))))
+underConstrainedVars f = Optimise[min] (*) (\ (x : Vector Rat) -> max 0.0 (2.0 - x ! 3) + (if 2.0 == x ! 3 then 1.0 else 0.0) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (if 1.0 == x ! 2 + x ! 3 then 1.0 else 0.0) + (max 0.0 (2.5 - (x ! 1 - 2.0 * x ! 3)) + (if 2.5 == x ! 1 - 2.0 * x ! 3 then 1.0 else 0.0) + (max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0) + (if 2.0 == f [x ! 0 + x ! 1] ! 0 then 1.0 else 0.0)))))

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# A simple test verifier that takes as arguments what it should output
+
+# Find the index of the variable
+i=1
+for var in "$@"
+do
+    ((i++))
+    if [[ "$var" == *.txt ]]
+    then
+        break;
+    fi
+done
+
+# Determine UNSAT or SAT
+answer="${!i}"
+if [[ "$answer" = "unsat" ]];
+then
+  echo $answer
+  exit 0
+fi
+
+if [[ "$answer" != "sat" ]];
+then
+  echo "Invalid arguments: the argument after the query must be 'sat' or 'unsat' but was '$answer'"
+  exit 1;
+fi
+
+# Print SAT assignment
+echo $answer
+((i++))
+assignment="${!i}"
+if [ "$assignment" = "" ];
+then
+  echo "Invalid arguments: must provide a SAT assignment separated by spaces after the 'sat' argument."
+  exit 1;
+fi
+
+eol=$'\n'
+assignments="${assignment//,/$eol}"
+echo "$assignments"

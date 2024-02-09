@@ -229,7 +229,9 @@ compileTensorAssertion spinePrefix x y = do
   let maybeAssertion = liftA2 tensorEqToAssertion x' y'
   case maybeAssertion of
     Just assertion -> return $ mkTrivialPartition assertion
-    Nothing -> compileBoolExpr =<< appStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
+    Nothing -> do
+      logDebug MaxDetail $ "Unable to solve tensor equality so reducing to rational equalities"
+      compileBoolExpr =<< appStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
 
 compileTensorLinearExpr ::
   forall m.

@@ -210,12 +210,9 @@ eliminateVar var solution row = do
   if varCoefficient == 0
     then row
     else do
-      let scaleFactor = varCoefficient / lookupCoefficient solution var
-      let resultExpr = addExprs 1 (-scaleFactor) row solution
-      let newCoefficients = Map.delete var $ coefficients resultExpr
-      -- Need to handle floating point errors....
+      let resultExpr = addExprs 1 varCoefficient row solution
       resultExpr
-        { coefficients = newCoefficients
+        { coefficients = Map.delete var $ coefficients resultExpr
         }
 
 -- | Takes an assertion `a*x_0 + ... + b*x_i + ... c * x_n` and
@@ -224,13 +221,18 @@ rearrangeExprToSolveFor ::
   (Ord variable, IsConstant constant) =>
   variable ->
   LinearExpr variable constant ->
-  LinearExpr variable constant
+  (Coefficient, LinearExpr variable constant)
 rearrangeExprToSolveFor var expr = do
   let c = lookupCoefficient expr var
-  let scaledExpr = scaleExpr (-1 / c) expr
-  scaledExpr
-    { coefficients = Map.delete var $ coefficients scaledExpr
-    }
+  if c == 0
+    then (0, expr)
+    else do
+      let scaledExpr = scaleExpr (-1 / c) expr
+      ( c,
+        scaledExpr
+          { coefficients = Map.delete var $ coefficients scaledExpr
+          }
+        )
 
 mapExprVariables ::
   (Ord variable1, Ord variable2) =>
