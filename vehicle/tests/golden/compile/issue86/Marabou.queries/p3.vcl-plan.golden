@@ -55,42 +55,6 @@
                           1
                         ],
                         "networkName": "f",
-                        "inputOrOutput": "Output",
-                        "application": 1
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 1,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "f",
-                            "inputOrOutput": "Output",
-                            "application": 1
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 1,
-                        "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "f",
                         "inputOrOutput": "Input",
                         "application": 1
                       }
@@ -146,6 +110,42 @@
                             "networkName": "f",
                             "inputOrOutput": "Output",
                             "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 1,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Output",
+                        "application": 1
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 1,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 1
                           }
                         }
                       }
@@ -380,42 +380,6 @@
                           1
                         ],
                         "networkName": "f",
-                        "inputOrOutput": "Output",
-                        "application": 1
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 1,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "f",
-                            "inputOrOutput": "Output",
-                            "application": 1
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 1,
-                        "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "f",
                         "inputOrOutput": "Input",
                         "application": 1
                       }
@@ -471,6 +435,42 @@
                             "networkName": "f",
                             "inputOrOutput": "Output",
                             "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 1,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "f",
+                        "inputOrOutput": "Output",
+                        "application": 1
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 1,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "f",
+                            "inputOrOutput": "Output",
+                            "application": 1
                           }
                         }
                       }

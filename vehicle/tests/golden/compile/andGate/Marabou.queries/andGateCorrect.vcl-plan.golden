@@ -16,42 +16,6 @@
                       "contents": {
                         "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "andGate",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
                           2
                         ],
                         "networkName": "andGate",
@@ -90,6 +54,42 @@
                             ],
                             "networkName": "andGate",
                             "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "andGate",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "andGate",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -319,42 +319,6 @@
                       "contents": {
                         "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "andGate",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
                           2
                         ],
                         "networkName": "andGate",
@@ -393,6 +357,42 @@
                             ],
                             "networkName": "andGate",
                             "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "andGate",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "andGate",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -622,42 +622,6 @@
                       "contents": {
                         "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "andGate",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
                           2
                         ],
                         "networkName": "andGate",
@@ -696,6 +660,42 @@
                             ],
                             "networkName": "andGate",
                             "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "andGate",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "andGate",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -925,42 +925,6 @@
                       "contents": {
                         "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "andGate",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "andGate",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
                           2
                         ],
                         "networkName": "andGate",
@@ -999,6 +963,42 @@
                             ],
                             "networkName": "andGate",
                             "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "andGate",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "andGate",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }

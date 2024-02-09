@@ -14,64 +14,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -81,65 +28,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -152,11 +48,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -275,11 +171,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -289,14 +185,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -309,12 +256,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -642,64 +642,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -709,65 +656,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -780,11 +676,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -903,11 +799,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -917,14 +813,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -937,12 +884,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -1270,64 +1270,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1337,65 +1284,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1408,11 +1304,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1531,11 +1427,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1545,14 +1441,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1565,12 +1512,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -1898,64 +1898,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1965,65 +1912,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2036,11 +1932,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2159,11 +2055,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2173,14 +2069,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2193,12 +2140,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -2526,64 +2526,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2593,65 +2540,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2664,11 +2560,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2787,11 +2683,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2801,14 +2697,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2821,12 +2768,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -3154,64 +3154,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3221,65 +3168,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3292,11 +3188,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3415,11 +3311,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3429,14 +3325,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3449,12 +3396,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -3782,64 +3782,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3849,65 +3796,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3920,11 +3816,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4043,11 +3939,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -4057,14 +3953,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4077,12 +4024,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -4410,64 +4410,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -4477,65 +4424,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4548,11 +4444,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4671,11 +4567,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -4685,14 +4581,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4705,12 +4652,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -5038,64 +5038,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5105,65 +5052,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5176,11 +5072,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5299,11 +5195,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5313,14 +5209,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5333,12 +5280,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }
@@ -5666,64 +5666,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
+                        "startingIndex": 5,
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          5
-                        ],
-                        "networkName": "encode",
+                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5733,65 +5680,14 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "networkName": "encode",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5804,11 +5700,11 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
+                            "startingIndex": 5,
                             "networkTensorVarDimensions": [
-                              5
+                              2
                             ],
-                            "networkName": "encode",
+                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5927,11 +5823,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 5,
+                        "startingIndex": 0,
                         "networkTensorVarDimensions": [
-                          2
+                          5
                         ],
-                        "networkName": "decode",
+                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5941,14 +5837,65 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            2
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
-                              2
+                              5
                             ],
-                            "networkName": "decode",
+                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5961,12 +5908,65 @@
                             0
                           ],
                           "originalVar": {
-                            "startingIndex": 5,
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              5
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "encode",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
-                            "inputOrOutput": "Input",
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "encode",
+                            "inputOrOutput": "Output",
                             "application": 0
                           }
                         }

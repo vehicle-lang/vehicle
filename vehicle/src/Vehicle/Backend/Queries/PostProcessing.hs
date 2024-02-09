@@ -10,6 +10,7 @@ import Control.Monad.State (get)
 import Data.Either (partitionEithers)
 import Data.HashMap.Strict qualified as HashMap (toList)
 import Data.LinkedHashMap qualified as LinkedHashMap
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -75,7 +76,7 @@ reconstructNetworkTensorVars ::
   m UserVariableReconstruction
 reconstructNetworkTensorVars solutions = do
   GlobalCtx {..} <- get
-  let networkTensorVars = HashMap.toList $ networkVariableReductions
+  let networkTensorVars = sortOn fst $ HashMap.toList $ networkVariableReductions
   let mkStep (var, (ratVars, _)) = ReconstructTensor (NetworkTensorVar var) (fmap NetworkRationalVar ratVars)
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
