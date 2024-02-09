@@ -160,10 +160,9 @@ jobs:
             --test-show-details=always                              \
             --test-option=--color=always                            \
             --test-option=--num-threads=1                           \
-            --test-option="--allowlist-externals=TestVerifier"      \
+            ${{ matrix.haskell.cabal.golden-test-args }}            \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}                  \
-            ${{ matrix.haskell.cabal.golden-test-args }}
         shell: sh
 
       - name: Build Vehicle
