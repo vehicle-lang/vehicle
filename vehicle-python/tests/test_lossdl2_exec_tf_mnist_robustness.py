@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, Tuple, cast
 
-import vehicle_lang as vcl
 from typing_extensions import TypeAlias
+
+import vehicle_lang as vcl
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
@@ -65,7 +66,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
 
-        def optimiser_for_pertubation(
+        def optimiser_for_perturbation(
             _minimise: bool,
             _context: Dict[str, Any],
             _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
@@ -80,7 +81,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
             MNIST_ROBUSTNESS,
             property_name="robust",
             target=vcl.DifferentiableLogic.DL2,
-            optimisers={"pertubation": optimiser_for_pertubation},
+            optimisers={"perturbation": optimiser_for_perturbation},
         )
 
         loss = robust_loss(
