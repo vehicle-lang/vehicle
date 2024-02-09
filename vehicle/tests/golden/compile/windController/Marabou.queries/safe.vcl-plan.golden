@@ -9,6 +9,95 @@
             {
               "variableReconstruction": [
                 {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
@@ -23,57 +112,35 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": -1,
-                          "denominator": 2
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
+                      "constantValue": {
+                        "numerator": -4,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                0
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "userTensorVarName": "x",
-                                  "userTensorVarDimensions": [
-                                    2
-                                  ]
-                                }
+                                "networkName": "controller",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 8
                             }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
-                                ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "controller",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                          },
+                          {
+                            "numerator": 8,
+                            "denominator": 1
+                          }
                         ]
-                      }
+                      ]
                     }
                   ]
                 },
@@ -92,58 +159,80 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": -1,
-                          "denominator": 2
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  1
+                      "constantValue": {
+                        "numerator": -4,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                1
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "userTensorVarName": "x",
-                                  "userTensorVarDimensions": [
-                                    2
-                                  ]
-                                }
+                                "networkName": "controller",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 8
                             }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  1
-                                ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "controller",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                          },
+                          {
+                            "numerator": 8,
+                            "denominator": 1
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "UserTensorVar",
+                      "contents": {
+                        "userTensorVarName": "x",
+                        "userTensorVarDimensions": [
+                          2
                         ]
                       }
-                    }
+                    },
+                    [
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              2
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              2
+                            ]
+                          }
+                        }
+                      }
+                    ]
                   ]
                 }
               ],
@@ -227,6 +316,95 @@
             {
               "variableReconstruction": [
                 {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          2
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Input",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              2
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Input",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 0,
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
+                        "networkName": "controller",
+                        "inputOrOutput": "Output",
+                        "application": 0
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 0,
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "networkName": "controller",
+                            "inputOrOutput": "Output",
+                            "application": 0
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
@@ -241,57 +419,35 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": -1,
-                          "denominator": 2
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
+                      "constantValue": {
+                        "numerator": -4,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                0
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "userTensorVarName": "x",
-                                  "userTensorVarDimensions": [
-                                    2
-                                  ]
-                                }
+                                "networkName": "controller",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 8
                             }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  0
-                                ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "controller",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                          },
+                          {
+                            "numerator": 8,
+                            "denominator": 1
+                          }
                         ]
-                      }
+                      ]
                     }
                   ]
                 },
@@ -310,58 +466,80 @@
                       }
                     },
                     {
-                      "rationalEqExpr": {
-                        "constantValue": {
-                          "numerator": -1,
-                          "denominator": 2
-                        },
-                        "coefficients": [
-                          [
-                            {
-                              "tag": "UserRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  1
+                      "constantValue": {
+                        "numerator": -4,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                1
+                              ],
+                              "originalVar": {
+                                "startingIndex": 0,
+                                "networkTensorVarDimensions": [
+                                  2
                                 ],
-                                "originalVar": {
-                                  "userTensorVarName": "x",
-                                  "userTensorVarDimensions": [
-                                    2
-                                  ]
-                                }
+                                "networkName": "controller",
+                                "inputOrOutput": "Input",
+                                "application": 0
                               }
-                            },
-                            {
-                              "numerator": -1,
-                              "denominator": 8
                             }
-                          ],
-                          [
-                            {
-                              "tag": "NetworkRationalVar",
-                              "contents": {
-                                "tensorIndices": [
-                                  1
-                                ],
-                                "originalVar": {
-                                  "startingIndex": 0,
-                                  "networkTensorVarDimensions": [
-                                    2
-                                  ],
-                                  "networkName": "controller",
-                                  "inputOrOutput": "Input",
-                                  "application": 0
-                                }
-                              }
-                            },
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                          },
+                          {
+                            "numerator": 8,
+                            "denominator": 1
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "UserTensorVar",
+                      "contents": {
+                        "userTensorVarName": "x",
+                        "userTensorVarDimensions": [
+                          2
                         ]
                       }
-                    }
+                    },
+                    [
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            1
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              2
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              2
+                            ]
+                          }
+                        }
+                      }
+                    ]
                   ]
                 }
               ],
