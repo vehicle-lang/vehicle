@@ -28,18 +28,7 @@ vehicle verify \
 where the last line tells Vehicle where to write out the result of the verification
 which can then be used by Agda in the next step.
 
-(Optional) If you would like to see the intermediate Marabou queries generated, you can
-run the following command:
-
-```bash
-vehicle compile \
-  --target MarabouQueries \
-  --specification examples/windController/windController.vcl \
-  --output examples/windController/verificationResult \
-  --network controller:examples/windController/controller.onnx
-```
-
-which will put them in the `windController-queries` folder.
+The intermediate Marabou queries can be found in `examples/windController/verificationResult`.
 
 ## Compiling to specification to Agda
 

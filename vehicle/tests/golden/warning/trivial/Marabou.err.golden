@@ -1,14 +1,14 @@
 [93m
-Warning:  The property 'p' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
+Warning: The property 'p' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 
 
-Warning:  The property 'multiProperty!0!2' was found to evaluate to 'False' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
+Warning: The property 'multiProperty!0!2' was found to evaluate to 'False' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 
 
-Warning:  The property 'multiProperty!0!0' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
+Warning: The property 'multiProperty!0!0' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 
 
-Warning:  In property 'multiProperty!0!1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'multiProperty!0!1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     f₀[input]!0 - no lower or upper bound
 [m
