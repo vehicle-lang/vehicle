@@ -42,6 +42,7 @@ build-frontend = "build"
 build = [
   # Using a GitHub runner
   "*-macosx_x86_64",
+  "*-macosx_arm64",
   # Using a GitHub runner
   "*-win_amd64",
   # Using wenkokke/manylinux2014_ghc948_x86_64
