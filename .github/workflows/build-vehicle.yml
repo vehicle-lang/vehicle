@@ -14,8 +14,10 @@ jobs:
         os:
           - name: "Linux"
             type: ubuntu-latest
-          - name: "macOS"
-            type: "macos-latest"
+          - name: "macOS (x86_64)"
+            type: "macos-12"
+          - name: "macOS (arm64)"
+            type: "macos-14"
           - name: "Windows"
             type: "windows-latest"
         haskell:
