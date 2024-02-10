@@ -25,7 +25,7 @@ jobs:
               version: "3.10.2.1"
               project-file: "cabal.project.ghc-9.4.8"
               extra-args: ""
-              extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
+              extra-args-test-golden: ""
         include:
           # Build with GHC 9.8.1
           - os:
@@ -38,7 +38,8 @@ jobs:
                 version: "3.10.2.1"
                 project-file: "cabal.project.ghc-9.8.1"
                 extra-args: ""
-                extra-args-test-golden: ""
+                # TODO: Migrate testVerifier to a Haskell executable for portability.
+                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
           # Build with GHC 9.6.4
           - os:
               name: Linux
