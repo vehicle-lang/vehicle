@@ -4,9 +4,7 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad (unless)
 import Data.Hashable (Hashable)
-import Data.Map qualified as Map
 import Vehicle.Backend.Agda
 import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
 import Vehicle.Backend.LossFunction qualified as LossFunction
@@ -24,7 +22,6 @@ import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -88,8 +85,7 @@ compileToAgda ::
   CompileOptions ->
   (Imports, Prog Ix Builtin) ->
   m ()
-compileToAgda options@CompileOptions {..} (_, typedProg) = do
-  warnIfResourcesProvided options
+compileToAgda CompileOptions {..} (_, typedProg) = do
   let agdaOptions = AgdaOptions verificationCache output moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile output agdaCode
@@ -142,12 +138,3 @@ compileToTensors prog outputFile outputAsJSON = do
       else do
         return $ prettyFriendly etaExpandedProg
   writeResultToFile Nothing outputFile result
-
-warnIfResourcesProvided :: (MonadCompile m) => CompileOptions -> m ()
-warnIfResourcesProvided CompileOptions {..} = do
-  let parameters = fmap (Parameter,) (Map.keys parameterValues)
-  let datasets = fmap (Dataset,) (Map.keys datasetLocations)
-  let networks = fmap (Network,) (Map.keys networkLocations)
-  let resources = parameters <> datasets <> networks
-  unless (null resources) $ do
-    logWarning $ UnnecessaryResourcesProvided target resources

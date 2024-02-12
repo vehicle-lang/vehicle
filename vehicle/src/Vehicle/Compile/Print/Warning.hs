@@ -5,7 +5,6 @@ module Vehicle.Compile.Print.Warning where
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty, sort)
 import Data.Set qualified as Set
-import Vehicle.Backend.Prelude (Target (..))
 import Vehicle.Prelude
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
@@ -26,21 +25,6 @@ instance Pretty SummarisedCompileWarning where
         <+> quotePretty status
         <+> "without needing to call the verifier. This usually indicates a fault with either the"
         <+> "specification or any external datasets used."
-    UnnecessaryResourcesProvidedSummary target resources ->
-      "The following provided resources:"
-        <> line
-        <> line
-        <> indent 2 resourceDocs
-        <> line
-        <> line
-        <> "will be ignored as when compiling to" <+> pretty target <+> reasonUnnecessary
-      where
-        resourceDocs = vsep (fmap (\(r, n) -> pretty r <+> pretty n) resources)
-        reasonUnnecessary = case target of
-          ITP {} -> "their values will be taken directly from the verification cache."
-          ExplicitVehicle -> "their values should be provided upon export."
-          LossFunction {} -> "their values should be provided upon export."
-          VerifierQueries {} -> developerError "resources are necessary when compiling to verifier queries"
     UnderSpecifiedProblemSpaceVariablesSummary propertyAddress unsolvedVars -> do
       let varsDoc = concatWith (\u v -> u <> "," <+> v) (fmap quotePretty (Set.toList unsolvedVars))
       let pluralisedVarsDoc

@@ -1,46 +1,46 @@
 [93m
-Warning:  In property 'prop1', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
+Warning: In property 'prop1', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
 
 In order to provide support, Vehicle has automatically converted the strict inequalities to non-strict inequalites. This is not sound, but errors will be at most the floating point epsilon used by the verifier, which is usually very small (e.g. 1e-9). However, this may lead to unexpected behaviour (e.g. loss of the law of excluded middle).
 
 See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
 
 
-Warning:  In property 'prop1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'prop1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     f₀[input]!0 - no upper bound
   In query 2:
     f₀[input]!0 - no lower bound
 
 
-Warning:  In property 'prop2' the quantified variable 'x' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+Warning: In property 'prop2' the quantified variable 'x' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
 
 
-Warning:  In property 'prop2', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
+Warning: In property 'prop2', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
 
 In order to provide support, Vehicle has automatically converted the strict inequalities to non-strict inequalites. This is not sound, but errors will be at most the floating point epsilon used by the verifier, which is usually very small (e.g. 1e-9). However, this may lead to unexpected behaviour (e.g. loss of the law of excluded middle).
 
 See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
 
 
-Warning:  In property 'prop2', in query 2 all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of queries.
+Warning: In property 'prop2', in query 2 all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of queries.
 
 See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details.
 
 
-Warning:  In property 'prop2', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'prop2', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     f₀[input]!0 - no upper bound
 
 
-Warning:  In property 'prop3', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
+Warning: In property 'prop3', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').
 
 In order to provide support, Vehicle has automatically converted the strict inequalities to non-strict inequalites. This is not sound, but errors will be at most the floating point epsilon used by the verifier, which is usually very small (e.g. 1e-9). However, this may lead to unexpected behaviour (e.g. loss of the law of excluded middle).
 
 See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
 
 
-Warning:  In property 'prop3', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'prop3', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     f₀[input]!0 - no upper bound
   In query 2:

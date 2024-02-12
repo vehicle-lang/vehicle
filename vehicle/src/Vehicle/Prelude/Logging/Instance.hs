@@ -133,4 +133,4 @@ showCompileWarnings :: [SummarisedCompileWarning] -> String
 showCompileWarnings ws =
   setTextColour Yellow $
     layoutAsString $
-      vsep (fmap (\w -> line <> "Warning: " <+> pretty w <> line) ws)
+      vsep (fmap (\w -> line <> "Warning:" <+> pretty w <> line) ws)

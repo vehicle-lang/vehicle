@@ -1,5 +1,5 @@
 [93m
-Warning:  In property 'isMalicious', in query 1 all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of queries.
+Warning: In property 'isMalicious', in query 1 all network inputs were fixed to be constants. Unfortunately there is a known bug in Marabou that it sometimes erroneously returns 'unsat' for these type of queries.
 
 See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details.
 [m

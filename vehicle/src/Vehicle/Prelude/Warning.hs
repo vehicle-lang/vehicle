@@ -11,7 +11,6 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
-import Vehicle.Backend.Prelude (Target)
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST
 import Vehicle.Verify.Core
@@ -23,7 +22,6 @@ import Vehicle.Verify.Variable
 
 data CompileWarning
   = UnusedResources ExternalResource (Set Name)
-  | UnnecessaryResourcesProvided Target [(ExternalResource, Name)]
   | TrivialProperty PropertyAddress Bool
   | UnderSpecifiedProblemSpaceVar PropertyAddress UserRationalVariable
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
@@ -32,7 +30,6 @@ data CompileWarning
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
-  | UnnecessaryResourcesProvidedSummary Target [(ExternalResource, Name)]
   | TrivialPropertySummary PropertyAddress Bool
   | UnderSpecifiedProblemSpaceVariablesSummary PropertyAddress (Set UserRationalVariable)
   | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyAddress Int
@@ -60,11 +57,6 @@ addWarningToState CombiningState {..} = \case
   UnusedResources r names ->
     CombiningState
       { uniqueWarnings = UnusedResourcesSummary r names : uniqueWarnings,
-        ..
-      }
-  UnnecessaryResourcesProvided r names ->
-    CombiningState
-      { uniqueWarnings = UnnecessaryResourcesProvidedSummary r names : uniqueWarnings,
         ..
       }
   TrivialProperty r names ->
@@ -127,7 +119,6 @@ compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
     warningPropertyId w =
       propertyID <$> case w of
         UnusedResourcesSummary {} -> Nothing
-        UnnecessaryResourcesProvidedSummary {} -> Nothing
         TrivialPropertySummary address _ -> Just address
         UnderSpecifiedProblemSpaceVariablesSummary address _ -> Just address
         UnsoundStrictOrderConversionsSummary _ address _ -> Just address

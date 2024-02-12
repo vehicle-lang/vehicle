@@ -65,7 +65,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
     try:
         import tensorflow as tf
 
-        def optimiser_for_pertubation(
+        def optimiser_for_perturbation(
             _minimise: bool,
             _context: Dict[str, Any],
             _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
@@ -80,7 +80,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
             MNIST_ROBUSTNESS,
             property_name="robust",
             target=vcl.DifferentiableLogic.DL2,
-            optimisers={"pertubation": optimiser_for_pertubation},
+            optimisers={"perturbation": optimiser_for_perturbation},
         )
 
         loss = robust_loss(
