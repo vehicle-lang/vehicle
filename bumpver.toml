@@ -11,6 +11,11 @@ push = true
 "vehicle-python/vehicle-python-binding.cabal" = [
     "^version:         {pep440_version}$",
 ]
+"CITATION.cff" = [
+    'version: "{pep440_version}"',
+    'date-released: "YYYY-0M-0D"',
+    'repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/{version}"'
+]
 "CONTRIBUTING.md" = [
     "This should print `{pep440_version}`.",
     "vehicle_lang-{pep440_version}-",
