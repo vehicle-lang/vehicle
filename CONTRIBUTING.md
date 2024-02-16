@@ -907,7 +907,20 @@ The procedure to create a new release is:
 
 7. Ensure that the CI successfully builds and publishes Vehicle to PyPI: <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
 
-8. **On a macOS machine with an M1/M2 chipset**
+8. Add identifiers for the new version to `CITATION.cff` at the top of the list under the `identifiers` key.
+
+   You can use the following as a template:
+
+   ```yaml
+   - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.13.0"
+    description: "The GitHub release URL of tag v0.13.0."
+   - type: url
+      value: "https://gpypi.org/project/vehicle-lang/0.13.0/"
+      description: "The PyPI release URL of version 0.13.0."
+   ```
+
+9. **On a macOS machine with an M1/M2 chipset**
 
    There are no GitHub Actions runners with an M1/M2 chipset, so the binary distributions for this platform must be built and published manually from an appropriate machine.
 

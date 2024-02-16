@@ -1,0 +1,177 @@
+cff-version: "1.2.0"
+message: "If you use this software, please cite it using these metadata."
+title: "Vehicle"
+authors:
+  - family-names: "Daggitt"
+    given-names: "Matthew"
+  - family-names: "Kokke"
+    given-names: "Wen"
+  - family-names: "Ślusarz"
+    given-names: "Natalia"
+  - family-names: "Atkey"
+    given-names: "Robert"
+  - family-names: "Casadio"
+    given-names: "Marco"
+  - family-names: "Komendantskaya"
+    given-names: "Ekaterina"
+version: "0.13.0"
+date-released: "2024-02-10"
+license: "MIT"
+type: "software"
+repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.13.0"
+repository-code: "https://github.com/vehicle-lang/vehicle"
+references:
+  - authors:
+      - family-names: "Daggitt"
+        given-names: "Matthew"
+      - family-names: "Kokke"
+        given-names: "Wen"
+      - family-names: "Atkey"
+        given-names: "Robert"
+      - family-names: "Ślusarz"
+        given-names: "Natalia"
+      - family-names: "Arnaboldi"
+        given-names: "Luca"
+      - family-names: "Komendantskaya"
+        given-names: "Ekaterina"
+    doi: "10.48550/arXiv.2401.06379"
+    month: 1
+    status: "submitted"
+    title: "Vehicle: Bridging the Embedding Gap in the Verification of Neuro-Symbolic Programs"
+    type: "conference-paper"
+    year: "2024"
+    url: "https://arxiv.org/abs/2401.06379"
+  - authors:
+      - family-names: "Daggitt"
+        given-names: "Matthew"
+      - family-names: "Kokke"
+        given-names: "Wen"
+      - family-names: "Atkey"
+        given-names: "Robert"
+    doi: "10.48550/arXiv.2402.01353"
+    month: 1
+    status: "submitted"
+    title: "Efficient compilation of expressive problem space specifications to neural network solvers"
+    type: "conference-paper"
+    year: "2024"
+    url: "https://arxiv.org/abs/2402.01353"
+  - authors:
+      - family-names: "Daggitt"
+        given-names: "Matthew"
+      - family-names: "Kokke"
+        given-names: "Wen"
+      - family-names: "Atkey"
+        given-names: "Robert"
+      - family-names: "Arnaboldi"
+        given-names: "Luca"
+      - family-names: "Komendantskaya"
+        given-names: "Ekaterina"
+    doi: "10.48550/arXiv.2202.05207"
+    keywords:
+      - Neural networks
+      - verification
+      - Interactive Theorem Provers
+      - Agda
+      - Marabou
+    month: 2
+    title: "Vehicle: Interfacing Neural Network Verifiers with Interactive Theorem Provers"
+    type: "unpublished"
+    year: "2022"
+    url: "https://arxiv.org/abs/2202.05207"
+identifiers:
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.13.0"
+    description: "The GitHub release URL of tag v0.13.0."
+  - type: url
+    value: "https://gpypi.org/project/vehicle-lang/0.13.0/"
+    description: "The PyPI release URL of version 0.13.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.11.1"
+    description: "The GitHub release URL of version 0.11.1."
+  - type: url
+    value: "https://gpypi.org/project/vehicle-lang/0.11.1/"
+    description: "The PyPI release URL of version 0.11.1."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.11.0"
+    description: "The GitHub release URL of version 0.11.0."
+  - type: url
+    value: "https://gpypi.org/project/vehicle-lang/0.11.0/"
+    description: "The PyPI release URL of version 0.11.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.10.0"
+    description: "The GitHub release URL of version 0.10.0."
+  - type: url
+    value: "https://gpypi.org/project/vehicle-lang/0.10.0/"
+    description: "The PyPI release URL of version 0.10.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.9.0"
+    description: "The GitHub release URL of version 0.9.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.9.0/"
+    description: "The PyPI release URL of version 0.9.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.8.0"
+    description: "The GitHub release URL of version 0.8.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.8.0/"
+    description: "The PyPI release URL of version 0.8.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.7.0"
+    description: "The GitHub release URL of version 0.7.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.7.0/"
+    description: "The PyPI release URL of version 0.7.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.6.0"
+    description: "The GitHub release URL of version 0.6.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.6.0/"
+    description: "The PyPI release URL of version 0.6.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.5.1"
+    description: "The GitHub release URL of version 0.5.1."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.5.1/"
+    description: "The PyPI release URL of version 0.5.1."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.5.0"
+    description: "The GitHub release URL of version 0.5.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.5.0/"
+    description: "The PyPI release URL of version 0.5.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.4.1"
+    description: "The GitHub release URL of version 0.4.1."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.4.1/"
+    description: "The PyPI release URL of version 0.4.1."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.4.0"
+    description: "The GitHub release URL of version 0.4.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.4.0/"
+    description: "The PyPI release URL of version 0.4.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.3.3"
+    description: "The GitHub release URL of version 0.3.3."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.3.3/"
+    description: "The PyPI release URL of version 0.3.3."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.3.0"
+    description: "The GitHub release URL of version 0.3.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.3.0/"
+    description: "The PyPI release URL of version 0.3.0."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.2.0"
+    description: "The GitHub release URL of version 0.2.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.2.0a4/"
+    description: "The PyPI release URL of version 0.2.0-alpha4."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.2.0a1/"
+    description: "The PyPI release URL of version 0.2.0-alpha1."
+  - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.1.0"
+    description: "The GitHub release URL of tag v0.1.0."
