@@ -54,12 +54,14 @@ jobs:
       - name: Get source
         uses: actions/checkout@v4
 
-      - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
+      - name: Setup Haskell
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
-        uses: haskell/actions/setup@v2
+        uses: ./.github/actions/setup-haskell
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
+          cabal-project-file: "vehicle-python/cabal.project"
+          cabal-project-freeze-file: "vehicle-python/cabal.project.freeze"
 
       - name: Build wheel
         uses: pypa/cibuildwheel@v2.16.5
