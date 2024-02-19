@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mrkkrp/ormolu-action@v14
+      - uses: mrkkrp/ormolu-action@v15
         with:
           version: "0.7.1.0"
 
