@@ -85,22 +85,7 @@ instance Pretty SummarisedCompileWarning where
         <> line
         <> line
         <> "See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details."
-    ResourcesUnnecessariyProvidedForBackend target resources ->
-      "The following provided resources:"
-        <> line
-        <> line
-        <> indent 2 resourceDocs
-        <> line
-        <> line
-        <> "will be ignored as when compiling to" <+> pretty target <+> reasonUnnecessary
-      where
-        resourceDocs = vsep (fmap (\(r, n) -> pretty r <+> pretty n) resources)
-        reasonUnnecessary = case target of
-          ITP {} -> "their values will be taken directly from the verification cache."
-          ExplicitVehicle -> "their values should be provided upon export."
-          LossFunction {} -> "their values should be provided upon export."
-          VerifierQueries {} -> developerError "resources are necessary when compiling to verifier queries"
-    InefficientTensorCode name builtin boundCtx expr ->
+    InefficientTensorCodeSummary name builtin boundCtx expr ->
       "While compiling property"
         <+> quotePretty name
         <+> "found the following operation"

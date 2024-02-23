@@ -31,7 +31,7 @@ forceHead subst ctx expr = do
   forcedExpr <- case maybeForcedExpr of
     Nothing -> return expr
     Just forcedExpr -> do
-      let dbCtx = boundContextOf ctx
+      let dbCtx = namedBoundCtxOf ctx
       logDebug MaxDetail $
         "forced"
           <+> prettyFriendly (WithContext expr dbCtx)

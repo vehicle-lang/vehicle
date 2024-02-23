@@ -3,7 +3,7 @@ module Vehicle.Compile.Context.Bound.Core where
 import Data.Coerce (coerce)
 import Vehicle.Data.DeBruijn
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Binder, Name)
+import Vehicle.Syntax.AST (Binder, Name, nameOf)
 
 --------------------------------------------------------------------------------
 -- Bound context
@@ -34,8 +34,14 @@ type BoundCtx builtin = GenericBoundCtx (Binder Ix builtin)
 emptyBoundCtx :: BoundCtx builtin
 emptyBoundCtx = mempty
 
+toNamedBoundCtx :: BoundCtx builtin -> NamedBoundCtx
+toNamedBoundCtx = fmap nameOf
+
 class HasBoundCtx a builtin | a -> builtin where
   boundContextOf :: a -> BoundCtx builtin
+
+namedBoundCtxOf :: (HasBoundCtx a builtin) => a -> NamedBoundCtx
+namedBoundCtxOf = toNamedBoundCtx . boundContextOf
 
 type NamedBoundCtx = GenericBoundCtx (Maybe Name)
 

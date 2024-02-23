@@ -5,34 +5,22 @@ module Vehicle.Compile
 where
 
 import Control.Monad (unless)
-<<<<<<< HEAD
-import Data.Hashable (Hashable)
-=======
-import Control.Monad.IO.Class (MonadIO (..))
->>>>>>> 859ac937 (Proper conversion to tensor-based code)
 import Data.Map qualified as Map
 import Vehicle.Backend.Agda
-import Vehicle.Backend.LossFunction qualified as LossFunction
+import Vehicle.Backend.LossFunction (lossPreprocessingStep)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
-import Vehicle.Backend.Tensors.Clean (cleanUpHigherOrderStuff)
-import Vehicle.Backend.Tensors.Convert (convertToTensors)
+import Vehicle.Backend.Tensors.Convert
 import Vehicle.Backend.Tensors.JSON (compileProgToJSON)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
+import Vehicle.Compile.Monomorphisation (hoistInferableParameters)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
-import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
-<<<<<<< HEAD
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Warning (CompileWarning (..))
-=======
-import Vehicle.Prelude.Warning (CompileWarning (ResourcesUnnecessariyProvidedForBackend))
->>>>>>> 859ac937 (Proper conversion to tensor-based code)
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -70,7 +58,7 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
     VerifierQueries queryFormatID ->
       compileToQueryFormat result resources queryFormatID output
     LossFunction differentiableLogic ->
-      compileToLossFunction result differentiableLogic output outputAsJSON
+      compileToLossFunction differentiableLogic result output outputAsJSON
     ITP Agda ->
       compileToAgda options result
     ExplicitVehicle ->
@@ -104,16 +92,14 @@ compileToAgda options@CompileOptions {..} (_, typedProg) = do
 
 compileToLossFunction ::
   (MonadCompile m, MonadStdIO m) =>
-  (Imports, Prog Ix Builtin) ->
   DifferentiableLogicID ->
+  (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction (imports, typedProg) differentiableLogic output outputAsJSON = do
-  let mergedProg = mergeImports imports typedProg
-  resolvedProg <- resolveInstanceArguments mergedProg
-  lossProg <- LossFunction.compile differentiableLogic resolvedProg
-  compileToTensors lossProg output outputAsJSON
+compileToLossFunction differentiableLogicID prog output outputAsJSON = do
+  let lossPreprocessing = lossPreprocessingStep differentiableLogicID
+  compileToTensors lossPreprocessing prog output outputAsJSON
 
 compileDirect ::
   (MonadCompile m, MonadStdIO m) =>
@@ -121,34 +107,29 @@ compileDirect ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileDirect (imports, typedProg) outputFile outputAsJSON = do
-  let mergedProg = mergeImports imports typedProg
-  resolvedProg <- resolveInstanceArguments mergedProg
-  compileToTensors resolvedProg outputFile outputAsJSON
+compileDirect prog outputFile outputAsJSON =
+  compileToTensors noPreprocessing prog outputFile outputAsJSON
 
 compileToTensors ::
-<<<<<<< HEAD
-  forall builtin m.
-  (MonadCompile m, MonadStdIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
-  Prog Ix builtin ->
-=======
   forall m.
-  (MonadCompile m, MonadIO m) =>
-  Prog Ix Builtin ->
->>>>>>> 859ac937 (Proper conversion to tensor-based code)
+  (MonadCompile m, MonadStdIO m) =>
+  TensorPreprocessingStep ->
+  (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileToTensors prog outputFile outputAsJSON = do
-  relevantProg <- removeIrrelevantCodeFromProg prog
-  let monomorphiseIf = isPropertyDecl
-  monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
-  literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
+compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
+  let mergedProg = mergeImports imports typedProg
+  -- resolvedProg <- resolveInstanceArguments mergedProg
+  -- relevantProg <- removeIrrelevantCodeFromProg resolvedProg
+  -- let monomorphiseIf = isPropertyDecl
+  -- monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
+  -- literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
+  -- cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
 
-  hoistedProg <- hoistInferableParameters cleanedProg
+  hoistedProg <- hoistInferableParameters mergedProg
   functionalisedProg <- functionaliseResources hoistedProg
-  tensorProg <- convertToTensors return functionalisedProg
+  tensorProg <- convertToTensors preprocess functionalisedProg
   result <-
     if outputAsJSON
       then do

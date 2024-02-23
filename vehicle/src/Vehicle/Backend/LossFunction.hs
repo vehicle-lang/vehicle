@@ -1,32 +1,37 @@
 module Vehicle.Backend.LossFunction
-  ( module X,
-    convertLossExpr,
+  ( lossPreprocessingStep,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader.Class (MonadReader (..))
-import Vehicle.Backend.LossFunction.Compile as X
-import Vehicle.Backend.LossFunction.Logics (DifferentialLogicImplementation (..), NotTranslation (..))
+import Data.Proxy (Proxy (..))
+import Vehicle.Backend.LossFunction.Logics
+import Vehicle.Backend.Prelude
 import Vehicle.Backend.Tensors.Convert
+import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalApp, normEval)
+import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DSL (DSLExpr, fromDSL)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
+
+lossPreprocessingStep :: DifferentiableLogicID -> TensorPreprocessingStep
+lossPreprocessingStep logicID = TensorPreprocessingStep $ convertLossExpr (implementationOf logicID)
 
 convertLossExpr ::
   forall m.
   (MonadTensorProperty m) =>
   DifferentialLogicImplementation ->
-  NFValue Builtin ->
-  m (NFValue Builtin)
+  WHNFValue Builtin ->
+  m (WHNFValue Builtin)
 convertLossExpr DifferentialLogicImplementation {..} = go
   where
-    go :: NFValue Builtin -> m (NFValue Builtin)
+    go :: WHNFValue Builtin -> m (WHNFValue Builtin)
     go expr = case expr of
       VMeta {} -> unexpectedExprError currentPass "VMeta"
       VUniverse {} -> unexpectedExprError currentPass "VUniverse"
@@ -41,23 +46,21 @@ convertLossExpr DifferentialLogicImplementation {..} = go
           Translation t -> do
             spine' <- traverse (traverse go) spine
             let unnormFn = fromDSL mempty t
-            normFn <- _
-            evalApp <- evalApp _ _ _
-            normEval opts
+            normFn <- normaliseInEnv mempty unnormFn
+            normaliseApp normFn spine'
           EliminateNot -> do
             spine' <- traverse (traverse go) spine
             case spine' of
               [arg] -> case lowerNot (argExpr arg) of
                 Right result -> return result
-                Left errExpr -> throwError $ UnsupportedNegatedOperation logicID errExpr
+                Left errExpr -> do
+                  ctx <- getNamedBoundCtx (Proxy @Builtin)
+                  throwError $ UnsupportedNegatedOperation logicID ctx errExpr
               _ -> illTypedError currentPass (prettyVerbose expr)
           ErrorCase mkError -> do
             declProv <- ask
             throwError $ mkError declProv mempty
-      VLam binder (NFBody body) -> do
-        binder' <- traverse go binder
-        body' <- go body
-        return $ VLam binder' (NFBody body')
+      VLam binder body -> return $ VLam binder body
 
     goBuiltin :: Builtin -> BuiltinTranslation
     goBuiltin b = case b of
@@ -84,26 +87,7 @@ convertLossExpr DifferentialLogicImplementation {..} = go
       If -> ErrorCase UnsupportedIfOperation
       _ -> NoTranslation
 
-normEvalApp ::
-  (MonadTensorProperty m) =>
-  WHNFValue Builtin ->
-  NFSpine Builtin ->
-  m (NFValue Builtin)
-normEvalApp fun [] = normEval opts fun
-normEvalApp fun args@(a : as) = case fun of
-  VLam binder (WHNFBody env body)
-    | not (visibilityMatches binder a) ->
-        visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
-    | otherwise -> do
-        let newEnv = extendEnvWithDefined (argExpr a) binder env
-        body' <- normEval opts newEnv body
-        case as of
-          [] -> return body'
-          (b : bs) -> normEvalApp body' (b : bs)
-  VBuiltin b spine -> evalBuiltin (evalApp opts) b (spine <> args)
-  _ -> unexpectedExprError currentPass (prettyVerbose fun)
-
-lowerNot :: NFValue Builtin -> Either (NFValue Builtin) (NFValue Builtin)
+lowerNot :: WHNFValue Builtin -> Either (WHNFValue Builtin) (WHNFValue Builtin)
 lowerNot arg = case arg of
   -- Base cases
   VBoolLiteral v ->
@@ -115,9 +99,8 @@ lowerNot arg = case arg of
   VBuiltinFunction Not [x] ->
     return $ argExpr x
   -- Inductive cases
-  VInfiniteQuantifier q args binder (NFBody body) -> do
-    negBody <- lowerNot body
-    return $ VInfiniteQuantifier (neg q) args binder (NFBody negBody)
+  VInfiniteQuantifier q args binder (WHNFBody env body) ->
+    return $ VInfiniteQuantifier (neg q) args binder (WHNFBody env (negExpr body))
   VBuiltinFunction And args@[_, _] -> do
     nargs <- traverse (traverse lowerNot) args
     return $ VBuiltinFunction Or nargs
@@ -131,13 +114,6 @@ lowerNot arg = case arg of
   -- Error cases
   _ -> Left arg
 
-{-
-    -- Inductive cases
-
-    -- Errors
-    e -> throwError $ UnsupportedNegatedOperation logic notProv e
-    _ -> throwError $ UnsupportedNegatedOperation (logicID logic) notProv
--}
 data BuiltinTranslation
   = NoTranslation
   | Translation (DSLExpr Builtin)

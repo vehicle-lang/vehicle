@@ -164,7 +164,7 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
 
         logDebug MaxDetail (prettyVerbose extendedGoalCtx)
         logDebug MaxDetail (prettyVerbose substCandidateExpr)
-        logDebug MaxDetail (prettyFriendly (WithContext substCandidateExpr extendedGoalCtx))
+        logDebug MaxDetail (prettyFriendly (WithContext substCandidateExpr (toNamedBoundCtx extendedGoalCtx)))
         addConstraints (unificationConstraint : recInstanceConstraints)
 
       runUnificationSolver (Proxy @builtin) mempty
@@ -224,7 +224,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
 -- TODO move this to Print
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
-  prettyExternal (WithContext (candidateExpr candidate) ctx)
+  prettyExternal (WithContext (candidateExpr candidate) (toNamedBoundCtx ctx))
 
 goalExpr :: InstanceGoal builtin -> WHNFValue builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine

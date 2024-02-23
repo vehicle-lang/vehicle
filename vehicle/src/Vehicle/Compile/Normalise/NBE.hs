@@ -118,7 +118,6 @@ evalApp ::
 evalApp fun [] = return fun
 evalApp fun args@(a : as) = do
   showApp fun args
-  logDebug MaxDetail $ prettyVerbose fun
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
@@ -177,6 +176,11 @@ lookupIxValueInEnv boundEnv ix = do
       -- on the `Bound` contructor.
       let inScopeEnv = drop (unIx ix) boundEnv
       let lv = Lv $ length (filter isBoundEntry inScopeEnv) - 1
+      logDebug MaxDetail $ ""
+      logDebug MaxDetail $ "Index:" <+> pretty ix
+      logDebug MaxDetail $ "Bound env:" <+> prettyVerbose boundEnv
+      logDebug MaxDetail $ "In scope env:" <+> prettyVerbose inScopeEnv
+      logDebug MaxDetail $ "Filtered env:" <+> prettyVerbose (filter isBoundEntry inScopeEnv)
       return $ VBoundVar lv []
 
 -----------------------------------------------------------------------------
@@ -189,7 +193,7 @@ showEntry :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> Expr Ix builtin ->
 showEntry _env _expr = do
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
-  incrCallDepth
+  -- incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> WHNFValue builtin -> m ()
@@ -206,9 +210,9 @@ showApp _fun _spine = do
   return ()
 
 showAppExit :: (MonadNorm builtin m) => Value nf builtin -> m ()
-showAppExit result = do
-  decrCallDepth
-  logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
+showAppExit _result = do
+  -- decrCallDepth
+  -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 
 findInstanceArg :: (MonadCompile m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])

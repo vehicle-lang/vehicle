@@ -17,7 +17,6 @@ import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.NormalisedExpr
-import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -87,11 +86,11 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
-  | UnsupportedNegatedOperation DifferentiableLogicID (NFValue Builtin)
+  | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (WHNFValue Builtin)
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
-  | HigherOrderVectors DeclProvenance (BoundCtx TensorBuiltin) (NFType TensorBuiltin)
+  | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin)
 
 deriving instance Show CompileError
 

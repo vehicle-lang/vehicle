@@ -6,6 +6,7 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity)
 import Vehicle.Data.BuiltinInterface (PrintableBuiltin (..), cheatConvertBuiltin)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
+import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.AST (Provenance (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Builtin qualified as V
@@ -83,6 +84,9 @@ data TensorBuiltin
   deriving (Show, Eq, Generic)
 
 instance Hashable TensorBuiltin
+
+instance Pretty TensorBuiltin where
+  pretty = pretty . show
 
 instance PrintableBuiltin TensorBuiltin where
   isCoercion :: TensorBuiltin -> Bool

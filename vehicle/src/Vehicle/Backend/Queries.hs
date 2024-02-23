@@ -12,19 +12,9 @@ import Data.Maybe (isNothing, maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
-<<<<<<< HEAD
 import Vehicle.Backend.Queries.PostProcessing (compileQueryToFormat)
 import Vehicle.Backend.Queries.UserVariableElimination (eliminateUserVariables)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-=======
-import Vehicle.Backend.Queries.IfElimination (unfoldIf)
-import Vehicle.Backend.Queries.LinearExpr
-import Vehicle.Backend.Queries.NetworkElimination
-import Vehicle.Backend.Queries.QuerySetStructure
-import Vehicle.Backend.Queries.UsedFunctions
-import Vehicle.Backend.Queries.UserVariableElimination (catchableUnsupportedNonLinearConstraint, eliminateUserVariables)
-import Vehicle.Backend.Queries.Variable (MixedVariables (MixedVariables), NetworkVariable (..), UserVariableCtx)
->>>>>>> 859ac937 (Proper conversion to tensor-based code)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)

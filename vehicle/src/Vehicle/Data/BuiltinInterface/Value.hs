@@ -129,7 +129,7 @@ pattern VStandardLib fn spine <- VFreeVar (findStdLibFunction -> Just fn) spine
 --------------------------------------------------------------------------------
 -- WHNFValue Function patterns
 
-pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> WHNFSpine builtin -> WHNFValue builtin
+pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> Spine strategy builtin -> Value strategy builtin
 pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
   where
     VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args
@@ -190,3 +190,36 @@ pattern VMul dom x y = VOp2 (Mul dom) x y
 
 pattern VDiv :: (HasStandardData builtin) => DivDomain -> WHNFValue builtin -> WHNFValue builtin -> WHNFValue builtin
 pattern VDiv dom x y = VOp2 (Div dom) x y
+
+pattern VZipWithVectorArgs ::
+  Value strategy builtin ->
+  VArg strategy builtin ->
+  VArg strategy builtin ->
+  Spine strategy builtin
+pattern VZipWithVectorArgs f xs ys <- [_, _, _, _, argExpr -> f, xs, ys]
+
+pattern VInfiniteQuantifier ::
+  Quantifier ->
+  [VArg strategy Builtin] ->
+  VBinder strategy Builtin ->
+  Body strategy Builtin ->
+  Value strategy Builtin
+pattern VInfiniteQuantifier q args binder body <-
+  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder body) : args)
+  where
+    VInfiniteQuantifier q args binder body =
+      VBuiltinFunction (Quantifier q) (reverse (Arg mempty Explicit Relevant (VLam binder body) : args))
+
+pattern VForall ::
+  [VArg strategy Builtin] ->
+  VBinder strategy Builtin ->
+  Body strategy Builtin ->
+  Value strategy Builtin
+pattern VForall args binder body = VInfiniteQuantifier Forall args binder body
+
+pattern VExists ::
+  [VArg strategy Builtin] ->
+  VBinder strategy Builtin ->
+  Body strategy Builtin ->
+  Value strategy Builtin
+pattern VExists args binder body = VInfiniteQuantifier Exists args binder body

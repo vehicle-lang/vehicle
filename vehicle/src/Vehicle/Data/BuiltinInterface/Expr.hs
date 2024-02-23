@@ -258,3 +258,6 @@ pattern IfExpr p tRes args <-
         ( Arg p (Implicit True) Relevant tRes
             :| args
         )
+
+negExpr :: Expr var Builtin -> Expr var Builtin
+negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]

@@ -1,6 +1,8 @@
 module Vehicle.Backend.Tensors.Convert
   ( convertToTensors,
     MonadTensorProperty,
+    TensorPreprocessingStep (..),
+    noPreprocessing,
   )
 where
 
@@ -13,26 +15,32 @@ import Vehicle.Backend.Tensors.Core (TensorBuiltin)
 import Vehicle.Backend.Tensors.Core qualified as T
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (defaultNBEOptions, nfEval)
+import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
-import Vehicle.Prelude.Warning (CompileWarning (..))
+import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 
 type MonadTensor m =
   ( MonadCompile m,
     MonadFreeContext Builtin m,
-    MonadBoundContext TensorBuiltin m
+    MonadBoundContext Builtin m
   )
 
 type MonadTensorProperty m =
   ( MonadTensor m,
-    MonadReader DeclProvenance m
+    MonadReader (DeclProvenance) m
   )
 
-type TensorPreprocessingStep =
-  forall m. (MonadTensorProperty m) => NFValue Builtin -> m (NFValue Builtin)
+newtype TensorPreprocessingStep
+  = TensorPreprocessingStep
+      (forall m. (MonadTensorProperty m) => WHNFValue Builtin -> m (WHNFValue Builtin))
+
+noPreprocessing :: TensorPreprocessingStep
+noPreprocessing = TensorPreprocessingStep return
 
 convertToTensors ::
   (MonadCompile m) =>
@@ -42,7 +50,8 @@ convertToTensors ::
 convertToTensors preprocess prog =
   logCompilerPass MinDetail currentPass $ do
     runFreshFreeContextT (Proxy @Builtin) $
-      runFreshBoundContextT (Proxy @TensorBuiltin) (convertProg preprocess prog)
+      runFreshBoundContextT (Proxy @Builtin) $
+        convertProg preprocess prog
 
 convertProg ::
   (MonadTensor m) =>
@@ -68,8 +77,9 @@ convertDecls preprocess = \case
             | isProperty anns -> do
                 logCompilerPass MinDetail ("property" <+> quotePretty i) $ do
                   t' <- convertDeclType t
-                  e' <- runReaderT (convertProperty preprocess e) (i, p)
-                  return $ Just $ DefFunction p i anns t' e'
+                  e' <- runReaderT (convertExpr preprocess mempty e) (i, p)
+                  e'' <- unnormaliseNF e'
+                  return $ Just $ DefFunction p i anns t' e''
             | otherwise -> return Nothing
 
     addDeclToContext decl $ do
@@ -81,55 +91,80 @@ convertDeclType ::
   Type Ix Builtin ->
   m (Type Ix TensorBuiltin)
 convertDeclType t = do
-  t' <- nfEval defaultNBEOptions emptyEnv t
-  type'' <- convertExpr t'
-  unnormalise type''
+  type'' <- convertExpr noPreprocessing mempty t
+  unnormaliseNF type''
 
-convertProperty ::
+convertExpr ::
   (MonadTensorProperty m) =>
   TensorPreprocessingStep ->
+  WHNFBoundEnv Builtin ->
   Expr Ix Builtin ->
-  m (Expr Ix TensorBuiltin)
-convertProperty preprocess expr = do
-  nfExpr <- nfEval defaultNBEOptions emptyEnv expr
-  processedExpr <- preprocess nfExpr
-  convertedExpr <- convertExpr processedExpr
-  result <- unnormalise convertedExpr
-  return result
+  m (NFValue TensorBuiltin)
+convertExpr preprocess@(TensorPreprocessingStep pre) env expr = do
+  ctx <- getNamedBoundCtx (Proxy @Builtin)
+  logDebug MaxDetail $ pretty ctx
+  logDebug MaxDetail $ prettyVerbose env
+  logDebug MaxDetail $ "Output:" <+> prettyVerbose expr
+  whnfExpr <- normaliseInEnv env expr
+  logDebug MaxDetail $ "Norm output:" <+> prettyVerbose whnfExpr
+  preprocessedExpr <- pre whnfExpr
+  logDebug MaxDetail $ "Preproc output:" <+> prettyVerbose preprocessedExpr
+  logDebug MaxDetail $ "Quoted preproc:" <+> prettyVerbose (Quote.unnormalise @(WHNFValue Builtin) @(Expr Ix Builtin) (Lv $ length ctx) preprocessedExpr)
+  logDebug MaxDetail $ "Preproc output:" <+> prettyFriendly (WithContext preprocessedExpr ctx)
+  convertedExpr <- convertValue preprocess preprocessedExpr
+  logDebug MaxDetail $ "Convert output:" <+> prettyVerbose preprocessedExpr
+  return convertedExpr
 
-convertExpr :: (MonadTensorProperty m) => NFValue Builtin -> m (NFValue TensorBuiltin)
-convertExpr e = do
+convertValue ::
+  (MonadTensorProperty m) =>
+  TensorPreprocessingStep ->
+  WHNFValue Builtin ->
+  m (NFValue TensorBuiltin)
+convertValue preprocess e = do
   showEntry e
   result <- case e of
     VMeta {} -> unexpectedExprError currentPass "VMeta"
     VUniverse l -> return $ VUniverse l
     VPi binder body -> do
-      binder' <- convertBinder binder
-      unnormBinder <- traverse unnormalise binder'
-      body' <- addBinderToContext unnormBinder $ convertExpr body
+      binder' <- convertBinder preprocess binder
+      unnormBinder <- traverse unnormalise binder
+      body' <- addBinderToContext unnormBinder $ convertValue preprocess body
       return $ VPi binder' body'
     VFreeVar v spine -> do
-      spine' <- convertSpine spine
+      spine' <- convertSpine preprocess spine
       return $ VFreeVar v spine'
     VBoundVar v spine -> do
-      spine' <- convertSpine spine
+      spine' <- convertSpine preprocess spine
       return $ VBoundVar v spine'
     VBuiltin b spine -> do
-      spine' <- convertSpine spine
+      spine' <- convertSpine preprocess spine
       convertBuiltins b spine'
-    VLam binder (NFBody body) -> do
-      binder' <- convertBinder binder
-      unnormBinder <- traverse unnormalise binder'
-      body' <- addBinderToContext unnormBinder $ convertExpr body
+    VLam binder (WHNFBody env body) -> do
+      binder' <- convertBinder preprocess binder
+      unnormBinder <- traverse unnormalise binder
+      lv <- getCurrentLv (Proxy @Builtin)
+      body' <- addBinderToContext unnormBinder $ do
+        ctx <- getBoundCtx (Proxy @Builtin)
+        logDebug MaxDetail $ "Ctx" <+> prettyVerbose ctx
+        logDebug MaxDetail $ "Level" <+> pretty lv
+        convertExpr preprocess (extendEnvWithDefined (VBoundVar lv []) unnormBinder env) body
       return $ VLam binder' (NFBody body')
   showExit result
   return result
 
-convertSpine :: (MonadTensorProperty m) => NFSpine Builtin -> m [NFArg TensorBuiltin]
-convertSpine = traverse (traverse convertExpr)
+convertSpine ::
+  (MonadTensorProperty m) =>
+  TensorPreprocessingStep ->
+  WHNFSpine Builtin ->
+  m [NFArg TensorBuiltin]
+convertSpine preprocess = traverse (traverse (convertValue preprocess))
 
-convertBinder :: (MonadTensorProperty m) => NFBinder Builtin -> m (NFBinder TensorBuiltin)
-convertBinder = traverse convertExpr
+convertBinder ::
+  (MonadTensorProperty m) =>
+  TensorPreprocessingStep ->
+  WHNFBinder Builtin ->
+  m (NFBinder TensorBuiltin)
+convertBinder preprocess = traverse (convertValue preprocess)
 
 convertBuiltins :: (MonadTensorProperty m) => Builtin -> [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertBuiltins b args = case b of
@@ -158,7 +193,7 @@ convertBuiltinType t args = case t of
 convertVectorType :: (MonadTensorProperty m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVectorType args = do
   maybeResult <- case args of
-    [RelevantExplicitArg _ t@(VBuiltin b [])] -> case b of
+    [RelevantExplicitArg _ t@(VBuiltin b []), _] -> case b of
       T.TensorType -> return $ Just t
       _ -> return Nothing
     _ -> return Nothing
@@ -167,7 +202,7 @@ convertVectorType args = do
     Just result -> return result
     Nothing -> do
       declProv <- ask
-      boundCtx <- getBoundCtx (Proxy @TensorBuiltin)
+      boundCtx <- getNamedBoundCtx (Proxy @Builtin)
       let typ = VFreeVar (Identifier User "Vector") args
       throwError $ HigherOrderVectors declProv boundCtx typ
 
@@ -249,9 +284,9 @@ convertBuiltinFunction t args = case t of
   -----------------------
   -- Vector operations --
   -----------------------
-  FoldVector -> convertFoldVector args
-  MapVector -> convertMapVector args
-  ZipWithVector -> convertZipWith args
+  FoldVector -> convertHigherOrderFunction convertFoldVector FoldVector args
+  MapVector -> convertHigherOrderFunction convertMapVector MapVector args
+  ZipWithVector -> convertHigherOrderFunction convertZipWith ZipWithVector args
   Indices -> return $ mkBuiltin T.Indices args
   At -> return $ mkBuiltin T.Lookup args
   ---------------------
@@ -273,61 +308,39 @@ convertBuiltinFunction t args = case t of
     [_t, e] -> return $ argExpr e
     _ -> compilerDeveloperError "Malformed Ann expression"
 
-convertFoldVector ::
-  (MonadTensorProperty m) =>
-  [NFArg TensorBuiltin] ->
-  m (NFValue TensorBuiltin)
-convertFoldVector args = do
-  lv <- boundCtxLv <$> getBoundCtx (Proxy @TensorBuiltin)
-  maybeReducedOp <- case args of
-    [_, _, u, e, xs] -> case u of
-      ExplicitArg _ _ (getBinaryOp lv -> Just bop) -> do
-        case bop of
-          T.And -> return $ Just (T.And, T.BoolTensor True, T.ReduceAnd, e, xs)
-          T.Or -> return $ Just (T.Or, T.BoolTensor False, T.ReduceOr, e, xs)
-          T.Add -> return $ Just (T.Add, T.RatTensor 0 1, T.ReduceSum, e, xs)
-          _ -> return Nothing
-      _ -> return Nothing
+convertFoldVector :: HigherOrderFunctionConversion
+convertFoldVector lv = \case
+  [_, _, f, argExpr -> e, xs] -> case f of
+    ExplicitArg _ _ (getBinaryOp lv -> Just bop) -> return $ case bop of
+      T.And -> Just $ evalAnd (mkBuiltin T.ReduceAnd [xs]) e
+      T.Or -> Just $ evalOr (mkBuiltin T.ReduceOr [xs]) e
+      T.Add -> Just $ evalAdd (mkBuiltin T.ReduceSum [xs]) e
+      _ -> Nothing
     _ -> return Nothing
+  _ -> return Nothing
 
-  case maybeReducedOp of
-    Nothing -> inefficientCodeWarning FoldVector (mkBuiltin T.FoldVector args)
-    Just (op, unit, reduceOp, baseCase, vec) -> do
-      let reduceExpr = mkBuiltin reduceOp [vec]
-      return $
-        if argExpr baseCase == VBuiltin unit []
-          then reduceExpr
-          else mkBuiltin op [Arg mempty Explicit Relevant reduceExpr, baseCase]
+{-
+case maybeReducedOp of
+  Just (op, unit, reduceOp) -> _
+    let reduceExpr = mkBuiltin reduceOp
+    return $ Just $ if _ then _ else _ --argExpr e == VBuiltin unit []
+          --then _ -- (reduceOp, [xs])
+          --else _ -- (op, [Arg mempty Explicit Relevant reduceExpr, e])
+  -}
+convertZipWith :: HigherOrderFunctionConversion
+convertZipWith lv = \case
+  VZipWithVectorArgs f xs ys -> do
+    return $ case getBinaryOp lv f of
+      Just T.And -> Just $ mkBuiltin T.And [xs, ys]
+      Just T.Or -> Just $ mkBuiltin T.Or [xs, ys]
+      Just T.EqTensor -> Just $ mkBuiltin T.EqTensor [xs, ys]
+      Just T.NeTensor -> Just $ mkBuiltin T.NeTensor [xs, ys]
+      Just T.Add -> Just $ mkBuiltin T.Add [xs, ys]
+      _ -> Nothing
+  _ -> return Nothing
 
-convertZipWith ::
-  (MonadTensorProperty m) =>
-  [NFArg TensorBuiltin] ->
-  m (NFValue TensorBuiltin)
-convertZipWith args = do
-  lv <- boundCtxLv <$> getBoundCtx (Proxy @TensorBuiltin)
-  maybeReducedOp <- case args of
-    [_, _, _, ExplicitArg _ _ (getBinaryOp lv -> Just bop), xs, ys] -> do
-      let maybeOtherOp = case bop of
-            T.And -> Just T.And
-            T.Or -> Just T.Or
-            T.EqTensor -> Just T.EqTensor
-            T.NeTensor -> Just T.NeTensor
-            T.Add -> Just T.Add
-            _ -> Nothing
-      return $ (\b -> Just (b, xs, ys)) =<< maybeOtherOp
-    _ -> return Nothing
-
-  case maybeReducedOp of
-    Nothing -> inefficientCodeWarning ZipWithVector (mkBuiltin T.ZipWithVector args)
-    Just (op, xs, ys) -> return $ mkBuiltin op [xs, ys]
-
-convertMapVector ::
-  (MonadTensorProperty m) =>
-  [NFArg TensorBuiltin] ->
-  m (NFValue TensorBuiltin)
-convertMapVector args = do
-  -- TODO
-  inefficientCodeWarning MapVector (mkBuiltin T.MapVector args)
+convertMapVector :: HigherOrderFunctionConversion
+convertMapVector _lv _args = return Nothing
 
 getBinaryOp :: Lv -> NFValue TensorBuiltin -> Maybe TensorBuiltin
 getBinaryOp lv = \case
@@ -348,18 +361,39 @@ getBinaryOp lv = \case
       ) | lv1 == lv && lv2 == lv + 1 -> Just b
   _ -> Nothing
 
-inefficientCodeWarning ::
+type HigherOrderFunctionConversion =
+  forall m.
   (MonadTensorProperty m) =>
+  Lv ->
+  [NFArg TensorBuiltin] ->
+  m (Maybe (NFValue TensorBuiltin))
+
+convertHigherOrderFunction ::
+  (MonadTensorProperty m) =>
+  HigherOrderFunctionConversion ->
   BuiltinFunction ->
-  NFValue TensorBuiltin ->
+  [NFArg TensorBuiltin] ->
   m (NFValue TensorBuiltin)
-inefficientCodeWarning builtin expr = do
-  (ident, _) <- ask
-  boundCtx <- getBoundCtx (Proxy @TensorBuiltin)
-  logDebug MaxDetail $ prettyVerbose expr
-  logDebug MaxDetail $ prettyVerbose boundCtx
-  logWarning $ InefficientTensorCode (nameOf ident) builtin boundCtx expr
-  return expr
+convertHigherOrderFunction convertFn fn args = do
+  logDebug MaxDetail $ "Trying to convert" <+> quotePretty ZipWithVector
+  lv <- getCurrentLv (Proxy @Builtin)
+  result <- convertFn lv args
+  case result of
+    Nothing -> do
+      logDebug MaxDetail "Failed"
+      (ident, _) <- ask
+      boundCtx <- getNamedBoundCtx (Proxy @Builtin)
+      let expr = mkBuiltin T.ZipWithVector args
+      logWarning $ InefficientTensorCode (nameOf ident) fn boundCtx expr
+      return expr
+    Just expr -> do
+      logDebug MaxDetail $ "Converted to" <+> prettyVerbose expr
+      return $ expr
+
+unnormaliseNF :: (MonadTensorProperty m) => NFValue TensorBuiltin -> m (Expr Ix TensorBuiltin)
+unnormaliseNF e = do
+  lv <- getCurrentLv (Proxy @Builtin)
+  return $ Quote.unnormalise lv e
 
 currentPass :: CompilerPass
 currentPass = "conversion to tensors"
@@ -370,12 +404,35 @@ mkBuiltin ::
   NFValue TensorBuiltin
 mkBuiltin = VBuiltin
 
-showEntry :: (MonadTensorProperty m) => NFValue Builtin -> m ()
+showEntry :: (MonadTensorProperty m) => WHNFValue Builtin -> m ()
 showEntry e = do
-  logDebug MaxDetail $ "enter:" <+> prettyVerbose e
+  ctx <- getNamedBoundCtx (Proxy @Builtin)
+  logDebug MaxDetail $ "tensor-enter:" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
 showExit :: (MonadTensorProperty m) => NFValue TensorBuiltin -> m ()
 showExit e = do
+  ctx <- getNamedBoundCtx (Proxy @Builtin)
   decrCallDepth
-  logDebug MaxDetail $ "exit: " <+> prettyVerbose e
+  logDebug MaxDetail $ "tensor-exit: " <+> prettyFriendly (WithContext e ctx)
+
+pattern VBoolTensor :: Bool -> NFValue TensorBuiltin
+pattern VBoolTensor b = VBuiltin (T.BoolTensor b) []
+
+pattern VRatTensor :: Int -> Int -> NFValue TensorBuiltin
+pattern VRatTensor n d <- VBuiltin (T.RatTensor n d) []
+
+evalAnd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
+evalAnd (VBoolTensor True) y = y
+evalAnd x (VBoolTensor True) = x
+evalAnd x y = mkBuiltin T.And (Arg mempty Explicit Relevant <$> [x, y])
+
+evalOr :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
+evalOr (VBoolTensor False) y = y
+evalOr x (VBoolTensor False) = x
+evalOr x y = mkBuiltin T.And (Arg mempty Explicit Relevant <$> [x, y])
+
+evalAdd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
+evalAdd (VRatTensor 0 _) y = y
+evalAdd x (VRatTensor 0 _) = x
+evalAdd x y = mkBuiltin T.Add (Arg mempty Explicit Relevant <$> [x, y])

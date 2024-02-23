@@ -38,7 +38,7 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (StateT w m) w
   getFreeCtx = lift . getFreeCtx
   locallyAdjustCtx p = mapStateT . locallyAdjustCtx p
 
-instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin m) where
+instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin2 m) where
   addDeclEntryToContext = mapBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
   locallyAdjustCtx p = mapBoundContextT . locallyAdjustCtx p

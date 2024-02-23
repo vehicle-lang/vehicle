@@ -25,6 +25,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface.Expr (negExpr)
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.LinearExpr (LinearExpr, RationalTensor (..), addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr, zeroTensor)
 import Vehicle.Data.NormalisedExpr
@@ -59,8 +60,8 @@ eliminateUserVariables = go
       VAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
       VOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
       VIf _ c x y -> go (eliminateIf c x y)
-      VExists _ binder env body -> compileQuantifiedQuerySet False binder env body
-      VForall _ binder env body -> do
+      VExists _ binder (WHNFBody env body) -> compileQuantifiedQuerySet False binder env body
+      VForall _ binder (WHNFBody env body) -> do
         logDebug MinDetail ("Negating property..." <> line)
         compileQuantifiedQuerySet True binder env (negExpr body)
       -----------------
@@ -92,7 +93,7 @@ compileQuantifiedQuerySet ::
   Expr Ix Builtin ->
   m (Property (MetaNetwork, UserVariableReconstruction, QueryContents))
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
-  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder env body)
+  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder (WHNFBody env body))
   logCompilerPass MaxDetail subsectionDoc $ do
     flip evalStateT emptyGlobalCtx $ do
       maybePartitions <- compileExists binder env body
@@ -145,7 +146,7 @@ compileBoolExpr expr = case expr of
   VIf _ c x y -> compileBoolExpr (eliminateIf c x y)
   VAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   VOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  VExists _ binder env body -> compileExists binder env body
+  VExists _ binder (WHNFBody env body) -> compileExists binder env body
   _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateIf :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin

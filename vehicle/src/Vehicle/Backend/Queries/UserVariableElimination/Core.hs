@@ -24,7 +24,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
@@ -503,7 +502,7 @@ getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toLi
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
 prettyFriendlyInCtx e = do
-  ctx <- getGlobalBoundCtx
+  ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
 
 lookupVarByLevel :: (MonadQueryStructure m) => Lv -> m Variable
@@ -607,35 +606,6 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 --------------------------------------------------------------------------------
 -- Vector operation patterns
 
-pattern VInfiniteQuantifier ::
-  Quantifier ->
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VInfiniteQuantifier q args binder env body <-
-  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder (WHNFBody env body)) : args)
-  where
-    VInfiniteQuantifier q args binder env body =
-      VBuiltinFunction (Quantifier q) (reverse (Arg mempty Explicit Relevant (VLam binder (WHNFBody env body)) : args))
-
-pattern VForall ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VForall args binder env body = VInfiniteQuantifier Forall args binder env body
-
-pattern VExists ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VExists args binder env body = VInfiniteQuantifier Exists args binder env body
-
 pattern VVecEqSpine ::
   WHNFArg QueryBuiltin ->
   WHNFArg QueryBuiltin ->
@@ -691,7 +661,7 @@ pattern VFoldVector ::
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
-pattern VFoldVector f e xs <- VBuiltinFunction (Fold FoldVector) [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
+pattern VFoldVector f e xs <- VBuiltinFunction FoldVector [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
 
 pattern VMapVector ::
   WHNFValue QueryBuiltin ->
@@ -723,9 +693,6 @@ mkVVectorEquality dimensions e1 e2 = do
                     Arg p (Implicit True) Irrelevant d,
                     Arg p (Instance True) Relevant (mkVectorEquality ds [])
                   ]
-
-negExpr :: Expr Ix QueryBuiltin -> Expr Ix QueryBuiltin
-negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
 
 -- | The set of vector operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.

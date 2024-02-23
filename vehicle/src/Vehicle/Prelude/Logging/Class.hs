@@ -3,7 +3,6 @@ module Vehicle.Prelude.Logging.Class
     LoggingLevel (..),
     DebugMessage,
     MonadLogger (..),
-    LoggingSettings (..),
     defaultLoggingLevel,
     logDebug,
     logDebugM,
@@ -33,11 +32,6 @@ import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Settings
-
-data LoggingSettings = LoggingSettings
-  { logHandle :: Handle,
-    loggingLevel :: LoggingLevel
-  }
 
 type CompilerPass = Doc ()
 

@@ -256,7 +256,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getBoundCtx (Proxy @builtin)
+              boundCtx <- getNamedBoundCtx (Proxy @builtin)
               throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
@@ -299,7 +299,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs origin newType args
     _ -> do
-      ctx <- getBoundCtx (Proxy @builtin)
+      ctx <- getNamedBoundCtx (Proxy @builtin)
       throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------

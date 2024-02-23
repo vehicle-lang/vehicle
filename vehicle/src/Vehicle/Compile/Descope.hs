@@ -25,7 +25,7 @@ instance DescopeNamed (Decl Ix builtin) (Decl Name builtin) where
   descopeNamed = fmap (runWithNoCtx descopeNamed)
 
 instance DescopeNamed (Contextualised (Expr Ix builtin) NamedBoundCtx) (Expr Name builtin) where
-  descopeNamed = performDescoping descopeDBIndexVar
+  descopeNamed e = performDescoping descopeDBIndexVar e
 
 instance
   (DescopeNamed (Contextualised expr1 NamedBoundCtx) expr2) =>
@@ -222,8 +222,6 @@ descopeNormExpr f e = case e of
   VLam binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeBody f body
-    -- let env' = fmap (descopeNormExpr f) (cheatEnvToValues env)
-    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (Arg p Explicit Relevant) env'
     -- Lam p binder' (App p envExpr [Arg p Explicit Relevant body'])
     Lam p binder' body'
   where
@@ -248,8 +246,11 @@ descopeBody ::
 descopeBody f = \case
   NFBody body -> descopeNormExpr f body
   WHNFBody env body -> do
+    -- let env' = fmap (descopeNormExpr f) (cheatEnvToValues env)
+    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (Arg p Explicit Relevant) env'
     -- descopeNaive body
-    normAppList mempty (cheatConvertBuiltin mempty (pretty (length env))) [Arg mempty Explicit Relevant $ descopeNaive body]
+    let ctx = cheatConvertBuiltin mempty (pretty (length env))
+    normAppList mempty ctx [Arg mempty Explicit Relevant $ descopeNaive body]
 
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do

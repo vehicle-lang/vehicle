@@ -177,7 +177,7 @@ unblockFoldVector ::
 unblockFoldVector f e xs = do
   xs' <- unblockVector True xs
   flip liftIf xs' $ \xs'' ->
-    forceEval (Fold FoldVector) (evalFoldVector normaliseApp) [f, e, xs'']
+    forceEval FoldVector (evalFoldVector normaliseApp) [f, e, xs'']
 
 unblockMapVector ::
   (MonadUnblock m) =>

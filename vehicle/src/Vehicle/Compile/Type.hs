@@ -107,7 +107,6 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   -- Add extra constraints on the type. Need to have called
   -- solve constraints beforehand in order to allow for normalisation,
   -- but really only need to have solved type-class constraints.
-  logDebug MaxDetail $ prettyVerbose substCheckedType
   gluedType <- glueNBE emptyBoundEnv substCheckedType
   updatedCheckedType <- restrictAbstractDefType defSort (ident, p) gluedType
   let updatedCheckedDecl = DefAbstract p ident defSort updatedCheckedType

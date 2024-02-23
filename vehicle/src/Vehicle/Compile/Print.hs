@@ -73,10 +73,10 @@ prettyFriendly = prettyWith @FriendlyTags
 -- be empty.
 prettyFriendlyEmptyCtx ::
   forall f builtin b.
-  (PrettyFriendly (Contextualised (f builtin) (BoundCtx builtin))) =>
+  (PrettyFriendly (Contextualised (f builtin) NamedBoundCtx)) =>
   f builtin ->
   Doc b
-prettyFriendlyEmptyCtx x = prettyFriendly (WithContext x (emptyBoundCtx @builtin))
+prettyFriendlyEmptyCtx x = prettyFriendly (WithContext x emptyNamedCtx)
 
 --------------------------------------------------------------------------------
 -- Printing strategies
@@ -153,26 +153,19 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- we need to have the context in scope.
   StrategyFor ('Named tags) (Prog Ix builtin) = 'DescopeWithNames (StrategyFor tags (Prog Name Builtin))
   StrategyFor ('Named tags) (Decl Ix builtin) = 'DescopeWithNames (StrategyFor tags (Decl Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Expr Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) (BoundCtx builtin)) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Expr Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
   -- To convert a named normalised expr, first denormalise to a checked expr.
-<<<<<<< HEAD
-  StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
-=======
-  StrategyFor ('Named tags) (Contextualised (Value strategy builtin) (BoundCtx builtin)) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) (BoundCtx builtin)))
-  -- To convert an assertion simply defer to normalised expressions
-  StrategyFor tags UnreducedAssertion = StrategyFor tags (WHNFValue Builtin)
-  StrategyFor tags (Contextualised UnreducedAssertion (BoundCtx builtin)) = StrategyFor tags (Contextualised (WHNFValue Builtin) (BoundCtx builtin))
->>>>>>> 859ac937 (Proper conversion to tensor-based code)
+  StrategyFor ('Named tags) (Contextualised (Value strategy builtin) NamedBoundCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx))
   -- Things that we just pretty print.
   StrategyFor tags Int = 'Pretty
   StrategyFor tags Text = 'Pretty
   StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) (BoundCtx Builtin)))
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
   StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
   StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
   StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
@@ -342,21 +335,21 @@ instance (PrettyUsing rest (Decl Name builtin)) => PrettyUsing ('DescopeWithName
 
 instance
   (PrettyUsing rest (Expr Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) (BoundCtx builtin))
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) NamedBoundCtx)
   where
-  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
+  prettyUsing e = prettyUsing @rest $ descopeNamed e
 
 instance
   (PrettyUsing rest (Arg Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) (BoundCtx builtin))
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) NamedBoundCtx)
   where
-  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
+  prettyUsing e = prettyUsing @rest $ descopeNamed e
 
 instance
   (PrettyUsing rest (Binder Name builtin)) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) (BoundCtx builtin))
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) NamedBoundCtx)
   where
-  prettyUsing (WithContext e ctx) = prettyUsing @rest $ descopeNamed (WithContext e (fmap nameOf ctx))
+  prettyUsing e = prettyUsing @rest $ descopeNamed e
 
 --------------------------------------------------------------------------------
 -- Simplification
@@ -435,8 +428,8 @@ instance
 -- Instances for normalised types
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Ix builtin) (BoundCtx builtin))) =>
-  PrettyUsing ('Denormalise rest) (Contextualised (Value strategy builtin) (BoundCtx builtin))
+  (PrettyUsing rest (Contextualised (Expr Ix builtin) NamedBoundCtx)) =>
+  PrettyUsing ('Denormalise rest) (Contextualised (Value strategy builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(Value strategy builtin) @(Expr Ix builtin) (Lv $ length ctx) e
@@ -487,20 +480,20 @@ instance
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (WHNFValue builtin) (BoundCtx builtin))) =>
+  (PrettyUsing rest (Contextualised (WHNFValue builtin) NamedBoundCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
-    let e1' = prettyUsing @rest (WithContext e1 (boundContextOf ctx))
-    let e2' = prettyUsing @rest (WithContext e2 (boundContextOf ctx))
+    let e1' = prettyUsing @rest (WithContext e1 (namedBoundCtxOf ctx))
+    let e2' = prettyUsing @rest (WithContext e2 (namedBoundCtxOf ctx))
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (WHNFValue builtin) (BoundCtx builtin))) =>
+  (PrettyUsing rest (Contextualised (WHNFValue builtin) NamedBoundCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
-    let expr' = prettyUsing @rest (WithContext expr (boundContextOf ctx))
+    let expr' = prettyUsing @rest (WithContext expr (namedBoundCtxOf ctx))
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
