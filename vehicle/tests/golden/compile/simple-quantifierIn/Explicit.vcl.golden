@@ -8,8 +8,8 @@ double = True
 
 @property;
 forallForallIn : Tensor;
-forallForallIn = forall x . ReduceAnd (x == [0.5, 1.0]) and True
+forallForallIn = forall x . ReduceAnd (x == [0.5, 1.0])
 
 @property;
 forallInForall : forallT (f : Tensor -> Tensor) . Tensor;
-forallInForall f = (forall y . ReduceOr (f [0.5, 1.0] != y)) and True
+forallInForall f = forall y . ReduceOr (f [0.5, 1.0] != y)

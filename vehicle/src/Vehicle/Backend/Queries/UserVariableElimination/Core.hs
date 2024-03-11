@@ -28,6 +28,7 @@ import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core

@@ -1204,7 +1204,7 @@ instance MeaningfulError CompileError where
             problem =
               "The property"
                 <+> quotePretty (nameOf ident)
-                <+> "cannot be compiled to loss functions as it contains unnormalisable"
+                <+> "cannot be compiled to tensors as it contains unnormalisable"
                 <+> "higher-order vectors of type:"
                 <> line
                   <+> indent 2 (prettyFriendly (WithContext typ ctx))

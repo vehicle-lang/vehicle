@@ -157,6 +157,7 @@ library
     Vehicle.Data.Hashing
     Vehicle.Data.LinearExpr
     Vehicle.Data.NormalisedExpr
+    Vehicle.Data.Tensor
     Vehicle.Export
     Vehicle.Libraries
     Vehicle.Libraries.Core

@@ -87,7 +87,7 @@ eval env expr = do
       return $ VLam binder' (WHNFBody env body)
     Pi _ binder body -> do
       binder' <- evalBinder env binder
-      let newEnv = extendEnvWithBound binder' env
+      let newEnv = extendEnvWithBound (Lv $ length env) binder' env
       body' <- eval newEnv body
       return $ VPi binder' body'
     Let _ bound binder body -> do

@@ -39,6 +39,7 @@ convertLossExpr DifferentialLogicImplementation {..} = go
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VBuiltin b spine -> do
+        logDebug MaxDetail $ quotePretty b
         case goBuiltin b of
           NoTranslation -> do
             spine' <- traverse (traverse go) spine
@@ -85,6 +86,10 @@ convertLossExpr DifferentialLogicImplementation {..} = go
       Quantifier Forall -> Translation compileForall
       Quantifier Exists -> Translation compileExists
       If -> ErrorCase UnsupportedIfOperation
+      Order OrderRat Ge -> Translation compileGe
+      Order OrderRat Le -> Translation compileLe
+      Order OrderRat Lt -> Translation compileLt
+      Order OrderRat Gt -> Translation compileGt
       _ -> NoTranslation
 
 lowerNot :: WHNFValue Builtin -> Either (WHNFValue Builtin) (WHNFValue Builtin)

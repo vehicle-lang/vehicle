@@ -171,8 +171,8 @@ solveLam info@(ctx, origin) (binder1, WHNFBody env1 body1) (binder2, WHNFBody en
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = contextDBLevel ctx
-  nbody1 <- normaliseInEnv (extendEnvWithBound binder1 env1) body1
-  nbody2 <- normaliseInEnv (extendEnvWithBound binder2 env2) body2
+  nbody1 <- normaliseInEnv (extendEnvWithBound lv binder1 env1) body1
+  nbody2 <- normaliseInEnv (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
   -- NOTE: that we have to unnormalise here indicates something is wrong.

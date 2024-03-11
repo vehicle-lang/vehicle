@@ -10,8 +10,8 @@ import Numeric (showFFloat)
 import Prettyprinter (brackets)
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin

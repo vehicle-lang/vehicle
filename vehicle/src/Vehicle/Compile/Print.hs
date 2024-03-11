@@ -428,17 +428,17 @@ instance
 -- Instances for normalised types
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Ix builtin) NamedBoundCtx)) =>
+  (Show builtin, PrettyUsing rest (Contextualised (Expr Ix builtin) NamedBoundCtx)) =>
   PrettyUsing ('Denormalise rest) (Contextualised (Value strategy builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(Value strategy builtin) @(Expr Ix builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance (PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (Value strategy builtin) where
+instance (Show builtin, PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (Value strategy builtin) where
   prettyUsing e = prettyUsing @rest (unnormalise @(Value strategy builtin) @(Expr Ix builtin) 0 e)
 
-instance (PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (VArg strategy builtin) where
+instance (Show builtin, PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (VArg strategy builtin) where
   prettyUsing e = prettyUsing @rest (unnormalise @(VArg strategy builtin) @(Arg Ix builtin) 0 e)
 
 instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (BoundEnvValue 'WHNF builtin) where

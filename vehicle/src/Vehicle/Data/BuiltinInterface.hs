@@ -24,7 +24,7 @@ import Prelude hiding (pi)
 
 -- | Indicates that this set of builtins has the standard builtin constructors
 -- and functions.
-class HasStandardData builtin where
+class (Show builtin) => HasStandardData builtin where
   mkBuiltinConstructor :: BuiltinConstructor -> builtin
   getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
 

@@ -9,8 +9,8 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Data (Proxy (..))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (maybeToList)
-import Data.Ratio
 import Vehicle.Backend.Tensors.Core (TensorBuiltin)
 import Vehicle.Backend.Tensors.Core qualified as T
 import Vehicle.Compile.Context.Var
@@ -21,6 +21,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 
@@ -101,18 +102,12 @@ convertExpr ::
   Expr Ix Builtin ->
   m (NFValue TensorBuiltin)
 convertExpr preprocess@(TensorPreprocessingStep pre) env expr = do
-  ctx <- getNamedBoundCtx (Proxy @Builtin)
-  logDebug MaxDetail $ pretty ctx
-  logDebug MaxDetail $ prettyVerbose env
-  logDebug MaxDetail $ "Output:" <+> prettyVerbose expr
   whnfExpr <- normaliseInEnv env expr
-  logDebug MaxDetail $ "Norm output:" <+> prettyVerbose whnfExpr
   preprocessedExpr <- pre whnfExpr
-  logDebug MaxDetail $ "Preproc output:" <+> prettyVerbose preprocessedExpr
-  logDebug MaxDetail $ "Quoted preproc:" <+> prettyVerbose (Quote.unnormalise @(WHNFValue Builtin) @(Expr Ix Builtin) (Lv $ length ctx) preprocessedExpr)
-  logDebug MaxDetail $ "Preproc output:" <+> prettyFriendly (WithContext preprocessedExpr ctx)
+  logDebugM MaxDetail $ do
+    ctx <- getNamedBoundCtx (Proxy @Builtin)
+    return $ "Pre-processed to" <+> prettyFriendly (WithContext preprocessedExpr ctx)
   convertedExpr <- convertValue preprocess preprocessedExpr
-  logDebug MaxDetail $ "Convert output:" <+> prettyVerbose preprocessedExpr
   return convertedExpr
 
 convertValue ::
@@ -143,11 +138,9 @@ convertValue preprocess e = do
       binder' <- convertBinder preprocess binder
       unnormBinder <- traverse unnormalise binder
       lv <- getCurrentLv (Proxy @Builtin)
-      body' <- addBinderToContext unnormBinder $ do
-        ctx <- getBoundCtx (Proxy @Builtin)
-        logDebug MaxDetail $ "Ctx" <+> prettyVerbose ctx
-        logDebug MaxDetail $ "Level" <+> pretty lv
-        convertExpr preprocess (extendEnvWithDefined (VBoundVar lv []) unnormBinder env) body
+      body' <-
+        addBinderToContext unnormBinder $
+          convertExpr preprocess (extendEnvWithBound lv unnormBinder env) body
       return $ VLam binder' (NFBody body')
   showExit result
   return result
@@ -182,24 +175,28 @@ convertBuiltinType ::
   m (NFValue TensorBuiltin)
 convertBuiltinType t args = case t of
   Unit -> unexpectedExprError currentPass "Unit"
-  Bool -> return $ mkBuiltin T.TensorType args
-  Nat -> return $ mkBuiltin T.TensorType args
-  Int -> return $ mkBuiltin T.TensorType args
-  Rat -> return $ mkBuiltin T.TensorType args
+  Bool -> return $ mkBuiltin T.BoolTensorType args
+  Nat -> return $ mkBuiltin T.NatTensorType args
+  Int -> return $ mkBuiltin T.IntTensorType args
+  Rat -> return $ mkBuiltin T.RatTensorType args
   Index -> return $ mkBuiltin T.IndexType args
   List -> return $ mkBuiltin T.ListType args
   Vector -> convertVectorType args
 
 convertVectorType :: (MonadTensorProperty m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVectorType args = do
-  maybeResult <- case args of
-    [RelevantExplicitArg _ t@(VBuiltin b []), _] -> case b of
-      T.TensorType -> return $ Just t
-      _ -> return Nothing
-    _ -> return Nothing
+  maybeResult <- return $ case args of
+    [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
+      T.BoolTensorType -> Just T.BoolTensorType
+      T.NatTensorType -> Just T.NatTensorType
+      T.IntTensorType -> Just T.IntTensorType
+      T.RatTensorType -> Just T.RatTensorType
+      T.IndexType -> Just T.NatTensorType
+      _ -> Nothing
+    _ -> Nothing
 
   case maybeResult of
-    Just result -> return result
+    Just result -> return $ mkBuiltin result []
     Nothing -> do
       declProv <- ask
       boundCtx <- getNamedBoundCtx (Proxy @Builtin)
@@ -209,27 +206,37 @@ convertVectorType args = do
 convertBuiltinConstructor :: (MonadTensorProperty m) => BuiltinConstructor -> [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertBuiltinConstructor c args = case c of
   LUnit -> unexpectedExprError currentPass "LUnit"
-  Nil -> return $ mkBuiltin T.NilList args
-  Cons -> return $ mkBuiltin T.ConsList args
-  LIndex i -> return $ mkBuiltin (T.Index i) args
-  LBool v -> return $ mkBuiltin (T.BoolTensor v) args
-  LNat v -> return $ mkBuiltin (T.NatTensor v) args
-  LInt v -> return $ mkBuiltin (T.IntTensor v) args
-  LRat v -> do
-    r <- convertRat v
-    return $ mkBuiltin r args
-  LVec n -> return $ mkBuiltin (T.Stack n) args
+  Nil -> return $ mkBuiltin T.NilList []
+  Cons -> return $ mkBuiltin T.ConsList []
+  LIndex i -> return $ mkBuiltin (T.Index i) []
+  LBool v -> return $ T.VBoolTensor (Tensor [] [v])
+  LNat v -> return $ T.VNatTensor (Tensor [] [v])
+  LInt v -> return $ T.VIntTensor (Tensor [] [v])
+  LRat v -> return $ T.VRatTensor (Tensor [] [T.convertRat v])
+  LVec n -> case args of
+    _t : xs -> convertVector n xs
+    _ -> compilerDeveloperError "Malformed LVec found."
 
-convertRat :: (MonadTensorProperty m) => Rational -> m TensorBuiltin
-convertRat r = do
-  num <- toInt $ numerator r
-  denom <- toInt $ denominator r
-  return $ T.RatTensor num denom
-  where
-    toInt x
-      | x < toInteger (minBound :: Int) = compilerDeveloperError $ "Underflow converting" <+> pretty x <+> "to `Int`"
-      | x > toInteger (maxBound :: Int) = compilerDeveloperError $ "Overflow converting" <+> pretty x <+> "to `Int`"
-      | otherwise = return $ fromInteger x
+convertVector :: (MonadTensorProperty m) => Int -> [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertVector n args = case args of
+  [] -> compilerDeveloperError "0-dimensional tensor found"
+  a : as -> do
+    let vs = a :| as
+    return $ case argExpr a of
+      T.VBoolTensor {} -> comp T.VBoolTensor T.getBoolTensor vs
+      T.VNatTensor {} -> comp T.VNatTensor T.getNatTensor vs
+      T.VIntTensor {} -> comp T.VIntTensor T.getIntTensor vs
+      T.VRatTensor {} -> comp T.VRatTensor T.getRatTensor vs
+      _ -> mkBuiltin (T.Stack n) args
+    where
+      comp ::
+        (Tensor a -> NFValue TensorBuiltin) ->
+        (NFValue TensorBuiltin -> Maybe (Tensor a)) ->
+        NonEmpty (NFArg TensorBuiltin) ->
+        NFValue TensorBuiltin
+      comp mk f xs = case traverse (f . argExpr) xs of
+        Just constantTensors -> mk $ stack constantTensors
+        Nothing -> mkBuiltin (T.Stack n) args
 
 convertBuiltinFunction ::
   (MonadTensorProperty m) =>
@@ -240,47 +247,47 @@ convertBuiltinFunction t args = case t of
   --------------------------
   -- Pointwise operations --
   --------------------------
-  Not -> return $ mkBuiltin T.Not args
-  And -> return $ mkBuiltin T.And args
-  Or -> return $ mkBuiltin T.Or args
-  Neg NegInt -> return $ mkBuiltin T.Neg args
-  Neg NegRat -> return $ mkBuiltin T.Neg args
-  Add AddNat -> return $ mkBuiltin T.Add args
-  Add AddInt -> return $ mkBuiltin T.Add args
-  Add AddRat -> return $ mkBuiltin T.Add args
-  Sub SubInt -> return $ mkBuiltin T.Sub args
-  Sub SubRat -> return $ mkBuiltin T.Sub args
-  Mul MulNat -> return $ mkBuiltin T.Mul args
-  Mul MulInt -> return $ mkBuiltin T.Mul args
-  Mul MulRat -> return $ mkBuiltin T.Mul args
-  Div DivRat -> return $ mkBuiltin T.Div args
+  Not -> return $ mkBuiltin T.PointwiseNot args
+  And -> return $ mkBuiltin T.PointwiseAnd args
+  Or -> return $ mkBuiltin T.PointwiseOr args
+  Neg NegInt -> return $ mkBuiltin T.PointwiseNeg args
+  Neg NegRat -> return $ mkBuiltin T.PointwiseNeg args
+  Add AddNat -> return $ mkBuiltin T.PointwiseAdd args
+  Add AddInt -> return $ mkBuiltin T.PointwiseAdd args
+  Add AddRat -> return $ mkBuiltin T.PointwiseAdd args
+  Sub SubInt -> return $ mkBuiltin T.PointwiseSub args
+  Sub SubRat -> return $ mkBuiltin T.PointwiseSub args
+  Mul MulNat -> return $ mkBuiltin T.PointwiseMul args
+  Mul MulInt -> return $ mkBuiltin T.PointwiseMul args
+  Mul MulRat -> return $ mkBuiltin T.PointwiseMul args
+  Div DivRat -> return $ mkBuiltin T.PointwiseDiv args
   PowRat -> return $ mkBuiltin T.PowRat args
   MinRat -> return $ mkBuiltin T.MinRat args
   MaxRat -> return $ mkBuiltin T.MaxRat args
   Equals EqIndex Eq -> return $ mkBuiltin T.EqIndex args
-  Equals EqNat Eq -> return $ mkBuiltin T.EqTensor args
-  Equals EqInt Eq -> return $ mkBuiltin T.EqTensor args
-  Equals EqRat Eq -> return $ mkBuiltin T.EqTensor args
+  Equals EqNat Eq -> return $ mkBuiltin T.PointwiseEq args
+  Equals EqInt Eq -> return $ mkBuiltin T.PointwiseEq args
+  Equals EqRat Eq -> return $ mkBuiltin T.PointwiseEq args
   Equals EqIndex Neq -> return $ mkBuiltin T.NeIndex args
-  Equals EqNat Neq -> return $ mkBuiltin T.NeTensor args
-  Equals EqInt Neq -> return $ mkBuiltin T.NeTensor args
-  Equals EqRat Neq -> return $ mkBuiltin T.NeTensor args
+  Equals EqNat Neq -> return $ mkBuiltin T.PointwiseNe args
+  Equals EqInt Neq -> return $ mkBuiltin T.PointwiseNe args
+  Equals EqRat Neq -> return $ mkBuiltin T.PointwiseNe args
   Order OrderIndex Le -> return $ mkBuiltin T.LeIndex args
-  Order OrderNat Le -> return $ mkBuiltin T.LeTensor args
-  Order OrderInt Le -> return $ mkBuiltin T.LeTensor args
-  Order OrderRat Le -> return $ mkBuiltin T.LeTensor args
+  Order OrderNat Le -> return $ mkBuiltin T.PointwiseLe args
+  Order OrderInt Le -> return $ mkBuiltin T.PointwiseLe args
+  Order OrderRat Le -> return $ mkBuiltin T.PointwiseLe args
   Order OrderIndex Lt -> return $ mkBuiltin T.LtIndex args
-  Order OrderNat Lt -> return $ mkBuiltin T.LtTensor args
-  Order OrderInt Lt -> return $ mkBuiltin T.LtTensor args
-  Order OrderRat Lt -> return $ mkBuiltin T.LtTensor args
+  Order OrderNat Lt -> return $ mkBuiltin T.PointwiseLt args
+  Order OrderInt Lt -> return $ mkBuiltin T.PointwiseLt args
+  Order OrderRat Lt -> return $ mkBuiltin T.PointwiseLt args
   Order OrderIndex Ge -> return $ mkBuiltin T.GeIndex args
-  Order OrderNat Ge -> return $ mkBuiltin T.GeTensor args
-  Order OrderInt Ge -> return $ mkBuiltin T.GeTensor args
-  Order OrderRat Ge -> return $ mkBuiltin T.GeTensor args
+  Order OrderNat Ge -> return $ mkBuiltin T.PointwiseGe args
+  Order OrderInt Ge -> return $ mkBuiltin T.PointwiseGe args
+  Order OrderRat Ge -> return $ mkBuiltin T.PointwiseGe args
   Order OrderIndex Gt -> return $ mkBuiltin T.GtIndex args
-  Order OrderNat Gt -> return $ mkBuiltin T.GtTensor args
-  Order OrderInt Gt -> return $ mkBuiltin T.GtTensor args
-  Order OrderRat Gt -> return $ mkBuiltin T.GtTensor args
+  Order OrderNat Gt -> return $ mkBuiltin T.PointwiseGt args
+  Order OrderInt Gt -> return $ mkBuiltin T.PointwiseGt args
+  Order OrderRat Gt -> return $ mkBuiltin T.PointwiseGt args
   -----------------------
   -- Vector operations --
   -----------------------
@@ -310,32 +317,24 @@ convertBuiltinFunction t args = case t of
 
 convertFoldVector :: HigherOrderFunctionConversion
 convertFoldVector lv = \case
-  [_, _, f, argExpr -> e, xs] -> case f of
+  [_, _, _, f, argExpr -> e, xs] -> case f of
     ExplicitArg _ _ (getBinaryOp lv -> Just bop) -> return $ case bop of
-      T.And -> Just $ evalAnd (mkBuiltin T.ReduceAnd [xs]) e
-      T.Or -> Just $ evalOr (mkBuiltin T.ReduceOr [xs]) e
-      T.Add -> Just $ evalAdd (mkBuiltin T.ReduceSum [xs]) e
+      T.PointwiseAnd -> Just $ evalAnd (mkBuiltin T.ReduceAnd [xs]) e
+      T.PointwiseOr -> Just $ evalOr (mkBuiltin T.ReduceOr [xs]) e
+      T.PointwiseAdd -> Just $ evalAdd (mkBuiltin T.ReduceSum [xs]) e
       _ -> Nothing
     _ -> return Nothing
   _ -> return Nothing
 
-{-
-case maybeReducedOp of
-  Just (op, unit, reduceOp) -> _
-    let reduceExpr = mkBuiltin reduceOp
-    return $ Just $ if _ then _ else _ --argExpr e == VBuiltin unit []
-          --then _ -- (reduceOp, [xs])
-          --else _ -- (op, [Arg mempty Explicit Relevant reduceExpr, e])
-  -}
 convertZipWith :: HigherOrderFunctionConversion
 convertZipWith lv = \case
   VZipWithVectorArgs f xs ys -> do
     return $ case getBinaryOp lv f of
-      Just T.And -> Just $ mkBuiltin T.And [xs, ys]
-      Just T.Or -> Just $ mkBuiltin T.Or [xs, ys]
-      Just T.EqTensor -> Just $ mkBuiltin T.EqTensor [xs, ys]
-      Just T.NeTensor -> Just $ mkBuiltin T.NeTensor [xs, ys]
-      Just T.Add -> Just $ mkBuiltin T.Add [xs, ys]
+      Just T.PointwiseAnd -> Just $ mkBuiltin T.PointwiseAnd [xs, ys]
+      Just T.PointwiseOr -> Just $ mkBuiltin T.PointwiseOr [xs, ys]
+      Just T.PointwiseEq -> Just $ mkBuiltin T.PointwiseEq [xs, ys]
+      Just T.PointwiseNe -> Just $ mkBuiltin T.PointwiseNe [xs, ys]
+      Just T.PointwiseAdd -> Just $ mkBuiltin T.PointwiseAdd [xs, ys]
       _ -> Nothing
   _ -> return Nothing
 
@@ -375,7 +374,7 @@ convertHigherOrderFunction ::
   [NFArg TensorBuiltin] ->
   m (NFValue TensorBuiltin)
 convertHigherOrderFunction convertFn fn args = do
-  logDebug MaxDetail $ "Trying to convert" <+> quotePretty ZipWithVector
+  logDebug MaxDetail $ "Trying to convert" <+> quotePretty fn
   lv <- getCurrentLv (Proxy @Builtin)
   result <- convertFn lv args
   case result of
@@ -416,23 +415,17 @@ showExit e = do
   decrCallDepth
   logDebug MaxDetail $ "tensor-exit: " <+> prettyFriendly (WithContext e ctx)
 
-pattern VBoolTensor :: Bool -> NFValue TensorBuiltin
-pattern VBoolTensor b = VBuiltin (T.BoolTensor b) []
-
-pattern VRatTensor :: Int -> Int -> NFValue TensorBuiltin
-pattern VRatTensor n d <- VBuiltin (T.RatTensor n d) []
-
 evalAnd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAnd (VBoolTensor True) y = y
-evalAnd x (VBoolTensor True) = x
-evalAnd x y = mkBuiltin T.And (Arg mempty Explicit Relevant <$> [x, y])
+evalAnd (T.VBoolTensor xs) y | all id xs = y
+evalAnd x (T.VBoolTensor ys) | all id ys = x
+evalAnd x y = mkBuiltin T.PointwiseAnd (Arg mempty Explicit Relevant <$> [x, y])
 
 evalOr :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalOr (VBoolTensor False) y = y
-evalOr x (VBoolTensor False) = x
-evalOr x y = mkBuiltin T.And (Arg mempty Explicit Relevant <$> [x, y])
+evalOr (T.VBoolTensor xs) y | all not xs = y
+evalOr x (T.VBoolTensor ys) | all not ys = x
+evalOr x y = mkBuiltin T.PointwiseOr (Arg mempty Explicit Relevant <$> [x, y])
 
 evalAdd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAdd (VRatTensor 0 _) y = y
-evalAdd x (VRatTensor 0 _) = x
-evalAdd x y = mkBuiltin T.Add (Arg mempty Explicit Relevant <$> [x, y])
+evalAdd (T.VRatTensor xs) y | all (\(n, _d) -> n == 0) xs = y
+evalAdd x (T.VRatTensor ys) | all (\(n, _d) -> n == 0) ys = x
+evalAdd x y = mkBuiltin T.PointwiseAdd (Arg mempty Explicit Relevant <$> [x, y])

@@ -27,8 +27,9 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface.Expr (negExpr)
 import Vehicle.Data.BuiltinInterface.Value
-import Vehicle.Data.LinearExpr (LinearExpr, RationalTensor (..), addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr, zeroTensor)
+import Vehicle.Data.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (MetaNetwork, QueryContents)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -259,7 +260,7 @@ compileTensorLinearExpr = go
       _ -> return Nothing
 
 getRationalTensor :: WHNFValue QueryBuiltin -> Maybe RationalTensor
-getRationalTensor expr = uncurry RationalTensor <$> go expr
+getRationalTensor expr = uncurry Tensor <$> go expr
   where
     go :: WHNFValue QueryBuiltin -> Maybe (TensorDimensions, Vector Rational)
     go = \case

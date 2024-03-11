@@ -10,7 +10,8 @@ import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
-import Vehicle.Data.LinearExpr (RationalTensor (..), evaluateExpr)
+import Vehicle.Data.LinearExpr (evaluateExpr)
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
 import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
@@ -148,7 +149,7 @@ unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = 
     Right values -> do
       logDebug MaxDetail $
         "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
-      let unreducedValue = RationalTensor (tensorVariableDims variable) (Vector.fromList values)
+      let unreducedValue = Tensor (tensorVariableDims variable) (Vector.fromList values)
       return $
         assignment
           { tensorVariables = Map.insert variable unreducedValue tensorVariables
