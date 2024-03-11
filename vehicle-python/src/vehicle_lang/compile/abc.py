@@ -1,475 +1,234 @@
-import itertools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from functools import reduce
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    SupportsFloat,
-    SupportsInt,
-    Tuple,
-    Union,
-)
+from typing import Callable, List, SupportsInt, Tuple, Union
 
-from typing_extensions import TypeAlias, TypeVar, override
+from typing_extensions import Generic, Literal, TypeAlias, TypeVar
 
 from .. import ast as vcl
-from ..typing import (
-    AnyContext,
-    Joiner,
-    Minimise,
-    Predicate,
-    QuantifiedVariableName,
-    VehicleInt,
-    VehicleList,
-    VehicleNat,
-    VehicleRat,
-    VehicleVector,
-)
-from .error import VehicleBuiltinUnsupported
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Python
 ################################################################################
 
-_VehicleNat = TypeVar("_VehicleNat", bound=VehicleNat)
-_VehicleInt = TypeVar("_VehicleInt", bound=VehicleInt)
-_VehicleRat = TypeVar("_VehicleRat", bound=VehicleRat)
 
-_S = TypeVar("_S")
-_T = TypeVar("_T")
-_U = TypeVar("_U")
+Ix: TypeAlias = int
+
+_Bool = TypeVar("_Bool")
+_Nat = TypeVar("_Nat")
+_Int = TypeVar("_Int")
+_Rat = TypeVar("_Rat")
+
+_BoolTensor = TypeVar("_BoolTensor")
+_NatTensor = TypeVar("_NatTensor")
+_IntTensor = TypeVar("_IntTensor")
+_RatTensor = TypeVar("_RatTensor")
+
+_AnyTensor = Union[_BoolTensor, _NatTensor, _IntTensor, _RatTensor]
+
+_NumTensor = Union[_NatTensor, _IntTensor, _RatTensor]
+
+Value: TypeAlias = Union[
+    Ix,
+    _Bool,
+    _Nat,
+    _Int,
+    _Rat,
+    _BoolTensor,
+    _NatTensor,
+    _IntTensor,
+    _RatTensor,
+    "ValueList",
+]
+
+ValueList: TypeAlias = Tuple["Value", ...]
+
+_S = TypeVar("_S", bound=Value)
+_T = TypeVar("_T", bound=Value)
 
 
 @dataclass(frozen=True, init=False)
 class ABCBuiltins(
-    Generic[
-        _VehicleNat,
-        _VehicleInt,
-        _VehicleRat,
-    ],
+    Generic[_Bool, _Nat, _Int, _Rat, _BoolTensor, _NatTensor, _IntTensor, _RatTensor],
     metaclass=ABCMeta,
 ):
-    def AddInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x + y
-
-    def AddNat(self, x: _VehicleNat, y: _VehicleNat) -> _VehicleNat:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x + y
-
-    def AddRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x + y
-
-    def And(self, x: bool, y: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
-        # assert isinstance(y, bool), f"Expected bool, found {y}"
-        return x and y
-
-    @abstractmethod
-    def AtVector(self, vector: VehicleVector[_T], index: int) -> _T:
-        ...
-
-    def Bool(self, value: bool) -> bool:
-        # assert isinstance(value, bool), f"Expected bool, found {value}"
-        return bool(value)
-
-    def ConsList(self, item: _T, iterable: VehicleList[_T]) -> VehicleList[_T]:
-        # assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
-        return itertools.chain((item,), iterable)
-
-    @abstractmethod
-    def ConsVector(self, item: _T, vector: VehicleVector[_T]) -> VehicleVector[_T]:
-        ...
-
-    def DivRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x / y
-
-    def EqIndex(self, x: int, y: int) -> bool:
-        # assert isinstance(x, int), f"Expected int, found {x}"
-        # assert isinstance(y, int), f"Expected int, found {y}"
-        return x == y
-
-    def EqInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x == y
-
-    def EqNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x == y
-
-    def EqRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x == y
-
-    def Exists(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
-    ) -> bool:
-        raise VehicleBuiltinUnsupported(vcl.Exists.__name__)
-
-    def FoldList(
-        self, function: Callable[[_S, _T], _T], initial: _T, iterable: VehicleList[_S]
-    ) -> _T:
-        # assert callable(function), f"Expected function, found {function}"
-        # assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
-        return reduce(lambda x, y: function(y, x), iterable, initial)
-
-    @abstractmethod
-    def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: VehicleVector[_S]
-    ) -> _T:
-        ...
-
-    def Forall(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
-    ) -> bool:
-        raise VehicleBuiltinUnsupported(vcl.Forall.__name__)
-
-    def GeIndex(self, x: int, y: int) -> bool:
-        # assert isinstance(x, int), f"Expected int, found {x}"
-        # assert isinstance(y, int), f"Expected int, found {y}"
-        return x >= y
-
-    def GeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x >= y
-
-    def GeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x >= y
-
-    def GeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x >= y
-
-    def GtIndex(self, x: int, y: int) -> bool:
-        # assert isinstance(x, int), f"Expected int, found {x}"
-        # assert isinstance(y, int), f"Expected int, found {y}"
-        return x > y
-
-    def GtInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x > y
-
-    def GtNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x > y
-
-    def GtRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x > y
-
-    def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
-        # assert isinstance(cond, bool), f"Expected bool, found {cond}"
-        return if_true if cond else if_false
-
-    def Implies(self, x: bool, y: bool) -> bool:
-        return self.Or(self.Not(x), y)
-
-    def Index(self, value: SupportsInt) -> int:
+    def Index(self, value: SupportsInt) -> Ix:
         return value.__int__()
 
-    def Indices(self, upto: int) -> VehicleVector[int]:
-        # assert isinstance(upto, int), f"Expected int, found {upto}"
-        return self.Vector(*range(0, upto))
+    @abstractmethod
+    def BoolTensor(self, value: vcl.Tensor[bool]) -> _BoolTensor:
+        pass
 
     @abstractmethod
-    def Int(self, value: SupportsInt) -> _VehicleInt:
-        ...
-
-    def LeIndex(self, x: int, y: int) -> bool:
-        # assert isinstance(x, int), f"Expected int, found {x}"
-        # assert isinstance(y, int), f"Expected int, found {y}"
-        return x <= y
-
-    def LeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x <= y
-
-    def LeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x <= y
-
-    def LeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x <= y
-
-    def LtIndex(self, x: int, y: int) -> bool:
-        # assert isinstance(x, int), f"Expected int, found {x}"
-        # assert isinstance(y, int), f"Expected int, found {y}"
-        return x < y
-
-    def LtInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x < y
-
-    def LtNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x < y
-
-    def LtRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x < y
-
-    def MapList(
-        self, function: Callable[[_S], _T], iterable: VehicleList[_S]
-    ) -> VehicleList[_T]:
-        # assert callable(function), f"Expected function, found {function}"
-        # assert isinstance(iterable, VehicleList), f"Expected list, found {iterable}"
-        return map(function, iterable)
+    def NatTensor(self, value: vcl.Tensor[int]) -> _NatTensor:
+        pass
 
     @abstractmethod
-    def MapVector(
-        self, function: Callable[[_S], _T], vector: VehicleVector[_S]
-    ) -> VehicleVector[_T]:
-        ...
-
-    def MaxRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return max(x, y)
-
-    def MinRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return min(x, y)
-
-    def MulInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x * y
-
-    def MulNat(self, x: _VehicleNat, y: _VehicleNat) -> _VehicleNat:
-        # assert isinstance(x, VehicleNat), f"Expected Nat, found {x}"
-        # assert isinstance(y, VehicleNat), f"Expected Nat, found {y}"
-        return x * y
-
-    def MulRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x * y
+    def IntTensor(self, value: vcl.Tensor[int]) -> _IntTensor:
+        pass
 
     @abstractmethod
-    def Nat(self, value: SupportsInt) -> _VehicleNat:
-        ...
+    def RatTensor(self, value: vcl.Tensor[vcl.Rat]) -> _RatTensor:
+        pass
 
-    def NeIndex(self, x: int, y: int) -> bool:
-        return self.Not(self.EqIndex(x, y))
-
-    def NeInt(self, x: _VehicleInt, y: _VehicleInt) -> bool:
-        return self.Not(self.EqInt(x, y))
-
-    def NeNat(self, x: _VehicleNat, y: _VehicleNat) -> bool:
-        return self.Not(self.EqNat(x, y))
-
-    def NeRat(self, x: _VehicleRat, y: _VehicleRat) -> bool:
-        return self.Not(self.EqRat(x, y))
-
-    def NegInt(self, x: _VehicleInt) -> _VehicleInt:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        return -x
-
-    def NegRat(self, x: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        return -x
-
-    def NilList(self) -> VehicleList[_T]:
+    def NilList(self) -> ValueList:
         return ()
 
-    def Not(self, x: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
-        return not x
+    def ConsList(self, head: _T, tail: Tuple[_T, ...]) -> Tuple[_T, ...]:
+        return (head, *tail)
 
-    def Optimise(
+    @abstractmethod
+    def NotTensor(self, x: _BoolTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def AndTensor(self, x: _BoolTensor, y: _BoolTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def OrTensor(self, x: _BoolTensor, y: _BoolTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def NegTensor(self, x: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def AddTensor(self, x: _NumTensor, y: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def SubTensor(self, x: _NumTensor, y: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def MulTensor(self, x: _NumTensor, y: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def DivTensor(self, x: _NumTensor, y: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def EqTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def NeTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def LeTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def LtTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def GeTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def GtTensor(self, x: _NumTensor, y: _NumTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def EqIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def NeIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def LeIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def LtIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def GeIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def GtIndex(self, x: Ix, y: Ix) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def ReduceAndTensor(self, x: _BoolTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def ReduceOrTensor(self, x: _BoolTensor) -> _BoolTensor:
+        pass
+
+    @abstractmethod
+    def ReduceSumTensor(self, x: _NumTensor) -> _NumTensor:
+        pass
+
+    @abstractmethod
+    def LookupTensor(self, x: _AnyTensor) -> _AnyTensor:
+        pass
+
+    @abstractmethod
+    def PowRatTensor(self, x: _RatTensor, y: _IntTensor) -> _RatTensor:
+        pass
+
+    @abstractmethod
+    def MinRatTensor(self, x: _RatTensor) -> _RatTensor:
+        pass
+
+    @abstractmethod
+    def MaxRatTensor(self, x: _RatTensor) -> _RatTensor:
+        pass
+
+    @abstractmethod
+    def StackTensor(self, xs: Tuple[_AnyTensor, ...]) -> _AnyTensor:
+        pass
+
+    @abstractmethod
+    def FoldList(
         self,
-        name: QuantifiedVariableName,
-        minimise: Minimise,
-        context: AnyContext,
-        joiner: Joiner[_VehicleRat],
-        predicate: Predicate[Union[_VehicleNat, _VehicleInt, _VehicleRat], _VehicleRat],
-    ) -> _VehicleRat:
-        raise VehicleBuiltinUnsupported(vcl.Optimise.__name__)
-
-    def Or(self, x: bool, y: bool) -> bool:
-        # assert isinstance(x, bool), f"Expected bool, found {x}"
-        # assert isinstance(y, bool), f"Expected bool, found {y}"
-        return x or y
-
-    def PowRat(self, x: _VehicleRat, y: _VehicleInt) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x ** y.__int__()
+        func: Callable[[_S, _T], _T],
+        init: _T,
+        vals: Tuple[_S, ...],
+    ) -> _T:
+        pass
 
     @abstractmethod
-    def Rat(self, value: SupportsFloat) -> _VehicleRat:
-        ...
-
-    def SubInt(self, x: _VehicleInt, y: _VehicleInt) -> _VehicleInt:
-        # assert isinstance(x, VehicleInt), f"Expected Int, found {x}"
-        # assert isinstance(y, VehicleInt), f"Expected Int, found {y}"
-        return x - y
-
-    def SubRat(self, x: _VehicleRat, y: _VehicleRat) -> _VehicleRat:
-        # assert isinstance(x, VehicleRat), f"Expected Rat, found {x}"
-        # assert isinstance(y, VehicleRat), f"Expected Rat, found {y}"
-        return x - y
-
-    def Unit(self) -> Tuple[()]:
-        return ()
+    def FoldTensor(self):
+        pass
 
     @abstractmethod
-    def Vector(self, *values: _T) -> VehicleVector[_T]:
-        ...
+    def MapList(self):
+        pass
 
     @abstractmethod
-    def ZipWithVector(
-        self,
-        function: Callable[[_S, _T], _U],
-        vector1: VehicleVector[_S],
-        vector2: VehicleVector[_T],
-    ) -> VehicleVector[_U]:
-        ...
-
-
-AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]
-
-################################################################################
-### Translation from Vehicle AST to Python AST
-################################################################################
-
-
-_Program = TypeVar("_Program")
-_Declaration = TypeVar("_Declaration")
-_Expression = TypeVar("_Expression")
-
-
-class Translation(Generic[_Program, _Declaration, _Expression], metaclass=ABCMeta):
-    @abstractmethod
-    def translate_program(self, program: vcl.Program) -> _Program:
-        ...
+    def MapTensor(self):
+        pass
 
     @abstractmethod
-    def translate_declaration(self, declaration: vcl.Declaration) -> _Declaration:
-        ...
+    def ZipWithTensor(self):
+        pass
 
     @abstractmethod
-    def translate_expression(self, expression: vcl.Expression) -> _Expression:
-        ...
-
-
-class ABCTranslation(Translation[_Program, _Declaration, _Expression]):
-    @override
-    def translate_program(self, program: vcl.Program) -> _Program:
-        if isinstance(program, vcl.Main):
-            return self.translate_Main(program)
-        raise NotImplementedError(type(program).__name__)
+    def Indices(self):
+        pass
 
     @abstractmethod
-    def translate_Main(self, program: vcl.Main) -> _Program:
-        ...
-
-    @override
-    def translate_declaration(self, declaration: vcl.Declaration) -> _Declaration:
-        if isinstance(declaration, vcl.DefFunction):
-            return self.translate_DefFunction(declaration)
-        if isinstance(declaration, vcl.DefPostulate):
-            return self.translate_DefPostulate(declaration)
-        raise NotImplementedError(type(declaration).__name__)
+    def Optimise(self, minimiseOrMaximise: Literal["Minimise", "Maximise"]):
+        pass
 
     @abstractmethod
-    def translate_DefFunction(self, declaration: vcl.DefFunction) -> _Declaration:
-        ...
+    def If(self):
+        pass
 
     @abstractmethod
-    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> _Declaration:
-        ...
-
-    @override
-    def translate_expression(self, expression: vcl.Expression) -> _Expression:
-        if isinstance(expression, vcl.App):
-            return self.translate_App(expression)
-        if isinstance(expression, vcl.BoundVar):
-            return self.translate_BoundVar(expression)
-        if isinstance(expression, vcl.Builtin):
-            return self.translate_Builtin(expression)
-        if isinstance(expression, vcl.FreeVar):
-            return self.translate_FreeVar(expression)
-        if isinstance(expression, vcl.Lam):
-            return self.translate_Lam(expression)
-        if isinstance(expression, vcl.Let):
-            return self.translate_Let(expression)
-        if isinstance(expression, vcl.PartialApp):
-            return self.translate_PartialApp(expression)
-        if isinstance(expression, vcl.Pi):
-            return self.translate_Pi(expression)
-        if isinstance(expression, vcl.Universe):
-            return self.translate_Universe(expression)
-        raise NotImplementedError(type(expression).__name__)
+    def Forall(self):
+        pass
 
     @abstractmethod
-    def translate_App(self, expression: vcl.App) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_BoundVar(self, expression: vcl.BoundVar) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_Builtin(self, expression: vcl.Builtin) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_FreeVar(self, expression: vcl.FreeVar) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_Lam(self, expression: vcl.Lam) -> _Expression:
-        ...
-
-    def translate_Let(self, expression: vcl.Let) -> _Expression:
-        return self.translate_expression(
-            vcl.App(
-                provenance=expression.provenance,
-                function=vcl.Lam(
-                    provenance=expression.provenance,
-                    binders=(expression.binder,),
-                    body=expression.body,
-                ),
-                arguments=[expression.bound],
-            )
-        )
-
-    @abstractmethod
-    def translate_PartialApp(self, expression: vcl.PartialApp) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_Pi(self, expression: vcl.Pi) -> _Expression:
-        ...
-
-    @abstractmethod
-    def translate_Universe(self, expression: vcl.Universe) -> _Expression:
-        ...
+    def Exists(self):
+        pass
