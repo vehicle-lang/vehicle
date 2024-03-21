@@ -1,129 +1,39 @@
-bigAnd : Vector Bool -> Bool;
-bigAnd _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-pi : Rat;
-pi = 3.141592
-
-distanceToIntruder : Index;
-distanceToIntruder = 0
-
-angleToIntruder : Index;
-angleToIntruder = 1
-
-intruderHeading : Index;
-intruderHeading = 2
-
-speed : Index;
-speed = 3
-
-intruderSpeed : Index;
-intruderSpeed = 4
-
-clearOfConflict : Index;
-clearOfConflict = 0
-
-weakLeft : Index;
-weakLeft = 1
-
-strongLeft : Index;
-strongLeft = 3
-
-strongRight : Index;
-strongRight = 4
-
-minimumInputValues : Vector Rat;
-minimumInputValues = [0.0, - pi, - pi, 100.0, 0.0]
-
-maximumInputValues : Vector Rat;
-maximumInputValues = [60261.0, pi, pi, 1200.0, 1200.0]
-
-validInput : Vector Rat -> Bool;
-validInput x = bigAnd (map (\ i -> minimumInputValues ! i <= x ! i and x ! i <= maximumInputValues ! i) (indices 5))
-
-meanScalingValues : Vector Rat;
-meanScalingValues = [19791.091, 0.0, 0.0, 650.0, 600.0]
-
-normalise : Vector Rat -> Vector Rat;
-normalise x = map (\ i -> (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) (indices 5)
-
-normAcasXu : forallT (acasXu : Vector Rat -> Vector Rat) . Vector Rat -> Vector Rat;
-normAcasXu acasXu x = acasXu (normalise x)
-
-minimalScore : forallT (acasXu : Vector Rat -> Vector Rat) . Index -> Vector Rat -> Bool;
-minimalScore acasXu i x = bigAnd (map (\ j -> i != j => normAcasXu acasXu x ! i < normAcasXu acasXu x ! j) (indices 5))
-
-maximalScore : forallT (acasXu : Vector Rat -> Vector Rat) . Index -> Vector Rat -> Bool;
-maximalScore acasXu i x = bigAnd (map (\ j -> i != j => normAcasXu acasXu x ! i > normAcasXu acasXu x ! j) (indices 5))
-
-scaleCOCOutput : Rat -> Rat;
-scaleCOCOutput x = (x - 7.518884) / 373.94992
-
-intruderDistantAndSlower : Vector Rat -> Bool;
-intruderDistantAndSlower x = x ! distanceToIntruder >= 55947.691 and x ! speed >= 1145.0 and x ! intruderSpeed <= 60.0
+@property;
+property1 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property1 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and x ! 0 >= 55947.691 and x ! 3 >= 1145.0 and x ! 4 <= 60.0) or acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 <= 3.9911256459153677
 
 @property;
-property1 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property1 acasXu = forall x . validInput x and intruderDistantAndSlower x => normAcasXu acasXu x ! clearOfConflict <= scaleCOCOutput 1500.0
+property2 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property2 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and x ! 0 >= 55947.691 and x ! 3 >= 1145.0 and x ! 4 <= 60.0) or not ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 > acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 > acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 > acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 > acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property2 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property2 acasXu = forall x . validInput x and intruderDistantAndSlower x => not maximalScore acasXu clearOfConflict x
-
-directlyAhead : Vector Rat -> Bool;
-directlyAhead x = (1500.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 1800.0) and - 6.0e-2 <= x ! angleToIntruder and x ! angleToIntruder <= 6.0e-2
-
-movingTowards : Vector Rat -> Bool;
-movingTowards x = x ! intruderHeading >= 3.1 and x ! speed >= 980.0 and x ! intruderSpeed >= 960.0
+property3 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property3 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and ((1500.0 <= x ! 0 and x ! 0 <= 1800.0) and -6.0e-2 <= x ! 1 and x ! 1 <= 6.0e-2) and x ! 2 >= 3.1 and x ! 3 >= 980.0 and x ! 4 >= 960.0) or not ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property3 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property3 acasXu = forall x . validInput x and directlyAhead x and movingTowards x => not minimalScore acasXu clearOfConflict x
-
-movingAway : Vector Rat -> Bool;
-movingAway x = x ! intruderHeading == 0.0 and 1000.0 <= x ! speed and 700.0 <= x ! intruderSpeed and x ! intruderSpeed <= 800.0
+property4 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property4 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and ((1500.0 <= x ! 0 and x ! 0 <= 1800.0) and -6.0e-2 <= x ! 1 and x ! 1 <= 6.0e-2) and x ! 2 == 0.0 and 1000.0 <= x ! 3 and 700.0 <= x ! 4 and x ! 4 <= 800.0) or not ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property4 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property4 acasXu = forall x . validInput x and directlyAhead x and movingAway x => not minimalScore acasXu clearOfConflict x
-
-nearAndApproachingFromLeft : Vector Rat -> Bool;
-nearAndApproachingFromLeft x = (250.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 400.0) and (0.2 <= x ! angleToIntruder and x ! angleToIntruder <= 0.4) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 5.0e-3) and (100.0 <= x ! speed and x ! speed <= 400.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 400.0
+property5 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property5 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (250.0 <= x ! 0 and x ! 0 <= 400.0) and (0.2 <= x ! 1 and x ! 1 <= 0.4) and (-3.141592 <= x ! 2 and x ! 2 <= -3.136592) and (100.0 <= x ! 3 and x ! 3 <= 400.0) and 0.0 <= x ! 4 and x ! 4 <= 400.0) or ReduceAnd [acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, True]
 
 @property;
-property5 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property5 acasXu = forall x . validInput x and nearAndApproachingFromLeft x => minimalScore acasXu strongRight x
-
-intruderFarAway : Vector Rat -> Bool;
-intruderFarAway x = (12000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 62000.0) and ((- pi <= x ! angleToIntruder and x ! angleToIntruder <= - 0.7) or 0.7 <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 5.0e-3) and (100.0 <= x ! speed and x ! speed <= 1200.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+property6 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property6 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (12000.0 <= x ! 0 and x ! 0 <= 62000.0) and ((-3.141592 <= x ! 1 and x ! 1 <= -0.7) or 0.7 <= x ! 1 and x ! 1 <= 3.141592) and (-3.141592 <= x ! 2 and x ! 2 <= -3.136592) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) or ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property6 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property6 acasXu = forall x . validInput x and intruderFarAway x => minimalScore acasXu clearOfConflict x
-
-largeVerticalSeparation : Vector Rat -> Bool;
-largeVerticalSeparation x = (0.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (- pi <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= pi) and (100.0 <= x ! speed and x ! speed <= 1200.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+property7 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property7 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (0.0 <= x ! 0 and x ! 0 <= 60760.0) and (-3.141592 <= x ! 1 and x ! 1 <= 3.141592) and (-3.141592 <= x ! 2 and x ! 2 <= 3.141592) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) or not ReduceAnd [acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4] and not ReduceAnd [acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, True]
 
 @property;
-property7 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property7 acasXu = forall x . validInput x and largeVerticalSeparation x => not minimalScore acasXu strongLeft x and not minimalScore acasXu strongRight x
-
-largeVerticalSeparationAndPreviousWeakLeft : Vector Rat -> Bool;
-largeVerticalSeparationAndPreviousWeakLeft x = (0.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (- pi <= x ! angleToIntruder and x ! angleToIntruder <= - 0.75 * pi) and (- 0.1 <= x ! intruderHeading and x ! intruderHeading <= 0.1) and (600.0 <= x ! speed and x ! speed <= 1200.0) and 600.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
+property8 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property8 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (0.0 <= x ! 0 and x ! 0 <= 60760.0) and (-3.141592 <= x ! 1 and x ! 1 <= -2.356194) and (-0.1 <= x ! 2 and x ! 2 <= 0.1) and (600.0 <= x ! 3 and x ! 3 <= 1200.0) and 600.0 <= x ! 4 and x ! 4 <= 1200.0) or ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4] or ReduceAnd [acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0, True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property8 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property8 acasXu = forall x . validInput x and largeVerticalSeparationAndPreviousWeakLeft x => minimalScore acasXu clearOfConflict x or minimalScore acasXu weakLeft x
-
-previousWeakRightAndNearbyIntruder : Vector Rat -> Bool;
-previousWeakRightAndNearbyIntruder x = (2000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 7000.0) and (- 0.4 <= x ! angleToIntruder and x ! angleToIntruder <= - 0.14) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 1.0e-2) and (100.0 <= x ! speed and x ! speed <= 150.0) and 0.0 <= x ! intruderSpeed and x ! intruderSpeed <= 150.0
+property9 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property9 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (2000.0 <= x ! 0 and x ! 0 <= 7000.0) and (-0.4 <= x ! 1 and x ! 1 <= -0.14) and (-3.141592 <= x ! 2 and x ! 2 <= -3.131592) and (100.0 <= x ! 3 and x ! 3 <= 150.0) and 0.0 <= x ! 4 and x ! 4 <= 150.0) or ReduceAnd [acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]
 
 @property;
-property9 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property9 acasXu = forall x . validInput x and previousWeakRightAndNearbyIntruder x => minimalScore acasXu strongLeft x
-
-intruderFarAway2 : Vector Rat -> Bool;
-intruderFarAway2 x = (36000.0 <= x ! distanceToIntruder and x ! distanceToIntruder <= 60760.0) and (0.7 <= x ! angleToIntruder and x ! angleToIntruder <= pi) and (- pi <= x ! intruderHeading and x ! intruderHeading <= - pi + 1.0e-2) and (900.0 <= x ! speed and x ! speed <= 1200.0) and 600.0 <= x ! intruderSpeed and x ! intruderSpeed <= 1200.0
-
-@property;
-property10 : forallT (acasXu : Vector Rat -> Vector Rat) . Bool;
-property10 acasXu = forall x . validInput x and intruderFarAway2 x => minimalScore acasXu clearOfConflict x
+property10 : forallT (acasXu : Tensor Rat -> Tensor Rat) . Tensor Bool;
+property10 acasXu = forall x . not (ReduceAnd ([0.0, -3.141592, -3.141592, 100.0, 0.0] <= x and x <= [60261.0, 3.141592, 3.141592, 1200.0, 1200.0]) and (36000.0 <= x ! 0 and x ! 0 <= 60760.0) and (0.7 <= x ! 1 and x ! 1 <= 3.141592) and (-3.141592 <= x ! 2 and x ! 2 <= -3.131592) and (900.0 <= x ! 3 and x ! 3 <= 1200.0) and 600.0 <= x ! 4 and x ! 4 <= 1200.0) or ReduceAnd [True, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 1, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 2, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 3, acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 0 < acasXu ((x - [19791.091, 0.0, 0.0, 650.0, 600.0]) / ([60261.0, 3.141592, 3.141592, 1200.0, 1200.0] - [0.0, -3.141592, -3.141592, 100.0, 0.0])) ! 4]

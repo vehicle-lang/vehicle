@@ -79,7 +79,7 @@ parseContainer ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   Bool ->
-  TensorDimensions ->
+  TensorShape ->
   Vector a ->
   WHNFType Builtin ->
   m (WHNFValue Builtin)
@@ -94,7 +94,7 @@ parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
 parseVector ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  TensorDimensions ->
+  TensorShape ->
   Vector a ->
   WHNFType Builtin ->
   WHNFValue Builtin ->
@@ -128,7 +128,7 @@ parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   WHNFType Builtin ->
-  TensorDimensions ->
+  TensorShape ->
   Vector a ->
   m (WHNFValue Builtin)
 parseList ctx expectedElemType actualDims actualElems =
@@ -142,7 +142,7 @@ parseList ctx expectedElemType actualDims actualElems =
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  TensorDimensions ->
+  TensorShape ->
   Vector a ->
   WHNFType Builtin ->
   m (WHNFValue Builtin)
@@ -155,7 +155,7 @@ type ParseContext m a =
   ( DeclProvenance, -- The provenance of the dataset declaration
     FilePath, -- The path of the dataset
     GluedType Builtin, -- The overall dataset type
-    TensorDimensions, -- Actual dimensions of dataset
+    TensorShape, -- Actual dimensions of dataset
     ElemParser m a
   )
 
@@ -194,7 +194,7 @@ intElemParser decl datasetType file value expectedElementType = case expectedEle
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VIntType
 
 -- | Split data by the first dimension of the C-Array.
-partitionData :: (Vector.Unbox a) => Int -> TensorDimensions -> Vector a -> [Vector a]
+partitionData :: (Vector.Unbox a) => Int -> TensorShape -> Vector a -> [Vector a]
 partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]

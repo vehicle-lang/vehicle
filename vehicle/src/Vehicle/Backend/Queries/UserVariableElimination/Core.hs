@@ -1,6 +1,6 @@
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
-import Control.Monad.Reader (MonadReader (..), asks)
+import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Control.Monad.Writer (MonadWriter)
 import Data.Aeson (FromJSON, ToJSON)
@@ -19,7 +19,6 @@ import GHC.Generics
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
@@ -66,7 +65,6 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
 data PropertyMetaData = PropertyMetaData
   { queryFormat :: QueryFormat,
     networkCtx :: NetworkContext,
-    unalteredFreeContext :: FreeCtx QueryBuiltin,
     propertyProvenance :: DeclProvenance,
     propertyAddress :: PropertyAddress
   }
@@ -570,21 +568,13 @@ getReducedVariablesFor var = do
       Just (vars, _) -> return $ fmap UserRationalVar vars
       Nothing -> compilerDeveloperError $ "User variable" <+> pretty var <+> "has no reductions"
 
-appStdlibDef :: (MonadPropertyStructure m) => StdLibFunction -> WHNFSpine QueryBuiltin -> m (WHNFValue QueryBuiltin)
-appStdlibDef fn spine = do
-  freeCtx <- asks unalteredFreeContext
-  (fnDef, _) <- lookupInFreeCtx "lookupStdlibDef" (identifierOf fn) freeCtx
-  case bodyOf fnDef of
-    Just fnBody -> normaliseApp fnBody spine
-    Nothing -> compilerDeveloperError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
-
 reduceTensorExpr ::
   (MonadQueryStructure m) =>
   LinearExpr TensorVariable RationalTensor ->
   m [LinearExpr RationalVariable Rational]
 reduceTensorExpr (Sparse coeff constant) = do
-  let constValues = Vector.toList $ tensorValues constant
-  let numRatEqs = product (tensorDims constant)
+  let constValues = Vector.toList $ tensorValue constant
+  let numRatEqs = product (tensorShape constant)
   coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
   let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
   return asserts
@@ -671,7 +661,7 @@ pattern VMapVector ::
 pattern VMapVector f xs <- VBuiltinFunction MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
 
 mkVVectorEquality ::
-  TensorDimensions ->
+  TensorShape ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
@@ -697,12 +687,11 @@ mkVVectorEquality dimensions e1 e2 = do
 
 -- | The set of vector operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.
-vectorOperations :: Set Identifier
+vectorOperations :: Set StdLibFunction
 vectorOperations =
-  Set.fromList $
-    identifierOf
-      <$> [ StdAddVector,
-            StdSubVector,
-            StdEqualsVector,
-            StdNotEqualsVector
-          ]
+  Set.fromList
+    [ StdAddVector,
+      StdSubVector,
+      StdEqualsVector,
+      StdNotEqualsVector
+    ]

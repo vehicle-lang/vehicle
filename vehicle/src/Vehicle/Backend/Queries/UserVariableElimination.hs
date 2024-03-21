@@ -19,6 +19,7 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateExists)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateNot (eliminateNot)
 import Vehicle.Backend.Queries.UserVariableElimination.Unblocking
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -168,7 +169,7 @@ eliminateNotVectorEqual ::
   (MonadQueryStructure m) =>
   WHNFSpine QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
-eliminateNotVectorEqual = appStdlibDef StdNotEqualsVector
+eliminateNotVectorEqual = appHiddenStdlibDef StdNotEqualsVector
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
@@ -233,7 +234,7 @@ compileTensorAssertion spinePrefix x y = do
     Just assertion -> return $ mkTrivialPartition assertion
     Nothing -> do
       logDebug MaxDetail $ "Unable to solve tensor equality so reducing to rational equalities"
-      compileBoolExpr =<< appStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
+      compileBoolExpr =<< appHiddenStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
 
 compileTensorLinearExpr ::
   forall m.
@@ -262,7 +263,7 @@ compileTensorLinearExpr = go
 getRationalTensor :: WHNFValue QueryBuiltin -> Maybe RationalTensor
 getRationalTensor expr = uncurry Tensor <$> go expr
   where
-    go :: WHNFValue QueryBuiltin -> Maybe (TensorDimensions, Vector Rational)
+    go :: WHNFValue QueryBuiltin -> Maybe (TensorShape, Vector Rational)
     go = \case
       VRatLiteral r -> Just ([], Vector.singleton (fromRational r))
       VVecLiteral xs -> do
@@ -338,10 +339,10 @@ checkUserVariableType ::
   forall m.
   (MonadQueryStructure m) =>
   WHNFBinder QueryBuiltin ->
-  m TensorDimensions
+  m TensorShape
 checkUserVariableType binder = go (typeOf binder)
   where
-    go :: WHNFType QueryBuiltin -> m TensorDimensions
+    go :: WHNFType QueryBuiltin -> m TensorShape
     go = \case
       VRatType -> return []
       VVectorType tElem (VNatLiteral d) -> do

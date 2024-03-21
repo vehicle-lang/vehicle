@@ -112,13 +112,14 @@
                     },
                     {
                       "constantValue": {
-                        "tensorValues": [
+                        "value": [
                           {
                             "numerator": 1,
                             "denominator": 1
                           }
                         ],
-                        "tensorDims": [
+                        "tag": "Tensor",
+                        "shape": [
                           1,
                           1
                         ]

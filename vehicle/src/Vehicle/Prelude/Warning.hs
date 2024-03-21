@@ -15,6 +15,7 @@ import Vehicle.Backend.Prelude (Target)
 import Vehicle.Backend.Tensors.Core
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -33,7 +34,7 @@ data CompileWarning
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
   | UnboundedNetworkInputVariables QueryFormatID QueryAddress MetaNetwork [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
-  | InefficientTensorCode Name BuiltinFunction NamedBoundCtx (NFValue TensorBuiltin)
+  | InefficientTensorCode Name (Either BuiltinFunction StdLibFunction) NamedBoundCtx (NFValue TensorBuiltin)
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -43,7 +44,7 @@ data SummarisedCompileWarning
   | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyAddress Int
   | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyAddress (NonEmpty QueryID)
   | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyAddress [(NonEmpty QueryID, [(NetworkRationalVariable, UnderConstrainedVariableStatus)])]
-  | InefficientTensorCodeSummary Name BuiltinFunction NamedBoundCtx (NFValue TensorBuiltin)
+  | InefficientTensorCodeSummary Name (Either BuiltinFunction StdLibFunction) NamedBoundCtx (NFValue TensorBuiltin)
 
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
@@ -56,7 +57,7 @@ data CombiningState = CombiningState
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
     unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
-    inefficientTensorCode :: Map Name [(BuiltinFunction, NamedBoundCtx, NFValue TensorBuiltin)]
+    inefficientTensorCode :: Map Name [(Either BuiltinFunction StdLibFunction, NamedBoundCtx, NFValue TensorBuiltin)]
   }
 
 emptyState :: CombiningState

@@ -29,7 +29,7 @@ convertLossExpr ::
   DifferentialLogicImplementation ->
   WHNFValue Builtin ->
   m (WHNFValue Builtin)
-convertLossExpr DifferentialLogicImplementation {..} = go
+convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $ prettyVerbose u; go u
   where
     go :: WHNFValue Builtin -> m (WHNFValue Builtin)
     go expr = case expr of
@@ -50,10 +50,10 @@ convertLossExpr DifferentialLogicImplementation {..} = go
             normFn <- normaliseInEnv mempty unnormFn
             normaliseApp normFn spine'
           EliminateNot -> do
-            spine' <- traverse (traverse go) spine
-            case spine' of
+            logDebug MaxDetail $ "hi"
+            case spine of
               [arg] -> case lowerNot (argExpr arg) of
-                Right result -> return result
+                Right result -> go result
                 Left errExpr -> do
                   ctx <- getNamedBoundCtx (Proxy @Builtin)
                   throwError $ UnsupportedNegatedOperation logicID ctx errExpr

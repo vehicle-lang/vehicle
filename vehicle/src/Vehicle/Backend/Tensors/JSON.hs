@@ -6,7 +6,7 @@ module Vehicle.Backend.Tensors.JSON
 where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
-import Data.Aeson (KeyValue (..), Options (..), ToJSON (..), defaultOptions, genericToJSON)
+import Data.Aeson (KeyValue (..), ToJSON (..), genericToJSON)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
 import Data.Bifunctor (Bifunctor (..))
@@ -52,12 +52,6 @@ type JDecl var = RelDecl var TensorBuiltin
 type JExpr var = RelExpr var TensorBuiltin
 
 type JBinder var = RelBinder var TensorBuiltin
-
-jsonOptions :: Options
-jsonOptions =
-  defaultOptions
-    { tagSingleConstructors = True
-    }
 
 instance (ToJSON var) => ToJSON (JProg var) where
   toJSON = genericToJSON jsonOptions

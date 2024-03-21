@@ -1,3 +1,3 @@
 @property;
-safe : forallT (controller : Tensor -> Tensor) . Tensor;
-safe controller = forall x . not ((-3.25 <= x ! 0 and x ! 0 <= 3.25) and (-3.25 <= x ! 1 and x ! 1 <= 3.25) and True) or -1.25 < controller x ! 0 + 2.0 * x ! 0 - x ! 1 and controller x ! 0 + 2.0 * x ! 0 - x ! 1 < 1.25
+safe : forallT (controller : Tensor Rat -> Tensor Rat) . Tensor Bool;
+safe controller = forall x . not ReduceAnd (Const[ -3.25 ] <= x and x <= Const[ 3.25 ]) or -1.25 < controller ((x + Const[ 4.0 ]) / Const[ 8.0 ]) ! 0 + 2.0 * x ! 0 - x ! 1 and controller ((x + Const[ 4.0 ]) / Const[ 8.0 ]) ! 0 + 2.0 * x ! 0 - x ! 1 < 1.25

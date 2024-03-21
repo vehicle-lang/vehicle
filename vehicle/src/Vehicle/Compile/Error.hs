@@ -60,8 +60,8 @@ data CompileError
   | DatasetTypeUnsupportedContainer DeclProvenance (GluedType StandardTypingBuiltin)
   | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin)
   | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
-  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorDimensions TensorDimensions
-  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorDimensions
+  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
+  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
   | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (WHNFType Builtin)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
@@ -99,10 +99,12 @@ deriving instance Show CompileError
 
 unexpectedExpr :: Doc a -> Doc a -> Doc a
 unexpectedExpr pass name =
-  "encountered unexpected expression"
-    <+> squotes name
-    <+> "during"
-    <+> pass
+  "encountered unexpected expression:"
+    <> line
+    <> indent 2 name
+    <> line
+    <> "during"
+      <+> pass
     <> "."
 
 -- | Should be used in preference to `developerError` whenever in the error

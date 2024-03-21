@@ -176,11 +176,6 @@ lookupIxValueInEnv boundEnv ix = do
       -- on the `Bound` contructor.
       let inScopeEnv = drop (unIx ix) boundEnv
       let lv = Lv $ length (filter isBoundEntry inScopeEnv) - 1
-      logDebug MaxDetail $ ""
-      logDebug MaxDetail $ "Index:" <+> pretty ix
-      logDebug MaxDetail $ "Bound env:" <+> prettyVerbose boundEnv
-      logDebug MaxDetail $ "In scope env:" <+> prettyVerbose inScopeEnv
-      logDebug MaxDetail $ "Filtered env:" <+> prettyVerbose (filter isBoundEntry inScopeEnv)
       return $ VBoundVar lv []
 
 -----------------------------------------------------------------------------

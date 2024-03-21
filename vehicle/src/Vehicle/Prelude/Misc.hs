@@ -3,7 +3,7 @@ module Vehicle.Prelude.Misc where
 import Control.Monad (join, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, Options (..), ToJSON, defaultOptions)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
@@ -209,14 +209,20 @@ prettyJSONConfig =
       confTrailingNewline = False
     }
 
-type TensorDimensions = [Int]
+jsonOptions :: Options
+jsonOptions =
+  defaultOptions
+    { tagSingleConstructors = True
+    }
+
+type TensorShape = [Int]
 
 type TensorIndices = [Int]
 
-computeFlatIndex :: TensorDimensions -> TensorIndices -> Int
+computeFlatIndex :: TensorShape -> TensorIndices -> Int
 computeFlatIndex = go
   where
-    go :: TensorDimensions -> TensorIndices -> Int
+    go :: TensorShape -> TensorIndices -> Int
     go [] [] = 0
     go (d : ds) (i : is) | i < d = i * product ds + go ds is
     go ds is = developerError $ "Invalid flat tensor arguments" <+> pretty ds <+> pretty is

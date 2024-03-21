@@ -21,7 +21,7 @@ import Vehicle.Syntax.Builtin
 
 data OriginalUserVariable = OriginalUserVariable
   { userTensorVarName :: Name,
-    userTensorVarDimensions :: TensorDimensions
+    userTensorVarDimensions :: TensorShape
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -44,7 +44,7 @@ data OriginalNetworkVariable = OriginalNetworkVariable
     -- | Whether its an input or an output variable
     inputOrOutput :: InputOrOutput,
     -- | The dimensions of the variable
-    networkTensorVarDimensions :: TensorDimensions,
+    networkTensorVarDimensions :: TensorShape,
     -- | The position in the list of applications of `networkName`
     application :: Int,
     -- | Index starting
@@ -89,7 +89,7 @@ instance (Hashable variable) => Hashable (ReducedVariable variable)
 
 reduceVariable ::
   forall variable.
-  (variable -> TensorDimensions) ->
+  (variable -> TensorShape) ->
   Lv ->
   variable ->
   ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
@@ -103,7 +103,7 @@ reduceVariable varDims dbLevel var
     createRatVar indices lv = ([(lv, ReducedVariable var indices)], VBoundVar lv [])
 
     go ::
-      TensorDimensions ->
+      TensorShape ->
       TensorIndices ->
       Supply Lv ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
     go dims indices = case dims of
@@ -174,7 +174,7 @@ instance Pretty TensorVariable where
     UserTensorVar v -> pretty v
     NetworkTensorVar v -> pretty v
 
-tensorVariableDims :: TensorVariable -> TensorDimensions
+tensorVariableDims :: TensorVariable -> TensorShape
 tensorVariableDims = \case
   UserTensorVar v -> userTensorVarDimensions v
   NetworkTensorVar v -> networkTensorVarDimensions v

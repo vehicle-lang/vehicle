@@ -1,15 +1,15 @@
 @property;
-empty : Tensor;
+empty : Tensor Bool;
 empty = True
 
 @property;
-double : Tensor;
+double : Tensor Bool;
 double = True
 
 @property;
-forallForallIn : Tensor;
+forallForallIn : Tensor Bool;
 forallForallIn = forall x . ReduceAnd (x == [0.5, 1.0])
 
 @property;
-forallInForall : forallT (f : Tensor -> Tensor) . Tensor;
+forallInForall : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 forallInForall f = forall y . ReduceOr (f [0.5, 1.0] != y)

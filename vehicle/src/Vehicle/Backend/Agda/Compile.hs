@@ -393,7 +393,7 @@ compileStdLibFunction fn args = case fn of
     let fun' = annotateConstant [DataTensor] "Tensor"
     args' <- traverse compileExpr (filterOutNonExplicitArgs args)
     return $ Just $ annotateApp [] fun' args'
-  StdForeach -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
+  StdForeachIndex -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
     [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] ->

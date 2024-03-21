@@ -7,7 +7,6 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Bifunctor (Bifunctor (..))
 import Data.Maybe (isNothing, maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
@@ -91,9 +90,8 @@ compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
   property <- case d of
     DefFunction p ident anns _ body
       | isProperty anns -> do
-          unalteredFreeContext <- getFreeCtx (Proxy @Builtin)
-          let propertyData = (queryFormat, unalteredFreeContext, networkCtx, (ident, p), propertyID)
-          locallyAdjustCtx (Proxy @Builtin) convertVectorOpsToPostulates $ do
+          hideStdLibDecls (Proxy @Builtin) vectorOperations $ do
+            let propertyData = (queryFormat, networkCtx, (ident, p), propertyID)
             Just <$> compilePropertyDecl prog propertyData body outputLocation
     _ -> return Nothing
 
@@ -104,18 +102,16 @@ compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
 
 type MultiPropertyMetaData =
   ( QueryFormat,
-    FreeCtx Builtin,
     NetworkContext,
     DeclProvenance,
     Int
   )
 
 updateMetaData :: MultiPropertyMetaData -> TensorIndices -> PropertyMetaData
-updateMetaData (queryFormat, unalteredFreeCtx, networkCtx, declProvenance, propertyID) indices =
+updateMetaData (queryFormat, networkCtx, declProvenance, propertyID) indices =
   PropertyMetaData
     { networkCtx = networkCtx,
       queryFormat = queryFormat,
-      unalteredFreeContext = unalteredFreeCtx,
       propertyProvenance = declProvenance,
       propertyAddress = PropertyAddress propertyID (nameOf $ fst declProvenance) indices
     }
@@ -127,7 +123,7 @@ compilePropertyDecl ::
   Expr Ix Builtin ->
   Maybe FilePath ->
   m (Name, MultiProperty ())
-compilePropertyDecl prog propertyData@(_, _, _, declProv@(ident, _), _) expr outputLocation = do
+compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _) expr outputLocation = do
   logCompilerPass MinDetail ("found property" <+> quotePretty ident) $ do
     normalisedExpr <- normaliseInEmptyEnv expr
     multiProperty <-
@@ -136,7 +132,7 @@ compilePropertyDecl prog propertyData@(_, _, _, declProv@(ident, _), _) expr out
     return (nameOf (fst declProv), multiProperty)
 
 handlePropertyCompileError :: (MonadCompile m) => Prog Ix Builtin -> MultiPropertyMetaData -> CompileError -> m a
-handlePropertyCompileError prog (queryFormat, _, _, declProv, _) e = case e of
+handlePropertyCompileError prog (queryFormat, _, declProv, _) e = case e of
   UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity (queryFormatID queryFormat) prog declProv
   UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers (queryFormatID queryFormat) prog declProv
   _ -> throwError e
@@ -189,6 +185,3 @@ compileSingleProperty outputLocation expr = do
       let queryMetaTree = fmap (fmap (fmap fst)) formattedQueries
       writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queryMetaTree)
       forQueryInProperty formattedQueries $ writeVerificationQuery queryFormat folder
-
-convertVectorOpsToPostulates :: FreeCtx Builtin -> FreeCtx Builtin
-convertVectorOpsToPostulates = alterKeys vectorOperations (first convertToPostulate)

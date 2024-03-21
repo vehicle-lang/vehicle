@@ -1,27 +1,27 @@
 @property;
-e1 : Tensor;
+e1 : Tensor Bool;
 e1 = False
 
 @property;
-e2 : Tensor;
+e2 : Tensor Bool;
 e2 = False
 
 @property;
-forallLet : Tensor;
-forallLet = forall (x : Tensor) . x == 1.0
+forallLet : Tensor Bool;
+forallLet = forall (x : Tensor Rat) . x == 1.0
 
 @property;
-letForall : Tensor;
-letForall = forall (x : Tensor) . 1.0 == x
+letForall : Tensor Bool;
+letForall = forall (x : Tensor Rat) . 1.0 == x
 
 @property;
-forallInLet : Tensor;
+forallInLet : Tensor Bool;
 forallInLet = True
 
 @property;
-letForallIn : Tensor;
+letForallIn : Tensor Bool;
 letForallIn = True
 
 @property;
-correctOutput : Tensor;
+correctOutput : Tensor Bool;
 correctOutput = True

@@ -1,7 +1,7 @@
 @property;
-test1 : forallT (f : Tensor -> Tensor) . Tensor;
+test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 test1 f = Optimise[min] (*) (\ a -> max 0.0 (0.0 - a) + (if 0.0 == a then 1.0 else 0.0) + ReduceSum (f [a + 2.0] == [0.0]))
 
 @property;
-test2 : forallT (g : Tensor -> Tensor) . Tensor;
+test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
 test2 g = Optimise[min] (*) (\ a -> Optimise[min] (*) (\ b -> max 0.0 (1.0 - a) + (if 1.0 == a then 1.0 else 0.0) + (max 0.0 (a - b) + (if a == b then 1.0 else 0.0) + ReduceSum (g [a + b, a + 2.0 * b] == [0.0]))))

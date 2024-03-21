@@ -91,7 +91,7 @@ prettyUserVariableAssignment :: (OriginalUserVariable, RationalTensor) -> Doc a
 prettyUserVariableAssignment (OriginalUserVariable {..}, variableValue) =
   pretty userTensorVarName <> ":" <+> pretty variableValue
 
-assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix Builtin
+assignmentToExpr :: TensorShape -> [Rational] -> Expr Ix Builtin
 assignmentToExpr [] [x] = RatLiteral mempty (toRational x)
 assignmentToExpr [] _ = developerError "Malformed tensor"
 assignmentToExpr (dim : dims) xs = do

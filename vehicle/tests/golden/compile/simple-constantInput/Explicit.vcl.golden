@@ -1,3 +1,3 @@
 @property;
-spec : forallT (f : Tensor -> Tensor) . Tensor;
+spec : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
 spec f = forall x . f [x, 0.0] ! 0 >= 0.0

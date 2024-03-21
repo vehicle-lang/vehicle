@@ -6,6 +6,7 @@ where
 import Control.Monad.Writer
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.Unblocking (unblockBoolExpr)
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -58,6 +59,6 @@ eliminateNot = go
 
 negVectorEqSpine :: (MonadQueryStructure m) => WHNFSpine QueryBuiltin -> m (WHNFSpine QueryBuiltin)
 negVectorEqSpine (VVecEqSpine a b n fn x y) = do
-  fn' <- appStdlibDef StdNotBoolOp2 [a, b, fn]
+  fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, fn]
   return $ VVecEqSpine a b n (Arg mempty Explicit Relevant fn') x y
 negVectorEqSpine spine = compilerDeveloperError $ "Malformed equality spine" <+> prettyVerbose spine
