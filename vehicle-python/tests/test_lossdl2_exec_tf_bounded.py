@@ -6,6 +6,7 @@ def test_lossdl2_exec_tf_bounded() -> None:
     try:
         import numpy as np
         import tensorflow as tf
+
         import vehicle_lang as vcl
 
         # Prepare a simple network
@@ -57,7 +58,7 @@ def test_lossdl2_exec_tf_bounded() -> None:
         # Train the network
         num_epochs = 4
 
-        optimizer = tf.keras.optimizers.legacy.Adam()
+        optimizer = tf.keras.optimizers.Adam()
         ce_batch_loss = tf.keras.losses.BinaryCrossentropy()
 
         train_acc_metric = tf.keras.metrics.BinaryCrossentropy()
