@@ -748,6 +748,7 @@ python -m pip install -e .[test]
 ```
 
 This installs the Python bindings in [editable mode], which directly adds the files in the development directory are added to Python's import path.
+Note that you must have the preferred version of GHC (see above) active in order to run this command otherwise you'll get a `Error: cabal: Could not resolve dependencies` error message.
 
 When the Python bindings are installed in editable mode, you can run pytest directly:
 
