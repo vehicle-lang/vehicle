@@ -190,7 +190,6 @@ delabBuiltinFunction fun args = case fun of
   V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
-  V.Ann -> delabInfixOp2 B.Ann tokElemOf args
   -- Builtins not in the surface syntax.
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
