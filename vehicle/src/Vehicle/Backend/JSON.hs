@@ -30,7 +30,7 @@ import Vehicle.Compile.Prelude (DefAbstractSort (..), Doc, HasType (..), Logging
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin, TypableBuiltin (..))
 import Vehicle.Data.BuiltinInterface qualified as V
-import Vehicle.Data.BuiltinInterface.Expr (pattern AnnExpr, pattern UnitLiteral)
+import Vehicle.Data.BuiltinInterface.Expr (pattern UnitLiteral)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.RelevantExpr
 import Vehicle.Syntax.AST (Name, Position (..), Provenance (..), UniverseLevel)
@@ -311,7 +311,6 @@ instance ToJBuiltin V.BuiltinFunction where
     V.Indices -> return Indices
     V.ZipWithVector -> return ZipWithVector
     V.Optimise b -> asks (Optimise b)
-    V.Ann -> compilerDeveloperError "Type-annotations should have been removed earlier"
 
 instance ToJBuiltin V.BuiltinType where
   toJBuiltin b = return $ case b of
@@ -458,8 +457,6 @@ toJExpr expr = case expr of
   V.Hole {} -> resolutionError currentPass "Hole"
   V.Meta {} -> resolutionError currentPass "Meta"
   V.Universe p (V.UniverseLevel l) -> return $ Universe p l
-  -- Strip out type-annotations
-  AnnExpr _ _t e -> toJExpr e
   V.Builtin p b -> do
     boundCtx <- getBoundCtx (Proxy @builtin)
     let boundCtxNames = fmap (fromMaybe "<missing-name>" . V.nameOf) boundCtx

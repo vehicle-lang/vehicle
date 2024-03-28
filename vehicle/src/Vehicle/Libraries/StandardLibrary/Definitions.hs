@@ -14,7 +14,8 @@ pattern TensorIdent :: Identifier
 pattern TensorIdent = Identifier StdLib "Tensor"
 
 data StdLibFunction
-  = StdNotBoolOp2
+  = StdTypeAnn
+  | StdNotBoolOp2
   | StdBigAnd
   | StdBigOr
   | StdExistsIndex
@@ -35,6 +36,7 @@ data StdLibFunction
 
 instance Show StdLibFunction where
   show = \case
+    StdTypeAnn -> "typeAnn"
     StdNotBoolOp2 -> "notBoolOp2"
     StdBigAnd -> "bigAnd"
     StdBigOr -> "bigOr"

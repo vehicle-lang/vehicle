@@ -321,9 +321,6 @@ data BuiltinFunction
   | MapVector
   | ZipWithVector
   | Indices
-  | -- | A type annotation. The type is stored first and then expression (i.e. Ann t e),
-    -- which differs  from the frontend where the expression comes first (i.e. e : t)
-    Ann
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -360,7 +357,6 @@ instance Pretty BuiltinFunction where
     ZipWithVector -> "zipWith"
     At -> "!"
     Indices -> "indices"
-    Ann -> ":"
     Optimise b -> "Optimise[" <> direction <> "]"
       where
         direction = if b then "min" else "max"

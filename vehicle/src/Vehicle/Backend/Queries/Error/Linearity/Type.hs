@@ -8,7 +8,6 @@ where
 import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
 import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
@@ -52,7 +51,6 @@ typeOfBuiltinFunction = \case
   At -> typeOfAt
   Indices -> constant ~> constant
   b@Optimise {} -> developerError $ "Should not be linearity typing" <+> pretty b
-  Ann -> typeOfAnn
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case
