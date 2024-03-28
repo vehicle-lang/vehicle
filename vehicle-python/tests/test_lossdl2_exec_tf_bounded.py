@@ -45,8 +45,8 @@ def test_lossdl2_exec_tf_bounded() -> None:
 
         X_train = np.array([[0.0], [0.2], [0.4], [0.6], [0.8]])
         X_test = np.array([[0.1], [0.3], [0.5], [0.7], [0.9]])
-        y_train = np.array([0, 0, 0, 1, 1])
-        y_test = np.array([0, 0, 1, 1, 1])
+        y_train = np.array([[0], [0], [0], [1], [1]])
+        y_test = np.array([[0], [0], [1], [1], [1]])
 
         train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
         test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
@@ -57,13 +57,11 @@ def test_lossdl2_exec_tf_bounded() -> None:
         # Train the network
         num_epochs = 4
 
-        optimizer = tf.keras.optimizers.legacy.Adam()
+        optimizer = tf.keras.optimizers.Adam()
         ce_batch_loss = tf.keras.losses.BinaryCrossentropy()
 
         train_acc_metric = tf.keras.metrics.BinaryCrossentropy()
-        test_acc_metric = tf.keras.metrics.BinaryCrossentropy()
         train_loss_metric = tf.keras.metrics.BinaryCrossentropy()
-        test_loss_metric = tf.keras.metrics.BinaryCrossentropy()
 
         ce_loss_weight = 0
         bounded_weight = 1
@@ -94,24 +92,28 @@ def test_lossdl2_exec_tf_bounded() -> None:
                 train_acc_metric.update_state(y_batch_train, train_outputs)
                 train_loss_metric.update_state(y_batch_train, train_outputs)
 
-            # Run a testing loop at the end of each epoch.
-            for x_batch_test, y_batch_test in test_dataset:
-                test_outputs = model(x_batch_test, training=False)
-                test_acc_metric.update_state(y_batch_test, test_outputs)
-                test_loss_metric.update_state(y_batch_test, test_outputs)
-
             train_acc = train_acc_metric.result()
-            test_acc = test_acc_metric.result()
             train_loss = train_loss_metric.result()
-            test_loss = test_loss_metric.result()
-
-            train_acc_metric.reset_states()
-            test_acc_metric.reset_states()
-            train_loss_metric.reset_states()
-            test_loss_metric.reset_states()
+            train_acc_metric.reset_state()
+            train_loss_metric.reset_state()
 
             print(f"Train acc: {float(train_acc):.4f}")
             print(f"Train loss: {float(train_loss):.4f}")
+
+        test_acc_metric = tf.keras.metrics.BinaryCrossentropy()
+        test_loss_metric = tf.keras.metrics.BinaryCrossentropy()
+
+        test_loss = test_loss_metric.result()
+        test_acc = test_acc_metric.result()
+
+        # Run a testing loop at the end of each epoch.
+        for x_batch_test, y_batch_test in test_dataset:
+            test_outputs = model(x_batch_test, training=False)
+            test_acc_metric.update_state(y_batch_test, test_outputs)
+            test_loss_metric.update_state(y_batch_test, test_outputs)
+
+        test_acc_metric.reset_state()
+        test_loss_metric.reset_state()
         print(f"Test acc: {float(test_acc):.4f}")
         print(f"Test loss: {float(test_loss):.4f}")
 
