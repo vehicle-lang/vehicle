@@ -34,7 +34,7 @@ data CompileWarning
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
   | UnboundedNetworkInputVariables QueryFormatID QueryAddress MetaNetwork [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
-  | InefficientTensorCode Name (Either BuiltinFunction StdLibFunction) NamedBoundCtx (NFValue TensorBuiltin)
+  | InefficientTensorCode Name BuiltinFunction NamedBoundCtx (NFValue TensorBuiltin)
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -57,7 +57,7 @@ data CombiningState = CombiningState
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
     unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
-    inefficientTensorCode :: Map Name [(Either BuiltinFunction StdLibFunction, NamedBoundCtx, NFValue TensorBuiltin)]
+    inefficientTensorCode :: Map Name [(BuiltinFunction, NamedBoundCtx, NFValue TensorBuiltin)]
   }
 
 emptyState :: CombiningState
@@ -146,4 +146,4 @@ compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
         UnsoundStrictOrderConversionsSummary _ address _ -> Just address
         AllConstantNetworkInputVariablesSummary _ address _ -> Just address
         UnboundedNetworkInputVariablesSummary _ address _ -> Just address
-        InefficientTensorCodeSummary _ _ _ _ -> Nothing
+        InefficientTensorCodeSummary {} -> Nothing

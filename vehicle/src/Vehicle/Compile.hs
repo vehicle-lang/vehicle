@@ -107,8 +107,7 @@ compileDirect ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileDirect prog outputFile outputAsJSON =
-  compileToTensors noPreprocessing prog outputFile outputAsJSON
+compileDirect = compileToTensors noPreprocessing
 
 compileToTensors ::
   forall m.
@@ -127,15 +126,15 @@ compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
   -- literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
   -- cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
 
-  hoistedProg <- hoistInferableParameters mergedProg
+  tensorProg <- convertToTensors preprocess mergedProg
+  hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
-  tensorProg <- convertToTensors preprocess functionalisedProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON tensorProg
+        compileProgToJSON functionalisedProg
       else do
-        return $ prettyFriendly tensorProg
+        return $ prettyFriendly functionalisedProg
   writeResultToFile Nothing outputFile result
 
 warnIfResourcesProvided :: (MonadCompile m) => CompileOptions -> m ()

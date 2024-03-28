@@ -6,6 +6,7 @@ module Vehicle.Backend.Tensors.Convert
   )
 where
 
+import Control.Applicative (Applicative (..))
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Data (Proxy (..))
@@ -36,7 +37,7 @@ type MonadTensor m =
 
 type MonadTensorProperty m =
   ( MonadTensor m,
-    MonadReader (DeclProvenance) m
+    MonadReader DeclProvenance m
   )
 
 newtype TensorPreprocessingStep
@@ -139,7 +140,9 @@ convertValue preprocess e = do
       return $ VPi binder' body'
     VFreeVar v spine -> case findStdLibFunction v of
       Just StdForeachIndex -> convertForeachIndex preprocess spine
-      _ -> compilerDeveloperError $ "Free variable" <+> pretty v <+> "should not be unnormalised when converting to tensors"
+      _ -> do
+        spine' <- convertSpine preprocess spine
+        return $ VFreeVar v spine'
     VBoundVar v spine -> do
       spine' <- convertSpine preprocess spine
       return $ VBoundVar v spine'
@@ -197,15 +200,15 @@ convertBuiltinType t args = case t of
 
 convertVectorType :: (MonadTensorProperty m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVectorType args = do
-  maybeResult <- return $ case args of
-    [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
-      T.BoolTensorType -> Just T.BoolTensorType
-      T.NatTensorType -> Just T.NatTensorType
-      T.IntTensorType -> Just T.IntTensorType
-      T.RatTensorType -> Just T.RatTensorType
-      T.IndexType -> Just T.NatTensorType
-      _ -> Nothing
-    _ -> Nothing
+  let maybeResult = case args of
+        [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
+          T.BoolTensorType -> Just T.BoolTensorType
+          T.NatTensorType -> Just T.NatTensorType
+          T.IntTensorType -> Just T.IntTensorType
+          T.RatTensorType -> Just T.RatTensorType
+          T.IndexType -> Just T.NatTensorType
+          _ -> Nothing
+        _ -> Nothing
 
   case maybeResult of
     Just result -> return $ mkBuiltin result []
@@ -303,9 +306,9 @@ convertBuiltinFunction t args = case t of
   -----------------------
   -- Vector operations --
   -----------------------
-  FoldVector -> convertHigherOrderFunction convertFoldVector (Left FoldVector) args
-  MapVector -> convertHigherOrderFunction convertMapVector (Left MapVector) args
-  ZipWithVector -> convertHigherOrderFunction convertZipWith (Left ZipWithVector) args
+  FoldVector -> convertHigherOrderFunction convertFoldVector FoldVector T.ReduceTensor args
+  MapVector -> convertHigherOrderFunction convertMapVector MapVector T.MapTensor args
+  ZipWithVector -> convertHigherOrderFunction convertZipWith ZipWithVector T.ZipWithTensor args
   Indices -> return $ mkBuiltin T.Indices args
   At -> return $ mkBuiltin T.LookupTensor args
   ---------------------
@@ -385,11 +388,12 @@ type HigherOrderFunctionConversion =
 convertHigherOrderFunction ::
   (MonadTensorProperty m) =>
   HigherOrderFunctionConversion ->
-  Either BuiltinFunction StdLibFunction ->
+  BuiltinFunction ->
+  TensorBuiltin ->
   [NFArg TensorBuiltin] ->
   m (NFValue TensorBuiltin)
-convertHigherOrderFunction convertFn fn args = do
-  logDebug MaxDetail $ "Trying to convert" <+> quotePretty fn
+convertHigherOrderFunction convertFn origFn newFun args = do
+  logDebug MaxDetail $ "Trying to convert" <+> quotePretty origFn
   lv <- getCurrentLv (Proxy @Builtin)
   result <- convertFn lv args
   case result of
@@ -397,12 +401,12 @@ convertHigherOrderFunction convertFn fn args = do
       logDebug MaxDetail "Failed"
       (ident, _) <- ask
       boundCtx <- getNamedBoundCtx (Proxy @Builtin)
-      let expr = VFreeVar (Identifier User (layoutAsText $ either pretty pretty fn)) args --
-      logWarning $ InefficientTensorCode (nameOf ident) fn boundCtx expr
+      let expr = mkBuiltin newFun args
+      logWarning $ InefficientTensorCode (nameOf ident) origFn boundCtx expr
       return expr
     Just expr -> do
       logDebug MaxDetail $ "Converted to" <+> prettyVerbose expr
-      return $ expr
+      return expr
 
 convertFoldVector :: HigherOrderFunctionConversion
 convertFoldVector lv = \case
@@ -460,8 +464,8 @@ mkBuiltin ::
 mkBuiltin = VBuiltin
 
 evalAnd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAnd (T.VBoolTensor xs) y | all id xs = y
-evalAnd x (T.VBoolTensor ys) | all id ys = x
+evalAnd (T.VBoolTensor xs) y | and xs = y
+evalAnd x (T.VBoolTensor ys) | and ys = x
 evalAnd x y = mkBuiltin T.AndTensor (Arg mempty Explicit Relevant <$> [x, y])
 
 evalOr :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin

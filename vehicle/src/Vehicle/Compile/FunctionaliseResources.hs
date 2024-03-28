@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
 import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyVerbose)
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
@@ -124,7 +124,9 @@ findResourceUses ::
   (MonadResource m builtin) =>
   Expr Ix builtin ->
   m (Set Name)
-findResourceUses e = execWriterT $ traverseFreeVarsM (const id) updateFn e
+findResourceUses e = do
+  logDebug MaxDetail $ prettyVerbose e
+  execWriterT $ traverseFreeVarsM (const id) updateFn e
   where
     updateFn recGo p1 p2 ident args = do
       args' <- traverse (traverse recGo) args
@@ -143,6 +145,7 @@ replaceResourceUses ::
   Expr Ix builtin ->
   m (Expr Ix builtin)
 replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
+  logDebug MaxDetail $ prettyVerbose initialExpr
   funcState <- ask
   let resourceLevels = Map.fromList (zip binderNames [(0 :: Lv) ..])
   let underBinder _b = local (first (+ 1))

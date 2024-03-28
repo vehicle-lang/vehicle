@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Context.Free.Instance where
 
-import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State
