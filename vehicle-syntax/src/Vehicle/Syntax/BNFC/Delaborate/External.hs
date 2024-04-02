@@ -9,7 +9,8 @@ where
 import Control.Monad.Identity (Identity (runIdentity), IdentityT)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (head, toList)
-import Data.Maybe (fromMaybe)
+import Data.Map qualified as Map
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text (Text, pack)
 import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 import Vehicle.Syntax.AST qualified as V
@@ -48,13 +49,20 @@ instance Delaborate (V.Decl V.Name V.Builtin) [B.Decl] where
     V.DefAbstract _ n a t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
-      let defAnn = case a of
-            V.PostulateDef -> delabAnn postulateAnn []
-            V.NetworkDef -> delabAnn networkAnn []
-            V.DatasetDef -> delabAnn datasetAnn []
-            V.ParameterDef sort -> case sort of
-              V.NonInferable -> delabAnn parameterAnn []
-              V.Inferable -> delabAnn parameterAnn [mkDeclAnnOption InferableOption True]
+      defAnn <- case a of
+        V.PostulateDef linearityType polarityType -> do
+          let nameOption = mkNameAnnOption "name" (V.nameOf n)
+          let types = t : fromMaybe [] (sequence [linearityType, polarityType])
+          typeOption <- mkTypeAnnOption ("standard", t)
+          linearOpt <- traverse (mkTypeAnnOption . ("linearity",)) linearityType
+          polarityOpt <- traverse (mkTypeAnnOption . ("polarity",)) polarityType
+          let declOptions = [nameOption, typeOption] ++ fromMaybe [] (sequence [linearOpt, polarityOpt])
+          return $ B.DefPostulate tokPostulate (B.DeclAnnWithOpts declOptions)
+        V.NetworkDef -> return $ delabAnn networkAnn []
+        V.DatasetDef -> return $ delabAnn datasetAnn []
+        V.ParameterDef sort -> return $ case sort of
+          V.NonInferable -> delabAnn parameterAnn []
+          V.Inferable -> delabAnn parameterAnn [mkBoolAnnOption InferableOption True]
 
       return [defAnn, defFun]
     V.DefFunction _ n anns t e -> do
@@ -393,12 +401,18 @@ delabForeach args = case reverse args of
     return $ B.Foreach tokForeach binder' tokDot body'
   _ -> argsError (tkSymbol tokForeach) 1 <$> traverse delabM args
 
-delabAnn :: B.DeclAnnName -> [B.DeclAnnOption] -> B.Decl
+delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-mkDeclAnnOption :: Text -> Bool -> B.DeclAnnOption
-mkDeclAnnOption name value = B.BooleanOption (mkToken B.Name name) (delabBoolLit value)
+mkBoolAnnOption :: Text -> Bool -> B.DeclAnnOption
+mkBoolAnnOption name value = B.InferAnnOption (mkToken B.TokAnnInferOpt name) (B.Literal (B.BoolLiteral (delabBoolLit value)))
+
+mkNameAnnOption :: Text -> Text -> B.DeclAnnOption
+mkNameAnnOption name value = B.NameAnnOption (mkToken B.TokAnnNameOpt name) (mkToken B.Name value)
+
+mkTypeAnnOption :: (MonadDelab m) => (Text, V.Expr V.Name V.Builtin) -> m B.DeclAnnOption
+mkTypeAnnOption (name, value) = B.TypeAnnOption (mkToken B.Name name) <$> delabM value
 
 auxiliaryTypeError :: Doc a -> a
 auxiliaryTypeError e =

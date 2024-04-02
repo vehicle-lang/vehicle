@@ -74,6 +74,7 @@ common common-language
     OverloadedStrings
     PatternSynonyms
     ScopedTypeVariables
+    TupleSections
     TypeApplications
     TypeFamilies
 
@@ -120,7 +121,6 @@ library
     Vehicle.Syntax.BNFC.Delaborate.External
     Vehicle.Syntax.BNFC.Delaborate.Internal
     Vehicle.Syntax.BNFC.Elaborate.External
-    Vehicle.Syntax.BNFC.Elaborate.Internal
     Vehicle.Syntax.BNFC.Utils
     Vehicle.Syntax.Builtin.TypeClass
     Vehicle.Syntax.Debug

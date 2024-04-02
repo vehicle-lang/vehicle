@@ -1,13 +1,16 @@
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
+import Data.Map (Map)
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
+import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Type
+import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -28,6 +31,8 @@ data GenericDecl expr
       expr -- Type of the definition.
       expr -- Body of the definition.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+type Decl var builtin = GenericDecl (Expr var builtin)
 
 instance (NFData expr) => NFData (GenericDecl expr)
 
@@ -108,7 +113,7 @@ data DefAbstractSort
   = NetworkDef
   | DatasetDef
   | ParameterDef ParameterSort
-  | PostulateDef
+  | PostulateDef (Maybe (Expr Name Builtin)) (Maybe (Expr Name Builtin))
   deriving (Eq, Show, Generic)
 
 instance NFData DefAbstractSort
@@ -121,18 +126,18 @@ instance Pretty DefAbstractSort where
       NetworkDef -> "network"
       DatasetDef -> "dataset"
       ParameterDef paramTyp -> "parameter"
-      PostulateDef -> "property"
+      PostulateDef {} -> "postulate"
 
 isExternalResourceSort :: DefAbstractSort -> Bool
 isExternalResourceSort = \case
   NetworkDef -> True
   DatasetDef -> True
   ParameterDef {} -> True
-  PostulateDef -> False
+  PostulateDef {} -> False
 
 convertToPostulate :: GenericDecl expr -> GenericDecl expr
 convertToPostulate d =
-  DefAbstract (provenanceOf d) (identifierOf d) PostulateDef (typeOf d)
+  DefAbstract (provenanceOf d) (identifierOf d) (PostulateDef Nothing Nothing) (typeOf d)
 
 --------------------------------------------------------------------------------
 -- Annotations options

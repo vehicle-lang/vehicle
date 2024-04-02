@@ -208,16 +208,38 @@ instance MeaningfulError CompileError where
                   [] -> Nothing
                   (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
             }
-      InvalidAnnotationOptionValue p parameterName parameterValue ->
+      InvalidAnnotationOptionValue parameterName parameterValue ->
+        UError $
+          UserError
+            { provenance = provenanceOf parameterValue,
+              problem =
+                "unable to parse the value"
+                  <+> squotes (prettyFriendly parameterValue)
+                  <+> "for option"
+                  <+> quotePretty parameterName,
+              fix = Nothing
+            }
+      DuplicateAnnotationOption p annotation name ->
         UError $
           UserError
             { provenance = p,
               problem =
-                "unable to parse the value"
-                  <+> quotePretty parameterValue
-                  <+> "for option"
-                  <+> quotePretty parameterName,
-              fix = Nothing
+                "the annotation"
+                  <+> quotePretty annotation
+                  <+> "has multiple copies of the option"
+                  <+> quotePretty name,
+              fix = Just $ "remove all but one of the instances of" <+> quotePretty name
+            }
+      MissingAnnotationOption p annotation name ->
+        UError $
+          UserError
+            { provenance = p,
+              problem =
+                "the annotation"
+                  <+> quotePretty annotation
+                  <+> "is missing the option"
+                  <+> quotePretty name,
+              fix = Just $ "add a value for the option" <+> quotePretty name
             }
       UnknownBuiltin p symbol ->
         UError $

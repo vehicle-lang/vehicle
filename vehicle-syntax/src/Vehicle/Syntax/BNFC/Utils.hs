@@ -25,17 +25,15 @@ mkProvenance tk = do
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
 
-networkAnn = B.Network $ mkToken B.TokNetwork "@network"
+networkAnn = mkToken B.TokAnnotation "@network"
 
-datasetAnn = B.Dataset $ mkToken B.TokDataset "@dataset"
+datasetAnn = mkToken B.TokAnnotation "@dataset"
 
-parameterAnn = B.Parameter $ mkToken B.TokParameter "@parameter"
+parameterAnn = mkToken B.TokAnnotation "@parameter"
 
-propertyAnn = B.Property $ mkToken B.TokProperty "@property"
+propertyAnn = mkToken B.TokAnnotation "@property"
 
-noInlineAnn = B.Property $ mkToken B.TokProperty "@noinline"
-
-postulateAnn = B.Dataset $ mkToken B.TokDataset "@postulate"
+tokPostulate = mkToken B.TokPostulate "@postulate"
 
 tokArrow = mkToken B.TokArrow "->"
 
