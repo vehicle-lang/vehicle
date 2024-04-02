@@ -71,7 +71,7 @@ readResourcesInDecls = \case
         normalisedType <- normaliseInEmptyEnv declType
         let gluedType = Glued declType normalisedType
         case defType of
-          PostulateDef -> do
+          PostulateDef {} -> do
             entry <- mkDeclCtxEntry decl
             return (Just decl, entry)
           ParameterDef sort -> case sort of

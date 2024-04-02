@@ -182,7 +182,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       ParameterDef sort -> restrictParameterType sort decl defType
       DatasetDef -> restrictDatasetType decl defType
       NetworkDef -> restrictNetworkType decl defType
-      PostulateDef -> return $ unnormalised defType
+      PostulateDef {} -> return $ unnormalised defType
 
 -------------------------------------------------------------------------------
 -- Constraint solving

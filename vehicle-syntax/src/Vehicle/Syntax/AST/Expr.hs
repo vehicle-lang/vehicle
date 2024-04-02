@@ -2,7 +2,6 @@ module Vehicle.Syntax.AST.Expr
   ( -- * Generic expressions
     Arg,
     Binder,
-    Decl,
     Expr
       ( Universe,
         App,
@@ -15,7 +14,6 @@ module Vehicle.Syntax.AST.Expr
         Let,
         Lam
       ),
-    Prog,
     Type,
     UniverseLevel (..),
     Telescope,
@@ -38,10 +36,8 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
-import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
-import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Prelude
@@ -173,10 +169,6 @@ type Type = Expr
 type Binder var builtin = GenericBinder (Expr var builtin)
 
 type Arg var builtin = GenericArg (Expr var builtin)
-
-type Decl var builtin = GenericDecl (Expr var builtin)
-
-type Prog var builtin = GenericProg (Expr var builtin)
 
 type Telescope var builtin = [Binder var builtin]
 

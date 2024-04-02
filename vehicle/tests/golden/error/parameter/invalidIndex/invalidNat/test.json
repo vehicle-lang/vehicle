@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile -s invalidNat.vcl -t MarabouQueries -p n:-5",
+  "needs": ["invalidNat.vcl"]
+}

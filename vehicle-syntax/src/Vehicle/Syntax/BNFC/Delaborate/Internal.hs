@@ -50,7 +50,7 @@ instance Delaborate (V.Decl V.Name V.Builtin) B.Decl where
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
-    V.PostulateDef -> B.DeclPost
+    V.PostulateDef {} -> B.DeclPost
     V.NetworkDef -> B.DeclNetw
     V.DatasetDef -> B.DeclData
     V.ParameterDef sort -> case sort of

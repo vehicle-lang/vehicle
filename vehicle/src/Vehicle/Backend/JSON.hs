@@ -444,7 +444,7 @@ toJDecls (decl : decls) = do
         NetworkDef -> resourceError s
         DatasetDef -> resourceError s
         ParameterDef {} -> resourceError s
-        PostulateDef -> DefPostulate p (V.nameOf i) <$> toJExpr t
+        PostulateDef {} -> DefPostulate p (V.nameOf i) <$> toJExpr t
       V.DefFunction p i _anns t e -> do
         t' <- toJExpr t
         e' <- toJExpr e
