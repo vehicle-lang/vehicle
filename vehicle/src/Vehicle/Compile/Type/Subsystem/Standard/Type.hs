@@ -5,7 +5,6 @@ module Vehicle.Compile.Type.Subsystem.Standard.Type
     typeOfBuiltinFunction,
     typeOfBuiltinType,
     typeOfNatInDomainConstraint,
-    typeOfAnn,
   )
 where
 
@@ -142,7 +141,6 @@ typeOfBuiltinFunction = \case
   At -> typeOfAt
   ZipWithVector -> typeOfZipWith
   Indices -> typeOfIndices
-  Ann -> typeOfAnn
   -- TODO this needs to be extracted to loss builtins when merged
   Optimise {} -> forAll "t" type0 $ \t -> (tRat ~> tRat ~> tRat) ~> (t ~> tRat) ~> tRat
 
@@ -156,9 +154,6 @@ typeOfBuiltinType = \case
   List -> type0 ~> type0
   Vector -> type0 ~> tNat .~> type0
   Index -> tNat .~> type0
-
-typeOfAnn :: DSLExpr builtin
-typeOfAnn = forAllExpl "t" type0 $ \t -> t ~> t
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case

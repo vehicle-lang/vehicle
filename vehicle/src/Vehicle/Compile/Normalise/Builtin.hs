@@ -136,7 +136,6 @@ evalBuiltinFunction evalApp b args = case b of
   FromRat dom -> return <$> evalFromRat dom args
   Indices -> return <$> evalIndices args
   Implies -> return <$> evalImplies args
-  Ann -> return <$> evalAnn args
 
 -----------------------------------------------------------------------------
 -- Blocking
@@ -528,11 +527,6 @@ evalMapVector evalApp = \case
 evalIndices :: EvalSimpleBuiltin builtin
 evalIndices = \case
   [VNatLiteral n] -> Just $ mkVLVec (fmap VIndexLiteral [0 .. n - 1])
-  _ -> Nothing
-
-evalAnn :: EvalSimpleBuiltin builtin
-evalAnn = \case
-  [_t, e] -> Just e
   _ -> Nothing
 
 -----------------------------------------------------------------------------

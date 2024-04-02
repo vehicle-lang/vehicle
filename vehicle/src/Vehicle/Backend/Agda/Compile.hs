@@ -407,6 +407,12 @@ compileStdLibFunction fn args = case fn of
     [RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
       Just <$> compileQuantIn Exists tCont lam cont
     _ -> return Nothing
+  StdTypeAnn -> case args of
+    [RelevantExplicitArg _ t, RelevantExplicitArg _ e] -> do
+      e' <- compileExpr e
+      t' <- compileExpr t
+      return (Just (annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" [t', e']))
+    _ -> return Nothing
   _ -> return Nothing
 
 compileLetBinder ::
@@ -427,9 +433,6 @@ compileLam binder expr = do
 
 compileArg :: (MonadAgdaCompile m) => Arg Name Builtin -> m Code
 compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
-
-compileAnn :: [Code] -> Code
-compileAnn args = annotateInfixOp2 [FunctionBase] 0 id Nothing "∋" (reverse args)
 
 compileArgs :: (MonadAgdaCompile m) => [Arg Name Builtin] -> m [Code]
 compileArgs args = traverse compileArg (filter (not . wasInsertedByCompiler) args)
@@ -591,7 +594,6 @@ compileBuiltin _p b args = case b of
             (Set.singleton DataBool, 0)
             ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
       _ -> unsupportedArgsError
-    Ann -> compileAnn <$> compileArgs args
     Optimise {} -> unsupportedError
   NatInDomainConstraint -> unsupportedError
   where

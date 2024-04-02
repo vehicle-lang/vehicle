@@ -398,7 +398,7 @@ elabExpr = \case
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
   -- NOTE: we reverse the arguments to make it well-typed.
-  B.Ann e tk t -> builtinFunction V.Ann tk [t, e]
+  B.Ann e tk t -> freeVar (V.Identifier V.StdLib "typeAnn") tk [t, e]
 
 elabArg :: (MonadElab m) => B.Arg -> m (V.Arg V.Name V.Builtin)
 elabArg = \case
@@ -515,6 +515,11 @@ op2 mk t e1 e2 = do
   tProv <- mkProvenance t
   let p = V.fillInProvenance (tProv :| [V.provenanceOf ce1, V.provenanceOf ce2])
   return $ mk p ce1 ce2
+
+freeVar :: (MonadElab m, IsToken token) => V.Identifier -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
+freeVar b t args = do
+  tProv <- mkProvenance t
+  app (V.FreeVar tProv b) <$> traverse elabExpr args
 
 builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
 builtin b t args = do
