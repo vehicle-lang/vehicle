@@ -1,25 +1,8 @@
 import ast as py
-import itertools
 from dataclasses import asdict, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    SupportsFloat,
-    SupportsInt,
-    Tuple,
-    Type,
-    Union,
-)
-
-from typing_extensions import Self, TypeVar, final, override
+from typing import Any, Dict, Iterator, List, Sequence, Union
 
 from .. import ast as vcl
 from ..ast import (
@@ -31,17 +14,6 @@ from ..ast import (
     Program,
     Provenance,
 )
-from ..typing import (
-    AnyOptimisers,
-    DeclarationName,
-    DifferentiableLogic,
-    Explicit,
-    Target,
-)
-from ._ast_compat import arguments as py_arguments
-from ._ast_compat import dump as py_ast_dump
-from ._ast_compat import unparse as py_ast_unparse
-from ._collections import SupportsVector
 from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
 from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
 
@@ -62,68 +34,6 @@ __all__: List[str] = [
     "load_loss_function",
 ]
 
-################################################################################
-### Implementation of Vehicle builtins in Python
-################################################################################
-
-_S = TypeVar("_S")
-_T = TypeVar("_T")
-_U = TypeVar("_U")
-
-
-@final
-@dataclass(frozen=True)
-class PythonBuiltins(ABCBuiltins[int, int, float]):
-    @override
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T:
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        assert isinstance(index, int), f"Expected int, found {vector}"
-        return vector[index]
-
-    @override
-    def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
-    ) -> _T:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return reduce(lambda x, y: function(y, x), vector, initial)
-
-    @override
-    def Int(self, value: SupportsInt) -> int:
-        return value.__int__()
-
-    @override
-    def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
-    ) -> Tuple[_T, ...]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector, SupportsVector), f"Expected vector, found {vector}"
-        return tuple(map(function, vector))
-
-    @override
-    def Nat(self, value: SupportsInt) -> int:
-        return value.__int__()
-
-    @override
-    def Rat(self, value: SupportsFloat) -> float:
-        return value.__float__()
-
-    @override
-    def Vector(self, *values: _T) -> Tuple[_T, ...]:
-        return values
-
-    @override
-    def ZipWithVector(
-        self,
-        function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
-    ) -> Tuple[_U, ...]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(vector1, SupportsVector), f"Expected vector, found {vector1}"
-        assert isinstance(vector2, SupportsVector), f"Expected vector, found {vector2}"
-        return tuple(map(function, vector1, vector2))
-
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
@@ -141,14 +51,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
     ignored_types: List[str] = field(init=False, default_factory=list)
 
-    @classmethod
-    def from_builtins(cls: Type[Self], builtins: AnyBuiltins) -> Self:
-        return cls(builtins=builtins)
-
-    @classmethod
-    def from_optimisers(cls: Type[Self], optimisers: AnyOptimisers) -> Self:
-        return cls.from_builtins(builtins=PythonBuiltins(optimisers=optimisers))
-
     def compile(
         self,
         program: vcl.Program,
@@ -164,9 +66,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         except TypeError as e:
             py_ast_str: str
             try:
-                py_ast_str = py_ast_unparse(py_ast)
+                py_ast_str = py.unparse(py_ast)
             except:
-                py_ast_str = py_ast_dump(py_ast)
+                py_ast_str = py.dump(py_ast)
             raise TypeError(f"{e}\n{py_ast_str}")
 
     def translate_Main(self, program: vcl.Main) -> py.Module:
@@ -276,8 +178,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         else:
             return py.Assert(
                 test=py.Compare(
-                    left=py.Str(
-                        s=declaration.name,
+                    left=py.Constant(
+                        value=declaration.name,
                         **asdict(declaration.provenance),
                     ),
                     ops=[py.In()],
@@ -291,8 +193,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     ],
                     **asdict(declaration.provenance),
                 ),
-                msg=py.Str(
-                    s=f"The postulate {declaration.name} is undefined",
+                msg=py.Constant(
+                    value=f"The postulate {declaration.name} is undefined",
                     **asdict(declaration.provenance),
                 ),
                 **asdict(declaration.provenance),
@@ -306,48 +208,48 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         ):
             if len(expression.arguments) != 2:
                 raise VehicleOptimiseTypeError(expression)
-            joiner, predicate = expression.arguments
-            if not isinstance(predicate, vcl.Lam):
+            meetOrJoin, loss = expression.arguments
+            if not isinstance(loss, vcl.Lam):
                 raise VehicleOptimiseTypeError(expression)
-            if len(predicate.binders) != 1:
+            if len(loss.binders) != 1:
                 raise VehicleOptimiseTypeError(expression)
             # NOTE: We extract the name of the bound variable from the lambda,
             #       which should be the _second_ argument.
-            name = predicate.binders[0].name
+            name = loss.binders[0].name
             return py_app(
                 py_builtin(
                     builtin=expression.function.builtin.__class__.__name__,
                     provenance=expression.provenance,
                 ),
                 # name:
-                py.Str(
-                    s=name,
+                py.Constant(
+                    value=name,
                     **asdict(expression.provenance),
                 ),
                 # minimise:
-                py.NameConstant(
-                    value=expression.function.builtin.minimise,
+                py.Constant(
+                    value=expression.function.builtin.minimiseOrMaximise,
                     **asdict(expression.provenance),
                 ),
                 # context:
                 py.Dict(
                     keys=[
-                        py.Str(
-                            s=name,
-                            **asdict(expression.provenance),
-                        )
-                        for name in expression.function.builtin.context
+                        # py.Constant(
+                        #     value=name,
+                        #     **asdict(expression.provenance),
+                        # )
+                        # for name in expression.function.builtin.context
                     ],
                     values=[
-                        py_name(name, provenance=expression.provenance)
-                        for name in expression.function.builtin.context
+                        # py_name(name, provenance=expression.provenance)
+                        # for name in expression.function.builtin.context
                     ],
                     **asdict(expression.provenance),
                 ),
-                # joiner:
-                self.translate_expression(joiner),
-                # predicate:
-                self.translate_expression(predicate),
+                # meetOrJoin:
+                self.translate_expression(meetOrJoin),
+                # loss:
+                self.translate_expression(loss),
                 # provenance:
                 provenance=expression.provenance,
             )
@@ -367,14 +269,13 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         if isinstance(
             expression.builtin,
             (
-                vcl.BoolType,
                 vcl.IndexType,
-                vcl.IntType,
+                vcl.BoolTensorType,
+                vcl.IndexTensorType,
+                vcl.NatTensorType,
+                vcl.IntTensorType,
+                vcl.RatTensorType,
                 vcl.ListType,
-                vcl.NatType,
-                vcl.RatType,
-                vcl.VectorType,
-                vcl.UnitType,
             ),
         ):
             raise EraseType
@@ -387,71 +288,33 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         #   When we encounter a constant, we translate it to an application
         #   of the builtin function to the constant value, e.g., we translate
         #   `Index(value=3)` to `__vehicle__.Index(3)`.
-        #
-        #   The `Vector` builtin is a special case. Vehicle represents the
-        #   empty vector as `Builtin(Vector(0))` but represents the vector with
-        #   some elements as `App(Builtin(Vector(n)), [...])`.
-        #   If the length of the vector is zero, we translate the vector as a
-        #   constant, but otherwise translate it as a function.
         elif isinstance(
             expression.builtin,
             (
-                vcl.Bool,
-                vcl.Index,
-                vcl.Int,
-                vcl.Nat,
+                vcl.Unit,
                 vcl.NilList,
-                vcl.Rat,
+                vcl.Index,
+                vcl.BoolTensor,
+                vcl.NatTensor,
+                vcl.IntTensor,
+                vcl.RatTensor,
             ),
-        ) or (
-            isinstance(expression.builtin, vcl.Vector) and expression.builtin.value == 0
         ):
             arguments: List[py.expr] = []
-            if isinstance(expression.builtin, vcl.Bool):
+            if isinstance(
+                expression.builtin,
+                (
+                    vcl.Index,
+                    vcl.BoolTensor,
+                    vcl.NatTensor,
+                    vcl.IntTensor,
+                    vcl.RatTensor,
+                ),
+            ):
                 arguments.append(
-                    py.NameConstant(
+                    py.Constant(
                         value=expression.builtin.value,
                         **asdict(expression.provenance),
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Index):
-                arguments.append(
-                    py.Num(
-                        n=expression.builtin.value,
-                        **asdict(expression.provenance),
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Int):
-                arguments.append(
-                    py.Num(
-                        n=expression.builtin.value,
-                        **asdict(expression.provenance),
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Nat):
-                arguments.append(
-                    py.Num(
-                        n=expression.builtin.value,
-                        **asdict(expression.provenance),
-                    )
-                )
-            elif isinstance(expression.builtin, vcl.Rat):
-                arguments.append(
-                    py_app(
-                        py_qualified_name(
-                            "fractions",
-                            "Fraction",
-                            provenance=expression.provenance,
-                        ),
-                        py.Num(
-                            n=expression.builtin.numerator,
-                            **asdict(expression.provenance),
-                        ),
-                        py.Num(
-                            n=expression.builtin.denominator,
-                            **asdict(expression.provenance),
-                        ),
-                        provenance=expression.provenance,
                     )
                 )
             return py_app(
@@ -522,7 +385,7 @@ def py_qualified_name(*parts: vcl.Name, provenance: vcl.Provenance) -> py.expr:
 
 def py_binder(*args: py.arg) -> py.arguments:
     """Make a binder which only uses args."""
-    return py_arguments(
+    return py.arguments(
         posonlyargs=[],
         args=list(args),
         vararg=None,
@@ -560,46 +423,3 @@ def py_partial_app(
         *arguments,
         provenance=provenance,
     )
-
-
-def load(
-    path: Union[str, Path],
-    *,
-    declarations: Iterable[DeclarationName] = (),
-    target: Target = Explicit.Explicit,
-    translation: Optional[PythonTranslation] = None,
-) -> Dict[str, Any]:
-    if translation is None:
-        translation = PythonTranslation(builtins=PythonBuiltins(optimisers={}))
-    return translation.compile(
-        vcl.load(path, declarations=declarations, target=target), path=path
-    )
-
-
-def load_loss_function(
-    path: Union[str, Path],
-    property_name: DeclarationName,
-    *,
-    target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-    optimisers: AnyOptimisers = {},
-) -> Any:
-    """
-    Load a loss function from a property in a Vehicle specification.
-
-    :param path: The path to the Vehicle specification file.
-    :param property_name: The name of the Vehicle property to load.
-    :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
-    :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
-    :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
-    """
-    translation = PythonTranslation(builtins=PythonBuiltins(optimisers=optimisers))
-    declarations = load(
-        path,
-        declarations=(property_name,),
-        target=target,
-        translation=translation,
-    )
-    if property_name in declarations:
-        return declarations[property_name]
-    else:
-        raise VehiclePropertyNotFound(property_name)

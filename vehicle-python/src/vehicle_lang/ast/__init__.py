@@ -1,11 +1,11 @@
-from fractions import Fraction
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
+from fractions import Fraction
 from pathlib import Path
 from typing import Generic, Iterable, Optional, Sequence, Tuple, Union
 
-from typing_extensions import Self, TypeAlias, TypeVar, override
+from typing_extensions import Literal, Self, TypeAlias, TypeVar, override
 
 from .. import session
 from ..error import VehicleError
@@ -76,6 +76,11 @@ class IndexType(BuiltinFunction):
 
 
 @dataclass(frozen=True)
+class IndexTensorType(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
 class BoolTensorType(BuiltinFunction):
     pass
 
@@ -141,72 +146,72 @@ class ConsList(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class NotTensor(BuiltinFunction):
+class NotBoolTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class AndTensor(BuiltinFunction):
+class AndBoolTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class OrTensor(BuiltinFunction):
+class OrBoolTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NegTensor(BuiltinFunction):
+class NegRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class AddTensor(BuiltinFunction):
+class AddRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class SubTensor(BuiltinFunction):
+class SubRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulTensor(BuiltinFunction):
+class MulRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class DivTensor(BuiltinFunction):
+class DivRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class EqTensor(BuiltinFunction):
+class EqRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class NeTensor(BuiltinFunction):
+class NeRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LeTensor(BuiltinFunction):
+class LeRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtTensor(BuiltinFunction):
+class LtRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GeTensor(BuiltinFunction):
+class GeRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class GtTensor(BuiltinFunction):
+class GtRatTensor(BuiltinFunction):
     pass
 
 
@@ -226,22 +231,22 @@ class MaxRatTensor(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class ReduceAndTensor(BuiltinFunction):
+class ReduceAndBoolTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ReduceOrTensor(BuiltinFunction):
+class ReduceOrBoolTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ReduceSumTensor(BuiltinFunction):
+class ReduceSumRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ReduceTensor(BuiltinFunction):
+class ReduceRatTensor(BuiltinFunction):
     pass
 
 
@@ -276,18 +281,18 @@ class GtIndex(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class LookupTensor(BuiltinFunction):
+class LookupRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class StackTensor(BuiltinFunction):
+class StackRatTensor(BuiltinFunction):
     value: int
 
 
 @dataclass(frozen=True)
-class ConstTensor(BuiltinFunction):
-    value: Rat
+class ConstRatTensor(BuiltinFunction):
+    value: Fraction
 
 
 @dataclass(frozen=True)
@@ -301,37 +306,27 @@ class MapList(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class MapTensor(BuiltinFunction):
+class MapRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class ZipWithTensor(BuiltinFunction):
+class ZipWithRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class Indices(BuiltinFunction):
+class IndicesIndexTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
 class Optimise(BuiltinFunction):
-    minimise: bool
+    minimiseOrMaximise: Literal["Minimise", "Maximise"]
 
 
 @dataclass(frozen=True)
 class If(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Forall(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Exists(BuiltinFunction):
     pass
 
 
