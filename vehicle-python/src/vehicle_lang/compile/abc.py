@@ -2,7 +2,7 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tuple
+from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tuple, Type, Union
 
 from typing_extensions import TypeAlias, TypeVar, override
 
@@ -16,317 +16,210 @@ from .error import VehicleBuiltinUnsupported
 ### Interpretations of Vehicle builtins in Python
 ################################################################################
 
-_SupportsNat = TypeVar("_SupportsNat", bound=_numeric.SupportsNat)
-_SupportsInt = TypeVar("_SupportsInt", bound=_numeric.SupportsInt)
-_SupportsRat = TypeVar("_SupportsRat", bound=_numeric.SupportsRat)
+_Bool = TypeVar("_Bool")
+_Index = TypeVar("_Index")
+_Nat = TypeVar("_Nat")
+_Int = TypeVar("_Int")
+_Rat = TypeVar("_Rat")
+_BoolTensor = TypeVar("_BoolTensor")
+_IndexTensor = TypeVar("_IndexTensor")
+_NatTensor = TypeVar("_NatTensor")
+_IntTensor = TypeVar("_IntTensor")
+_RatTensor = TypeVar("_RatTensor")
 
-_S = TypeVar("_S")
-_T = TypeVar("_T")
-_U = TypeVar("_U")
+Unit: TypeAlias = Tuple[()]
 
+Value: TypeAlias = Union[
+    _Bool,
+    _Index,
+    _Nat,
+    _Int,
+    _Rat,
+    _BoolTensor,
+    _IndexTensor,
+    _NatTensor,
+    _IntTensor,
+    _RatTensor,
+    Tuple['Value', ...]
+]
 
 @dataclass(frozen=True, init=False)
 class ABCBuiltins(
     Generic[
-        _SupportsNat,
-        _SupportsInt,
-        _SupportsRat,
+        _Index,
+        _Bool,
+        _Nat,
+        _Int,
+        _Rat,
+        _BoolTensor,
+        _NatTensor,
+        _IntTensor,
+        _RatTensor,
     ],
     metaclass=ABCMeta,
 ):
-    optimisers: Dict[str, Optimiser[Any, _SupportsRat]] = field(default_factory=dict)
-
-    def AddInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x + y
-
-    def AddNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x + y
-
-    def AddRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x + y
-
-    def And(self, x: bool, y: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
-        assert isinstance(y, bool), f"Expected bool, found {y}"
-        return x and y
+    optimisers: Dict[str, Optimiser[Any, _Rat]] = field(default_factory=dict)
 
     @abstractmethod
-    def AtVector(self, vector: SupportsVector[_T], index: int) -> _T: ...
-
-    def Bool(self, value: bool) -> bool:
-        assert isinstance(value, bool), f"Expected bool, found {value}"
-        return bool(value)
-
-    def ConsList(self, item: _T, iterable: SupportsList[_T]) -> SupportsList[_T]:
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
-        return itertools.chain((item,), iterable)
-
-    def DivRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x / y
-
-    def EqIndex(self, x: int, y: int) -> bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
-        return x == y
-
-    def EqInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x == y
-
-    def EqNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x == y
-
-    def EqRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x == y
-
-    def Exists(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
-    ) -> bool:
-        raise VehicleBuiltinUnsupported(vcl.Exists.__name__)
-
-    def FoldList(
-        self, function: Callable[[_S, _T], _T], initial: _T, iterable: SupportsList[_S]
-    ) -> _T:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
-        return reduce(lambda x, y: function(y, x), iterable, initial)
+    def IndexType(self) -> Type[_Index]: ...
 
     @abstractmethod
-    def FoldVector(
-        self, function: Callable[[_S, _T], _T], initial: _T, vector: SupportsVector[_S]
-    ) -> _T: ...
-
-    def Forall(
-        self, name: str, context: Dict[str, Any], predicate: Callable[[_T], bool]
-    ) -> bool:
-        raise VehicleBuiltinUnsupported(vcl.Forall.__name__)
-
-    def GeIndex(self, x: int, y: int) -> bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
-        return x >= y
-
-    def GeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x >= y
-
-    def GeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x >= y
-
-    def GeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x >= y
-
-    def GtIndex(self, x: int, y: int) -> bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
-        return x > y
-
-    def GtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x > y
-
-    def GtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x > y
-
-    def GtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x > y
-
-    def If(self, cond: bool, if_true: _T, if_false: _T) -> _T:
-        assert isinstance(cond, bool), f"Expected bool, found {cond}"
-        return if_true if cond else if_false
-
-    def Implies(self, x: bool, y: bool) -> bool:
-        return self.Or(self.Not(x), y)
-
-    def Index(self, value: SupportsInt) -> int:
-        return value.__int__()
-
-    def Indices(self, upto: int) -> SupportsVector[int]:
-        assert isinstance(upto, int), f"Expected int, found {upto}"
-        return self.Vector(*range(0, upto))
+    def BoolTensorType(self) -> Type[_BoolTensor]: ...
 
     @abstractmethod
-    def Int(self, value: SupportsInt) -> _SupportsInt: ...
-
-    def LeIndex(self, x: int, y: int) -> bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
-        return x <= y
-
-    def LeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x <= y
-
-    def LeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x <= y
-
-    def LeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x <= y
-
-    def LtIndex(self, x: int, y: int) -> bool:
-        assert isinstance(x, int), f"Expected int, found {x}"
-        assert isinstance(y, int), f"Expected int, found {y}"
-        return x < y
-
-    def LtInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x < y
-
-    def LtNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x < y
-
-    def LtRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x < y
-
-    def MapList(
-        self, function: Callable[[_S], _T], iterable: SupportsList[_S]
-    ) -> SupportsList[_T]:
-        assert callable(function), f"Expected function, found {function}"
-        assert isinstance(iterable, SupportsList), f"Expected list, found {iterable}"
-        return map(function, iterable)
+    def IndexTensorType(self) -> Type[_IndexTensor]: ...
 
     @abstractmethod
-    def MapVector(
-        self, function: Callable[[_S], _T], vector: SupportsVector[_S]
-    ) -> SupportsVector[_T]: ...
-
-    def MaxRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return max(x, y)
-
-    def MinRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return min(x, y)
-
-    def MulInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x * y
-
-    def MulNat(self, x: _SupportsNat, y: _SupportsNat) -> _SupportsNat:
-        assert isinstance(x, _numeric.SupportsNat), f"Expected Nat, found {x}"
-        assert isinstance(y, _numeric.SupportsNat), f"Expected Nat, found {y}"
-        return x * y
-
-    def MulRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x * y
+    def NatTensorType(self) -> Type[_NatTensor]: ...
 
     @abstractmethod
-    def Nat(self, value: SupportsInt) -> _SupportsNat: ...
-
-    def NeIndex(self, x: int, y: int) -> bool:
-        return self.Not(self.EqIndex(x, y))
-
-    def NeInt(self, x: _SupportsInt, y: _SupportsInt) -> bool:
-        return self.Not(self.EqInt(x, y))
-
-    def NeNat(self, x: _SupportsNat, y: _SupportsNat) -> bool:
-        return self.Not(self.EqNat(x, y))
-
-    def NeRat(self, x: _SupportsRat, y: _SupportsRat) -> bool:
-        return self.Not(self.EqRat(x, y))
-
-    def NegInt(self, x: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        return -x
-
-    def NegRat(self, x: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        return -x
-
-    def NilList(self) -> SupportsList[_T]:
-        return ()
-
-    def Not(self, x: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
-        return not x
-
-    def Optimise(
-        self,
-        name: str,
-        minimise: bool,
-        context: Dict[str, Any],
-        joiner: Callable[[Any, Any], Any],
-        predicate: Callable[[Any], Any],
-    ) -> Any:
-        if name in self.optimisers:
-            return self.optimisers[name](minimise, context, joiner, predicate)
-        else:
-            raise TypeError(f"Could not find optimiser for '{name}'.")
-
-    def Or(self, x: bool, y: bool) -> bool:
-        assert isinstance(x, bool), f"Expected bool, found {x}"
-        assert isinstance(y, bool), f"Expected bool, found {y}"
-        return x or y
-
-    def PowRat(self, x: _SupportsRat, y: _SupportsInt) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x ** y.__int__()
+    def IntTensorType(self) -> Type[_IntTensor]: ...
 
     @abstractmethod
-    def Rat(self, value: SupportsFloat) -> _SupportsRat: ...
+    def RatTensorType(self) -> Type[_RatTensor]: ...
 
-    def SubInt(self, x: _SupportsInt, y: _SupportsInt) -> _SupportsInt:
-        assert isinstance(x, _numeric.SupportsInt), f"Expected Int, found {x}"
-        assert isinstance(y, _numeric.SupportsInt), f"Expected Int, found {y}"
-        return x - y
-
-    def SubRat(self, x: _SupportsRat, y: _SupportsRat) -> _SupportsRat:
-        assert isinstance(x, _numeric.SupportsRat), f"Expected Rat, found {x}"
-        assert isinstance(y, _numeric.SupportsRat), f"Expected Rat, found {y}"
-        return x - y
+    def ListType(self) -> Tuple[]: ...
 
     def Unit(self) -> Tuple[()]:
         return ()
 
     @abstractmethod
-    def Vector(self, *values: _T) -> SupportsVector[_T]: ...
+    def Index(self): ...
 
     @abstractmethod
-    def ZipWithVector(
-        self,
-        function: Callable[[_S, _T], _U],
-        vector1: SupportsVector[_S],
-        vector2: SupportsVector[_T],
-    ) -> SupportsVector[_U]: ...
+    def BoolTensor(self): ...
+
+    @abstractmethod
+    def NatTensor(self): ...
+
+    @abstractmethod
+    def IntTensor(self): ...
+
+    @abstractmethod
+    def RatTensor(self): ...
+
+    @abstractmethod
+    def NilList(self): ...
+
+    @abstractmethod
+    def ConsList(self): ...
+
+    @abstractmethod
+    def NotTensor(self): ...
+
+    @abstractmethod
+    def AndTensor(self): ...
+
+    @abstractmethod
+    def OrTensor(self): ...
+
+    @abstractmethod
+    def NegTensor(self): ...
+
+    @abstractmethod
+    def AddTensor(self): ...
+
+    @abstractmethod
+    def SubTensor(self): ...
+
+    @abstractmethod
+    def MulTensor(self): ...
+
+    @abstractmethod
+    def DivTensor(self): ...
+
+    @abstractmethod
+    def EqTensor(self): ...
+
+    @abstractmethod
+    def NeTensor(self): ...
+
+    @abstractmethod
+    def LeTensor(self): ...
+
+    @abstractmethod
+    def LtTensor(self): ...
+
+    @abstractmethod
+    def GeTensor(self): ...
+
+    @abstractmethod
+    def GtTensor(self): ...
+
+    @abstractmethod
+    def PowRatTensor(self): ...
+
+    @abstractmethod
+    def MinRatTensor(self): ...
+
+    @abstractmethod
+    def MaxRatTensor(self): ...
+
+    @abstractmethod
+    def ReduceAndTensor(self): ...
+
+    @abstractmethod
+    def ReduceOrTensor(self): ...
+
+    @abstractmethod
+    def ReduceSumTensor(self): ...
+
+    @abstractmethod
+    def ReduceTensor(self): ...
+
+    @abstractmethod
+    def EqIndex(self): ...
+
+    @abstractmethod
+    def NeIndex(self): ...
+
+    @abstractmethod
+    def LeIndex(self): ...
+
+    @abstractmethod
+    def LtIndex(self): ...
+
+    @abstractmethod
+    def GeIndex(self): ...
+
+    @abstractmethod
+    def GtIndex(self): ...
+
+    @abstractmethod
+    def LookupTensor(self): ...
+
+    @abstractmethod
+    def StackTensor(self): ...
+
+    @abstractmethod
+    def ConstTensor(self): ...
+
+    @abstractmethod
+    def FoldList(self): ...
+
+    @abstractmethod
+    def MapList(self): ...
+
+    @abstractmethod
+    def MapTensor(self): ...
+
+    @abstractmethod
+    def ZipWithTensor(self): ...
+
+    @abstractmethod
+    def Indices(self): ...
+
+    @abstractmethod
+    def Optimise(self): ...
+
+    @abstractmethod
+    def If(self): ...
+
+    @abstractmethod
+    def Forall(self): ...
+
+    @abstractmethod
+    def Exists(self): ...
 
 
 AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]

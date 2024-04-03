@@ -50,11 +50,12 @@ MISSING: Provenance = Provenance(0, 0)
 
 
 @dataclass(frozen=True)
-class Rational:
-    pass
+class Rat:
+    numerator: int
+    denominator: int
 
 
-_DType = TypeVar("_DType", bool, float, int, Rational)
+_DType = TypeVar("_DType", bool, float, int, Rat)
 
 
 @dataclass(frozen=True)
@@ -81,11 +82,6 @@ class IndexType(BuiltinFunction):
 
 @dataclass(frozen=True)
 class BoolTensorType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class IndexTensorType(BuiltinFunction):
     pass
 
 
@@ -136,7 +132,7 @@ class IntTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class RatTensor(BuiltinFunction):
-    value: Tensor[Rational]
+    value: Tensor[Rat]
 
 
 @dataclass(frozen=True)
@@ -296,7 +292,7 @@ class StackTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class ConstTensor(BuiltinFunction):
-    value: Rational
+    value: Rat
 
 
 @dataclass(frozen=True)
