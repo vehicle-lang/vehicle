@@ -11,8 +11,13 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
+import Vehicle.Backend.Tensors.Core
+import Vehicle.Compile.Context.Bound.Core
+import Vehicle.Data.NormalisedExpr
+import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST
+import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Variable
@@ -27,6 +32,7 @@ data CompileWarning
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
   | UnboundedNetworkInputVariables QueryFormatID QueryAddress MetaNetwork [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
+  | InefficientTensorCode Name BuiltinFunction NamedBoundCtx (NFValue TensorBuiltin)
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -35,6 +41,7 @@ data SummarisedCompileWarning
   | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyAddress Int
   | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyAddress (NonEmpty QueryID)
   | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyAddress [(NonEmpty QueryID, [(NetworkRationalVariable, UnderConstrainedVariableStatus)])]
+  | InefficientTensorCodeSummary Name (Either BuiltinFunction StdLibFunction) NamedBoundCtx (NFValue TensorBuiltin)
 
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
@@ -46,11 +53,12 @@ data CombiningState = CombiningState
     underSpecifiedProblemSpaceVars :: Map PropertyAddress (Set UserRationalVariable),
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
-    unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID))
+    unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
+    inefficientTensorCode :: Map Name [(BuiltinFunction, NamedBoundCtx, NFValue TensorBuiltin)]
   }
 
 emptyState :: CombiningState
-emptyState = CombiningState mempty mempty mempty mempty mempty
+emptyState = CombiningState mempty mempty mempty mempty mempty mempty
 
 addWarningToState :: CombiningState -> CompileWarning -> CombiningState
 addWarningToState CombiningState {..} = \case
@@ -82,6 +90,11 @@ addWarningToState CombiningState {..} = \case
   UnboundedNetworkInputVariables queryFormat (propertyAddress, queryID) metaNetwork vars ->
     CombiningState
       { unboundedNetworkInputs = Map.insertWith (Map.unionWith (<>)) (queryFormat, propertyAddress) (Map.singleton (metaNetwork, vars) [queryID]) unboundedNetworkInputs,
+        ..
+      }
+  InefficientTensorCode name fun ctx value ->
+    CombiningState
+      { inefficientTensorCode = Map.insertWith (<>) name [(fun, ctx, value)] inefficientTensorCode,
         ..
       }
 
@@ -124,3 +137,4 @@ compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
         UnsoundStrictOrderConversionsSummary _ address _ -> Just address
         AllConstantNetworkInputVariablesSummary _ address _ -> Just address
         UnboundedNetworkInputVariablesSummary _ address _ -> Just address
+        InefficientTensorCodeSummary {} -> Nothing

@@ -1,9 +1,3 @@
-bigAnd : Vector Rat -> Rat;
-bigAnd _x0 = fold (\ x -> \ y -> x + y) 0.0 _x0
-
-equalsVector : Vector Rat -> Vector Rat -> Rat;
-equalsVector xs ys = bigAnd (zipWith (\ x -> \ y -> max 0.0 (x - y) + max 0.0 (y - x)) xs ys)
-
 @property;
-reachable : forallT (f : Vector Rat -> Vector Rat) . Rat;
-reachable f = Optimise[min] (*) (\ x -> equalsVector (f x) [0.0])
+reachable : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
+reachable f = Optimise[min] (*) (\ x -> ReduceSum (f x == [0.0]))

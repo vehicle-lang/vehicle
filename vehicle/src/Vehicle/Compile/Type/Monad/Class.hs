@@ -264,7 +264,7 @@ freshMeta p metaType boundCtx = do
 
   logDebug MaxDetail $
     "fresh-meta"
-      <+> prettyFriendly (WithContext (unnormalised metaExpr) boundCtx)
+      <+> prettyFriendly (WithContext (unnormalised metaExpr) (toNamedBoundCtx boundCtx))
       <+> ":"
       <+> prettyVerbose metaType
   return (metaID, metaExpr)
@@ -389,7 +389,7 @@ solveMeta m solution solutionCtx = do
     "solved"
       <+> pretty m
       <+> "as"
-      <+> prettyExternal (WithContext abstractedSolution solutionCtx)
+      <+> prettyExternal (WithContext abstractedSolution (toNamedBoundCtx solutionCtx))
 
   metaSubst <- getMetaSubstitution (Proxy @builtin)
   case MetaMap.lookup m metaSubst of

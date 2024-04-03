@@ -20,7 +20,7 @@ import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
-import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
@@ -29,6 +29,7 @@ import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
+import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification.IO
 

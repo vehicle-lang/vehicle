@@ -1,5 +1,6 @@
 module Vehicle.Compile.EtaConversion
   ( etaExpandProg,
+    etaExpand,
   )
 where
 
@@ -41,19 +42,25 @@ etaExpandDecls = \case
 
 etaExpand ::
   forall m builtin.
-  (MonadVarContext builtin m, PrintableBuiltin builtin) =>
+  (MonadFreeContext builtin m, MonadCompile m) =>
   Identifier ->
   Type Ix builtin ->
   Expr Ix builtin ->
   m (Expr Ix builtin)
 etaExpand declIdent originalType originalBody = do
   normType <- normaliseInEmptyEnv originalType
-  go normType originalBody
+  runFreshBoundContextT (Proxy @builtin) $ go normType originalBody
   where
-    go :: WHNFType builtin -> Expr Ix builtin -> m (Expr Ix builtin)
+    go ::
+      forall n.
+      (MonadBoundContext builtin n, MonadCompile n) =>
+      WHNFType builtin ->
+      Expr Ix builtin ->
+      n (Expr Ix builtin)
     go typ body = case (typ, body) of
-      (VPi _ piBody, Lam p lamBinder lamBody) ->
-        Lam p lamBinder <$> addBinderToContext lamBinder (go piBody lamBody)
+      (VPi _ piBody, Lam p lamBinder lamBody) -> do
+        body' <- addBinderToContext lamBinder (go piBody lamBody)
+        return $ Lam p lamBinder body'
       (VPi piBinder piBody, _) -> do
         unnormPiBinder <- traverse unnormalise piBinder
         lamBinder <- piBinderToLamBinder unnormPiBinder

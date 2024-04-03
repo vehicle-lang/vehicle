@@ -87,7 +87,7 @@ eval env expr = do
       return $ VLam binder' (WHNFBody env body)
     Pi _ binder body -> do
       binder' <- evalBinder env binder
-      let newEnv = extendEnvWithBound binder' env
+      let newEnv = extendEnvWithBound (Lv $ length env) binder' env
       body' <- eval newEnv body
       return $ VPi binder' body'
     Let _ bound binder body -> do
@@ -123,18 +123,8 @@ evalApp fun args@(a : as) = do
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
     VLam binder (WHNFBody env body)
-      | not (visibilityMatches binder a) -> do
-          compilerDeveloperError $
-            "Visibility mismatch during normalisation:"
-              <> line
-              <> indent
-                2
-                ( "fun:"
-                    <+> prettyVerbose fun
-                    <> line
-                    <> "args:"
-                      <+> prettyVerbose args
-                )
+      | not (visibilityMatches binder a) ->
+          visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
       | otherwise -> do
           let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval newEnv body
@@ -214,7 +204,7 @@ showApp _fun _spine = do
   -- incrCallDepth
   return ()
 
-showAppExit :: (MonadNorm builtin m) => WHNFValue builtin -> m ()
+showAppExit :: (MonadNorm builtin m) => Value nf builtin -> m ()
 showAppExit _result = do
   -- decrCallDepth
   -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result

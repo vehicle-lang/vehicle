@@ -1,6 +1,7 @@
 module Vehicle.Syntax.AST.Provenance
   ( Provenance (..),
     tkProvenance,
+    noProvenance,
     HasProvenance (..),
     expandProvenance,
     fillInProvenance,
@@ -145,6 +146,9 @@ instance Pretty Provenance where
 instance Semigroup Provenance where
   Provenance origin1 owner1 <> Provenance origin2 owner2 =
     Provenance (origin1 <> origin2) owner1
+
+noProvenance :: Provenance
+noProvenance = Provenance mempty User
 
 instance Monoid Provenance where
   mempty = Provenance mempty User

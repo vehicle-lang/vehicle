@@ -393,7 +393,7 @@ compileStdLibFunction fn args = case fn of
     let fun' = annotateConstant [DataTensor] "Tensor"
     args' <- traverse compileExpr (filterOutNonExplicitArgs args)
     return $ Just $ annotateApp [] fun' args'
-  StdForeach -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
+  StdForeachIndex -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
     [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] ->
@@ -561,9 +561,8 @@ compileBuiltin _p b args = case b of
     Equals dom Eq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
     Equals dom Neq -> compileEquality (equalityDomDependencies dom) =<< compileArgs args
     Order dom ord -> compileOrder ord dom =<< compileArgs args
-    Fold dom -> case dom of
-      FoldList -> annotateApp [DataList] (listQualifier <> ".foldr") <$> compileArgs args
-      FoldVector -> annotateApp [DataVector] (vectorQualifier <> ".foldr") <$> compileArgs args
+    FoldList -> annotateApp [DataList] (listQualifier <> ".foldr") <$> compileArgs args
+    FoldVector -> annotateApp [DataVector] (vectorQualifier <> ".foldr") <$> compileArgs args
     MapList -> annotateApp [DataList] (listQualifier <> ".map") <$> compileArgs args
     MapVector -> annotateApp [DataVector] (vectorQualifier <> ".map") <$> compileArgs args
     ZipWithVector -> annotateApp [DataVector] (vectorQualifier <> ".zipWith") <$> compileArgs args

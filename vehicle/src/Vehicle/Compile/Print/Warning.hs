@@ -5,6 +5,8 @@ module Vehicle.Compile.Print.Warning where
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty, sort)
 import Data.Set qualified as Set
+import Vehicle.Compile.Prelude (Contextualised (..))
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Prelude
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
@@ -67,6 +69,13 @@ instance Pretty SummarisedCompileWarning where
         <> line
         <> line
         <> "See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details."
+    InefficientTensorCodeSummary name builtin boundCtx expr ->
+      "While compiling property"
+        <+> quotePretty name
+        <+> "found the following operation"
+        <+> quotePretty builtin
+        <+> "that cannot be efficiently compiled to tensors. The relevant code is:"
+        <+> indent 2 (prettyFriendly (WithContext expr boundCtx))
     UnboundedNetworkInputVariablesSummary queryFormat propertyAddress varsByQueryID ->
       "In property"
         <+> quotePretty propertyAddress

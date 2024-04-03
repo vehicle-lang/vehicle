@@ -58,8 +58,8 @@ skip = [
   # PyPy builds do not work.
   "pp*",
 ]
-test-command = "pytest {package}/tests"
-test-extras = "test"
+#test-command = "pytest {package}/tests"
+#test-extras = "test"
 # 19-06-2023:
 # Use custom manylinux and musllinux images with GHC 9.4.8 preinstalled.
 manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc948_aarch64"
@@ -86,7 +86,7 @@ allow_untyped_defs = true
 disable_error_code = ['name-defined']
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = [] #["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }

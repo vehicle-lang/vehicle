@@ -121,6 +121,9 @@ library
     Vehicle.Backend.Prelude
     Vehicle.Backend.Queries.Error
     Vehicle.Backend.Tensors.Clean
+    Vehicle.Backend.Tensors.Convert
+    Vehicle.Backend.Tensors.Core
+    Vehicle.Backend.Tensors.JSON
     Vehicle.CommandLine
     Vehicle.Compile
     Vehicle.Compile.Context.Bound
@@ -154,6 +157,7 @@ library
     Vehicle.Data.Hashing
     Vehicle.Data.LinearExpr
     Vehicle.Data.NormalisedExpr
+    Vehicle.Data.Tensor
     Vehicle.Export
     Vehicle.Libraries
     Vehicle.Libraries.Core
@@ -174,14 +178,7 @@ library
     Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
-    Vehicle.Backend.JSON
-    Vehicle.Backend.LossFunction.Compile
     Vehicle.Backend.LossFunction.Logics
-    Vehicle.Backend.LossFunction.TypeSystem
-    Vehicle.Backend.LossFunction.TypeSystem.Core
-    Vehicle.Backend.LossFunction.TypeSystem.InstanceBuiltins
-    Vehicle.Backend.LossFunction.TypeSystem.InstanceDefaults
-    Vehicle.Backend.LossFunction.TypeSystem.Type
     Vehicle.Backend.Queries
     Vehicle.Backend.Queries.ConstraintSearch
     Vehicle.Backend.Queries.Error.Linearity

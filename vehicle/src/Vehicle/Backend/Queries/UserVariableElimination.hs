@@ -19,15 +19,18 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateExists)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateNot (eliminateNot)
 import Vehicle.Backend.Queries.UserVariableElimination.Unblocking
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface.Expr (negExpr)
 import Vehicle.Data.BuiltinInterface.Value
-import Vehicle.Data.LinearExpr (LinearExpr, RationalTensor (..), addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr, zeroTensor)
+import Vehicle.Data.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (MetaNetwork, QueryContents)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -59,8 +62,8 @@ eliminateUserVariables = go
       VAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
       VOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
       VIf _ c x y -> go (eliminateIf c x y)
-      VExists _ binder env body -> compileQuantifiedQuerySet False binder env body
-      VForall _ binder env body -> do
+      VExists _ binder (WHNFBody env body) -> compileQuantifiedQuerySet False binder env body
+      VForall _ binder (WHNFBody env body) -> do
         logDebug MinDetail ("Negating property..." <> line)
         compileQuantifiedQuerySet True binder env (negExpr body)
       -----------------
@@ -92,7 +95,7 @@ compileQuantifiedQuerySet ::
   Expr Ix Builtin ->
   m (Property (MetaNetwork, UserVariableReconstruction, QueryContents))
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
-  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder env body)
+  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder (WHNFBody env body))
   logCompilerPass MaxDetail subsectionDoc $ do
     flip evalStateT emptyGlobalCtx $ do
       maybePartitions <- compileExists binder env body
@@ -145,7 +148,7 @@ compileBoolExpr expr = case expr of
   VIf _ c x y -> compileBoolExpr (eliminateIf c x y)
   VAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   VOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  VExists _ binder env body -> compileExists binder env body
+  VExists _ binder (WHNFBody env body) -> compileExists binder env body
   _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateIf :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
@@ -166,7 +169,7 @@ eliminateNotVectorEqual ::
   (MonadQueryStructure m) =>
   WHNFSpine QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
-eliminateNotVectorEqual = appStdlibDef StdNotEqualsVector
+eliminateNotVectorEqual = appHiddenStdlibDef StdNotEqualsVector
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
@@ -231,7 +234,7 @@ compileTensorAssertion spinePrefix x y = do
     Just assertion -> return $ mkTrivialPartition assertion
     Nothing -> do
       logDebug MaxDetail $ "Unable to solve tensor equality so reducing to rational equalities"
-      compileBoolExpr =<< appStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
+      compileBoolExpr =<< appHiddenStdlibDef StdEqualsVector (spinePrefix <> (Arg mempty Explicit Relevant <$> [x, y]))
 
 compileTensorLinearExpr ::
   forall m.
@@ -258,9 +261,9 @@ compileTensorLinearExpr = go
       _ -> return Nothing
 
 getRationalTensor :: WHNFValue QueryBuiltin -> Maybe RationalTensor
-getRationalTensor expr = uncurry RationalTensor <$> go expr
+getRationalTensor expr = uncurry Tensor <$> go expr
   where
-    go :: WHNFValue QueryBuiltin -> Maybe (TensorDimensions, Vector Rational)
+    go :: WHNFValue QueryBuiltin -> Maybe (TensorShape, Vector Rational)
     go = \case
       VRatLiteral r -> Just ([], Vector.singleton (fromRational r))
       VVecLiteral xs -> do
@@ -336,10 +339,10 @@ checkUserVariableType ::
   forall m.
   (MonadQueryStructure m) =>
   WHNFBinder QueryBuiltin ->
-  m TensorDimensions
+  m TensorShape
 checkUserVariableType binder = go (typeOf binder)
   where
-    go :: WHNFType QueryBuiltin -> m TensorDimensions
+    go :: WHNFType QueryBuiltin -> m TensorShape
     go = \case
       VRatType -> return []
       VVectorType tElem (VNatLiteral d) -> do

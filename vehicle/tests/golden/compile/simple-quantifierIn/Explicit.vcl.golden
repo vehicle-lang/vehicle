@@ -1,33 +1,15 @@
-bigAnd__lam_A__Vector_A : Vector Bool -> Bool;
-bigAnd__lam_A__Vector_A _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-bigAnd__List : List Bool -> Bool;
-bigAnd__List _x0 = fold (\ x -> \ y -> x and y) True _x0
-
-bigOr : Vector Bool -> Bool;
-bigOr _x0 = fold (\ x -> \ y -> x or y) False _x0
-
-equalsVector : Vector Rat -> Vector Rat -> Bool;
-equalsVector xs ys = bigAnd__lam_A__Vector_A (zipWith (\ x -> \ y -> x == y) xs ys)
-
-notEqualsVector : Vector Rat -> Vector Rat -> Bool;
-notEqualsVector xs ys = bigOr (zipWith (\ x -> \ y -> x != y) xs ys)
-
-dataset : List (Vector Rat);
-dataset = [0.5, 1.0] :: nil
+@property;
+empty : Tensor Bool;
+empty = True
 
 @property;
-empty : Bool;
-empty = bigAnd__List (map (\ x -> True) dataset)
+double : Tensor Bool;
+double = True
 
 @property;
-double : Bool;
-double = bigAnd__List (map (\ x -> bigAnd__List (map (\ y -> equalsVector x y) dataset)) dataset)
+forallForallIn : Tensor Bool;
+forallForallIn = forall x . ReduceAnd (x == [0.5, 1.0])
 
 @property;
-forallForallIn : Bool;
-forallForallIn = forall x . bigAnd__List (map (\ y -> equalsVector x y) dataset)
-
-@property;
-forallInForall : forallT (f : Vector Rat -> Vector Rat) . Bool;
-forallInForall f = bigAnd__List (map (\ x -> forall y . notEqualsVector (f x) y) dataset)
+forallInForall : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
+forallInForall f = forall y . ReduceOr (f [0.5, 1.0] != y)

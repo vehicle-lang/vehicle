@@ -43,7 +43,7 @@ import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.LinearExpr (RationalTensor (..))
+import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -523,7 +523,7 @@ outputPropertyResult verificationCache address result@(PropertyStatus status) = 
       -- Output assignments to file
       let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
       liftIO $ createDirectoryIfMissing True witnessFolder
-      forM_ assignments $ \(var, RationalTensor varDims value) -> do
+      forM_ assignments $ \(var, Tensor varDims value) -> do
         let file = witnessFolder </> unpack (userTensorVarName var)
         let dims = Vector.fromList varDims
         -- TODO got to be a better way to do this conversion...

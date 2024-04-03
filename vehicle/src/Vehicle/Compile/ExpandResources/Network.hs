@@ -55,7 +55,7 @@ getNetworkType decl networkType = case normalised networkType of
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> WHNFType Builtin -> m (NetworkBaseType, TensorDimensions)
+        go :: Bool -> WHNFType Builtin -> m (NetworkBaseType, TensorShape)
         go topLevel = \case
           VTensorType _ dims ->
             throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io

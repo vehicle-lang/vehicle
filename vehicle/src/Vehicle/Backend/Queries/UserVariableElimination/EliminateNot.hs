@@ -6,9 +6,11 @@ where
 import Control.Monad.Writer
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.Unblocking (unblockBoolExpr)
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdNotBoolOp2))
@@ -40,8 +42,8 @@ eliminateNot = go
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
       -- normalising the quantifier.
-      VForall args binder env body -> return $ VExists args binder env (negExpr body)
-      VExists args binder env body -> return $ VForall args binder env (negExpr body)
+      VForall args binder (WHNFBody env body) -> return $ VExists args binder (WHNFBody env (negExpr body))
+      VExists args binder (WHNFBody env body) -> return $ VForall args binder (WHNFBody env (negExpr body))
       -- It's not enough simply to negate the free variable, we also need
       -- to negate the instance argument solution for the function
       -- which is a function accepting two arguments and returning a bool.
@@ -57,6 +59,6 @@ eliminateNot = go
 
 negVectorEqSpine :: (MonadQueryStructure m) => WHNFSpine QueryBuiltin -> m (WHNFSpine QueryBuiltin)
 negVectorEqSpine (VVecEqSpine a b n fn x y) = do
-  fn' <- appStdlibDef StdNotBoolOp2 [a, b, fn]
+  fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, fn]
   return $ VVecEqSpine a b n (Arg mempty Explicit Relevant fn') x y
 negVectorEqSpine spine = compilerDeveloperError $ "Malformed equality spine" <+> prettyVerbose spine

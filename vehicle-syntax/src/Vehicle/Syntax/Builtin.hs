@@ -275,22 +275,6 @@ instance Hashable FromRatDomain
 
 instance Serialize FromRatDomain
 
-data FoldDomain
-  = FoldList
-  | FoldVector
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FoldDomain where
-  pretty = \case
-    FoldList -> "List"
-    FoldVector -> "Vector"
-
-instance NFData FoldDomain
-
-instance Hashable FoldDomain
-
-instance Serialize FoldDomain
-
 data BuiltinFunction
   = Not
   | And
@@ -316,7 +300,8 @@ data BuiltinFunction
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
   | At
-  | Fold FoldDomain
+  | FoldList
+  | FoldVector
   | MapList
   | MapVector
   | ZipWithVector
@@ -351,7 +336,8 @@ instance Pretty BuiltinFunction where
     FromRat dom -> "fromRatTo" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
-    Fold dom -> "fold" <> pretty dom
+    FoldList -> "foldList"
+    FoldVector -> "foldVector"
     MapList -> "mapList"
     MapVector -> "mapVector"
     ZipWithVector -> "zipWith"

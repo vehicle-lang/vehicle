@@ -85,11 +85,15 @@ mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), 
   where
     displayForm = BinderDisplayForm (OnlyName name) True
 
+-- | Note that the `ctxSize` must come from the current context and not a
+-- bound environment as the environment that the term was originally normalised
+-- in may not be the same size as the current context.
 extendEnvWithBound ::
+  Lv ->
   GenericBinder expr ->
   BoundEnv strategy builtin ->
   BoundEnv strategy builtin
-extendEnvWithBound binder env = (void binder, Bound) : env
+extendEnvWithBound ctxSize = extendEnvWithDefined (VBoundVar ctxSize [])
 
 extendEnvWithDefined ::
   Value strategy builtin ->

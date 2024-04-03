@@ -10,6 +10,7 @@ import Control.Monad.Writer (MonadWriter (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.UserVariableElimination.Core
+import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.NBE
@@ -66,10 +67,10 @@ unblockNonVector expr = case expr of
   VExists {} -> return expr
   VVectorEqualFull spine@(VVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
-    | otherwise -> appStdlibDef StdEqualsVector spine
+    | otherwise -> appHiddenStdlibDef StdEqualsVector spine
   VVectorNotEqualFull spine@(VVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
-    | otherwise -> appStdlibDef StdNotEqualsVector spine
+    | otherwise -> appHiddenStdlibDef StdNotEqualsVector spine
   VEqualOp dom op x y
     | dom == EqRat -> return expr
     | otherwise -> unblockNonVectorOp2 (Equals dom op) (evalEquals dom op) x y
@@ -177,7 +178,7 @@ unblockFoldVector ::
 unblockFoldVector f e xs = do
   xs' <- unblockVector True xs
   flip liftIf xs' $ \xs'' ->
-    forceEval (Fold FoldVector) (evalFoldVector normaliseApp) [f, e, xs'']
+    forceEval FoldVector (evalFoldVector normaliseApp) [f, e, xs'']
 
 unblockMapVector ::
   (MonadUnblock m) =>
@@ -406,7 +407,7 @@ traverseVectorOp2 f fn spinePrefix xs ys = do
     flip liftIf ys' $ \ys'' -> do
       let newSpine = spinePrefix <> (Arg mempty Explicit Relevant <$> [xs'', ys''])
       case (xs'', ys'') of
-        (VVecLiteral {}, VVecLiteral {}) -> appStdlibDef fn newSpine
+        (VVecLiteral {}, VVecLiteral {}) -> appHiddenStdlibDef fn newSpine
         _ -> return $ VStandardLib fn newSpine
 
 forceEval ::

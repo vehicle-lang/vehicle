@@ -3,7 +3,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Normalise.Builtin
-  ( evalBuiltin,
+  ( EvalSimpleBuiltin,
+    evalBuiltin,
     evalMulRat,
     evalAddRat,
     evalSubRat,
@@ -13,6 +14,8 @@ module Vehicle.Compile.Normalise.Builtin
     evalEquals,
     evalOrderRat,
     evalOrder,
+    evalAnd,
+    evalOr,
     evalAt,
     evalFoldVector,
     evalMapVector,
@@ -89,9 +92,10 @@ type EvalBuiltin builtin m =
   Maybe (m (WHNFValue builtin))
 
 type EvalSimpleBuiltin builtin =
+  forall strategy.
   (HasStandardData builtin) =>
-  [WHNFValue builtin] ->
-  Maybe (WHNFValue builtin)
+  [Value strategy builtin] ->
+  Maybe (Value strategy builtin)
 
 tryToEvaluateOnRuntimeRelevantArgs ::
   (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
@@ -128,7 +132,8 @@ evalBuiltinFunction evalApp b args = case b of
   Order dom op -> return <$> evalOrder dom op args
   If -> return <$> evalIf args
   At -> return <$> evalAt args
-  Fold dom -> evalFold dom evalApp args
+  FoldVector -> evalFoldVector evalApp args
+  FoldList -> evalFoldList evalApp args
   ZipWithVector -> evalZipWith evalApp args
   MapList -> evalMapList evalApp args
   MapVector -> evalMapVector evalApp args
@@ -444,15 +449,6 @@ evalAt = \case
     Just xsi -> argExpr xsi
   _ -> Nothing
 
-evalFold ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
-  FoldDomain ->
-  EvalApp builtin m ->
-  EvalBuiltin builtin m
-evalFold = \case
-  FoldList -> evalFoldList
-  FoldVector -> evalFoldVector
-
 evalFoldList ::
   EvalApp builtin m ->
   EvalBuiltin builtin m
@@ -461,7 +457,7 @@ evalFoldList evalApp = \case
     Just $ return e
   [f, e, VCons x xs] ->
     Just $ do
-      let defaultFold = return $ VBuiltin (mkBuiltinFunction (Fold FoldList)) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
+      let defaultFold = return $ VBuiltin (mkBuiltinFunction FoldList) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
       r <- fromMaybe defaultFold $ evalFoldList evalApp [f, e, argExpr xs]
       evalApp f [x, Arg mempty Explicit Relevant r]
   _ -> Nothing
@@ -536,9 +532,9 @@ evalIndices = \case
 evalImplies :: EvalSimpleBuiltin builtin
 evalImplies = \case
   [e1, e2] -> Just $ do
-    let defaultNot = VBuiltin (mkBuiltinFunction Not) [Arg mempty Explicit Relevant e1]
+    let defaultNot = VBuiltinFunction Not [Arg mempty Explicit Relevant e1]
     let ne1 = fromMaybe defaultNot (evalNot [e1])
-    let defaultOr = VBuiltin (mkBuiltinFunction Or) [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
+    let defaultOr = VBuiltinFunction Or [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
     let maybeRes = evalOr [ne1, e2]
     fromMaybe defaultOr maybeRes
   _ -> Nothing

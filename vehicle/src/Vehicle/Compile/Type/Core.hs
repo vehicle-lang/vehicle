@@ -16,8 +16,8 @@ import Vehicle.Data.NormalisedExpr
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
-  = MissingExplicitArgument (BoundCtx builtin) (Binder Ix builtin) (Arg Ix builtin)
-  | FunctionTypeMismatch (BoundCtx builtin) (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  = MissingExplicitArgument NamedBoundCtx (Binder Ix builtin) (Arg Ix builtin)
+  | FunctionTypeMismatch NamedBoundCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
   | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
   | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))

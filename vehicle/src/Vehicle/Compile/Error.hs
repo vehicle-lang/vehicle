@@ -10,6 +10,7 @@ import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Backend.Queries.Error.Polarity.Core
+import Vehicle.Backend.Tensors.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -59,8 +60,8 @@ data CompileError
   | DatasetTypeUnsupportedContainer DeclProvenance (GluedType StandardTypingBuiltin)
   | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin)
   | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
-  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorDimensions TensorDimensions
-  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorDimensions
+  | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
+  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
   | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (WHNFType Builtin)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
@@ -85,10 +86,11 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
-  | UnsupportedNegatedOperation DifferentiableLogicID Provenance
+  | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (WHNFValue Builtin)
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
+  | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin)
 
 deriving instance Show CompileError
 
@@ -97,10 +99,12 @@ deriving instance Show CompileError
 
 unexpectedExpr :: Doc a -> Doc a -> Doc a
 unexpectedExpr pass name =
-  "encountered unexpected expression"
-    <+> squotes name
-    <+> "during"
-    <+> pass
+  "encountered unexpected expression:"
+    <> line
+    <> indent 2 name
+    <> line
+    <> "during"
+      <+> pass
     <> "."
 
 -- | Should be used in preference to `developerError` whenever in the error
@@ -126,10 +130,10 @@ illTypedError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
-visibilityError pass name =
+visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> Doc () -> m b
+visibilityError pass fun args =
   compilerDeveloperError $
-    unexpectedExpr pass name <+> "Should not be present as explicit arguments"
+    unexpectedExpr pass args <+> "Does not match function's visibility:" <+> fun
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.

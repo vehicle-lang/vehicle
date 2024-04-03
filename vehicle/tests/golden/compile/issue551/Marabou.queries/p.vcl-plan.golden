@@ -108,7 +108,7 @@
                     },
                     {
                       "constantValue": {
-                        "tensorValues": [
+                        "value": [
                           {
                             "numerator": 0,
                             "denominator": 1
@@ -118,7 +118,8 @@
                             "denominator": 1
                           }
                         ],
-                        "tensorDims": [
+                        "tag": "Tensor",
+                        "shape": [
                           2
                         ]
                       },

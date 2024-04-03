@@ -133,9 +133,8 @@ typeOfBuiltinFunction = \case
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat tRat
   -- Container functions
-  Fold dom -> case dom of
-    FoldList -> typeOfFold tListRaw
-    FoldVector -> forAllIrrelevantNat "n" $ \n -> typeOfFold (tVectorFunctor n)
+  FoldList -> typeOfFold tListRaw
+  FoldVector -> forAllIrrelevantNat "n" $ \n -> typeOfFold (tVectorFunctor n)
   MapList -> typeOfMap tListRaw
   MapVector -> forAllIrrelevantNat "n" $ \n -> typeOfMap (tVectorFunctor n)
   At -> typeOfAt
