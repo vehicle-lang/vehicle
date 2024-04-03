@@ -1,3 +1,4 @@
+import functools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -195,13 +196,13 @@ class ABCBuiltins(
     @abstractmethod
     def ConstRatTensor(self, value: _Rat) -> _RatTensor: ...
 
-    @abstractmethod
     def FoldList(
         self, f: Callable[[Value, Value], Value], x: Value, xs: ValueList
-    ) -> Value: ...
+    ) -> Value:
+        return functools.reduce(f, xs, initial=x)
 
-    @abstractmethod
-    def MapList(self, f: Callable[[Value], Value], xs: ValueList) -> ValueList: ...
+    def MapList(self, f: Callable[[Value], Value], xs: ValueList) -> ValueList:
+        return tuple(map(f, xs))
 
     @abstractmethod
     def MapRatTensor(self, f: Callable[[_Rat], _Rat], x: _RatTensor) -> _RatTensor: ...

@@ -14,8 +14,8 @@ from ..ast import (
     Program,
     Provenance,
 )
-from .abc import ABCBuiltins, ABCTranslation, AnyBuiltins
-from .error import VehicleOptimiseTypeError, VehiclePropertyNotFound
+from .abc import ABCTranslation, AnyBuiltins
+from .error import VehicleOptimiseTypeError
 
 __all__: List[str] = [
     # Abstract Syntax Tree
