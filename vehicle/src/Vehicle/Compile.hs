@@ -115,13 +115,6 @@ compileToTensors ::
   m ()
 compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
-  -- resolvedProg <- resolveInstanceArguments mergedProg
-  -- relevantProg <- removeIrrelevantCodeFromProg resolvedProg
-  -- let monomorphiseIf = isPropertyDecl
-  -- monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
-  -- literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  -- cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
-
   tensorProg <- convertToTensors preprocess mergedProg
   hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
