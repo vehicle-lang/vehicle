@@ -36,7 +36,8 @@ convertRat r = do
       | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
       | otherwise = fromInteger x
 
--- data MinimiseOrMaximise = Minimise | Maximise
+data MinimiseOrMaximise = Minimise | Maximise
+  deriving (Show, Eq, Generic)
 
 -- | The builtin types suitable for tensor operations.
 data TensorBuiltin
@@ -108,7 +109,7 @@ data TensorBuiltin
   | MapTensor
   | ZipWithTensor
   | Indices
-  | Optimise Bool
+  | Optimise MinimiseOrMaximise
   | If
   | Forall
   | Exists
@@ -180,7 +181,7 @@ instance PrintableBuiltin TensorBuiltin where
     ReduceAndTensor -> cheatConvertBuiltin p "ReduceAnd"
     ReduceOrTensor -> cheatConvertBuiltin p "ReduceOr"
     ReduceSumTensor -> cheatConvertBuiltin p "ReduceSum"
-    Optimise minimise -> builtinFunction $ V.Optimise minimise
+    Optimise minimise -> builtinFunction $ V.Optimise (minimise == Minimise)
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
       builtinFunction = V.Builtin p . V.BuiltinFunction

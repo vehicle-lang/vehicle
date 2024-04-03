@@ -322,7 +322,7 @@ convertBuiltinFunction t args = case t of
   Quantifier Forall -> return $ mkBuiltin T.Forall args
   Quantifier Exists -> return $ mkBuiltin T.Exists args
   If -> return $ mkBuiltin T.If args
-  Optimise b -> return $ mkBuiltin (T.Optimise b) args
+  Optimise minimise -> return $ mkBuiltin (T.Optimise (if minimise then T.Minimise else T.Maximise)) args
   Implies -> unexpectedExprError currentPass "Implies"
   FromNat {} -> unexpectedExprError currentPass "FromNat"
   FromRat {} -> unexpectedExprError currentPass "FromRat"
