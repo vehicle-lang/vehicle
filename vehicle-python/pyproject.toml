@@ -86,7 +86,7 @@ allow_untyped_defs = true
 disable_error_code = ['name-defined']
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = [] #["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }

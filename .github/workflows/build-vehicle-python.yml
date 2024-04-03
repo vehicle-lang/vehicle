@@ -65,7 +65,7 @@ jobs:
         env:
           CIBW_BUILD: "*${{ matrix.os.plat }}*"
           CIBW_ARCHS: "${{ matrix.os.arch }}"
-          # CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
+          CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
           MACOSX_DEPLOYMENT_TARGET: "10.10"
 
       - name: Upload wheels
