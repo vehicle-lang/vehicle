@@ -2,6 +2,7 @@
 
 module Vehicle.Compile.Context.Free.Instance where
 
+import Control.Monad qualified as Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State
@@ -99,7 +100,7 @@ instance
       local hideDecls (unFreeContextT x)
     where
       hideDecls (decls, hiddenDecls) = do
-        unless (Map.null hiddenDecls) $ do
+        Monad.unless (Map.null hiddenDecls) $ do
           developerError "Hiding stdlib-decls twice not allowed"
         let fnIdents = Set.map identifierOf fns
         let unhiddenDecls = alterKeys fnIdents (first convertToPostulate) decls

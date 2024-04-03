@@ -6,7 +6,7 @@ module Vehicle.Backend.Tensors.Convert
   )
 where
 
-import Control.Applicative (Applicative (..))
+import Control.Applicative qualified as Applicative (liftA2)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Data (Proxy (..))
@@ -362,7 +362,7 @@ distributeForeachIndex preprocess originalSpine varName lv = \case
       let recurse = distributeForeachIndex preprocess originalSpine varName lv
       e1' <- sequence <$> traverse recurse e1
       e2' <- sequence <$> traverse recurse e2
-      return $ liftA2 (\x y -> VBuiltin b [x, y]) e1' e2'
+      return $ Applicative.liftA2 (\x y -> VBuiltin b [x, y]) e1' e2'
   -- Eliminate `forall i . xs ! i` into `xs`
   VBuiltin T.LookupTensor (reverse -> (argExpr -> VBoundVar lv1 _) : xs : _)
     | lv1 == lv ->
