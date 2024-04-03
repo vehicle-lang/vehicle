@@ -65,30 +65,30 @@ data TensorBuiltin
   | ---------------------------------
     -- Pointwise tensor operations --
     ---------------------------------
-    NotTensor
-  | AndTensor
-  | OrTensor
-  | NegTensor
-  | AddTensor
-  | SubTensor
-  | MulTensor
-  | DivTensor
-  | EqTensor
-  | NeTensor
-  | LeTensor
-  | LtTensor
-  | GeTensor
-  | GtTensor
+    NotBoolTensor
+  | AndBoolTensor
+  | OrBoolTensor
+  | NegRatTensor
+  | AddRatTensor
+  | SubRatTensor
+  | MulRatTensor
+  | DivRatTensor
+  | EqRatTensor
+  | NeRatTensor
+  | LeRatTensor
+  | LtRatTensor
+  | GeRatTensor
+  | GtRatTensor
   | PowRatTensor
   | MinRatTensor
   | MaxRatTensor
   | --------------------------
     -- Reduction operations --
     --------------------------
-    ReduceAndTensor
-  | ReduceOrTensor
-  | ReduceSumTensor
-  | ReduceTensor
+    ReduceAndBoolTensor
+  | ReduceOrBoolTensor
+  | ReduceSumRatTensor
+  | ReduceRatTensor
   | ----------------------
     -- Index operations --
     ----------------------
@@ -101,13 +101,13 @@ data TensorBuiltin
   | ----------------------
     -- Other operations --
     ----------------------
-    LookupTensor
-  | StackTensor Int
-  | ConstTensor Rat
+    LookupRatTensor
+  | StackRatTensor Int
+  | ConstRatTensor Rat
   | FoldList
   | MapList
-  | MapTensor
-  | ZipWithTensor
+  | MapRatTensor
+  | ZipWithRatTensor
   | Indices
   | Optimise MinimiseOrMaximise
   | If
@@ -140,26 +140,26 @@ instance PrintableBuiltin TensorBuiltin where
     RatTensor vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) vs
     NilList -> builtinConstructor V.Nil
     ConsList -> builtinConstructor V.Cons
-    ConstTensor r -> cheatConvertBuiltin p $ "Const[" <+> pretty (convertTRat r) <+> "]"
-    StackTensor n -> builtinConstructor (V.LVec n)
+    ConstRatTensor r -> cheatConvertBuiltin p $ "Const[" <+> pretty (convertTRat r) <+> "]"
+    StackRatTensor n -> builtinConstructor (V.LVec n)
     Forall -> builtinFunction (V.Quantifier V.Forall)
     Exists -> builtinFunction (V.Quantifier V.Exists)
     If -> builtinFunction V.If
     -- Tensor operations
-    NotTensor -> builtinFunction V.Not
-    AndTensor -> builtinFunction V.And
-    OrTensor -> builtinFunction V.Or
-    NegTensor -> builtinTCOp V.NegTC
-    AddTensor -> builtinTCOp V.AddTC
-    SubTensor -> builtinTCOp V.SubTC
-    MulTensor -> builtinTCOp V.MulTC
-    DivTensor -> builtinTCOp V.DivTC
-    EqTensor -> builtinTCOp $ V.EqualsTC V.Eq
-    NeTensor -> builtinTCOp $ V.EqualsTC V.Neq
-    LeTensor -> builtinTCOp $ V.OrderTC V.Le
-    LtTensor -> builtinTCOp $ V.OrderTC V.Lt
-    GeTensor -> builtinTCOp $ V.OrderTC V.Ge
-    GtTensor -> builtinTCOp $ V.OrderTC V.Gt
+    NotBoolTensor -> builtinFunction V.Not
+    AndBoolTensor -> builtinFunction V.And
+    OrBoolTensor -> builtinFunction V.Or
+    NegRatTensor -> builtinTCOp V.NegTC
+    AddRatTensor -> builtinTCOp V.AddTC
+    SubRatTensor -> builtinTCOp V.SubTC
+    MulRatTensor -> builtinTCOp V.MulTC
+    DivRatTensor -> builtinTCOp V.DivTC
+    EqRatTensor -> builtinTCOp $ V.EqualsTC V.Eq
+    NeRatTensor -> builtinTCOp $ V.EqualsTC V.Neq
+    LeRatTensor -> builtinTCOp $ V.OrderTC V.Le
+    LtRatTensor -> builtinTCOp $ V.OrderTC V.Lt
+    GeRatTensor -> builtinTCOp $ V.OrderTC V.Ge
+    GtRatTensor -> builtinTCOp $ V.OrderTC V.Gt
     PowRatTensor -> builtinFunction V.PowRat
     MinRatTensor -> builtinFunction V.MinRat
     MaxRatTensor -> builtinFunction V.MaxRat
@@ -169,18 +169,18 @@ instance PrintableBuiltin TensorBuiltin where
     LeIndex -> builtinFunction $ V.Order V.OrderIndex V.Le
     EqIndex -> builtinFunction $ V.Equals V.EqIndex V.Eq
     NeIndex -> builtinFunction $ V.Equals V.EqIndex V.Neq
-    LookupTensor -> builtinFunction V.At
+    LookupRatTensor -> builtinFunction V.At
     FoldList -> builtinFunction V.FoldList
-    ReduceTensor -> builtinFunction V.FoldVector
+    ReduceRatTensor -> builtinFunction V.FoldVector
     MapList -> builtinFunction V.MapList
-    MapTensor -> builtinFunction V.MapVector
-    ZipWithTensor -> builtinFunction V.ZipWithVector
+    MapRatTensor -> builtinFunction V.MapVector
+    ZipWithRatTensor -> builtinFunction V.ZipWithVector
     Indices -> builtinFunction V.Indices
     IndexTensorType -> V.FreeVar p (V.identifierOf StdTensor)
     ListType -> builtinType V.List
-    ReduceAndTensor -> cheatConvertBuiltin p "ReduceAnd"
-    ReduceOrTensor -> cheatConvertBuiltin p "ReduceOr"
-    ReduceSumTensor -> cheatConvertBuiltin p "ReduceSum"
+    ReduceAndBoolTensor -> cheatConvertBuiltin p "ReduceAnd"
+    ReduceOrBoolTensor -> cheatConvertBuiltin p "ReduceOr"
+    ReduceSumRatTensor -> cheatConvertBuiltin p "ReduceSum"
     Optimise minimise -> builtinFunction $ V.Optimise (minimise == Minimise)
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
@@ -206,45 +206,45 @@ arityOf b = case b of
   RatTensor {} -> 0
   Unit -> 0
   Index {} -> 0
-  NotTensor -> 1
-  AndTensor -> 2
-  OrTensor -> 2
+  NotBoolTensor -> 1
+  AndBoolTensor -> 2
+  OrBoolTensor -> 2
   Forall -> 1
   Exists -> 1
   If -> 3
-  NegTensor -> 1
-  AddTensor -> 2
-  SubTensor -> 2
-  MulTensor -> 2
-  DivTensor -> 2
+  NegRatTensor -> 1
+  AddRatTensor -> 2
+  SubRatTensor -> 2
+  MulRatTensor -> 2
+  DivRatTensor -> 2
   PowRatTensor -> 2
   MinRatTensor -> 2
   MaxRatTensor -> 2
-  EqTensor -> 2
-  NeTensor -> 2
-  LeTensor -> 2
-  LtTensor -> 2
-  GeTensor -> 2
-  GtTensor -> 2
+  EqRatTensor -> 2
+  NeRatTensor -> 2
+  LeRatTensor -> 2
+  LtRatTensor -> 2
+  GeRatTensor -> 2
+  GtRatTensor -> 2
   EqIndex -> 2
   NeIndex -> 2
   LeIndex -> 2
   LtIndex -> 2
   GeIndex -> 2
   GtIndex -> 2
-  LookupTensor -> 2
-  ConstTensor {} -> 0
+  LookupRatTensor -> 2
+  ConstRatTensor {} -> 0
   FoldList -> 3
-  ReduceTensor -> 2
+  ReduceRatTensor -> 2
   MapList -> 2
-  MapTensor -> 2
-  ZipWithTensor -> 3
+  MapRatTensor -> 2
+  ZipWithRatTensor -> 3
   Indices -> 1
-  ReduceAndTensor -> 1
-  ReduceOrTensor -> 1
-  ReduceSumTensor -> 1
+  ReduceAndBoolTensor -> 1
+  ReduceOrBoolTensor -> 1
+  ReduceSumRatTensor -> 1
   Optimise {} -> 2
-  StackTensor n -> n
+  StackRatTensor n -> n
 
 --------------------------------------------------------------------------------
 -- Tensor literals
@@ -268,7 +268,7 @@ pattern VRatTensor :: Tensor Rat -> NFValue TensorBuiltin
 pattern VRatTensor t = VTensorLiteral (RatTensor t)
 
 pattern VLookup :: NFArg TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-pattern VLookup xs i <- VBuiltin LookupTensor [xs, V.RelevantExplicitArg _ i]
+pattern VLookup xs i <- VBuiltin LookupRatTensor [xs, V.RelevantExplicitArg _ i]
 
 getBoolTensor :: NFValue TensorBuiltin -> Maybe (Tensor Bool)
 getBoolTensor (VBoolTensor t) = Just t
