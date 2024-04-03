@@ -1,8 +1,19 @@
+from fractions import Fraction
 import itertools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Any, Callable, Dict, Generic, SupportsFloat, SupportsInt, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    SupportsFloat,
+    SupportsInt,
+    Tuple,
+    Type,
+    Union,
+)
 
 from typing_extensions import TypeAlias, TypeVar, override
 
@@ -31,22 +42,22 @@ Unit: TypeAlias = Tuple[()]
 
 Value: TypeAlias = Union[
     _Bool,
-    _Index,
     _Nat,
     _Int,
     _Rat,
     _BoolTensor,
-    _IndexTensor,
     _NatTensor,
     _IntTensor,
     _RatTensor,
-    Tuple['Value', ...]
+    "ValueList",
 ]
+
+ValueList: TypeAlias = Tuple["Value", ...]
+
 
 @dataclass(frozen=True, init=False)
 class ABCBuiltins(
     Generic[
-        _Index,
         _Bool,
         _Nat,
         _Int,
@@ -60,8 +71,8 @@ class ABCBuiltins(
 ):
     optimisers: Dict[str, Optimiser[Any, _Rat]] = field(default_factory=dict)
 
-    @abstractmethod
-    def IndexType(self) -> Type[_Index]: ...
+    def IndexType(self) -> Type[int]:
+        return int
 
     @abstractmethod
     def BoolTensorType(self) -> Type[_BoolTensor]: ...
@@ -78,31 +89,32 @@ class ABCBuiltins(
     @abstractmethod
     def RatTensorType(self) -> Type[_RatTensor]: ...
 
-    def ListType(self) -> Tuple[]: ...
+    def ListType(self) -> Type[ValueList]:
+        return ValueList
 
     def Unit(self) -> Tuple[()]:
         return ()
 
-    @abstractmethod
-    def Index(self): ...
+    def Index(self, value: int) -> int:
+        return value
 
     @abstractmethod
-    def BoolTensor(self): ...
+    def BoolTensor(self, value: vcl.Tensor[bool]) -> _BoolTensor: ...
 
     @abstractmethod
-    def NatTensor(self): ...
+    def NatTensor(self, value: vcl.Tensor[int]) -> _NatTensor: ...
 
     @abstractmethod
-    def IntTensor(self): ...
+    def IntTensor(self, value: vcl.Tensor[int]) -> _IntTensor: ...
 
     @abstractmethod
-    def RatTensor(self): ...
+    def RatTensor(self, value: vcl.Tensor[Fraction]) -> _RatTensor: ...
 
-    @abstractmethod
-    def NilList(self): ...
+    def NilList(self) -> ValueList:
+        return ()
 
-    @abstractmethod
-    def ConsList(self): ...
+    def ConsList(self, x: Value, xs: ValueList) -> ValueList:
+        return (x, *xs)
 
     @abstractmethod
     def NotTensor(self): ...

@@ -1,3 +1,4 @@
+from fractions import Fraction
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
@@ -49,13 +50,7 @@ MISSING: Provenance = Provenance(0, 0)
 ################################################################################
 
 
-@dataclass(frozen=True)
-class Rat:
-    numerator: int
-    denominator: int
-
-
-_DType = TypeVar("_DType", bool, float, int, Rat)
+_DType = TypeVar("_DType", bool, float, int, Fraction)
 
 
 @dataclass(frozen=True)
@@ -132,7 +127,7 @@ class IntTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class RatTensor(BuiltinFunction):
-    value: Tensor[Rat]
+    value: Tensor[Fraction]
 
 
 @dataclass(frozen=True)
