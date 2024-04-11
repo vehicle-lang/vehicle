@@ -46,7 +46,7 @@ instance CapitaliseTypes (Expr var builtin) where
     Hole p n -> return $ Hole p n
     Meta p m -> return $ Meta p m
     Builtin p op -> return $ Builtin p op
-    App p fun args -> App p <$> cap fun <*> traverse cap args
+    App fun args -> App <$> cap fun <*> traverse cap args
     Pi p binder result -> Pi p <$> cap binder <*> cap result
     Let p bound binder body -> Let p <$> cap bound <*> cap binder <*> cap body
     Lam p binder body -> Lam p <$> cap binder <*> cap body

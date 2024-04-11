@@ -38,30 +38,29 @@ instance Simplify (Expr Name Builtin) where
     Pi p binder result -> Pi p (uninsert binder) (uninsert result)
     Let p bound binder body -> Let p (uninsert bound) (uninsert binder) (uninsert body)
     Lam p binder body -> Lam p (uninsert binder) (uninsert body)
-    App p fun args -> do
+    App fun args -> do
       let fun' = uninsert fun
       let args' = simplifyArgs args
       -- Remove automatically inserted cast functions
       if isLiteralCast fun' && not (null args')
         then argExpr $ last args'
-        else normAppList p fun' args'
+        else normAppList fun' args'
 
-  shortenVec = mapBuiltins $ \p1 p2 b args ->
+  shortenVec = mapBuiltins $ \p b args ->
     case b of
       BuiltinConstructor (LVec n) -> case getHeadMidTail args of
         Just (firstArg, numberOfMiddleAgs, lastArg)
           | numberOfMiddleAgs > 3 ->
               normAppList
-                p1
-                (Builtin p2 (BuiltinConstructor (LVec n)))
+                (Builtin p (BuiltinConstructor (LVec n)))
                 [ firstArg,
-                  Arg p2 Explicit Relevant (FreeVar p2 (Identifier StdLib ("<" <> n2 <> " more>"))),
+                  Arg p Explicit Relevant (FreeVar p (Identifier StdLib ("<" <> n2 <> " more>"))),
                   lastArg
                 ]
           where
             n2 = Text.pack $ show $ length args - 2
-        _ -> normAppList p1 (Builtin p2 b) args
-      _ -> normAppList p1 (Builtin p2 b) args
+        _ -> normAppList (Builtin p b) args
+      _ -> normAppList (Builtin p b) args
     where
       getHeadMidTail :: forall a. [a] -> Maybe (a, Int, a)
       getHeadMidTail [] = Nothing

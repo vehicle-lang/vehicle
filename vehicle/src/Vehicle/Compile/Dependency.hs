@@ -74,7 +74,7 @@ constructGraph prog = do
       FreeVar _ v -> do
         tell [v]
         return ()
-      App _ fun args -> do go fun; traverse_ (traverse_ go) args
+      App fun args -> do go fun; traverse_ (traverse_ go) args
       Pi _ binder res -> do traverse_ go binder; go res
       Lam _ binder body -> do traverse_ go binder; go body
       Let _ bound binder body -> do go bound; traverse_ go binder; go body

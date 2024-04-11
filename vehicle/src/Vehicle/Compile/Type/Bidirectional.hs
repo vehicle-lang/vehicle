@@ -117,7 +117,7 @@ viaInfer expectedType expr = do
   -- Switch to inference mode
   (checkedExpr, actualType) <- inferExpr expr
   -- Insert any needed implicit or instance arguments
-  (appliedCheckedExpr, resultType) <- inferApp p checkedExpr actualType []
+  (appliedCheckedExpr, resultType) <- inferApp checkedExpr actualType []
   -- Check the expected and the actual types are equal
   checkExprTypesEqual p expr expectedType resultType
   return appliedCheckedExpr
@@ -157,9 +157,9 @@ inferExpr e = do
           checkExpr (TypeUniverse p 0) resultType
 
       return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
-    App p fun args -> do
+    App fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
-      inferApp p checkedFun checkedFunType (NonEmpty.toList args)
+      inferApp checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
       ctx <- getBoundCtx (Proxy @builtin)
       binder <- lookupIxInBoundCtx currentPass i ctx
@@ -223,14 +223,13 @@ inferExpr e = do
 -- list of arguments as well as the result type.
 inferApp ::
   (MonadBidirectional builtin m) =>
-  Provenance ->
   Expr Ix builtin ->
   Type Ix builtin ->
   [Arg Ix builtin] ->
   m (Expr Ix builtin, Type Ix builtin)
-inferApp p fun funType args = do
+inferApp fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args, funType) funType args
-  return (normAppList p fun checkedArgs, appliedFunType)
+  return (normAppList fun checkedArgs, appliedFunType)
 
 -- | Takes the expected type of a function and the user-provided arguments
 -- and traverses through checking each argument type against the type of the

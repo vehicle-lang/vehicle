@@ -128,7 +128,7 @@ findResourceUses e = do
   logDebug MaxDetail $ prettyVerbose e
   execWriterT $ traverseFreeVarsM (const id) updateFn e
   where
-    updateFn recGo p1 p2 ident args = do
+    updateFn recGo p ident args = do
       args' <- traverse (traverse recGo) args
       FuncState {..} <- ask
       let name = nameOf ident
@@ -136,7 +136,7 @@ findResourceUses e = do
         tell (Set.singleton name)
       resourceArgs <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
       tell (Set.fromList resourceArgs)
-      return $ normAppList p1 (FreeVar p2 ident) args'
+      return $ normAppList (FreeVar p ident) args'
 
 replaceResourceUses ::
   forall m builtin.
@@ -154,7 +154,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
   return $ foldr mkBinder processedAppsExpr binders
   where
     updateFn :: FreeVarUpdate (ReaderT (Lv, (FuncState builtin, Map Name Lv)) m) Ix builtin
-    updateFn recGo p1 p2 ident args = do
+    updateFn recGo p ident args = do
       args' <- traverse (traverse recGo) args
       (currentOldLv, (FuncState {..}, resourceLevels)) <- ask
       let currentNewLv = Lv (length resourceLevels) + currentOldLv
@@ -167,17 +167,17 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
               Just resourceLv -> do
                 let resourceIx = dbLevelToIndex currentNewLv resourceLv
                 -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx
-                return $ BoundVar p1 resourceIx
+                return $ BoundVar p resourceIx
 
       newFun <-
         if name `LinkedHashMap.member` resourceDeclarations
           then mkResourceVar name
-          else return $ FreeVar p2 ident
+          else return $ FreeVar p ident
 
       extraResourceNames <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
-      let extraResourceArgs = fmap (Arg p1 Explicit Relevant) extraResourceVarArgs
-      return $ normAppList p1 newFun (extraResourceArgs <> args')
+      let extraResourceArgs = fmap (Arg p Explicit Relevant) extraResourceVarArgs
+      return $ normAppList newFun (extraResourceArgs <> args')
 
 createBinders ::
   (MonadResource m builtin) =>
