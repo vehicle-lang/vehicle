@@ -108,7 +108,7 @@ unblockVector reduceVectorVars expr = case expr of
 unblockNonVectorOp2 ::
   (MonadUnblock m) =>
   BuiltinFunction ->
-  ([WHNFValue QueryBuiltin] -> Maybe (WHNFValue QueryBuiltin)) ->
+  (WHNFValue QueryBuiltin -> [WHNFValue QueryBuiltin] -> WHNFValue QueryBuiltin) ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
@@ -339,7 +339,7 @@ purifyVectorOp2 = traverseVectorOp2 purify
 purifyRatOp2 ::
   (MonadUnblock m) =>
   (WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin) ->
-  ([WHNFValue QueryBuiltin] -> Maybe (WHNFValue QueryBuiltin)) ->
+  (WHNFValue QueryBuiltin -> [WHNFValue QueryBuiltin] -> WHNFValue QueryBuiltin) ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
@@ -348,9 +348,7 @@ purifyRatOp2 mkOp evalOp2 x y = do
   y' <- purify y
   flip liftIf x' $ \x'' ->
     flip liftIf y' $ \y'' ->
-      return $ case evalOp2 [x'', y''] of
-        Just result -> result
-        Nothing -> mkOp x'' y''
+      return $ evalOp2 (mkOp x'' y'') [x'', y'']
 
 purifyNegRat ::
   (MonadUnblock m) =>
@@ -358,10 +356,8 @@ purifyNegRat ::
   m (WHNFValue QueryBuiltin)
 purifyNegRat x = do
   x' <- purify x
-  flip liftIf x' $ \x'' -> do
-    return $ case evalNegRat [x''] of
-      Just result -> result
-      Nothing -> VNeg NegRat x''
+  flip liftIf x' $ \x'' ->
+    return $ evalNegRat (VNeg NegRat x'') [x'']
 
 --------------------------------------------------------------------------------
 -- If lifting
@@ -413,20 +409,20 @@ traverseVectorOp2 f fn spinePrefix xs ys = do
 forceEval ::
   (MonadCompile m) =>
   BuiltinFunction ->
-  ([WHNFValue QueryBuiltin] -> Maybe (m (WHNFValue QueryBuiltin))) ->
+  (WHNFValue QueryBuiltin -> [WHNFValue QueryBuiltin] -> m (WHNFValue QueryBuiltin)) ->
   [WHNFValue QueryBuiltin] ->
   m (WHNFValue QueryBuiltin)
-forceEval b evalFn args = case evalFn args of
-  Just result -> result
-  Nothing -> compilerDeveloperError $ "Unexpectedly blocked expression" <+> prettyVerbose (VBuiltin (BuiltinFunction b) (Arg mempty Explicit Relevant <$> args))
+forceEval b evalFn args = evalFn cannotEvalError args
+  where
+    cannotEvalError = developerError $ "Unexpectedly blocked expression" <+> prettyVerbose (VBuiltin (BuiltinFunction b) (Arg mempty Explicit Relevant <$> args))
 
 forceEvalSimple ::
   (MonadCompile m) =>
   BuiltinFunction ->
-  ([WHNFValue QueryBuiltin] -> Maybe (WHNFValue QueryBuiltin)) ->
+  (WHNFValue QueryBuiltin -> [WHNFValue QueryBuiltin] -> WHNFValue QueryBuiltin) ->
   [WHNFValue QueryBuiltin] ->
   m (WHNFValue QueryBuiltin)
-forceEvalSimple b evalFn args = forceEval b (\as -> return <$> evalFn as) args
+forceEvalSimple b evalFn = forceEval b (\orig args -> return $ evalFn orig args)
 
 reduceBoundVar :: (MonadQueryStructure m) => Lv -> m (WHNFValue QueryBuiltin)
 reduceBoundVar lv = do
