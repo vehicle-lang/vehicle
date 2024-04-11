@@ -9,7 +9,7 @@ import Control.Monad (foldM)
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Void (Void, absurd)
+import Data.Void (Void)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -23,15 +23,15 @@ import Vehicle.Data.BooleanExpr
 -- field so we can either look for rational equalities, tensor equalities or
 -- no equalties at all.
 data ConstrainedAssertionTree equality
-  = Equality (equality, MaybeTrivial AssertionTree)
-  | Inequalities (ConjunctAll RationalInequality, MaybeTrivial AssertionTree)
-  | NoConstraints AssertionTree
+  = Equality !equality !(MaybeTrivial AssertionTree)
+  | Inequalities !(ConjunctAll RationalInequality) !(MaybeTrivial AssertionTree)
+  | NoConstraints !AssertionTree
 
 instance (Pretty equality) => Pretty (ConstrainedAssertionTree equality) where
   pretty = \case
-    Equality e -> "Equalities[" <+> pretty e <+> "]"
-    Inequalities es -> "Inequalities[" <+> pretty es <+> "]"
-    NoConstraints e -> "NoConstraints[" <+> pretty e <+> "]"
+    Equality eq r -> "Equalities[" <+> pretty (eq, r) <+> "]"
+    Inequalities ineqs r -> "Inequalities[" <+> pretty (ineqs, r) <+> "]"
+    NoConstraints r -> "NoConstraints[" <+> pretty r <+> "]"
 
 -- | A scheme for pulling out constraints from assertions. Used to control
 -- which assertions are considered valid constraints.
@@ -88,8 +88,8 @@ findVariableConstraints fromAssertion var = go
       ConstrainedAssertionTree equality ->
       Either (ConstrainedAssertionTree equality) (ConstrainedAssertionTree Void)
     shortCircuitConstraints disjunctedTree constraint = case constraint of
-      Equality (eq, remaining) -> Left $ Equality (eq, andTrivial andBoolExpr remaining (NonTrivial disjunctedTree))
-      Inequalities ineq -> Right (Inequalities ineq)
+      Equality eq remaining -> Left $ Equality eq (andTrivial andBoolExpr remaining (NonTrivial disjunctedTree))
+      Inequalities ineq remaining -> Right (Inequalities ineq remaining)
       NoConstraints ineq -> Right (NoConstraints ineq)
 
     mergeConstraints ::
@@ -97,9 +97,7 @@ findVariableConstraints fromAssertion var = go
       ConstrainedAssertionTree Void ->
       ConstrainedAssertionTree equality
     mergeConstraints c1 c2 = case (c1, c2) of
-      (Equality (eq, _), _) -> absurd eq
-      (_, Equality (eq, _)) -> absurd eq
       (NoConstraints t1, NoConstraints t2) -> NoConstraints (andBoolExpr t1 t2)
-      (NoConstraints t1, Inequalities (ineqs2, t2)) -> Inequalities (ineqs2, andTrivial andBoolExpr (NonTrivial t1) t2)
-      (Inequalities (ineqs1, t1), NoConstraints t2) -> Inequalities (ineqs1, andTrivial andBoolExpr t1 (NonTrivial t2))
-      (Inequalities (ineqs1, t1), Inequalities (ineqs2, t2)) -> Inequalities (ineqs1 <> ineqs2, andTrivial andBoolExpr t1 t2)
+      (NoConstraints t1, Inequalities ineqs2 t2) -> Inequalities ineqs2 (andTrivial andBoolExpr (NonTrivial t1) t2)
+      (Inequalities ineqs1 t1, NoConstraints t2) -> Inequalities ineqs1 (andTrivial andBoolExpr t1 (NonTrivial t2))
+      (Inequalities ineqs1 t1, Inequalities ineqs2 t2) -> Inequalities (ineqs1 <> ineqs2) (andTrivial andBoolExpr t1 t2)

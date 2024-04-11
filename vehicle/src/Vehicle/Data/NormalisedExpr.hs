@@ -38,13 +38,13 @@ instance (Generic builtin) => Generic (Body 'WHNF builtin) where
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
 data Value (strategy :: NFStrategy) builtin
-  = VUniverse UniverseLevel
-  | VMeta MetaID (Spine strategy builtin)
-  | VFreeVar Identifier (Spine strategy builtin)
-  | VBoundVar Lv (Spine strategy builtin)
-  | VBuiltin builtin (Spine strategy builtin)
-  | VLam (VBinder strategy builtin) (Body strategy builtin)
-  | VPi (VBinder strategy builtin) (Value strategy builtin)
+  = VUniverse !UniverseLevel
+  | VMeta !MetaID !(Spine strategy builtin)
+  | VFreeVar !Identifier !(Spine strategy builtin)
+  | VBoundVar !Lv !(Spine strategy builtin)
+  | VBuiltin !builtin !(Spine strategy builtin)
+  | VLam !(VBinder strategy builtin) !(Body strategy builtin)
+  | VPi !(VBinder strategy builtin) !(Value strategy builtin)
   deriving (Eq, Show, Generic)
 
 type VArg strategy builtin = GenericArg (Value strategy builtin)

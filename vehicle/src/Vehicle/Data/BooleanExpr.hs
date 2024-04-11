@@ -2,6 +2,7 @@
 
 module Vehicle.Data.BooleanExpr where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.Either (partitionEithers)
@@ -17,9 +18,11 @@ import Vehicle.Prelude (Pretty (..), cartesianProduct, indent, line, prependList
 -- | A single individual query for a verifier. Is either a trivial query or
 -- holds arbitrary data.
 data MaybeTrivial a
-  = Trivial Bool
-  | NonTrivial a
+  = Trivial !Bool
+  | NonTrivial !a
   deriving (Show, Generic, Foldable, Traversable)
+
+instance (NFData a) => NFData (MaybeTrivial a)
 
 instance (ToJSON a) => ToJSON (MaybeTrivial a)
 
@@ -73,10 +76,12 @@ andTrivial f x y = case (x, y) of
 -- BooleanExpr
 
 data BooleanExpr a
-  = Conjunct (ConjunctAll (BooleanExpr a))
-  | Disjunct (DisjunctAll (BooleanExpr a))
-  | Query a
+  = Conjunct !(ConjunctAll (BooleanExpr a))
+  | Disjunct !(DisjunctAll (BooleanExpr a))
+  | Query !a
   deriving (Show, Functor, Foldable, Traversable, Generic)
+
+instance (NFData a) => NFData (BooleanExpr a)
 
 instance (ToJSON a) => ToJSON (BooleanExpr a)
 
@@ -128,6 +133,8 @@ newtype DisjunctAll a = DisjunctAll
   }
   deriving (Show, Generic, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
 
+instance (NFData a) => NFData (DisjunctAll a)
+
 instance (ToJSON a) => ToJSON (DisjunctAll a)
 
 instance (FromJSON a) => FromJSON (DisjunctAll a)
@@ -169,6 +176,8 @@ newtype ConjunctAll a = ConjunctAll
   { unConjunctAll :: NonEmpty a
   }
   deriving (Show, Semigroup, Functor, Applicative, Monad, Foldable, Traversable, Generic)
+
+instance (NFData a) => NFData (ConjunctAll a)
 
 instance (Pretty a) => Pretty (ConjunctAll a) where
   pretty x = "And" <> line <> indent 2 (pretty (unConjunctAll x))

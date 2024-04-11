@@ -1,7 +1,8 @@
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
+import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), gets)
+import Control.Monad.State (MonadState (..), gets, modify)
 import Control.Monad.Writer (MonadWriter)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
@@ -66,17 +67,19 @@ data PropertyMetaData = PropertyMetaData
   { queryFormat :: QueryFormat,
     networkCtx :: NetworkContext,
     propertyProvenance :: DeclProvenance,
-    propertyAddress :: PropertyAddress
+    propertyAddress :: PropertyAddress,
+    outputLocation :: Maybe FilePath
   }
 
 --------------------------------------------------------------------------------
 -- Global state
 
 data GlobalCtx = GlobalCtx
-  { globalBoundVarCtx :: LinkedHashMap Lv Variable,
-    userVariableReductions :: HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin),
-    networkVariableReductions :: HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin),
-    networkApplications :: LinkedHashMap NetworkApplication NetworkApplicationReplacement
+  { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
+    userVariableReductions :: !(HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
+    networkVariableReductions :: !(HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin)),
+    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement),
+    queryID :: !QueryID
   }
 
 emptyGlobalCtx :: GlobalCtx
@@ -85,7 +88,8 @@ emptyGlobalCtx =
     { globalBoundVarCtx = LinkedHashMap.empty,
       userVariableReductions = mempty,
       networkVariableReductions = mempty,
-      networkApplications = LinkedHashMap.empty
+      networkApplications = LinkedHashMap.empty,
+      queryID = 1
     }
 
 addVectorVarToBoundVarCtx ::
@@ -392,6 +396,8 @@ data UserVariableReconstructionStep
   | ReconstructTensor TensorVariable [RationalVariable]
   deriving (Eq, Ord, Show, Generic)
 
+instance NFData UserVariableReconstructionStep
+
 instance ToJSON UserVariableReconstructionStep
 
 instance FromJSON UserVariableReconstructionStep
@@ -449,6 +455,8 @@ data FMBound = FMBound
   }
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData FMBound
+
 instance ToJSON FMBound
 
 instance FromJSON FMBound
@@ -465,6 +473,8 @@ data FourierMotzkinVariableSolution = FMSolution
     upperBounds :: [FMBound]
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData FourierMotzkinVariableSolution
 
 instance ToJSON FourierMotzkinVariableSolution
 
@@ -510,6 +520,17 @@ lookupVarByLevel lv = do
   case LinkedHashMap.lookup lv globalBoundVarCtx of
     Nothing -> compilerDeveloperError "Cannout find variable var"
     Just v -> return v
+
+getAndUpdateQueryID :: (MonadQueryStructure m) => m QueryID
+getAndUpdateQueryID = do
+  queryID <$> getModify (\GlobalCtx {..} -> GlobalCtx {queryID = queryID + 1, ..})
+
+-- | Resets the entire global state except for the queryID
+resetGlobalCtx :: (MonadQueryStructure m) => m ()
+resetGlobalCtx = modify $ \ctx ->
+  emptyGlobalCtx
+    { queryID = queryID ctx
+    }
 
 getReducedVariableExprFor :: (MonadQueryStructure m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
 getReducedVariableExprFor lv = do

@@ -3,15 +3,16 @@ module Vehicle.Backend.Queries
   )
 where
 
+import Control.DeepSeq (force)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.State (evalStateT)
 import Data.Maybe (isNothing, maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
-import Vehicle.Backend.Queries.PostProcessing (compileQueryToFormat)
 import Vehicle.Backend.Queries.UserVariableElimination (eliminateUserVariables)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Context.Free
@@ -91,8 +92,8 @@ compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
     DefFunction p ident anns _ body
       | isProperty anns -> do
           hideStdLibDecls (Proxy @Builtin) vectorOperations $ do
-            let propertyData = (queryFormat, networkCtx, (ident, p), propertyID)
-            Just <$> compilePropertyDecl prog propertyData body outputLocation
+            let propertyData = (queryFormat, networkCtx, (ident, p), propertyID, outputLocation)
+            Just <$> compilePropertyDecl prog propertyData body
     _ -> return Nothing
 
   addDeclToContext d $ do
@@ -104,16 +105,18 @@ type MultiPropertyMetaData =
   ( QueryFormat,
     NetworkContext,
     DeclProvenance,
-    Int
+    Int,
+    Maybe FilePath
   )
 
 updateMetaData :: MultiPropertyMetaData -> TensorIndices -> PropertyMetaData
-updateMetaData (queryFormat, networkCtx, declProvenance, propertyID) indices =
+updateMetaData (queryFormat, networkCtx, declProvenance, propertyID, outputLocation) indices =
   PropertyMetaData
     { networkCtx = networkCtx,
       queryFormat = queryFormat,
       propertyProvenance = declProvenance,
-      propertyAddress = PropertyAddress propertyID (nameOf $ fst declProvenance) indices
+      propertyAddress = PropertyAddress propertyID (nameOf $ fst declProvenance) indices,
+      outputLocation = outputLocation
     }
 
 compilePropertyDecl ::
@@ -121,18 +124,17 @@ compilePropertyDecl ::
   Prog Ix Builtin ->
   MultiPropertyMetaData ->
   Expr Ix Builtin ->
-  Maybe FilePath ->
   m (Name, MultiProperty ())
-compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _) expr outputLocation = do
+compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = do
   logCompilerPass MinDetail ("found property" <+> quotePretty ident) $ do
     normalisedExpr <- normaliseInEmptyEnv expr
     multiProperty <-
-      compileMultiProperty propertyData outputLocation normalisedExpr
+      compileMultiProperty propertyData normalisedExpr
         `catchError` handlePropertyCompileError prog propertyData
     return (nameOf (fst declProv), multiProperty)
 
 handlePropertyCompileError :: (MonadCompile m) => Prog Ix Builtin -> MultiPropertyMetaData -> CompileError -> m a
-handlePropertyCompileError prog (queryFormat, _, declProv, _) e = case e of
+handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = case e of
   UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity (queryFormatID queryFormat) prog declProv
   UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers (queryFormatID queryFormat) prog declProv
   _ -> throwError e
@@ -144,10 +146,9 @@ compileMultiProperty ::
   forall m.
   (MonadStdIO m, MonadFreeContext QueryBuiltin m) =>
   MultiPropertyMetaData ->
-  Maybe FilePath ->
   WHNFValue Builtin ->
   m (MultiProperty ())
-compileMultiProperty multiPropertyMetaData outputLocation = go []
+compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
@@ -158,30 +159,24 @@ compileMultiProperty multiPropertyMetaData outputLocation = go []
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
         flip runReaderT propertyMetaData $ do
           logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress) $ do
-            compileSingleProperty outputLocation expr
+            compileSingleProperty expr
             return $ SingleProperty propertyAddress ()
 
 -- Compiles an individual property
 compileSingleProperty ::
   (MonadPropertyStructure m, MonadStdIO m) =>
-  Maybe FilePath ->
   WHNFValue Builtin ->
   m ()
-compileSingleProperty outputLocation expr = do
-  queries <- eliminateUserVariables expr
+compileSingleProperty expr = do
+  queries <- flip evalStateT emptyGlobalCtx $ eliminateUserVariables expr
 
   PropertyMetaData {..} <- ask
+
   -- Warn if trivial.
-  case queries of
+  case force queries of
     Trivial status -> logWarning (TrivialProperty propertyAddress status)
     _ -> return ()
 
-  formattedQueries <- runSupplyT (traverseProperty compileQueryToFormat queries) [1 :: QueryID ..]
   case outputLocation of
-    Nothing -> do
-      forQueryInProperty formattedQueries $ \(queryMetaData, queryText) ->
-        programOutput $ line <> line <> pretty (queryAddress queryMetaData) <> line <> pretty queryText
-    Just folder -> do
-      let queryMetaTree = fmap (fmap (fmap fst)) formattedQueries
-      writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queryMetaTree)
-      forQueryInProperty formattedQueries $ writeVerificationQuery queryFormat folder
+    Nothing -> return ()
+    Just folder -> writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queries)

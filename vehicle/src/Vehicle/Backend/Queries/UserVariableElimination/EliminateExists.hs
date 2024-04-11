@@ -59,7 +59,7 @@ solveExists searchCriteria solveVarConstraints partitions userVar = do
 
 fromTensorAssertion :: OriginalUserVariable -> Assertion -> ConstrainedAssertionTree TensorEquality
 fromTensorAssertion var = \case
-  TensorEq eq | tensorEqExpr eq `referencesVariable` UserTensorVar var -> Equality (eq, Trivial True)
+  TensorEq eq | tensorEqExpr eq `referencesVariable` UserTensorVar var -> Equality eq (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveTensorVariable ::
@@ -69,7 +69,7 @@ solveTensorVariable ::
   ConstrainedAssertionTree TensorEquality ->
   m (MaybeTrivial Partitions)
 solveTensorVariable userTensorVar solutions = \case
-  Equality (TensorEquality tensorEq, remainingTree) -> do
+  Equality (TensorEquality tensorEq) remainingTree -> do
     let (_, rearrangedEq) = rearrangeExprToSolveFor (UserTensorVar userTensorVar) tensorEq
     let solution = SolveTensorEquality userTensorVar rearrangedEq
     logDebug MaxDetail $
@@ -105,8 +105,8 @@ solveTensorVariable userTensorVar solutions = \case
 
 fromRationalAssertion :: UserRationalVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
 fromRationalAssertion var = \case
-  RationalEq eq | rationalEqExpr eq `referencesVariable` UserRationalVar var -> Equality (eq, Trivial True)
-  RationalIneq ineq | rationalIneqExpr ineq `referencesVariable` UserRationalVar var -> Inequalities (ConjunctAll [ineq], Trivial True)
+  RationalEq eq | rationalEqExpr eq `referencesVariable` UserRationalVar var -> Equality eq (Trivial True)
+  RationalIneq ineq | rationalIneqExpr ineq `referencesVariable` UserRationalVar var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveRationalVariable ::
@@ -117,7 +117,7 @@ solveRationalVariable ::
   m (MaybeTrivial Partitions)
 solveRationalVariable var solutions constraint =
   mkSinglePartition <$> case constraint of
-    Equality (RationalEquality eq, remainingTree) -> do
+    Equality (RationalEquality eq) remainingTree -> do
       let (_, rearrangedEq) = rearrangeExprToSolveFor (UserRationalVar var) eq
       let solution = SolveRationalEquality var rearrangedEq
       logDebug MaxDetail $
@@ -130,7 +130,7 @@ solveRationalVariable var solutions constraint =
           <> indent 2 (pretty remainingTree)
       let updatedTree = fmap (fmap (substituteRationalEq var rearrangedEq)) remainingTree
       return (solution : solutions, filterTrivialAtoms updatedTree)
-    Inequalities (ineqs, remainingTree) -> solveRationalInequalities var solutions (conjunctsToList ineqs) remainingTree
+    Inequalities ineqs remainingTree -> solveRationalInequalities var solutions (conjunctsToList ineqs) remainingTree
     NoConstraints tree -> solveRationalInequalities var solutions [] (NonTrivial tree)
 
 solveRationalInequalities ::
