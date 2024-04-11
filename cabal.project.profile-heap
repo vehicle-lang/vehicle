@@ -18,17 +18,11 @@ import: cabal.project
 
 package vehicle-syntax
   ghc-options:
-    -- Necessary for eventlog support
-    -eventlog
-
     -- Necessary for info table profiling with -hi
     -finfo-table-map -fdistinct-constructor-tables
 
 package vehicle
   ghc-options:
-    -- Necessary for eventlog support
-    -eventlog
-
     -- Necessary for info table profiling with -hi
     -finfo-table-map -fdistinct-constructor-tables
 

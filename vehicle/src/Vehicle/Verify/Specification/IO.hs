@@ -129,7 +129,7 @@ readSpecificationCacheIndex cacheFile = do
       Just plan -> return plan
 
 writePropertyVerificationPlan ::
-  (MonadLogger m, MonadIO m) =>
+  (MonadLogger m, MonadStdIO m) =>
   FilePath ->
   PropertyAddress ->
   PropertyVerificationPlan ->
@@ -137,6 +137,8 @@ writePropertyVerificationPlan ::
 writePropertyVerificationPlan folder propertyAddress plan = do
   let planFile = propertyPlanFileName folder propertyAddress
   let planText = encodePretty' prettyJSONConfig plan
+
+  logDebug MinDetail $ "Creating file:" <+> pretty planFile
 
   liftIO $
     catch

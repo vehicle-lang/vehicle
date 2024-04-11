@@ -4,6 +4,7 @@ module Vehicle.Backend.Queries.PostProcessing
   )
 where
 
+import Control.DeepSeq (force)
 import Control.Monad (foldM, forM, unless, when)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (get)
@@ -27,17 +28,19 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID (..), queryFormatID)
-import Vehicle.Verify.Specification (QueryMetaData (QueryMetaData))
+import Vehicle.Verify.Specification (QueryMetaData (QueryMetaData), queryAddress)
+import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Main entry point
 
 convertPartitionsToQueries ::
-  (MonadQueryStructure m) =>
+  (MonadQueryStructure m, MonadStdIO m) =>
   Partitions ->
-  m (DisjunctAll (MetaNetwork, UserVariableReconstruction, QueryContents))
+  m (DisjunctAll QueryMetaData)
 convertPartitionsToQueries partitions = do
+  PropertyMetaData {..} <- ask
   allQueries <- forM (partitionsToDisjuncts partitions) $ \(reconstruction, assertionTree) -> do
     fullReconstruction <- reconstructNetworkTensorVars reconstruction
     networkVarAssertions <- convertToNetworkRatVarAssertions assertionTree
@@ -47,20 +50,27 @@ convertPartitionsToQueries partitions = do
       (metaNetwork, newConjuncts) <- calculateMetaNetwork conjuncts
       -- Compile queries to particular format
       let contents = prettifyQueryContents (variables metaNetwork) newConjuncts
-      -- Return the result
-      return (metaNetwork, fullReconstruction, contents)
+      -- Compile to query format
+      (queryMetaData, queryText) <- compileQueryToFormat (metaNetwork, fullReconstruction, contents)
+
+      -- Write out the query
+      case outputLocation of
+        Nothing -> programOutput $ line <> line <> pretty (queryAddress queryMetaData) <> line <> pretty queryText
+        Just folder -> writeVerificationQuery queryFormat folder (queryMetaData, queryText)
+
+      return queryMetaData
   return $ disjunctDisjuncts allQueries
 
 -- This is separated from `convertPartitionsToQueries` above because for
 -- performance reasons we don't want `MonadSupply` to be needed everywhere.
 compileQueryToFormat ::
-  (MonadPropertyStructure m, MonadSupply QueryID m) =>
+  (MonadQueryStructure m) =>
   (MetaNetwork, UserVariableReconstruction, QueryContents) ->
   m (QueryMetaData, QueryText)
 compileQueryToFormat (metaNetwork, userVars, contents@QueryContents {..}) = do
   -- Calculate query address
   PropertyMetaData {..} <- ask
-  queryID <- demand
+  queryID <- getAndUpdateQueryID
   let queryAddress = (propertyAddress, queryID)
   checkIfNetworkInputsBounded queryAddress metaNetwork queryAssertions
   let queryMetaData = QueryMetaData queryAddress metaNetwork userVars
@@ -76,7 +86,7 @@ reconstructNetworkTensorVars ::
   m UserVariableReconstruction
 reconstructNetworkTensorVars solutions = do
   GlobalCtx {..} <- get
-  let networkTensorVars = sortOn fst $ HashMap.toList $ networkVariableReductions
+  let networkTensorVars = sortOn fst $ HashMap.toList networkVariableReductions
   let mkStep (var, (ratVars, _)) = ReconstructTensor (NetworkTensorVar var) (fmap NetworkRationalVar ratVars)
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
@@ -121,7 +131,7 @@ makeQueryAssertion relation (Sparse coefficients constant) = do
         LessThanOrEqual -> OrderRel Le
 
   let rationalVarCoefs = swap <$> Map.toList coefficients
-  let (userVarCoefs, networkVarCoefs) = partitionEithers (fmap splitRationalVar rationalVarCoefs)
+  let (userVarCoefs, networkVarCoefs) = force $ partitionEithers (fmap splitRationalVar rationalVarCoefs)
 
   unless (null userVarCoefs) $
     compilerDeveloperError $

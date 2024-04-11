@@ -1,5 +1,6 @@
 module Vehicle.Data.LinearExpr where
 
+import Control.DeepSeq (NFData)
 import Control.Monad (foldM)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Map (Map)
@@ -41,6 +42,8 @@ data LinearExpr variable constant = Sparse
     constantValue :: constant
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance (NFData variable, NFData constant) => NFData (LinearExpr variable constant)
 
 instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
 
