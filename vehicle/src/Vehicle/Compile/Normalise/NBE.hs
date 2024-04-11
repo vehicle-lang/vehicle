@@ -95,7 +95,7 @@ eval env expr = do
       boundNormExpr <- eval env bound
       let newEnv = extendEnvWithDefined boundNormExpr binder' env
       eval newEnv body
-    App _ fun args -> do
+    App fun args -> do
       fun' <- eval env fun
       args' <- traverse (traverse (eval env)) (NonEmpty.toList args)
       evalApp fun' args'

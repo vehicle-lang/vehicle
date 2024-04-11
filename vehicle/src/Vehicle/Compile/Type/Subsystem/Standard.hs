@@ -44,7 +44,7 @@ instance HasTypeSystem StandardTypingBuiltin where
   generateDefaultConstraint = addNewConstraintUsingDefaults
 
 convertToTypingBuiltins :: (MonadCompile m) => BuiltinUpdate m Ix Builtin StandardTypingBuiltin
-convertToTypingBuiltins p1 p2 t args = return $ normAppList p1 (Builtin p2 (StandardBuiltin t)) args
+convertToTypingBuiltins p t args = return $ normAppList (Builtin p (StandardBuiltin t)) args
 
 solveInstanceConstraint ::
   (TCM StandardTypingBuiltin m) =>

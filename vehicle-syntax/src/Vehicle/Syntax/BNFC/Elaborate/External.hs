@@ -539,9 +539,8 @@ builtinFunction :: (MonadElab m, IsToken token) => V.BuiltinFunction -> token ->
 builtinFunction b = builtin (V.BuiltinFunction b)
 
 app :: V.Expr V.Name V.Builtin -> [V.Expr V.Name V.Builtin] -> V.Expr V.Name V.Builtin
-app fun argExprs = V.normAppList p' fun args
+app fun argExprs = V.normAppList fun args
   where
-    p' = V.fillInProvenance (V.provenanceOf fun :| map V.provenanceOf args)
     args = fmap (mkArg V.Explicit) argExprs
 
 elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
@@ -556,8 +555,7 @@ elabApp :: (MonadElab m) => B.Expr -> B.Arg -> m (V.Expr V.Name V.Builtin)
 elabApp fun arg = do
   fun' <- elabExpr fun
   arg' <- elabArg arg
-  let p = V.fillInProvenance (V.provenanceOf fun' :| [V.provenanceOf arg'])
-  return $ V.normAppList p fun' [arg']
+  return $ V.normAppList fun' [arg']
 
 elabOrder :: (MonadElab m, IsToken token) => V.OrderOp -> token -> B.Expr -> B.Expr -> m (V.Expr V.Name V.Builtin)
 elabOrder order tk e1 e2 = do
@@ -613,7 +611,6 @@ elabQuantifier tk q binders body = do
   let mkQuantifier binder body =
         let p' = V.provenanceOf binder
          in V.normAppList
-              p'
               builtin
               [ mkArg V.Explicit (V.Lam p' binder body)
               ]
@@ -641,7 +638,6 @@ elabQuantifierIn tk q binder container body = do
   let p' = V.provenanceOf binder'
   return $
     V.normAppList
-      p'
       builtin
       [ mkArg V.Explicit (V.Lam p' binder' body'),
         mkArg V.Explicit container'
@@ -663,7 +659,6 @@ elabForeach tk binder body = do
   let p' = V.provenanceOf binder'
   return $
     V.normAppList
-      p'
       builtin
       [ mkArg V.Explicit (V.mkHole p "n"),
         mkArg V.Explicit (V.Lam p' binder' body')

@@ -262,9 +262,9 @@ negExpr :: Expr var Builtin -> Expr var Builtin
 negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
 
 pattern StandardLib :: StdLibFunction -> NonEmpty (Arg var builtin) -> Expr var builtin
-pattern StandardLib fn spine <- App _ (FreeVar _ (findStdLibFunction -> Just fn)) spine
+pattern StandardLib fn spine <- App (FreeVar _ (findStdLibFunction -> Just fn)) spine
   where
-    StandardLib fn spine = App mempty (FreeVar mempty (identifierOf fn)) spine
+    StandardLib fn spine = App (FreeVar mempty (identifierOf fn)) spine
 
 tensorToExpr :: (a -> Expr var Builtin) -> Tensor a -> Expr var Builtin
 tensorToExpr mkElem = foldMapTensor mkElem (\xs -> BuiltinExpr mempty (BuiltinConstructor (LVec (length xs))) (Arg mempty (Implicit True) Relevant (mkHole mempty "_t") :| fmap (Arg mempty Explicit Relevant) xs))

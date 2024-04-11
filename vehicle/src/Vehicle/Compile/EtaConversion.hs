@@ -66,7 +66,7 @@ etaExpand declIdent originalType originalBody = do
         lamBinder <- piBinderToLamBinder unnormPiBinder
         let liftedBody = liftDBIndices 1 body
         let p = provenanceOf body
-        let appliedBody = normAppList p liftedBody [argFromBinder lamBinder (BoundVar p 0)]
+        let appliedBody = normAppList liftedBody [argFromBinder lamBinder (BoundVar p 0)]
         recBody <- addBinderToContext lamBinder $ go piBody appliedBody
         return $ Lam p lamBinder recBody
       (_, Lam {}) ->

@@ -64,7 +64,7 @@ makeMetaExpr p metaID boundCtx = do
 
   -- Returns a meta applied to every bound variable in the context
   Glued
-    { unnormalised = normAppList p (Meta p metaID) unnormBoundEnv,
+    { unnormalised = normAppList (Meta p metaID) unnormBoundEnv,
       normalised = VMeta metaID normBoundEnv
     }
 
@@ -114,7 +114,7 @@ instance HasMetas (Expr Ix builtin) where
     Pi _ binder result -> do findMetas binder; findMetas result
     Let _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
     Lam _ binder body -> do findMetas binder; findMetas body
-    App _ fun args -> do findMetas fun; findMetas args
+    App fun args -> do findMetas fun; findMetas args
 
 instance HasMetas (WHNFValue builtin) where
   findMetas expr = case expr of

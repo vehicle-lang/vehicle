@@ -40,16 +40,16 @@ convertToLinearityTypes ::
   forall m.
   (MonadTypeChecker LinearityBuiltin m) =>
   BuiltinUpdate m Ix S.Builtin LinearityBuiltin
-convertToLinearityTypes p1 p2 b args = case b of
-  S.BuiltinFunction f -> return $ normAppList p1 (Builtin p2 (BuiltinFunction f)) args
-  S.BuiltinConstructor c -> return $ normAppList p1 (Builtin p2 (BuiltinConstructor c)) args
+convertToLinearityTypes p b args = case b of
+  S.BuiltinFunction f -> return $ normAppList (Builtin p (BuiltinFunction f)) args
+  S.BuiltinConstructor c -> return $ normAppList (Builtin p (BuiltinConstructor c)) args
   S.BuiltinType s -> case s of
-    Unit -> return $ Builtin p2 $ Linearity Constant
-    Bool -> unnormalised <$> freshLinearityMeta p2
-    Index -> unnormalised <$> freshLinearityMeta p2
-    Nat -> unnormalised <$> freshLinearityMeta p2
-    Int -> unnormalised <$> freshLinearityMeta p2
-    Rat -> unnormalised <$> freshLinearityMeta p2
+    Unit -> return $ Builtin p $ Linearity Constant
+    Bool -> unnormalised <$> freshLinearityMeta p
+    Index -> unnormalised <$> freshLinearityMeta p
+    Nat -> unnormalised <$> freshLinearityMeta p
+    Int -> unnormalised <$> freshLinearityMeta p
+    Rat -> unnormalised <$> freshLinearityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem
       _ -> monomorphisationError "List"

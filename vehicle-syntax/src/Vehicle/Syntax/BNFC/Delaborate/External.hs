@@ -80,8 +80,8 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
     V.Meta _ m -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
-    V.App _ (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
-    V.App _ fun args -> do
+    V.App (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
+    V.App fun args -> do
       fun' <- delabM fun
       delabApp fun' (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []

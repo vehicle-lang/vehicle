@@ -366,7 +366,7 @@ compileExpr expr = do
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
     Builtin p b -> compileBuiltin p b []
-    App _ fun args -> compileApp fun args
+    App fun args -> compileApp fun args
 
   logExit result
   return result
@@ -613,7 +613,7 @@ compileBuiltin _p b args = case b of
     resolveInstance :: (MonadAgdaCompile m) => Builtin -> [Arg Name Builtin] -> m Code
     resolveInstance op as = do
       (fn, newArgs) <- findInstanceArg op as
-      compileExpr (normAppList mempty fn newArgs)
+      compileExpr (normAppList fn newArgs)
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
@@ -928,8 +928,7 @@ pattern TensorType ::
   Expr Name Builtin
 pattern TensorType p tElem tDims <-
   App
-    p
-    (FreeVar _ (Identifier StdLib "Tensor"))
+    (FreeVar p (Identifier StdLib "Tensor"))
     [ RelevantExplicitArg _ tElem,
       IrrelevantExplicitArg _ tDims
       ]
@@ -940,7 +939,6 @@ pattern IndexType ::
   Expr Name Builtin
 pattern IndexType p size <-
   App
-    p
-    (Builtin _ (BuiltinType Index))
+    (Builtin p (BuiltinType Index))
     [ IrrelevantExplicitArg _ size
       ]

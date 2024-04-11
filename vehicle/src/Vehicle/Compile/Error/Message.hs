@@ -454,7 +454,7 @@ instance MeaningfulError CompileError where
         InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
 
         deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
-          App _ _ as -> NonEmpty.toList as
+          App _ as -> NonEmpty.toList as
           _ -> []
 
         originExpr :: Doc a
@@ -472,7 +472,7 @@ instance MeaningfulError CompileError where
           where
             go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
             go dbCtx = \case
-              App _ (Builtin _ _tc) args ->
+              App (Builtin _ _tc) args ->
                 calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
               Pi _ binder result ->
                 go (binder : dbCtx) result

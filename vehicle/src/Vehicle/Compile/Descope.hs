@@ -120,7 +120,7 @@ descopeExpr f e = showScopeExit $ case showScopeEntry e of
   Meta p i -> return $ Meta p i
   FreeVar p v -> return $ FreeVar p v
   BoundVar p v -> BoundVar p <$> f p v
-  App p fun args -> App p <$> descopeExpr f fun <*> traverse (descopeArg f) args
+  App fun args -> App <$> descopeExpr f fun <*> traverse (descopeArg f) args
   Let p bound binder body -> do
     bound' <- descopeExpr f bound
     binder' <- descopeBinder f binder
@@ -162,8 +162,8 @@ descopeRelExpr f e = case e of
   R.Builtin p op -> return $ R.Builtin p op
   R.FreeVar p v -> return $ R.FreeVar p v
   R.BoundVar p v -> R.BoundVar p <$> f p v
-  R.App p fun args -> R.App p <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
-  R.PartialApp p arity fun args -> R.PartialApp p arity <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
+  R.App fun args -> R.App <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
+  R.PartialApp arity fun args -> R.PartialApp arity <$> descopeRelExpr f fun <*> traverse (descopeRelExpr f) args
   R.Let p bound binder body -> do
     bound' <- descopeRelExpr f bound
     binder' <- descopeRelBinder f binder
@@ -208,13 +208,13 @@ descopeNormExpr ::
   Expr Name builtin
 descopeNormExpr f e = case e of
   VUniverse u -> Universe p u
-  VMeta m spine -> normAppList p (Meta p m) $ descopeSpine f spine
-  VFreeVar v spine -> normAppList p (FreeVar p v) $ descopeSpine f spine
-  VBuiltin b spine -> normAppList p (Builtin p b) $ descopeSpine f spine
+  VMeta m spine -> normAppList (Meta p m) $ descopeSpine f spine
+  VFreeVar v spine -> normAppList (FreeVar p v) $ descopeSpine f spine
+  VBuiltin b spine -> normAppList (Builtin p b) $ descopeSpine f spine
   VBoundVar v spine -> do
     let var = BoundVar p $ f p v
     let args = descopeSpine f spine
-    normAppList p var args
+    normAppList var args
   VPi binder body -> do
     let binder' = descopeNormBinder f binder
     let body' = descopeNormExpr f body
@@ -250,7 +250,7 @@ descopeBody f = \case
     -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (Arg p Explicit Relevant) env'
     -- descopeNaive body
     let ctx = cheatConvertBuiltin mempty (pretty (length env))
-    normAppList mempty ctx [Arg mempty Explicit Relevant $ descopeNaive body]
+    normAppList ctx [Arg mempty Explicit Relevant $ descopeNaive body]
 
 descopeDBIndexVar :: (MonadDescope m) => Provenance -> Ix -> m Name
 descopeDBIndexVar p i = do

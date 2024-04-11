@@ -24,7 +24,7 @@ freeNamesIn = \case
   Hole {} -> []
   Meta {} -> []
   Builtin {} -> []
-  App _ fun args -> freeNamesIn fun <> concatMap (freeNamesIn . argExpr) args
+  App fun args -> freeNamesIn fun <> concatMap (freeNamesIn . argExpr) args
   Pi _ binder result -> freeNamesIn (typeOf binder) <> freeNamesIn result
   Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (typeOf binder) <> freeNamesIn body
   Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
@@ -33,7 +33,7 @@ freeNamesIn = \case
 -- Destruction functions
 
 toHead :: Expr var builtin -> (Expr var builtin, [Arg var builtin])
-toHead (App _ fun args) = (fun, NonEmpty.toList args)
+toHead (App fun args) = (fun, NonEmpty.toList args)
 toHead e = (e, [])
 
 exprHead :: Expr var builtin -> Expr var builtin
