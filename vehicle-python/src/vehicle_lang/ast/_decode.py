@@ -111,25 +111,27 @@ class TaggedObjectDecoder(Decoder[_T]):
             raise DecodeError(value, cls_origin, f"missing field '{self.TAG}'")
 
         subcls_name: str = decoder.decode(str, value[self.TAG])
-        subcls: Optional[Type[_T]] = TaggedObjectDecoder._find_class(
+        subcls_origin: Optional[Type[_T]] = TaggedObjectDecoder._find_class(
             cast(Type[_T], cls_origin), subcls_name
         )
-        if subcls is None:
+        if subcls_origin is None:
             raise DecodeError(value, cls_origin, f"could not find class {subcls_name}")
-        if not is_dataclass(subcls):
-            raise DecodeError(value, subcls, f"not a dataclass")
+        if not is_dataclass(subcls_origin):
+            raise DecodeError(value, subcls_origin, f"not a dataclass")
 
         # Check if subcls requires any arguments:
         init_fields = [
             (fld, fld.default is MISSING and fld.default_factory is MISSING)
-            for fld in fields(subcls)
+            for fld in fields(subcls_origin)
             if fld.init
         ]
         if len(init_fields) == 0:
             if self.CONTENTS in value and value[self.CONTENTS]:
-                raise DecodeError(value, subcls, f"unused field '{self.CONTENTS}'")
+                raise DecodeError(
+                    value, subcls_origin, f"unused field '{self.CONTENTS}'"
+                )
             else:
-                return cast(_T, subcls())
+                return cast(_T, subcls_origin())
 
         # If CONTENTS field is present, decode arguments by position:
         if self.CONTENTS in value:
@@ -141,13 +143,13 @@ class TaggedObjectDecoder(Decoder[_T]):
                 try:
                     fld = required_init_fields[0]
                     arg: Any = decoder.decode(fld.type, value_args)
-                    return cast(_T, subcls(*[arg]))
+                    return cast(_T, subcls_origin(*[arg]))
                 except DecodeError as e:
                     value_args = [value_args]
 
             # Decode arguments by position:
             if not isinstance(value_args, List):
-                raise DecodeError(value, subcls, "expected list")
+                raise DecodeError(value, subcls_origin, "expected list")
 
             args: List[Any] = []
 
@@ -160,12 +162,14 @@ class TaggedObjectDecoder(Decoder[_T]):
                             e.value,
                             e.cls,
                             e.reason,
-                            telescope=((subcls, fld.name), *e.telescope),
+                            telescope=((subcls_origin, fld.name), *e.telescope),
                         )
                 elif required:
-                    raise DecodeError(value, subcls, f"missing value for {fld.name}")
+                    raise DecodeError(
+                        value, subcls_origin, f"missing value for {fld.name}"
+                    )
 
-            return cast(_T, subcls(*args))
+            return cast(_T, subcls_origin(*args))
 
         # If CONTENTS field is absent, decode arguments by name:
         else:
@@ -175,7 +179,9 @@ class TaggedObjectDecoder(Decoder[_T]):
             for fld, required in init_fields:
                 value_kwarg = value.get(fld.name, MISSING)
                 if value_kwarg is MISSING and required:
-                    raise DecodeError(value, subcls, f"missing value for {fld.name}")
+                    raise DecodeError(
+                        value, subcls_origin, f"missing value for {fld.name}"
+                    )
                 elif value_kwarg is not MISSING:
                     try:
                         kwargs[fld.name] = decoder.decode(fld.type, value_kwarg)
@@ -184,9 +190,9 @@ class TaggedObjectDecoder(Decoder[_T]):
                             e.value,
                             e.cls,
                             e.reason,
-                            telescope=((subcls, fld.name), *e.telescope),
+                            telescope=((subcls_origin, fld.name), *e.telescope),
                         )
-            return cast(_T, subcls(**kwargs))
+            return cast(_T, subcls_origin(**kwargs))
 
 
 def _decode_None(value: JsonValue) -> None:
