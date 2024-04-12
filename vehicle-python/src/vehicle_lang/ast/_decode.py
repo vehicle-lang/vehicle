@@ -72,33 +72,6 @@ class Decoder(Generic[_T], metaclass=ABCMeta):
     ) -> _T: ...
 
 
-def _resolve_field_type(
-    cls_origin: Type[Any],
-    cls_args: Tuple[Any, ...],
-    fld_type: Type[_S],
-) -> Type[_S]:
-    # If the class type does not have  __parameters__, there are no type parameters to resolve:
-    if not hasattr(cls_origin, "__parameters__"):
-        return fld_type
-    # If the field type has __args__, we need to resolve type arguments recursively:
-    if hasattr(fld_type, "__args__"):
-        fld_type = copy.deepcopy(fld_type)
-        fld_type.__args__ = tuple(  # type: ignore
-            _resolve_field_type(cls_origin, cls_args, fld_type_arg)
-            for fld_type_arg in fld_type.__args__  # type: ignore
-        )
-        return fld_type
-    # If the field type is a type variable, resolve it to the corresponding type argument:
-    try:
-        fld_type_index = cls_origin.__parameters__.index(fld_type)
-    except ValueError as e:
-        return fld_type
-    if fld_type_index < len(cls_args):
-        return cast(Type[_S], cls_args[fld_type_index])
-    else:
-        raise ValueError(f"Unbound type variable {fld_type} in {cls_origin.__name__}")
-
-
 class TaggedObjectDecoder(Decoder[_T]):
     TAG: str = "tag"
     CONTENTS: str = "contents"
@@ -120,6 +93,37 @@ class TaggedObjectDecoder(Decoder[_T]):
         """
         yield cls
         yield from cls.__subclasses__()
+
+    @staticmethod
+    def _resolve_field_type(
+        cls_origin: Type[Any],
+        cls_args: Tuple[Any, ...],
+        fld_type: Type[_S],
+    ) -> Type[_S]:
+        # If the class type does not have  __parameters__, there are no type parameters to resolve:
+        if not hasattr(cls_origin, "__parameters__"):
+            return fld_type
+        # If the field type has __args__, we need to resolve type arguments recursively:
+        if hasattr(fld_type, "__args__"):
+            fld_type = copy.deepcopy(fld_type)
+            fld_type.__args__ = tuple(  # type: ignore
+                TaggedObjectDecoder._resolve_field_type(
+                    cls_origin, cls_args, fld_type_arg
+                )
+                for fld_type_arg in fld_type.__args__  # type: ignore
+            )
+            return fld_type
+        # If the field type is a type variable, resolve it to the corresponding type argument:
+        try:
+            fld_type_index = cls_origin.__parameters__.index(fld_type)
+        except ValueError as e:
+            return fld_type
+        if fld_type_index < len(cls_args):
+            return cast(Type[_S], cls_args[fld_type_index])
+        else:
+            raise ValueError(
+                f"Unbound type variable {fld_type} in {cls_origin.__name__}"
+            )
 
     @override
     def decode(
@@ -152,7 +156,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         init_fields: List[Tuple[str, Type[Any], bool]] = [
             (
                 fld.name,
-                _resolve_field_type(cls_origin, cls_args, fld.type),
+                TaggedObjectDecoder._resolve_field_type(cls_origin, cls_args, fld.type),
                 fld.default is MISSING and fld.default_factory is MISSING,
             )
             for fld in fields(subcls_origin)
