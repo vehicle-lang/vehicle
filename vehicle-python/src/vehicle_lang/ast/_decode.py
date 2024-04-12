@@ -1,4 +1,5 @@
 import collections.abc
+import fractions
 from abc import ABCMeta, abstractmethod
 from dataclasses import MISSING, dataclass, field, fields, is_dataclass
 from typing import (
@@ -119,9 +120,37 @@ class TaggedObjectDecoder(Decoder[_T]):
         if not is_dataclass(subcls_origin):
             raise DecodeError(value, subcls_origin, f"not a dataclass")
 
+        # Check if subcls requires any type arguments:
+        cls_parameters: Optional[Tuple[Type[Any], ...]] = getattr(
+            cls_origin, "__parameters__", None
+        )
+
+        # NOTE: The __class_getitem__ for a dataclass resolves type arguments,
+        #       but does not return a new dataclass instance.
+        def _resolve_fld_type(fld_type: Type[_S]) -> Type[_S]:
+            if hasattr(fld_type, "__args__"):
+                fld_type_args = fld_type.__args__  # type: ignore
+                fld_type.__args__ = tuple(map(_resolve_fld_type, fld_type_args))  # type: ignore
+            if cls_parameters:
+                try:
+                    fld_type_index = cls_parameters.index(fld_type)
+                except ValueError as e:
+                    return fld_type
+                if fld_type_index < len(cls_args):
+                    return cast(Type[_S], cls_args[fld_type_index])
+                else:
+                    raise ValueError(
+                        f"Unbound type variable {fld_type}: {cls_origin.__name__} only binds {cls_parameters}"
+                    )
+            return fld_type
+
         # Check if subcls requires any arguments:
-        init_fields = [
-            (fld, fld.default is MISSING and fld.default_factory is MISSING)
+        init_fields: List[Tuple[str, Type[Any], bool]] = [
+            (
+                fld.name,
+                _resolve_fld_type(fld.type),
+                fld.default is MISSING and fld.default_factory is MISSING,
+            )
             for fld in fields(subcls_origin)
             if fld.init
         ]
@@ -138,11 +167,15 @@ class TaggedObjectDecoder(Decoder[_T]):
             value_args = value[self.CONTENTS]
 
             # Special case: If there is only one required argument
-            required_init_fields = [fld for fld, required in init_fields if required]
-            if len(required_init_fields) == 1:
+            required_init_fld_types = [
+                fld_type
+                for _fld_name, fld_type, fld_required in init_fields
+                if fld_required
+            ]
+            if len(required_init_fld_types) == 1:
                 try:
-                    fld = required_init_fields[0]
-                    arg: Any = decoder.decode(fld.type, value_args)
+                    fld_type = required_init_fld_types[0]
+                    arg: Any = decoder.decode(fld_type, value_args)
                     return cast(_T, subcls_origin(*[arg]))
                 except DecodeError as e:
                     value_args = [value_args]
@@ -153,20 +186,22 @@ class TaggedObjectDecoder(Decoder[_T]):
 
             args: List[Any] = []
 
-            for index, (fld, required) in enumerate(init_fields, start=0):
+            for index, (fld_name, fld_type, fld_required) in enumerate(
+                init_fields, start=0
+            ):
                 if index < len(value_args):
                     try:
-                        args.append(decoder.decode(fld.type, value_args[index]))
+                        args.append(decoder.decode(fld_type, value_args[index]))
                     except DecodeError as e:
                         raise DecodeError(
                             e.value,
                             e.cls,
                             e.reason,
-                            telescope=((subcls_origin, fld.name), *e.telescope),
+                            telescope=((subcls_origin, fld_name), *e.telescope),
                         )
-                elif required:
+                elif fld_required:
                     raise DecodeError(
-                        value, subcls_origin, f"missing value for {fld.name}"
+                        value, subcls_origin, f"missing value for {fld_name}"
                     )
 
             return cast(_T, subcls_origin(*args))
@@ -176,21 +211,21 @@ class TaggedObjectDecoder(Decoder[_T]):
 
             kwargs: Dict[str, Any] = {}
 
-            for fld, required in init_fields:
-                value_kwarg = value.get(fld.name, MISSING)
-                if value_kwarg is MISSING and required:
+            for fld_name, fld_type, fld_required in init_fields:
+                value_kwarg = value.get(fld_name, MISSING)
+                if value_kwarg is MISSING and fld_required:
                     raise DecodeError(
-                        value, subcls_origin, f"missing value for {fld.name}"
+                        value, subcls_origin, f"missing value for {fld_name}"
                     )
                 elif value_kwarg is not MISSING:
                     try:
-                        kwargs[fld.name] = decoder.decode(fld.type, value_kwarg)
+                        kwargs[fld_name] = decoder.decode(fld_type, value_kwarg)
                     except DecodeError as e:
                         raise DecodeError(
                             e.value,
                             e.cls,
                             e.reason,
-                            telescope=((subcls_origin, fld.name), *e.telescope),
+                            telescope=((subcls_origin, fld_name), *e.telescope),
                         )
             return cast(_T, subcls_origin(**kwargs))
 
@@ -255,7 +290,7 @@ class TupleDecoder(Decoder[Any]):
 
         # tuple[_T, ...]
         if len(cls_args) == 2 and cls_args[1] is ...:
-            return tuple(*(decoder.decode(cls_args[0], item) for item in value))
+            return tuple([decoder.decode(cls_args[0], item) for item in value])
 
         # tuple[_P]
         if len(cls_args) != len(value):
@@ -353,6 +388,26 @@ class UnionDecoder(Decoder[Any]):
         raise DecodeError(value, cls_origin, reason)
 
 
+class FractionDecoder(Decoder[fractions.Fraction]):
+    @override
+    def decode(
+        self,
+        decoder: "JsonDecoder",
+        cls_origin: Type[fractions.Fraction],
+        cls_args: Tuple[Any, ...],
+        value: JsonValue,
+    ) -> fractions.Fraction:
+        if not isinstance(value, Dict):
+            raise DecodeError(value, fractions.Fraction, "expected dict")
+        if "numerator" not in value:
+            raise DecodeError(value, fractions.Fraction, "missing field 'numerator'")
+        numerator: int = decoder.decode(int, value["numerator"])
+        if "denominator" not in value:
+            raise DecodeError(value, fractions.Fraction, "missing field 'denominator'")
+        denominator: int = decoder.decode(int, value["denominator"])
+        return fractions.Fraction(numerator, denominator)
+
+
 AnyDecoder: TypeAlias = Union[Decoder[Any], Callable[[JsonValue], Any]]
 
 
@@ -402,6 +457,7 @@ _DEFAULT_DECODER.register(bool, _decode_bool)
 _DEFAULT_DECODER.register(int, _decode_int)
 _DEFAULT_DECODER.register(float, _decode_float)
 _DEFAULT_DECODER.register(complex, _decode_complex)
+_DEFAULT_DECODER.register(fractions.Fraction, FractionDecoder())
 _DEFAULT_DECODER.register(tuple, TupleDecoder())
 _DEFAULT_DECODER.register(list, ListDecoder())
 _DEFAULT_DECODER.register(collections.abc.Sequence, ListDecoder())
