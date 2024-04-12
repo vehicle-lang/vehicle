@@ -120,18 +120,12 @@ class TaggedObjectDecoder(Decoder[_T]):
             raise DecodeError(value, subcls, f"not a dataclass")
 
         # Check if subcls requires any arguments:
-        required_init_fields = [
-            fld
-            for fld in fields(subcls)
-            if fld.init and fld.default is MISSING and fld.default_factory is MISSING
-        ]
-        optional_init_fields = [
-            fld
+        init_fields = [
+            (fld, fld.default is MISSING and fld.default_factory is MISSING)
             for fld in fields(subcls)
             if fld.init
-            and (fld.default is not MISSING or fld.default_factory is not MISSING)
         ]
-        if len(required_init_fields) == 0:
+        if len(init_fields) == 0:
             if self.CONTENTS in value and value[self.CONTENTS]:
                 raise DecodeError(value, subcls, f"unused field '{self.CONTENTS}'")
             else:
@@ -143,6 +137,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         value_args = value[self.CONTENTS]
 
         # Special case: If there is only one required argument
+        required_init_fields = [fld for fld, required in init_fields if required]
         if len(required_init_fields) == 1:
             try:
                 fld = required_init_fields[0]
@@ -157,8 +152,8 @@ class TaggedObjectDecoder(Decoder[_T]):
 
         args: List[Any] = []
 
-        # Decode required positional arguments:
-        for index, fld in enumerate(required_init_fields, start=0):
+        # Decode arguments:
+        for index, (fld, required) in enumerate(init_fields, start=0):
             if index < len(value_args):
                 try:
                     args.append(decoder.decode(fld.type, value_args[index]))
@@ -169,23 +164,8 @@ class TaggedObjectDecoder(Decoder[_T]):
                         e.reason,
                         telescope=((subcls, fld.name), *e.telescope),
                     )
-            else:
+            elif required:
                 raise DecodeError(value, subcls, f"missing value for {fld.name}")
-
-        # Decode optional positional arguments:
-        for index, fld in enumerate(
-            optional_init_fields, start=len(required_init_fields)
-        ):
-            if index < len(value_args):
-                try:
-                    args.append(decoder.decode(fld.type, value_args[index]))
-                except DecodeError as e:
-                    raise DecodeError(
-                        e.value,
-                        e.cls,
-                        e.reason,
-                        telescope=((subcls, fld.name), *e.telescope),
-                    )
 
         return cast(_T, subcls(*args))
 
