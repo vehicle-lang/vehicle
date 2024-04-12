@@ -131,43 +131,62 @@ class TaggedObjectDecoder(Decoder[_T]):
             else:
                 return cast(_T, subcls())
 
-        # Get the arguments field:
-        if self.CONTENTS not in value:
-            raise DecodeError(value, subcls, f"missing field '{self.CONTENTS}'")
-        value_args = value[self.CONTENTS]
+        # If CONTENTS field is present, decode arguments by position:
+        if self.CONTENTS in value:
+            value_args = value[self.CONTENTS]
 
-        # Special case: If there is only one required argument
-        required_init_fields = [fld for fld, required in init_fields if required]
-        if len(required_init_fields) == 1:
-            try:
-                fld = required_init_fields[0]
-                arg: Any = decoder.decode(fld.type, value_args)
-                return cast(_T, subcls(*[arg]))
-            except DecodeError as e:
-                value_args = [value_args]
-
-        # Decode the arguments:
-        if not isinstance(value_args, List):
-            raise DecodeError(value, subcls, "expected list")
-
-        args: List[Any] = []
-
-        # Decode arguments:
-        for index, (fld, required) in enumerate(init_fields, start=0):
-            if index < len(value_args):
+            # Special case: If there is only one required argument
+            required_init_fields = [fld for fld, required in init_fields if required]
+            if len(required_init_fields) == 1:
                 try:
-                    args.append(decoder.decode(fld.type, value_args[index]))
+                    fld = required_init_fields[0]
+                    arg: Any = decoder.decode(fld.type, value_args)
+                    return cast(_T, subcls(*[arg]))
                 except DecodeError as e:
-                    raise DecodeError(
-                        e.value,
-                        e.cls,
-                        e.reason,
-                        telescope=((subcls, fld.name), *e.telescope),
-                    )
-            elif required:
-                raise DecodeError(value, subcls, f"missing value for {fld.name}")
+                    value_args = [value_args]
 
-        return cast(_T, subcls(*args))
+            # Decode arguments by position:
+            if not isinstance(value_args, List):
+                raise DecodeError(value, subcls, "expected list")
+
+            args: List[Any] = []
+
+            for index, (fld, required) in enumerate(init_fields, start=0):
+                if index < len(value_args):
+                    try:
+                        args.append(decoder.decode(fld.type, value_args[index]))
+                    except DecodeError as e:
+                        raise DecodeError(
+                            e.value,
+                            e.cls,
+                            e.reason,
+                            telescope=((subcls, fld.name), *e.telescope),
+                        )
+                elif required:
+                    raise DecodeError(value, subcls, f"missing value for {fld.name}")
+
+            return cast(_T, subcls(*args))
+
+        # If CONTENTS field is absent, decode arguments by name:
+        else:
+
+            kwargs: Dict[str, Any] = {}
+
+            for fld, required in init_fields:
+                value_kwarg = value.get(fld.name, MISSING)
+                if value_kwarg is MISSING and required:
+                    raise DecodeError(value, subcls, f"missing value for {fld.name}")
+                elif value_kwarg is not MISSING:
+                    try:
+                        kwargs[fld.name] = decoder.decode(fld.type, value_kwarg)
+                    except DecodeError as e:
+                        raise DecodeError(
+                            e.value,
+                            e.cls,
+                            e.reason,
+                            telescope=((subcls, fld.name), *e.telescope),
+                        )
+            return cast(_T, subcls(**kwargs))
 
 
 def _decode_None(value: JsonValue) -> None:
