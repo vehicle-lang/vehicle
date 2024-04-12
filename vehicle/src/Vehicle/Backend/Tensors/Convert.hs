@@ -14,6 +14,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (maybeToList)
 import Data.Ratio
 import Data.Set as Set (Set, fromList)
+import Data.Vector (Vector)
 import Vehicle.Backend.Tensors.Core (TensorBuiltin)
 import Vehicle.Backend.Tensors.Core qualified as T
 import Vehicle.Compile.Context.Var
@@ -224,10 +225,10 @@ convertBuiltinConstructor c args = case c of
   Cons -> return $ mkBuiltin T.ConsList []
   LUnit -> return $ mkBuiltin T.Unit []
   LIndex i -> return $ mkBuiltin (T.Index i) []
-  LBool v -> return $ T.VBoolTensor (Tensor [] [v])
-  LNat v -> return $ T.VNatTensor (Tensor [] [v])
-  LInt v -> return $ T.VIntTensor (Tensor [] [v])
-  LRat v -> return $ T.VRatTensor (Tensor [] [T.convertRat v])
+  LBool v -> return $ T.VBoolTensor [] [v]
+  LNat v -> return $ T.VNatTensor [] [v]
+  LInt v -> return $ T.VIntTensor [] [v]
+  LRat v -> return $ T.VRatTensor [] [T.convertRat v]
   LVec n -> case args of
     _t : xs -> convertVector n xs
     _ -> compilerDeveloperError "Malformed LVec found."
@@ -245,12 +246,14 @@ convertVector n args = case args of
       _ -> mkBuiltin (T.StackRatTensor n) args
     where
       comp ::
-        (Tensor a -> NFValue TensorBuiltin) ->
+        (TensorShape -> Vector a -> NFValue TensorBuiltin) ->
         (NFValue TensorBuiltin -> Maybe (Tensor a)) ->
         NonEmpty (NFArg TensorBuiltin) ->
         NFValue TensorBuiltin
       comp mk f xs = case traverse (f . argExpr) xs of
-        Just constantTensors -> mk $ stack constantTensors
+        Just constantTensors -> do
+          let t = stack constantTensors
+          mk (tensorShape t) (tensorValue t)
         Nothing -> mkBuiltin (T.StackRatTensor n) args
 
 convertBuiltinFunction ::
@@ -370,7 +373,7 @@ distributeForeachIndex preprocess originalSpine varName lv = \case
     | lv1 == lv ->
         return $ Just $ argExpr xs
   -- Eliminate `forall i . c` into `const c`
-  T.VRatTensor (Tensor _ [x]) ->
+  T.VRatTensor _ [x] ->
     return $ Just $ mkBuiltin (T.ConstRatTensor x) []
   body -> do
     ctx <- getNamedBoundCtx (Proxy @Builtin)
@@ -463,18 +466,18 @@ mkBuiltin ::
 mkBuiltin = VBuiltin
 
 evalAnd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAnd (T.VBoolTensor xs) y | and xs = y
-evalAnd x (T.VBoolTensor ys) | and ys = x
+evalAnd (T.VBoolTensor _ xs) y | and xs = y
+evalAnd x (T.VBoolTensor _ ys) | and ys = x
 evalAnd x y = mkBuiltin T.AndBoolTensor (Arg mempty Explicit Relevant <$> [x, y])
 
 evalOr :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalOr (T.VBoolTensor xs) y | all not xs = y
-evalOr x (T.VBoolTensor ys) | all not ys = x
+evalOr (T.VBoolTensor _ xs) y | all not xs = y
+evalOr x (T.VBoolTensor _ ys) | all not ys = x
 evalOr x y = mkBuiltin T.OrBoolTensor (Arg mempty Explicit Relevant <$> [x, y])
 
 evalAdd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAdd (T.VRatTensor xs) y | all (\r -> numerator r == 0) xs = y
-evalAdd x (T.VRatTensor ys) | all (\r -> numerator r == 0) ys = x
+evalAdd (T.VRatTensor _ xs) y | all (\r -> numerator r == 0) xs = y
+evalAdd x (T.VRatTensor _ ys) | all (\r -> numerator r == 0) ys = x
 evalAdd x y = mkBuiltin T.AddRatTensor (Arg mempty Explicit Relevant <$> [x, y])
 
 -- | Standard library operations that we don't want to normalise.

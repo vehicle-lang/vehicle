@@ -1,6 +1,7 @@
 module Vehicle.Backend.Tensors.Core where
 
 import Data.Ratio
+import Data.Vector
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity)
 import Vehicle.Data.BuiltinInterface (PrintableBuiltin (..), cheatConvertBuiltin)
@@ -8,6 +9,7 @@ import Vehicle.Data.BuiltinInterface.Expr qualified as V
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
+import Vehicle.Prelude.Misc
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.AST (Provenance (..))
 import Vehicle.Syntax.AST qualified as V
@@ -56,10 +58,10 @@ data TensorBuiltin
     ------------------
     Unit
   | Index Int
-  | BoolTensor (Tensor Bool)
-  | NatTensor (Tensor Int)
-  | IntTensor (Tensor Int)
-  | RatTensor (Tensor Rat)
+  | BoolTensor TensorShape (Vector Bool)
+  | NatTensor TensorShape (Vector Int)
+  | IntTensor TensorShape (Vector Int)
+  | RatTensor TensorShape (Vector Rat)
   | NilList
   | ConsList
   | ---------------------------------
@@ -134,10 +136,10 @@ instance PrintableBuiltin TensorBuiltin where
     -- Constructors
     Unit -> V.UnitLiteral mempty
     Index i -> builtinConstructor $ V.LIndex i
-    BoolTensor vs -> V.tensorToExpr (V.BoolLiteral mempty) vs
-    NatTensor vs -> V.tensorToExpr (V.NatLiteral mempty) vs
-    IntTensor vs -> V.tensorToExpr (V.IntLiteral mempty) vs
-    RatTensor vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) vs
+    BoolTensor shape vs -> V.tensorToExpr (V.BoolLiteral mempty) (Tensor shape vs)
+    NatTensor shape vs -> V.tensorToExpr (V.NatLiteral mempty) (Tensor shape vs)
+    IntTensor shape vs -> V.tensorToExpr (V.IntLiteral mempty) (Tensor shape vs)
+    RatTensor shape vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) (Tensor shape vs)
     NilList -> builtinConstructor V.Nil
     ConsList -> builtinConstructor V.Cons
     ConstRatTensor r -> cheatConvertBuiltin p $ "Const[" <+> pretty (convertTRat r) <+> "]"
@@ -255,33 +257,33 @@ pattern VTensorLiteral c <- VBuiltin c []
     -- Can't be bidirectional as Haskell 8.10.7 doesn't support the empty list literal being bidirectional.
     VTensorLiteral c = VBuiltin c []
 
-pattern VBoolTensor :: Tensor Bool -> NFValue TensorBuiltin
-pattern VBoolTensor t = VTensorLiteral (BoolTensor t)
+pattern VBoolTensor :: TensorShape -> Vector Bool -> NFValue TensorBuiltin
+pattern VBoolTensor shape t = VTensorLiteral (BoolTensor shape t)
 
-pattern VNatTensor :: Tensor Int -> NFValue TensorBuiltin
-pattern VNatTensor t = VTensorLiteral (NatTensor t)
+pattern VNatTensor :: TensorShape -> Vector Int -> NFValue TensorBuiltin
+pattern VNatTensor shape t = VTensorLiteral (NatTensor shape t)
 
-pattern VIntTensor :: Tensor Int -> NFValue TensorBuiltin
-pattern VIntTensor t = VTensorLiteral (IntTensor t)
+pattern VIntTensor :: TensorShape -> Vector Int -> NFValue TensorBuiltin
+pattern VIntTensor shape t = VTensorLiteral (IntTensor shape t)
 
-pattern VRatTensor :: Tensor Rat -> NFValue TensorBuiltin
-pattern VRatTensor t = VTensorLiteral (RatTensor t)
+pattern VRatTensor :: TensorShape -> Vector Rat -> NFValue TensorBuiltin
+pattern VRatTensor shape t = VTensorLiteral (RatTensor shape t)
 
 pattern VLookup :: NFArg TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
 pattern VLookup xs i <- VBuiltin LookupRatTensor [xs, V.RelevantExplicitArg _ i]
 
 getBoolTensor :: NFValue TensorBuiltin -> Maybe (Tensor Bool)
-getBoolTensor (VBoolTensor t) = Just t
+getBoolTensor (VBoolTensor shape t) = Just (Tensor shape t)
 getBoolTensor _ = Nothing
 
 getNatTensor :: NFValue TensorBuiltin -> Maybe (Tensor Int)
-getNatTensor (VIntTensor t) = Just t
+getNatTensor (VIntTensor shape t) = Just (Tensor shape t)
 getNatTensor _ = Nothing
 
 getIntTensor :: NFValue TensorBuiltin -> Maybe (Tensor Int)
-getIntTensor (VIntTensor t) = Just t
+getIntTensor (VIntTensor shape t) = Just (Tensor shape t)
 getIntTensor _ = Nothing
 
 getRatTensor :: NFValue TensorBuiltin -> Maybe (Tensor Rat)
-getRatTensor (VRatTensor t) = Just t
+getRatTensor (VRatTensor shape t) = Just (Tensor shape t)
 getRatTensor _ = Nothing
