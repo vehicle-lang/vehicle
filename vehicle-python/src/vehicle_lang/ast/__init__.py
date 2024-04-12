@@ -45,19 +45,6 @@ class Provenance(AST):
 
 MISSING: Provenance = Provenance(0, 0)
 
-################################################################################
-# Values
-################################################################################
-
-
-_DType = TypeVar("_DType", bool, float, int, Fraction)
-
-
-@dataclass(frozen=True)
-class Tensor(Generic[_DType]):
-    shape: Tuple[int, ...]
-    value: Tuple[_DType]
-
 
 ################################################################################
 # Builtins
@@ -117,22 +104,26 @@ class Index(BuiltinFunction):
 
 @dataclass(frozen=True)
 class BoolTensor(BuiltinFunction):
-    value: Tensor[bool]
+    shape: Tuple[int, ...]
+    value: Tuple[bool, ...]
 
 
 @dataclass(frozen=True)
 class NatTensor(BuiltinFunction):
-    value: Tensor[int]
+    shape: Tuple[int, ...]
+    value: Tuple[int, ...]
 
 
 @dataclass(frozen=True)
 class IntTensor(BuiltinFunction):
-    value: Tensor[int]
+    shape: Tuple[int, ...]
+    value: Tuple[int, ...]
 
 
 @dataclass(frozen=True)
 class RatTensor(BuiltinFunction):
-    value: Tensor[Fraction]
+    shape: Tuple[int, ...]
+    value: Tuple[Fraction, ...]
 
 
 @dataclass(frozen=True)
