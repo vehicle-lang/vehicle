@@ -1,11 +1,6 @@
-import fractions
-from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Callable, Generic, Tuple, Type, Union
+from typing import Tuple, Union
 
-from typing_extensions import Literal, Protocol, TypeAlias, TypeVar
-
-from ... import ast as vcl
+from typing_extensions import TypeAlias, TypeVar
 
 ################################################################################
 # Type Variables & Aliases for Interpretation of Vehicle Types
