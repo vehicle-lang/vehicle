@@ -1,4 +1,5 @@
 import collections.abc
+import copy
 import fractions
 from abc import ABCMeta, abstractmethod
 from dataclasses import MISSING, dataclass, field, fields, is_dataclass
@@ -71,6 +72,33 @@ class Decoder(Generic[_T], metaclass=ABCMeta):
     ) -> _T: ...
 
 
+def _resolve_field_type(
+    cls_origin: Type[Any],
+    cls_args: Tuple[Any, ...],
+    fld_type: Type[_S],
+) -> Type[_S]:
+    # If the class type does not have  __parameters__, there are no type parameters to resolve:
+    if not hasattr(cls_origin, "__parameters__"):
+        return fld_type
+    # If the field type has __args__, we need to resolve type arguments recursively:
+    if hasattr(fld_type, "__args__"):
+        # fld_type = copy.deepcopy(fld_type)
+        fld_type.__args__ = tuple(  # type: ignore
+            _resolve_field_type(cls_origin, cls_args, fld_type_arg)
+            for fld_type_arg in fld_type.__args__  # type: ignore
+        )
+        return fld_type
+    # If the field type is a type variable, resolve it to the corresponding type argument:
+    try:
+        fld_type_index = cls_origin.__parameters__.index(fld_type)
+    except ValueError as e:
+        return fld_type
+    if fld_type_index < len(cls_args):
+        return cast(Type[_S], cls_args[fld_type_index])
+    else:
+        raise ValueError(f"Unbound type variable {fld_type} in {cls_origin.__name__}")
+
+
 class TaggedObjectDecoder(Decoder[_T]):
     TAG: str = "tag"
     CONTENTS: str = "contents"
@@ -120,35 +148,11 @@ class TaggedObjectDecoder(Decoder[_T]):
         if not is_dataclass(subcls_origin):
             raise DecodeError(value, subcls_origin, f"not a dataclass")
 
-        # Check if subcls requires any type arguments:
-        cls_parameters: Optional[Tuple[Type[Any], ...]] = getattr(
-            cls_origin, "__parameters__", None
-        )
-
-        # NOTE: The __class_getitem__ for a dataclass resolves type arguments,
-        #       but does not return a new dataclass instance.
-        def _resolve_fld_type(fld_type: Type[_S]) -> Type[_S]:
-            if hasattr(fld_type, "__args__"):
-                fld_type_args = fld_type.__args__  # type: ignore
-                fld_type.__args__ = tuple(map(_resolve_fld_type, fld_type_args))  # type: ignore
-            if cls_parameters:
-                try:
-                    fld_type_index = cls_parameters.index(fld_type)
-                except ValueError as e:
-                    return fld_type
-                if fld_type_index < len(cls_args):
-                    return cast(Type[_S], cls_args[fld_type_index])
-                else:
-                    raise ValueError(
-                        f"Unbound type variable {fld_type}: {cls_origin.__name__} only binds {cls_parameters}"
-                    )
-            return fld_type
-
         # Check if subcls requires any arguments:
         init_fields: List[Tuple[str, Type[Any], bool]] = [
             (
                 fld.name,
-                _resolve_fld_type(fld.type),
+                _resolve_field_type(cls_origin, cls_args, fld.type),
                 fld.default is MISSING and fld.default_factory is MISSING,
             )
             for fld in fields(subcls_origin)
