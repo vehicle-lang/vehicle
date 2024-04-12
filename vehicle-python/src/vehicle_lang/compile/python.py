@@ -263,54 +263,26 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py_name(expression.name, provenance=expression.provenance)
 
     def translate_Builtin(self, expression: vcl.Builtin) -> py.expr:
-        # TYPES
-        #   When we encounter a type, we raise `EraseType`,
-        #   which is handled by `translation_declarations`.
-        if isinstance(
-            expression.builtin,
-            (
-                vcl.IndexType,
-                vcl.BoolTensorType,
-                vcl.IndexTensorType,
-                vcl.NatTensorType,
-                vcl.IntTensorType,
-                vcl.RatTensorType,
-                vcl.ListType,
-            ),
-        ):
-            raise EraseType
         # OPTIMISE
         #   All Optimise() nodes should be fully applied, and hence be captured
         #   by the translation for applications.
-        elif isinstance(expression.builtin, vcl.Optimise):
+        if isinstance(expression.builtin, vcl.Optimise):
             raise VehicleOptimiseTypeError(expression)
+        # TYPES
+        #   When we encounter a type, we raise `EraseType`,
+        #   which is handled by `translation_declarations`.
+        elif isinstance(expression.builtin, vcl.BuiltinType):
+            raise EraseType
         # CONSTANTS
         #   When we encounter a constant, we translate it to an application
         #   of the builtin function to the constant value, e.g., we translate
         #   `Index(value=3)` to `__vehicle__.Index(3)`.
         elif isinstance(
             expression.builtin,
-            (
-                vcl.Unit,
-                vcl.NilList,
-                vcl.Index,
-                vcl.BoolTensor,
-                vcl.NatTensor,
-                vcl.IntTensor,
-                vcl.RatTensor,
-            ),
+            (vcl.BuiltinConstant, vcl.BuiltinLiteral),
         ):
             arguments: List[py.expr] = []
-            if isinstance(
-                expression.builtin,
-                (
-                    vcl.Index,
-                    vcl.BoolTensor,
-                    vcl.NatTensor,
-                    vcl.IntTensor,
-                    vcl.RatTensor,
-                ),
-            ):
+            if isinstance(expression.builtin, vcl.BuiltinLiteral):
                 arguments.append(
                     py.Constant(
                         value=expression.builtin.value,
@@ -329,6 +301,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         #   When we encounter a function, we translate it to the unapplied
         #   function name, e.g., we translate `AddInt` as `__vehicle__.AddInt`.
         else:
+            assert isinstance(expression.builtin, vcl.BuiltinFunction)
             return py_builtin(
                 builtin=expression.builtin.__class__.__name__,
                 provenance=expression.provenance,
