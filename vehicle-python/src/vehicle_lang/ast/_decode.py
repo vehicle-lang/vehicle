@@ -82,7 +82,7 @@ def _resolve_field_type(
         return fld_type
     # If the field type has __args__, we need to resolve type arguments recursively:
     if hasattr(fld_type, "__args__"):
-        # fld_type = copy.deepcopy(fld_type)
+        fld_type = copy.deepcopy(fld_type)
         fld_type.__args__ = tuple(  # type: ignore
             _resolve_field_type(cls_origin, cls_args, fld_type_arg)
             for fld_type_arg in fld_type.__args__  # type: ignore
