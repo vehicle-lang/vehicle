@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from fractions import Fraction
 from typing import Any, Callable, Generic, Tuple, Type
 
-from typing_extensions import Literal, TypeAlias, override
+from typing_extensions import Literal, TypeAlias, final, override
 
-from ...ast import Tensor
+from ...ast import DType, Tensor
 from . import types as vcl
 
 
@@ -117,10 +117,10 @@ class Builtins(
     def PowRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
 
     @abstractmethod
-    def MinRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor: ...
+    def MinRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
 
     @abstractmethod
-    def MaxRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor: ...
+    def MaxRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
 
     @abstractmethod
     def ReduceAndBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor: ...

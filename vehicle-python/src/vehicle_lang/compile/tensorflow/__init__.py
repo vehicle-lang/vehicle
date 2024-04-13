@@ -9,9 +9,15 @@ from typing_extensions import Literal, override
 
 from ...ast import MISSING, Tensor
 from ...ast import load as ast_load
-from ...typing import DeclarationName, Explicit, Target
+from ...typing import (
+    AnyOptimisers,
+    DeclarationName,
+    DifferentiableLogic,
+    Explicit,
+    Target,
+)
 from ..abc import ABCBuiltins, Value
-from ..error import VehicleBuiltinUnsupported
+from ..error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from ..python import PythonTranslation
 from . import types as vcl
 
@@ -67,22 +73,22 @@ class TensorFlowBuiltins(
 
     @override
     def BoolTensor(self, value: Tensor[bool]) -> vcl.BoolTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_bool)
+        return tf.constant(value=value.value, dtype=self.dtype_bool, shape=value.shape)
 
     @override
     def NatTensor(self, value: Tensor[int]) -> vcl.NatTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_nat)
+        return tf.constant(value=value.value, dtype=self.dtype_nat, shape=value.shape)
 
     @override
     def IntTensor(self, value: Tensor[int]) -> vcl.IntTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_int)
+        return tf.constant(value=value.value, dtype=self.dtype_int, shape=value.shape)
 
     @override
     def RatTensor(self, value: Tensor[Fraction]) -> vcl.RatTensor:
         return tf.constant(
-            value=(f.__float__() for f in value.value),
-            shape=value.shape,
+            value=tuple(value.__float__() for value in value.value),
             dtype=self.dtype_rat,
+            shape=value.shape,
         )
 
     @override
@@ -146,12 +152,12 @@ class TensorFlowBuiltins(
         return tf.pow(x, y)
 
     @override
-    def MinRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.reduce_min(x)
+    def MinRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
+        return tf.minimum(x, y)
 
     @override
-    def MaxRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.reduce_max(x)
+    def MaxRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
+        return tf.maximum(x, y)
 
     @override
     def ReduceAndBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor:
@@ -248,7 +254,7 @@ class TensorFlowBuiltins(
 
     @override
     def If(self, cond: vcl.Bool, ifTrue: Value, ifFalse: Value) -> Value:
-        return tf.cond(cond, ifTrue, ifFalse)
+        return tf.cond(cond, lambda: ifTrue, lambda: ifFalse)
 
 
 @dataclass(frozen=True, init=False)
@@ -280,36 +286,29 @@ def load(
     if translation is None:
         translation = TensorFlowTranslation()
     return translation.compile(
-        ast_load(path, declarations=declarations, target=target), path=path
+        ast_load(path, declarations=declarations, target=target),
+        path=path,
     )
 
 
-# def load_loss_function(
-#     path: Union[str, Path],
-#     property_name: DeclarationName,
-#     *,
-#     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-#     optimisers: AnyOptimisers = {},
-# ) -> Any:
-#     """
-#     Load a loss function from a property in a Vehicle specification.
+def load_loss_function(
+    path: Union[str, Path],
+    property_name: DeclarationName,
+    *,
+    target: DifferentiableLogic = DifferentiableLogic.Vehicle,
+    optimisers: AnyOptimisers = {},
+) -> Callable[..., vcl.RatTensor]:
+    """
+    Load a loss function from a property in a Vehicle specification.
 
-#     :param path: The path to the Vehicle specification file.
-#     :param property_name: The name of the Vehicle property to load.
-#     :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
-#     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
-#     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
-#     """
-#     translation = TensorFlowTranslation(
-#         builtins=TensorFlowBuiltins(optimisers=optimisers)
-#     )
-#     declarations = load(
-#         path,
-#         declarations=(property_name,),
-#         target=target,
-#         translation=translation,
-#     )
-#     if property_name in declarations:
-#         return declarations[property_name]
-#     else:
-#         raise VehiclePropertyNotFound(property_name)
+    :param path: The path to the Vehicle specification file.
+    :param property_name: The name of the Vehicle property to load.
+    :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
+    :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
+    :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
+    """
+    declarations = load(path, declarations=(property_name,), target=target)
+    if property_name in declarations:
+        return declarations[property_name]
+    else:
+        raise VehiclePropertyNotFound(property_name)

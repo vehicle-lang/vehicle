@@ -50,13 +50,13 @@ MISSING: Provenance = Provenance(0, 0)
 ################################################################################
 
 
-_DType = TypeVar("_DType", bool, float, int, Fraction)
+DType = TypeVar("DType", bool, float, int, Fraction)
 
 
 @dataclass(frozen=True)
-class Tensor(Generic[_DType]):
+class Tensor(Generic[DType]):
     shape: Tuple[int, ...]
-    value: Tuple[_DType, ...]
+    value: Tuple[DType, ...]
 
 
 ################################################################################

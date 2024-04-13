@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Union
 import pytest
 
 import vehicle_lang as vcl
+import vehicle_lang.ast as vcl2ast
 import vehicle_lang.compile.tensorflow as vcl2tf
 
 
@@ -63,7 +64,7 @@ def quantifier_any_optimiser(
         (
             "test_maximum.vcl",
             {},
-            {"prop": 3.5},
+            {"prop": 1.0},
         ),
         (
             "test_minimum.vcl",
@@ -121,9 +122,7 @@ def test_loss_function_exec(
         print(f"Exec {specification_filename}")
         specification_path = Path(__file__).parent / "data" / specification_filename
         actual_declarations = vcl2tf.load(
-            specification_path,
-            target=vcl.DifferentiableLogic.DL2,
-            translation=vcl2tf.TensorFlowTranslation(),
+            specification_path, target=vcl.DifferentiableLogic.DL2
         )
         if isinstance(validate_output, dict):
             for key in validate_output.keys():

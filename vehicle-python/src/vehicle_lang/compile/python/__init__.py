@@ -1,8 +1,9 @@
 import ast as py
 from dataclasses import asdict, dataclass, field
+from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence, Union
+from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union
 
 from ... import ast as vcl
 from ..abc import ABCTranslation, AnyBuiltins
@@ -47,25 +48,24 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
+                # NOTE: 'vehicle_lang.ast' is imported for 'Tensor'
+                #       which is used to translate vcl.Tensor
+                py.Import(
+                    names=[py.alias(name="vehicle_lang.ast", **asdict(vcl.MISSING))],
+                    level=0,
+                    **asdict(vcl.MISSING),
+                ),
                 # NOTE: 'fractions' is imported for 'Fraction'
                 #       which is used to translate vcl.Rat
                 py.Import(
-                    names=[
-                        py.alias(
-                            name="fractions", asname="fractions", **asdict(vcl.MISSING)
-                        )
-                    ],
+                    names=[py.alias(name="fractions", **asdict(vcl.MISSING))],
                     level=0,
                     **asdict(vcl.MISSING),
                 ),
                 # NOTE: 'functools' is imported for 'partial'
                 #       which is used to translate vcl.PartialApp
                 py.Import(
-                    names=[
-                        py.alias(
-                            name="functools", asname="functools", **asdict(vcl.MISSING)
-                        )
-                    ],
+                    names=[py.alias(name="functools", **asdict(vcl.MISSING))],
                     level=0,
                     **asdict(vcl.MISSING),
                 ),
@@ -256,12 +256,27 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         ):
             arguments: List[py.expr] = []
             if isinstance(expression.builtin, vcl.BuiltinLiteral):
-                arguments.append(
-                    py.Constant(
-                        value=expression.builtin.value,
-                        **asdict(expression.provenance),
+                if isinstance(expression.builtin.value, Fraction):
+                    arguments.append(
+                        py_fraction(
+                            expression.builtin.value,
+                            provenance=expression.provenance,
+                        )
                     )
-                )
+                elif isinstance(expression.builtin.value, vcl.Tensor):
+                    arguments.append(
+                        py_tensor(
+                            expression.builtin.value,
+                            provenance=expression.provenance,
+                        )
+                    )
+                else:
+                    arguments.append(
+                        py.Constant(
+                            value=expression.builtin.value,
+                            **asdict(expression.provenance),
+                        )
+                    )
             return py_app(
                 py_builtin(
                     expression.builtin.__class__.__name__,
@@ -368,4 +383,66 @@ def py_partial_app(
         function,
         *arguments,
         provenance=provenance,
+    )
+
+
+def py_fraction(value: Fraction, provenance: vcl.Provenance) -> py.expr:
+    return py_app(
+        py_qualified_name("fractions", "Fraction", provenance=provenance),
+        py.Constant(
+            value=value.numerator,
+            **asdict(provenance),
+        ),
+        py.Constant(
+            value=value.denominator,
+            **asdict(provenance),
+        ),
+        provenance=provenance,
+    )
+
+
+def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
+    """Make a scalar."""
+    if isinstance(value, Fraction):
+        return py_fraction(value, provenance=provenance)
+    else:
+        return py.Constant(
+            value=value,
+            **asdict(provenance),
+        )
+
+
+def py_tuple(elements: List[py.expr], provenance: vcl.Provenance) -> py.expr:
+    """Make a tuple."""
+    return py.Tuple(
+        elts=list(elements),
+        ctx=py.Load(),
+        **asdict(provenance),
+    )
+
+
+def py_tensor(tensor: vcl.Tensor[vcl.DType], provenance: vcl.Provenance) -> py.expr:
+    """Make a tensor."""
+    return py.Call(
+        func=py_qualified_name("vehicle_lang", "ast", "Tensor", provenance=provenance),
+        args=[],
+        keywords=[
+            py.keyword(
+                arg="value",
+                value=py_tuple(
+                    [py_scalar(elt, provenance=provenance) for elt in tensor.value],
+                    provenance=provenance,
+                ),
+                **asdict(provenance),
+            ),
+            py.keyword(
+                arg="shape",
+                value=py_tuple(
+                    [py_scalar(dim, provenance=provenance) for dim in tensor.shape],
+                    provenance=provenance,
+                ),
+                **asdict(provenance),
+            ),
+        ],
+        **asdict(provenance),
     )
