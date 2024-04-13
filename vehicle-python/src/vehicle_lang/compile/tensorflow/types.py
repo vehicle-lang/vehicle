@@ -1,4 +1,4 @@
-import jaxtyping
+import jaxtyping as jt
 import tensorflow as tf  # type: ignore
 from typing_extensions import TypeAlias
 
@@ -8,8 +8,8 @@ Nat: TypeAlias = int
 Int: TypeAlias = int
 Rat: TypeAlias = float
 
-IndexTensor: TypeAlias = jaxtyping.UInt[tf.Tensor, "..."]
-BoolTensor: TypeAlias = jaxtyping.Bool[tf.Tensor, "..."]
-NatTensor: TypeAlias = jaxtyping.UInt[tf.Tensor, "..."]
-IntTensor: TypeAlias = jaxtyping.Int[tf.Tensor, "..."]
-RatTensor: TypeAlias = jaxtyping.Float[tf.Tensor, "..."]
+IndexTensor: TypeAlias = jt.UInt[tf.Tensor, "..."]
+BoolTensor: TypeAlias = jt.Bool[tf.Tensor, "..."]
+NatTensor: TypeAlias = jt.UInt[tf.Tensor, "..."]
+IntTensor: TypeAlias = jt.Int[tf.Tensor, "..."]
+RatTensor: TypeAlias = jt.Float[tf.Tensor, "..."]

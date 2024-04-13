@@ -1,27 +1,15 @@
-import ast as py
-from dataclasses import asdict, dataclass
 from fractions import Fraction
-from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, Union
+from typing import Callable, Type
 
-import tensorflow as tf  # type: ignore
+import numpy as np
 from typing_extensions import Literal, override
 
-from ...ast import MISSING, Tensor
-from ...ast import load as ast_load
-from ...typing import DeclarationName, Explicit, Target
+from ...ast import Tensor
 from ..abc import ABCBuiltins, Value
-from ..error import VehicleBuiltinUnsupported
-from ..python import PythonTranslation
 from . import types as vcl
 
-################################################################################
-### Interpretations of Vehicle builtins in Tensorflow
-################################################################################
 
-
-@dataclass(frozen=True)
-class TensorFlowBuiltins(
+class NumpyBuiltins(
     ABCBuiltins[
         vcl.Index,
         vcl.Bool,
@@ -35,12 +23,6 @@ class TensorFlowBuiltins(
         vcl.RatTensor,
     ]
 ):
-    dtype_index: tf.DType = tf.uint32
-    dtype_bool: tf.DType = tf.bool
-    dtype_nat: tf.DType = tf.uint32
-    dtype_int: tf.DType = tf.int32
-    dtype_rat: tf.DType = tf.float32
-
     @override
     def IndexType(self) -> Type[vcl.Index]:
         return vcl.Index
@@ -67,103 +49,99 @@ class TensorFlowBuiltins(
 
     @override
     def BoolTensor(self, value: Tensor[bool]) -> vcl.BoolTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_bool)
+        return np.reshape(np.array(value.value, dtype=bool), value.shape)
 
     @override
     def NatTensor(self, value: Tensor[int]) -> vcl.NatTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_nat)
+        return np.reshape(np.array(value.value, dtype=np.uint), value.shape)
 
     @override
     def IntTensor(self, value: Tensor[int]) -> vcl.IntTensor:
-        return tf.constant(value=value.value, shape=value.shape, dtype=self.dtype_int)
+        return np.reshape(np.array(value.value, dtype=np.int_), value.shape)
 
     @override
     def RatTensor(self, value: Tensor[Fraction]) -> vcl.RatTensor:
-        return tf.constant(
-            value=(f.__float__() for f in value.value),
-            shape=value.shape,
-            dtype=self.dtype_rat,
-        )
+        return np.reshape(np.array(value.value, dtype=np.float_), value.shape)
 
     @override
     def NotBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor:
-        return not x
+        return np.logical_not(x)
 
     @override
     def AndBoolTensor(self, x: vcl.BoolTensor, y: vcl.BoolTensor) -> vcl.BoolTensor:
-        return x and y
+        return np.logical_and(x, y)
 
     @override
     def OrBoolTensor(self, x: vcl.BoolTensor, y: vcl.BoolTensor) -> vcl.BoolTensor:
-        return x or y
+        return np.logical_or(x, y)
 
     @override
     def NegRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.negative(x)
+        return np.negative(x)
 
     @override
     def AddRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.add(x, y)
+        return np.add(x, y)
 
     @override
     def SubRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.subtract(x, y)
+        return np.subtract(x, y)
 
     @override
     def MulRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.multiply(x, y)
+        return np.multiply(x, y)
 
     @override
     def DivRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.divide(x, y)
+        return np.divide(x, y)
 
     @override
     def EqRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.equal(x, y)
+        return np.equal(x, y)
 
     @override
     def NeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.not_equal(x, y)
+        return np.not_equal(x, y)
 
     @override
     def LeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.less_equal(x, y)
+        return np.less_equal(x, y)
 
     @override
     def LtRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.less(x, y)
+        return np.less(x, y)
 
     @override
     def GeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.greater_equal(x, y)
+        return np.greater_equal(x, y)
 
     @override
     def GtRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor:
-        return tf.greater(x, y)
+        return np.greater(x, y)
 
     @override
     def PowRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.pow(x, y)
+        return np.power(x, y)
 
     @override
     def MinRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.reduce_min(x)
+        return np.min(x)
 
     @override
     def MaxRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.reduce_max(x)
+        return np.max(x)
 
     @override
     def ReduceAndBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor:
-        return tf.reduce_all(x)
+        return np.array((np.all(x),), dtype=bool)
 
     @override
     def ReduceOrBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor:
-        return tf.reduce_any(x)
+        return np.array((np.all(x),), np.any(x))
 
     @override
     def ReduceSumRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.reduce_sum(x)
+        return np.sum(x)
 
     @override
     def ReduceRatTensor(
@@ -171,7 +149,7 @@ class TensorFlowBuiltins(
         f: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
         x: vcl.RatTensor,
     ) -> vcl.RatTensor:
-        return tf.foldr(f, x)
+        return NotImplemented
 
     @override
     def EqIndex(self, x: vcl.Index, y: vcl.Index) -> vcl.Bool:
@@ -203,17 +181,17 @@ class TensorFlowBuiltins(
 
     @override
     def StackRatTensor(self, n: int, *xs: vcl.RatTensor) -> vcl.RatTensor:
-        return tf.stack(values=xs)
+        return np.stack(xs, axis=0)
 
     @override
     def ConstRatTensor(self, value: vcl.Rat) -> vcl.RatTensor:
-        return tf.repeat(value=value, dtype=self.dtype_rat)
+        return NotImplemented
 
     @override
     def MapRatTensor(
         self, f: Callable[[vcl.Rat], vcl.Rat], x: vcl.RatTensor
     ) -> vcl.RatTensor:
-        return tf.map_fn(f, x, dtype=self.dtype_rat)
+        return NotImplemented
 
     @override
     def ZipWithRatTensor(
@@ -222,16 +200,7 @@ class TensorFlowBuiltins(
         x: vcl.RatTensor,
         y: vcl.RatTensor,
     ) -> vcl.RatTensor:
-        return tf.map_fn(
-            lambda xy: f(xy[0], xy[1]),
-            tf.stack(
-                (
-                    x,
-                    y,
-                ),
-                axis=1,
-            ),
-        )
+        return NotImplemented
 
     @override
     def IndicesIndexTensor(self, x: vcl.NatTensor) -> vcl.IndexTensor:
@@ -244,72 +213,8 @@ class TensorFlowBuiltins(
         meetOrJoin: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
         loss: Callable[[Value], vcl.RatTensor],
     ) -> vcl.RatTensor:
-        raise VehicleBuiltinUnsupported("OptimiseRatTensor")
+        return NotImplemented
 
     @override
     def If(self, cond: vcl.Bool, ifTrue: Value, ifFalse: Value) -> Value:
-        return tf.cond(cond, ifTrue, ifFalse)
-
-
-@dataclass(frozen=True, init=False)
-class TensorFlowTranslation(PythonTranslation):
-    def __init__(self) -> None:
-        super().__init__(
-            builtins=TensorFlowBuiltins(),
-            module_header=[
-                py.Import(
-                    names=[
-                        py.alias(
-                            name="tensorflow",
-                            **asdict(MISSING),
-                        )
-                    ],
-                    **asdict(MISSING),
-                )
-            ],
-        )
-
-
-def load(
-    path: Union[str, Path],
-    *,
-    declarations: Iterable[DeclarationName] = (),
-    target: Target = Explicit.Explicit,
-    translation: Optional[TensorFlowTranslation] = None,
-) -> Dict[str, Any]:
-    if translation is None:
-        translation = TensorFlowTranslation()
-    return translation.compile(
-        ast_load(path, declarations=declarations, target=target), path=path
-    )
-
-
-# def load_loss_function(
-#     path: Union[str, Path],
-#     property_name: DeclarationName,
-#     *,
-#     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
-#     optimisers: AnyOptimisers = {},
-# ) -> Any:
-#     """
-#     Load a loss function from a property in a Vehicle specification.
-
-#     :param path: The path to the Vehicle specification file.
-#     :param property_name: The name of the Vehicle property to load.
-#     :param target: The differentiable logic to use for interpreting the Vehicle property as a loss function, defaults to the Vehicle logic.
-#     :param samplers: A map from quantified variable names to samplers for their values. See `Sampler` for more details.
-#     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
-#     """
-#     translation = TensorFlowTranslation(
-#         builtins=TensorFlowBuiltins(optimisers=optimisers)
-#     )
-#     declarations = load(
-#         path,
-#         declarations=(property_name,),
-#         target=target,
-#         translation=translation,
-#     )
-#     if property_name in declarations:
-#         return declarations[property_name]
-#     else:
-#         raise VehiclePropertyNotFound(property_name)
+        return NotImplemented
