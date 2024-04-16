@@ -23,7 +23,7 @@ import Vehicle.Syntax.Prelude (developerError)
 type Rat = Ratio Int
 
 convertTRat :: Rat -> Rational
-convertTRat r = (toInteger $ numerator r) % (toInteger $ denominator r)
+convertTRat r = toInteger (numerator r) % toInteger (denominator r)
 
 convertRat :: Rational -> Rat
 convertRat r = do
@@ -35,9 +35,6 @@ convertRat r = do
       | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
       | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
       | otherwise = fromInteger x
-
-data MinimiseOrMaximise = Minimise | Maximise
-  deriving (Show, Eq, Generic)
 
 -- | The builtin types suitable for tensor operations.
 data TensorBuiltin
@@ -109,7 +106,8 @@ data TensorBuiltin
   | MapRatTensor
   | ZipWithRatTensor
   | Indices
-  | Optimise MinimiseOrMaximise
+  | Minimise
+  | Maximise
   | If
   | Forall
   | Exists
@@ -181,7 +179,8 @@ instance PrintableBuiltin TensorBuiltin where
     ReduceAndBoolTensor -> cheatConvertBuiltin p "ReduceAnd"
     ReduceOrBoolTensor -> cheatConvertBuiltin p "ReduceOr"
     ReduceSumRatTensor -> cheatConvertBuiltin p "ReduceSum"
-    Optimise minimise -> builtinFunction $ V.Optimise (minimise == Minimise)
+    Minimise -> builtinFunction $ V.Optimise True
+    Maximise -> builtinFunction $ V.Optimise False
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
       builtinFunction = V.Builtin p . V.BuiltinFunction
@@ -243,7 +242,8 @@ arityOf b = case b of
   ReduceAndBoolTensor -> 1
   ReduceOrBoolTensor -> 1
   ReduceSumRatTensor -> 1
-  Optimise {} -> 2
+  Minimise {} -> 2
+  Maximise {} -> 2
   StackRatTensor n -> n
 
 --------------------------------------------------------------------------------

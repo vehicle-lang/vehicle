@@ -65,9 +65,6 @@ instance (ToJSON var) => ToJSON (JExpr var) where
 instance (ToJSON var) => ToJSON (JBinder var) where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON MinimiseOrMaximise where
-  toJSON = genericToJSON jsonOptions
-
 instance ToJSON TensorBuiltin where
   toJSON = genericToJSON jsonOptions
 
