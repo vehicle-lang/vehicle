@@ -11,7 +11,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (maybeToList)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Ratio
 import Data.Set as Set (Set, fromList)
 import Vehicle.Backend.Tensors.Core (TensorBuiltin)
@@ -321,7 +321,9 @@ convertBuiltinFunction t args = case t of
   If -> return $ mkBuiltin T.If args
   Optimise minimise -> do
     let op = if minimise then T.MinimiseRatTensor else T.MaximiseRatTensor
-    return $ mkBuiltin op args
+    boundCtx <- getBoundCtx (Proxy @Builtin)
+    let namedCtx = fmap (\b -> fromMaybe "<nameless>" (nameOf b)) boundCtx
+    return $ mkBuiltin (op namedCtx) args
   Implies -> unexpectedExprError currentPass "Implies"
   FromNat {} -> unexpectedExprError currentPass "FromNat"
   FromRat {} -> unexpectedExprError currentPass "FromRat"
