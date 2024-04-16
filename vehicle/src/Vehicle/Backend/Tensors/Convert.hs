@@ -338,9 +338,9 @@ convertForeachIndex preprocess spine = do
   lv <- getCurrentLv (Proxy @Builtin)
   spine' <- convertSpine preprocess spine
   case spine' of
-    [_, _, argExpr -> VLam binder (NFBody expr)] -> do
+    [_, argExpr -> size, argExpr -> VLam binder (NFBody expr)] -> do
       logDebug MaxDetail $ "Trying to convert" <+> quotePretty StdForeachIndex
-      result <- distributeForeachIndex preprocess spine (nameOf binder) lv expr
+      result <- distributeForeachIndex preprocess spine size (nameOf binder) lv expr
       case result of
         Just x -> return x
         Nothing -> do
@@ -352,16 +352,17 @@ distributeForeachIndex ::
   (MonadTensorProperty m) =>
   TensorPreprocessingStep ->
   WHNFSpine Builtin ->
+  NFValue TensorBuiltin ->
   Maybe Name ->
   Lv ->
   NFValue TensorBuiltin ->
   m (Maybe (NFValue TensorBuiltin))
-distributeForeachIndex preprocess originalSpine varName lv = \case
+distributeForeachIndex preprocess originalSpine size varName lv = \case
   -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
   -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
   VBuiltin b [e1, e2] | isLiftableTensorOp b -> do
     logCompilerSection MaxDetail ("Distributing `foreach` over" <+> pretty b) $ do
-      let recurse = distributeForeachIndex preprocess originalSpine varName lv
+      let recurse = distributeForeachIndex preprocess originalSpine size varName lv
       e1' <- sequence <$> traverse recurse e1
       e2' <- sequence <$> traverse recurse e2
       return $ Applicative.liftA2 (\x y -> VBuiltin b [x, y]) e1' e2'
@@ -370,8 +371,13 @@ distributeForeachIndex preprocess originalSpine varName lv = \case
     | lv1 == lv ->
         return $ Just $ argExpr xs
   -- Eliminate `forall i . c` into `const c`
-  T.VRatTensor (Tensor _ [x]) ->
-    return $ Just $ mkBuiltin (T.ConstRatTensor x) []
+  T.VRatTensor (Tensor _ [x]) -> do
+    let nil = mkBuiltin T.NilList []
+    let dims = mkBuiltin T.ConsList (Arg mempty Explicit Relevant <$> [size, nil])
+    return $ Just $ mkBuiltin (T.ConstRatTensor x) [Arg mempty Explicit Relevant dims]
+  VBuiltin (T.ConstRatTensor x) [dims] -> do
+    let newDims = mkBuiltin T.ConsList [dims]
+    return $ Just $ mkBuiltin (T.ConstRatTensor x) [Arg mempty Explicit Relevant newDims]
   body -> do
     ctx <- getNamedBoundCtx (Proxy @Builtin)
     logDebug MaxDetail $ "Failed to convert:" <+> prettyFriendly (WithContext body (varName : ctx))
