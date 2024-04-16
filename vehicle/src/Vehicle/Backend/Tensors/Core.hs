@@ -106,8 +106,8 @@ data TensorBuiltin
   | MapRatTensor
   | ZipWithRatTensor
   | Indices
-  | Minimise
-  | Maximise
+  | MinimiseRatTensor
+  | MaximiseRatTensor
   | If
   | Forall
   | Exists
@@ -179,8 +179,8 @@ instance PrintableBuiltin TensorBuiltin where
     ReduceAndBoolTensor -> cheatConvertBuiltin p "ReduceAnd"
     ReduceOrBoolTensor -> cheatConvertBuiltin p "ReduceOr"
     ReduceSumRatTensor -> cheatConvertBuiltin p "ReduceSum"
-    Minimise -> builtinFunction $ V.Optimise True
-    Maximise -> builtinFunction $ V.Optimise False
+    MinimiseRatTensor -> builtinFunction $ V.Optimise True
+    MaximiseRatTensor -> builtinFunction $ V.Optimise False
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
       builtinFunction = V.Builtin p . V.BuiltinFunction
@@ -242,8 +242,8 @@ arityOf b = case b of
   ReduceAndBoolTensor -> 1
   ReduceOrBoolTensor -> 1
   ReduceSumRatTensor -> 1
-  Minimise {} -> 2
-  Maximise {} -> 2
+  MinimiseRatTensor {} -> 2
+  MaximiseRatTensor {} -> 2
   StackRatTensor n -> n
 
 --------------------------------------------------------------------------------

@@ -319,7 +319,9 @@ convertBuiltinFunction t args = case t of
   Quantifier Forall -> return $ mkBuiltin T.Forall args
   Quantifier Exists -> return $ mkBuiltin T.Exists args
   If -> return $ mkBuiltin T.If args
-  Optimise minimise -> return $ mkBuiltin (if minimise then T.Minimise else T.Maximise) args
+  Optimise minimise -> do
+    let op = if minimise then T.MinimiseRatTensor else T.MaximiseRatTensor
+    return $ mkBuiltin op args
   Implies -> unexpectedExprError currentPass "Implies"
   FromNat {} -> unexpectedExprError currentPass "FromNat"
   FromRat {} -> unexpectedExprError currentPass "FromRat"
