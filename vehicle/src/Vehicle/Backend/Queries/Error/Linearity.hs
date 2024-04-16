@@ -48,7 +48,6 @@ convertToLinearityTypes p b args = case b of
     Bool -> unnormalised <$> freshLinearityMeta p
     Index -> unnormalised <$> freshLinearityMeta p
     Nat -> unnormalised <$> freshLinearityMeta p
-    Int -> unnormalised <$> freshLinearityMeta p
     Rat -> unnormalised <$> freshLinearityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem

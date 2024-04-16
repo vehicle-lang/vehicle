@@ -63,8 +63,6 @@ tokList = mkToken B.TokList "List"
 
 tokRat = mkToken B.TokRat "Rat"
 
-tokInt = mkToken B.TokInt "Int"
-
 tokNat = mkToken B.TokNat "Nat"
 
 tokIndex = mkToken B.TokIndex "Index"

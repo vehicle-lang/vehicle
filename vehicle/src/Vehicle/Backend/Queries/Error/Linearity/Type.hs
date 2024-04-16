@@ -61,7 +61,6 @@ typeOfConstructor = \case
   LBool {} -> constant
   LIndex {} -> constant
   LNat {} -> constant
-  LInt {} -> constant
   LRat {} -> constant
   LVec n -> typeOfVecLiteral n
 

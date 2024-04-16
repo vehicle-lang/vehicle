@@ -362,7 +362,6 @@ elabExpr = \case
   B.Bool tk -> builtinType V.Bool tk []
   B.Index tk -> builtinType V.Index tk []
   B.Nat tk -> builtinType V.Nat tk []
-  B.Int tk -> builtinType V.Int tk []
   B.Rat tk -> builtinType V.Rat tk []
   B.List tk -> builtinType V.List tk []
   B.Vector tk -> builtinType V.Vector tk []

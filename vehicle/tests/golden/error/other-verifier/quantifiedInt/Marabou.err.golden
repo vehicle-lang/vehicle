@@ -1,7 +1,0 @@
-Error at Line 3, Columns 5-11: unable to work out a valid type for the overloaded expression 'forall'.
-Type checking has deduced that it is of type:
-  (Int -> Bool) -> Bool
-but 'forall' has only the following valid types:
-  (Vector t n -> Bool) -> Bool
-  (Index n -> Bool) -> Bool
-  (Rat -> Bool) -> Bool

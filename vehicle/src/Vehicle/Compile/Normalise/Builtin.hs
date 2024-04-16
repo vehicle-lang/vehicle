@@ -149,13 +149,7 @@ evalOr originalExpr = \case
 
 evalNeg :: NegDomain -> EvalSimpleBuiltin builtin
 evalNeg = \case
-  NegInt -> evalNegInt
   NegRat -> evalNegRat
-
-evalNegInt :: EvalSimpleBuiltin builtin
-evalNegInt originalExpr = \case
-  [VIntLiteral x] -> VIntLiteral (-x)
-  _ -> originalExpr
 
 evalNegRat :: EvalSimpleBuiltin builtin
 evalNegRat originalExpr = \case
@@ -165,17 +159,11 @@ evalNegRat originalExpr = \case
 evalAdd :: AddDomain -> EvalSimpleBuiltin builtin
 evalAdd = \case
   AddNat -> evalAddNat
-  AddInt -> evalAddInt
   AddRat -> evalAddRat
 
 evalAddNat :: EvalSimpleBuiltin builtin
 evalAddNat originalExpr = \case
   [VNatLiteral x, VNatLiteral y] -> VNatLiteral (x + y)
-  _ -> originalExpr
-
-evalAddInt :: EvalSimpleBuiltin builtin
-evalAddInt originalExpr = \case
-  [VIntLiteral x, VIntLiteral y] -> VIntLiteral (x + y)
   _ -> originalExpr
 
 evalAddRat :: EvalSimpleBuiltin builtin
@@ -185,13 +173,7 @@ evalAddRat originalExpr = \case
 
 evalSub :: SubDomain -> EvalSimpleBuiltin builtin
 evalSub = \case
-  SubInt -> evalSubInt
   SubRat -> evalSubRat
-
-evalSubInt :: EvalSimpleBuiltin builtin
-evalSubInt originalExpr = \case
-  [VIntLiteral x, VIntLiteral y] -> VIntLiteral (x - y)
-  _ -> originalExpr
 
 evalSubRat :: EvalSimpleBuiltin builtin
 evalSubRat originalExpr = \case
@@ -201,17 +183,11 @@ evalSubRat originalExpr = \case
 evalMul :: MulDomain -> EvalSimpleBuiltin builtin
 evalMul = \case
   MulNat -> evalMulNat
-  MulInt -> evalMulInt
   MulRat -> evalMulRat
 
 evalMulNat :: EvalSimpleBuiltin builtin
 evalMulNat originalExpr = \case
   [VNatLiteral x, VNatLiteral y] -> VNatLiteral (x * y)
-  _ -> originalExpr
-
-evalMulInt :: EvalSimpleBuiltin builtin
-evalMulInt originalExpr = \case
-  [VIntLiteral x, VIntLiteral y] -> VIntLiteral (x * y)
   _ -> originalExpr
 
 evalMulRat :: EvalSimpleBuiltin builtin
@@ -230,7 +206,7 @@ evalDivRat originalExpr = \case
 
 evalPowRat :: EvalSimpleBuiltin builtin
 evalPowRat originalExpr = \case
-  [VRatLiteral x, VIntLiteral y] -> VRatLiteral (x ^^ y)
+  [VRatLiteral x, VNatLiteral y] -> VRatLiteral (x ^^ y)
   _ -> originalExpr
 
 evalMinRat :: EvalSimpleBuiltin builtin
@@ -247,7 +223,6 @@ evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin builtin
 evalOrder = \case
   OrderIndex -> evalOrderIndex
   OrderNat -> evalOrderNat
-  OrderInt -> evalOrderInt
   OrderRat -> evalOrderRat
 
 evalOrderIndex :: OrderOp -> EvalSimpleBuiltin builtin
@@ -260,11 +235,6 @@ evalOrderNat op originalExpr = \case
   [VNatLiteral x, VNatLiteral y] -> VBoolLiteral (orderOp op x y)
   _ -> originalExpr
 
-evalOrderInt :: OrderOp -> EvalSimpleBuiltin builtin
-evalOrderInt op originalExpr = \case
-  [VIntLiteral x, VIntLiteral y] -> VBoolLiteral (orderOp op x y)
-  _ -> originalExpr
-
 evalOrderRat :: OrderOp -> EvalSimpleBuiltin builtin
 evalOrderRat op originalExpr = \case
   [VRatLiteral x, VRatLiteral y] -> VBoolLiteral (orderOp op x y)
@@ -274,7 +244,6 @@ evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin builtin
 evalEquals = \case
   EqIndex -> evalEqualityIndex
   EqNat -> evalEqualityNat
-  EqInt -> evalEqualityInt
   EqRat -> evalEqualityRat
 
 evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin builtin
@@ -287,11 +256,6 @@ evalEqualityNat op originalExpr = \case
   [VNatLiteral x, VNatLiteral y] -> VBoolLiteral (equalityOp op x y)
   _ -> originalExpr
 
-evalEqualityInt :: EqualityOp -> EvalSimpleBuiltin builtin
-evalEqualityInt op originalExpr = \case
-  [VIntLiteral x, VIntLiteral y] -> VBoolLiteral (equalityOp op x y)
-  _ -> originalExpr
-
 evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin builtin
 evalEqualityRat op originalExpr = \case
   [VRatLiteral x, VRatLiteral y] -> VBoolLiteral (equalityOp op x y)
@@ -301,7 +265,6 @@ evalFromNat :: FromNatDomain -> EvalSimpleBuiltin builtin
 evalFromNat = \case
   FromNatToIndex -> evalFromNatToIndex
   FromNatToNat -> evalFromNatToNat
-  FromNatToInt -> evalFromNatToInt
   FromNatToRat -> evalFromNatToRat
 
 evalFromNatToIndex :: EvalSimpleBuiltin builtin
@@ -312,11 +275,6 @@ evalFromNatToIndex originalExpr = \case
 evalFromNatToNat :: EvalSimpleBuiltin builtin
 evalFromNatToNat originalExpr = \case
   [x] -> x
-  _ -> originalExpr
-
-evalFromNatToInt :: EvalSimpleBuiltin builtin
-evalFromNatToInt originalExpr = \case
-  [VNatLiteral x] -> VIntLiteral x
   _ -> originalExpr
 
 evalFromNatToRat :: EvalSimpleBuiltin builtin

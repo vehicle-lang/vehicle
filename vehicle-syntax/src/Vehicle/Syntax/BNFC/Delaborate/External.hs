@@ -213,7 +213,6 @@ delabBuiltinType fun args = case fun of
   V.Unit -> delabApp (B.Unit tokUnit) args
   V.Bool -> delabApp (B.Bool tokBool) args
   V.Nat -> delabApp (B.Nat tokNat) args
-  V.Int -> delabApp (B.Int tokInt) args
   V.Rat -> delabApp (B.Rat tokRat) args
   V.List -> delabApp (B.List tokList) args
   V.Vector -> delabApp (B.Vector tokVector) args
@@ -240,11 +239,6 @@ delabConstructor fun args = case fun of
   V.LBool b -> return $ B.Literal $ B.BoolLiteral $ delabBoolLit b
   V.LIndex x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.LNat n -> return $ B.Literal $ B.NatLiteral $ delabNatLit n
-  V.LInt i ->
-    return $
-      if i >= 0
-        then B.Literal $ B.NatLiteral $ delabNatLit i
-        else B.Neg tokSub (B.Literal $ B.NatLiteral $ delabNatLit (-i))
   V.LRat r -> return $ B.Literal $ B.RatLiteral $ delabRatLit r
   V.LVec _ -> do
     let explArgs = filter V.isExplicit args

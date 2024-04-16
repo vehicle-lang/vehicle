@@ -16,10 +16,9 @@ builtinType = builtin . mkBuiltinType
 tUnit :: (HasStandardTypes builtin) => DSLExpr builtin
 tUnit = builtinType Unit
 
-tBool, tNat, tInt, tRat :: (HasStandardTypes builtin) => DSLExpr builtin
+tBool, tNat, tRat :: (HasStandardTypes builtin) => DSLExpr builtin
 tBool = builtinType Bool
 tNat = builtinType Nat
-tInt = builtinType Int
 tRat = builtinType Rat
 
 tVector :: (HasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin

@@ -62,7 +62,6 @@ convertToPolarityTypes p b args = case b of
     Bool -> unnormalised <$> freshPolarityMeta p
     Index -> return $ PolarityExpr p Unquantified
     Nat -> return $ PolarityExpr p Unquantified
-    Int -> return $ PolarityExpr p Unquantified
     Rat -> unnormalised <$> freshPolarityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem

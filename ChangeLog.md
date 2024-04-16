@@ -1,10 +1,12 @@
 # Changelog for Vehicle
 
-## Version 0.13.1
+## Next release
 
 * Fixed spurious "Unnecessary resources provided" warning when exporting to ITPs.
 
 * Drastically reduced memory consumption when compiling verification queries.
+
+* Removed `Int` from the VCL language as not currently needed.
 
 ## Version 0.13.0
 

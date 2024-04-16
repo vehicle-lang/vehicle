@@ -53,7 +53,6 @@ restrictStandardNonInferableParameterType decl parameterType = do
   case normalised parameterType of
     VIndexType {} -> return ()
     VNatType {} -> return ()
-    VIntType {} -> return ()
     VRatType {} -> return ()
     VBoolType {} -> return ()
     _ -> throwError $ ParameterTypeUnsupported decl parameterType
@@ -95,7 +94,6 @@ restrictStandardDatasetType decl datasetType = do
     checkDatasetElemType :: WHNFType StandardTypingBuiltin -> m ()
     checkDatasetElemType elementType = case elementType of
       VNatType {} -> return ()
-      VIntType {} -> return ()
       VIndexType {} -> return ()
       VRatType -> return ()
       VBoolType -> return ()

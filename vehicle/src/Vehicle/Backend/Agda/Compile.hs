@@ -528,7 +528,6 @@ compileBuiltin _p b args = case b of
     Unit -> return compileUnit
     Bool -> compileBooleanType
     Nat -> return $ annotateConstant [DataNat] natQualifier
-    Int -> return $ annotateConstant [DataInteger] intQualifier
     Rat -> return $ annotateConstant [DataRat] ratQualifier
     List -> annotateApp [DataList] "List" <$> compileArgs args
     Vector -> annotateApp [DataVector] "Vector" <$> compileArgs args
@@ -540,7 +539,6 @@ compileBuiltin _p b args = case b of
     LBool v -> compileBoolOp0 v
     LIndex n -> return $ compileIndexLiteral (toInteger n)
     LNat n -> return $ compileNatLiteral (toInteger n)
-    LInt i -> return $ compileIntLiteral (toInteger i)
     LRat r -> return $ compileRatLiteral r
     LVec _ -> case args of
       _tElem : elems -> compileVecLiteral (fmap argExpr elems)
@@ -727,7 +725,6 @@ compileImplies args = do
 compileNeg :: NegDomain -> [Code] -> Code
 compileNeg dom args = do
   let (qualifier, dependency) = case dom of
-        NegInt -> (intQualifier, DataInteger)
         NegRat -> (ratQualifier, DataRat)
 
   annotateInfixOp1 [dependency] 8 (Just qualifier) "-" args
@@ -736,24 +733,16 @@ compileFromNat :: FromNatDomain -> Code -> Code
 compileFromNat dom value = case dom of
   FromNatToIndex -> agdaNatToFin [value]
   FromNatToNat -> value
-  FromNatToInt -> agdaPosInt [value]
   FromNatToRat -> agdaDivRat [agdaPosInt [value], "1"]
 
 compileFromRat :: FromRatDomain -> Code -> Code
 compileFromRat dom arg = case dom of
   FromRatToRat -> arg
 
-{-
-compileFromVec :: FromVecDomain -> [Code] -> Code
-compileFromVec dom args = case dom of
-  FromVecToVec -> head args
-  FromVecToList -> annotateInfixOp1 [DataVector] 7 (Just vectorQualifier) "toList" args
--}
 compileAdd :: AddDomain -> [Code] -> Code
 compileAdd dom args = do
   let (qualifier, dependency) = case dom of
         AddNat -> (natQualifier, DataNat)
-        AddInt -> (intQualifier, DataInteger)
         AddRat -> (ratQualifier, DataRat)
 
   annotateInfixOp2 [dependency] 6 id (Just qualifier) "+" args
@@ -761,7 +750,6 @@ compileAdd dom args = do
 compileSub :: SubDomain -> [Code] -> Code
 compileSub dom args = do
   let (qualifier, dependency) = case dom of
-        SubInt -> (intQualifier, DataInteger)
         SubRat -> (ratQualifier, DataRat)
 
   annotateInfixOp2 [dependency] 6 id (Just qualifier) "-" args
@@ -770,7 +758,6 @@ compileMul :: MulDomain -> [Code] -> Code
 compileMul mul args = do
   let (qualifier, dependency) = case mul of
         MulNat -> (natQualifier, DataNat)
-        MulInt -> (intQualifier, DataInteger)
         MulRat -> (ratQualifier, DataRat)
 
   annotateInfixOp2 [dependency] 7 id (Just qualifier) "*" args
@@ -801,7 +788,6 @@ compileOrder originalOrder dom originalArgs = do
   (qualifier, elemDep) <- case dom of
     OrderIndex -> return (finQualifier, DataFin)
     OrderNat -> return (natQualifier, DataNat)
-    OrderInt -> return (intQualifier, DataInteger)
     OrderRat -> return (ratQualifier, DataRat)
 
   let (boolDecDoc, boolDeps, opBraces) = case boolLevel of
@@ -880,7 +866,6 @@ equalityDomDependencies :: EqualityDomain -> [Dependency]
 equalityDomDependencies = \case
   EqIndex -> [DataFin]
   EqNat -> [DataNat]
-  EqInt -> [DataInteger]
   EqRat -> [DataRat]
 
 -- Calculates the dependencies needed for equality over the provided type
@@ -888,7 +873,6 @@ equalityDependencies :: (MonadAgdaCompile m) => Expr Name Builtin -> m [Dependen
 equalityDependencies = \case
   IndexType _ _ -> return [DataFin]
   NatType _ -> return [DataNatInstances]
-  IntType _ -> return [DataIntegerInstances]
   RatType _ -> return [DataRatInstances]
   BoolType _ -> return [DataBoolInstances]
   ListType _ tElem -> do
@@ -902,7 +886,7 @@ equalityDependencies = \case
     return $ [DataTensorInstances] <> deps
   FreeVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p (nameOf n)
   BoundVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p n
-  t -> unexpectedTypeError t (map pretty [Bool, Index, Nat, Int, Rat, List, Vector] <> [pretty (identifierName TensorIdent)])
+  t -> unexpectedTypeError t (map pretty [Bool, Index, Nat, Rat, List, Vector] <> [pretty (identifierName TensorIdent)])
 
 unexpectedTypeError :: (MonadCompile m) => Expr Name Builtin -> [Doc ()] -> m a
 unexpectedTypeError actualType expectedTypes =

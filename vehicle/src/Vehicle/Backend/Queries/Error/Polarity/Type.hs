@@ -62,7 +62,6 @@ typeOfConstructor = \case
   LBool {} -> unquantified
   LIndex {} -> unquantified
   LNat {} -> unquantified
-  LInt {} -> unquantified
   LRat {} -> unquantified
   LVec n -> typeOfVecLiteral n
 

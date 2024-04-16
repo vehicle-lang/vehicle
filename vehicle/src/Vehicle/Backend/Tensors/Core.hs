@@ -47,7 +47,6 @@ data TensorBuiltin
   | BoolTensorType
   | IndexTensorType
   | NatTensorType
-  | IntTensorType
   | RatTensorType
   | ListType
   | ------------------
@@ -57,7 +56,6 @@ data TensorBuiltin
   | Index Int
   | BoolTensor (Tensor Bool)
   | NatTensor (Tensor Int)
-  | IntTensor (Tensor Int)
   | RatTensor (Tensor Rat)
   | NilList
   | ConsList
@@ -128,14 +126,12 @@ instance PrintableBuiltin TensorBuiltin where
     IndexType -> builtinType V.Index
     BoolTensorType -> builtinTensorType V.BoolType
     NatTensorType -> builtinTensorType V.NatType
-    IntTensorType -> builtinTensorType V.IntType
     RatTensorType -> builtinTensorType V.RatType
     -- Constructors
     Unit -> V.UnitLiteral mempty
     Index i -> builtinConstructor $ V.LIndex i
     BoolTensor vs -> V.tensorToExpr (V.BoolLiteral mempty) vs
     NatTensor vs -> V.tensorToExpr (V.NatLiteral mempty) vs
-    IntTensor vs -> V.tensorToExpr (V.IntLiteral mempty) vs
     RatTensor vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) vs
     NilList -> builtinConstructor V.Nil
     ConsList -> builtinConstructor V.Cons
@@ -194,14 +190,12 @@ arityOf b = case b of
   BoolTensorType -> 0
   IndexTensorType -> 0
   NatTensorType -> 0
-  IntTensorType -> 0
   RatTensorType -> 0
   ListType -> 0
   NilList -> 0
   ConsList -> 2
   BoolTensor {} -> 0
   NatTensor {} -> 0
-  IntTensor {} -> 0
   RatTensor {} -> 0
   Unit -> 0
   Index {} -> 0
@@ -260,9 +254,6 @@ pattern VBoolTensor t = VTensorLiteral (BoolTensor t)
 pattern VNatTensor :: Tensor Int -> NFValue TensorBuiltin
 pattern VNatTensor t = VTensorLiteral (NatTensor t)
 
-pattern VIntTensor :: Tensor Int -> NFValue TensorBuiltin
-pattern VIntTensor t = VTensorLiteral (IntTensor t)
-
 pattern VRatTensor :: Tensor Rat -> NFValue TensorBuiltin
 pattern VRatTensor t = VTensorLiteral (RatTensor t)
 
@@ -274,12 +265,8 @@ getBoolTensor (VBoolTensor t) = Just t
 getBoolTensor _ = Nothing
 
 getNatTensor :: NFValue TensorBuiltin -> Maybe (Tensor Int)
-getNatTensor (VIntTensor t) = Just t
+getNatTensor (VNatTensor t) = Just t
 getNatTensor _ = Nothing
-
-getIntTensor :: NFValue TensorBuiltin -> Maybe (Tensor Int)
-getIntTensor (VIntTensor t) = Just t
-getIntTensor _ = Nothing
 
 getRatTensor :: NFValue TensorBuiltin -> Maybe (Tensor Rat)
 getRatTensor (VRatTensor t) = Just t

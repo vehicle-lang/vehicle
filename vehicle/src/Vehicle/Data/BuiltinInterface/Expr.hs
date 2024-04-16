@@ -32,9 +32,6 @@ pattern BoolType p = NullaryTypeExpr p Bool
 pattern NatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
 pattern NatType p = NullaryTypeExpr p Nat
 
-pattern IntType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
-pattern IntType p = NullaryTypeExpr p Int
-
 pattern RatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
 pattern RatType p = NullaryTypeExpr p Rat
 
@@ -86,11 +83,6 @@ pattern NatLiteral :: (HasStandardData builtin) => Provenance -> Int -> Expr var
 pattern NatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LNat n))
   where
     NatLiteral p n = Builtin p (mkBuiltinConstructor (LNat n))
-
-pattern IntLiteral :: (HasStandardData builtin) => Provenance -> Int -> Expr var builtin
-pattern IntLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LInt n))
-  where
-    IntLiteral p n = Builtin p (mkBuiltinConstructor (LInt n))
 
 pattern RatLiteral :: (HasStandardData builtin) => Provenance -> Rational -> Expr var builtin
 pattern RatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LRat n))
