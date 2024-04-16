@@ -287,7 +287,6 @@ removeLiteralCoercions nameJoiner (Main ds) =
       (getBuiltinFunction -> Just (FromNat dom)) -> case (dom, filter isExplicit args) of
         (FromNatToIndex, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IndexLiteral p n
         (FromNatToNat, [e]) -> return $ argExpr e
-        (FromNatToInt, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IntLiteral p n
         (FromNatToRat, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
         _ -> do
           partialApplication decl (pretty (FromNat dom)) args

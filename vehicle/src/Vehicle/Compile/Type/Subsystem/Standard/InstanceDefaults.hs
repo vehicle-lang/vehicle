@@ -86,7 +86,7 @@ getCandidates ctx (Resolve origin _ _ expr) = do
   InstanceGoal {..} <- parseInstanceGoal expr
   let defaults = case (goalHead, goalSpine) of
         (StandardBuiltin (TypeClass HasOrd {}), [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
-        (StandardBuiltin (TypeClass HasNeg), [tArg, _tRes]) -> Just (VIntType, [tArg])
+        (StandardBuiltin (TypeClass HasNeg), [tArg, _tRes]) -> Just (VRatType, [tArg])
         (StandardBuiltin (TypeClass HasMul), [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
         (StandardBuiltin (TypeClass HasDiv), [tArg1, tArg2, _tRes]) -> Just (VRatType, [tArg1, tArg2])
         (StandardBuiltin (TypeClass HasNatLits), [t]) -> Just (VNatType, [t])

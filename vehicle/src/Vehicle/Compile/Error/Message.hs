@@ -743,7 +743,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Index, Nat, Rat]
     DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
       UError $
         UserError
@@ -854,7 +854,7 @@ instance MeaningfulError CompileError where
                 <> "Expected elements of type"
                   <+> squotes (prettyFriendlyEmptyCtx expectedType)
                   <+> "but found elements of type"
-                  <+> squotes (prettyFriendlyEmptyCtx actualType)
+                  <+> squotes actualType
                   <+> "when reading"
                   <+> quotePretty file
                 <> ".",
@@ -881,7 +881,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Bool, Index, Nat, Rat]
     ParameterValueUnparsable (ident, p) value expectedType ->
       UError $
         UserError

@@ -52,7 +52,6 @@ solveInDomain ::
 solveInDomain c [value, typ] = case typ of
   (getNMeta -> Just {}) -> return $ blockOnMetas [typ]
   VNatType {} -> return Nothing
-  VIntType {} -> return Nothing
   VRatType {} -> return Nothing
   VIndexType size -> case value of
     VMeta {} -> return $ blockOnMetas [value]

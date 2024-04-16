@@ -31,7 +31,6 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
   parser <- case normalised parameterType of
     VBoolType {} -> return parseBool
     VNatType {} -> return parseNat
-    VIntType {} -> return parseInt
     VRatType {} -> return parseRat
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
@@ -65,11 +64,6 @@ parseNat decl value = case readMaybe value of
     | v >= 0 -> return $ VNatLiteral v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
-
-parseInt :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
-parseInt decl value = case readMaybe value of
-  Just v -> return $ VIntLiteral v
-  Nothing -> throwError $ ParameterValueUnparsable decl value Int
 
 parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
 parseRat decl value = case rational (pack value) of

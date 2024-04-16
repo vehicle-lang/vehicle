@@ -89,22 +89,18 @@ typeOfBuiltinFunction = \case
   If -> typeOfIf
   -- Arithmetic operations
   Neg dom -> case dom of
-    NegInt -> tInt ~> tInt
     NegRat -> tRat ~> tRat
   Add dom -> case dom of
     AddNat -> tNat ~> tNat ~> tNat
-    AddInt -> tInt ~> tInt ~> tInt
     AddRat -> tRat ~> tRat ~> tRat
   Sub dom -> case dom of
-    SubInt -> tInt ~> tInt ~> tInt
     SubRat -> tRat ~> tRat ~> tRat
   Mul dom -> case dom of
     MulNat -> tNat ~> tNat ~> tNat
-    MulInt -> tInt ~> tInt ~> tInt
     MulRat -> tRat ~> tRat ~> tRat
   Div dom -> case dom of
     DivRat -> tRat ~> tRat ~> tRat
-  PowRat -> tRat ~> tInt ~> tRat
+  PowRat -> tRat ~> tNat ~> tRat
   MinRat -> tRat ~> tRat ~> tRat
   MaxRat -> tRat ~> tRat ~> tRat
   -- Comparisons
@@ -114,7 +110,6 @@ typeOfBuiltinFunction = \case
         forAllIrrelevantNat "n2" $ \n2 ->
           typeOfComparisonOp (tIndex n1) (tIndex n2)
     EqNat {} -> typeOfComparisonOp tNat tNat
-    EqInt {} -> typeOfComparisonOp tInt tInt
     EqRat {} -> typeOfComparisonOp tRat tRat
   Order dom _op -> case dom of
     OrderIndex {} ->
@@ -122,13 +117,11 @@ typeOfBuiltinFunction = \case
         forAllIrrelevantNat "n2" $ \n2 ->
           tIndex n1 ~> tIndex n2 ~> tBool
     OrderNat {} -> tNat ~> tNat ~> tBool
-    OrderInt {} -> tInt ~> tInt ~> tBool
-    OrderRat {} -> tInt ~> tInt ~> tBool
+    OrderRat {} -> tRat ~> tRat ~> tBool
   -- Conversion functions
   FromNat dom -> case dom of
     FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
     FromNatToNat -> typeOfFromNat tNat
-    FromNatToInt -> typeOfFromNat tInt
     FromNatToRat -> typeOfFromNat tRat
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat tRat
@@ -147,7 +140,6 @@ typeOfBuiltinType :: (HasStandardBuiltins builtin) => BuiltinType -> DSLExpr bui
 typeOfBuiltinType = \case
   Unit -> type0
   Nat -> type0
-  Int -> type0
   Rat -> type0
   Bool -> type0
   List -> type0 ~> type0
@@ -162,7 +154,6 @@ typeOfBuiltinConstructor = \case
   LBool _ -> tBool
   LIndex x -> forAllIrrelevantNat "n" $ \n -> natInDomainConstraint (natLit x) n .~~~> tIndex n
   LNat {} -> tNat
-  LInt {} -> tInt
   LRat {} -> tRat
   LVec n -> typeOfVectorLiteral n
 
