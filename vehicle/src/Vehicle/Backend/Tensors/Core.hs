@@ -47,7 +47,7 @@ data TensorBuiltin
     IndexType
   | BoolTensorType
   | IndexTensorType
-  | NatTensorType
+  | NatType
   | IntTensorType
   | RatTensorType
   | ListType
@@ -57,7 +57,7 @@ data TensorBuiltin
     Unit
   | Index Int
   | BoolTensor (Tensor Bool)
-  | NatTensor (Tensor Int)
+  | Nat Int
   | IntTensor (Tensor Int)
   | RatTensor (Tensor Rat)
   | NilList
@@ -128,14 +128,14 @@ instance PrintableBuiltin TensorBuiltin where
   convertBuiltin p b = case b of
     IndexType -> builtinType V.Index
     BoolTensorType -> builtinTensorType V.BoolType
-    NatTensorType -> builtinTensorType V.NatType
+    NatType -> builtinTensorType V.NatType
     IntTensorType -> builtinTensorType V.IntType
     RatTensorType -> builtinTensorType V.RatType
     -- Constructors
     Unit -> V.UnitLiteral mempty
     Index i -> builtinConstructor $ V.LIndex i
     BoolTensor vs -> V.tensorToExpr (V.BoolLiteral mempty) vs
-    NatTensor vs -> V.tensorToExpr (V.NatLiteral mempty) vs
+    Nat vs -> V.NatLiteral mempty vs
     IntTensor vs -> V.tensorToExpr (V.IntLiteral mempty) vs
     RatTensor vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) vs
     NilList -> builtinConstructor V.Nil
@@ -194,14 +194,14 @@ arityOf b = case b of
   IndexType -> 0
   BoolTensorType -> 0
   IndexTensorType -> 0
-  NatTensorType -> 0
+  NatType -> 0
   IntTensorType -> 0
   RatTensorType -> 0
   ListType -> 0
   NilList -> 0
   ConsList -> 2
   BoolTensor {} -> 0
-  NatTensor {} -> 0
+  Nat {} -> 0
   IntTensor {} -> 0
   RatTensor {} -> 0
   Unit -> 0
@@ -233,7 +233,7 @@ arityOf b = case b of
   GeIndex -> 2
   GtIndex -> 2
   LookupRatTensor -> 2
-  ConstRatTensor {} -> 0
+  ConstRatTensor {} -> 1
   FoldList -> 3
   ReduceRatTensor -> 2
   MapList -> 2
@@ -258,9 +258,10 @@ pattern VTensorLiteral c <- VBuiltin c []
 pattern VBoolTensor :: Tensor Bool -> NFValue TensorBuiltin
 pattern VBoolTensor t = VTensorLiteral (BoolTensor t)
 
-pattern VNatTensor :: Tensor Int -> NFValue TensorBuiltin
-pattern VNatTensor t = VTensorLiteral (NatTensor t)
-
+{-
+pattern VNat :: Tensor Int -> NFValue TensorBuiltin
+pattern VNat t = VTensorLiteral (Nat t)
+-}
 pattern VIntTensor :: Tensor Int -> NFValue TensorBuiltin
 pattern VIntTensor t = VTensorLiteral (IntTensor t)
 

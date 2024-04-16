@@ -191,7 +191,7 @@ convertBuiltinType ::
 convertBuiltinType t args = case t of
   Unit -> unexpectedExprError currentPass "Unit"
   Bool -> return $ mkBuiltin T.BoolTensorType args
-  Nat -> return $ mkBuiltin T.NatTensorType args
+  Nat -> return $ mkBuiltin T.NatType args
   Int -> return $ mkBuiltin T.IntTensorType args
   Rat -> return $ mkBuiltin T.RatTensorType args
   Index -> return $ mkBuiltin T.IndexType args
@@ -203,10 +203,8 @@ convertVectorType args = do
   let maybeResult = case args of
         [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
           T.BoolTensorType -> Just T.BoolTensorType
-          T.NatTensorType -> Just T.NatTensorType
           T.IntTensorType -> Just T.IntTensorType
           T.RatTensorType -> Just T.RatTensorType
-          T.IndexType -> Just T.NatTensorType
           _ -> Nothing
         _ -> Nothing
 
@@ -225,7 +223,7 @@ convertBuiltinConstructor c args = case c of
   LUnit -> return $ mkBuiltin T.Unit []
   LIndex i -> return $ mkBuiltin (T.Index i) []
   LBool v -> return $ T.VBoolTensor (Tensor [] [v])
-  LNat v -> return $ T.VNatTensor (Tensor [] [v])
+  LNat v -> return $ mkBuiltin (T.Nat v) []
   LInt v -> return $ T.VIntTensor (Tensor [] [v])
   LRat v -> return $ T.VRatTensor (Tensor [] [T.convertRat v])
   LVec n -> case args of
@@ -239,7 +237,6 @@ convertVector n args = case args of
     let vs = a :| as
     return $ case argExpr a of
       T.VBoolTensor {} -> comp T.VBoolTensor T.getBoolTensor vs
-      T.VNatTensor {} -> comp T.VNatTensor T.getNatTensor vs
       T.VIntTensor {} -> comp T.VIntTensor T.getIntTensor vs
       T.VRatTensor {} -> comp T.VRatTensor T.getRatTensor vs
       _ -> mkBuiltin (T.StackRatTensor n) args
