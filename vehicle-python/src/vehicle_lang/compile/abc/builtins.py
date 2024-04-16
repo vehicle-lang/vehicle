@@ -195,11 +195,17 @@ class Builtins(
     def IndicesIndexTensor(self, x: vcl.NatTensor) -> vcl.IndexTensor: ...
 
     @abstractmethod
-    def OptimiseRatTensor(
+    def MinimiseRatTensor(
         self,
-        minimiseOrMaximise: Literal["Minimise", "Maximise"],
-        meetOrJoin: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        loss: Callable[[vcl.Value], vcl.RatTensor],
+        join: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
+        predicate: Callable[[vcl.Value], vcl.RatTensor],
+    ) -> vcl.RatTensor: ...
+
+    @abstractmethod
+    def MaximiseRatTensor(
+        self,
+        meet: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
+        predicate: Callable[[vcl.Value], vcl.RatTensor],
     ) -> vcl.RatTensor: ...
 
     @abstractmethod

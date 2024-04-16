@@ -272,8 +272,13 @@ class IndicesIndexTensor(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class Optimise(BuiltinFunction):
-    minimiseOrMaximise: Literal["Minimise", "Maximise"]
+class MinimiseRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MaximiseRatTensor(BuiltinFunction):
+    pass
 
 
 @dataclass(frozen=True)

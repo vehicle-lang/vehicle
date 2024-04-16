@@ -119,21 +119,21 @@ deps =
   auditwheel; sys_platform == 'linux'
   delocate; sys_platform == 'darwin'
 package_glob =
-  py39-lin: {package_root}{/}*cp39*manylinux*.whl
-  py310-lin: {package_root}{/}*cp310*manylinux*.whl
-  py311-lin: {package_root}{/}*cp311*manylinux*.whl
-  py312-lin: {package_root}{/}*cp312*manylinux*.whl
-  py313-lin: {package_root}{/}*cp313*manylinux*.whl
-  py39-mac: {package_root}{/}*cp39*macosx*.whl
-  py310-mac: {package_root}{/}*cp310*macosx*.whl
-  py311-mac: {package_root}{/}*cp311*macosx*.whl
-  py312-mac: {package_root}{/}*cp312*macosx*.whl
-  py313-mac: {package_root}{/}*cp313*macosx*.whl
-  py39-win: {package_root}{/}*cp39*win*.whl
-  py310-win: {package_root}{/}*cp310*win*.whl
-  py311-win: {package_root}{/}*cp311*win*.whl
-  py312-win: {package_root}{/}*cp312*win*.whl
-  py313-win: {package_root}{/}*cp313*win*.whl
+  py39-lin: {package_root}{/}dist{/}*cp39*manylinux*.whl
+  py310-lin: {package_root}{/}dist{/}*cp310*manylinux*.whl
+  py311-lin: {package_root}{/}dist{/}*cp311*manylinux*.whl
+  py312-lin: {package_root}{/}dist{/}*cp312*manylinux*.whl
+  py313-lin: {package_root}{/}dist{/}*cp313*manylinux*.whl
+  py39-mac: {package_root}{/}dist{/}*cp39*macosx*.whl
+  py310-mac: {package_root}{/}dist{/}*cp310*macosx*.whl
+  py311-mac: {package_root}{/}dist{/}*cp311*macosx*.whl
+  py312-mac: {package_root}{/}dist{/}*cp312*macosx*.whl
+  py313-mac: {package_root}{/}dist{/}*cp313*macosx*.whl
+  py39-win: {package_root}{/}dist{/}*cp39*win*.whl
+  py310-win: {package_root}{/}dist{/}*cp310*win*.whl
+  py311-win: {package_root}{/}dist{/}*cp311*win*.whl
+  py312-win: {package_root}{/}dist{/}*cp312*win*.whl
+  py313-win: {package_root}{/}dist{/}*cp313*win*.whl
 allowlist_externals =
   sh
 commands =
