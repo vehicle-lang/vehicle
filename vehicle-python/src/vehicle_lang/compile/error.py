@@ -15,5 +15,10 @@ class VehiclePropertyNotFound(VehicleInternalError):
 
 
 @dataclass(frozen=True)
+class VehiclePropertyNotCallable(VehicleInternalError):
+    property_name: str
+
+
+@dataclass(frozen=True)
 class VehicleOptimiseTypeError(VehicleInternalError):
     ast: AST

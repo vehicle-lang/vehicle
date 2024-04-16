@@ -174,10 +174,10 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
-        # NOTE: We handle Optimise as a special case, as we must extract the
-        #       name of the bound variable from the lambda binding.
+        # NOTE: We handle Minimise/Maximise as a special case, as we must
+        #       extract the name of the bound variable from the lambda binding.
         if isinstance(expression.function, vcl.Builtin) and isinstance(
-            expression.function.builtin, vcl.Optimise
+            expression.function.builtin, (vcl.MinimiseRatTensor, vcl.MaximiseRatTensor)
         ):
             if len(expression.arguments) != 2:
                 raise VehicleOptimiseTypeError(expression)
@@ -197,11 +197,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 # name:
                 py.Constant(
                     value=name,
-                    **asdict(expression.provenance),
-                ),
-                # minimise:
-                py.Constant(
-                    value=expression.function.builtin.minimiseOrMaximise,
                     **asdict(expression.provenance),
                 ),
                 # context:

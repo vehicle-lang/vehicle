@@ -2,12 +2,15 @@ import functools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Callable, Generic, Tuple, Type
+from typing import Any, Callable, Generic, Iterable, Tuple, Type, cast
 
-from typing_extensions import Literal, TypeAlias, final, override
+from typing_extensions import TypeAlias, TypeVar, final, override
 
 from ...ast import DType, Tensor
 from . import types as vcl
+
+_S = TypeVar("_S")
+_T = TypeVar("_T")
 
 
 @dataclass(frozen=True, init=False)
@@ -27,27 +30,6 @@ class Builtins(
     metaclass=ABCMeta,
 ):
     @abstractmethod
-    def IndexType(self) -> Type[vcl.Index]: ...
-
-    @abstractmethod
-    def BoolTensorType(self) -> Type[vcl.BoolTensor]: ...
-
-    @abstractmethod
-    def IndexTensorType(self) -> Type[vcl.IndexTensor]: ...
-
-    @abstractmethod
-    def NatTensorType(self) -> Type[vcl.NatTensor]: ...
-
-    @abstractmethod
-    def IntTensorType(self) -> Type[vcl.IntTensor]: ...
-
-    @abstractmethod
-    def RatTensorType(self) -> Type[vcl.RatTensor]: ...
-
-    @abstractmethod
-    def ListType(self) -> Type[vcl.ValueList]: ...
-
-    @abstractmethod
     def Unit(self) -> vcl.Unit: ...
 
     @abstractmethod
@@ -66,10 +48,10 @@ class Builtins(
     def RatTensor(self, value: Tensor[Fraction]) -> vcl.RatTensor: ...
 
     @abstractmethod
-    def NilList(self) -> vcl.ValueList: ...
+    def NilList(self) -> Tuple[_T, ...]: ...
 
     @abstractmethod
-    def ConsList(self, x: vcl.Value, xs: vcl.ValueList) -> vcl.ValueList: ...
+    def ConsList(self, x: _T, xs: Tuple[_T, ...]) -> Tuple[_T, ...]: ...
 
     @abstractmethod
     def NotBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor: ...
@@ -168,15 +150,13 @@ class Builtins(
     @abstractmethod
     def FoldList(
         self,
-        f: Callable[[vcl.Value, vcl.Value], vcl.Value],
-        x: vcl.Value,
-        xs: vcl.ValueList,
-    ) -> vcl.Value: ...
+        f: Callable[[_T, _S], _T],
+        x: _T,
+        xs: Tuple[_S, ...],
+    ) -> _T: ...
 
     @abstractmethod
-    def MapList(
-        self, f: Callable[[vcl.Value], vcl.Value], xs: vcl.ValueList
-    ) -> vcl.ValueList: ...
+    def MapList(self, f: Callable[[_T], _T], xs: Tuple[_T, ...]) -> Tuple[_T, ...]: ...
 
     @abstractmethod
     def MapRatTensor(
@@ -198,20 +178,18 @@ class Builtins(
     def MinimiseRatTensor(
         self,
         join: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        predicate: Callable[[vcl.Value], vcl.RatTensor],
+        predicate: Callable[..., vcl.RatTensor],
     ) -> vcl.RatTensor: ...
 
     @abstractmethod
     def MaximiseRatTensor(
         self,
         meet: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        predicate: Callable[[vcl.Value], vcl.RatTensor],
+        predicate: Callable[..., vcl.RatTensor],
     ) -> vcl.RatTensor: ...
 
     @abstractmethod
-    def If(
-        self, cond: vcl.Bool, ifTrue: vcl.Value, ifFalse: vcl.Value
-    ) -> vcl.Value: ...
+    def If(self, cond: vcl.Bool, ifTrue: _T, ifFalse: _T) -> _T: ...
 
 
 @dataclass(frozen=True, init=False)
@@ -230,10 +208,6 @@ class ABCBuiltins(
     ],
 ):
     @override
-    def ListType(self) -> Type[vcl.ValueList]:
-        return vcl.ValueList
-
-    @override
     def Unit(self) -> Tuple[()]:
         return ()
 
@@ -242,26 +216,27 @@ class ABCBuiltins(
         return value
 
     @override
-    def NilList(self) -> vcl.ValueList:
+    def NilList(self) -> Tuple[_T, ...]:
         return ()
 
     @override
-    def ConsList(self, x: vcl.Value, xs: vcl.ValueList) -> vcl.ValueList:
+    def ConsList(self, x: _T, xs: Tuple[_T, ...]) -> Tuple[_T, ...]:
         return (x, *xs)
 
     @override
     def FoldList(
         self,
-        f: Callable[[vcl.Value, vcl.Value], vcl.Value],
-        x: vcl.Value,
-        xs: vcl.ValueList,
-    ) -> vcl.Value:
-        return functools.reduce(f, xs, initial=x)
+        f: Callable[[_T, _S], _T],
+        x: _T,
+        xs: Tuple[_S, ...],
+    ) -> _T:
+        return cast(
+            _T,
+            functools.reduce(function=f, sequence=xs, initial=x),  # type: ignore[call-overload]
+        )
 
     @override
-    def MapList(
-        self, f: Callable[[vcl.Value], vcl.Value], xs: vcl.ValueList
-    ) -> vcl.ValueList:
+    def MapList(self, f: Callable[[_T], _T], xs: Tuple[_T, ...]) -> Tuple[_T, ...]:
         return tuple(map(f, xs))
 
 

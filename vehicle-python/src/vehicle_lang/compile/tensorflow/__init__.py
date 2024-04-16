@@ -2,10 +2,10 @@ import ast as py
 from dataclasses import asdict, dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, Union
+from typing import Any, Callable, Dict, Iterable, Optional, Union, cast
 
-import tensorflow as tf  # type: ignore
-from typing_extensions import Literal, override
+import tensorflow as tf  # type: ignore[import-untyped,unused-ignore]
+from typing_extensions import TypeVar, override
 
 from ...ast import MISSING, Tensor
 from ...ast import load as ast_load
@@ -16,14 +16,20 @@ from ...typing import (
     Explicit,
     Target,
 )
-from ..abc import ABCBuiltins, Value
-from ..error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
+from ..abc import ABCBuiltins
+from ..error import (
+    VehicleBuiltinUnsupported,
+    VehiclePropertyNotCallable,
+    VehiclePropertyNotFound,
+)
 from ..python import PythonTranslation
 from . import types as vcl
 
 ################################################################################
 ### Interpretations of Vehicle builtins in Tensorflow
 ################################################################################
+
+_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -46,30 +52,6 @@ class TensorFlowBuiltins(
     dtype_nat: tf.DType = tf.uint32
     dtype_int: tf.DType = tf.int32
     dtype_rat: tf.DType = tf.float32
-
-    @override
-    def IndexType(self) -> Type[vcl.Index]:
-        return vcl.Index
-
-    @override
-    def BoolTensorType(self) -> Type[vcl.BoolTensor]:
-        return vcl.BoolTensor
-
-    @override
-    def IndexTensorType(self) -> Type[vcl.IndexTensor]:
-        return vcl.IndexTensor
-
-    @override
-    def NatTensorType(self) -> Type[vcl.NatTensor]:
-        return vcl.NatTensor
-
-    @override
-    def IntTensorType(self) -> Type[vcl.IntTensor]:
-        return vcl.IntTensor
-
-    @override
-    def RatTensorType(self) -> Type[vcl.RatTensor]:
-        return vcl.RatTensor
 
     @override
     def BoolTensor(self, value: Tensor[bool]) -> vcl.BoolTensor:
@@ -205,7 +187,7 @@ class TensorFlowBuiltins(
 
     @override
     def LookupRatTensor(self, x: vcl.RatTensor, i: vcl.IndexTensor) -> vcl.Rat:
-        return x[i]
+        return cast(vcl.Rat, x[i])
 
     @override
     def StackRatTensor(self, n: int, *xs: vcl.RatTensor) -> vcl.RatTensor:
@@ -244,17 +226,24 @@ class TensorFlowBuiltins(
         return x
 
     @override
-    def OptimiseRatTensor(
+    def MinimiseRatTensor(
         self,
-        minimiseOrMaximise: Literal["Minimise", "Maximise"],
-        meetOrJoin: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        loss: Callable[[Value], vcl.RatTensor],
+        join: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
+        predicate: Callable[..., vcl.RatTensor],
+    ) -> vcl.RatTensor:
+        raise VehicleBuiltinUnsupported("MinimiseRatTensor")
+
+    @override
+    def MaximiseRatTensor(
+        self,
+        meet: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
+        predicate: Callable[..., vcl.RatTensor],
     ) -> vcl.RatTensor:
         raise VehicleBuiltinUnsupported("OptimiseRatTensor")
 
     @override
-    def If(self, cond: vcl.Bool, ifTrue: Value, ifFalse: Value) -> Value:
-        return tf.cond(cond, lambda: ifTrue, lambda: ifFalse)
+    def If(self, cond: vcl.Bool, ifTrue: _T, ifFalse: _T) -> _T:
+        return cast(_T, tf.cond(cond, lambda: ifTrue, lambda: ifFalse))
 
 
 @dataclass(frozen=True, init=False)
@@ -309,6 +298,10 @@ def load_loss_function(
     """
     declarations = load(path, declarations=(property_name,), target=target)
     if property_name in declarations:
-        return declarations[property_name]
+        property_func = declarations[property_name]
+        if callable(property_func):
+            return cast(Callable[..., vcl.RatTensor], property_func)
+        else:
+            raise VehiclePropertyNotCallable(property_name)
     else:
         raise VehiclePropertyNotFound(property_name)
