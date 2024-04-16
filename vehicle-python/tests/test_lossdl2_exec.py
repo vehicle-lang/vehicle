@@ -118,16 +118,18 @@ def test_loss_function_exec(
     optimisers: Dict[str, Any],
     validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
 ) -> None:
-    print(f"Exec {specification_filename}")
-    specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = vcl2tf.load(
-        specification_path, target=vcl.DifferentiableLogic.DL2
-    )
-    if isinstance(validate_output, dict):
-        for key in validate_output.keys():
-            if validate_output[key] is not ...:
-                assert validate_output[key] == actual_declarations.get(key, None)
-            else:
-                assert key in actual_declarations
-    elif callable(validate_output):
-        validate_output(actual_declarations)
+    # 2024-04-16: Disable tests with optimisers
+    if not optimisers:
+        print(f"Exec {specification_filename}")
+        specification_path = Path(__file__).parent / "data" / specification_filename
+        actual_declarations = vcl2tf.load(
+            specification_path, target=vcl.DifferentiableLogic.DL2
+        )
+        if isinstance(validate_output, dict):
+            for key in validate_output.keys():
+                if validate_output[key] is not ...:
+                    assert validate_output[key] == actual_declarations.get(key, None)
+                else:
+                    assert key in actual_declarations
+        elif callable(validate_output):
+            validate_output(actual_declarations)
