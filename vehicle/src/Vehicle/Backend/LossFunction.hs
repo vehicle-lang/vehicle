@@ -50,7 +50,6 @@ convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $
             normFn <- normaliseInEnv mempty unnormFn
             normaliseApp normFn spine'
           EliminateNot -> do
-            logDebug MaxDetail $ "hi"
             case spine of
               [arg] -> case lowerNot (argExpr arg) of
                 Right result -> go result

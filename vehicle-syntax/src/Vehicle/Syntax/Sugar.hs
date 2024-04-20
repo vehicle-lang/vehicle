@@ -26,11 +26,11 @@ import Vehicle.Syntax.Builtin
 class FoldableBuiltin builtin where
   getQuant ::
     Expr var builtin ->
-    Maybe (Provenance, Quantifier, Binder var builtin, Expr var builtin)
+    Maybe (Quantifier, Binder var builtin, Expr var builtin)
 
 instance FoldableBuiltin Builtin where
   getQuant = \case
-    QuantifierExpr p binder body q -> Just (p, q, binder, body)
+    QuantifierExpr binder body q -> Just (q, binder, body)
     _ -> Nothing
 
 data FoldableBinderType
@@ -43,8 +43,8 @@ data BinderFoldTarget var builtin
   = FoldableBinder FoldableBinderType (Binder var builtin)
   | FunFold
 
-pattern QuantifierExpr p binder body q <-
-  App p (Builtin _ (TypeClassOp (QuantifierTC q))) (RelevantExplicitArg _ (Lam _ binder body) :| [])
+pattern QuantifierExpr binder body q <-
+  App (Builtin _ (TypeClassOp (QuantifierTC q))) (RelevantExplicitArg _ (Lam _ binder body) :| [])
 
 foldBinders ::
   forall binder var builtin.
@@ -59,7 +59,7 @@ foldBinders foldTarget = go
       let result = case expr of
             Pi p binder body -> processBinder binder body PiFold
             Lam p binder body -> processBinder binder body LamFold
-            (getQuant -> Just (p, q, binder, body)) -> processBinder binder body (QuantFold q)
+            (getQuant -> Just (q, binder, body)) -> processBinder binder body (QuantFold q)
             expr -> Nothing
 
       case result of

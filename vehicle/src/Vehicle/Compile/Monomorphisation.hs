@@ -79,10 +79,10 @@ traverseCandidateApplications ::
 traverseCandidateApplications underBinder processApp =
   traverseFreeVarsM underBinder processApp2
   where
-    processApp2 recGo p1 _p2 ident args = do
+    processApp2 recGo p ident args = do
       let (argsToMono, remainingArgs) = break isExplicit args
       remainingArgs' <- traverse (traverse recGo) remainingArgs
-      processApp p1 ident argsToMono remainingArgs'
+      processApp p ident argsToMono remainingArgs'
 
 --------------------------------------------------------------------------------
 -- Pass 2 - collects the sites for monomorphisation
@@ -201,7 +201,7 @@ collectApplication ::
 collectApplication p ident argsToMono remainingArgs = do
   logDebug MaxDetail $ "Found application:" <+> quotePretty ident <+> prettyVerbose argsToMono
   modify (Map.insertWith HashSet.union ident (HashSet.singleton argsToMono))
-  return $ normAppList p (FreeVar p ident) (argsToMono <> remainingArgs)
+  return $ normAppList (FreeVar p ident) (argsToMono <> remainingArgs)
 
 --------------------------------------------------------------------------------
 -- Pass 3 - insert the monorphised identifiers
@@ -226,8 +226,8 @@ replaceCandidateApplication ::
 replaceCandidateApplication p ident monoArgs remainingArgs = do
   solution <- asks (Map.lookup (ident, monoArgs))
   case solution of
-    Nothing -> return $ normAppList p (FreeVar p ident) (monoArgs <> remainingArgs)
-    Just replacementIdent -> return $ normAppList p (FreeVar p replacementIdent) remainingArgs
+    Nothing -> return $ normAppList (FreeVar p ident) (monoArgs <> remainingArgs)
+    Just replacementIdent -> return $ normAppList (FreeVar p replacementIdent) remainingArgs
 
 getMonomorphisedName ::
   (MonadCollect builtin m) =>
@@ -283,21 +283,20 @@ removeLiteralCoercions nameJoiner (Main ds) =
       findStdLibFunction shortIdent
 
     updateBuiltin :: Decl Ix builtin -> BuiltinUpdate m Ix builtin builtin
-    updateBuiltin decl p1 p2 b args = case b of
+    updateBuiltin decl p2 b args = case b of
       (getBuiltinFunction -> Just (FromNat dom)) -> case (dom, filter isExplicit args) of
         (FromNatToIndex, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IndexLiteral p n
         (FromNatToNat, [e]) -> return $ argExpr e
-        (FromNatToInt, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IntLiteral p n
         (FromNatToRat, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
         _ -> do
           partialApplication decl (pretty (FromNat dom)) args
       (getBuiltinFunction -> Just (FromRat dom)) -> case (dom, args) of
         (FromRatToRat, [e]) -> return $ argExpr e
         _ -> partialApplication decl (pretty (FromRat dom)) args
-      _ -> return $ normAppList p1 (Builtin p2 b) args
+      _ -> return $ normAppList (Builtin p2 b) args
 
     updateFreeVar :: Decl Ix builtin -> FreeVarUpdate m Ix builtin
-    updateFreeVar decl recGo p1 p2 ident args = do
+    updateFreeVar decl recGo p ident args = do
       let vectorCoercion = getVectorCoercion ident
       args' <- traverse (traverse recGo) args
       case vectorCoercion of
@@ -305,9 +304,9 @@ removeLiteralCoercions nameJoiner (Main ds) =
           vec : _ -> return $ argExpr vec
           _ -> partialApplication decl (pretty ident) args'
         Just StdVectorToList -> case reverse args' of
-          RelevantExplicitArg _ (VecLiteral p l xs) : _ -> return $ mkList p l (fmap argExpr xs)
+          RelevantExplicitArg _ (VecLiteral p' l xs) : _ -> return $ mkList p' l (fmap argExpr xs)
           _ -> partialApplication decl (pretty ident) args'
-        _ -> return $ normAppList p1 (FreeVar p2 ident) args'
+        _ -> return $ normAppList (FreeVar p ident) args'
 
     partialApplication :: Decl Ix builtin -> Doc () -> [Arg Ix builtin] -> m b
     partialApplication decl v args =

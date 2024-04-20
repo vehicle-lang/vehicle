@@ -1,5 +1,6 @@
 module Vehicle.Data.Tensor where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON (..), Options (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Char qualified as Char
 import Data.List qualified as List (stripPrefix)
@@ -19,6 +20,8 @@ data Tensor a = Tensor
     tensorValue :: Vector a
   }
   deriving (Show, Eq, Ord, Generic, Functor, Foldable)
+
+instance (NFData a) => NFData (Tensor a)
 
 -- | Ensure names are normalised in JSON.
 stripFieldNamePrefix :: String -> String

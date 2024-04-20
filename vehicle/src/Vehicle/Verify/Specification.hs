@@ -17,6 +17,7 @@ module Vehicle.Verify.Specification
   )
 where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
@@ -29,11 +30,13 @@ import Vehicle.Verify.Core
 -- Query meta data
 
 data QueryMetaData = QueryMetaData
-  { queryAddress :: QueryAddress,
-    metaNetwork :: MetaNetwork,
-    variableReconstruction :: UserVariableReconstruction
+  { queryAddress :: !QueryAddress,
+    metaNetwork :: !MetaNetwork,
+    variableReconstruction :: !UserVariableReconstruction
   }
   deriving (Show, Generic)
+
+instance NFData QueryMetaData
 
 instance ToJSON QueryMetaData
 
@@ -48,10 +51,12 @@ instance Pretty QueryMetaData where
 -- Query set
 
 data QuerySet a = QuerySet
-  { negated :: QuerySetNegationStatus,
-    queries :: DisjunctAll a
+  { negated :: !QuerySetNegationStatus,
+    queries :: !(DisjunctAll a)
   }
   deriving (Show, Generic, Functor, Foldable, Traversable)
+
+instance (NFData a) => NFData (QuerySet a)
 
 instance (ToJSON a) => ToJSON (QuerySet a)
 

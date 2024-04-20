@@ -54,16 +54,15 @@ convertToPolarityTypes ::
   forall m.
   (MonadTypeChecker PolarityBuiltin m) =>
   BuiltinUpdate m Ix S.Builtin PolarityBuiltin
-convertToPolarityTypes p1 p2 b args = case b of
-  S.BuiltinConstructor c -> return $ normAppList p1 (Builtin p2 (BuiltinConstructor c)) args
-  S.BuiltinFunction f -> return $ normAppList p1 (Builtin p2 (BuiltinFunction f)) args
+convertToPolarityTypes p b args = case b of
+  S.BuiltinConstructor c -> return $ normAppList (Builtin p (BuiltinConstructor c)) args
+  S.BuiltinFunction f -> return $ normAppList (Builtin p (BuiltinFunction f)) args
   S.BuiltinType s -> case s of
-    Unit -> return $ PolarityExpr p2 Unquantified
-    Bool -> unnormalised <$> freshPolarityMeta p2
-    Index -> return $ PolarityExpr p2 Unquantified
-    Nat -> return $ PolarityExpr p2 Unquantified
-    Int -> return $ PolarityExpr p2 Unquantified
-    Rat -> unnormalised <$> freshPolarityMeta p2
+    Unit -> return $ PolarityExpr p Unquantified
+    Bool -> unnormalised <$> freshPolarityMeta p
+    Index -> return $ PolarityExpr p Unquantified
+    Nat -> return $ PolarityExpr p Unquantified
+    Rat -> unnormalised <$> freshPolarityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem
       _ -> monomorphisationError "List"

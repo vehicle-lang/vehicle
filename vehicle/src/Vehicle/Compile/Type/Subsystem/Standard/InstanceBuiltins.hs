@@ -49,9 +49,6 @@ candidates =
           ( hasNatLits tNat,
             builtin (FromNat FromNatToNat)
           ),
-          ( hasNatLits tInt,
-            builtin (FromNat FromNatToInt)
-          ),
           ( hasNatLits tRat,
             builtin (FromNat FromNatToRat)
           ),
@@ -71,9 +68,6 @@ candidates =
           ------------
           -- HasNeg --
           ------------
-          ( hasNeg tInt tInt,
-            builtin (Neg NegInt)
-          ),
           ( hasNeg tRat tRat,
             builtin (Neg NegRat)
           ),
@@ -82,9 +76,6 @@ candidates =
           ------------
           ( hasAdd tNat tNat tNat,
             builtin (Add AddNat)
-          ),
-          ( hasAdd tInt tInt tInt,
-            builtin (Add AddInt)
           ),
           ( hasAdd tRat tRat tRat,
             builtin (Add AddRat)
@@ -101,9 +92,6 @@ candidates =
           ------------
           -- HasSub --
           ------------
-          ( hasSub tInt tInt tInt,
-            builtin (Sub SubInt)
-          ),
           ( hasSub tRat tRat tRat,
             builtin (Sub SubRat)
           ),
@@ -121,9 +109,6 @@ candidates =
           ------------
           ( hasMul tNat tNat tNat,
             builtin (Mul MulNat)
-          ),
-          ( hasMul tInt tInt tInt,
-            builtin (Mul MulInt)
           ),
           ( hasMul tRat tRat tRat,
             builtin (Mul MulRat)
@@ -174,9 +159,6 @@ candidates =
         ( hasOrd op tNat tNat,
           builtin (Order OrderNat op)
         ),
-        ( hasOrd op tInt tInt,
-          builtin (Order OrderInt op)
-        ),
         ( hasOrd op tRat tRat,
           builtin (Order OrderRat op)
         )
@@ -193,9 +175,6 @@ candidates =
         ),
         ( hasEq op tNat tNat,
           builtin (Equals EqNat op)
-        ),
-        ( hasEq op tInt tInt,
-          builtin (Equals EqInt op)
         ),
         ( hasEq op tRat tRat,
           builtin (Equals EqRat op)

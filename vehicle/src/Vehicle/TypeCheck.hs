@@ -153,8 +153,8 @@ convertBackToStandardBuiltin ::
   Expr Ix StandardTypingBuiltin ->
   m (Expr Ix Builtin)
 convertBackToStandardBuiltin = traverseBuiltinsM $
-  \p1 p2 b args -> case b of
-    StandardBuiltin c -> return $ normAppList p1 (Builtin p2 c) args
+  \p b args -> case b of
+    StandardBuiltin c -> return $ normAppList (Builtin p c) args
 
 createFreeCtx ::
   (MonadCompile m) =>

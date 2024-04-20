@@ -213,7 +213,7 @@ traverseExpr f g e = do
     Meta p i -> return $ Meta p i
     Hole p n -> return $ Hole p n
     Builtin p op -> return $ Builtin p op
-    App p fun args -> App p <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
+    App fun args -> App <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
     Pi p binder res ->
       traverseBinder f g binder $ \binder' ->
         Pi p binder' <$> traverseExpr f g res

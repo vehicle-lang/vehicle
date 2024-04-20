@@ -33,9 +33,6 @@ pattern VIndexType size <- VBuiltinType Index [IrrelevantExplicitArg _ size]
 pattern VNatType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VNatType = VRawBuiltinType Nat
 
-pattern VIntType :: (HasStandardTypes builtin) => WHNFType builtin
-pattern VIntType = VRawBuiltinType Int
-
 pattern VRatType :: (HasStandardTypes builtin) => WHNFType builtin
 pattern VRatType = VRawBuiltinType Rat
 
@@ -85,9 +82,6 @@ pattern VIndexLiteral x = VBasicLiteral (LIndex x)
 
 pattern VNatLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
 pattern VNatLiteral x = VBasicLiteral (LNat x)
-
-pattern VIntLiteral :: (HasStandardData builtin) => Int -> Value strategy builtin
-pattern VIntLiteral x = VBasicLiteral (LInt x)
 
 pattern VRatLiteral :: (HasStandardData builtin) => Rational -> Value strategy builtin
 pattern VRatLiteral x = VBasicLiteral (LRat x)

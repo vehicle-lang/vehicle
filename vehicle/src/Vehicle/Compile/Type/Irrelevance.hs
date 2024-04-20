@@ -48,8 +48,8 @@ instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) w
   remove expr = do
     -- showRemoveEntry expr
     result <- case expr of
-      App p fun args -> do
-        normAppList p <$> remove fun <*> removeArgs (NonEmpty.toList args)
+      App fun args -> do
+        normAppList <$> remove fun <*> removeArgs (NonEmpty.toList args)
       Pi p binder res ->
         if isIrrelevant binder
           then remove $ UnitLiteral p `substDBInto` res

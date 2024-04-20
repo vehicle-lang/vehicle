@@ -171,7 +171,7 @@ doubleElemParser decl datasetType file value expectedElementType = case expected
   VRatType {} ->
     return $ VRatLiteral (toRational value)
   _ -> do
-    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VRatType
+    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
 intElemParser ::
   (MonadExpandResources m) =>
@@ -188,10 +188,8 @@ intElemParser decl datasetType file value expectedElementType = case expectedEle
     if value >= 0
       then return $ VNatLiteral value
       else throwError $ DatasetInvalidNat decl file value
-  VIntType {} ->
-    return $ VIntLiteral value
   _ ->
-    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType VIntType
+    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Int"
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: (Vector.Unbox a) => Int -> TensorShape -> Vector a -> [Vector a]

@@ -454,7 +454,7 @@ instance MeaningfulError CompileError where
         InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
 
         deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
-          App _ _ as -> NonEmpty.toList as
+          App _ as -> NonEmpty.toList as
           _ -> []
 
         originExpr :: Doc a
@@ -472,7 +472,7 @@ instance MeaningfulError CompileError where
           where
             go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
             go dbCtx = \case
-              App _ (Builtin _ _tc) args ->
+              App (Builtin _ _tc) args ->
                 calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
               Pi _ binder result ->
                 go (binder : dbCtx) result
@@ -743,7 +743,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Index, Nat, Rat]
     DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
       UError $
         UserError
@@ -854,7 +854,7 @@ instance MeaningfulError CompileError where
                 <> "Expected elements of type"
                   <+> squotes (prettyFriendlyEmptyCtx expectedType)
                   <+> "but found elements of type"
-                  <+> squotes (prettyFriendlyEmptyCtx actualType)
+                  <+> squotes actualType
                   <+> "when reading"
                   <+> quotePretty file
                 <> ".",
@@ -881,7 +881,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Bool, Index, Nat, Rat]
     ParameterValueUnparsable (ident, p) value expectedType ->
       UError $
         UserError

@@ -1,5 +1,6 @@
 module Vehicle.Verify.Variable where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Char.SScript
 import Data.Hashable (Hashable)
@@ -24,6 +25,8 @@ data OriginalUserVariable = OriginalUserVariable
     userTensorVarDimensions :: TensorShape
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData OriginalUserVariable
 
 instance ToJSON OriginalUserVariable
 
@@ -52,6 +55,8 @@ data OriginalNetworkVariable = OriginalNetworkVariable
   }
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData OriginalNetworkVariable
+
 instance ToJSON OriginalNetworkVariable
 
 instance FromJSON OriginalNetworkVariable
@@ -72,6 +77,8 @@ data ReducedVariable variable = ReducedVariable
     tensorIndices :: TensorIndices
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance (NFData variable) => NFData (ReducedVariable variable)
 
 instance (Pretty variable) => Pretty (ReducedVariable variable) where
   pretty ReducedVariable {..} =
@@ -139,6 +146,8 @@ data RationalVariable
   | NetworkRationalVar NetworkRationalVariable
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData RationalVariable
+
 instance ToJSON RationalVariable
 
 instance FromJSON RationalVariable
@@ -160,6 +169,8 @@ data TensorVariable
   = UserTensorVar OriginalUserVariable
   | NetworkTensorVar OriginalNetworkVariable
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData TensorVariable
 
 instance ToJSON TensorVariable
 

@@ -1,8 +1,10 @@
 module Vehicle.Prelude.Misc where
 
+import Control.DeepSeq (NFData)
 import Control.Monad (join, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.State (MonadState (..), modify)
 import Data.Aeson (FromJSON, Options (..), ToJSON, defaultOptions)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
@@ -175,6 +177,8 @@ data InputOrOutput
   | Output
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData InputOrOutput
+
 instance ToJSON InputOrOutput
 
 instance FromJSON InputOrOutput
@@ -247,3 +251,9 @@ cartesianProduct f xs ys = [f x y | x <- xs, y <- ys]
 thenCmp :: Ordering -> Ordering -> Ordering
 thenCmp EQ o2 = o2
 thenCmp o1 _ = o1
+
+getModify :: (MonadState s m) => (s -> s) -> m s
+getModify f = do
+  x <- get
+  modify f
+  return x

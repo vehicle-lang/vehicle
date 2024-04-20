@@ -32,7 +32,7 @@ agdaOutputFormat =
 
 -- TODO This really needs to move.
 writeResultToFile ::
-  (MonadIO m, MonadStdIO m, MonadLogger m) =>
+  (MonadStdIO m, MonadLogger m) =>
   Maybe ExternalOutputFormat ->
   Maybe FilePath ->
   Doc a ->
@@ -42,7 +42,7 @@ writeResultToFile target filepath doc = do
   case filepath of
     Nothing -> VIO.writeStdoutLn text
     Just outputFilePath -> do
-      logDebug MaxDetail $ "Creating file:" <+> pretty filepath
+      logDebug MinDetail $ "Creating file:" <+> pretty filepath
       liftIO $ do
         createDirectoryIfMissing True (takeDirectory outputFilePath)
         TIO.writeFile outputFilePath text

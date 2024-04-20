@@ -130,7 +130,7 @@ quantifyOverMeta decl meta = do
 
 isMeta :: Expr Ix builtin -> Bool
 isMeta Meta {} = True
-isMeta (App _ Meta {} _) = True
+isMeta (App Meta {} _) = True
 isMeta _ = False
 
 --------------------------------------------------------------------------------
@@ -208,16 +208,16 @@ addNewArgumentToMetaUses meta = fmap (go (-1))
     go :: Lv -> Expr Ix builtin -> Expr Ix builtin
     go d expr = case expr of
       Meta p m
-        | m == meta -> App p (Meta p m) [newVar p]
-      App p (Meta p' m) args
-        | m == meta -> App p (Meta p' m) (newVar p <| goArgs args)
+        | m == meta -> App (Meta p m) [newVar p]
+      App (Meta p m) args
+        | m == meta -> App (Meta p m) (newVar p <| goArgs args)
       Universe {} -> expr
       Hole {} -> expr
       Meta {} -> expr
       Builtin {} -> expr
       FreeVar {} -> expr
       BoundVar {} -> expr
-      App p fun args -> App p (go d fun) (goArgs args)
+      App fun args -> App (go d fun) (goArgs args)
       Pi p binder result -> Pi p (goBinder binder) (go (d + 1) result)
       Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
       Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)

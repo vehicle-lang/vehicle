@@ -56,7 +56,7 @@ instance (Show builtin) => Quote (VArg strategy builtin) (Arg Ix builtin) where
   quote p level = fmap (quote p level)
 
 quoteApp :: (Show builtin) => Lv -> Provenance -> Expr Ix builtin -> Spine strategy builtin -> Expr Ix builtin
-quoteApp l p fn spine = normAppList p fn $ fmap (quote p l) spine
+quoteApp l p fn spine = normAppList fn $ fmap (quote p l) spine
 
 envSubst :: (Show builtin) => Provenance -> Lv -> WHNFBoundEnv builtin -> Substitution (Expr Ix builtin)
 envSubst p level env i = case lookupIx env i of

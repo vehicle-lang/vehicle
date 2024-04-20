@@ -32,9 +32,6 @@ pattern BoolType p = NullaryTypeExpr p Bool
 pattern NatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
 pattern NatType p = NullaryTypeExpr p Nat
 
-pattern IntType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
-pattern IntType p = NullaryTypeExpr p Int
-
 pattern RatType :: (HasStandardTypes builtin) => Provenance -> Expr var builtin
 pattern RatType p = NullaryTypeExpr p Rat
 
@@ -86,11 +83,6 @@ pattern NatLiteral :: (HasStandardData builtin) => Provenance -> Int -> Expr var
 pattern NatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LNat n))
   where
     NatLiteral p n = Builtin p (mkBuiltinConstructor (LNat n))
-
-pattern IntLiteral :: (HasStandardData builtin) => Provenance -> Int -> Expr var builtin
-pattern IntLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LInt n))
-  where
-    IntLiteral p n = Builtin p (mkBuiltinConstructor (LInt n))
 
 pattern RatLiteral :: (HasStandardData builtin) => Provenance -> Rational -> Expr var builtin
 pattern RatLiteral p n <- Builtin p (getBuiltinConstructor -> Just (LRat n))
@@ -262,9 +254,9 @@ negExpr :: Expr var Builtin -> Expr var Builtin
 negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
 
 pattern StandardLib :: StdLibFunction -> NonEmpty (Arg var builtin) -> Expr var builtin
-pattern StandardLib fn spine <- App _ (FreeVar _ (findStdLibFunction -> Just fn)) spine
+pattern StandardLib fn spine <- App (FreeVar _ (findStdLibFunction -> Just fn)) spine
   where
-    StandardLib fn spine = App mempty (FreeVar mempty (identifierOf fn)) spine
+    StandardLib fn spine = App (FreeVar mempty (identifierOf fn)) spine
 
 tensorToExpr :: (a -> Expr var Builtin) -> Tensor a -> Expr var Builtin
 tensorToExpr mkElem = foldMapTensor mkElem (\xs -> BuiltinExpr mempty (BuiltinConstructor (LVec (length xs))) (Arg mempty (Implicit True) Relevant (mkHole mempty "_t") :| fmap (Arg mempty Explicit Relevant) xs))

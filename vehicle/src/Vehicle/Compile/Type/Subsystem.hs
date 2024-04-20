@@ -50,11 +50,11 @@ resolveInstanceArguments prog =
       return result
   where
     builtinUpdateFunction :: BuiltinUpdate m Ix builtin builtin
-    builtinUpdateFunction p1 p2 b args
+    builtinUpdateFunction p b args
       | isTypeClassOp b = do
           (inst, remainingArgs) <- findInstanceArg b args
-          return $ substArgs p1 inst remainingArgs
-      | otherwise = return $ normAppList p1 (Builtin p2 b) args
+          return $ substArgs inst remainingArgs
+      | otherwise = return $ normAppList (Builtin p b) args
 
 removeImplicitAndInstanceArgs ::
   forall m builtin.
@@ -69,11 +69,11 @@ removeImplicitAndInstanceArgs prog =
   where
     go :: Expr Ix builtin -> m (Expr Ix builtin)
     go expr = case expr of
-      App p fun args -> do
+      App fun args -> do
         fun' <- go fun
         let nonImplicitArgs = NonEmpty.filter isExplicit args
         nonImplicitArgs' <- traverse (traverse go) nonImplicitArgs
-        return $ normAppList p fun' nonImplicitArgs'
+        return $ normAppList fun' nonImplicitArgs'
       BoundVar {} -> return expr
       FreeVar {} -> return expr
       Universe {} -> return expr

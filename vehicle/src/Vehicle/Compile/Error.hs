@@ -6,6 +6,7 @@ import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
+import Data.Void (Void)
 import Prettyprinter (list)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries.Error.Linearity.Core
@@ -62,7 +63,7 @@ data CompileError
   | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
   | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
-  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (WHNFType Builtin)
+  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | ParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)

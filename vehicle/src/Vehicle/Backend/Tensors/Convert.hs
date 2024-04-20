@@ -192,7 +192,6 @@ convertBuiltinType t args = case t of
   Unit -> unexpectedExprError currentPass "Unit"
   Bool -> return $ mkBuiltin T.BoolTensorType args
   Nat -> return $ mkBuiltin T.NatType args
-  Int -> return $ mkBuiltin T.IntTensorType args
   Rat -> return $ mkBuiltin T.RatTensorType args
   Index -> return $ mkBuiltin T.IndexType args
   List -> return $ mkBuiltin T.ListType args
@@ -203,7 +202,6 @@ convertVectorType args = do
   let maybeResult = case args of
         [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
           T.BoolTensorType -> Just T.BoolTensorType
-          T.IntTensorType -> Just T.IntTensorType
           T.RatTensorType -> Just T.RatTensorType
           _ -> Nothing
         _ -> Nothing
@@ -224,7 +222,6 @@ convertBuiltinConstructor c args = case c of
   LIndex i -> return $ mkBuiltin (T.Index i) []
   LBool v -> return $ T.VBoolTensor (Tensor [] [v])
   LNat v -> return $ mkBuiltin (T.Nat v) []
-  LInt v -> return $ T.VIntTensor (Tensor [] [v])
   LRat v -> return $ T.VRatTensor (Tensor [] [T.convertRat v])
   LVec n -> case args of
     _t : xs -> convertVector n xs
@@ -237,7 +234,6 @@ convertVector n args = case args of
     let vs = a :| as
     return $ case argExpr a of
       T.VBoolTensor {} -> comp T.VBoolTensor T.getBoolTensor vs
-      T.VIntTensor {} -> comp T.VIntTensor T.getIntTensor vs
       T.VRatTensor {} -> comp T.VRatTensor T.getRatTensor vs
       _ -> mkBuiltin (T.StackRatTensor n) args
     where
@@ -262,15 +258,11 @@ convertBuiltinFunction t args = case t of
   Not -> return $ mkBuiltin T.NotBoolTensor args
   And -> return $ mkBuiltin T.AndBoolTensor args
   Or -> return $ mkBuiltin T.OrBoolTensor args
-  Neg NegInt -> return $ mkBuiltin T.NegRatTensor args
   Neg NegRat -> return $ mkBuiltin T.NegRatTensor args
   Add AddNat -> return $ mkBuiltin T.AddRatTensor args
-  Add AddInt -> return $ mkBuiltin T.AddRatTensor args
   Add AddRat -> return $ mkBuiltin T.AddRatTensor args
-  Sub SubInt -> return $ mkBuiltin T.SubRatTensor args
   Sub SubRat -> return $ mkBuiltin T.SubRatTensor args
   Mul MulNat -> return $ mkBuiltin T.MulRatTensor args
-  Mul MulInt -> return $ mkBuiltin T.MulRatTensor args
   Mul MulRat -> return $ mkBuiltin T.MulRatTensor args
   Div DivRat -> return $ mkBuiltin T.DivRatTensor args
   PowRat -> return $ mkBuiltin T.PowRatTensor args
@@ -278,27 +270,21 @@ convertBuiltinFunction t args = case t of
   MaxRat -> return $ mkBuiltin T.MaxRatTensor args
   Equals EqIndex Eq -> return $ mkBuiltin T.EqIndex args
   Equals EqNat Eq -> unsupportedTypeError t
-  Equals EqInt Eq -> unsupportedTypeError t
   Equals EqRat Eq -> return $ mkBuiltin T.EqRatTensor args
   Equals EqIndex Neq -> return $ mkBuiltin T.NeIndex args
   Equals EqNat Neq -> unsupportedTypeError t
-  Equals EqInt Neq -> unsupportedTypeError t
   Equals EqRat Neq -> return $ mkBuiltin T.NeRatTensor args
   Order OrderIndex Le -> return $ mkBuiltin T.LeIndex args
   Order OrderNat Le -> unsupportedTypeError t
-  Order OrderInt Le -> unsupportedTypeError t
   Order OrderRat Le -> return $ mkBuiltin T.LeRatTensor args
   Order OrderIndex Lt -> return $ mkBuiltin T.LtIndex args
   Order OrderNat Lt -> unsupportedTypeError t
-  Order OrderInt Lt -> unsupportedTypeError t
   Order OrderRat Lt -> return $ mkBuiltin T.LtRatTensor args
   Order OrderIndex Ge -> return $ mkBuiltin T.GeIndex args
   Order OrderNat Ge -> unsupportedTypeError t
-  Order OrderInt Ge -> unsupportedTypeError t
   Order OrderRat Ge -> return $ mkBuiltin T.GeRatTensor args
   Order OrderIndex Gt -> return $ mkBuiltin T.GtIndex args
   Order OrderNat Gt -> unsupportedTypeError t
-  Order OrderInt Gt -> unsupportedTypeError t
   Order OrderRat Gt -> return $ mkBuiltin T.GtRatTensor args
   -----------------------
   -- Vector operations --

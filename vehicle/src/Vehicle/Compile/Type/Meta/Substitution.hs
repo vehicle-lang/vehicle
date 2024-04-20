@@ -46,8 +46,8 @@ instance MetaSubstitutable m builtin (Expr Ix builtin) where
   subst s expr =
     -- logCompilerPass MaxDetail (prettyVerbose ex) $
     case expr of
-      e@(Meta p _) -> substApp s p (e, [])
-      e@(App p _ _) -> substApp s p (toHead e)
+      e@Meta {} -> substApp s (e, [])
+      e@App {} -> substApp s (toHead e)
       Universe {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
@@ -66,14 +66,13 @@ substApp ::
   forall builtin m.
   (MonadFreeContext builtin m) =>
   MetaSubstitution builtin ->
-  Provenance ->
   (Expr Ix builtin, [Arg Ix builtin]) ->
   m (Expr Ix builtin)
-substApp s p (fun@(Meta _ m), mArgs) = do
+substApp s (fun@(Meta _ m), mArgs) = do
   case MetaMap.lookup m s of
-    Nothing -> normAppList p fun <$> subst s mArgs
-    Just value -> subst s $ substArgs p (unnormalised value) mArgs
-substApp s p (fun, args) = normAppList p <$> subst s fun <*> subst s args
+    Nothing -> normAppList fun <$> subst s mArgs
+    Just value -> subst s $ substArgs (unnormalised value) mArgs
+substApp s (fun, args) = normAppList <$> subst s fun <*> subst s args
 
 instance MetaSubstitutable m builtin (WHNFValue builtin) where
   subst s expr = case expr of

@@ -3,4 +3,3 @@ Type checking has deduced that it is of type:
   ?3 -> Nat
 but '-' has only the following valid types:
   Rat -> Rat
-  Int -> Int

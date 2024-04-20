@@ -124,7 +124,7 @@ toJExpr expr = do
     V.BoundVar p v -> return $ BoundVar p v
     V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
     -- Otherwise, calculate whether function is partial or not.
-    V.App p fun args -> do
+    V.App fun args -> do
       fun' <- toJExpr fun
       let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
       args' <- traverse toJExpr explicitArgs
@@ -132,8 +132,8 @@ toJExpr expr = do
       case args' of
         [] -> return fun'
         _ : _
-          | arity == length args' -> return $ App p fun' args'
-          | arity > length args' -> return $ PartialApp p arity fun' args'
+          | arity == length args' -> return $ App fun' args'
+          | arity > length args' -> return $ PartialApp arity fun' args'
           | otherwise -> arityError fun arity explicitArgs args'
     V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
     V.Lam p binder _ -> do
@@ -181,7 +181,7 @@ functionArity = go
     go :: (MonadJSON m) => V.Expr Ix TensorBuiltin -> m Arity
     go fun = do
       result <- case fun of
-        V.App _ fn args -> do
+        V.App fn args -> do
           arity <- go fn
           return $ arity - length (NonEmpty.filter V.isExplicit args)
         V.Universe {} -> illTypedError currentPass (prettyVerbose fun)

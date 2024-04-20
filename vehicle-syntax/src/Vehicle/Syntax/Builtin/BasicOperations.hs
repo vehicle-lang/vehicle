@@ -138,6 +138,8 @@ data Strictness
   | NonStrict
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData Strictness
+
 instance ToJSON Strictness
 
 instance FromJSON Strictness

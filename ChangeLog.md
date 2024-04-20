@@ -4,7 +4,11 @@
 
 * Fixed spurious "Unnecessary resources provided" warning when exporting to ITPs.
 
-## Version 0.12.0
+* Drastically reduced memory consumption when compiling verification queries.
+
+* Removed `Int` from the VCL language as not currently needed.
+
+## Version 0.13.0
 
 * Allow `@parameter`s to be used as network sizes.
 
