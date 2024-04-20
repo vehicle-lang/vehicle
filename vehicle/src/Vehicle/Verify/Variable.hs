@@ -9,7 +9,7 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Prettyprinter (brackets)
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor (RationalTensor)
@@ -122,7 +122,7 @@ reduceVariable varDims dbLevel var
         -- Generate the corresponding names from the indices
         (elementUserVars, subexprs) <- unzip <$> traverse (\i -> go ds (i : indices)) allIndices
         let userVars = concat elementUserVars
-        return (userVars, mkVLVec subexprs)
+        return (userVars, mkVecExpr subexprs)
 
 --------------------------------------------------------------------------------
 -- Reduced user variables

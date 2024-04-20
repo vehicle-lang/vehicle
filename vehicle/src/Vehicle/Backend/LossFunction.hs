@@ -14,6 +14,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DSL (DSLExpr, fromDSL)
@@ -94,27 +95,23 @@ convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $
 lowerNot :: WHNFValue Builtin -> Either (WHNFValue Builtin) (WHNFValue Builtin)
 lowerNot arg = case arg of
   -- Base cases
-  VBoolLiteral v ->
-    return $ VBoolLiteral (not v)
+  IBoolLiteral p v ->
+    return $ IBoolLiteral p (not v)
   VBuiltinFunction (Order dom op) args ->
     return $ VBuiltinFunction (Order dom (neg op)) args
   VBuiltinFunction (Equals dom op) args ->
     return $ VBuiltinFunction (Equals dom (neg op)) args
-  VBuiltinFunction Not [x] ->
-    return $ argExpr x
+  INot x ->
+    return x
   -- Inductive cases
-  VInfiniteQuantifier q args binder (WHNFBody env body) ->
-    return $ VInfiniteQuantifier (neg q) args binder (WHNFBody env (negExpr body))
-  VBuiltinFunction And args@[_, _] -> do
-    nargs <- traverse (traverse lowerNot) args
-    return $ VBuiltinFunction Or nargs
-  VBuiltinFunction Or args@[_, _] -> do
-    nargs <- traverse (traverse lowerNot) args
-    return $ VBuiltinFunction And nargs
-  VBuiltinFunction If [tRes, c, e1, e2] -> do
-    ne1 <- traverse lowerNot e1
-    ne2 <- traverse lowerNot e2
-    return $ VBuiltinFunction If [tRes, c, ne1, ne2]
+  IInfiniteQuantifier q args (VLam binder (WHNFBody env body)) ->
+    return $ IInfiniteQuantifier (neg q) args (VLam binder (WHNFBody env (negExpr body)))
+  IAnd x y ->
+    IOr <$> lowerNot x <*> lowerNot y
+  IOr x y ->
+    IAnd <$> lowerNot x <*> lowerNot y
+  IIf tRes c e1 e2 ->
+    IIf tRes c <$> lowerNot e1 <*> lowerNot e2
   -- Error cases
   _ -> Left arg
 

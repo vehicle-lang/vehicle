@@ -18,6 +18,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions
@@ -55,30 +56,30 @@ unblockNonVector ::
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
 unblockNonVector expr = case expr of
-  VBoolLiteral {} -> return expr
-  VIndexLiteral {} -> return expr
-  VNatLiteral {} -> return expr
-  VRatLiteral {} -> return expr
-  VAnd {} -> return expr
-  VOr {} -> return expr
-  VNot {} -> return expr
-  VIf {} -> return expr
-  VForall {} -> return expr
-  VExists {} -> return expr
-  VVectorEqualFull spine@(VVecEqSpine t _ _ _ _ _)
+  IBoolLiteral {} -> return expr
+  IIndexLiteral {} -> return expr
+  INatLiteral {} -> return expr
+  IRatLiteral {} -> return expr
+  IAnd {} -> return expr
+  IOr {} -> return expr
+  INot {} -> return expr
+  IIf {} -> return expr
+  IForall {} -> return expr
+  IExists {} -> return expr
+  IVectorEqualFull spine@(IVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
     | otherwise -> appHiddenStdlibDef StdEqualsVector spine
-  VVectorNotEqualFull spine@(VVecEqSpine t _ _ _ _ _)
+  IVectorNotEqualFull spine@(IVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
     | otherwise -> appHiddenStdlibDef StdNotEqualsVector spine
-  VEqualOp dom op x y
+  IEqualOp dom op x y
     | dom == EqRat -> return expr
     | otherwise -> unblockNonVectorOp2 (Equals dom op) (evalEquals dom op) x y
-  VOrder dom op x y
+  IOrder dom op x y
     | dom == OrderRat -> return expr
     | otherwise -> unblockNonVectorOp2 (Order dom op) (evalOrder dom op) x y
-  VAt xs i -> unblockAt xs i
-  VFoldVector f e xs -> unblockFoldVector f e xs
+  IAt _ _ xs i -> unblockAt xs i
+  IFoldVector _ _ _ f e xs -> unblockFoldVector f e xs
   _ -> unexpectedExprError "unblocking non-vectors" (prettyVerbose expr)
 
 unblockVector ::
@@ -90,16 +91,16 @@ unblockVector reduceVectorVars expr = case expr of
   VBoundVar v []
     | reduceVectorVars -> reduceBoundVar v
     | otherwise -> return expr
-  VVecLiteral {} -> return expr
-  VIf {} -> return expr
-  VStandardLib StdAddVector (VVecOp2Spine t1 t2 t3 n s xs ys) -> unblockVectorOp2 reduceVectorVars StdAddVector [t1, t2, t3, n, s] xs ys
-  VStandardLib StdSubVector (VVecOp2Spine t1 t2 t3 n s xs ys) -> unblockVectorOp2 reduceVectorVars StdSubVector [t1, t2, t3, n, s] xs ys
+  IVecLiteral {} -> return expr
+  IIf {} -> return expr
+  IStandardLib StdAddVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> unblockVectorOp2 reduceVectorVars StdAddVector [t1, t2, t3, n, s] xs ys
+  IStandardLib StdSubVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> unblockVectorOp2 reduceVectorVars StdSubVector [t1, t2, t3, n, s] xs ys
   VFreeVar ident spine -> unblockNetwork reduceVectorVars ident spine
-  VMapVector f xs -> unblockMapVector f xs
-  VFoldVector f e xs -> unblockFoldVector f e xs
-  VBuiltinFunction ZipWithVector [_, _, _, _, f, xs, ys] -> unblockZipWith f (argExpr xs) (argExpr ys)
-  VAt xs i -> unblockAt xs i
-  VBuiltinFunction Indices [n] -> unblockIndices (argExpr n)
+  IMapVector _ _ _ f xs -> unblockMapVector f xs
+  IFoldVector _ _ _ f e xs -> unblockFoldVector f e xs
+  IZipWithVector _ _ _ _ f xs ys -> unblockZipWith f xs ys
+  IAt _ _ xs i -> unblockAt xs i
+  VIndices n -> unblockIndices n
   _ -> unexpectedExprError "unblocking vector" (prettyVerbose expr)
 
 --------------------------------------------------------------------------------
@@ -192,7 +193,7 @@ unblockMapVector f xs = do
 
 unblockZipWith ::
   (MonadUnblock m) =>
-  WHNFArg QueryBuiltin ->
+  WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
@@ -201,7 +202,7 @@ unblockZipWith f xs ys = do
   ys' <- unblockVector True ys
   flip liftIf xs' $ \xs'' ->
     flip liftIf ys' $ \ys'' ->
-      forceEval ZipWithVector (evalZipWith normaliseApp) [argExpr f, xs'', ys'']
+      forceEval ZipWithVector (evalZipWith normaliseApp) [f, xs'', ys'']
 
 unblockAt ::
   (MonadUnblock m) =>
@@ -209,36 +210,36 @@ unblockAt ::
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
 unblockAt c i = case c of
-  VVecLiteral {} -> do
+  IVecLiteral {} -> do
     i' <- unblockNonVector i
     flip liftIf i' $ \i'' -> do
       forceEvalSimple At evalAt [c, i'']
-  VBuiltinFunction MapVector [t, _, n, f, xs] -> appAt f [(t, n, xs)] i
-  VBuiltinFunction ZipWithVector [t1, t2, _, n, f, xs, ys] -> appAt f [(t1, n, xs), (t2, n, ys)] i
-  VStandardLib StdAddVector [t1, t2, _, n, f, xs, ys] -> appAt f [(t1, n, xs), (t2, n, ys)] i
-  VStandardLib StdSubVector [t1, t2, _, n, f, xs, ys] -> appAt f [(t1, n, xs), (t2, n, ys)] i
+  IMapVector n _ t f xs -> appAt f [(t, n, xs)] i
+  IZipWithVector t1 t2 _ n f xs ys -> appAt f [(t1, n, xs), (t2, n, ys)] i
+  IVectorAdd t1 t2 _ n f xs ys -> appAt (argExpr f) [(t1, n, xs), (t2, n, ys)] i
+  IVectorSub t1 t2 _ n f xs ys -> appAt (argExpr f) [(t1, n, xs), (t2, n, ys)] i
   _ -> do
-    -- Don't reduce vector vars in container as it may trigger extremely expensive normalisation
+    -- Don't reduce vector bound variables in container as it may trigger extremely expensive normalisation
     -- that we can avoid because we're only looking up a single element of it.
     c' <- unblockVector (isVBoundVar c) c
     unblockAt c' i
   where
     appAt ::
       (MonadUnblock m) =>
-      WHNFArg QueryBuiltin ->
-      [(WHNFArg QueryBuiltin, WHNFArg QueryBuiltin, WHNFArg QueryBuiltin)] ->
+      WHNFValue QueryBuiltin ->
+      [(WHNFArg QueryBuiltin, WHNFArg QueryBuiltin, WHNFValue QueryBuiltin)] ->
       WHNFValue QueryBuiltin ->
       m (WHNFValue QueryBuiltin)
-    appAt f args index = normaliseApp (argExpr f) =<< traverse (appIndexToArg index) args
+    appAt f args index = normaliseApp f =<< traverse (appIndexToArg index) args
 
     appIndexToArg ::
       (MonadUnblock m) =>
       WHNFValue QueryBuiltin ->
-      (WHNFArg QueryBuiltin, WHNFArg QueryBuiltin, WHNFArg QueryBuiltin) ->
+      (WHNFArg QueryBuiltin, WHNFArg QueryBuiltin, WHNFValue QueryBuiltin) ->
       m (WHNFArg QueryBuiltin)
     appIndexToArg index (_t, _n, xs) =
       Arg mempty Explicit Relevant
-        <$> unblockAt (argExpr xs) index
+        <$> unblockAt xs index
 
 unblockIndices ::
   (MonadUnblock m) =>
@@ -264,9 +265,9 @@ tryPurifyAssertion assertion whenImpure whenPure = do
   incrCallDepth
 
   unblockedExpr <- case assertion of
-    VEqualRat x y -> purifyRatOp2 VEqualRat (evalEqualityRat Eq) x y
-    VOrderRat op x y -> purifyRatOp2 (VOrderRat op) (evalOrderRat op) x y
-    VVectorEqualFull (VVecEqSpine t1 t2 n sol xs ys) -> purifyVectorOp2 StdEqualsVector [t1, t2, n, sol] xs ys
+    IEqualRat x y -> purifyRatOp2 IEqualRat (evalEqualityRat Eq) x y
+    IOrderRat op x y -> purifyRatOp2 (IOrderRat op) (evalOrderRat op) x y
+    IVectorEqualFull (IVecEqSpine t1 t2 n sol xs ys) -> purifyVectorOp2 StdEqualsVector [t1, t2, n, sol] xs ys
     _ -> unexpectedExprError "purifying assertion" assertionDoc
 
   unblockedAssertionDoc <- prettyFriendlyInCtx unblockedExpr
@@ -283,9 +284,9 @@ tryPurifyAssertion assertion whenImpure whenPure = do
         whenImpure expr
 
   case unblockedExpr of
-    VEqual EqRat x y -> onPurified x y
-    VOrder OrderRat _ x y -> onPurified x y
-    VVectorEqual xs ys -> onPurified xs ys
+    IEqual EqRat x y -> onPurified x y
+    IOrder OrderRat _ x y -> onPurified x y
+    IVectorEqual xs ys -> onPurified xs ys
     _ -> onUnpurified unblockedExpr
 
 purify ::
@@ -294,23 +295,23 @@ purify ::
   m (WHNFValue QueryBuiltin)
 purify expr = case expr of
   -- Rational operators
-  VRatLiteral {} -> return expr
-  VNeg NegRat x -> purifyNegRat x
-  VAdd AddRat x y -> purifyRatOp2 (VAdd AddRat) evalAddRat x y
-  VSub SubRat x y -> purifyRatOp2 (VSub SubRat) evalSubRat x y
-  VMul MulRat x y -> purifyRatOp2 (VMul MulRat) evalMulRat x y
-  VDiv DivRat x y -> purifyRatOp2 (VDiv DivRat) evalDivRat x y
+  IRatLiteral {} -> return expr
+  INeg NegRat x -> purifyNegRat x
+  IAdd AddRat x y -> purifyRatOp2 (IAdd AddRat) evalAddRat x y
+  ISub SubRat x y -> purifyRatOp2 (ISub SubRat) evalSubRat x y
+  IMul MulRat x y -> purifyRatOp2 (IMul MulRat) evalMulRat x y
+  IDiv DivRat x y -> purifyRatOp2 (IDiv DivRat) evalDivRat x y
   -- Vector operators
   VConstructor (LVec n) (t : xs) -> purifyVectorLiteral n t xs
-  VStandardLib StdAddVector (VVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdAddVector [t1, t2, t3, n, s] xs ys
-  VStandardLib StdSubVector (VVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdSubVector [t1, t2, t3, n, s] xs ys
-  VMapVector f xs -> unblockMapVector f xs
+  IStandardLib StdAddVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdAddVector [t1, t2, t3, n, s] xs ys
+  IStandardLib StdSubVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdSubVector [t1, t2, t3, n, s] xs ys
+  IMapVector _ _ _ f xs -> unblockMapVector f xs
   VFreeVar ident spine -> unblockNetwork False ident spine
   -- Polymorphic
   VBoundVar _v [] -> return expr
-  VIf {} -> return expr
-  VFoldVector f e xs -> unblockFoldVector f e xs
-  VAt xs i -> unblockAt xs i
+  IIf {} -> return expr
+  IFoldVector _ _ _ f e xs -> unblockFoldVector f e xs
+  IAt _ _ xs i -> unblockAt xs i
   -- Other
   _ -> do
     exprDoc <- prettyFriendlyInCtx expr
@@ -357,7 +358,7 @@ purifyNegRat ::
 purifyNegRat x = do
   x' <- purify x
   flip liftIf x' $ \x'' ->
-    return $ evalNegRat (VNeg NegRat x'') [x'']
+    return $ evalNegRat (INeg NegRat x'') [x'']
 
 --------------------------------------------------------------------------------
 -- If lifting
@@ -367,10 +368,7 @@ liftIf ::
   (WHNFValue QueryBuiltin -> m (WHNFValue QueryBuiltin)) ->
   WHNFValue QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
-liftIf k (VBuiltinFunction If [t, cond, e1, e2]) = do
-  e1' <- traverse (liftIf k) e1
-  e2' <- traverse (liftIf k) e2
-  return $ VBuiltinFunction If [t, cond, e1', e2']
+liftIf k (IIf t cond e1 e2) = IIf t cond <$> liftIf k e1 <*> liftIf k e2
 liftIf k e = k e
 
 liftIfArg ::
@@ -403,8 +401,8 @@ traverseVectorOp2 f fn spinePrefix xs ys = do
     flip liftIf ys' $ \ys'' -> do
       let newSpine = spinePrefix <> (Arg mempty Explicit Relevant <$> [xs'', ys''])
       case (xs'', ys'') of
-        (VVecLiteral {}, VVecLiteral {}) -> appHiddenStdlibDef fn newSpine
-        _ -> return $ VStandardLib fn newSpine
+        (IVecLiteral {}, IVecLiteral {}) -> appHiddenStdlibDef fn newSpine
+        _ -> return $ IStandardLib fn newSpine
 
 forceEval ::
   (MonadCompile m) =>
@@ -433,6 +431,6 @@ reduceBoundVar lv = do
 
 isRatTensor :: WHNFType QueryBuiltin -> Bool
 isRatTensor = \case
-  VRatType -> True
-  VVectorType tElem _ -> isRatTensor tElem
+  IRatType {} -> True
+  IVectorType _ tElem _ -> isRatTensor tElem
   _ -> False

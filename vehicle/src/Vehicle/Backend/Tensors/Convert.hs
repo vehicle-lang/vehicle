@@ -22,7 +22,6 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
@@ -413,7 +412,7 @@ convertFoldVector lv = \case
 
 convertZipWith :: HigherOrderFunctionConversion
 convertZipWith lv = \case
-  VZipWithVectorArgs f xs ys -> do
+  [_, _, _, _, argExpr -> f, xs, ys] -> do
     return $ case getBinaryOp lv f of
       Just b | isLiftableTensorOp b -> Just $ mkBuiltin b [xs, ys]
       _ -> Nothing

@@ -11,7 +11,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 
 --------------------------------------------------------------------------------
@@ -27,8 +27,8 @@ restrictStandardPropertyType decl parameterType = go (normalised parameterType)
   where
     go :: WHNFType StandardTypingBuiltin -> m ()
     go = \case
-      VBoolType {} -> return ()
-      VVectorType tElem _ -> go tElem
+      IBoolType {} -> return ()
+      IVectorType _ tElem _ -> go tElem
       _ -> throwError $ PropertyTypeUnsupported decl parameterType
 
 --------------------------------------------------------------------------------
@@ -51,10 +51,10 @@ restrictStandardNonInferableParameterType ::
   m (Type Ix StandardTypingBuiltin)
 restrictStandardNonInferableParameterType decl parameterType = do
   case normalised parameterType of
-    VIndexType {} -> return ()
-    VNatType {} -> return ()
-    VRatType {} -> return ()
-    VBoolType {} -> return ()
+    IIndexType {} -> return ()
+    INatType {} -> return ()
+    IRatType {} -> return ()
+    IBoolType {} -> return ()
     _ -> throwError $ ParameterTypeUnsupported decl parameterType
 
   return $ unnormalised parameterType
@@ -66,7 +66,7 @@ restrictStandardInferableParameterType ::
   m (Type Ix StandardTypingBuiltin)
 restrictStandardInferableParameterType decl parameterType =
   case normalised parameterType of
-    VNatType {} -> return (unnormalised parameterType)
+    INatType {} -> return (unnormalised parameterType)
     _ -> throwError $ InferableParameterTypeUnsupported decl parameterType
 
 --------------------------------------------------------------------------------
@@ -84,19 +84,18 @@ restrictStandardDatasetType decl datasetType = do
   where
     checkContainerType :: Bool -> WHNFType StandardTypingBuiltin -> m ()
     checkContainerType topLevel = \case
-      VListType tElem -> checkContainerType False tElem
-      VVectorType tElem _tDims -> checkContainerType False tElem
-      VTensorType tElem _tDims -> checkContainerType False tElem
+      IListType _ tElem -> checkContainerType False tElem
+      IVectorType _ tElem _tDims -> checkContainerType False tElem
       remainingType
         | topLevel -> throwError $ DatasetTypeUnsupportedContainer decl datasetType
         | otherwise -> checkDatasetElemType remainingType
 
     checkDatasetElemType :: WHNFType StandardTypingBuiltin -> m ()
     checkDatasetElemType elementType = case elementType of
-      VNatType {} -> return ()
-      VIndexType {} -> return ()
-      VRatType -> return ()
-      VBoolType -> return ()
+      INatType {} -> return ()
+      IIndexType {} -> return ()
+      IRatType {} -> return ()
+      IBoolType {} -> return ()
       _ -> throwError $ DatasetTypeUnsupportedElement decl datasetType elementType
 
 --------------------------------------------------------------------------------
@@ -126,8 +125,7 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
       where
         go :: Bool -> WHNFType StandardTypingBuiltin -> m ()
         go topLevel = \case
-          VTensorType tElem _ -> go False tElem
-          VVectorType tElem _ -> go False tElem
+          IVectorType _ tElem _ -> go False tElem
           elemType ->
             if topLevel
               then throwError $ NetworkTypeIsNotOverTensors decl networkType elemType io
@@ -135,5 +133,5 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
 
     checkElementType :: InputOrOutput -> WHNFType StandardTypingBuiltin -> m ()
     checkElementType io = \case
-      VRatType {} -> return ()
+      IRatType {} -> return ()
       tElem -> throwError $ NetworkTypeHasUnsupportedElementType decl networkType tElem io

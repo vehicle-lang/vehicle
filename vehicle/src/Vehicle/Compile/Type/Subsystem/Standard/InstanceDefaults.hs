@@ -8,7 +8,7 @@ import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 
 instance HasInstanceDefaults StandardTypingBuiltin where
@@ -85,20 +85,20 @@ getCandidates ::
 getCandidates ctx (Resolve origin _ _ expr) = do
   InstanceGoal {..} <- parseInstanceGoal expr
   let defaults = case (goalHead, goalSpine) of
-        (StandardBuiltin (TypeClass HasOrd {}), [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
-        (StandardBuiltin (TypeClass HasNeg), [tArg, _tRes]) -> Just (VRatType, [tArg])
-        (StandardBuiltin (TypeClass HasMul), [tArg1, tArg2, _tRes]) -> Just (VNatType, [tArg1, tArg2])
-        (StandardBuiltin (TypeClass HasDiv), [tArg1, tArg2, _tRes]) -> Just (VRatType, [tArg1, tArg2])
-        (StandardBuiltin (TypeClass HasNatLits), [t]) -> Just (VNatType, [t])
-        (StandardBuiltin (TypeClass HasRatLits), [t]) -> Just (VRatType, [t])
-        (StandardBuiltin (TypeClass HasVecLits), [_n, t]) -> Just (VRawListType, [t])
-        (StandardBuiltin (TypeClass HasMap), [t]) -> Just (VRawListType, [t])
-        (StandardBuiltin (TypeClass HasFold), [t]) -> Just (VRawListType, [t])
+        (StandardBuiltin (TypeClass HasOrd {}), [tArg1, tArg2, _tRes]) -> Just (INatType mempty, [tArg1, tArg2])
+        (StandardBuiltin (TypeClass HasNeg), [tArg, _tRes]) -> Just (IRatType mempty, [tArg])
+        (StandardBuiltin (TypeClass HasMul), [tArg1, tArg2, _tRes]) -> Just (INatType mempty, [tArg1, tArg2])
+        (StandardBuiltin (TypeClass HasDiv), [tArg1, tArg2, _tRes]) -> Just (IRatType mempty, [tArg1, tArg2])
+        (StandardBuiltin (TypeClass HasNatLits), [t]) -> Just (INatType mempty, [t])
+        (StandardBuiltin (TypeClass HasRatLits), [t]) -> Just (IRatType mempty, [t])
+        (StandardBuiltin (TypeClass HasVecLits), [_n, t]) -> Just (IRawListType mempty, [t])
+        (StandardBuiltin (TypeClass HasMap), [t]) -> Just (IRawListType mempty, [t])
+        (StandardBuiltin (TypeClass HasFold), [t]) -> Just (IRawListType mempty, [t])
         (StandardBuiltin NatInDomainConstraint, [n, t]) -> case argExpr t of
-          VIndexType size -> do
+          IIndexType _ size -> do
             let succN = case argExpr n of
-                  VNatLiteral x -> VNatLiteral (x + 1)
-                  _ -> VBuiltinFunction (Add AddNat) [n, Arg mempty Explicit Relevant (VNatLiteral 1)]
+                  INatLiteral p x -> INatLiteral p (x + 1)
+                  n' -> IAdd AddNat n' (INatLiteral mempty 1)
             Just (succN, [Arg mempty (Implicit False) Irrelevant size])
           _ -> Nothing
         _ -> Nothing

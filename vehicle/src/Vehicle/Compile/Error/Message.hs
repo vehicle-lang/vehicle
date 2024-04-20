@@ -20,8 +20,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.BuiltinInterface.Expr (pattern UnitLiteral)
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.NormalisedExpr
@@ -780,8 +780,8 @@ instance MeaningfulError CompileError where
       where
         dimensionsOf :: WHNFType Builtin -> Int
         dimensionsOf = \case
-          VListType t -> 1 + dimensionsOf t
-          VVectorType t _ -> 1 + dimensionsOf t
+          IListType _ t -> 1 + dimensionsOf t
+          IVectorType _ t _ -> 1 + dimensionsOf t
           _ -> 0
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
       UError $
