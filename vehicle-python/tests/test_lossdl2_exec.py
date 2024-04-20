@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Union
 
 import pytest
-
 import vehicle_lang as vcl
 import vehicle_lang.ast as vcl2ast
 import vehicle_lang.compile.tensorflow as vcl2tf
