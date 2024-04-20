@@ -180,63 +180,20 @@ pattern ICons x xs <- (getConstructor -> Just (_, Cons, filter isExplicit -> [x,
 pattern IVecLiteral :: (HasStandardDataExpr expr) => [GenericArg expr] -> expr
 pattern IVecLiteral xs <- (getConstructor -> Just (_, LVec _, filter isExplicit -> xs))
 
-{-
-mkVList :: (HasStandardDataExpr builtin) => [expr] -> expr
-mkVList = foldr mkCons mkNil
+mkListExpr :: (HasStandardDataExpr expr) => expr -> [expr] -> expr
+mkListExpr typ = foldr mkCons mkNil
   where
-    mkNil = IBuiltin (mkBuiltinConstructor Nil) []
-    mkCons y ys = IBuiltin (mkBuiltinConstructor Cons) (Arg mempty Explicit Relevant <$> [y, ys])
+    mkImpl = Arg mempty (Implicit True) Relevant
+    mkExpl = Arg mempty Explicit Relevant
+    mkNil = mkConstructor mempty Nil [mkImpl typ]
+    mkCons y ys = mkConstructor mempty Cons [mkImpl typ, mkExpl y, mkExpl ys]
 
--}
-mkVLVec :: (HasStandardDataExpr expr) => [expr] -> expr
-mkVLVec xs =
+mkVecExpr :: (HasStandardDataExpr expr) => [expr] -> expr
+mkVecExpr xs =
   mkConstructor
     mempty
     (LVec (length xs))
     (Arg mempty (Implicit True) Relevant (IUnitLiteral mempty) : (Arg mempty Explicit Relevant <$> xs))
-
-{-
-pattern IecLiteral ::
-  (HasStandardData expr) =>
-  Provenance ->
-  Type Iar builtin ->
-  [Arg Iar builtin] ->
-  Expr Iar builtin
-pattern IecLiteral p tElem xs <-
-  BuiltinExpr p (getBuiltinConstructor -> Just (LVec _)) (RelevantImplicitArg _ tElem :| xs)
-
-mkList ::
-  forall Iar builtin.
-  (HasStandardData expr) =>
-  Provenance ->
-  Expr Iar builtin ->
-  [Expr Iar builtin] ->
-  Expr Iar builtin
-mkList p elemType = foldr mkCons mkNil
-  where
-    mkNil :: Expr Iar builtin
-    mkNil = BuiltinExpr p (mkBuiltinConstructor Nil) [Arg p (Implicit True) Relevant elemType]
-
-    mkCons ::
-      (HasStandardData expr) =>
-      Expr Iar builtin ->
-      Expr Iar builtin ->
-      Expr Iar builtin
-    mkCons x xs =
-      BuiltinExpr
-        p
-        (mkBuiltinConstructor Cons)
-        ( Arg p (Implicit True) Relevant elemType
-            :| [ Arg p Explicit Relevant x,
-                 Arg p Explicit Relevant xs
-               ]
-        )
-        -}
-
-getNatLiteral :: (HasStandardDataExpr expr) => expr -> Maybe Int
-getNatLiteral = \case
-  INatLiteral _ d -> Just d
-  _ -> Nothing
 
 tensorToExpr :: (HasStandardDataExpr expr) => (a -> expr) -> Tensor a -> expr
 tensorToExpr mkElem =
@@ -311,17 +268,53 @@ pattern IMul dom x y = IOp2 (Mul dom) x y
 pattern IDiv :: (HasStandardDataExpr expr) => DivDomain -> expr -> expr -> expr
 pattern IDiv dom x y = IOp2 (Div dom) x y
 
-{-
-pattern IFoldList :: (HasStandardDataExpr expr) => expr -> expr -> expr -> expr
-pattern IFoldList <- BuiltinFunc FoldList [_, _, _, _, argExpr -> f, xs, ys]
--}
-pattern IZipWithVectorArgs ::
+pattern VIndices ::
   (HasStandardDataExpr expr) =>
   expr ->
+  expr
+pattern VIndices n <- BuiltinFunc Indices [argExpr -> n]
+
+pattern IAt ::
+  (HasStandardDataExpr expr) =>
   GenericArg expr ->
   GenericArg expr ->
-  [GenericArg expr]
-pattern IZipWithVectorArgs f xs ys <- [_, _, _, _, argExpr -> f, xs, ys]
+  expr ->
+  expr ->
+  expr
+pattern IAt t n xs i <- BuiltinFunc At [t, n, argExpr -> xs, argExpr -> i]
+
+pattern IFoldVector ::
+  (HasStandardDataExpr expr) =>
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  expr ->
+  expr ->
+  expr ->
+  expr
+pattern IFoldVector n a b f e xs <- BuiltinFunc FoldVector [n, a, b, argExpr -> f, argExpr -> e, argExpr -> xs]
+
+pattern IMapVector ::
+  (HasStandardDataExpr expr) =>
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  expr ->
+  expr ->
+  expr
+pattern IMapVector n a b f xs <- BuiltinFunc MapVector [n, a, b, argExpr -> f, argExpr -> xs]
+
+pattern IZipWithVector ::
+  (HasStandardDataExpr expr) =>
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  expr ->
+  expr ->
+  expr ->
+  expr
+pattern IZipWithVector a b c n f xs ys <- BuiltinFunc ZipWithVector [a, b, c, n, argExpr -> f, argExpr -> xs, argExpr -> ys]
 
 pattern IInfiniteQuantifier ::
   (HasStandardDataExpr expr) =>
@@ -348,13 +341,6 @@ pattern IExists ::
   expr ->
   expr
 pattern IExists args lam = IInfiniteQuantifier Exists args lam
-
-{-
-pattern ITensorType :: (HasStandardTypes builtin) => WHNFType builtin -> expr -> WHNFType builtin
-pattern ITensorType tElem dims <-
-  IFreeVar TensorIdent [RelevantExplicitArg _ tElem, RelevantExplicitArg _ dims]
-
--}
 
 --------------------------------------------------------------------------------
 -- Iector operation patterns
@@ -413,26 +399,26 @@ pattern IVectorEqual x y <- IVectorEqualFull (IVecEqArgs x y)
 pattern IVectorNotEqual :: (HasStandardDataExpr expr) => expr -> expr -> expr
 pattern IVectorNotEqual x y <- IVectorNotEqualFull (IVecEqArgs x y)
 
-pattern IVectorAdd :: (HasStandardDataExpr expr) => expr -> expr -> expr
-pattern IVectorAdd x y <- IStandardLib StdAddVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern IVectorSub :: (HasStandardDataExpr expr) => expr -> expr -> expr
-pattern IVectorSub x y <- IStandardLib StdSubVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern IAt :: (HasStandardDataExpr expr) => expr -> expr -> expr
-pattern IAt xs i <- BuiltinFunc At [_t, _n, argExpr -> xs, argExpr -> i]
-
-pattern IFoldVector ::
+pattern IVectorAdd ::
   (HasStandardDataExpr expr) =>
-  expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
   expr ->
   expr ->
   expr
-pattern IFoldVector f e xs <- BuiltinFunc FoldVector [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
+pattern IVectorAdd a b c n f x y <- IStandardLib StdAddVector [a, b, c, n, f, argExpr -> x, argExpr -> y]
 
-pattern IMapVector ::
+pattern IVectorSub ::
   (HasStandardDataExpr expr) =>
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
+  GenericArg expr ->
   expr ->
   expr ->
   expr
-pattern IMapVector f xs <- BuiltinFunc MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
+pattern IVectorSub a b c n f x y <- IStandardLib StdSubVector [a, b, c, n, f, argExpr -> x, argExpr -> y]

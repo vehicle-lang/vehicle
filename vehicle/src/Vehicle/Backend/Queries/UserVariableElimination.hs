@@ -26,8 +26,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.BuiltinInterface.Expr (negExpr)
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
@@ -54,15 +54,15 @@ eliminateUserVariables = go
       ----------------
       -- Base cases --
       ----------------
-      VBoolLiteral b -> return $ Trivial b
+      IBoolLiteral _ b -> return $ Trivial b
       ---------------------
       -- Recursive cases --
       ---------------------
-      VAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
-      VOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
-      VIf _ c x y -> go =<< eliminateIf c x y
-      VExists _ binder (WHNFBody env body) -> compileQuantifiedQuerySet False binder env body
-      VForall _ binder (WHNFBody env body) -> do
+      IAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
+      IOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
+      IIf _ c x y -> go =<< eliminateIf c x y
+      IExists _ (VLam binder (WHNFBody env body)) -> compileQuantifiedQuerySet False binder env body
+      IForall _ (VLam binder (WHNFBody env body)) -> do
         logDebug MinDetail ("Negating property..." <> line)
         compileQuantifiedQuerySet True binder env (negExpr body)
       -----------------
@@ -75,12 +75,12 @@ eliminateUserVariables = go
       --
       -- When we have that ability then  case can be turned to an error.
       -- These cases can happen, e.g.
-      VNot {} -> compileUnquantifiedQuerySet expr
-      VEqual {} -> compileUnquantifiedQuerySet expr
-      VNotEqual {} -> compileUnquantifiedQuerySet expr
-      VOrder {} -> compileUnquantifiedQuerySet expr
-      VVectorEqual {} -> compileUnquantifiedQuerySet expr
-      VVectorNotEqual {} -> compileUnquantifiedQuerySet expr
+      INot {} -> compileUnquantifiedQuerySet expr
+      IEqual {} -> compileUnquantifiedQuerySet expr
+      INotEqual {} -> compileUnquantifiedQuerySet expr
+      IOrder {} -> compileUnquantifiedQuerySet expr
+      IVectorEqual {} -> compileUnquantifiedQuerySet expr
+      IVectorNotEqual {} -> compileUnquantifiedQuerySet expr
       -- This final case can only occur at all because
       -- we can't evaluate networks applied to constant arguments.
       -- When we have that ability we can replace it with an error.
@@ -94,7 +94,7 @@ compileQuantifiedQuerySet ::
   Expr Ix Builtin ->
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
-  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (VExists [] binder (WHNFBody env body))
+  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFBody env body)))
   logCompilerPass MaxDetail subsectionDoc $ do
     resetGlobalCtx
     maybePartitions <- compileExists binder env body
@@ -133,21 +133,21 @@ compileBoolExpr expr = case expr of
   ----------------
   -- Base cases --
   ----------------
-  VBoolLiteral b -> return $ Trivial b
-  VOrder OrderRat op _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion (ordToAssertion op))
-  VEqual EqRat _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion eqToAssertion)
-  VVectorEqualFull (VVecEqSpine t1 t2 n s _ _) -> tryPurifyAssertion expr compileBoolExpr (compileTensorAssertion [t1, t2, n, s])
-  VForall {} -> throwError catchableUnsupportedAlternatingQuantifiersError
+  IBoolLiteral _ b -> return $ Trivial b
+  IOrder OrderRat op _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion (ordToAssertion op))
+  IEqual EqRat _ _ -> tryPurifyAssertion expr compileBoolExpr (compileRationalAssertion eqToAssertion)
+  IVectorEqualFull (IVecEqSpine t1 t2 n s _ _) -> tryPurifyAssertion expr compileBoolExpr (compileTensorAssertion [t1, t2, n, s])
+  IForall {} -> throwError catchableUnsupportedAlternatingQuantifiersError
   ---------------------
   -- Recursive cases --
   ---------------------
-  VNotEqual EqRat e1 e2 -> compileBoolExpr =<< eliminateNotEqualRat e1 e2
-  VVectorNotEqualFull spine -> compileBoolExpr =<< eliminateNotVectorEqual spine
-  VNot e -> compileBoolExpr =<< eliminateNot e
-  VIf _ c x y -> compileBoolExpr =<< eliminateIf c x y
-  VAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  VOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  VExists _ binder (WHNFBody env body) -> compileExists binder env body
+  INotEqual EqRat e1 e2 -> compileBoolExpr =<< eliminateNotEqualRat e1 e2
+  IVectorNotEqualFull spine -> compileBoolExpr =<< eliminateNotVectorEqual spine
+  INot e -> compileBoolExpr =<< eliminateNot e
+  IIf _ c x y -> compileBoolExpr =<< eliminateIf c x y
+  IAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
+  IOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
+  IExists _ (VLam binder (WHNFBody env body)) -> compileExists binder env body
   _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateIf ::
@@ -171,7 +171,7 @@ eliminateNotEqualRat ::
 eliminateNotEqualRat x y = do
   PropertyMetaData {..} <- ask
   if supportsStrictInequalities queryFormat
-    then return $ VOr (VOrderRat Le x y) (VOrderRat Le y x)
+    then return $ IOr (IOrderRat Le x y) (IOrderRat Le y x)
     else throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
 
 eliminateNotVectorEqual ::
@@ -203,22 +203,22 @@ compileRatLinearExpr = go
       ----------------
       -- Base cases --
       ----------------
-      VRatLiteral l -> return $ constantExpr l
+      IRatLiteral _ l -> return $ constantExpr l
       VBoundVar lv [] -> singletonVarExpr 0 <$> getRationalVariable lv
       ---------------------
       -- Inductive cases --
       ---------------------
-      VNeg NegRat v -> scaleExpr (-1) <$> go v
-      VAdd AddRat e1 e2 -> addExprs 1 1 <$> go e1 <*> go e2
-      VSub SubRat e1 e2 -> addExprs 1 (-1) <$> go e1 <*> go e2
-      VMul MulRat e1 e2 -> do
+      INeg NegRat v -> scaleExpr (-1) <$> go v
+      IAdd AddRat e1 e2 -> addExprs 1 1 <$> go e1 <*> go e2
+      ISub SubRat e1 e2 -> addExprs 1 (-1) <$> go e1 <*> go e2
+      IMul MulRat e1 e2 -> do
         e1' <- go e1
         e2' <- go e2
         case (isConstant e1', isConstant e2') of
           (Just c1, _) -> return $ scaleExpr c1 e2'
           (_, Just c2) -> return $ scaleExpr c2 e1'
           _ -> throwError catchableUnsupportedNonLinearConstraint
-      VDiv DivRat e1 e2 -> do
+      IDiv DivRat e1 e2 -> do
         e1' <- go e1
         e2' <- go e2
         case isConstant e2' of
@@ -257,12 +257,12 @@ compileTensorLinearExpr = go
       ---------------------
       -- Inductive cases --
       ---------------------
-      VVectorAdd e1 e2 -> liftA2 (addExprs 1 1) <$> go e1 <*> go e2
-      VVectorSub e1 e2 -> liftA2 (addExprs 1 (-1)) <$> go e1 <*> go e2
+      IVectorAdd _ _ _ _ _ e1 e2 -> liftA2 (addExprs 1 1) <$> go e1 <*> go e2
+      IVectorSub _ _ _ _ _ e1 e2 -> liftA2 (addExprs 1 (-1)) <$> go e1 <*> go e2
       ----------------
       -- Base cases --
       ----------------
-      VVecLiteral {} -> do
+      IVecLiteral {} -> do
         return (constantExpr <$> getRationalTensor e)
       VBoundVar lv [] -> do
         var <- getTensorVariable lv
@@ -274,8 +274,8 @@ getRationalTensor expr = uncurry Tensor <$> go expr
   where
     go :: WHNFValue QueryBuiltin -> Maybe (TensorShape, Vector Rational)
     go = \case
-      VRatLiteral r -> Just ([], Vector.singleton (fromRational r))
-      VVecLiteral xs -> do
+      IRatLiteral _ r -> Just ([], Vector.singleton (fromRational r))
+      IVecLiteral xs -> do
         r <- traverse (go . argExpr) xs
         let (dims, rs) = unzip r
         case dims of
@@ -353,8 +353,8 @@ checkUserVariableType binder = go (typeOf binder)
   where
     go :: WHNFType QueryBuiltin -> m TensorShape
     go = \case
-      VRatType -> return []
-      VVectorType tElem (VNatLiteral d) -> do
+      IRatType {} -> return []
+      IVectorType _ tElem (INatLiteral _ d) -> do
         ds <- go tElem
         return $ d : ds
       tElem -> do
@@ -370,7 +370,7 @@ networkEqualitiesToPartition networkEqualities = do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
     return $ line <> "Generated network equalities:" <> line <> indent 2 (vsep networkEqDocs)
 
-  (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr (foldr VAnd (VBoolLiteral True) networkEqualities))
+  (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr (foldr IAnd (IBoolLiteral mempty True) networkEqualities))
   if null newNetworkEqualities
     then return partitions
     else andTrivial andPartitions partitions <$> networkEqualitiesToPartition newNetworkEqualities

@@ -22,7 +22,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
@@ -84,8 +84,8 @@ parseContainer ::
   WHNFType Builtin ->
   m (WHNFValue Builtin)
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
-  VListType expectedElemType -> parseList ctx expectedElemType actualDims elems
-  VVectorType expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
+  IListType _ expectedElemType -> parseList ctx expectedElemType actualDims elems
+  IVectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
   _ ->
     if topLevel
       then typingError ctx
@@ -102,7 +102,7 @@ parseVector ::
 parseVector ctx [] _ _ _ = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
-    VNatLiteral n ->
+    INatLiteral _ n ->
       if n == actualDim
         then return actualDim
         else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
@@ -122,7 +122,7 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 
   let rows = partitionData currentDim actualDims elems
   rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
-  return $ mkVLVec rowExprs
+  return $ mkVecExpr rowExprs
 
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -137,7 +137,8 @@ parseList ctx expectedElemType actualDims actualElems =
     d : ds -> do
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      return $ mkVList exprs
+      -- TODO should insert proper type here.
+      return $ mkListExpr (IUnitType mempty) exprs
 
 parseElement ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -168,8 +169,8 @@ doubleElemParser ::
   FilePath ->
   ElemParser m Double
 doubleElemParser decl datasetType file value expectedElementType = case expectedElementType of
-  VRatType {} ->
-    return $ VRatLiteral (toRational value)
+  IRatType {} ->
+    return $ IRatLiteral mempty (toRational value)
   _ -> do
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
@@ -180,13 +181,13 @@ intElemParser ::
   FilePath ->
   ElemParser m Int
 intElemParser decl datasetType file value expectedElementType = case expectedElementType of
-  VIndexType (VNatLiteral n) ->
+  IIndexType _ (INatLiteral _ n) ->
     if value >= 0 && value < n
-      then return $ VIndexLiteral value
+      then return $ IIndexLiteral mempty value
       else throwError $ DatasetInvalidIndex decl file value n
-  VNatType {} ->
+  INatType {} ->
     if value >= 0
-      then return $ VNatLiteral value
+      then return $ INatLiteral mempty value
       else throwError $ DatasetInvalidNat decl file value
   _ ->
     throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Int"

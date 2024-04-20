@@ -24,6 +24,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
@@ -618,76 +619,13 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 --------------------------------------------------------------------------------
 -- Vector operation patterns
 
-pattern VVecEqSpine ::
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecEqSpine t1 t2 dim sol x y <- [t1, t2, dim, sol, argExpr -> x, argExpr -> y]
-  where
-    VVecEqSpine t1 t2 dim sol x y = [t1, t2, dim, sol, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
-
-pattern VVecOp2Spine ::
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecOp2Spine t1 t2 t3 dim sol x y <- [t1, t2, t3, dim, sol, argExpr -> x, argExpr -> y]
-
-pattern VVecEqArgs ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecEqArgs x y <- VVecEqSpine _ _ _ _ x y
-
-pattern VVectorEqualFull :: WHNFSpine QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorEqualFull spine = VStandardLib StdEqualsVector spine
-
-pattern VVectorNotEqualFull :: WHNFSpine QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorNotEqualFull spine = VStandardLib StdNotEqualsVector spine
-
-pattern VVectorEqual :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorEqual x y <- VVectorEqualFull (VVecEqArgs x y)
-
-pattern VVectorNotEqual :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorNotEqual x y <- VVectorNotEqualFull (VVecEqArgs x y)
-
-pattern VVectorAdd :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorAdd x y <- VStandardLib StdAddVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern VVectorSub :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorSub x y <- VStandardLib StdSubVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern VAt :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VAt xs i <- VBuiltinFunction At [_t, _n, argExpr -> xs, argExpr -> i]
-
-pattern VFoldVector ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VFoldVector f e xs <- VBuiltinFunction FoldVector [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
-
-pattern VMapVector ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VMapVector f xs <- VBuiltinFunction MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
-
 mkVVectorEquality ::
   TensorShape ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
 mkVVectorEquality dimensions e1 e2 = do
-  mkVectorEquality (fmap VNatLiteral dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
+  mkVectorEquality (fmap (INatLiteral mempty) dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinery here,
     -- but it seems incredibly complicated to setup...
@@ -698,7 +636,7 @@ mkVVectorEquality dimensions e1 e2 = do
             [] -> VBuiltinFunction (Equals EqRat Eq) spine
             d : ds -> VFreeVar (identifierOf StdEqualsVector) (nonExplicitArgs <> spine)
               where
-                tensorType = foldr (\dim t -> mkVVectorType t dim) VRatType ds
+                tensorType = foldr (\dim t -> IVectorType mempty t dim) (IRatType mempty) ds
                 nonExplicitArgs =
                   [ Arg p (Implicit True) Relevant tensorType,
                     Arg p (Implicit True) Relevant tensorType,

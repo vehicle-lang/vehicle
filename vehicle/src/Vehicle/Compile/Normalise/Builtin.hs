@@ -320,7 +320,7 @@ evalFoldVector evalApp originalExpr = \case
 evalZipWith :: EvalBuiltin expr m
 evalZipWith evalApp originalExpr = \case
   [f, IVecLiteral xs, IVecLiteral ys] ->
-    mkVLVec <$> zipWithM f' xs ys
+    mkVecExpr <$> zipWithM f' xs ys
     where
       f' x y =
         evalApp
@@ -343,14 +343,14 @@ evalMapList evalApp originalExpr = \case
 evalMapVector :: EvalBuiltin expr m
 evalMapVector evalApp originalExpr = \case
   [f, IVecLiteral xs] ->
-    mkVLVec <$> traverse f' xs
+    mkVecExpr <$> traverse f' xs
     where
       f' x = evalApp f [x]
   _ -> return originalExpr
 
 evalIndices :: EvalSimpleBuiltin expr
 evalIndices originalExpr = \case
-  [INatLiteral _ n] -> mkVLVec (fmap (IIndexLiteral mempty) [0 .. n - 1])
+  [INatLiteral _ n] -> mkVecExpr (fmap (IIndexLiteral mempty) [0 .. n - 1])
   _ -> originalExpr
 
 -----------------------------------------------------------------------------

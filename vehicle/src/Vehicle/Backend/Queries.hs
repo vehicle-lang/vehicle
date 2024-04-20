@@ -24,7 +24,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
@@ -152,7 +152,7 @@ compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
-      VVecLiteral es -> do
+      IVecLiteral es -> do
         let es' = zip [0 :: Int ..] es
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
       _ -> do
