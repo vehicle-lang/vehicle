@@ -152,7 +152,7 @@ compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
     go indices expr = case expr of
-      IVecLiteral es -> do
+      IVecLiteral _ es -> do
         let es' = zip [0 :: Int ..] es
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
       _ -> do

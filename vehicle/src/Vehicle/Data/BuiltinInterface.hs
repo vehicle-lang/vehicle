@@ -94,6 +94,7 @@ class (Show builtin, Eq builtin) => PrintableBuiltin builtin where
   -- | Convert expressions with the builtin back to expressions with the standard
   -- builtin type. Used for printing.
   convertBuiltin ::
+    (Show var) =>
     Provenance ->
     builtin ->
     Expr var Builtin

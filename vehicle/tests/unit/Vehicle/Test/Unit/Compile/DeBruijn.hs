@@ -4,7 +4,7 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn (liftDBIndices, substDBInto)
 import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
@@ -24,21 +24,21 @@ substitutionTests =
     substTest
     [ SubstitutionTest
         { name = "UnderLambdaClosed",
-          value = NatLiteral p 2,
-          expr = Lam p (binding (NatType p)) (BoundVar p 0),
-          expected = Lam p (binding (NatType p)) (BoundVar p 0)
+          value = INatLiteral p 2,
+          expr = Lam p (binding (INatType p)) (BoundVar p 0),
+          expected = Lam p (binding (INatType p)) (BoundVar p 0)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenBody",
-          value = NatLiteral p 2,
-          expr = Lam p (binding (NatType p)) (BoundVar p 1),
-          expected = Lam p (binding (NatType p)) (NatLiteral p 2)
+          value = INatLiteral p 2,
+          expr = Lam p (binding (INatType p)) (BoundVar p 1),
+          expected = Lam p (binding (INatType p)) (INatLiteral p 2)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenType",
-          value = NatLiteral p 2,
+          value = INatLiteral p 2,
           expr = Lam p (binding (BoundVar p 0)) (BoundVar p 0),
-          expected = Lam p (binding (NatLiteral p 2)) (BoundVar p 0)
+          expected = Lam p (binding (INatLiteral p 2)) (BoundVar p 0)
         }
     ]
 
@@ -49,14 +49,14 @@ liftingTests =
     [ LiftingTest
         { name = "UnderLambdaClosed",
           amount = 1,
-          input = Lam p (binding (NatType p)) (BoundVar p 0),
-          expected = Lam p (binding (NatType p)) (BoundVar p 0)
+          input = Lam p (binding (INatType p)) (BoundVar p 0),
+          expected = Lam p (binding (INatType p)) (BoundVar p 0)
         },
       LiftingTest
         { name = "UnderLambdaOpenBody",
           amount = 1,
-          input = Lam p (binding (NatType p)) (BoundVar p 1),
-          expected = Lam p (binding (NatType p)) (BoundVar p 2)
+          input = Lam p (binding (INatType p)) (BoundVar p 1),
+          expected = Lam p (binding (INatType p)) (BoundVar p 2)
         },
       LiftingTest
         { name = "UnderLambdaOpenType",

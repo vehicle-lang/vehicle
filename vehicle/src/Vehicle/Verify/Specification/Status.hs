@@ -8,7 +8,7 @@ import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
@@ -92,7 +92,7 @@ prettyUserVariableAssignment (OriginalUserVariable {..}, variableValue) =
   pretty userTensorVarName <> ":" <+> pretty variableValue
 
 assignmentToExpr :: TensorShape -> [Rational] -> Expr Ix Builtin
-assignmentToExpr [] [x] = RatLiteral mempty (toRational x)
+assignmentToExpr [] [x] = IRatLiteral mempty (toRational x)
 assignmentToExpr [] _ = developerError "Malformed tensor"
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)

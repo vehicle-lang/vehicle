@@ -11,8 +11,6 @@ import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Expr
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdNotBoolOp2))
 import Vehicle.Syntax.Builtin
@@ -43,8 +41,8 @@ eliminateNot = go
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
       -- normalising the quantifier.
-      IForall args (VLam binder (WHNFBody env body)) -> return $ IExists args (VLam binder (WHNFBody env (negExpr body)))
-      IExists args (VLam binder (WHNFBody env body)) -> return $ IForall args (VLam binder (WHNFBody env (negExpr body)))
+      IForall args (VLam binder (WHNFBody env body)) -> return $ IExists args (VLam binder (WHNFBody env (INot body)))
+      IExists args (VLam binder (WHNFBody env body)) -> return $ IForall args (VLam binder (WHNFBody env (INot body)))
       -- It's not enough simply to negate the free variable, we also need
       -- to negate the instance argument solution for the function
       -- which is a function accepting two arguments and returning a bool.

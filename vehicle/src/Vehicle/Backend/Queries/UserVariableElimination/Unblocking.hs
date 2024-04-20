@@ -19,7 +19,6 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Verify.Core
@@ -302,7 +301,7 @@ purify expr = case expr of
   IMul MulRat x y -> purifyRatOp2 (IMul MulRat) evalMulRat x y
   IDiv DivRat x y -> purifyRatOp2 (IDiv DivRat) evalDivRat x y
   -- Vector operators
-  VConstructor (LVec n) (t : xs) -> purifyVectorLiteral n t xs
+  IVecLiteral t xs -> purifyVectorLiteral t xs
   IStandardLib StdAddVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdAddVector [t1, t2, t3, n, s] xs ys
   IStandardLib StdSubVector (IVecOp2Spine t1 t2 t3 n s xs ys) -> purifyVectorOp2 StdSubVector [t1, t2, t3, n, s] xs ys
   IMapVector _ _ _ f xs -> unblockMapVector f xs
@@ -319,14 +318,13 @@ purify expr = case expr of
 
 purifyVectorLiteral ::
   (MonadUnblock m) =>
-  Int ->
   WHNFArg QueryBuiltin ->
   WHNFSpine QueryBuiltin ->
   m (WHNFValue QueryBuiltin)
-purifyVectorLiteral n t xs = do
+purifyVectorLiteral t xs = do
   xs' <- traverse (traverse purify) xs
   liftIfSpine xs' $ \xs'' ->
-    return $ VConstructor (LVec n) (t : xs'')
+    return $ IVecLiteral t xs''
 
 purifyVectorOp2 ::
   (MonadUnblock m) =>

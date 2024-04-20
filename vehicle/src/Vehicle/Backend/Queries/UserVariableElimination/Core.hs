@@ -25,7 +25,6 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr

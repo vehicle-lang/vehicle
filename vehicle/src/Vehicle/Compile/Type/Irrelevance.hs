@@ -11,7 +11,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn
 
 -- | Removes all irrelevant code from the program/expression.
@@ -52,11 +52,11 @@ instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) w
         normAppList <$> remove fun <*> removeArgs (NonEmpty.toList args)
       Pi p binder res ->
         if isIrrelevant binder
-          then remove $ UnitLiteral p `substDBInto` res
+          then remove $ IUnitLiteral p `substDBInto` res
           else Pi p <$> remove binder <*> remove res
       Lam p binder body ->
         if isIrrelevant binder
-          then remove $ UnitLiteral p `substDBInto` body
+          then remove $ IUnitLiteral p `substDBInto` body
           else Lam p <$> remove binder <*> remove body
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Universe {} -> return expr

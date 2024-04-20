@@ -37,7 +37,7 @@ import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerb
 import Vehicle.Compile.Type.Subsystem.Standard ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Hashing ()
 import Vehicle.Libraries.StandardLibrary.Definitions
@@ -285,9 +285,9 @@ removeLiteralCoercions nameJoiner (Main ds) =
     updateBuiltin :: Decl Ix builtin -> BuiltinUpdate m Ix builtin builtin
     updateBuiltin decl p2 b args = case b of
       (getBuiltinFunction -> Just (FromNat dom)) -> case (dom, filter isExplicit args) of
-        (FromNatToIndex, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ IndexLiteral p n
+        (FromNatToIndex, [RelevantExplicitArg _ (INatLiteral p n)]) -> return $ IIndexLiteral p n
         (FromNatToNat, [e]) -> return $ argExpr e
-        (FromNatToRat, [RelevantExplicitArg _ (NatLiteral p n)]) -> return $ RatLiteral p (fromIntegral n)
+        (FromNatToRat, [RelevantExplicitArg _ (INatLiteral p n)]) -> return $ IRatLiteral p (fromIntegral n)
         _ -> do
           partialApplication decl (pretty (FromNat dom)) args
       (getBuiltinFunction -> Just (FromRat dom)) -> case (dom, args) of
@@ -304,7 +304,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
           vec : _ -> return $ argExpr vec
           _ -> partialApplication decl (pretty ident) args'
         Just StdVectorToList -> case reverse args' of
-          RelevantExplicitArg _ (VecLiteral p' l xs) : _ -> return $ mkList p' l (fmap argExpr xs)
+          RelevantExplicitArg _ (IVecLiteral l xs) : _ -> return $ mkListExpr (argExpr l) (fmap argExpr xs)
           _ -> partialApplication decl (pretty ident) args'
         _ -> return $ normAppList (FreeVar p ident) args'
 

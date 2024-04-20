@@ -145,16 +145,16 @@ pattern IRawListType p = INullaryTypeExpr p List
 -- Constructors
 
 -- Can't use `[]` in a bidrectional pattern synonym until GHC 9.4.3??
-pattern IRawBuiltinConstructor :: (HasStandardDataExpr expr) => Provenance -> BuiltinConstructor -> expr
-pattern IRawBuiltinConstructor p t <- (getConstructor -> Just (p, t, []))
+pattern INullaryConstructor :: (HasStandardDataExpr expr) => Provenance -> BuiltinConstructor -> expr
+pattern INullaryConstructor p t <- (getConstructor -> Just (p, t, []))
   where
-    IRawBuiltinConstructor p t = mkConstructor p t []
+    INullaryConstructor p t = mkConstructor p t []
 
 pattern IUnitLiteral :: (HasStandardDataExpr expr) => Provenance -> expr
-pattern IUnitLiteral p = IRawBuiltinConstructor p LUnit
+pattern IUnitLiteral p = INullaryConstructor p LUnit
 
 pattern IBoolLiteral :: (HasStandardDataExpr expr) => Provenance -> Bool -> expr
-pattern IBoolLiteral p n = IRawBuiltinConstructor p (LBool n)
+pattern IBoolLiteral p n = INullaryConstructor p (LBool n)
 
 pattern ITrueExpr :: (HasStandardDataExpr expr) => Provenance -> expr
 pattern ITrueExpr p = IBoolLiteral p True
@@ -163,13 +163,13 @@ pattern IFalseExpr :: (HasStandardDataExpr expr) => Provenance -> expr
 pattern IFalseExpr p = IBoolLiteral p False
 
 pattern IIndexLiteral :: (HasStandardDataExpr expr) => Provenance -> Int -> expr
-pattern IIndexLiteral p n = IRawBuiltinConstructor p (LIndex n)
+pattern IIndexLiteral p n = INullaryConstructor p (LIndex n)
 
 pattern INatLiteral :: (HasStandardDataExpr expr) => Provenance -> Int -> expr
-pattern INatLiteral p n = IRawBuiltinConstructor p (LNat n)
+pattern INatLiteral p n = INullaryConstructor p (LNat n)
 
 pattern IRatLiteral :: (HasStandardDataExpr expr) => Provenance -> Rational -> expr
-pattern IRatLiteral p n = IRawBuiltinConstructor p (LRat n)
+pattern IRatLiteral p n = INullaryConstructor p (LRat n)
 
 pattern INil :: (HasStandardDataExpr expr) => expr
 pattern INil <- (getConstructor -> Just (_, Nil, _))
@@ -177,8 +177,15 @@ pattern INil <- (getConstructor -> Just (_, Nil, _))
 pattern ICons :: (HasStandardDataExpr expr) => GenericArg expr -> GenericArg expr -> expr
 pattern ICons x xs <- (getConstructor -> Just (_, Cons, filter isExplicit -> [x, xs]))
 
-pattern IVecLiteral :: (HasStandardDataExpr expr) => [GenericArg expr] -> expr
-pattern IVecLiteral xs <- (getConstructor -> Just (_, LVec _, filter isExplicit -> xs))
+pattern IVecLiteral :: (HasStandardDataExpr expr) => GenericArg expr -> [GenericArg expr] -> expr
+pattern IVecLiteral t xs <- (getConstructor -> Just (_, LVec _, t : xs))
+  where
+    IVecLiteral t xs = mkConstructor mempty (LVec (length xs)) (t : xs)
+
+-- | A variant that should only be used when we don't know what typing system
+-- we're working under and therefore cannot get the type.
+pattern IRVecLiteral :: (HasStandardDataExpr expr) => [GenericArg expr] -> expr
+pattern IRVecLiteral xs <- (getConstructor -> Just (_, LVec _, filter isExplicit -> xs))
 
 mkListExpr :: (HasStandardDataExpr expr) => expr -> [expr] -> expr
 mkListExpr typ = foldr mkCons mkNil
@@ -422,3 +429,12 @@ pattern IVectorSub ::
   expr ->
   expr
 pattern IVectorSub a b c n f x y <- IStandardLib StdSubVector [a, b, c, n, f, argExpr -> x, argExpr -> y]
+
+--------------------------------------------------------------------------------
+-- WHNFValue Function patterns
+
+-- TODO this should really be removed.
+pattern VBuiltinFunction :: (HasStandardData builtin) => BuiltinFunction -> Spine strategy builtin -> Value strategy builtin
+pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
+  where
+    VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args

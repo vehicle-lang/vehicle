@@ -291,7 +291,7 @@ instance
 
 convertExprBuiltins ::
   forall builtin var.
-  (PrintableBuiltin builtin) =>
+  (PrintableBuiltin builtin, Show var) =>
   Expr var builtin ->
   Expr var Builtin
 convertExprBuiltins = mapBuiltins $ \p b args ->

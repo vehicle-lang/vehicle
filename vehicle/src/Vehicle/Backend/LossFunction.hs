@@ -15,8 +15,6 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Expr
-import Vehicle.Data.BuiltinInterface.Value
 import Vehicle.Data.DSL (DSLExpr, fromDSL)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
@@ -105,7 +103,7 @@ lowerNot arg = case arg of
     return x
   -- Inductive cases
   IInfiniteQuantifier q args (VLam binder (WHNFBody env body)) ->
-    return $ IInfiniteQuantifier (neg q) args (VLam binder (WHNFBody env (negExpr body)))
+    return $ IInfiniteQuantifier (neg q) args (VLam binder (WHNFBody env (INot body)))
   IAnd x y ->
     IOr <$> lowerNot x <*> lowerNot y
   IOr x y ->

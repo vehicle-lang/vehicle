@@ -28,7 +28,7 @@ import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Sugar
 
@@ -396,8 +396,8 @@ compileStdLibFunction fn args = case fn of
   StdForeachIndex -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToList -> case args of
-    [_, _, RelevantExplicitArg p (VecLiteral _ tElem xs)] ->
-      Just <$> compileExpr (mkList p tElem (fmap argExpr xs))
+    [_, _, RelevantExplicitArg _ (IVecLiteral tElem xs)] ->
+      Just <$> compileExpr (mkListExpr (argExpr tElem) (fmap argExpr xs))
     _ -> return Nothing
   StdForallIn -> case args of
     [_, RelevantImplicitArg _ tCont, _, _, RelevantExplicitArg _ lam, RelevantExplicitArg _ cont] ->
@@ -632,10 +632,10 @@ compileQuantIn q tCont fn cont = do
   boolLevel <- getBoolLevel
 
   (quant, qualifier, dep) <- case (boolLevel, q, tCont) of
-    (TypeLevel, Forall, RawListType {}) -> return ("All", listQualifier, DataListAll)
-    (TypeLevel, Exists, RawListType {}) -> return ("Any", listQualifier, DataListAny)
-    (BoolLevel, Forall, RawListType {}) -> return ("all", listQualifier, DataList)
-    (BoolLevel, Exists, RawListType {}) -> return ("any", listQualifier, DataList)
+    (TypeLevel, Forall, IRawListType {}) -> return ("All", listQualifier, DataListAll)
+    (TypeLevel, Exists, IRawListType {}) -> return ("Any", listQualifier, DataListAny)
+    (BoolLevel, Forall, IRawListType {}) -> return ("all", listQualifier, DataList)
+    (BoolLevel, Exists, IRawListType {}) -> return ("any", listQualifier, DataList)
     (TypeLevel, Forall, _) -> return ("All", tensorQualifier, DataTensorAll)
     (TypeLevel, Exists, _) -> return ("Any", tensorQualifier, DataTensorAny)
     (BoolLevel, Forall, _) -> return ("all", tensorQualifier, DataTensor)
@@ -872,13 +872,13 @@ equalityDomDependencies = \case
 equalityDependencies :: (MonadAgdaCompile m) => Expr Name Builtin -> m [Dependency]
 equalityDependencies = \case
   IndexType _ _ -> return [DataFin]
-  NatType _ -> return [DataNatInstances]
-  RatType _ -> return [DataRatInstances]
-  BoolType _ -> return [DataBoolInstances]
-  ListType _ tElem -> do
+  INatType {} -> return [DataNatInstances]
+  IRatType {} -> return [DataRatInstances]
+  IBoolType {} -> return [DataBoolInstances]
+  IListType _ tElem -> do
     deps <- equalityDependencies tElem
     return $ [DataListInstances] <> deps
-  VectorType _ tElem _tDims -> do
+  IVectorType _ tElem _tDims -> do
     deps <- equalityDependencies tElem
     return $ [DataVectorInstances] <> deps
   TensorType _ tElem _tDims -> do

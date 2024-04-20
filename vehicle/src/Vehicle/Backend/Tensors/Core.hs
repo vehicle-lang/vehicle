@@ -4,7 +4,7 @@ import Data.Ratio
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity)
 import Vehicle.Data.BuiltinInterface (PrintableBuiltin (..), cheatConvertBuiltin)
-import Vehicle.Data.BuiltinInterface.Expr qualified as V
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
@@ -120,18 +120,18 @@ instance PrintableBuiltin TensorBuiltin where
   isCoercion :: TensorBuiltin -> Bool
   isCoercion = const False
 
-  convertBuiltin :: Provenance -> TensorBuiltin -> V.Expr var V.Builtin
+  convertBuiltin :: (Show var) => Provenance -> TensorBuiltin -> V.Expr var V.Builtin
   convertBuiltin p b = case b of
     IndexType -> builtinType V.Index
-    BoolTensorType -> builtinTensorType V.BoolType
-    NatType -> builtinTensorType V.NatType
-    RatTensorType -> builtinTensorType V.RatType
+    BoolTensorType -> builtinTensorType IBoolType
+    NatType -> builtinTensorType INatType
+    RatTensorType -> builtinTensorType IRatType
     -- Constructors
-    Unit -> V.UnitLiteral mempty
+    Unit -> IUnitLiteral mempty
     Index i -> builtinConstructor $ V.LIndex i
-    BoolTensor vs -> V.tensorToExpr (V.BoolLiteral mempty) vs
-    Nat vs -> V.NatLiteral mempty vs
-    RatTensor vs -> V.tensorToExpr (V.RatLiteral mempty . convertTRat) vs
+    BoolTensor vs -> tensorToExpr (IBoolLiteral mempty) vs
+    Nat vs -> INatLiteral mempty vs
+    RatTensor vs -> tensorToExpr (IRatLiteral mempty . convertTRat) vs
     NilList -> builtinConstructor V.Nil
     ConsList -> builtinConstructor V.Cons
     ConstRatTensor r -> cheatConvertBuiltin p $ "Const[" <+> pretty (convertTRat r) <+> "]"
@@ -182,7 +182,7 @@ instance PrintableBuiltin TensorBuiltin where
       builtinFunction = V.Builtin p . V.BuiltinFunction
       builtinTCOp = V.Builtin p . V.TypeClassOp
       builtinType = V.Builtin p . V.BuiltinType
-      builtinTensorType t = V.StandardLib StdTensor [V.Arg mempty V.Explicit V.Relevant (t V.noProvenance)]
+      builtinTensorType t = IStandardLib StdTensor [V.Arg mempty V.Explicit V.Relevant (t V.noProvenance)]
 
 arityOf :: TensorBuiltin -> Arity
 arityOf b = case b of
