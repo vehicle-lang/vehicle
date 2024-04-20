@@ -174,10 +174,10 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             )
 
     def translate_App(self, expression: vcl.App) -> py.expr:
-        # NOTE: We handle Optimise as a special case, as we must extract the
-        #       name of the bound variable from the lambda binding.
+        # NOTE: We handle Minimise/Maximise as a special case, as we must
+        #       extract the name of the bound variable from the lambda binding.
         if isinstance(expression.function, vcl.Builtin) and isinstance(
-            expression.function.builtin, vcl.Optimise
+            expression.function.builtin, (vcl.MinimiseRatTensor, vcl.MaximiseRatTensor)
         ):
             if len(expression.arguments) != 2:
                 raise VehicleOptimiseTypeError(expression)
@@ -197,11 +197,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 # name:
                 py.Constant(
                     value=name,
-                    **asdict(expression.provenance),
-                ),
-                # minimise:
-                py.Constant(
-                    value=expression.function.builtin.minimiseOrMaximise,
                     **asdict(expression.provenance),
                 ),
                 # context:
@@ -236,10 +231,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py_name(expression.name, provenance=expression.provenance)
 
     def translate_Builtin(self, expression: vcl.Builtin) -> py.expr:
-        # OPTIMISE
-        #   All Optimise() nodes should be fully applied, and hence be captured
-        #   by the translation for applications.
-        if isinstance(expression.builtin, vcl.Optimise):
+        # MINIMISE/MAXIMISE
+        #   All Minimise and Maximise nodes should be fully applied,
+        #   and hence be captured by the translation for applications.
+        if isinstance(
+            expression.builtin, (vcl.MinimiseRatTensor, vcl.MaximiseRatTensor)
+        ):
             raise VehicleOptimiseTypeError(expression)
         # TYPES
         #   When we encounter a type, we raise `EraseType`,

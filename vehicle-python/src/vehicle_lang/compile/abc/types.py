@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeVar
 
@@ -19,20 +19,6 @@ IntTensor = TypeVar("IntTensor")
 RatTensor = TypeVar("RatTensor")
 
 Unit: TypeAlias = Tuple[()]
-
-Value: TypeAlias = Union[
-    Bool,
-    Nat,
-    Int,
-    Rat,
-    BoolTensor,
-    NatTensor,
-    IntTensor,
-    RatTensor,
-    "ValueList",
-]
-
-ValueList: TypeAlias = Tuple["Value", ...]
 
 ################################################################################
 # Vehicle Types for Translations

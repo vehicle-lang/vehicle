@@ -17,5 +17,3 @@ from .types import Program as Program
 from .types import Rat as Rat
 from .types import RatTensor as RatTensor
 from .types import Unit as Unit
-from .types import Value as Value
-from .types import ValueList as ValueList

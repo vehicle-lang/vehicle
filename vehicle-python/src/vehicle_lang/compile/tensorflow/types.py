@@ -1,5 +1,5 @@
 import jaxtyping as jt
-import tensorflow as tf  # type: ignore
+import tensorflow as tf  # type: ignore[import-untyped,unused-ignore]
 from typing_extensions import TypeAlias
 
 Index: TypeAlias = int
