@@ -23,6 +23,8 @@ module Vehicle.Syntax.AST.Expr
     isPi,
     mkHole,
     normAppList,
+    getFreeVarApp,
+    getBuiltinApp,
     pattern TypeUniverse,
     pattern BuiltinExpr,
   )
@@ -31,6 +33,7 @@ where
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
@@ -200,3 +203,15 @@ pattern BuiltinExpr ::
 pattern BuiltinExpr p b args <- App (Builtin p b) args
   where
     BuiltinExpr p b args = App (Builtin p b) args
+
+getBuiltinApp :: Expr var builtin -> Maybe (Provenance, builtin, [Arg var builtin])
+getBuiltinApp = \case
+  Builtin p b -> Just (p, b, [])
+  App (Builtin p b) args -> Just (p, b, NonEmpty.toList args)
+  _ -> Nothing
+
+getFreeVarApp :: Expr var builtin -> Maybe (Provenance, Identifier, [Arg var builtin])
+getFreeVarApp = \case
+  FreeVar p b -> Just (p, b, [])
+  App (FreeVar p b) args -> Just (p, b, NonEmpty.toList args)
+  _ -> Nothing
