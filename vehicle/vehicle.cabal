@@ -148,6 +148,7 @@ library
     Vehicle.Compile.Type.Subsystem.Standard
     Vehicle.Data.BooleanExpr
     Vehicle.Data.BuiltinInterface
+    Vehicle.Data.BuiltinInterface.ASTInterface
     Vehicle.Data.BuiltinInterface.DSL
     Vehicle.Data.BuiltinInterface.Expr
     Vehicle.Data.BuiltinInterface.Value

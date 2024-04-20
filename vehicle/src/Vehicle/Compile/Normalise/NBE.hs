@@ -148,7 +148,7 @@ evalBuiltin ::
   builtin ->
   WHNFSpine builtin ->
   m (WHNFValue builtin)
-evalBuiltin = Builtin.evalBuiltin evalApp
+evalBuiltin b args = Builtin.evalBuiltin evalApp (VBuiltin b args)
 
 lookupIdentValueInEnv ::
   forall builtin m.

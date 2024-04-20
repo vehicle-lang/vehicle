@@ -29,9 +29,7 @@ import Data.Foldable (foldrM)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.Value
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Syntax.Builtin
 
 -- Okay so the important thing to remember about this module is that we have
@@ -49,19 +47,17 @@ import Vehicle.Syntax.Builtin
 -- Main method
 
 evalBuiltin ::
-  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
-  EvalApp builtin m ->
-  builtin ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
-evalBuiltin evalApp b args = do
-  let runtimeRelevantArgs = filterRuntimeRelevantArgs args
-  let originalExpr = VBuiltin b args
-  case getBuiltinFunction b of
-    Just f -> evalBuiltinFunction f evalApp originalExpr runtimeRelevantArgs
-    _ -> return originalExpr
+  (MonadCompile m, HasStandardDataExpr expr) =>
+  EvalApp expr m ->
+  expr ->
+  m expr
+evalBuiltin evalApp expr = case getFunction expr of
+  Nothing -> return expr
+  Just (_, f, args) -> do
+    let runtimeRelevantArgs = filterRuntimeRelevantArgs args
+    evalBuiltinFunction f evalApp expr runtimeRelevantArgs
 
-filterRuntimeRelevantArgs :: WHNFSpine builtin -> [WHNFValue builtin]
+filterRuntimeRelevantArgs :: [GenericArg expr] -> [expr]
 filterRuntimeRelevantArgs = mapMaybe getExplicitArg
 
 -----------------------------------------------------------------------------
@@ -71,31 +67,27 @@ filterRuntimeRelevantArgs = mapMaybe getExplicitArg
 -- Although there is only one implementation of this type, it needs to be
 -- passed around as an argument to avoid dependency cycles between
 -- this module and the module in which the general NBE algorithm lives in.
-type EvalApp builtin m =
-  WHNFValue builtin ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
+type EvalApp expr m = expr -> [GenericArg expr] -> m expr
 
 -- | A method for evaluating builtins that takes in an argument allowing the
 -- recursive evaluation of applications. that takes in an argument allowing
 -- the subsequent further evaluation of applications.
 -- Such recursive evaluation is necessary when evaluating higher order
 -- functions such as fold, map etc.
-type EvalBuiltin builtin m =
-  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
-  EvalApp builtin m ->
-  WHNFValue builtin ->
-  [WHNFValue builtin] ->
-  m (WHNFValue builtin)
+type EvalBuiltin expr m =
+  (MonadCompile m, HasStandardDataExpr expr) =>
+  EvalApp expr m ->
+  expr ->
+  [expr] ->
+  m expr
 
-type EvalSimpleBuiltin builtin =
-  forall strategy.
-  (HasStandardData builtin) =>
-  Value strategy builtin ->
-  [Value strategy builtin] ->
-  Value strategy builtin
+type EvalSimpleBuiltin expr =
+  (HasStandardDataExpr expr) =>
+  expr ->
+  [expr] ->
+  expr
 
-evalBuiltinFunction :: BuiltinFunction -> EvalBuiltin builtin m
+evalBuiltinFunction :: BuiltinFunction -> EvalBuiltin expr m
 evalBuiltinFunction b evalApp originalValue args = case b of
   Quantifier {} -> return originalValue
   Optimise {} -> return originalValue
@@ -128,194 +120,194 @@ evalBuiltinFunction b evalApp originalValue args = case b of
 -- Individual builtin evaluation
 -----------------------------------------------------------------------------
 
-evalNot :: EvalSimpleBuiltin builtin
+evalNot :: EvalSimpleBuiltin expr
 evalNot originalExpr = \case
-  [VBoolLiteral x] -> VBoolLiteral (not x)
+  [IBoolLiteral _ x] -> IBoolLiteral mempty (not x)
   _ -> originalExpr
 
-evalAnd :: EvalSimpleBuiltin builtin
+evalAnd :: EvalSimpleBuiltin expr
 evalAnd originalExpr = \case
-  [VBoolLiteral x, VBoolLiteral y] -> VBoolLiteral (x && y)
-  [VBoolLiteral b, y] -> if b then y else VBoolLiteral b
-  [x, VBoolLiteral b] -> if b then x else VBoolLiteral b
+  [IBoolLiteral _ x, IBoolLiteral _ y] -> IBoolLiteral mempty (x && y)
+  [IBoolLiteral _ b, y] -> if b then y else IBoolLiteral mempty b
+  [x, IBoolLiteral _ b] -> if b then x else IBoolLiteral mempty b
   _ -> originalExpr
 
-evalOr :: EvalSimpleBuiltin builtin
+evalOr :: EvalSimpleBuiltin expr
 evalOr originalExpr = \case
-  [VBoolLiteral x, VBoolLiteral y] -> VBoolLiteral (x || y)
-  [VBoolLiteral b, y] -> if b then VBoolLiteral b else y
-  [x, VBoolLiteral b] -> if b then VBoolLiteral b else x
+  [IBoolLiteral _ x, IBoolLiteral _ y] -> IBoolLiteral mempty (x || y)
+  [IBoolLiteral _ b, y] -> if b then IBoolLiteral mempty b else y
+  [x, IBoolLiteral _ b] -> if b then IBoolLiteral mempty b else x
   _ -> originalExpr
 
-evalNeg :: NegDomain -> EvalSimpleBuiltin builtin
+evalNeg :: NegDomain -> EvalSimpleBuiltin expr
 evalNeg = \case
   NegRat -> evalNegRat
 
-evalNegRat :: EvalSimpleBuiltin builtin
+evalNegRat :: EvalSimpleBuiltin expr
 evalNegRat originalExpr = \case
-  [VRatLiteral x] -> VRatLiteral (-x)
+  [IRatLiteral _ x] -> IRatLiteral mempty (-x)
   _ -> originalExpr
 
-evalAdd :: AddDomain -> EvalSimpleBuiltin builtin
+evalAdd :: AddDomain -> EvalSimpleBuiltin expr
 evalAdd = \case
   AddNat -> evalAddNat
   AddRat -> evalAddRat
 
-evalAddNat :: EvalSimpleBuiltin builtin
+evalAddNat :: EvalSimpleBuiltin expr
 evalAddNat originalExpr = \case
-  [VNatLiteral x, VNatLiteral y] -> VNatLiteral (x + y)
+  [INatLiteral _ x, INatLiteral _ y] -> INatLiteral mempty (x + y)
   _ -> originalExpr
 
-evalAddRat :: EvalSimpleBuiltin builtin
+evalAddRat :: EvalSimpleBuiltin expr
 evalAddRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (x + y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (x + y)
   _ -> originalExpr
 
-evalSub :: SubDomain -> EvalSimpleBuiltin builtin
+evalSub :: SubDomain -> EvalSimpleBuiltin expr
 evalSub = \case
   SubRat -> evalSubRat
 
-evalSubRat :: EvalSimpleBuiltin builtin
+evalSubRat :: EvalSimpleBuiltin expr
 evalSubRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (x - y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (x - y)
   _ -> originalExpr
 
-evalMul :: MulDomain -> EvalSimpleBuiltin builtin
+evalMul :: MulDomain -> EvalSimpleBuiltin expr
 evalMul = \case
   MulNat -> evalMulNat
   MulRat -> evalMulRat
 
-evalMulNat :: EvalSimpleBuiltin builtin
+evalMulNat :: EvalSimpleBuiltin expr
 evalMulNat originalExpr = \case
-  [VNatLiteral x, VNatLiteral y] -> VNatLiteral (x * y)
+  [INatLiteral _ x, INatLiteral _ y] -> INatLiteral mempty (x * y)
   _ -> originalExpr
 
-evalMulRat :: EvalSimpleBuiltin builtin
+evalMulRat :: EvalSimpleBuiltin expr
 evalMulRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (x * y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (x * y)
   _ -> originalExpr
 
-evalDiv :: DivDomain -> EvalSimpleBuiltin builtin
+evalDiv :: DivDomain -> EvalSimpleBuiltin expr
 evalDiv = \case
   DivRat -> evalDivRat
 
-evalDivRat :: EvalSimpleBuiltin builtin
+evalDivRat :: EvalSimpleBuiltin expr
 evalDivRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (x / y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (x / y)
   _ -> originalExpr
 
-evalPowRat :: EvalSimpleBuiltin builtin
+evalPowRat :: EvalSimpleBuiltin expr
 evalPowRat originalExpr = \case
-  [VRatLiteral x, VNatLiteral y] -> VRatLiteral (x ^^ y)
+  [IRatLiteral _ x, INatLiteral _ y] -> IRatLiteral mempty (x ^^ y)
   _ -> originalExpr
 
-evalMinRat :: EvalSimpleBuiltin builtin
+evalMinRat :: EvalSimpleBuiltin expr
 evalMinRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (min x y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (min x y)
   _ -> originalExpr
 
-evalMaxRat :: EvalSimpleBuiltin builtin
+evalMaxRat :: EvalSimpleBuiltin expr
 evalMaxRat originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VRatLiteral (max x y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IRatLiteral mempty (max x y)
   _ -> originalExpr
 
-evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin builtin
+evalOrder :: OrderDomain -> OrderOp -> EvalSimpleBuiltin expr
 evalOrder = \case
   OrderIndex -> evalOrderIndex
   OrderNat -> evalOrderNat
   OrderRat -> evalOrderRat
 
-evalOrderIndex :: OrderOp -> EvalSimpleBuiltin builtin
+evalOrderIndex :: OrderOp -> EvalSimpleBuiltin expr
 evalOrderIndex op originalExpr = \case
-  [VIndexLiteral x, VIndexLiteral y] -> VBoolLiteral (orderOp op x y)
+  [IIndexLiteral _ x, IIndexLiteral _ y] -> IBoolLiteral mempty (orderOp op x y)
   _ -> originalExpr
 
-evalOrderNat :: OrderOp -> EvalSimpleBuiltin builtin
+evalOrderNat :: OrderOp -> EvalSimpleBuiltin expr
 evalOrderNat op originalExpr = \case
-  [VNatLiteral x, VNatLiteral y] -> VBoolLiteral (orderOp op x y)
+  [INatLiteral _ x, INatLiteral _ y] -> IBoolLiteral mempty (orderOp op x y)
   _ -> originalExpr
 
-evalOrderRat :: OrderOp -> EvalSimpleBuiltin builtin
+evalOrderRat :: OrderOp -> EvalSimpleBuiltin expr
 evalOrderRat op originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VBoolLiteral (orderOp op x y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IBoolLiteral mempty (orderOp op x y)
   _ -> originalExpr
 
-evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin builtin
+evalEquals :: EqualityDomain -> EqualityOp -> EvalSimpleBuiltin expr
 evalEquals = \case
   EqIndex -> evalEqualityIndex
   EqNat -> evalEqualityNat
   EqRat -> evalEqualityRat
 
-evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin builtin
+evalEqualityIndex :: EqualityOp -> EvalSimpleBuiltin expr
 evalEqualityIndex op originalExpr = \case
-  [VIndexLiteral x, VIndexLiteral y] -> VBoolLiteral (equalityOp op x y)
+  [IIndexLiteral _ x, IIndexLiteral _ y] -> IBoolLiteral mempty (equalityOp op x y)
   _ -> originalExpr
 
-evalEqualityNat :: EqualityOp -> EvalSimpleBuiltin builtin
+evalEqualityNat :: EqualityOp -> EvalSimpleBuiltin expr
 evalEqualityNat op originalExpr = \case
-  [VNatLiteral x, VNatLiteral y] -> VBoolLiteral (equalityOp op x y)
+  [INatLiteral _ x, INatLiteral _ y] -> IBoolLiteral mempty (equalityOp op x y)
   _ -> originalExpr
 
-evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin builtin
+evalEqualityRat :: EqualityOp -> EvalSimpleBuiltin expr
 evalEqualityRat op originalExpr = \case
-  [VRatLiteral x, VRatLiteral y] -> VBoolLiteral (equalityOp op x y)
+  [IRatLiteral _ x, IRatLiteral _ y] -> IBoolLiteral mempty (equalityOp op x y)
   _ -> originalExpr
 
-evalFromNat :: FromNatDomain -> EvalSimpleBuiltin builtin
+evalFromNat :: FromNatDomain -> EvalSimpleBuiltin expr
 evalFromNat = \case
   FromNatToIndex -> evalFromNatToIndex
   FromNatToNat -> evalFromNatToNat
   FromNatToRat -> evalFromNatToRat
 
-evalFromNatToIndex :: EvalSimpleBuiltin builtin
+evalFromNatToIndex :: EvalSimpleBuiltin expr
 evalFromNatToIndex originalExpr = \case
-  [VNatLiteral x] -> VIndexLiteral x
+  [INatLiteral _ x] -> IIndexLiteral mempty x
   _ -> originalExpr
 
-evalFromNatToNat :: EvalSimpleBuiltin builtin
+evalFromNatToNat :: EvalSimpleBuiltin expr
 evalFromNatToNat originalExpr = \case
   [x] -> x
   _ -> originalExpr
 
-evalFromNatToRat :: EvalSimpleBuiltin builtin
+evalFromNatToRat :: EvalSimpleBuiltin expr
 evalFromNatToRat originalExpr = \case
-  [VNatLiteral x] -> VRatLiteral (fromIntegral x)
+  [INatLiteral _ x] -> IRatLiteral mempty (fromIntegral x)
   _ -> originalExpr
 
-evalFromRat :: FromRatDomain -> EvalSimpleBuiltin builtin
+evalFromRat :: FromRatDomain -> EvalSimpleBuiltin expr
 evalFromRat = \case
   FromRatToRat -> evalFromRatToRat
 
-evalFromRatToRat :: EvalSimpleBuiltin builtin
+evalFromRatToRat :: EvalSimpleBuiltin expr
 evalFromRatToRat originalExpr = \case
   [x] -> x
   _ -> originalExpr
 
-evalIf :: EvalSimpleBuiltin builtin
+evalIf :: EvalSimpleBuiltin expr
 evalIf originalExpr = \case
-  [VBoolLiteral True, e1, _e2] -> e1
-  [VBoolLiteral False, _e1, e2] -> e2
+  [IBoolLiteral _ True, e1, _e2] -> e1
+  [IBoolLiteral _ False, _e1, e2] -> e2
   _ -> originalExpr
 
-evalAt :: EvalSimpleBuiltin builtin
+evalAt :: EvalSimpleBuiltin expr
 evalAt originalExpr = \case
-  [VVecLiteral xs, VIndexLiteral i] -> case xs !!? fromIntegral i of
+  [IVecLiteral xs, IIndexLiteral _ i] -> case xs !!? fromIntegral i of
     Nothing -> developerError $ "out of bounds error:" <+> pretty (length xs) <+> "<=" <+> pretty i
     Just xsi -> argExpr xsi
   _ -> originalExpr
 
-evalFoldList :: EvalBuiltin builtin m
+evalFoldList :: EvalBuiltin expr m
 evalFoldList evalApp originalExpr = \case
-  [_f, e, VNil] -> return e
-  [f, e, VCons x xs] -> do
-    let defaultFold = VBuiltin (mkBuiltinFunction FoldList) [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
+  [_f, e, INil] -> return e
+  [f, e, ICons x xs] -> do
+    let defaultFold = mkFunction mempty FoldList [Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, xs]
     r <- evalFoldList evalApp defaultFold [f, e, argExpr xs]
     evalApp f [x, Arg mempty Explicit Relevant r]
   _ -> return originalExpr
 
-evalFoldVector :: EvalBuiltin builtin m
+evalFoldVector :: EvalBuiltin expr m
 evalFoldVector evalApp originalExpr = \case
-  [f, e, VVecLiteral xs] -> foldrM f' e xs
+  [f, e, IVecLiteral xs] -> foldrM f' e xs
     where
       f' x r =
         evalApp
@@ -325,9 +317,9 @@ evalFoldVector evalApp originalExpr = \case
           ]
   _ -> return originalExpr
 
-evalZipWith :: EvalBuiltin builtin m
+evalZipWith :: EvalBuiltin expr m
 evalZipWith evalApp originalExpr = \case
-  [f, VVecLiteral xs, VVecLiteral ys] ->
+  [f, IVecLiteral xs, IVecLiteral ys] ->
     mkVLVec <$> zipWithM f' xs ys
     where
       f' x y =
@@ -338,39 +330,36 @@ evalZipWith evalApp originalExpr = \case
           ]
   _ -> return originalExpr
 
-evalMapList :: EvalBuiltin builtin m
+evalMapList :: EvalBuiltin expr m
 evalMapList evalApp originalExpr = \case
-  [_f, e@VNil] ->
-    return e
-  [f, VCons x xs] -> do
+  [_f, e@INil] -> return e
+  [f, ICons x xs] -> do
     fx <- evalApp f [x]
-    let defaultMap = VBuiltin (mkBuiltinFunction MapList) [Arg mempty Explicit Relevant f, xs]
+    let defaultMap = mkFunction mempty MapList [Arg mempty Explicit Relevant f, xs]
     fxs <- evalMapList evalApp defaultMap [f, argExpr xs]
-    return $ VBuiltin (mkBuiltinConstructor Cons) (Arg mempty Explicit Relevant <$> [fx, fxs])
+    return $ mkConstructor mempty Cons (Arg mempty Explicit Relevant <$> [fx, fxs])
   _ -> return originalExpr
 
-evalMapVector :: EvalBuiltin builtin m
+evalMapVector :: EvalBuiltin expr m
 evalMapVector evalApp originalExpr = \case
-  [f, VVecLiteral xs] ->
+  [f, IVecLiteral xs] ->
     mkVLVec <$> traverse f' xs
     where
       f' x = evalApp f [x]
   _ -> return originalExpr
 
-evalIndices :: EvalSimpleBuiltin builtin
+evalIndices :: EvalSimpleBuiltin expr
 evalIndices originalExpr = \case
-  [VNatLiteral n] -> mkVLVec (fmap VIndexLiteral [0 .. n - 1])
+  [INatLiteral _ n] -> mkVLVec (fmap (IIndexLiteral mempty) [0 .. n - 1])
   _ -> originalExpr
 
 -----------------------------------------------------------------------------
 -- Derived
 
 -- TODO define in terms of language. The problem is the polarity checking...
-evalImplies :: EvalSimpleBuiltin builtin
+evalImplies :: EvalSimpleBuiltin expr
 evalImplies originalExpr = \case
   [e1, e2] -> do
-    let defaultNot = VBuiltinFunction Not [Arg mempty Explicit Relevant e1]
-    let ne1 = evalNot defaultNot [e1]
-    let defaultOr = VBuiltinFunction Or [Arg mempty Explicit Relevant ne1, Arg mempty Explicit Relevant e2]
-    evalOr defaultOr [ne1, e2]
+    let ne1 = evalNot (INot e1) [e1]
+    evalOr (IOr ne1 e2) [ne1, e2]
   _ -> originalExpr
