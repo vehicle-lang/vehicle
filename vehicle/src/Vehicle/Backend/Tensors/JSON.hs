@@ -114,31 +114,35 @@ toJDecls (decl : decls) = do
   return $ decl' : decls'
 
 toJExpr :: forall m. (MonadJSON m) => V.Expr Ix TensorBuiltin -> m (JExpr Ix)
-toJExpr expr = case expr of
-  V.Hole {} -> resolutionError currentPass "Hole"
-  V.Meta {} -> resolutionError currentPass "Meta"
-  V.Universe p l -> return $ Universe p (coerce l)
-  V.Builtin p b -> return $ Builtin p b
-  V.BoundVar p v -> return $ BoundVar p v
-  V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
-  -- Otherwise, calculate whether function is partial or not.
-  V.App fun args -> do
-    fun' <- toJExpr fun
-    let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
-    args' <- traverse toJExpr explicitArgs
-    arity <- functionArity fun
-    case args' of
-      [] -> return fun'
-      _ : _
-        | arity == length args' -> return $ App fun' args'
-        | arity > length args' -> return $ PartialApp arity fun' args'
-        | otherwise -> arityError fun arity explicitArgs args'
-  V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
-  V.Lam p _ _ -> do
-    (foldedBinders, body) <- foldLamBinders expr
-    Lam p <$> toJBinders foldedBinders <*> toJExpr body
-  V.Let p bound binder body ->
-    Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+toJExpr expr = do
+  showEntry expr
+  result <- case expr of
+    V.Hole {} -> resolutionError currentPass "Hole"
+    V.Meta {} -> resolutionError currentPass "Meta"
+    V.Universe p l -> return $ Universe p (coerce l)
+    V.Builtin p b -> return $ Builtin p b
+    V.BoundVar p v -> return $ BoundVar p v
+    V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
+    -- Otherwise, calculate whether function is partial or not.
+    V.App fun args -> do
+      fun' <- toJExpr fun
+      let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
+      args' <- traverse toJExpr explicitArgs
+      arity <- functionArity fun
+      case args' of
+        [] -> return fun'
+        _ : _
+          | arity == length args' -> return $ App fun' args'
+          | arity > length args' -> return $ PartialApp arity fun' args'
+          | otherwise -> arityError fun arity explicitArgs args'
+    V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+    V.Lam p binder _ -> do
+      (foldedBinders, body) <- foldLamBinders expr
+      Lam p <$> toJBinders foldedBinders <*> addBinderToContext binder (toJExpr body)
+    V.Let p bound binder body ->
+      Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+  showExit result
+  return result
 
 foldLamBinders ::
   (MonadJSON m) =>
@@ -234,3 +238,15 @@ arityError fun arity explicitArgs args =
             <> "args-len:"
               <+> prettyVerbose (length args)
         )
+
+showEntry :: (MonadJSON m) => V.Expr Ix TensorBuiltin -> m ()
+showEntry e = do
+  (_, ctx) <- ask
+  logDebug MaxDetail $ "tensor-enter:" <+> pretty (length ctx) <+> prettyVerbose e
+  incrCallDepth
+
+showExit :: (MonadJSON m) => JExpr Ix -> m ()
+showExit _e = do
+  decrCallDepth
+
+-- logDebug MaxDetail $ "tensor-exit: " <+> prettyVerbose e

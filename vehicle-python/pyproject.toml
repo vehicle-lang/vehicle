@@ -14,18 +14,17 @@ description = 'A high-level functional language for writing mathematically-preci
 readme = 'README.md'
 license = { file = 'LICENSE' }
 dynamic = ["version"]
-requires-python = ">=3.7.1,<3.13"
-dependencies = [
-  "typing_extensions >=4.6,<5",
-  "astunparse; python_version<'3.9'",
-]
+requires-python = ">=3.9,<3.14"
+dependencies = ["typing_extensions >=4.6,<5"]
 
 [project.optional-dependencies]
 test = ["pytest >=7.1,<9", "packaging >=23", "pygments >=2.14, <3"]
 mypy = ["types_setuptools >=45", "types_pygments >=2.14,<3"]
 pygments = ["pygments >=2.14,<3"]
+numpy = ["numpy >=1.21,<2"]
+jax = ["jax >=0.4.26"]
 tensorflow = [
-  "tensorflow >=2,<3; (python_version>='3.8' and python_version<'3.12')and ((sys_platform=='linux' and (platform_machine=='x86_64' or platform_machine=='aarch64')) or (sys_platform=='darwin' and platform_machine=='x86_64') or (sys_platform=='win32' and platform_machine=='AMD64'))"
+  "tensorflow >=2,<3; (python_version>='3.9' and python_version<'3.13') and ((sys_platform=='linux' and (platform_machine=='x86_64' or platform_machine=='aarch64')) or (sys_platform=='darwin' and platform_machine=='x86_64') or (sys_platform=='win32' and platform_machine=='AMD64'))"
 ]
 
 [project.scripts]
@@ -69,7 +68,7 @@ musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc948_x86_64"
 
 [tool.mypy]
 mypy_path = "src"
-python_version = 3.7
+python_version = "3.9"
 strict = true
 implicit_reexport = false
 ignore_missing_imports = true
@@ -86,7 +85,8 @@ allow_untyped_defs = true
 disable_error_code = ['name-defined']
 
 [tool.pytest.ini_options]
-testpaths = [] #["tests"]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }
@@ -95,9 +95,9 @@ version = { attr = "vehicle_lang._version.VERSION" }
 legacy_tox_ini = """
 [tox]
 min_version = 4
-env_list = py{37,38,39,310,311,312}-{lin,mac,win}
+env_list = py{39,310,311,312,313}-{lin,mac,win}
 
-[testenv:py{37,38,39,310,311,312}-{lin,mac,win}]
+[testenv:py{39,310,311,312,313}-{lin,mac,win}]
 package = external
 package_env = build-{env_name}
 platform =
@@ -109,39 +109,31 @@ allowlist_externals =
 extras =
   test
   pygments
-  py38,py39,py310,py311,py312: tensorflow
+  py39,py310,py311,py312: tensorflow
 commands =
   {env_python} -m pytest {posargs}
 
-[testenv:build-py{37,38,39,310,311,312}-{lin,mac,win}]
+[testenv:build-py{39,310,311,312,313}-{lin,mac,win}]
 deps =
   build
   auditwheel; sys_platform == 'linux'
   delocate; sys_platform == 'darwin'
-set_env =
-  env_python = {env_python}
-  package_root = {package_root}
-  dist_dir = {package_root}{/}dist
-  dist_tmp_dir = {env_tmp_dir}{/}dist
 package_glob =
-  py37-lin: {env:dist_dir}{/}*cp37*manylinux*.whl
-  py38-lin: {env:dist_dir}{/}*cp38*manylinux*.whl
-  py39-lin: {env:dist_dir}{/}*cp39*manylinux*.whl
-  py310-lin: {env:dist_dir}{/}*cp310*manylinux*.whl
-  py311-lin: {env:dist_dir}{/}*cp311*manylinux*.whl
-  py312-lin: {env:dist_dir}{/}*cp312*manylinux*.whl
-  py37-mac: {env:dist_dir}{/}*cp37*macosx*.whl
-  py38-mac: {env:dist_dir}{/}*cp38*macosx*.whl
-  py39-mac: {env:dist_dir}{/}*cp39*macosx*.whl
-  py310-mac: {env:dist_dir}{/}*cp310*macosx*.whl
-  py311-mac: {env:dist_dir}{/}*cp311*macosx*.whl
-  py312-mac: {env:dist_dir}{/}*cp312*macosx*.whl
-  py37-win: {env:dist_dir}{/}*cp37*win*.whl
-  py38-win: {env:dist_dir}{/}*cp38*win*.whl
-  py39-win: {env:dist_dir}{/}*cp39*win*.whl
-  py310-win: {env:dist_dir}{/}*cp310*win*.whl
-  py311-win: {env:dist_dir}{/}*cp311*win*.whl
-  py312-win: {env:dist_dir}{/}*cp312*win*.whl
+  py39-lin: {package_root}{/}dist{/}*cp39*manylinux*.whl
+  py310-lin: {package_root}{/}dist{/}*cp310*manylinux*.whl
+  py311-lin: {package_root}{/}dist{/}*cp311*manylinux*.whl
+  py312-lin: {package_root}{/}dist{/}*cp312*manylinux*.whl
+  py313-lin: {package_root}{/}dist{/}*cp313*manylinux*.whl
+  py39-mac: {package_root}{/}dist{/}*cp39*macosx*.whl
+  py310-mac: {package_root}{/}dist{/}*cp310*macosx*.whl
+  py311-mac: {package_root}{/}dist{/}*cp311*macosx*.whl
+  py312-mac: {package_root}{/}dist{/}*cp312*macosx*.whl
+  py313-mac: {package_root}{/}dist{/}*cp313*macosx*.whl
+  py39-win: {package_root}{/}dist{/}*cp39*win*.whl
+  py310-win: {package_root}{/}dist{/}*cp310*win*.whl
+  py311-win: {package_root}{/}dist{/}*cp311*win*.whl
+  py312-win: {package_root}{/}dist{/}*cp312*win*.whl
+  py313-win: {package_root}{/}dist{/}*cp313*win*.whl
 allowlist_externals =
   sh
 commands =
