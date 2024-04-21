@@ -291,7 +291,7 @@ evalIf originalExpr = \case
 
 evalAt :: EvalSimpleBuiltin expr
 evalAt originalExpr = \case
-  [IVecLiteral xs, IIndexLiteral _ i] -> case xs !!? fromIntegral i of
+  [IRVecLiteral xs, IIndexLiteral _ i] -> case xs !!? fromIntegral i of
     Nothing -> developerError $ "out of bounds error:" <+> pretty (length xs) <+> "<=" <+> pretty i
     Just xsi -> argExpr xsi
   _ -> originalExpr
@@ -307,7 +307,7 @@ evalFoldList evalApp originalExpr = \case
 
 evalFoldVector :: EvalBuiltin expr m
 evalFoldVector evalApp originalExpr = \case
-  [f, e, IVecLiteral xs] -> foldrM f' e xs
+  [f, e, IRVecLiteral xs] -> foldrM f' e xs
     where
       f' x r =
         evalApp
@@ -319,7 +319,7 @@ evalFoldVector evalApp originalExpr = \case
 
 evalZipWith :: EvalBuiltin expr m
 evalZipWith evalApp originalExpr = \case
-  [f, IVecLiteral xs, IVecLiteral ys] ->
+  [f, IRVecLiteral xs, IRVecLiteral ys] ->
     mkVecExpr <$> zipWithM f' xs ys
     where
       f' x y =
@@ -342,7 +342,7 @@ evalMapList evalApp originalExpr = \case
 
 evalMapVector :: EvalBuiltin expr m
 evalMapVector evalApp originalExpr = \case
-  [f, IVecLiteral xs] ->
+  [f, IRVecLiteral xs] ->
     mkVecExpr <$> traverse f' xs
     where
       f' x = evalApp f [x]

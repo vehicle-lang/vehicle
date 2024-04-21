@@ -12,7 +12,6 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.BuiltinInterface
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Expr
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
@@ -30,7 +29,7 @@ solveIndexConstraint constraint = do
       progress <- solveInDomain normConstraint (mapMaybe getExplicitArg args)
       case progress of
         Nothing -> do
-          let solution = UnitLiteral (provenanceOf ctx)
+          let solution = IUnitLiteral (provenanceOf ctx)
           solveMeta meta solution (boundContext ctx)
         Just metas -> do
           let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas

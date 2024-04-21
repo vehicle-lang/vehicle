@@ -8,7 +8,7 @@ import Control.Monad.State (MonadState (..), evalState, modify)
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 
 --------------------------------------------------------------------------------
 -- Capitalise type names
@@ -80,6 +80,6 @@ isTypeDef t = case t of
   _ -> False
   where
     go :: (HasStandardTypes builtin) => Expr var builtin -> Bool
-    go (BoolType _) = True
+    go (IBoolType _) = True
     go (Pi _ _ res) = go res
     go _ = False

@@ -15,7 +15,7 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta, substMetas)
-import Vehicle.Data.BuiltinInterface.Expr
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
@@ -146,7 +146,7 @@ handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) 
     let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
     addConstraints [blockedConstraint]
   Progress newConstraints -> do
-    solveMeta m (UnitLiteral (provenanceOf ctx)) (boundContext ctx)
+    solveMeta m (IUnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addConstraints newConstraints
 
 getTypeClass :: (MonadCompile m) => WHNFValue LinearityBuiltin -> m (LinearityRelation, WHNFSpine LinearityBuiltin)

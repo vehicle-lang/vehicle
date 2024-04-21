@@ -150,8 +150,6 @@ library
     Vehicle.Data.BuiltinInterface
     Vehicle.Data.BuiltinInterface.ASTInterface
     Vehicle.Data.BuiltinInterface.DSL
-    Vehicle.Data.BuiltinInterface.Expr
-    Vehicle.Data.BuiltinInterface.Value
     Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
     Vehicle.Data.Hashing

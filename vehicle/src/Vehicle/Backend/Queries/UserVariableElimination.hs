@@ -27,7 +27,6 @@ import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem.Standard
 import Vehicle.Data.BooleanExpr
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Expr (negExpr)
 import Vehicle.Data.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
@@ -64,7 +63,7 @@ eliminateUserVariables = go
       IExists _ (VLam binder (WHNFBody env body)) -> compileQuantifiedQuerySet False binder env body
       IForall _ (VLam binder (WHNFBody env body)) -> do
         logDebug MinDetail ("Negating property..." <> line)
-        compileQuantifiedQuerySet True binder env (negExpr body)
+        compileQuantifiedQuerySet True binder env (INot body)
       -----------------
       -- Mixed cases --
       -----------------
@@ -275,7 +274,7 @@ getRationalTensor expr = uncurry Tensor <$> go expr
     go :: WHNFValue QueryBuiltin -> Maybe (TensorShape, Vector Rational)
     go = \case
       IRatLiteral _ r -> Just ([], Vector.singleton (fromRational r))
-      IVecLiteral xs -> do
+      IVecLiteral _ xs -> do
         r <- traverse (go . argExpr) xs
         let (dims, rs) = unzip r
         case dims of

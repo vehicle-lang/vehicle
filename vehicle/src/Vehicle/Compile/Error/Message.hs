@@ -21,7 +21,6 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.BuiltinInterface.Expr (pattern UnitLiteral)
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.NormalisedExpr
@@ -462,7 +461,7 @@ instance MeaningfulError CompileError where
 
         calculateOpType :: NamedBoundCtx -> [Arg Ix builtin] -> Doc a
         calculateOpType dbCtx args = do
-          let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
+          let argsToSubst = fmap argExpr args <> [IUnitLiteral mempty]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
           prettyFriendly (WithContext inferedOpType dbCtx)
 
