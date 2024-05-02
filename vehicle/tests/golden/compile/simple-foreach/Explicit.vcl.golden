@@ -1,3 +1,0 @@
-@property;
-index : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-index f = f [0.0, 0.0] >= Const[ 0.0 ] (2 :: nil)

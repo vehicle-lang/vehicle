@@ -22,11 +22,5 @@
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.vcl"]
-  },
-  {
-    "name": "Explicit",
-    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
-    "needs": ["spec.vcl"],
-    "produces": ["Explicit.vcl"]
   }
 ]

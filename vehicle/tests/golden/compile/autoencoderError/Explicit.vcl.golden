@@ -1,3 +1,0 @@
-@property;
-identity : forallT (encode : Tensor Rat -> Tensor Rat) . forallT (decode : Tensor Rat -> Tensor Rat) . Tensor Bool;
-identity encode decode = forall x . ReduceAnd (x - [0.1, 0.1, 0.1, 0.1, 0.1] <= decode (encode x) and decode (encode x) <= x + [0.1, 0.1, 0.1, 0.1, 0.1])

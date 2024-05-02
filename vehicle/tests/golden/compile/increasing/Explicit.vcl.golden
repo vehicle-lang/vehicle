@@ -1,3 +1,0 @@
-@property;
-increasing : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-increasing f = forall x . x <= f [x] ! 0

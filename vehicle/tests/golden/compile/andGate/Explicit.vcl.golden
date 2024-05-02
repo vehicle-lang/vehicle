@@ -1,3 +1,0 @@
-@property;
-andGateCorrect : forallT (andGate : Tensor Rat -> Tensor Rat) . Tensor Bool;
-andGateCorrect andGate = forall x1 . forall x2 . not ((0.0 <= x1 and x1 <= 1.0) and 0.0 <= x2 and x2 <= 1.0) or (not (x1 >= 0.5 and x2 >= 0.5) or andGate [x1, x2] ! 0 >= 0.5) and (not (x1 >= 0.5 and x2 <= 0.5) or andGate [x1, x2] ! 0 <= 0.5) and (not (x1 <= 0.5 and x2 >= 0.5) or andGate [x1, x2] ! 0 <= 0.5) and not (x1 <= 0.5 and x2 <= 0.5) or andGate [x1, x2] ! 0 <= 0.5

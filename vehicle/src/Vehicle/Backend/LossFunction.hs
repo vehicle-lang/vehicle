@@ -44,7 +44,7 @@ convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $
     go expr = case expr of
       VMeta {} -> unexpectedExprError currentPass "VMeta"
       VUniverse {} -> unexpectedExprError currentPass "VUniverse"
-      VPi {} -> unexpectedExprError currentPass "VPi"
+      VPi binder body -> VPi <$> traverse go binder <*> go body
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VBuiltin b spine -> do
