@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Backend.Tensors.JSON
+module Vehicle.Backend.LossFunction.JSON
   ( compileProgToJSON,
   )
 where
@@ -14,7 +14,7 @@ import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NonEmpty (filter, toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Backend.Tensors.Core
+import Vehicle.Backend.LossFunction.Core
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Descope (DescopeNamed (..))
 import Vehicle.Compile.Error

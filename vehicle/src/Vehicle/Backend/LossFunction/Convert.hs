@@ -1,4 +1,4 @@
-module Vehicle.Backend.Tensors.Convert
+module Vehicle.Backend.LossFunction.Convert
   ( convertToTensors,
     MonadTensorProperty,
     TensorPreprocessingStep (..),
@@ -14,8 +14,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Ratio
 import Data.Set as Set (Set, fromList)
-import Vehicle.Backend.Tensors.Core (TensorBuiltin)
-import Vehicle.Backend.Tensors.Core qualified as T
+import Vehicle.Backend.LossFunction.Core (TensorBuiltin)
+import Vehicle.Backend.LossFunction.Core qualified as T
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
@@ -194,14 +194,18 @@ convertBuiltinType t args = case t of
   Rat -> return $ mkBuiltin T.RatTensorType args
   Index -> return $ mkBuiltin T.IndexType args
   List -> return $ mkBuiltin T.ListType args
-  Vector -> convertVectorType args
+  Vector -> case args of
+    [elemType, size] -> convertVectorType (argExpr elemType) (argExpr size)
+    _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
 
-convertVectorType :: (MonadTensorProperty m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
-convertVectorType args = do
-  let maybeResult = case args of
-        [RelevantExplicitArg _ (VBuiltin b _args), _] -> case b of
+convertVectorType :: (MonadTensorProperty m) => NFValue TensorBuiltin -> NFValue TensorBuiltin -> m (NFValue TensorBuiltin)
+convertVectorType elemType size = do
+  let maybeResult = case elemType of
+        VBuiltin b _args -> case b of
           T.BoolTensorType -> Just T.BoolTensorType
           T.RatTensorType -> Just T.RatTensorType
+          T.IndexType -> Just T.IndexTensorType
+          T.IndexTensorType -> Just T.IndexTensorType
           _ -> Nothing
         _ -> Nothing
 
@@ -210,8 +214,8 @@ convertVectorType args = do
     Nothing -> do
       declProv <- ask
       boundCtx <- getNamedBoundCtx (Proxy @Builtin)
-      let typ = VFreeVar (Identifier User "Vector") args
-      throwError $ HigherOrderVectors declProv boundCtx typ
+      let vecType = VFreeVar (Identifier User "Vector") [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
+      throwError $ HigherOrderVectors declProv boundCtx vecType elemType
 
 convertBuiltinConstructor :: (MonadTensorProperty m) => BuiltinConstructor -> [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertBuiltinConstructor c args = case c of

@@ -6,10 +6,10 @@ where
 
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (lossPreprocessingStep)
+import Vehicle.Backend.LossFunction.Convert
+import Vehicle.Backend.LossFunction.JSON (compileProgToJSON)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
-import Vehicle.Backend.Tensors.Convert
-import Vehicle.Backend.Tensors.JSON (compileProgToJSON)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
@@ -115,6 +115,20 @@ compileToTensors ::
   m ()
 compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
+  -- Deciding on the best ordering of converting to loss functions and converting to tensor code
+  -- is tricky. There are three approaches:
+  --
+  -- Loss functions -> Tensors
+  --    Disadvantages
+  --        - Vector representation contains higher order structure (e.g. folds) that
+  --          can be converted to tensor operations, but which `not` cannot easily
+  --          be pushed through in general for DL2 loss. e.g. in
+  --          fold (\ x -> \ y -> x and y) True (foreachIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25))
+  --
+  -- Tensors -> Loss functions
+  --    Disadvantages
+  --        - Loss functions need to be specified in terms of tensors.
+  --
   tensorProg <- convertToTensors preprocess mergedProg
   hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg

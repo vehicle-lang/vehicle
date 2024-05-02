@@ -300,6 +300,8 @@ pattern IFoldVector ::
   expr ->
   expr
 pattern IFoldVector n a b f e xs <- BuiltinFunc FoldVector [n, a, b, argExpr -> f, argExpr -> e, argExpr -> xs]
+  where
+    IFoldVector n a b f e xs = BuiltinFunc FoldVector [n, a, b, Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, Arg mempty Explicit Relevant xs]
 
 pattern IMapVector ::
   (HasStandardDataExpr expr) =>
@@ -429,6 +431,16 @@ pattern IVectorSub ::
   expr ->
   expr
 pattern IVectorSub a b c n f x y <- IStandardLib StdSubVector [a, b, c, n, f, argExpr -> x, argExpr -> y]
+
+pattern IForeachIndex ::
+  (HasStandardDataExpr expr) =>
+  GenericArg expr ->
+  expr ->
+  expr ->
+  expr
+pattern IForeachIndex t n fn <- IStandardLib StdForeachIndex [t, argExpr -> n, argExpr -> fn]
+  where
+    IForeachIndex t n fn = IStandardLib StdForeachIndex [t, Arg mempty Explicit Relevant n, Arg mempty Explicit Relevant fn]
 
 --------------------------------------------------------------------------------
 -- WHNFValue Function patterns
