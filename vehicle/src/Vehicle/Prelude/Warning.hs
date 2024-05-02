@@ -11,7 +11,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
-import Vehicle.Backend.Tensors.Core
+import Vehicle.Backend.LossFunction.Core
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Libraries.StandardLibrary.Definitions

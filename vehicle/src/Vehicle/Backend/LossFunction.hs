@@ -6,9 +6,9 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Data.Proxy (Proxy (..))
+import Vehicle.Backend.LossFunction.Convert
 import Vehicle.Backend.LossFunction.Logics
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Tensors.Convert
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
@@ -101,7 +101,7 @@ lowerNot arg = case arg of
     return $ VBuiltinFunction (Equals dom (neg op)) args
   INot x ->
     return x
-  -- Inductive cases
+  -- Easy inductive cases
   IInfiniteQuantifier q args (VLam binder (WHNFBody env body)) ->
     return $ IInfiniteQuantifier (neg q) args (VLam binder (WHNFBody env (INot body)))
   IAnd x y ->
@@ -110,7 +110,22 @@ lowerNot arg = case arg of
     IAnd <$> lowerNot x <*> lowerNot y
   IIf tRes c e1 e2 ->
     IIf tRes c <$> lowerNot e1 <*> lowerNot e2
+  -- Difficult inductive cases
+  IFoldVector n t1 t2 (ExpandedBinaryOp binder1 env binder2 (BuiltinFunction b)) e xs -> do
+    let mkBinOp op = ExpandedBinaryOp binder1 env binder2 (BuiltinFunction op)
+    case b of
+      And -> IFoldVector n t1 t2 (mkBinOp Or) <$> lowerNot e <*> lowerNotVector xs
+      Or -> IFoldVector n t1 t2 (mkBinOp And) <$> lowerNot e <*> lowerNotVector xs
+      _ -> Left arg
   -- Error cases
+  _ -> Left arg
+
+lowerNotVector :: WHNFValue Builtin -> Either (WHNFValue Builtin) (WHNFValue Builtin)
+lowerNotVector arg = case arg of
+  IVecLiteral t xs ->
+    IVecLiteral t <$> traverse (traverse lowerNot) xs
+  IForeachIndex t n (VLam binder (WHNFBody env body)) ->
+    return $ IForeachIndex t n (VLam binder (WHNFBody env (INot body)))
   _ -> Left arg
 
 data BuiltinTranslation
@@ -121,3 +136,40 @@ data BuiltinTranslation
 
 currentPass :: CompilerPass
 currentPass = "loss function translation"
+
+pattern ExpandedBinaryOp :: WHNFBinder builtin -> WHNFBoundEnv builtin -> Binder Ix builtin -> builtin -> WHNFValue builtin
+pattern ExpandedBinaryOp binder1 env binder2 b <-
+  VLam
+    binder1
+    ( WHNFBody
+        env
+        ( Lam
+            _
+            binder2
+            ( BuiltinExpr
+                _
+                b
+                [ RelevantExplicitArg _ (BoundVar _ 1),
+                  RelevantExplicitArg _ (BoundVar _ 0)
+                  ]
+              )
+          )
+      )
+  where
+    ExpandedBinaryOp binder1 env binder2 b =
+      VLam
+        binder1
+        ( WHNFBody
+            env
+            ( Lam
+                mempty
+                binder2
+                ( BuiltinExpr
+                    mempty
+                    b
+                    [ Arg mempty Explicit Relevant (BoundVar mempty 1),
+                      Arg mempty Explicit Relevant (BoundVar mempty 0)
+                    ]
+                )
+            )
+        )

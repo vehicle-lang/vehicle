@@ -1218,18 +1218,19 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Just "change the specification so that all quantified variables have unique names"
           }
-    HigherOrderVectors (ident, p) ctx typ ->
+    HigherOrderVectors (ident, p) ctx vecTyp elemTyp ->
       UError $
         UserError
           { provenance = p,
             problem =
               "The property"
                 <+> quotePretty (nameOf ident)
-                <+> "cannot be compiled to tensors as it contains unnormalisable"
-                <+> "higher-order vectors of type:"
+                <+> "cannot be compiled to tensors as it contains"
+                <+> "the vector type:"
                 <> line
-                  <+> indent 2 (prettyFriendly (WithContext typ ctx))
-                <> ".",
+                  <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
+                <> line
+                <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled:",
             fix = Nothing
           }
 

@@ -1,4 +1,4 @@
-module Vehicle.Backend.Tensors.Core where
+module Vehicle.Backend.LossFunction.Core where
 
 import Data.Ratio
 import GHC.Generics (Generic)

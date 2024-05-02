@@ -8,10 +8,10 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Data.Void (Void)
 import Prettyprinter (list)
+import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Backend.Queries.Error.Polarity.Core
-import Vehicle.Backend.Tensors.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
@@ -91,7 +91,7 @@ data CompileError
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
-  | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin)
+  | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin) (NFType TensorBuiltin)
 
 deriving instance Show CompileError
 
