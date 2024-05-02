@@ -1,3 +1,0 @@
-@property;
-monotonic : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-monotonic f = forall x1 . forall x2 . not (x1 <= x2) or f [x1] ! 0 <= f [x2] ! 0

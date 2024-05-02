@@ -20,13 +20,6 @@
     "produces": ["Agda.agda"]
   },
   {
-    "name": "Explicit",
-    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl --logging MidDetail",
-    "needs": ["spec.vcl"],
-    "produces": ["Explicit.vcl"],
-    "enabled": false
-  },
-  {
     "name": "DL2Loss",
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],

@@ -1,7 +1,0 @@
-@property;
-test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-test1 f = exists a . a >= 0.0 and ReduceAnd (f [a + 2.0] == [0.0])
-
-@property;
-test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
-test2 g = exists a . exists b . a >= 1.0 and b >= a and ReduceAnd (g [a + b, a + 2.0 * b] == [0.0])

@@ -1,3 +1,0 @@
-@property;
-reachable : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-reachable f = exists x . ReduceAnd (f x == [0.0])

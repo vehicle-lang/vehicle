@@ -1,7 +1,0 @@
-@property;
-p1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-p1 f = forall x . f x ! 0 >= 1.0
-
-@property;
-p2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
-p2 g = forall x . g x ! 0 >= 0.0

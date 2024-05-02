@@ -1,3 +1,0 @@
-@property;
-bounded : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-bounded f = forall x . not (0.0 < x and x < 1.0) or 0.0 < f [x] ! 0 and f [x] ! 0 < 1.0

@@ -1,3 +1,0 @@
-@property;
-p : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-p f = f [0.0] ! 0 >= 0.0

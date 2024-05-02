@@ -1,15 +1,17 @@
 module Vehicle.Backend.LossFunction
-  ( lossPreprocessingStep,
+  ( convertLossExpr,
+    MonadTensor,
+    MonadTensorProperty,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader.Class (MonadReader (..))
 import Data.Proxy (Proxy (..))
-import Vehicle.Backend.LossFunction.Convert
 import Vehicle.Backend.LossFunction.Logics
-import Vehicle.Backend.Prelude
+import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Context.Bound
+import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -19,8 +21,16 @@ import Vehicle.Data.DSL (DSLExpr, fromDSL)
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
-lossPreprocessingStep :: DifferentiableLogicID -> TensorPreprocessingStep
-lossPreprocessingStep logicID = TensorPreprocessingStep $ convertLossExpr (implementationOf logicID)
+type MonadTensor m =
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadBoundContext Builtin m
+  )
+
+type MonadTensorProperty m =
+  ( MonadTensor m,
+    MonadReader (DeclProvenance, DifferentiableLogicID) m
+  )
 
 convertLossExpr ::
   forall m.
@@ -34,7 +44,7 @@ convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $
     go expr = case expr of
       VMeta {} -> unexpectedExprError currentPass "VMeta"
       VUniverse {} -> unexpectedExprError currentPass "VUniverse"
-      VPi {} -> unexpectedExprError currentPass "VPi"
+      VPi binder body -> VPi <$> traverse go binder <*> go body
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VBuiltin b spine -> do
@@ -57,7 +67,7 @@ convertLossExpr DifferentialLogicImplementation {..} u = do logDebug MaxDetail $
                   throwError $ UnsupportedNegatedOperation logicID ctx errExpr
               _ -> illTypedError currentPass (prettyVerbose expr)
           ErrorCase mkError -> do
-            declProv <- ask
+            (declProv, _) <- ask
             throwError $ mkError declProv mempty
       VLam binder body -> return $ VLam binder body
 

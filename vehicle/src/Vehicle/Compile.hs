@@ -5,7 +5,6 @@ module Vehicle.Compile
 where
 
 import Vehicle.Backend.Agda
-import Vehicle.Backend.LossFunction (lossPreprocessingStep)
 import Vehicle.Backend.LossFunction.Convert
 import Vehicle.Backend.LossFunction.JSON (compileProgToJSON)
 import Vehicle.Backend.Prelude
@@ -58,8 +57,6 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
       compileToLossFunction differentiableLogic result output outputAsJSON
     ITP Agda ->
       compileToAgda options result
-    ExplicitVehicle ->
-      compileDirect result output outputAsJSON
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -87,33 +84,14 @@ compileToAgda CompileOptions {..} (_, typedProg) = do
   writeAgdaFile output agdaCode
 
 compileToLossFunction ::
+  forall m.
   (MonadCompile m, MonadStdIO m) =>
   DifferentiableLogicID ->
   (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction differentiableLogicID prog output outputAsJSON = do
-  let lossPreprocessing = lossPreprocessingStep differentiableLogicID
-  compileToTensors lossPreprocessing prog output outputAsJSON
-
-compileDirect ::
-  (MonadCompile m, MonadStdIO m) =>
-  (Imports, Prog Ix Builtin) ->
-  Maybe FilePath ->
-  Bool ->
-  m ()
-compileDirect = compileToTensors noPreprocessing
-
-compileToTensors ::
-  forall m.
-  (MonadCompile m, MonadStdIO m) =>
-  TensorPreprocessingStep ->
-  (Imports, Prog Ix Builtin) ->
-  Maybe FilePath ->
-  Bool ->
-  m ()
-compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
+compileToLossFunction differentiableLogicID (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
   -- Deciding on the best ordering of converting to loss functions and converting to tensor code
   -- is tricky. There are three approaches:
@@ -129,7 +107,7 @@ compileToTensors preprocess (imports, typedProg) outputFile outputAsJSON = do
   --    Disadvantages
   --        - Loss functions need to be specified in terms of tensors.
   --
-  tensorProg <- convertToTensors preprocess mergedProg
+  tensorProg <- convertToTensors differentiableLogicID mergedProg
   hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   result <-
